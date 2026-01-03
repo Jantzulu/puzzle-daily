@@ -44,6 +44,7 @@ function normalizeActionType(type: string): ActionType {
     'ATTACK_FORWARD': ActionType.ATTACK_FORWARD,
     'ATTACK_RANGE': ActionType.ATTACK_RANGE,
     'ATTACK_AOE': ActionType.ATTACK_AOE,
+    'CUSTOM_ATTACK': ActionType.CUSTOM_ATTACK,
     'IF_WALL': ActionType.IF_WALL,
     'IF_ENEMY': ActionType.IF_ENEMY,
     'WAIT': ActionType.WAIT,
