@@ -176,3 +176,152 @@ export interface CompletedPuzzle {
   score: number;
   timestamp: string;
 }
+
+// ==========================================
+// ATTACK SYSTEM (New - Phase 1)
+// ==========================================
+
+/**
+ * Attack pattern types for custom attacks
+ */
+export enum AttackPattern {
+  MELEE = 'melee',              // Single adjacent tile
+  PROJECTILE = 'projectile',    // Straight line projectile
+  AOE_CIRCLE = 'aoe_circle',    // Radius around target point
+  AOE_LINE = 'aoe_line',        // Cone/line pattern
+  BUFF_SELF = 'buff_self',      // Apply status to self
+  BUFF_ALLY = 'buff_ally',      // Apply status to adjacent ally
+  HEAL = 'heal',                // Restore HP
+  RESURRECT = 'resurrect',      // Revive dead unit
+}
+
+/**
+ * Status effect types
+ */
+export enum StatusEffectType {
+  POISON = 'poison',      // Damage over time
+  REGEN = 'regen',        // Heal over time
+  SHIELD = 'shield',      // Absorb damage
+  STUN = 'stun',          // Skip turns
+  SLOW = 'slow',          // Reduced movement
+  HASTE = 'haste',        // Increased movement
+}
+
+/**
+ * Status effect instance
+ */
+export interface StatusEffect {
+  type: StatusEffectType;
+  duration: number;       // Turns remaining
+  value: number;          // Damage/heal per turn, or shield amount
+  sourceId?: string;      // Who applied this effect
+}
+
+/**
+ * Custom sprite reference (for projectiles and effects)
+ */
+export interface SpriteReference {
+  type: 'stored' | 'inline';
+  spriteId?: string;           // ID from asset storage
+  spriteData?: any;            // Inline sprite data (CustomSprite)
+}
+
+/**
+ * Custom attack definition
+ */
+export interface CustomAttack {
+  id: string;
+  name: string;
+  pattern: AttackPattern;
+
+  // Damage/Healing
+  damage?: number;              // Override character's attackDamage
+  healing?: number;             // HP to restore
+
+  // Range/Area
+  range?: number;               // Max tiles away (default: 1)
+  aoeRadius?: number;           // For AOE attacks (tiles from center)
+
+  // Projectile behavior (for PROJECTILE pattern)
+  projectileSpeed?: number;     // Tiles per second (default: 5)
+  projectilePierces?: boolean;  // Continue through enemies (default: false)
+
+  // AOE targeting (for AOE patterns)
+  aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
+
+  // Visuals
+  projectileSprite?: SpriteReference;  // Visual for projectile
+  hitEffectSprite?: SpriteReference;   // Particle on impact
+  castEffectSprite?: SpriteReference;  // Effect on caster
+
+  // Animation timing
+  effectDuration?: number;      // MS to show effects (default: 300)
+
+  // Special Effects
+  statusEffect?: StatusEffect;  // Apply status on hit
+}
+
+/**
+ * Active projectile in the game world
+ */
+export interface Projectile {
+  id: string;                   // Unique instance ID
+  attackData: CustomAttack;     // Attack definition
+
+  // Position
+  x: number;                    // Current X (can be fractional)
+  y: number;                    // Current Y (can be fractional)
+  targetX: number;              // Destination X
+  targetY: number;              // Destination Y
+
+  // Movement
+  direction: Direction;         // Facing direction for sprite rotation
+  speed: number;                // Tiles per second
+
+  // State
+  active: boolean;
+  startTime: number;            // Date.now() when spawned
+
+  // Metadata
+  sourceCharacterId?: string;   // Who fired this
+  sourceEnemyId?: string;       // If fired by enemy
+}
+
+/**
+ * Particle effect instance
+ */
+export interface ParticleEffect {
+  id: string;                   // Unique instance ID
+  sprite: SpriteReference;
+
+  // Position
+  x: number;
+  y: number;
+
+  // Animation
+  startTime: number;            // Date.now() when spawned
+  duration: number;             // MS to display
+
+  // Visual modifiers
+  scale?: number;               // Size multiplier (can animate)
+  alpha?: number;               // Opacity (for fade out)
+  rotation?: number;            // Rotation in radians
+}
+
+/**
+ * Extended CharacterAction to support custom attacks
+ * Backwards compatible - existing actions still work
+ */
+export interface CharacterActionExtended extends CharacterAction {
+  // For custom attack actions
+  customAttackId?: string;      // Reference to saved CustomAttack
+  customAttack?: CustomAttack;  // Inline attack definition
+}
+
+/**
+ * Extended GameState to track projectiles and particles
+ */
+export interface GameStateExtended extends GameState {
+  activeProjectiles?: Projectile[];
+  activeParticles?: ParticleEffect[];
+}

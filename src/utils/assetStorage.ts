@@ -263,3 +263,46 @@ export const deleteCollectibleType = (collectibleId: string): void => {
   const filtered = collectibles.filter(c => c.id !== collectibleId);
   localStorage.setItem(COLLECTIBLE_STORAGE_KEY, JSON.stringify(filtered));
 };
+
+// ==========================================
+// CUSTOM ATTACKS (Attack System - Phase 1)
+// ==========================================
+
+import type { CustomAttack } from '../types/game';
+
+const ATTACK_STORAGE_KEY = 'custom_attacks';
+
+export const saveCustomAttack = (attack: CustomAttack): void => {
+  const attacks = getCustomAttacks();
+
+  const existingIndex = attacks.findIndex(a => a.id === attack.id);
+  if (existingIndex >= 0) {
+    attacks[existingIndex] = attack;
+  } else {
+    attacks.push(attack);
+  }
+
+  localStorage.setItem(ATTACK_STORAGE_KEY, JSON.stringify(attacks));
+};
+
+export const getCustomAttacks = (): CustomAttack[] => {
+  try {
+    const stored = localStorage.getItem(ATTACK_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load custom attacks:', e);
+    return [];
+  }
+};
+
+export const deleteCustomAttack = (attackId: string): void => {
+  const attacks = getCustomAttacks();
+  const filtered = attacks.filter(a => a.id !== attackId);
+  localStorage.setItem(ATTACK_STORAGE_KEY, JSON.stringify(filtered));
+};
+
+export const loadCustomAttack = (attackId: string): CustomAttack | null => {
+  const attacks = getCustomAttacks();
+  return attacks.find(a => a.id === attackId) || null;
+};
