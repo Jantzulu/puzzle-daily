@@ -203,6 +203,8 @@ export function initializeGameState(puzzle: any): GameState {
     simulationRunning: false,
     gameStatus: 'setup',
     score: 0,
+    activeProjectiles: [],
+    activeParticles: [],
   };
 }
 

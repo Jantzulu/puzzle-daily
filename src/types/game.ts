@@ -50,6 +50,7 @@ export enum ActionType {
   ATTACK_FORWARD = 'attack_forward',
   ATTACK_RANGE = 'attack_range',
   ATTACK_AOE = 'attack_aoe',
+  CUSTOM_ATTACK = 'custom_attack',  // New: custom attack system
 
   // Conditional
   IF_WALL = 'if_wall',
@@ -68,6 +69,10 @@ export interface CharacterAction {
   params?: any;
   tilesPerMove?: number; // How many tiles to move per tick (default: 1)
   onWallCollision?: WallCollisionBehavior; // What to do when hitting a wall (default: 'stop')
+
+  // For CUSTOM_ATTACK action type
+  customAttackId?: string;      // Reference to saved CustomAttack
+  customAttack?: CustomAttack;  // Inline attack definition (added below in file)
 }
 
 export interface Character {
@@ -159,6 +164,10 @@ export interface GameState {
   simulationRunning: boolean;
   gameStatus: GameStatus;
   score: number;
+
+  // Attack system (Phase 2)
+  activeProjectiles?: Projectile[];
+  activeParticles?: ParticleEffect[];
 }
 
 export interface PlayerProgress {
