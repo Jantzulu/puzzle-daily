@@ -10,13 +10,27 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 const ACTION_TYPES = Object.values(ActionType);
 
 export const CharacterEditor: React.FC = () => {
-  const [characters, setCharacters] = useState<CustomCharacter[]>(() => {
-    return getAllCharacters().map(c => ({
-      ...c,
+  // Helper to ensure all characters have a default customSprite
+  const ensureCustomSprite = (char: any): CustomCharacter => {
+    return {
+      ...char,
       isCustom: true,
-      createdAt: c.createdAt || new Date().toISOString(),
-      customSprite: c.customSprite
-    } as CustomCharacter));
+      createdAt: char.createdAt || new Date().toISOString(),
+      customSprite: char.customSprite || {
+        id: 'sprite_' + Date.now() + '_' + Math.random(),
+        name: char.name + ' Sprite',
+        type: 'simple',
+        shape: 'circle',
+        primaryColor: '#4caf50',
+        secondaryColor: '#ffffff',
+        size: 0.6,
+        createdAt: new Date().toISOString(),
+      }
+    } as CustomCharacter;
+  };
+
+  const [characters, setCharacters] = useState<CustomCharacter[]>(() => {
+    return getAllCharacters().map(ensureCustomSprite);
   });
   const [editingCharacter, setEditingCharacter] = useState<CustomCharacter | null>(null);
   const [showEditor, setShowEditor] = useState(false);
@@ -58,12 +72,7 @@ export const CharacterEditor: React.FC = () => {
     saveCharacter(editingCharacter);
 
     // Refresh list
-    setCharacters(getAllCharacters().map(c => ({
-      ...c,
-      isCustom: true,
-      createdAt: c.createdAt || new Date().toISOString(),
-      customSprite: c.customSprite
-    } as CustomCharacter)));
+    setCharacters(getAllCharacters().map(ensureCustomSprite));
 
     setShowEditor(false);
     setEditingCharacter(null);
@@ -71,7 +80,7 @@ export const CharacterEditor: React.FC = () => {
   };
 
   const handleEdit = (char: CustomCharacter) => {
-    setEditingCharacter({ ...char });
+    setEditingCharacter(ensureCustomSprite(char));
     setShowEditor(true);
   };
 
@@ -80,12 +89,7 @@ export const CharacterEditor: React.FC = () => {
     deleteCharacter(id);
 
     // Refresh list
-    setCharacters(getAllCharacters().map(c => ({
-      ...c,
-      isCustom: true,
-      createdAt: c.createdAt || new Date().toISOString(),
-      customSprite: c.customSprite
-    } as CustomCharacter)));
+    setCharacters(getAllCharacters().map(ensureCustomSprite));
   };
 
   const handleCancel = () => {

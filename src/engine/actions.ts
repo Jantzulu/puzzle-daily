@@ -110,6 +110,7 @@ export function executeAction(
       return updatedCharacter;
 
     case ActionType.CUSTOM_ATTACK:
+      console.log('[executeAction] CUSTOM_ATTACK case reached');
       executeCustomAttack(updatedCharacter, action, gameState);
       return updatedCharacter;
 
@@ -414,6 +415,8 @@ function executeCustomAttack(
   action: CharacterAction,
   gameState: GameState
 ): void {
+  console.log('[executeCustomAttack] Called with action:', action);
+
   // Get attack data from action or load from storage
   let attackData: CustomAttack | null = null;
 
@@ -428,9 +431,13 @@ function executeCustomAttack(
     return;
   }
 
+  console.log('[executeCustomAttack] Attack data:', attackData);
+  console.log('[executeCustomAttack] Pattern:', attackData.pattern, 'Expected:', AttackPattern.PROJECTILE);
+
   // Execute based on attack pattern
   switch (attackData.pattern) {
     case AttackPattern.PROJECTILE:
+      console.log('[executeCustomAttack] Spawning projectile');
       spawnProjectile(character, attackData, gameState);
       break;
 
