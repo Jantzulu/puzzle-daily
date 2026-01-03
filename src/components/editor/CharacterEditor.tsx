@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { Direction, ActionType } from '../../types/game';
-import type { CharacterAction } from '../../types/game';
+import type { CharacterAction, CustomAttack } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
 import { saveCharacter, getCustomCharacters, deleteCharacter } from '../../utils/assetStorage';
 import { getAllCharacters } from '../../data/characters';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
+import { AttackEditor } from './AttackEditor';
 
 const ACTION_TYPES = Object.values(ActionType);
 
@@ -34,6 +35,7 @@ export const CharacterEditor: React.FC = () => {
   });
   const [editingCharacter, setEditingCharacter] = useState<CustomCharacter | null>(null);
   const [showEditor, setShowEditor] = useState(false);
+  const [editingAttack, setEditingAttack] = useState<{ attack: CustomAttack; actionIndex: number } | null>(null);
 
   const createNewCharacter = () => {
     const newChar: CustomCharacter = {
@@ -324,8 +326,7 @@ export const CharacterEditor: React.FC = () => {
                                 )}
                                 <button
                                   onClick={() => {
-                                    // TODO: Open attack editor
-                                    alert('Attack editor coming soon! For now, attacks can only be configured in JSON.');
+                                    setEditingAttack({ attack: action.customAttack!, actionIndex: index });
                                   }}
                                   className="mt-2 px-3 py-1 bg-blue-600 rounded text-xs hover:bg-blue-700"
                                 >
@@ -337,20 +338,18 @@ export const CharacterEditor: React.FC = () => {
                                 <p className="mb-2">No attack configured</p>
                                 <button
                                   onClick={() => {
-                                    // Create a default attack
-                                    updateBehaviorAction(index, {
-                                      ...action,
-                                      customAttack: {
-                                        id: 'attack_' + Date.now(),
-                                        name: 'New Attack',
-                                        pattern: 'projectile',
-                                        damage: 1,
-                                        range: 5,
-                                        projectileSpeed: 5,
-                                        projectilePierces: false,
-                                        effectDuration: 300
-                                      }
-                                    });
+                                    // Open editor with default attack
+                                    const defaultAttack: CustomAttack = {
+                                      id: 'attack_' + Date.now(),
+                                      name: 'New Attack',
+                                      pattern: 'projectile',
+                                      damage: 1,
+                                      range: 5,
+                                      projectileSpeed: 5,
+                                      projectilePierces: false,
+                                      effectDuration: 300
+                                    };
+                                    setEditingAttack({ attack: defaultAttack, actionIndex: index });
                                   }}
                                   className="px-3 py-1 bg-green-600 rounded text-xs hover:bg-green-700"
                                 >
@@ -383,6 +382,22 @@ export const CharacterEditor: React.FC = () => {
             </div>
           </div>
         </div>
+
+        {/* Attack Editor Modal */}
+        {editingAttack && editingCharacter && (
+          <AttackEditor
+            attack={editingAttack.attack}
+            onSave={(updatedAttack) => {
+              // Update the action with the new attack
+              updateBehaviorAction(editingAttack.actionIndex, {
+                ...editingCharacter.behavior[editingAttack.actionIndex],
+                customAttack: updatedAttack
+              });
+              setEditingAttack(null);
+            }}
+            onCancel={() => setEditingAttack(null)}
+          />
+        )}
       </div>
     );
   }
