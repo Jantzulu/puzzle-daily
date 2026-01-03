@@ -5,6 +5,7 @@ import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy } from '../../utils/assetStorage';
+import { updateProjectiles, updateParticles } from '../../engine/simulation';
 
 interface AnimatedGameBoardProps {
   gameState: GameState;
@@ -119,6 +120,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Clear
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Update projectiles and particles (time-based, needs to run every frame)
+      updateProjectiles(gameState);
+      updateParticles(gameState);
+
       // Draw tiles
       for (let y = 0; y < gameState.puzzle.height; y++) {
         for (let x = 0; x < gameState.puzzle.width; x++) {
@@ -143,7 +148,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Draw projectiles (Phase 2 - between tiles and entities)
       if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
+        console.log('[AnimatedGameBoard] Drawing', gameState.activeProjectiles.length, 'projectiles');
         gameState.activeProjectiles.forEach(projectile => {
+          console.log('[AnimatedGameBoard] Projectile at', projectile.x, projectile.y, 'active:', projectile.active);
           drawProjectile(ctx, projectile);
         });
       }

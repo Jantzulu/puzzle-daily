@@ -10,6 +10,13 @@ const officialCharacters: Record<string, Character> = {
   [fireballMageData.id]: fireballMageData as Character,
 };
 
+/**
+ * Check if a character ID is an official (built-in) character
+ */
+export const isOfficialCharacter = (id: string): boolean => {
+  return id in officialCharacters;
+};
+
 export const getCharacter = (id: string): Character | undefined => {
   // Check if hidden
   if (isAssetHidden(id)) {

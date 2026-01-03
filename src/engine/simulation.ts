@@ -229,9 +229,9 @@ import type { Projectile, ParticleEffect } from '../types/game';
 import { TileType } from '../types/game';
 
 /**
- * Update all active projectiles (called once per turn, but uses time-based movement)
+ * Update all active projectiles (time-based movement, should be called from animation loop)
  */
-function updateProjectiles(gameState: GameState): void {
+export function updateProjectiles(gameState: GameState): void {
   if (!gameState.activeProjectiles || gameState.activeProjectiles.length === 0) {
     return;
   }
@@ -324,9 +324,9 @@ function updateProjectiles(gameState: GameState): void {
 }
 
 /**
- * Update all active particles (remove expired ones)
+ * Update all active particles (remove expired ones, should be called from animation loop)
  */
-function updateParticles(gameState: GameState): void {
+export function updateParticles(gameState: GameState): void {
   if (!gameState.activeParticles || gameState.activeParticles.length === 0) {
     return;
   }
