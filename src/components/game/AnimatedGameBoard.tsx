@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect } from '../../types/game';
 import { TileType, Direction } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -140,6 +140,20 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       });
 
       const now = Date.now();
+
+      // Draw projectiles (Phase 2 - between tiles and entities)
+      if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
+        gameState.activeProjectiles.forEach(projectile => {
+          drawProjectile(ctx, projectile);
+        });
+      }
+
+      // Draw particles (Phase 2 - effects layer)
+      if (gameState.activeParticles && gameState.activeParticles.length > 0) {
+        gameState.activeParticles.forEach(particle => {
+          drawParticle(ctx, particle, now);
+        });
+      }
 
       // Draw enemies
       gameState.puzzle.enemies.forEach((enemy, idx) => {
@@ -406,4 +420,102 @@ function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number) {
 
   ctx.closePath();
   ctx.fill();
+}
+
+// ==========================================
+// PROJECTILE & PARTICLE RENDERING (Phase 2c)
+// ==========================================
+
+/**
+ * Draw a projectile - uses fractional coordinates for smooth movement
+ */
+function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile) {
+  if (!projectile.active) return;
+
+  // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
+  const px = projectile.x * TILE_SIZE + TILE_SIZE / 2;
+  const py = projectile.y * TILE_SIZE + TILE_SIZE / 2;
+
+  // Check if projectile has custom sprite
+  if (projectile.attackData.projectileSprite) {
+    // TODO: Render custom sprite when sprite system is implemented
+    // For now, draw a simple circle
+    drawDefaultProjectile(ctx, px, py);
+  } else {
+    // Default projectile rendering
+    drawDefaultProjectile(ctx, px, py);
+  }
+}
+
+/**
+ * Draw default projectile (simple colored circle/arrow)
+ */
+function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  // Draw glowing projectile
+  ctx.save();
+
+  // Outer glow
+  ctx.fillStyle = 'rgba(255, 200, 100, 0.3)';
+  ctx.beginPath();
+  ctx.arc(px, py, 8, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Inner core
+  ctx.fillStyle = '#ffaa00';
+  ctx.beginPath();
+  ctx.arc(px, py, 4, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.restore();
+}
+
+/**
+ * Draw a particle effect with fade-out
+ */
+function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, now: number) {
+  const elapsed = now - particle.startTime;
+  if (elapsed >= particle.duration) return;
+
+  const px = particle.x * TILE_SIZE + TILE_SIZE / 2;
+  const py = particle.y * TILE_SIZE + TILE_SIZE / 2;
+
+  // Calculate fade-out alpha
+  const progress = elapsed / particle.duration;
+  const alpha = particle.alpha || (1 - progress); // Fade out over time
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // Check if particle has custom sprite
+  if (particle.sprite) {
+    // TODO: Render custom sprite when sprite system is implemented
+    // For now, draw a simple flash effect
+    drawDefaultParticle(ctx, px, py, progress);
+  } else {
+    drawDefaultParticle(ctx, px, py, progress);
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Draw default particle effect (expanding ring)
+ */
+function drawDefaultParticle(ctx: CanvasRenderingContext2D, px: number, py: number, progress: number) {
+  // Expanding ring effect
+  const radius = 4 + progress * 20; // Expands from 4 to 24 pixels
+
+  ctx.strokeStyle = '#ffff00';
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(px, py, radius, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Inner flash
+  if (progress < 0.3) {
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.arc(px, py, 8 * (1 - progress / 0.3), 0, Math.PI * 2);
+    ctx.fill();
+  }
 }
