@@ -484,6 +484,8 @@ function spawnProjectile(
     attackData,
     x: character.x,
     y: character.y,
+    startX: character.x,
+    startY: character.y,
     targetX,
     targetY,
     direction: character.facing,
@@ -494,6 +496,8 @@ function spawnProjectile(
   };
 
   gameState.activeProjectiles.push(projectile);
+  console.log('[spawnProjectile] Created projectile:', projectile);
+  console.log('[spawnProjectile] Total projectiles:', gameState.activeProjectiles.length);
 
   // Spawn cast effect if configured
   if (attackData.castEffectSprite) {

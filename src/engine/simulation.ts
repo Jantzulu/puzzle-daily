@@ -249,9 +249,9 @@ function updateProjectiles(gameState: GameState): void {
     const elapsed = (now - proj.startTime) / 1000; // seconds
     const distanceTraveled = proj.speed * elapsed;
 
-    // Calculate direction vector
-    const dx = proj.targetX - proj.x;
-    const dy = proj.targetY - proj.y;
+    // Calculate direction vector from START to TARGET (not from current position!)
+    const dx = proj.targetX - proj.startX;
+    const dy = proj.targetY - proj.startY;
     const totalDistance = Math.sqrt(dx * dx + dy * dy);
 
     if (distanceTraveled >= totalDistance) {
@@ -261,10 +261,10 @@ function updateProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Update position
+    // Update position from STARTING point
     const progress = distanceTraveled / totalDistance;
-    const newX = proj.x + dx * progress;
-    const newY = proj.y + dy * progress;
+    const newX = proj.startX + dx * progress;
+    const newY = proj.startY + dy * progress;
 
     // Check collision with walls
     const tileX = Math.floor(newX);

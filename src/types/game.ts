@@ -280,6 +280,8 @@ export interface Projectile {
   // Position
   x: number;                    // Current X (can be fractional)
   y: number;                    // Current Y (can be fractional)
+  startX: number;               // Original spawn X
+  startY: number;               // Original spawn Y
   targetX: number;              // Destination X
   targetY: number;              // Destination Y
 
