@@ -1,0 +1,20 @@
+{
+  "id": "archer_01",
+  "name": "Archer",
+  "spriteId": "archer_sprite",
+  "description": "Shoots arrows up (3 tiles), then rotates clockwise.",
+  "health": 1,
+  "attackDamage": 1,
+  "defaultFacing": "north",
+  "behavior": [
+    {
+      "type": "ATTACK_RANGE",
+      "params": {
+        "range": 3,
+        "direction": "forward"
+      }
+    },
+    { "type": "TURN_RIGHT" },
+    { "type": "REPEAT" }
+  ]
+}

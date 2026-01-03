@@ -1,0 +1,17 @@
+{
+  "id": "knight_01",
+  "name": "Charging Knight",
+  "spriteId": "knight_sprite",
+  "description": "Charges forward 1 tile per turn. Attacks weak enemies (1 HP) to pass through. Trades damage with tough enemies. Turns right at walls.",
+  "health": 1,
+  "attackDamage": 1,
+  "defaultFacing": "east",
+  "behavior": [
+    {
+      "type": "MOVE_FORWARD",
+      "tilesPerMove": 1,
+      "onWallCollision": "turn_right"
+    },
+    { "type": "REPEAT" }
+  ]
+}

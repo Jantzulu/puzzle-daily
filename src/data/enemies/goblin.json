@@ -1,0 +1,19 @@
+{
+  "id": "goblin_01",
+  "name": "Goblin",
+  "spriteId": "goblin_sprite",
+  "health": 1,
+  "attackDamage": 1,
+  "behavior": {
+    "type": "active",
+    "defaultFacing": "south",
+    "pattern": [
+      {
+        "type": "MOVE_FORWARD",
+        "tilesPerMove": 1,
+        "onWallCollision": "turn_right"
+      },
+      { "type": "REPEAT" }
+    ]
+  }
+}
