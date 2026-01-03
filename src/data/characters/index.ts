@@ -2,10 +2,12 @@ import type { Character } from '../../types/game';
 import { getCustomCharacters, isAssetHidden } from '../../utils/assetStorage';
 import knightData from './knight.json';
 import archerData from './archer.json';
+import fireballMageData from './archer-fireball.json';
 
 const officialCharacters: Record<string, Character> = {
   [knightData.id]: knightData as Character,
   [archerData.id]: archerData as Character,
+  [fireballMageData.id]: fireballMageData as Character,
 };
 
 export const getCharacter = (id: string): Character | undefined => {

@@ -1,0 +1,28 @@
+{
+  "id": "archer_fireball",
+  "name": "Fire Mage",
+  "health": 2,
+  "attackDamage": 1,
+  "defaultFacing": "east",
+  "behavior": [
+    {
+      "type": "CUSTOM_ATTACK",
+      "customAttack": {
+        "id": "fireball_01",
+        "name": "Fireball",
+        "pattern": "projectile",
+        "damage": 1,
+        "range": 10,
+        "projectileSpeed": 8,
+        "projectilePierces": false,
+        "effectDuration": 400
+      }
+    },
+    {
+      "type": "WAIT"
+    },
+    {
+      "type": "REPEAT"
+    }
+  ]
+}
