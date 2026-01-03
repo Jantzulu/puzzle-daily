@@ -120,6 +120,12 @@ export function executeTurn(gameState: GameState): GameState {
     enemy.actionIndex = (enemy.actionIndex || 0) + 1;
   }
 
+  // Update projectiles (Phase 2)
+  updateProjectiles(gameState);
+
+  // Update particles (Phase 2)
+  updateParticles(gameState);
+
   // Check win/lose conditions
   checkGameConditions(gameState);
 
@@ -213,4 +219,154 @@ export function initializeGameState(puzzle: any): GameState {
  */
 export function resetGameState(gameState: GameState, originalPuzzle: any): GameState {
   return initializeGameState(originalPuzzle);
+}
+
+// ==========================================
+// PROJECTILE & PARTICLE UPDATES (Phase 2)
+// ==========================================
+
+import type { Projectile, ParticleEffect } from '../types/game';
+import { TileType } from '../types/game';
+
+/**
+ * Update all active projectiles (called once per turn, but uses time-based movement)
+ */
+function updateProjectiles(gameState: GameState): void {
+  if (!gameState.activeProjectiles || gameState.activeProjectiles.length === 0) {
+    return;
+  }
+
+  const now = Date.now();
+  const projectilesToRemove: string[] = [];
+
+  for (const proj of gameState.activeProjectiles) {
+    if (!proj.active) {
+      projectilesToRemove.push(proj.id);
+      continue;
+    }
+
+    // Calculate how far projectile should have moved (time-based, not turn-based)
+    const elapsed = (now - proj.startTime) / 1000; // seconds
+    const distanceTraveled = proj.speed * elapsed;
+
+    // Calculate direction vector
+    const dx = proj.targetX - proj.x;
+    const dy = proj.targetY - proj.y;
+    const totalDistance = Math.sqrt(dx * dx + dy * dy);
+
+    if (distanceTraveled >= totalDistance) {
+      // Projectile reached max range
+      proj.active = false;
+      projectilesToRemove.push(proj.id);
+      continue;
+    }
+
+    // Update position
+    const progress = distanceTraveled / totalDistance;
+    const newX = proj.x + dx * progress;
+    const newY = proj.y + dy * progress;
+
+    // Check collision with walls
+    const tileX = Math.floor(newX);
+    const tileY = Math.floor(newY);
+
+    if (!isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
+        gameState.puzzle.tiles[tileY]?.[tileX]?.type === TileType.WALL ||
+        gameState.puzzle.tiles[tileY]?.[tileX] === null) {
+      // Hit wall - deactivate projectile
+      proj.active = false;
+      projectilesToRemove.push(proj.id);
+      continue;
+    }
+
+    // Check collision with enemies
+    const hitEnemy = gameState.puzzle.enemies.find(
+      e => !e.dead && Math.floor(e.x) === tileX && Math.floor(e.y) === tileY
+    );
+
+    if (hitEnemy) {
+      // Apply damage
+      const damage = proj.attackData.damage ?? 1;
+      hitEnemy.currentHealth -= damage;
+
+      if (hitEnemy.currentHealth <= 0) {
+        hitEnemy.dead = true;
+      }
+
+      // Spawn hit effect
+      if (proj.attackData.hitEffectSprite) {
+        spawnParticleEffect(
+          hitEnemy.x,
+          hitEnemy.y,
+          proj.attackData.hitEffectSprite,
+          proj.attackData.effectDuration || 300,
+          gameState
+        );
+      }
+
+      // Check if projectile should pierce
+      if (!proj.attackData.projectilePierces) {
+        proj.active = false;
+        projectilesToRemove.push(proj.id);
+        continue;
+      }
+    }
+
+    // Update projectile position
+    proj.x = newX;
+    proj.y = newY;
+  }
+
+  // Remove inactive projectiles
+  gameState.activeProjectiles = gameState.activeProjectiles.filter(
+    p => !projectilesToRemove.includes(p.id)
+  );
+}
+
+/**
+ * Update all active particles (remove expired ones)
+ */
+function updateParticles(gameState: GameState): void {
+  if (!gameState.activeParticles || gameState.activeParticles.length === 0) {
+    return;
+  }
+
+  const now = Date.now();
+
+  // Remove expired particles
+  gameState.activeParticles = gameState.activeParticles.filter(p => {
+    const elapsed = now - p.startTime;
+    return elapsed < p.duration;
+  });
+}
+
+/**
+ * Helper to spawn particle effects
+ */
+function spawnParticleEffect(
+  x: number,
+  y: number,
+  sprite: any,
+  duration: number,
+  gameState: GameState
+): void {
+  if (!gameState.activeParticles) {
+    gameState.activeParticles = [];
+  }
+
+  const particle: ParticleEffect = {
+    id: `particle_${Date.now()}_${Math.random()}`,
+    sprite,
+    x,
+    y,
+    startTime: Date.now(),
+    duration,
+    alpha: 1.0,
+  };
+
+  gameState.activeParticles.push(particle);
+}
+
+function isInBounds(x: number, y: number, width: number, height: number): boolean {
+  return x >= 0 && x < width && y >= 0 && y < height;
 }

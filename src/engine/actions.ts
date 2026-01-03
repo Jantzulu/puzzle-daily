@@ -3,15 +3,20 @@ import type {
   PlacedCharacter,
   GameState,
   WallCollisionBehavior,
+  CustomAttack,
+  Projectile,
+  ParticleEffect,
 } from '../types/game';
 import {
   ActionType,
   Direction,
   TileType,
+  AttackPattern,
 } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds } from './utils';
+import { loadCustomAttack } from '../utils/assetStorage';
 
 /**
  * Normalize action type - handles both enum keys (e.g., "ATTACK_FORWARD")
@@ -101,6 +106,10 @@ export function executeAction(
 
     case ActionType.REPEAT:
       // REPEAT is handled at the simulation level, not here
+      return updatedCharacter;
+
+    case ActionType.CUSTOM_ATTACK:
+      executeCustomAttack(updatedCharacter, action, gameState);
       return updatedCharacter;
 
     default:
@@ -390,4 +399,224 @@ function handleIfWall(
   }
 
   return character;
+}
+
+// ==========================================
+// CUSTOM ATTACK SYSTEM (Phase 2)
+// ==========================================
+
+/**
+ * Execute a custom attack action
+ */
+function executeCustomAttack(
+  character: PlacedCharacter,
+  action: CharacterAction,
+  gameState: GameState
+): void {
+  // Get attack data from action or load from storage
+  let attackData: CustomAttack | null = null;
+
+  if (action.customAttack) {
+    attackData = action.customAttack;
+  } else if (action.customAttackId) {
+    attackData = loadCustomAttack(action.customAttackId);
+  }
+
+  if (!attackData) {
+    console.warn('Custom attack data not found');
+    return;
+  }
+
+  // Execute based on attack pattern
+  switch (attackData.pattern) {
+    case AttackPattern.PROJECTILE:
+      spawnProjectile(character, attackData, gameState);
+      break;
+
+    case AttackPattern.MELEE:
+      executeMeleeAttack(character, attackData, gameState);
+      break;
+
+    case AttackPattern.AOE_CIRCLE:
+      executeAOEAttack(character, attackData, gameState);
+      break;
+
+    case AttackPattern.HEAL:
+      executeHeal(character, attackData, gameState);
+      break;
+
+    default:
+      console.warn(`Attack pattern not yet implemented: ${attackData.pattern}`);
+  }
+}
+
+/**
+ * Spawn a projectile for a PROJECTILE attack
+ */
+function spawnProjectile(
+  character: PlacedCharacter,
+  attackData: CustomAttack,
+  gameState: GameState
+): void {
+  if (!gameState.activeProjectiles) {
+    gameState.activeProjectiles = [];
+  }
+
+  const range = attackData.range || 10; // Default max range
+  const speed = attackData.projectileSpeed || 5; // Tiles per second
+
+  // Calculate target position (max range in facing direction)
+  const { dx, dy } = getDirectionOffset(character.facing);
+  const targetX = character.x + dx * range;
+  const targetY = character.y + dy * range;
+
+  // Create projectile
+  const projectile: Projectile = {
+    id: `proj_${Date.now()}_${Math.random()}`,
+    attackData,
+    x: character.x,
+    y: character.y,
+    targetX,
+    targetY,
+    direction: character.facing,
+    speed,
+    active: true,
+    startTime: Date.now(),
+    sourceCharacterId: character.characterId,
+  };
+
+  gameState.activeProjectiles.push(projectile);
+
+  // Spawn cast effect if configured
+  if (attackData.castEffectSprite) {
+    spawnParticle(character.x, character.y, attackData.castEffectSprite, attackData.effectDuration || 300, gameState);
+  }
+}
+
+/**
+ * Execute melee attack (instant, no projectile)
+ */
+function executeMeleeAttack(
+  character: PlacedCharacter,
+  attackData: CustomAttack,
+  gameState: GameState
+): void {
+  const { dx, dy } = getDirectionOffset(character.facing);
+  const targetX = character.x + dx;
+  const targetY = character.y + dy;
+
+  // Find enemy at target position
+  const enemy = gameState.puzzle.enemies.find(
+    e => e.x === targetX && e.y === targetY && !e.dead
+  );
+
+  if (enemy) {
+    const damage = attackData.damage ?? 1;
+    enemy.currentHealth -= damage;
+
+    if (enemy.currentHealth <= 0) {
+      enemy.dead = true;
+    }
+
+    // Spawn hit effect
+    if (attackData.hitEffectSprite) {
+      spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+    }
+  }
+}
+
+/**
+ * Execute AOE attack (circular area)
+ */
+function executeAOEAttack(
+  character: PlacedCharacter,
+  attackData: CustomAttack,
+  gameState: GameState
+): void {
+  const radius = attackData.aoeRadius || 2;
+  const damage = attackData.damage ?? 1;
+
+  // Determine center point
+  let centerX = character.x;
+  let centerY = character.y;
+
+  if (!attackData.aoeCenteredOnCaster) {
+    // AOE at target tile (in facing direction at range)
+    const range = attackData.range || 1;
+    const { dx, dy } = getDirectionOffset(character.facing);
+    centerX = character.x + dx * range;
+    centerY = character.y + dy * range;
+  }
+
+  // Hit all enemies in radius
+  gameState.puzzle.enemies.forEach(enemy => {
+    if (enemy.dead) return;
+
+    const distance = Math.sqrt(
+      Math.pow(enemy.x - centerX, 2) + Math.pow(enemy.y - centerY, 2)
+    );
+
+    if (distance <= radius) {
+      enemy.currentHealth -= damage;
+      if (enemy.currentHealth <= 0) {
+        enemy.dead = true;
+      }
+
+      // Spawn hit effect on each enemy
+      if (attackData.hitEffectSprite) {
+        spawnParticle(enemy.x, enemy.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+      }
+    }
+  });
+}
+
+/**
+ * Execute heal action
+ */
+function executeHeal(
+  character: PlacedCharacter,
+  attackData: CustomAttack,
+  gameState: GameState
+): void {
+  const healing = attackData.healing || 1;
+  const charData = getCharacter(character.characterId);
+
+  if (charData) {
+    character.currentHealth = Math.min(
+      character.currentHealth + healing,
+      charData.health
+    );
+
+    // Spawn cast effect
+    if (attackData.castEffectSprite) {
+      spawnParticle(character.x, character.y, attackData.castEffectSprite, attackData.effectDuration || 300, gameState);
+    }
+  }
+}
+
+/**
+ * Spawn a particle effect
+ */
+function spawnParticle(
+  x: number,
+  y: number,
+  sprite: any,
+  duration: number,
+  gameState: GameState
+): void {
+  if (!gameState.activeParticles) {
+    gameState.activeParticles = [];
+  }
+
+  const particle: ParticleEffect = {
+    id: `particle_${Date.now()}_${Math.random()}`,
+    sprite,
+    x,
+    y,
+    startTime: Date.now(),
+    duration,
+    alpha: 1.0,
+  };
+
+  gameState.activeParticles.push(particle);
 }
