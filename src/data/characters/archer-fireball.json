@@ -8,6 +8,11 @@
   "defaultFacing": "east",
   "behavior": [
     {
+      "type": "MOVE_FORWARD",
+      "tilesPerMove": 1,
+      "onWallCollision": "turn_right"
+    },
+    {
       "type": "CUSTOM_ATTACK",
       "customAttack": {
         "id": "fireball_01",
@@ -19,9 +24,6 @@
         "projectilePierces": false,
         "effectDuration": 400
       }
-    },
-    {
-      "type": "WAIT"
     },
     {
       "type": "REPEAT"
