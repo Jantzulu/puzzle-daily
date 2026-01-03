@@ -310,6 +310,57 @@ export const CharacterEditor: React.FC = () => {
                           </div>
                         </div>
                       )}
+                      {action.type === ActionType.CUSTOM_ATTACK && (
+                        <div className="ml-8 space-y-2">
+                          <div className="text-xs text-gray-400">
+                            {action.customAttack ? (
+                              <div className="space-y-2">
+                                <div><strong>Attack:</strong> {action.customAttack.name || 'Unnamed'}</div>
+                                <div><strong>Pattern:</strong> {action.customAttack.pattern}</div>
+                                <div><strong>Damage:</strong> {action.customAttack.damage || 1}</div>
+                                <div><strong>Range:</strong> {action.customAttack.range || 1} tiles</div>
+                                {action.customAttack.pattern === 'projectile' && (
+                                  <div><strong>Speed:</strong> {action.customAttack.projectileSpeed || 5} tiles/sec</div>
+                                )}
+                                <button
+                                  onClick={() => {
+                                    // TODO: Open attack editor
+                                    alert('Attack editor coming soon! For now, attacks can only be configured in JSON.');
+                                  }}
+                                  className="mt-2 px-3 py-1 bg-blue-600 rounded text-xs hover:bg-blue-700"
+                                >
+                                  Edit Attack
+                                </button>
+                              </div>
+                            ) : (
+                              <div>
+                                <p className="mb-2">No attack configured</p>
+                                <button
+                                  onClick={() => {
+                                    // Create a default attack
+                                    updateBehaviorAction(index, {
+                                      ...action,
+                                      customAttack: {
+                                        id: 'attack_' + Date.now(),
+                                        name: 'New Attack',
+                                        pattern: 'projectile',
+                                        damage: 1,
+                                        range: 5,
+                                        projectileSpeed: 5,
+                                        projectilePierces: false,
+                                        effectDuration: 300
+                                      }
+                                    });
+                                  }}
+                                  className="px-3 py-1 bg-green-600 rounded text-xs hover:bg-green-700"
+                                >
+                                  Create Attack
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
                 </div>
