@@ -365,6 +365,34 @@ export const CharacterEditor: React.FC = () => {
                               <option value="continue">Continue (skip wall)</option>
                             </select>
                           </div>
+                          {(action.onWallCollision === 'turn_left' || action.onWallCollision === 'turn_right') && (
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-gray-400">Turn degrees:</label>
+                              <select
+                                value={action.turnDegrees || 90}
+                                onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 })}
+                                className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
+                              >
+                                <option value={90}>90° (Cardinal only)</option>
+                                <option value={45}>45° (Includes diagonals)</option>
+                              </select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {(action.type === ActionType.TURN_LEFT || action.type === ActionType.TURN_RIGHT) && (
+                        <div className="ml-8 space-y-2">
+                          <div className="flex items-center gap-2">
+                            <label className="text-xs text-gray-400">Turn degrees:</label>
+                            <select
+                              value={action.turnDegrees || 90}
+                              onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 })}
+                              className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
+                            >
+                              <option value={90}>90° (Cardinal only)</option>
+                              <option value={45}>45° (Includes diagonals)</option>
+                            </select>
+                          </div>
                         </div>
                       )}
                       {action.type === ActionType.SPELL && (() => {
