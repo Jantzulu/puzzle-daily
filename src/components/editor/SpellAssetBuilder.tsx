@@ -362,17 +362,69 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Combat Stats</h3>
 
-            {/* Damage */}
+            {/* Damage vs Healing Toggle */}
             <div>
-              <label className="block text-sm font-medium mb-1">Damage *</label>
+              <label className="block text-sm font-medium mb-2">Effect Type</label>
+              <div className="flex gap-2 mb-3">
+                <button
+                  type="button"
+                  onClick={() => setEditedSpell({
+                    ...editedSpell,
+                    damage: editedSpell.healing || editedSpell.damage || 1,
+                    healing: undefined
+                  })}
+                  className={`flex-1 px-4 py-2 rounded transition-colors ${
+                    !editedSpell.healing
+                      ? 'bg-red-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  💥 Damage
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setEditedSpell({
+                    ...editedSpell,
+                    healing: editedSpell.damage || editedSpell.healing || 1,
+                    damage: undefined
+                  })}
+                  className={`flex-1 px-4 py-2 rounded transition-colors ${
+                    editedSpell.healing
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  💚 Healing
+                </button>
+              </div>
+            </div>
+
+            {/* Damage or Healing Amount */}
+            <div>
+              <label className="block text-sm font-medium mb-1">
+                {editedSpell.healing ? 'Healing Amount *' : 'Damage Amount *'}
+              </label>
               <input
                 type="number"
                 min="0"
                 max="100"
-                value={editedSpell.damage}
-                onChange={(e) => setEditedSpell({ ...editedSpell, damage: parseInt(e.target.value) || 0 })}
+                value={editedSpell.healing || editedSpell.damage || 0}
+                onChange={(e) => {
+                  const value = parseInt(e.target.value) || 0;
+                  if (editedSpell.healing) {
+                    setEditedSpell({ ...editedSpell, healing: value });
+                  } else {
+                    setEditedSpell({ ...editedSpell, damage: value });
+                  }
+                }}
                 className="w-full px-3 py-2 bg-gray-700 rounded text-white"
               />
+              <p className="text-xs text-gray-400 mt-1">
+                {editedSpell.healing
+                  ? 'HP restored to allies (same team only)'
+                  : 'HP removed from enemies'
+                }
+              </p>
             </div>
 
             {/* Range (for linear spells) */}
