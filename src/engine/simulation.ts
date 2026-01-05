@@ -515,78 +515,153 @@ export function updateProjectiles(gameState: GameState): void {
     }
 
     // Check collision based on who fired the projectile
-    // Characters hit enemies, enemies hit characters (no friendly fire)
+    // Healing projectiles hit allies, damage projectiles hit enemies
+    const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
 
-    // If fired by a character, check for enemy hits
+    // If fired by a character
     if (proj.sourceCharacterId) {
-      const hitEnemy = gameState.puzzle.enemies.find(
-        e => !e.dead &&
-             Math.floor(e.x) === tileX &&
-             Math.floor(e.y) === tileY
-      );
+      if (isHealingProjectile) {
+        // Healing projectile - check for ally character hits
+        const hitAlly = gameState.placedCharacters.find(
+          c => !c.dead &&
+               Math.floor(c.x) === tileX &&
+               Math.floor(c.y) === tileY &&
+               c.characterId !== proj.sourceCharacterId // Don't heal self
+        );
 
-      if (hitEnemy) {
-        // Apply damage
-        const damage = proj.attackData.damage ?? 1;
-        hitEnemy.currentHealth -= damage;
+        if (hitAlly) {
+          // Apply healing
+          const healing = proj.attackData.healing ?? 0;
+          const charData = getCharacter(hitAlly.characterId);
+          const maxHealth = charData?.health ?? hitAlly.currentHealth;
+          hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
 
-        if (hitEnemy.currentHealth <= 0) {
-          hitEnemy.dead = true;
+          // Spawn hit effect
+          if (proj.attackData.hitEffectSprite) {
+            spawnParticleEffect(
+              hitAlly.x,
+              hitAlly.y,
+              proj.attackData.hitEffectSprite,
+              proj.attackData.effectDuration || 300,
+              gameState
+            );
+          }
+
+          // Check if projectile should pierce
+          if (!proj.attackData.projectilePierces) {
+            proj.active = false;
+            projectilesToRemove.push(proj.id);
+            continue;
+          }
         }
+      } else {
+        // Damage projectile - check for enemy hits
+        const hitEnemy = gameState.puzzle.enemies.find(
+          e => !e.dead &&
+               Math.floor(e.x) === tileX &&
+               Math.floor(e.y) === tileY
+        );
 
-        // Spawn hit effect
-        if (proj.attackData.hitEffectSprite) {
-          spawnParticleEffect(
-            hitEnemy.x,
-            hitEnemy.y,
-            proj.attackData.hitEffectSprite,
-            proj.attackData.effectDuration || 300,
-            gameState
-          );
-        }
+        if (hitEnemy) {
+          // Apply damage
+          const damage = proj.attackData.damage ?? 1;
+          hitEnemy.currentHealth -= damage;
 
-        // Check if projectile should pierce
-        if (!proj.attackData.projectilePierces) {
-          proj.active = false;
-          projectilesToRemove.push(proj.id);
-          continue;
+          if (hitEnemy.currentHealth <= 0) {
+            hitEnemy.dead = true;
+          }
+
+          // Spawn hit effect
+          if (proj.attackData.hitEffectSprite) {
+            spawnParticleEffect(
+              hitEnemy.x,
+              hitEnemy.y,
+              proj.attackData.hitEffectSprite,
+              proj.attackData.effectDuration || 300,
+              gameState
+            );
+          }
+
+          // Check if projectile should pierce
+          if (!proj.attackData.projectilePierces) {
+            proj.active = false;
+            projectilesToRemove.push(proj.id);
+            continue;
+          }
         }
       }
     }
 
-    // If fired by an enemy, check for character hits
+    // If fired by an enemy
     if (proj.sourceEnemyId) {
-      const hitCharacter = gameState.placedCharacters.find(
-        c => !c.dead &&
-             Math.floor(c.x) === tileX &&
-             Math.floor(c.y) === tileY
-      );
+      if (isHealingProjectile) {
+        // Healing projectile - check for ally enemy hits
+        const hitAllyEnemy = gameState.puzzle.enemies.find(
+          e => !e.dead &&
+               Math.floor(e.x) === tileX &&
+               Math.floor(e.y) === tileY &&
+               e.enemyId !== proj.sourceEnemyId // Don't heal self
+        );
 
-      if (hitCharacter) {
-        // Apply damage
-        const damage = proj.attackData.damage ?? 1;
-        hitCharacter.currentHealth -= damage;
+        if (hitAllyEnemy) {
+          // Apply healing
+          const healing = proj.attackData.healing ?? 0;
+          const enemyData = getEnemy(hitAllyEnemy.enemyId);
+          const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
+          hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
 
-        if (hitCharacter.currentHealth <= 0) {
-          hitCharacter.dead = true;
+          // Spawn hit effect
+          if (proj.attackData.hitEffectSprite) {
+            spawnParticleEffect(
+              hitAllyEnemy.x,
+              hitAllyEnemy.y,
+              proj.attackData.hitEffectSprite,
+              proj.attackData.effectDuration || 300,
+              gameState
+            );
+          }
+
+          // Check if projectile should pierce
+          if (!proj.attackData.projectilePierces) {
+            proj.active = false;
+            projectilesToRemove.push(proj.id);
+            continue;
+          }
         }
+      } else {
+        // Damage projectile - check for character hits
+        const hitCharacter = gameState.placedCharacters.find(
+          c => !c.dead &&
+               Math.floor(c.x) === tileX &&
+               Math.floor(c.y) === tileY
+        );
 
-        // Spawn hit effect
-        if (proj.attackData.hitEffectSprite) {
-          spawnParticleEffect(
-            hitCharacter.x,
-            hitCharacter.y,
-            proj.attackData.hitEffectSprite,
-            proj.attackData.effectDuration || 300,
-            gameState
-          );
-        }
+        if (hitCharacter) {
+          // Apply damage
+          const damage = proj.attackData.damage ?? 1;
+          hitCharacter.currentHealth -= damage;
 
-        // Check if projectile should pierce
-        if (!proj.attackData.projectilePierces) {
-          proj.active = false;
-          projectilesToRemove.push(proj.id);
-          continue;
+          if (hitCharacter.currentHealth <= 0) {
+            hitCharacter.dead = true;
+          }
+
+          // Spawn hit effect
+          if (proj.attackData.hitEffectSprite) {
+            spawnParticleEffect(
+              hitCharacter.x,
+              hitCharacter.y,
+              proj.attackData.hitEffectSprite,
+              proj.attackData.effectDuration || 300,
+              gameState
+            );
+          }
+
+          // Check if projectile should pierce
+          if (!proj.attackData.projectilePierces) {
+            proj.active = false;
+            projectilesToRemove.push(proj.id);
+            continue;
+          }
         }
       }
     }
