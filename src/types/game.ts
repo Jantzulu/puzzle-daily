@@ -92,6 +92,7 @@ export interface CharacterAction {
   params?: any;
   tilesPerMove?: number; // How many tiles to move per tick (default: 1)
   onWallCollision?: WallCollisionBehavior; // What to do when hitting a wall (default: 'stop')
+  turnDegrees?: 45 | 90; // Turn amount in degrees: 90 for cardinal turns, 45 for diagonal turns (default: 90)
 
   // Execution configuration (new system)
   executionMode?: ExecutionMode;  // Default: 'sequential'

@@ -27,54 +27,80 @@ export function getDirectionOffset(direction: Direction): { dx: number; dy: numb
 }
 
 /**
- * Turn left (counter-clockwise) - 45 degrees
+ * Turn left (counter-clockwise)
+ * @param direction - Current direction
+ * @param degrees - 45 for diagonal turns, 90 for cardinal turns (default: 90)
  */
-export function turnLeft(direction: Direction): Direction {
-  switch (direction) {
-    case Direction.NORTH:
-      return Direction.NORTHWEST;
-    case Direction.NORTHWEST:
-      return Direction.WEST;
-    case Direction.WEST:
-      return Direction.SOUTHWEST;
-    case Direction.SOUTHWEST:
-      return Direction.SOUTH;
-    case Direction.SOUTH:
-      return Direction.SOUTHEAST;
-    case Direction.SOUTHEAST:
-      return Direction.EAST;
-    case Direction.EAST:
-      return Direction.NORTHEAST;
-    case Direction.NORTHEAST:
-      return Direction.NORTH;
-    default:
-      return direction;
+export function turnLeft(direction: Direction, degrees: 45 | 90 = 90): Direction {
+  if (degrees === 45) {
+    // 45-degree turn (8-direction rotation)
+    switch (direction) {
+      case Direction.NORTH: return Direction.NORTHWEST;
+      case Direction.NORTHWEST: return Direction.WEST;
+      case Direction.WEST: return Direction.SOUTHWEST;
+      case Direction.SOUTHWEST: return Direction.SOUTH;
+      case Direction.SOUTH: return Direction.SOUTHEAST;
+      case Direction.SOUTHEAST: return Direction.EAST;
+      case Direction.EAST: return Direction.NORTHEAST;
+      case Direction.NORTHEAST: return Direction.NORTH;
+      default: return direction;
+    }
+  } else {
+    // 90-degree turn (4-direction rotation) - normalize diagonals to nearest cardinal
+    switch (direction) {
+      case Direction.NORTH:
+      case Direction.NORTHWEST:
+        return Direction.WEST;
+      case Direction.NORTHEAST:
+      case Direction.EAST:
+        return Direction.NORTH;
+      case Direction.SOUTHEAST:
+      case Direction.SOUTH:
+        return Direction.EAST;
+      case Direction.SOUTHWEST:
+      case Direction.WEST:
+        return Direction.SOUTH;
+      default: return direction;
+    }
   }
 }
 
 /**
- * Turn right (clockwise) - 45 degrees
+ * Turn right (clockwise)
+ * @param direction - Current direction
+ * @param degrees - 45 for diagonal turns, 90 for cardinal turns (default: 90)
  */
-export function turnRight(direction: Direction): Direction {
-  switch (direction) {
-    case Direction.NORTH:
-      return Direction.NORTHEAST;
-    case Direction.NORTHEAST:
-      return Direction.EAST;
-    case Direction.EAST:
-      return Direction.SOUTHEAST;
-    case Direction.SOUTHEAST:
-      return Direction.SOUTH;
-    case Direction.SOUTH:
-      return Direction.SOUTHWEST;
-    case Direction.SOUTHWEST:
-      return Direction.WEST;
-    case Direction.WEST:
-      return Direction.NORTHWEST;
-    case Direction.NORTHWEST:
-      return Direction.NORTH;
-    default:
-      return direction;
+export function turnRight(direction: Direction, degrees: 45 | 90 = 90): Direction {
+  if (degrees === 45) {
+    // 45-degree turn (8-direction rotation)
+    switch (direction) {
+      case Direction.NORTH: return Direction.NORTHEAST;
+      case Direction.NORTHEAST: return Direction.EAST;
+      case Direction.EAST: return Direction.SOUTHEAST;
+      case Direction.SOUTHEAST: return Direction.SOUTH;
+      case Direction.SOUTH: return Direction.SOUTHWEST;
+      case Direction.SOUTHWEST: return Direction.WEST;
+      case Direction.WEST: return Direction.NORTHWEST;
+      case Direction.NORTHWEST: return Direction.NORTH;
+      default: return direction;
+    }
+  } else {
+    // 90-degree turn (4-direction rotation) - normalize diagonals to nearest cardinal
+    switch (direction) {
+      case Direction.NORTH:
+      case Direction.NORTHEAST:
+        return Direction.EAST;
+      case Direction.EAST:
+      case Direction.SOUTHEAST:
+        return Direction.SOUTH;
+      case Direction.SOUTH:
+      case Direction.SOUTHWEST:
+        return Direction.WEST;
+      case Direction.WEST:
+      case Direction.NORTHWEST:
+        return Direction.NORTH;
+      default: return direction;
+    }
   }
 }
 

@@ -112,10 +112,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Check if facing also changed (wall lookahead: turn + move in same turn)
         const facingChanged = prevEnemy.facing !== enemy.facing;
 
-        console.log('[Animation] Enemy', idx, 'moved from', prevEnemy.x, prevEnemy.y, 'to', enemy.x, enemy.y);
-        console.log('[Animation] Facing changed?', facingChanged, '- prev:', prevEnemy.facing, 'new:', enemy.facing);
-        console.log('[Animation] Using facing for arrow:', facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH));
-
         newPositions.set(idx, {
           fromX: prevEnemy.x,
           fromY: prevEnemy.y,
@@ -243,7 +239,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
             const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
 
-            console.log('[Draw] Enemy', idx, 'MOVING - using facing:', anim.facingDuringMove);
             drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted);
           } else {
             // Second 50%: Idle on destination tile - show NEW facing direction

@@ -76,18 +76,18 @@ export function executeAction(
 
   switch (normalizedType) {
     case ActionType.MOVE_FORWARD:
-      return moveCharacter(updatedCharacter, character.facing, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop');
+      return moveCharacter(updatedCharacter, character.facing, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
 
     case ActionType.MOVE_BACKWARD:
       const backwardDir = turnAround(character.facing);
-      return moveCharacter(updatedCharacter, backwardDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop');
+      return moveCharacter(updatedCharacter, backwardDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
 
     case ActionType.TURN_LEFT:
-      updatedCharacter.facing = turnLeft(character.facing);
+      updatedCharacter.facing = turnLeft(character.facing, action.turnDegrees ?? 90);
       return updatedCharacter;
 
     case ActionType.TURN_RIGHT:
-      updatedCharacter.facing = turnRight(character.facing);
+      updatedCharacter.facing = turnRight(character.facing, action.turnDegrees ?? 90);
       return updatedCharacter;
 
     case ActionType.TURN_AROUND:
@@ -115,12 +115,10 @@ export function executeAction(
       return updatedCharacter;
 
     case ActionType.CUSTOM_ATTACK:
-      console.log('[executeAction] CUSTOM_ATTACK case reached');
       executeCustomAttack(updatedCharacter, action, gameState);
       return updatedCharacter;
 
     case ActionType.SPELL:
-      console.log('[executeAction] SPELL case reached');
       executeSpell(updatedCharacter, action, gameState);
       return updatedCharacter;
 
@@ -138,7 +136,8 @@ function moveCharacter(
   direction: Direction,
   gameState: GameState,
   tilesPerMove: number = 1,
-  onWallCollision: WallCollisionBehavior = 'stop'
+  onWallCollision: WallCollisionBehavior = 'stop',
+  turnDegrees: 45 | 90 = 90
 ): PlacedCharacter {
   // Move multiple tiles if tilesPerMove > 1
   let updatedChar = { ...character };
@@ -155,41 +154,28 @@ function moveCharacter(
     gameState.puzzle.tiles[firstY]?.[firstX] === undefined ||
     gameState.puzzle.tiles[firstY]?.[firstX]?.type === TileType.WALL;
 
-  // Debug logging
-  if (willHitWall) {
-    console.log('[Wall Lookahead] Character at', updatedChar.x, updatedChar.y, 'facing', direction);
-    console.log('[Wall Lookahead] Will hit wall at', firstX, firstY);
-    console.log('[Wall Lookahead] onWallCollision:', onWallCollision);
-  }
-
   // If we'll hit a wall immediately, handle collision NOW (don't waste a turn)
   // Skip 'stop' and 'continue' behaviors - 'stop' means do nothing, 'continue' means ghost through
   if (willHitWall && onWallCollision !== 'continue' && onWallCollision !== 'stop') {
-    console.log('[Wall Lookahead] TRIGGERING turn:', onWallCollision);
     // Turn the character based on collision behavior
     switch (onWallCollision) {
       case 'turn_left':
-        updatedChar.facing = turnLeft(updatedChar.facing);
+        updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
         direction = updatedChar.facing; // Update direction for movement below
-        console.log('[Wall Lookahead] Turned left, new facing:', updatedChar.facing);
         break;
       case 'turn_right':
-        updatedChar.facing = turnRight(updatedChar.facing);
+        updatedChar.facing = turnRight(updatedChar.facing, turnDegrees);
         direction = updatedChar.facing; // Update direction for movement below
-        console.log('[Wall Lookahead] Turned right, new facing:', updatedChar.facing);
         break;
       case 'turn_around':
         updatedChar.facing = turnAround(updatedChar.facing);
         direction = updatedChar.facing; // Update direction for movement below
-        console.log('[Wall Lookahead] Turned around, new facing:', updatedChar.facing);
         break;
       default:
         // Unknown collision behavior, just stop
-        console.log('[Wall Lookahead] Unknown collision behavior, stopping');
         return updatedChar;
     }
     // After turning, continue with movement logic below to try moving in new direction
-    console.log('[Wall Lookahead] Will now try to move in new direction:', direction);
   }
 
   // If wall ahead and behavior is 'stop', just return without moving (but still consume the action)
@@ -214,10 +200,10 @@ function moveCharacter(
       // Handle wall collision based on behavior
       switch (onWallCollision) {
         case 'turn_left':
-          updatedChar.facing = turnLeft(updatedChar.facing);
+          updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
           return updatedChar;
         case 'turn_right':
-          updatedChar.facing = turnRight(updatedChar.facing);
+          updatedChar.facing = turnRight(updatedChar.facing, turnDegrees);
           return updatedChar;
         case 'turn_around':
           updatedChar.facing = turnAround(updatedChar.facing);
@@ -336,10 +322,10 @@ function moveCharacter(
       // Turn now to avoid wasting next turn
       switch (onWallCollision) {
         case 'turn_left':
-          updatedChar.facing = turnLeft(updatedChar.facing);
+          updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
           break;
         case 'turn_right':
-          updatedChar.facing = turnRight(updatedChar.facing);
+          updatedChar.facing = turnRight(updatedChar.facing, turnDegrees);
           break;
         case 'turn_around':
           updatedChar.facing = turnAround(updatedChar.facing);
@@ -458,8 +444,6 @@ function executeCustomAttack(
   action: CharacterAction,
   gameState: GameState
 ): void {
-  console.log('[executeCustomAttack] Called with action:', action);
-
   // Get attack data from action or load from storage
   let attackData: CustomAttack | null = null;
 
@@ -474,13 +458,9 @@ function executeCustomAttack(
     return;
   }
 
-  console.log('[executeCustomAttack] Attack data:', attackData);
-  console.log('[executeCustomAttack] Pattern:', attackData.pattern, 'Expected:', AttackPattern.PROJECTILE);
-
   // Execute based on attack pattern
   switch (attackData.pattern) {
     case AttackPattern.PROJECTILE:
-      console.log('[executeCustomAttack] Spawning projectile');
       spawnProjectile(character, attackData, gameState);
       break;
 
@@ -557,8 +537,6 @@ function executeSpell(
   action: CharacterAction,
   gameState: GameState
 ): void {
-  console.log('[executeSpell] Called with action:', action);
-
   // Load spell from library
   if (!action.spellId) {
     console.warn('Spell ID not found in action');
@@ -570,8 +548,6 @@ function executeSpell(
     console.warn(`Spell not found: ${action.spellId}`);
     return;
   }
-
-  console.log('[executeSpell] Spell loaded:', spell);
 
   // Determine which directions to cast the spell
   let castDirections: Direction[] = [];
@@ -608,8 +584,6 @@ function executeSpell(
       relativeToAbsolute(character.facing, relDir)
     );
   }
-
-  console.log('[executeSpell] Casting in directions:', castDirections);
 
   // Execute spell for each direction based on template type
   for (const direction of castDirections) {
@@ -721,8 +695,6 @@ function spawnProjectile(
   };
 
   gameState.activeProjectiles.push(projectile);
-  console.log('[spawnProjectile] Created projectile:', projectile);
-  console.log('[spawnProjectile] Total projectiles:', gameState.activeProjectiles.length);
 
   // Spawn cast effect if configured
   if (attackData.castEffectSprite) {
