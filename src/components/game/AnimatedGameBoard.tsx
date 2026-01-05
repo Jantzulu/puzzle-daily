@@ -63,14 +63,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const existing = characterPositions.get(idx);
 
       if (prevChar && (prevChar.x !== char.x || prevChar.y !== char.y)) {
-        // Character moved! Use the PREVIOUS facing direction for the arrow during animation
+        // Character moved!
+        // Check if facing also changed (wall lookahead: turn + move in same turn)
+        const facingChanged = prevChar.facing !== char.facing;
+
         newPositions.set(idx, {
           fromX: prevChar.x,
           fromY: prevChar.y,
           toX: char.x,
           toY: char.y,
           startTime: now,
-          facingDuringMove: prevChar.facing,
+          // If facing changed, use NEW facing (wall lookahead scenario)
+          // Otherwise use old facing (normal movement)
+          facingDuringMove: facingChanged ? char.facing : prevChar.facing,
         });
       } else if (prevChar && prevChar.facing !== char.facing) {
         // Character turned but didn't move (wall lookahead)
@@ -103,14 +108,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const existing = enemyPositions.get(idx);
 
       if (prevEnemy && (prevEnemy.x !== enemy.x || prevEnemy.y !== enemy.y)) {
-        // Enemy moved! Use the PREVIOUS facing direction for the arrow during animation
+        // Enemy moved!
+        // Check if facing also changed (wall lookahead: turn + move in same turn)
+        const facingChanged = prevEnemy.facing !== enemy.facing;
+
         newPositions.set(idx, {
           fromX: prevEnemy.x,
           fromY: prevEnemy.y,
           toX: enemy.x,
           toY: enemy.y,
           startTime: now,
-          facingDuringMove: prevEnemy.facing || Direction.SOUTH,
+          // If facing changed, use NEW facing (wall lookahead scenario)
+          // Otherwise use old facing (normal movement)
+          facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
         });
       } else if (prevEnemy && prevEnemy.facing !== enemy.facing) {
         // Enemy turned but didn't move (wall lookahead)
