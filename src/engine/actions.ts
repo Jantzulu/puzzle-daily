@@ -76,11 +76,11 @@ export function executeAction(
 
   switch (normalizedType) {
     case ActionType.MOVE_FORWARD:
-      return moveCharacter(updatedCharacter, character.facing, gameState, action.tilesPerMove || 1, action.onWallCollision);
+      return moveCharacter(updatedCharacter, character.facing, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop');
 
     case ActionType.MOVE_BACKWARD:
       const backwardDir = turnAround(character.facing);
-      return moveCharacter(updatedCharacter, backwardDir, gameState, action.tilesPerMove || 1, action.onWallCollision);
+      return moveCharacter(updatedCharacter, backwardDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop');
 
     case ActionType.TURN_LEFT:
       updatedCharacter.facing = turnLeft(character.facing);
@@ -167,6 +167,9 @@ function moveCharacter(
         return updatedChar;
       case 'turn_around':
         updatedChar.facing = turnAround(updatedChar.facing);
+        return updatedChar;
+      default:
+        // Unknown collision behavior, just stop
         return updatedChar;
     }
   }
@@ -744,7 +747,7 @@ function executeMeleeAttack(
 /**
  * Execute AOE attack/heal (circular area)
  */
-function executeAOEAttack(
+export function executeAOEAttack(
   character: PlacedCharacter,
   attackData: CustomAttack,
   gameState: GameState

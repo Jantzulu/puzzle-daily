@@ -2,7 +2,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker } f
 import { ActionType, Direction } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction } from './actions';
+import { executeAction, executeAOEAttack } from './actions';
 
 /**
  * Initialize parallel action trackers for a character
@@ -491,6 +491,18 @@ export function updateProjectiles(gameState: GameState): void {
 
     if (distanceTraveled >= totalDistance) {
       // Projectile reached max range
+      // Check if this should explode into AOE
+      if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+        triggerAOEExplosion(
+          proj.x,
+          proj.y,
+          proj.attackData,
+          proj.sourceCharacterId,
+          proj.sourceEnemyId,
+          gameState
+        );
+      }
+
       proj.active = false;
       projectilesToRemove.push(proj.id);
       continue;
@@ -530,21 +542,33 @@ export function updateProjectiles(gameState: GameState): void {
         );
 
         if (hitAlly) {
-          // Apply healing
-          const healing = proj.attackData.healing ?? 0;
-          const charData = getCharacter(hitAlly.characterId);
-          const maxHealth = charData?.health ?? hitAlly.currentHealth;
-          hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
-
-          // Spawn hit effect
-          if (proj.attackData.hitEffectSprite) {
-            spawnParticleEffect(
+          // Check if this should explode into AOE healing on impact
+          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            triggerAOEExplosion(
               hitAlly.x,
               hitAlly.y,
-              proj.attackData.hitEffectSprite,
-              proj.attackData.effectDuration || 300,
+              proj.attackData,
+              proj.sourceCharacterId,
+              proj.sourceEnemyId,
               gameState
             );
+          } else {
+            // Apply single-target healing
+            const healing = proj.attackData.healing ?? 0;
+            const charData = getCharacter(hitAlly.characterId);
+            const maxHealth = charData?.health ?? hitAlly.currentHealth;
+            hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
+
+            // Spawn hit effect
+            if (proj.attackData.hitEffectSprite) {
+              spawnParticleEffect(
+                hitAlly.x,
+                hitAlly.y,
+                proj.attackData.hitEffectSprite,
+                proj.attackData.effectDuration || 300,
+                gameState
+              );
+            }
           }
 
           // Check if projectile should pierce
@@ -563,23 +587,35 @@ export function updateProjectiles(gameState: GameState): void {
         );
 
         if (hitEnemy) {
-          // Apply damage
-          const damage = proj.attackData.damage ?? 1;
-          hitEnemy.currentHealth -= damage;
-
-          if (hitEnemy.currentHealth <= 0) {
-            hitEnemy.dead = true;
-          }
-
-          // Spawn hit effect
-          if (proj.attackData.hitEffectSprite) {
-            spawnParticleEffect(
+          // Check if this should explode into AOE on impact
+          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            triggerAOEExplosion(
               hitEnemy.x,
               hitEnemy.y,
-              proj.attackData.hitEffectSprite,
-              proj.attackData.effectDuration || 300,
+              proj.attackData,
+              proj.sourceCharacterId,
+              proj.sourceEnemyId,
               gameState
             );
+          } else {
+            // Apply single-target damage
+            const damage = proj.attackData.damage ?? 1;
+            hitEnemy.currentHealth -= damage;
+
+            if (hitEnemy.currentHealth <= 0) {
+              hitEnemy.dead = true;
+            }
+
+            // Spawn hit effect
+            if (proj.attackData.hitEffectSprite) {
+              spawnParticleEffect(
+                hitEnemy.x,
+                hitEnemy.y,
+                proj.attackData.hitEffectSprite,
+                proj.attackData.effectDuration || 300,
+                gameState
+              );
+            }
           }
 
           // Check if projectile should pierce
@@ -604,21 +640,33 @@ export function updateProjectiles(gameState: GameState): void {
         );
 
         if (hitAllyEnemy) {
-          // Apply healing
-          const healing = proj.attackData.healing ?? 0;
-          const enemyData = getEnemy(hitAllyEnemy.enemyId);
-          const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
-          hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
-
-          // Spawn hit effect
-          if (proj.attackData.hitEffectSprite) {
-            spawnParticleEffect(
+          // Check if this should explode into AOE healing on impact
+          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            triggerAOEExplosion(
               hitAllyEnemy.x,
               hitAllyEnemy.y,
-              proj.attackData.hitEffectSprite,
-              proj.attackData.effectDuration || 300,
+              proj.attackData,
+              proj.sourceCharacterId,
+              proj.sourceEnemyId,
               gameState
             );
+          } else {
+            // Apply single-target healing
+            const healing = proj.attackData.healing ?? 0;
+            const enemyData = getEnemy(hitAllyEnemy.enemyId);
+            const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
+            hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
+
+            // Spawn hit effect
+            if (proj.attackData.hitEffectSprite) {
+              spawnParticleEffect(
+                hitAllyEnemy.x,
+                hitAllyEnemy.y,
+                proj.attackData.hitEffectSprite,
+                proj.attackData.effectDuration || 300,
+                gameState
+              );
+            }
           }
 
           // Check if projectile should pierce
@@ -637,23 +685,35 @@ export function updateProjectiles(gameState: GameState): void {
         );
 
         if (hitCharacter) {
-          // Apply damage
-          const damage = proj.attackData.damage ?? 1;
-          hitCharacter.currentHealth -= damage;
-
-          if (hitCharacter.currentHealth <= 0) {
-            hitCharacter.dead = true;
-          }
-
-          // Spawn hit effect
-          if (proj.attackData.hitEffectSprite) {
-            spawnParticleEffect(
+          // Check if this should explode into AOE on impact
+          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            triggerAOEExplosion(
               hitCharacter.x,
               hitCharacter.y,
-              proj.attackData.hitEffectSprite,
-              proj.attackData.effectDuration || 300,
+              proj.attackData,
+              proj.sourceCharacterId,
+              proj.sourceEnemyId,
               gameState
             );
+          } else {
+            // Apply single-target damage
+            const damage = proj.attackData.damage ?? 1;
+            hitCharacter.currentHealth -= damage;
+
+            if (hitCharacter.currentHealth <= 0) {
+              hitCharacter.dead = true;
+            }
+
+            // Spawn hit effect
+            if (proj.attackData.hitEffectSprite) {
+              spawnParticleEffect(
+                hitCharacter.x,
+                hitCharacter.y,
+                proj.attackData.hitEffectSprite,
+                proj.attackData.effectDuration || 300,
+                gameState
+              );
+            }
           }
 
           // Check if projectile should pierce
@@ -675,6 +735,38 @@ export function updateProjectiles(gameState: GameState): void {
   gameState.activeProjectiles = gameState.activeProjectiles.filter(
     p => !projectilesToRemove.includes(p.id)
   );
+}
+
+/**
+ * Trigger an AOE explosion at a specific position
+ */
+function triggerAOEExplosion(
+  x: number,
+  y: number,
+  attackData: any,
+  sourceCharacterId: string | undefined,
+  sourceEnemyId: string | undefined,
+  gameState: GameState
+): void {
+  // Create a temporary character at the explosion point
+  const tempChar: PlacedCharacter = {
+    characterId: sourceCharacterId || sourceEnemyId || 'explosion_source',
+    x,
+    y,
+    facing: Direction.SOUTH,
+    currentHealth: 1,
+    actionIndex: 0,
+    active: true,
+    dead: false,
+  };
+
+  // Set the center to be at the explosion point (caster-centered mode)
+  const modifiedAttackData = {
+    ...attackData,
+    aoeCenteredOnCaster: true, // Force AOE to center on explosion point
+  };
+
+  executeAOEAttack(tempChar, modifiedAttackData, gameState);
 }
 
 /**

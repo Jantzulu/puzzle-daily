@@ -458,6 +458,101 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
           </div>
 
+          {/* AOE Settings */}
+          {templateNeedsRadius && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">AOE Behavior</h3>
+
+              {/* AOE Center Point */}
+              <div>
+                <label className="block text-sm font-medium mb-2">AOE Center</label>
+                <div className="flex gap-2 mb-1">
+                  <button
+                    type="button"
+                    onClick={() => setEditedSpell({ ...editedSpell, aoeCenteredOnCaster: true })}
+                    className={`flex-1 px-4 py-2 rounded transition-colors ${
+                      editedSpell.aoeCenteredOnCaster
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    🔵 Caster
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditedSpell({ ...editedSpell, aoeCenteredOnCaster: false })}
+                    className={`flex-1 px-4 py-2 rounded transition-colors ${
+                      !editedSpell.aoeCenteredOnCaster
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    🎯 Target Tile
+                  </button>
+                </div>
+                <p className="text-xs text-gray-400 mt-1">
+                  {editedSpell.aoeCenteredOnCaster
+                    ? 'AOE centered on caster (e.g., Frost Nova)'
+                    : 'AOE centered on target tile at range (e.g., Flamestrike)'}
+                </p>
+              </div>
+
+              {/* Projectile Before AOE */}
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editedSpell.projectileBeforeAOE || false}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, projectileBeforeAOE: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium">Fire Projectile First</span>
+                </label>
+                <p className="text-xs text-gray-400 ml-6">
+                  If enabled, fires a projectile that explodes into AOE after traveling
+                </p>
+              </div>
+
+              {/* Persistent Effect Duration */}
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  Persistent Duration (turns)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={editedSpell.persistDuration || 0}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, persistDuration: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  0 = instant damage, 1+ = ground effect that persists for N turns
+                </p>
+              </div>
+
+              {/* Persistent Damage Per Turn */}
+              {editedSpell.persistDuration && editedSpell.persistDuration > 0 && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Damage Per Turn (persistent)
+                  </label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="100"
+                    value={editedSpell.persistDamagePerTurn || editedSpell.damage || 1}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, persistDamagePerTurn: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    Damage dealt each turn to units in the area
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
           {/* Projectile Settings */}
           {templateNeedsProjectileSettings && (
             <div className="space-y-4">
