@@ -23,14 +23,21 @@ export const getCharacter = (id: string): Character | undefined => {
     return undefined;
   }
 
-  // Check official characters first
+  // Check custom characters FIRST (they override official ones)
+  const customCharacters = getCustomCharacters();
+  const customChar = customCharacters.find(c => c.id === id);
+  if (customChar) {
+    console.log('[getCharacter] Loading CUSTOM character:', id, 'Behavior:', JSON.stringify(customChar.behavior, null, 2));
+    return customChar;
+  }
+
+  // Check official characters as fallback
   if (officialCharacters[id]) {
+    console.log('[getCharacter] Loading OFFICIAL character:', id);
     return officialCharacters[id];
   }
 
-  // Check custom characters
-  const customCharacters = getCustomCharacters();
-  return customCharacters.find(c => c.id === id);
+  return undefined;
 };
 
 export const getAllCharacters = (): Character[] => {
