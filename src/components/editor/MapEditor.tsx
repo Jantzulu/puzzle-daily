@@ -11,6 +11,8 @@ import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 
 const TILE_SIZE = 48;
+const BORDER_SIZE = 48; // Border thickness for top/bottom
+const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
 
 type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible';
 type EditorMode = 'edit' | 'playtest';
@@ -29,6 +31,7 @@ interface EditorState {
   maxTurns: number;
   availableCharacters: string[];
   winConditions: WinCondition[];
+  borderConfig?: { style: 'none' | 'dungeon' | 'castle' | 'forest' | 'custom' };
 
   // Editor state
   selectedTool: ToolType;
@@ -51,6 +54,7 @@ export const MapEditor: React.FC = () => {
     maxTurns: 100,
     availableCharacters: ['knight_01'],
     winConditions: [{ type: 'defeat_all_enemies' }],
+    borderConfig: { style: 'dungeon' },
 
     selectedTool: 'wall',
     isDrawing: false,
@@ -59,6 +63,7 @@ export const MapEditor: React.FC = () => {
 
   // Playtest state
   const [gameState, setGameState] = useState<GameState | null>(null);
+  const [originalPlaytestPuzzle, setOriginalPlaytestPuzzle] = useState<Puzzle | null>(null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
@@ -104,8 +109,23 @@ export const MapEditor: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const borderStyle = state.borderConfig?.style || 'none';
+    const hasBorder = borderStyle !== 'none';
+
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw border if enabled
+    if (hasBorder) {
+      drawDungeonBorder(ctx, state.gridWidth, state.gridHeight);
+    }
+
+    // Translate for grid rendering if border is enabled
+    const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
+    const offsetY = hasBorder ? BORDER_SIZE : 0;
+
+    ctx.save();
+    ctx.translate(offsetX, offsetY);
 
     // Draw tiles
     for (let y = 0; y < state.gridHeight; y++) {
@@ -128,7 +148,9 @@ export const MapEditor: React.FC = () => {
         drawCollectible(ctx, collectible.x, collectible.y, collectible.type);
       }
     });
-  }, [state.tiles, state.enemies, state.collectibles, state.gridWidth, state.gridHeight, state.mode]);
+
+    ctx.restore();
+  }, [state.tiles, state.enemies, state.collectibles, state.gridWidth, state.gridHeight, state.mode, state.borderConfig]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setState(prev => ({ ...prev, isDrawing: true }));
@@ -148,9 +170,16 @@ export const MapEditor: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const borderStyle = state.borderConfig?.style || 'none';
+    const hasBorder = borderStyle !== 'none';
+    const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
+    const offsetY = hasBorder ? BORDER_SIZE : 0;
+
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-    const y = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+    const clickX = e.clientX - rect.left - offsetX;
+    const clickY = e.clientY - rect.top - offsetY;
+    const x = Math.floor(clickX / TILE_SIZE);
+    const y = Math.floor(clickY / TILE_SIZE);
 
     if (x < 0 || x >= state.gridWidth || y < 0 || y >= state.gridHeight) return;
 
@@ -254,6 +283,7 @@ export const MapEditor: React.FC = () => {
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
       maxTurns: state.maxTurns,
+      borderConfig: state.borderConfig,
     };
   };
 
@@ -322,6 +352,7 @@ export const MapEditor: React.FC = () => {
       maxTurns: puzzle.maxTurns,
       availableCharacters: puzzle.availableCharacters,
       winConditions: puzzle.winConditions,
+      borderConfig: puzzle.borderConfig || { style: 'dungeon' },
     }));
 
     setShowLibrary(false);
@@ -374,6 +405,7 @@ export const MapEditor: React.FC = () => {
         maxTurns: puzzle.maxTurns,
         availableCharacters: puzzle.availableCharacters,
         winConditions: puzzle.winConditions,
+        borderConfig: puzzle.borderConfig || { style: 'dungeon' },
       }));
 
       alert('Puzzle loaded successfully!');
@@ -443,7 +475,11 @@ export const MapEditor: React.FC = () => {
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
       maxTurns: state.maxTurns,
+      borderConfig: state.borderConfig,
     };
+
+    // Store deep copy of original puzzle for reset
+    setOriginalPlaytestPuzzle(JSON.parse(JSON.stringify(puzzle)));
 
     setState(prev => ({ ...prev, mode: 'playtest' }));
     setGameState(initializeGameState(puzzle));
@@ -454,6 +490,7 @@ export const MapEditor: React.FC = () => {
   const handleBackToEditor = () => {
     setState(prev => ({ ...prev, mode: 'edit' }));
     setGameState(null);
+    setOriginalPlaytestPuzzle(null);
     setSelectedCharacterId(null);
     setIsSimulating(false);
   };
@@ -506,8 +543,10 @@ export const MapEditor: React.FC = () => {
   };
 
   const handleReset = () => {
-    if (!gameState) return;
-    setGameState(initializeGameState(gameState.puzzle));
+    if (!gameState || !originalPlaytestPuzzle) return;
+    // Reset using the original puzzle, not the mutated one from gameState
+    const resetPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
+    setGameState(initializeGameState(resetPuzzle));
     setIsSimulating(false);
     setSelectedCharacterId(null);
   };
@@ -524,8 +563,13 @@ export const MapEditor: React.FC = () => {
     }
   };
 
-  const canvasWidth = state.gridWidth * TILE_SIZE;
-  const canvasHeight = state.gridHeight * TILE_SIZE;
+  // Calculate canvas size with borders
+  const borderStyle = state.borderConfig?.style || 'none';
+  const hasBorder = borderStyle !== 'none';
+  const gridWidth = state.gridWidth * TILE_SIZE;
+  const gridHeight = state.gridHeight * TILE_SIZE;
+  const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
+  const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
   // Render playtest mode
   if (state.mode === 'playtest' && gameState) {
@@ -937,6 +981,72 @@ function createEmptyGrid(width: number, height: number): TileOrNull[][] {
     grid.push(row);
   }
   return grid;
+}
+
+function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number) {
+  const gridPixelWidth = gridWidth * TILE_SIZE;
+  const gridPixelHeight = gridHeight * TILE_SIZE;
+  const totalWidth = gridPixelWidth + (SIDE_BORDER_SIZE * 2);
+  const totalHeight = gridPixelHeight + (BORDER_SIZE * 2);
+
+  ctx.save();
+
+  // Background behind border (dark void)
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+  // Top wall (front-facing with depth)
+  ctx.fillStyle = '#3a3a4a'; // Stone color
+  ctx.fillRect(0, 0, totalWidth, BORDER_SIZE);
+
+  // Add stone texture/depth to top wall
+  ctx.fillStyle = '#2a2a3a'; // Shadow
+  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
+    ctx.fillRect(x, BORDER_SIZE - 12, TILE_SIZE - 2, 12);
+  }
+
+  // Top wall highlight
+  ctx.fillStyle = '#4a4a5a';
+  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
+    ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
+  }
+
+  // Bottom wall (simpler, just top edge visible)
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
+
+  // Bottom wall top edge
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
+
+  // Left wall (side view - THINNER)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+
+  // Left wall inner edge
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
+
+  // Right wall (side view - THINNER)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+
+  // Right wall inner edge
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
+
+  // Corners (darker, showing depth)
+  ctx.fillStyle = '#1a1a2a';
+  // Top-left
+  ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Top-right
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Bottom-left
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Bottom-right
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+
+  ctx.restore();
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: TileOrNull) {

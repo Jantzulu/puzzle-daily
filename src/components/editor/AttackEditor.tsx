@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import type { CustomAttack } from '../../types/game';
 import { AttackPattern } from '../../types/game';
+import { saveCustomAttack } from '../../utils/assetStorage';
 
 interface AttackEditorProps {
   attack: CustomAttack;
@@ -10,8 +11,13 @@ interface AttackEditorProps {
 
 export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCancel }) => {
   const [editedAttack, setEditedAttack] = useState<CustomAttack>({ ...attack });
+  const [saveToLibrary, setSaveToLibrary] = useState(true);
 
   const handleSave = () => {
+    // Save to library if requested
+    if (saveToLibrary) {
+      saveCustomAttack(editedAttack);
+    }
     onSave(editedAttack);
   };
 

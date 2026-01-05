@@ -23,6 +23,8 @@ export const Game: React.FC = () => {
   const [gameState, setGameState] = useState<GameState>(() => {
     return initializeGameState(currentPuzzle);
   });
+  // Store placed characters snapshot when Play is pressed (for Reset)
+  const [playStartCharacters, setPlayStartCharacters] = useState<PlacedCharacter[]>([]);
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
@@ -106,6 +108,8 @@ export const Game: React.FC = () => {
       return;
     }
 
+    // Save snapshot of placed characters for Reset
+    setPlayStartCharacters(JSON.parse(JSON.stringify(gameState.placedCharacters)));
     setGameState((prev) => ({ ...prev, gameStatus: 'running' }));
     setIsSimulating(true);
   };
@@ -115,10 +119,35 @@ export const Game: React.FC = () => {
   };
 
   const handleReset = () => {
-    // Reset from original puzzle to restore enemy positions
-    setGameState(initializeGameState(originalPuzzle));
-    // Also reset currentPuzzle to original state
-    setCurrentPuzzle(JSON.parse(JSON.stringify(originalPuzzle)));
+    // Reset everything: restore enemy positions AND character positions
+    const resetPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
+    const resetState = initializeGameState(resetPuzzle);
+    // Restore the placed characters from when Play was pressed, resetting their state
+    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map(char => {
+      const charData = getCharacter(char.characterId);
+      return {
+        ...char,
+        actionIndex: 0,
+        currentHealth: charData ? charData.health : char.currentHealth,
+        dead: false,
+        active: true,
+      };
+    });
+    resetState.gameStatus = playStartCharacters.length > 0 ? 'running' : 'setup';
+    setGameState(resetState);
+    setCurrentPuzzle(resetPuzzle);
+    setIsSimulating(false);
+    setSelectedCharacterId(null);
+  };
+
+  const handleWipe = () => {
+    // Wipe: restore enemy positions but remove all characters (go back to setup)
+    const wipedPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
+    const wipedState = initializeGameState(wipedPuzzle);
+    wipedState.placedCharacters = []; // Remove all characters
+    wipedState.gameStatus = 'setup'; // Back to setup mode
+    setGameState(wipedState);
+    setCurrentPuzzle(wipedPuzzle);
     setIsSimulating(false);
     setSelectedCharacterId(null);
   };
@@ -248,6 +277,7 @@ export const Game: React.FC = () => {
               onPlay={handlePlay}
               onPause={handlePause}
               onReset={handleReset}
+              onWipe={handleWipe}
               onStep={handleStep}
             />
 

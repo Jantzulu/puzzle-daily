@@ -2,6 +2,89 @@ import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
 
+// Global image cache for GIF animation support
+const globalImageCache = new Map<string, HTMLImageElement>();
+
+// Sprite sheet animation state
+interface SpriteSheetState {
+  currentFrame: number;
+  lastFrameTime: number;
+}
+const spriteSheetStates = new Map<string, SpriteSheetState>();
+
+/**
+ * Draw an animated sprite sheet
+ */
+function drawSpriteSheet(
+  ctx: CanvasRenderingContext2D,
+  sheet: import('../../utils/assetStorage').SpriteSheetConfig,
+  centerX: number,
+  centerY: number,
+  displayWidth: number,
+  displayHeight: number,
+  now: number
+): void {
+  // Get or create cached image
+  let img = globalImageCache.get(sheet.imageData);
+  if (!img) {
+    img = new Image();
+    img.src = sheet.imageData;
+    globalImageCache.set(sheet.imageData, img);
+  }
+
+  // Wait for image to load
+  if (!img.complete || img.naturalWidth === 0) return;
+
+  // Get or initialize animation state
+  const stateKey = sheet.imageData;
+  let state = spriteSheetStates.get(stateKey);
+  if (!state) {
+    state = { currentFrame: 0, lastFrameTime: now };
+    spriteSheetStates.set(stateKey, state);
+  }
+
+  // Calculate frame dimensions
+  const frameWidth = sheet.frameWidth || (img.naturalWidth / sheet.frameCount);
+  const frameHeight = sheet.frameHeight || img.naturalHeight;
+
+  // Update animation frame based on frame rate
+  const frameDuration = 1000 / sheet.frameRate; // ms per frame
+  if (now - state.lastFrameTime >= frameDuration) {
+    state.currentFrame++;
+    if (state.currentFrame >= sheet.frameCount) {
+      state.currentFrame = sheet.loop !== false ? 0 : sheet.frameCount - 1;
+    }
+    state.lastFrameTime = now;
+  }
+
+  // Calculate display dimensions preserving aspect ratio
+  const frameAspectRatio = frameWidth / frameHeight;
+  let finalWidth = displayWidth;
+  let finalHeight = displayHeight;
+
+  if (frameAspectRatio > 1) {
+    // Frame is wider than tall
+    finalHeight = displayWidth / frameAspectRatio;
+  } else {
+    // Frame is taller than wide
+    finalWidth = displayHeight * frameAspectRatio;
+  }
+
+  // Draw the current frame
+  const sourceX = state.currentFrame * frameWidth;
+  const sourceY = 0;
+
+  try {
+    ctx.drawImage(
+      img,
+      sourceX, sourceY, frameWidth, frameHeight, // Source rectangle
+      centerX - finalWidth / 2, centerY - finalHeight / 2, finalWidth, finalHeight // Destination rectangle
+    );
+  } catch (e) {
+    // Image not ready
+  }
+}
+
 interface SpriteEditorProps {
   sprite: CustomSprite;
   onChange: (sprite: CustomSprite) => void;
@@ -116,28 +199,37 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     setSpriteMode(mode);
 
     if (mode === 'directional') {
-      // Initialize directional sprites if switching to directional mode
-      if (!sprite.directionalSprites) {
-        const defaultConfig: DirectionalSpriteConfig = {
-          shape: sprite.shape || 'circle',
-          primaryColor: sprite.primaryColor || '#4caf50',
-          secondaryColor: sprite.secondaryColor || '#ffffff',
-          size: sprite.size || 0.6,
-        };
+      // Switching to directional - clear simple mode data and initialize directional
+      const defaultConfig: DirectionalSpriteConfig = {
+        shape: sprite.shape || 'circle',
+        primaryColor: sprite.primaryColor || '#4caf50',
+        secondaryColor: sprite.secondaryColor || '#ffffff',
+        size: sprite.size || 0.6,
+      };
 
-        onChange({
-          ...sprite,
-          type: 'directional',
-          useDirectional: true,
-          directionalSprites: {
-            default: defaultConfig,
-          },
-        });
-      } else {
-        onChange({ ...sprite, type: 'directional', useDirectional: true });
-      }
+      onChange({
+        id: sprite.id,
+        name: sprite.name,
+        type: 'directional',
+        useDirectional: true,
+        createdAt: sprite.createdAt,
+        directionalSprites: {
+          default: defaultConfig,
+        },
+      });
     } else {
-      onChange({ ...sprite, type: 'simple', useDirectional: false });
+      // Switching to simple - clear directional data and keep simple properties
+      onChange({
+        id: sprite.id,
+        name: sprite.name,
+        type: 'simple',
+        useDirectional: false,
+        createdAt: sprite.createdAt,
+        shape: sprite.shape || 'circle',
+        primaryColor: sprite.primaryColor || '#4caf50',
+        secondaryColor: sprite.secondaryColor || '#ffffff',
+        size: sprite.size || 0.6,
+      });
     }
   };
 
@@ -372,6 +464,200 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     }
   };
 
+  const handleIdleSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+
+      const spriteSheetConfig = {
+        imageData,
+        frameCount: 4,
+        frameRate: 10,
+        loop: true,
+      };
+
+      if (spriteMode === 'directional') {
+        const dirSprites = sprite.directionalSprites || {};
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              idleSpriteSheet: spriteSheetConfig,
+            },
+          },
+        });
+      } else {
+        onChange({
+          ...sprite,
+          idleSpriteSheet: spriteSheetConfig,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleMovingSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+
+      const spriteSheetConfig = {
+        imageData,
+        frameCount: 4,
+        frameRate: 10,
+        loop: true,
+      };
+
+      if (spriteMode === 'directional') {
+        const dirSprites = sprite.directionalSprites || {};
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              movingSpriteSheet: spriteSheetConfig,
+            },
+          },
+        });
+      } else {
+        onChange({
+          ...sprite,
+          movingSpriteSheet: spriteSheetConfig,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleIdleSpriteSheetConfigChange = (field: 'frameCount' | 'frameRate' | 'loop', value: number | boolean) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (!currentConfig?.idleSpriteSheet) return;
+
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...currentConfig,
+            idleSpriteSheet: {
+              ...currentConfig.idleSpriteSheet,
+              [field]: value,
+            },
+          },
+        },
+      });
+    } else {
+      if (!sprite.idleSpriteSheet) return;
+      onChange({
+        ...sprite,
+        idleSpriteSheet: {
+          ...sprite.idleSpriteSheet,
+          [field]: value,
+        },
+      });
+    }
+  };
+
+  const handleMovingSpriteSheetConfigChange = (field: 'frameCount' | 'frameRate' | 'loop', value: number | boolean) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (!currentConfig?.movingSpriteSheet) return;
+
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...currentConfig,
+            movingSpriteSheet: {
+              ...currentConfig.movingSpriteSheet,
+              [field]: value,
+            },
+          },
+        },
+      });
+    } else {
+      if (!sprite.movingSpriteSheet) return;
+      onChange({
+        ...sprite,
+        movingSpriteSheet: {
+          ...sprite.movingSpriteSheet,
+          [field]: value,
+        },
+      });
+    }
+  };
+
+  const clearIdleSpriteSheet = () => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (currentConfig) {
+        const { idleSpriteSheet, ...rest } = currentConfig;
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: rest,
+          },
+        });
+      }
+    } else {
+      const { idleSpriteSheet, ...rest } = sprite;
+      onChange({ ...rest });
+    }
+  };
+
+  const clearMovingSpriteSheet = () => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (currentConfig) {
+        const { movingSpriteSheet, ...rest } = currentConfig;
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: rest,
+          },
+        });
+      }
+    } else {
+      const { movingSpriteSheet, ...rest } = sprite;
+      onChange({ ...rest });
+    }
+  };
+
+  const hasIdleSpriteSheet = spriteMode === 'directional'
+    ? sprite.directionalSprites?.[selectedDirection]?.idleSpriteSheet
+    : sprite.idleSpriteSheet;
+
+  const hasMovingSpriteSheet = spriteMode === 'directional'
+    ? sprite.directionalSprites?.[selectedDirection]?.movingSpriteSheet
+    : sprite.movingSpriteSheet;
+
   const hasIdleImage = spriteMode === 'directional'
     ? (sprite.directionalSprites?.[selectedDirection]?.idleImageData || sprite.directionalSprites?.[selectedDirection]?.imageData)
     : (sprite.idleImageData || sprite.imageData);
@@ -379,6 +665,390 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const hasMovingImage = spriteMode === 'directional'
     ? sprite.directionalSprites?.[selectedDirection]?.movingImageData
     : sprite.movingImageData;
+
+  // Death sprite handlers
+  const handleDeathImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG, GIF)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const deathImageData = event.target?.result as string;
+
+      if (spriteMode === 'directional') {
+        const dirSprites = sprite.directionalSprites || {};
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              deathImageData,
+            },
+          },
+        });
+      } else {
+        onChange({
+          ...sprite,
+          deathImageData,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeathSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+
+      const spriteSheetConfig = {
+        imageData,
+        frameCount: 4,
+        frameRate: 10,
+        loop: false, // Death animation typically doesn't loop
+      };
+
+      if (spriteMode === 'directional') {
+        const dirSprites = sprite.directionalSprites || {};
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              deathSpriteSheet: spriteSheetConfig,
+            },
+          },
+        });
+      } else {
+        onChange({
+          ...sprite,
+          deathSpriteSheet: spriteSheetConfig,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleDeathSpriteSheetConfigChange = (field: string, value: any) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentSheet = dirSprites[selectedDirection]?.deathSpriteSheet;
+      if (currentSheet) {
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              deathSpriteSheet: {
+                ...currentSheet,
+                [field]: value,
+              },
+            },
+          },
+        });
+      }
+    } else {
+      if (sprite.deathSpriteSheet) {
+        onChange({
+          ...sprite,
+          deathSpriteSheet: {
+            ...sprite.deathSpriteSheet,
+            [field]: value,
+          },
+        });
+      }
+    }
+  };
+
+  const clearDeathSpriteSheet = () => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (currentConfig) {
+        const { deathSpriteSheet, ...rest } = currentConfig;
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: rest,
+          },
+        });
+      }
+    } else {
+      const { deathSpriteSheet, ...rest } = sprite;
+      onChange({ ...rest });
+    }
+  };
+
+  const clearDeathImage = () => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (currentConfig) {
+        const { deathImageData, ...rest } = currentConfig;
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: rest,
+          },
+        });
+      }
+    } else {
+      const { deathImageData, ...rest } = sprite;
+      onChange({ ...rest });
+    }
+  };
+
+  const hasDeathSpriteSheet = spriteMode === 'directional'
+    ? sprite.directionalSprites?.[selectedDirection]?.deathSpriteSheet
+    : sprite.deathSpriteSheet;
+
+  const hasDeathImage = spriteMode === 'directional'
+    ? sprite.directionalSprites?.[selectedDirection]?.deathImageData
+    : sprite.deathImageData;
+
+  // Casting sprite handlers
+  const handleCastingImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG, GIF)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const castingImageData = event.target?.result as string;
+
+      if (spriteMode === 'directional') {
+        const dirSprites = sprite.directionalSprites || {};
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              castingImageData,
+            },
+          },
+        });
+      } else {
+        onChange({
+          ...sprite,
+          castingImageData,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCastingSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+
+      const spriteSheetConfig = {
+        imageData,
+        frameCount: 4,
+        frameRate: 10,
+        loop: true, // Casting animation can loop
+      };
+
+      if (spriteMode === 'directional') {
+        const dirSprites = sprite.directionalSprites || {};
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              castingSpriteSheet: spriteSheetConfig,
+            },
+          },
+        });
+      } else {
+        onChange({
+          ...sprite,
+          castingSpriteSheet: spriteSheetConfig,
+        });
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCastingSpriteSheetConfigChange = (field: string, value: any) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentSheet = dirSprites[selectedDirection]?.castingSpriteSheet;
+      if (currentSheet) {
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: {
+              ...(dirSprites[selectedDirection] || {}),
+              castingSpriteSheet: {
+                ...currentSheet,
+                [field]: value,
+              },
+            },
+          },
+        });
+      }
+    } else {
+      if (sprite.castingSpriteSheet) {
+        onChange({
+          ...sprite,
+          castingSpriteSheet: {
+            ...sprite.castingSpriteSheet,
+            [field]: value,
+          },
+        });
+      }
+    }
+  };
+
+  const clearCastingSpriteSheet = () => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (currentConfig) {
+        const { castingSpriteSheet, ...rest } = currentConfig;
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: rest,
+          },
+        });
+      }
+    } else {
+      const { castingSpriteSheet, ...rest } = sprite;
+      onChange({ ...rest });
+    }
+  };
+
+  const clearCastingImage = () => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      if (currentConfig) {
+        const { castingImageData, ...rest } = currentConfig;
+        onChange({
+          ...sprite,
+          directionalSprites: {
+            ...dirSprites,
+            [selectedDirection]: rest,
+          },
+        });
+      }
+    } else {
+      const { castingImageData, ...rest } = sprite;
+      onChange({ ...rest });
+    }
+  };
+
+  const hasCastingSpriteSheet = spriteMode === 'directional'
+    ? sprite.directionalSprites?.[selectedDirection]?.castingSpriteSheet
+    : sprite.castingSpriteSheet;
+
+  const hasCastingImage = spriteMode === 'directional'
+    ? sprite.directionalSprites?.[selectedDirection]?.castingImageData
+    : sprite.castingImageData;
+
+  // Corpse sprite handlers (non-directional, always simple mode)
+  const handleCorpseImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG, GIF)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const corpseImageData = event.target?.result as string;
+      onChange({ ...sprite, corpseImageData });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCorpseSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+
+      const spriteSheetConfig = {
+        imageData,
+        frameCount: 1, // Corpses are typically static
+        frameRate: 10,
+        loop: false,
+      };
+
+      onChange({ ...sprite, corpseSpriteSheet: spriteSheetConfig });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCorpseSpriteSheetConfigChange = (field: string, value: any) => {
+    if (sprite.corpseSpriteSheet) {
+      onChange({
+        ...sprite,
+        corpseSpriteSheet: {
+          ...sprite.corpseSpriteSheet,
+          [field]: value,
+        },
+      });
+    }
+  };
+
+  const clearCorpseSpriteSheet = () => {
+    const { corpseSpriteSheet, ...rest } = sprite;
+    onChange({ ...rest });
+  };
+
+  const clearCorpseImage = () => {
+    const { corpseImageData, ...rest } = sprite;
+    onChange({ ...rest });
+  };
+
+  const hasCorpseSpriteSheet = !!sprite.corpseSpriteSheet;
+  const hasCorpseImage = !!sprite.corpseImageData;
 
   return (
     <div className="space-y-4">
@@ -405,89 +1075,995 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         </div>
       </div>
 
-      {/* Idle Image Upload */}
-      <div>
-        <label className="block text-sm font-bold mb-2">
-          Idle Image (Not Moving) {spriteMode === 'directional' ? `- ${DIRECTIONS.find(d => d.key === selectedDirection)?.label}` : ''}
-        </label>
-        <div className="space-y-2">
-          <input
-            type="file"
-            accept="image/png,image/jpg,image/jpeg,image/gif"
-            onChange={handleIdleImageUpload}
-            className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-          />
-          {hasIdleImage && (
-            <button
-              onClick={clearIdleImage}
-              className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-            >
-              ✕ Clear Idle Image
-            </button>
-          )}
-          <p className="text-xs text-gray-400">
-            {hasIdleImage ? '✓ Idle image uploaded' : 'No idle image - using shapes/colors'}
-          </p>
-        </div>
-      </div>
-
-      {/* Moving Image Upload */}
-      <div>
-        <label className="block text-sm font-bold mb-2">
-          Moving Image (While Moving) {spriteMode === 'directional' ? `- ${DIRECTIONS.find(d => d.key === selectedDirection)?.label}` : ''}
-        </label>
-        <div className="space-y-2">
-          <input
-            type="file"
-            accept="image/png,image/jpg,image/jpeg,image/gif"
-            onChange={handleMovingImageUpload}
-            className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-          />
-          {hasMovingImage && (
-            <button
-              onClick={clearMovingImage}
-              className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-            >
-              ✕ Clear Moving Image
-            </button>
-          )}
-          <p className="text-xs text-gray-400">
-            {hasMovingImage ? '✓ Moving image uploaded' : 'No moving image - will use idle image'}
-          </p>
-          <p className="text-xs text-yellow-400">
-            💡 Tip: Use GIF files for smooth movement animation!
-          </p>
-        </div>
-      </div>
-
-      {/* Direction Selector (only for directional mode) */}
-      {spriteMode === 'directional' && (
-        <div>
-          <label className="block text-sm font-bold mb-2">Direction</label>
-          <div className="grid grid-cols-3 gap-1">
-            {DIRECTIONS.map((dir) => (
-              <button
-                key={dir.key}
-                onClick={() => setSelectedDirection(dir.key)}
-                className={`p-2 rounded text-xs ${
-                  selectedDirection === dir.key
-                    ? 'bg-purple-600'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
-              >
-                {dir.arrow} {dir.label}
-              </button>
-            ))}
+      {/* SIMPLE MODE UPLOADS */}
+      {spriteMode === 'simple' && (
+        <>
+          {/* Simple Sprite Sheet Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Sprite Sheet (Animated)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleIdleSpriteSheetUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                />
+                {hasIdleSpriteSheet && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={sprite.idleSpriteSheet?.imageData}
+                      alt="Sprite sheet"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasIdleSpriteSheet && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="64"
+                        value={sprite.idleSpriteSheet?.frameCount || 4}
+                        onChange={(e) => handleIdleSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={sprite.idleSpriteSheet?.frameRate || 10}
+                        onChange={(e) => handleIdleSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={sprite.idleSpriteSheet?.loop !== false}
+                      onChange={(e) => handleIdleSpriteSheetConfigChange('loop', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Loop animation
+                  </label>
+                  <button
+                    onClick={clearIdleSpriteSheet}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Sprite Sheet
+                  </button>
+                </>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasIdleSpriteSheet ? '✓ Sprite sheet configured' : 'No sprite sheet - use static image below'}
+              </p>
+              <p className="text-xs text-purple-400">
+                💡 Sprite sheets should be horizontal strips with frames of equal width
+              </p>
+            </div>
           </div>
 
-          <button
-            onClick={copyToAllDirections}
-            className="w-full mt-2 px-3 py-1 text-xs bg-green-600 rounded hover:bg-green-700"
-          >
-            📋 Copy "{DIRECTIONS.find(d => d.key === selectedDirection)?.label}" to All Directions
-          </button>
-        </div>
+          {/* Simple Static Image Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Static Image (Fallback)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleIdleImageUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+                {hasIdleImage && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={sprite.idleImageData || sprite.imageData}
+                      alt="Static image"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasIdleImage && (
+                <button
+                  onClick={clearIdleImage}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Static Image
+                </button>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasIdleImage ? '✓ Static image uploaded' : 'No static image - using shapes/colors'}
+              </p>
+            </div>
+          </div>
+
+          {/* Death Sprite Sheet Upload - Simple Mode */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Death Sprite Sheet (On Death - Animated)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleDeathSpriteSheetUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-white hover:file:bg-red-700"
+                />
+                {hasDeathSpriteSheet && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={sprite.deathSpriteSheet?.imageData}
+                      alt="Death sprite sheet"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasDeathSpriteSheet && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="64"
+                        value={sprite.deathSpriteSheet?.frameCount || 4}
+                        onChange={(e) => handleDeathSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={sprite.deathSpriteSheet?.frameRate || 10}
+                        onChange={(e) => handleDeathSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={sprite.deathSpriteSheet?.loop !== false}
+                      onChange={(e) => handleDeathSpriteSheetConfigChange('loop', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Loop animation
+                  </label>
+                  <button
+                    onClick={clearDeathSpriteSheet}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Death Sprite Sheet
+                  </button>
+                </>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasDeathSpriteSheet ? '✓ Death sprite sheet configured' : 'No sprite sheet - use static image below'}
+              </p>
+              <p className="text-xs text-red-400">
+                💀 Death animation plays when character/enemy reaches 0 HP
+              </p>
+            </div>
+          </div>
+
+          {/* Death Image Upload - Simple Mode */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Death Image (On Death - Static)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleDeathImageUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+                {hasDeathImage && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={sprite.deathImageData}
+                      alt="Death static"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasDeathImage && (
+                <button
+                  onClick={clearDeathImage}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Death Image
+                </button>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasDeathImage ? '✓ Death image uploaded' : 'No death image - will show X overlay'}
+              </p>
+            </div>
+          </div>
+
+          {/* Casting Sprite Sheet Upload - Simple Mode */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Casting Sprite Sheet (Casting Spell - Animated)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleCastingSpriteSheetUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-white hover:file:bg-yellow-700"
+                />
+                {hasCastingSpriteSheet && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={sprite.castingSpriteSheet?.imageData}
+                      alt="Casting sprite sheet"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasCastingSpriteSheet && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="64"
+                        value={sprite.castingSpriteSheet?.frameCount || 4}
+                        onChange={(e) => handleCastingSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={sprite.castingSpriteSheet?.frameRate || 10}
+                        onChange={(e) => handleCastingSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={sprite.castingSpriteSheet?.loop !== false}
+                      onChange={(e) => handleCastingSpriteSheetConfigChange('loop', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Loop animation
+                  </label>
+                  <button
+                    onClick={clearCastingSpriteSheet}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Casting Sprite Sheet
+                  </button>
+                </>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasCastingSpriteSheet ? '✓ Casting sprite sheet configured' : 'No sprite sheet - use static image below'}
+              </p>
+              <p className="text-xs text-yellow-400">
+                ✨ Casting animation plays when character/enemy casts spell while stationary
+              </p>
+            </div>
+          </div>
+
+          {/* Casting Image Upload - Simple Mode */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Casting Image (Casting Spell - Static)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleCastingImageUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+                {hasCastingImage && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={sprite.castingImageData}
+                      alt="Casting static"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasCastingImage && (
+                <button
+                  onClick={clearCastingImage}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Casting Image
+                </button>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasCastingImage ? '✓ Casting image uploaded' : 'No casting image - will use idle sprite'}
+              </p>
+            </div>
+          </div>
+        </>
       )}
+
+      {/* DIRECTIONAL MODE UPLOADS */}
+      {spriteMode === 'directional' && (
+        <>
+          {/* Direction Selector */}
+          <div>
+            <label className="block text-sm font-bold mb-2">Direction</label>
+            <div className="grid grid-cols-3 gap-1">
+              {DIRECTIONS.map((dir) => {
+                const dirConfig = sprite.directionalSprites?.[dir.key];
+                const hasIdleSS = !!dirConfig?.idleSpriteSheet;
+                const hasMovingSS = !!dirConfig?.movingSpriteSheet;
+                const hasDeathSS = !!dirConfig?.deathSpriteSheet;
+                const hasCastingSS = !!dirConfig?.castingSpriteSheet;
+                const hasIdleImg = dirConfig?.idleImageData || dirConfig?.imageData;
+                const hasMovingImg = dirConfig?.movingImageData;
+                const hasDeathImg = dirConfig?.deathImageData;
+                const hasCastingImg = dirConfig?.castingImageData;
+
+                return (
+                  <button
+                    key={dir.key}
+                    onClick={() => setSelectedDirection(dir.key)}
+                    className={`p-2 rounded text-xs flex flex-col items-center gap-1 ${
+                      selectedDirection === dir.key
+                        ? 'bg-purple-600'
+                        : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    <div className="text-sm">{dir.arrow} {dir.label}</div>
+                    <div className="flex gap-1 text-[9px]">
+                      {hasIdleSS && <span className="text-purple-400" title="Has idle sprite sheet">🎞️</span>}
+                      {!hasIdleSS && hasIdleImg && <span className="text-green-400" title="Has idle image">💤</span>}
+                      {hasMovingSS && <span className="text-purple-400" title="Has moving sprite sheet">🎬</span>}
+                      {!hasMovingSS && hasMovingImg && <span className="text-blue-400" title="Has moving image">🏃</span>}
+                      {hasDeathSS && <span className="text-red-400" title="Has death sprite sheet">💀</span>}
+                      {!hasDeathSS && hasDeathImg && <span className="text-orange-400" title="Has death image">🪦</span>}
+                      {hasCastingSS && <span className="text-yellow-400" title="Has casting sprite sheet">✨</span>}
+                      {!hasCastingSS && hasCastingImg && <span className="text-amber-400" title="Has casting image">🔮</span>}
+                      {!hasIdleSS && !hasIdleImg && !hasMovingSS && !hasMovingImg && !hasDeathSS && !hasDeathImg && !hasCastingSS && !hasCastingImg && <span className="text-gray-500">—</span>}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            <button
+              onClick={copyToAllDirections}
+              className="w-full mt-2 px-3 py-1 text-xs bg-green-600 rounded hover:bg-green-700"
+            >
+              📋 Copy "{DIRECTIONS.find(d => d.key === selectedDirection)?.label}" to All Directions
+            </button>
+          </div>
+
+          {/* IDLE & MOVING STATES */}
+          <div className="bg-green-950 bg-opacity-30 p-4 rounded border-2 border-green-900">
+            <h3 className="text-lg font-semibold mb-3 text-green-400">💤 Idle & Moving States</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Sprites for when the unit is idle (not moving) or actively moving
+            </p>
+
+          {/* Idle Sprite Sheet Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Idle Sprite Sheet (Not Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleIdleSpriteSheetUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                />
+                {hasIdleSpriteSheet && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.idleSpriteSheet?.imageData}
+                      alt="Idle sprite sheet"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasIdleSpriteSheet && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="64"
+                        value={currentConfig.idleSpriteSheet?.frameCount || 4}
+                        onChange={(e) => handleIdleSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={currentConfig.idleSpriteSheet?.frameRate || 10}
+                        onChange={(e) => handleIdleSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={currentConfig.idleSpriteSheet?.loop !== false}
+                      onChange={(e) => handleIdleSpriteSheetConfigChange('loop', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Loop animation
+                  </label>
+                  <button
+                    onClick={clearIdleSpriteSheet}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Idle Sprite Sheet
+                  </button>
+                </>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasIdleSpriteSheet ? '✓ Idle sprite sheet configured' : 'No sprite sheet - use static image below'}
+              </p>
+              <p className="text-xs text-purple-400">
+                💡 Sprite sheets should be horizontal strips with frames of equal width
+              </p>
+            </div>
+          </div>
+
+          {/* Idle Image Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Idle Image (Not Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleIdleImageUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+                {hasIdleImage && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.idleImageData || currentConfig.imageData}
+                      alt="Idle static"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasIdleImage && (
+                <button
+                  onClick={clearIdleImage}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Idle Image
+                </button>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasIdleImage ? '✓ Idle image uploaded' : 'No idle image - using shapes/colors'}
+              </p>
+            </div>
+          </div>
+
+          {/* Moving Sprite Sheet Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Moving Sprite Sheet (While Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleMovingSpriteSheetUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                />
+                {hasMovingSpriteSheet && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.movingSpriteSheet?.imageData}
+                      alt="Moving sprite sheet"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasMovingSpriteSheet && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="64"
+                        value={currentConfig.movingSpriteSheet?.frameCount || 4}
+                        onChange={(e) => handleMovingSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={currentConfig.movingSpriteSheet?.frameRate || 10}
+                        onChange={(e) => handleMovingSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={currentConfig.movingSpriteSheet?.loop !== false}
+                      onChange={(e) => handleMovingSpriteSheetConfigChange('loop', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Loop animation
+                  </label>
+                  <button
+                    onClick={clearMovingSpriteSheet}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Moving Sprite Sheet
+                  </button>
+                </>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasMovingSpriteSheet ? '✓ Moving sprite sheet configured' : 'No sprite sheet - use static image below'}
+              </p>
+              <p className="text-xs text-purple-400">
+                💡 Sprite sheets should be horizontal strips with frames of equal width
+              </p>
+            </div>
+          </div>
+
+          {/* Moving Image Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Moving Image (While Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleMovingImageUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+                {hasMovingImage && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.movingImageData}
+                      alt="Moving static"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasMovingImage && (
+                <button
+                  onClick={clearMovingImage}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Moving Image
+                </button>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasMovingImage ? '✓ Moving image uploaded' : 'No moving image - will use idle image'}
+              </p>
+            </div>
+          </div>
+          </div>
+
+          {/* DEATH STATE */}
+          <div className="bg-red-950 bg-opacity-30 p-4 rounded border-2 border-red-900">
+            <h3 className="text-lg font-semibold mb-3 text-red-400">💀 Death State</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Animation that plays when the unit dies (before corpse appears)
+            </p>
+
+          {/* Death Sprite Sheet Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Death Sprite Sheet (On Death - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleDeathSpriteSheetUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-white hover:file:bg-red-700"
+                />
+                {hasDeathSpriteSheet && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.deathSpriteSheet?.imageData}
+                      alt="Death sprite sheet"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasDeathSpriteSheet && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="64"
+                        value={currentConfig.deathSpriteSheet?.frameCount || 4}
+                        onChange={(e) => handleDeathSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={currentConfig.deathSpriteSheet?.frameRate || 10}
+                        onChange={(e) => handleDeathSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={currentConfig.deathSpriteSheet?.loop !== false}
+                      onChange={(e) => handleDeathSpriteSheetConfigChange('loop', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Loop animation
+                  </label>
+                  <button
+                    onClick={clearDeathSpriteSheet}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Death Sprite Sheet
+                  </button>
+                </>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasDeathSpriteSheet ? '✓ Death sprite sheet configured' : 'No sprite sheet - use static image below'}
+              </p>
+              <p className="text-xs text-red-400">
+                💀 Death animation plays when character/enemy reaches 0 HP
+              </p>
+            </div>
+          </div>
+
+          {/* Death Image Upload */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Death Image (On Death - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleDeathImageUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+                {hasDeathImage && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.deathImageData}
+                      alt="Death static"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasDeathImage && (
+                <button
+                  onClick={clearDeathImage}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Death Image
+                </button>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasDeathImage ? '✓ Death image uploaded' : 'No death image - will show X overlay'}
+              </p>
+            </div>
+          </div>
+          </div>
+
+          {/* CASTING STATE */}
+          <div className="bg-yellow-950 bg-opacity-30 p-4 rounded border-2 border-yellow-900">
+            <h3 className="text-lg font-semibold mb-3 text-yellow-400">✨ Casting State</h3>
+            <p className="text-xs text-gray-400 mb-4">
+              Animation when casting a spell while stationary (moving animation has priority)
+            </p>
+
+          {/* Casting Sprite Sheet Upload - Directional */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Casting Sprite Sheet (Casting Spell - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleCastingSpriteSheetUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-white hover:file:bg-yellow-700"
+                />
+                {hasCastingSpriteSheet && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.castingSpriteSheet?.imageData}
+                      alt="Casting sprite sheet"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasCastingSpriteSheet && (
+                <>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="64"
+                        value={currentConfig.castingSpriteSheet?.frameCount || 4}
+                        onChange={(e) => handleCastingSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={currentConfig.castingSpriteSheet?.frameRate || 10}
+                        onChange={(e) => handleCastingSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                      />
+                    </div>
+                  </div>
+                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                    <input
+                      type="checkbox"
+                      checked={currentConfig.castingSpriteSheet?.loop !== false}
+                      onChange={(e) => handleCastingSpriteSheetConfigChange('loop', e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Loop animation
+                  </label>
+                  <button
+                    onClick={clearCastingSpriteSheet}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Casting Sprite Sheet
+                  </button>
+                </>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasCastingSpriteSheet ? '✓ Casting sprite sheet configured' : 'No sprite sheet - use static image below'}
+              </p>
+              <p className="text-xs text-yellow-400">
+                ✨ Casting animation plays when character/enemy casts spell while stationary
+              </p>
+            </div>
+          </div>
+
+          {/* Casting Image Upload - Directional */}
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Casting Image (Casting Spell - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleCastingImageUpload}
+                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                />
+                {hasCastingImage && (
+                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={currentConfig.castingImageData}
+                      alt="Casting static"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+              {hasCastingImage && (
+                <button
+                  onClick={clearCastingImage}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Casting Image
+                </button>
+              )}
+              <p className="text-xs text-gray-400">
+                {hasCastingImage ? '✓ Casting image uploaded' : 'No casting image - will use idle sprite'}
+              </p>
+            </div>
+          </div>
+          </div>
+        </>
+      )}
+
+      {/* CORPSE SPRITE (Non-directional, always applies) */}
+      <div className="bg-gray-900 p-4 rounded border-2 border-gray-700">
+        <h3 className="text-lg font-semibold mb-3 text-gray-300">🪦 Corpse Sprite (After Death)</h3>
+        <p className="text-xs text-gray-400 mb-4">
+          Corpse appears after death animation completes. Non-directional (same for all directions).
+        </p>
+
+        {/* Corpse Sprite Sheet Upload */}
+        <div className="mb-4">
+          <label className="block text-sm font-bold mb-2">Corpse Sprite Sheet (Animated)</label>
+          <div className="space-y-2">
+            <div className="flex gap-2 items-start">
+              <input
+                type="file"
+                accept="image/png,image/jpg,image/jpeg"
+                onChange={handleCorpseSpriteSheetUpload}
+                className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-gray-600 file:text-white hover:file:bg-gray-500"
+              />
+              {hasCorpseSpriteSheet && (
+                <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img
+                    src={sprite.corpseSpriteSheet?.imageData}
+                    alt="Corpse sprite sheet"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              )}
+            </div>
+            {hasCorpseSpriteSheet && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="64"
+                      value={sprite.corpseSpriteSheet?.frameCount || 1}
+                      onChange={(e) => handleCorpseSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                      className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={sprite.corpseSpriteSheet?.frameRate || 10}
+                      onChange={(e) => handleCorpseSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                      className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={clearCorpseSpriteSheet}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Corpse Sprite Sheet
+                </button>
+              </>
+            )}
+            <p className="text-xs text-gray-400">
+              {hasCorpseSpriteSheet ? '✓ Corpse sprite sheet configured' : 'No sprite sheet - use static image below'}
+            </p>
+          </div>
+        </div>
+
+        {/* Corpse Static Image Upload */}
+        <div className="mb-4">
+          <label className="block text-sm font-bold mb-2">Corpse Image (Static)</label>
+          <div className="space-y-2">
+            <div className="flex gap-2 items-start">
+              <input
+                type="file"
+                accept="image/png,image/jpg,image/jpeg"
+                onChange={handleCorpseImageUpload}
+                className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+              />
+              {hasCorpseImage && (
+                <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img
+                    src={sprite.corpseImageData}
+                    alt="Corpse static"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              )}
+            </div>
+            {hasCorpseImage && (
+              <button
+                onClick={clearCorpseImage}
+                className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+              >
+                ✕ Clear Corpse Image
+              </button>
+            )}
+            <p className="text-xs text-gray-400">
+              {hasCorpseImage ? '✓ Corpse image uploaded' : 'No corpse image - will use default shape'}
+            </p>
+          </div>
+        </div>
+
+        {/* Corpse Collision Toggle */}
+        <div>
+          <label className="flex items-center gap-2">
+            <input
+              type="checkbox"
+              checked={sprite.corpseHasCollision || false}
+              onChange={(e) => onChange({ ...sprite, corpseHasCollision: e.target.checked })}
+              className="w-4 h-4"
+            />
+            <span className="text-sm font-medium">Corpse Blocks Movement</span>
+          </label>
+          <p className="text-xs text-gray-400 ml-6">
+            {sprite.corpseHasCollision
+              ? '🚧 Corpse acts as a wall - units cannot walk through'
+              : '🚶 Corpse is walkable - units can pass through (default)'}
+          </p>
+        </div>
+      </div>
 
       <div>
         <label className="block text-sm font-bold mb-2">
@@ -579,31 +2155,53 @@ function drawSpriteConfig(
   centerX: number,
   centerY: number,
   tileSize: number,
-  isMoving: boolean = false
+  isMoving: boolean = false,
+  now: number = Date.now()
 ) {
-  // Check for uploaded image first (PNG/GIF)
+  // Check for sprite sheet first (highest priority for animation)
+  const spriteSheet = isMoving ? config.movingSpriteSheet : config.idleSpriteSheet;
+  if (spriteSheet) {
+    const maxSize = (config.size || 0.6) * tileSize;
+    drawSpriteSheet(ctx, spriteSheet, centerX, centerY, maxSize, maxSize, now);
+    return;
+  }
+
+  // Check for uploaded image (PNG/GIF)
   // Use moving sprite if moving and available, otherwise fall back to idle
   const imageToUse = isMoving && config.movingImageData
     ? config.movingImageData
     : (config.idleImageData || config.imageData);
 
   if (imageToUse) {
-    const img = new Image();
-    img.src = imageToUse;
-    const maxSize = (config.size || 0.6) * tileSize;
-
-    // Preserve aspect ratio
-    const aspectRatio = img.naturalWidth / img.naturalHeight;
-    let drawWidth = maxSize;
-    let drawHeight = maxSize;
-
-    if (aspectRatio > 1) {
-      drawHeight = maxSize / aspectRatio;
-    } else {
-      drawWidth = maxSize * aspectRatio;
+    // Use cached image for GIF animation support
+    let img = globalImageCache.get(imageToUse);
+    if (!img) {
+      img = new Image();
+      img.src = imageToUse;
+      globalImageCache.set(imageToUse, img);
     }
 
-    ctx.drawImage(img, centerX - drawWidth/2, centerY - drawHeight/2, drawWidth, drawHeight);
+    // Draw the image - for GIFs, the browser handles animation automatically
+    // We draw even if not fully loaded to ensure GIF animation starts properly
+    try {
+      const maxSize = (config.size || 0.6) * tileSize;
+      let drawWidth = maxSize;
+      let drawHeight = maxSize;
+
+      // If image has loaded, preserve aspect ratio
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        const aspectRatio = img.naturalWidth / img.naturalHeight;
+        if (aspectRatio > 1) {
+          drawHeight = maxSize / aspectRatio;
+        } else {
+          drawWidth = maxSize * aspectRatio;
+        }
+      }
+
+      ctx.drawImage(img, centerX - drawWidth/2, centerY - drawHeight/2, drawWidth, drawHeight);
+    } catch (e) {
+      // Image not ready yet, will draw on next frame
+    }
     return;
   }
 
@@ -669,17 +2267,27 @@ export function drawSprite(
   centerY: number,
   tileSize: number,
   direction?: Direction,
-  isMoving: boolean = false
+  isMoving: boolean = false,
+  now: number = Date.now()
 ) {
   // Check if we should use directional sprites
-  if (sprite.useDirectional && sprite.directionalSprites && direction) {
-    const dirKey = mapGameDirectionToSpriteDirection(direction);
+  if (sprite.useDirectional && sprite.directionalSprites) {
+    // If direction is provided, use it; otherwise use 'default'
+    const dirKey = direction ? mapGameDirectionToSpriteDirection(direction) : 'default';
     const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
 
     if (dirConfig) {
-      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving);
+      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now);
       return;
     }
+  }
+
+  // Check for sprite sheet first (simple mode)
+  const simpleSpriteSheet = isMoving ? sprite.movingSpriteSheet : sprite.idleSpriteSheet;
+  if (simpleSpriteSheet) {
+    const maxSize = (sprite.size || 0.6) * tileSize;
+    drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, maxSize, maxSize, now);
+    return;
   }
 
   // Check for simple image sprite (PNG/GIF)
@@ -689,22 +2297,35 @@ export function drawSprite(
     : (sprite.idleImageData || sprite.imageData);
 
   if (spriteImageToUse) {
-    const img = new Image();
-    img.src = spriteImageToUse;
-    const maxSize = (sprite.size || 0.6) * tileSize;
-
-    // Preserve aspect ratio
-    const aspectRatio = img.naturalWidth / img.naturalHeight;
-    let drawWidth = maxSize;
-    let drawHeight = maxSize;
-
-    if (aspectRatio > 1) {
-      drawHeight = maxSize / aspectRatio;
-    } else {
-      drawWidth = maxSize * aspectRatio;
+    // Use cached image for GIF animation support
+    let img = globalImageCache.get(spriteImageToUse);
+    if (!img) {
+      img = new Image();
+      img.src = spriteImageToUse;
+      globalImageCache.set(spriteImageToUse, img);
     }
 
-    ctx.drawImage(img, centerX - drawWidth/2, centerY - drawHeight/2, drawWidth, drawHeight);
+    // Draw the image - for GIFs, the browser handles animation automatically
+    // We draw even if not fully loaded to ensure GIF animation starts properly
+    try {
+      const maxSize = (sprite.size || 0.6) * tileSize;
+      let drawWidth = maxSize;
+      let drawHeight = maxSize;
+
+      // If image has loaded, preserve aspect ratio
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        const aspectRatio = img.naturalWidth / img.naturalHeight;
+        if (aspectRatio > 1) {
+          drawHeight = maxSize / aspectRatio;
+        } else {
+          drawWidth = maxSize * aspectRatio;
+        }
+      }
+
+      ctx.drawImage(img, centerX - drawWidth/2, centerY - drawHeight/2, drawWidth, drawHeight);
+    } catch (e) {
+      // Image not ready yet, will draw on next frame
+    }
     return;
   }
 
@@ -766,9 +2387,13 @@ export function drawSprite(
 function mapGameDirectionToSpriteDirection(direction: Direction): SpriteDirection {
   switch (direction) {
     case Direction.NORTH: return 'n';
+    case Direction.NORTHEAST: return 'ne';
     case Direction.EAST: return 'e';
+    case Direction.SOUTHEAST: return 'se';
     case Direction.SOUTH: return 's';
+    case Direction.SOUTHWEST: return 'sw';
     case Direction.WEST: return 'w';
+    case Direction.NORTHWEST: return 'nw';
     default: return 'default';
   }
 }

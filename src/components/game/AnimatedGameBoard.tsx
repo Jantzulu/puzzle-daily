@@ -1,11 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig } from '../../types/game';
 import { TileType, Direction } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy } from '../../utils/assetStorage';
-import { updateProjectiles, updateParticles } from '../../engine/simulation';
+import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
 
 interface AnimatedGameBoardProps {
   gameState: GameState;
@@ -13,7 +13,11 @@ interface AnimatedGameBoardProps {
 }
 
 const TILE_SIZE = 48;
-const ANIMATION_DURATION = 600; // ms per move (matches slower simulation speed)
+const BORDER_SIZE = 48; // Border thickness for top/bottom
+const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
+const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
+const MOVE_DURATION = 200; // First 50%: moving between tiles
+const IDLE_DURATION = 200; // Second 50%: idle on destination tile
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -31,6 +35,7 @@ interface CharacterPosition {
   toX: number;
   toY: number;
   startTime: number;
+  facingDuringMove: Direction; // Direction character is moving (before wall lookahead changes it)
 }
 
 interface CharacterAttack {
@@ -41,6 +46,7 @@ interface CharacterAttack {
 
 export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
   const [enemyPositions, setEnemyPositions] = useState<Map<number, CharacterPosition>>(new Map());
   const prevCharactersRef = useRef<PlacedCharacter[]>([]);
@@ -57,14 +63,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const existing = characterPositions.get(idx);
 
       if (prevChar && (prevChar.x !== char.x || prevChar.y !== char.y)) {
-        // Character moved!
-        console.log(`Animation: Character ${idx} moved from (${prevChar.x},${prevChar.y}) to (${char.x},${char.y})`);
+        // Character moved! Use the PREVIOUS facing direction for the arrow during animation
         newPositions.set(idx, {
           fromX: prevChar.x,
           fromY: prevChar.y,
           toX: char.x,
           toY: char.y,
           startTime: now,
+          facingDuringMove: prevChar.facing,
         });
       } else if (existing && now - existing.startTime < ANIMATION_DURATION) {
         // Keep existing animation
@@ -86,14 +92,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const existing = enemyPositions.get(idx);
 
       if (prevEnemy && (prevEnemy.x !== enemy.x || prevEnemy.y !== enemy.y)) {
-        // Enemy moved!
-        console.log(`Animation: Enemy ${idx} moved from (${prevEnemy.x},${prevEnemy.y}) to (${enemy.x},${enemy.y})`);
+        // Enemy moved! Use the PREVIOUS facing direction for the arrow during animation
         newPositions.set(idx, {
           fromX: prevEnemy.x,
           fromY: prevEnemy.y,
           toX: enemy.x,
           toY: enemy.y,
           startTime: now,
+          facingDuringMove: prevEnemy.facing || Direction.SOUTH,
         });
       } else if (existing && now - existing.startTime < ANIMATION_DURATION) {
         // Keep existing animation
@@ -119,6 +125,26 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Clear
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Calculate grid offset (for borders)
+      const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
+      const hasBorder = borderStyle !== 'none';
+      const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
+      const offsetY = hasBorder ? BORDER_SIZE : 0;
+
+      // Draw border first (if enabled)
+      if (hasBorder) {
+        drawBorder(ctx, gameState.puzzle.width, gameState.puzzle.height, borderStyle, gameState.puzzle.borderConfig);
+      }
+
+      // Save context and translate for grid rendering
+      ctx.save();
+      ctx.translate(offsetX, offsetY);
+
+      // Execute parallel actions (time-based, runs independently of turns)
+      if (gameState.gameStatus === 'running') {
+        executeParallelActions(gameState);
+      }
 
       // Update projectiles and particles (time-based, needs to run every frame)
       updateProjectiles(gameState);
@@ -151,43 +177,76 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         console.log('[AnimatedGameBoard] Drawing', gameState.activeProjectiles.length, 'projectiles');
         gameState.activeProjectiles.forEach(projectile => {
           console.log('[AnimatedGameBoard] Projectile at', projectile.x, projectile.y, 'active:', projectile.active);
-          drawProjectile(ctx, projectile);
+          drawProjectile(ctx, projectile, imageCache.current);
         });
       }
 
       // Draw particles (Phase 2 - effects layer)
       if (gameState.activeParticles && gameState.activeParticles.length > 0) {
         gameState.activeParticles.forEach(particle => {
-          drawParticle(ctx, particle, now);
+          drawParticle(ctx, particle, now, imageCache.current);
         });
       }
 
-      // Draw enemies
+      // Determine if game has started (for sprite selection)
+      const gameStarted = gameState.gameStatus === 'running' || gameState.gameStatus === 'won' || gameState.gameStatus === 'lost';
+
+      // Draw enemies with animation
       gameState.puzzle.enemies.forEach((enemy, idx) => {
-        const enemyAnim = enemyPositions.get(idx);
-        const isEnemyMoving = enemyAnim && now - enemyAnim.startTime < ANIMATION_DURATION;
-        drawEnemy(ctx, enemy, isEnemyMoving || false);
+        const anim = enemyPositions.get(idx);
+
+        if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
+          // Animating (only if game has started)
+          const elapsed = now - anim.startTime;
+
+          if (elapsed < MOVE_DURATION) {
+            // First 50%: Moving from old tile to new tile
+            const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+            const eased = easeInOutQuad(moveProgress);
+
+            const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
+            const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+
+            drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted);
+          } else {
+            // Second 50%: Idle on destination tile - show NEW facing direction
+            drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted);
+          }
+        } else {
+          // Not animating or game hasn't started - draw at actual position with idle sprite
+          drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted);
+        }
       });
 
       // Draw characters with animation
       gameState.placedCharacters.forEach((character, idx) => {
         const anim = characterPositions.get(idx);
 
-        if (anim && now - anim.startTime < ANIMATION_DURATION) {
-          // Animating
+        if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
+          // Animating (only if game has started)
           const elapsed = now - anim.startTime;
-          const progress = Math.min(1, elapsed / ANIMATION_DURATION);
-          const eased = easeInOutQuad(progress);
 
-          const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
-          const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+          if (elapsed < MOVE_DURATION) {
+            // First 50%: Moving from old tile to new tile
+            const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+            const eased = easeInOutQuad(moveProgress);
 
-          drawCharacter(ctx, character, renderX, renderY, true); // isMoving = true
+            const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
+            const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+
+            drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted);
+          } else {
+            // Second 50%: Idle on destination tile - show NEW facing direction
+            drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted);
+          }
         } else {
-          // Not animating - draw at actual position
-          drawCharacter(ctx, character, character.x, character.y, false); // isMoving = false
+          // Not animating or game hasn't started - draw at actual position with idle sprite
+          drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted);
         }
       });
+
+      // Restore context (undo translate offset)
+      ctx.restore();
 
       animationRef.current = requestAnimationFrame(animate);
     };
@@ -207,17 +266,31 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     const canvas = canvasRef.current;
     if (!canvas) return;
 
+    const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
+    const hasBorder = borderStyle !== 'none';
+    const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
+    const offsetY = hasBorder ? BORDER_SIZE : 0;
+
     const rect = canvas.getBoundingClientRect();
-    const x = Math.floor((e.clientX - rect.left) / TILE_SIZE);
-    const y = Math.floor((e.clientY - rect.top) / TILE_SIZE);
+    const clickX = e.clientX - rect.left - offsetX;
+    const clickY = e.clientY - rect.top - offsetY;
+
+    const x = Math.floor(clickX / TILE_SIZE);
+    const y = Math.floor(clickY / TILE_SIZE);
 
     if (x >= 0 && x < gameState.puzzle.width && y >= 0 && y < gameState.puzzle.height) {
       onTileClick(x, y);
     }
   };
 
-  const canvasWidth = gameState.puzzle.width * TILE_SIZE;
-  const canvasHeight = gameState.puzzle.height * TILE_SIZE;
+  const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
+  const hasBorder = borderStyle !== 'none';
+
+  const gridWidth = gameState.puzzle.width * TILE_SIZE;
+  const gridHeight = gameState.puzzle.height * TILE_SIZE;
+
+  const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
+  const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
   return (
     <canvas
@@ -234,6 +307,91 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 // Easing function
 function easeInOutQuad(t: number): number {
   return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+}
+
+// ==========================================
+// BORDER RENDERING
+// ==========================================
+
+function drawBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, style: string, config?: any) {
+  const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
+  const totalHeight = gridHeight * TILE_SIZE + (BORDER_SIZE * 2);
+
+  if (style === 'dungeon') {
+    drawDungeonBorder(ctx, gridWidth, gridHeight, totalWidth, totalHeight);
+  } else if (style === 'custom' && config?.customBorderSprites) {
+    drawCustomBorder(ctx, gridWidth, gridHeight, totalWidth, totalHeight, config.customBorderSprites);
+  }
+}
+
+function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, totalWidth: number, totalHeight: number) {
+  const gridPixelWidth = gridWidth * TILE_SIZE;
+  const gridPixelHeight = gridHeight * TILE_SIZE;
+
+  ctx.save();
+
+  // Background behind border (dark void)
+  ctx.fillStyle = '#0a0a0a';
+  ctx.fillRect(0, 0, totalWidth, totalHeight);
+
+  // Top wall (front-facing with depth)
+  ctx.fillStyle = '#3a3a4a'; // Stone color
+  ctx.fillRect(0, 0, totalWidth, BORDER_SIZE);
+
+  // Add stone texture/depth to top wall
+  ctx.fillStyle = '#2a2a3a'; // Shadow
+  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
+    ctx.fillRect(x, BORDER_SIZE - 12, TILE_SIZE - 2, 12);
+  }
+
+  // Top wall highlight
+  ctx.fillStyle = '#4a4a5a';
+  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
+    ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
+  }
+
+  // Bottom wall (simpler, just top edge visible)
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
+
+  // Bottom wall top edge
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
+
+  // Left wall (side view - THINNER)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+
+  // Left wall inner edge
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
+
+  // Right wall (side view - THINNER)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+
+  // Right wall inner edge
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
+
+  // Corners (darker, showing depth)
+  ctx.fillStyle = '#1a1a2a';
+  // Top-left
+  ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Top-right
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Bottom-left
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Bottom-right
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+
+  ctx.restore();
+}
+
+function drawCustomBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, totalWidth: number, totalHeight: number, sprites: any) {
+  // TODO: Implement custom sprite border rendering
+  // For now, fall back to dungeon style
+  drawDungeonBorder(ctx, gridWidth, gridHeight, totalWidth, totalHeight);
 }
 
 function drawVoidTile(ctx: CanvasRenderingContext2D, x: number, y: number) {
@@ -267,9 +425,15 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
   ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
 }
 
-function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, isMoving: boolean = false) {
-  const px = enemy.x * TILE_SIZE;
-  const py = enemy.y * TILE_SIZE;
+function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, renderX?: number, renderY?: number, isMoving: boolean = false, facingOverride?: Direction, gameStarted: boolean = true) {
+  const x = renderX !== undefined ? renderX : enemy.x;
+  const y = renderY !== undefined ? renderY : enemy.y;
+  const px = x * TILE_SIZE;
+  const py = y * TILE_SIZE;
+  const facing = facingOverride !== undefined ? facingOverride : enemy.facing;
+
+  // Use undefined direction before game starts to force 'default' directional sprite
+  const directionToUse = gameStarted ? facing : undefined;
 
   // Check if this enemy has a custom sprite
   const enemyData = getEnemy(enemy.enemyId) as CustomEnemy | undefined;
@@ -278,11 +442,11 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, isMoving: 
   if (hasCustomSprite && enemyData.customSprite) {
     // Draw custom sprite with idle/moving state
     if (!enemy.dead) {
-      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, enemy.facing, isMoving);
+      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving);
     } else {
       // Draw dimmed version when dead
       ctx.globalAlpha = 0.3;
-      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, enemy.facing, false);
+      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false);
       ctx.globalAlpha = 1.0;
     }
   } else {
@@ -294,12 +458,19 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, isMoving: 
   }
 
   if (!enemy.dead) {
+    // Only draw direction arrow if enemy has active behavior (can move)
+    if (enemyData && enemyData.behavior && enemyData.behavior.type === 'active') {
+      drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing || Direction.SOUTH);
+    }
+
+    // Draw health below the enemy
     ctx.fillStyle = 'white';
-    ctx.font = 'bold 14px monospace';
+    ctx.font = 'bold 10px monospace';
     ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(enemy.currentHealth.toString(), px + TILE_SIZE / 2, py + TILE_SIZE / 2);
+    ctx.textBaseline = 'top';
+    ctx.fillText(`HP:${enemy.currentHealth}`, px + TILE_SIZE / 2, py + TILE_SIZE - 12);
   } else {
+    // Draw X for dead enemy
     ctx.strokeStyle = 'white';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -311,11 +482,15 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, isMoving: 
   }
 }
 
-function drawCharacter(ctx: CanvasRenderingContext2D, character: PlacedCharacter, x: number, y: number, isMoving: boolean = false) {
+function drawCharacter(ctx: CanvasRenderingContext2D, character: PlacedCharacter, x: number, y: number, isMoving: boolean = false, facingOverride?: Direction, gameStarted: boolean = true) {
   if (character.dead) return;
 
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
+  const facing = facingOverride !== undefined ? facingOverride : character.facing;
+
+  // Use undefined direction before game starts to force 'default' directional sprite
+  const directionToUse = gameStarted ? facing : undefined;
 
   // Check if this character has a custom sprite
   const charData = getCharacter(character.characterId) as CustomCharacter | undefined;
@@ -328,7 +503,7 @@ function drawCharacter(ctx: CanvasRenderingContext2D, character: PlacedCharacter
     ctx.shadowOffsetX = 2;
     ctx.shadowOffsetY = 2;
 
-    drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, character.facing, isMoving);
+    drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving);
 
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
@@ -353,7 +528,7 @@ function drawCharacter(ctx: CanvasRenderingContext2D, character: PlacedCharacter
   }
 
   // Draw direction arrow
-  drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, character.facing);
+  drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing);
 
   // Draw health
   ctx.fillStyle = 'white';
@@ -434,9 +609,159 @@ function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number) {
 // ==========================================
 
 /**
+ * Draw a shape or image with given parameters
+ */
+function drawShape(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  shape: string,
+  color: string,
+  size: number,
+  imageData?: string,
+  imageCache?: Map<string, HTMLImageElement>,
+  rotationConfig?: { rotation: number; mirror: boolean }
+) {
+  ctx.save();
+
+  // If there's an image, draw it instead of a shape
+  if (imageData && imageCache) {
+    let img = imageCache.get(imageData);
+
+    if (!img) {
+      // Create and cache the image
+      img = new Image();
+      img.src = imageData;
+      imageCache.set(imageData, img);
+    }
+
+    // Draw the image (browser handles GIF animation automatically)
+    // Use try-catch to handle cases where image isn't loaded yet
+    try {
+      const imgSize = size * 3; // Make image larger
+
+      // Apply rotation and mirroring if specified
+      if (rotationConfig) {
+        // Move to center point
+        ctx.translate(px, py);
+
+        // Apply rotation (convert degrees to radians)
+        ctx.rotate((rotationConfig.rotation * Math.PI) / 180);
+
+        // Apply mirroring
+        if (rotationConfig.mirror) {
+          ctx.scale(-1, 1);
+        }
+
+        // Draw centered at origin
+        ctx.drawImage(img, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+      } else {
+        // No rotation - draw normally
+        ctx.drawImage(img, px - imgSize / 2, py - imgSize / 2, imgSize, imgSize);
+      }
+    } catch (e) {
+      // Image not ready yet, will draw on next frame
+    }
+    ctx.restore();
+    return;
+  }
+
+  // Otherwise draw the shape (existing code)
+  // Outer glow
+  ctx.fillStyle = color + '40'; // Add transparency for glow
+  ctx.beginPath();
+
+  switch (shape) {
+    case 'circle':
+      ctx.arc(px, py, size * 1.5, 0, Math.PI * 2);
+      break;
+    case 'square':
+      ctx.rect(px - size * 1.5, py - size * 1.5, size * 3, size * 3);
+      break;
+    case 'triangle':
+      ctx.moveTo(px, py - size * 1.5);
+      ctx.lineTo(px - size * 1.3, py + size * 1.5);
+      ctx.lineTo(px + size * 1.3, py + size * 1.5);
+      ctx.closePath();
+      break;
+    case 'star':
+      drawStar(ctx, px, py, 5, size * 1.5, size * 0.7);
+      break;
+    case 'diamond':
+      ctx.moveTo(px, py - size * 1.5);
+      ctx.lineTo(px + size * 1.5, py);
+      ctx.lineTo(px, py + size * 1.5);
+      ctx.lineTo(px - size * 1.5, py);
+      ctx.closePath();
+      break;
+  }
+
+  ctx.fill();
+
+  // Inner core
+  ctx.fillStyle = color;
+  ctx.beginPath();
+
+  switch (shape) {
+    case 'circle':
+      ctx.arc(px, py, size * 0.7, 0, Math.PI * 2);
+      break;
+    case 'square':
+      ctx.rect(px - size * 0.7, py - size * 0.7, size * 1.4, size * 1.4);
+      break;
+    case 'triangle':
+      ctx.moveTo(px, py - size * 0.7);
+      ctx.lineTo(px - size * 0.6, py + size * 0.7);
+      ctx.lineTo(px + size * 0.6, py + size * 0.7);
+      ctx.closePath();
+      break;
+    case 'star':
+      drawStar(ctx, px, py, 5, size * 0.7, size * 0.35);
+      break;
+    case 'diamond':
+      ctx.moveTo(px, py - size * 0.7);
+      ctx.lineTo(px + size * 0.7, py);
+      ctx.lineTo(px, py + size * 0.7);
+      ctx.lineTo(px - size * 0.7, py);
+      ctx.closePath();
+      break;
+  }
+
+  ctx.fill();
+  ctx.restore();
+}
+
+/**
+ * Draw a star shape
+ */
+function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes: number, outerRadius: number, innerRadius: number) {
+  let rot = Math.PI / 2 * 3;
+  let x = cx;
+  let y = cy;
+  const step = Math.PI / spikes;
+
+  ctx.moveTo(cx, cy - outerRadius);
+
+  for (let i = 0; i < spikes; i++) {
+    x = cx + Math.cos(rot) * outerRadius;
+    y = cy + Math.sin(rot) * outerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+
+    x = cx + Math.cos(rot) * innerRadius;
+    y = cy + Math.sin(rot) * innerRadius;
+    ctx.lineTo(x, y);
+    rot += step;
+  }
+
+  ctx.lineTo(cx, cy - outerRadius);
+  ctx.closePath();
+}
+
+/**
  * Draw a projectile - uses fractional coordinates for smooth movement
  */
-function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile) {
+function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, imageCache: Map<string, HTMLImageElement>) {
   if (!projectile.active) return;
 
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
@@ -444,13 +769,47 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile) {
   const py = projectile.y * TILE_SIZE + TILE_SIZE / 2;
 
   // Check if projectile has custom sprite
-  if (projectile.attackData.projectileSprite) {
-    // TODO: Render custom sprite when sprite system is implemented
-    // For now, draw a simple circle
-    drawDefaultProjectile(ctx, px, py);
+  if (projectile.attackData.projectileSprite?.spriteData) {
+    const spriteData = projectile.attackData.projectileSprite.spriteData;
+    const shape = spriteData.shape || 'circle';
+    const color = spriteData.primaryColor || '#ff6600';
+    const imageData = spriteData.idleImageData;
+
+    // Calculate rotation and mirroring based on direction
+    // Base image is East (→), apply transforms for other directions
+    const rotationConfig = getRotationForDirection(projectile.direction);
+
+    drawShape(ctx, px, py, shape, color, 8, imageData, imageCache, rotationConfig);
   } else {
     // Default projectile rendering
     drawDefaultProjectile(ctx, px, py);
+  }
+}
+
+/**
+ * Get rotation/mirror config for a direction
+ * Base image points East (left-to-right →)
+ */
+function getRotationForDirection(direction: Direction): { rotation: number; mirror: boolean } {
+  switch (direction) {
+    case Direction.EAST:
+      return { rotation: 0, mirror: false };
+    case Direction.NORTHEAST:
+      return { rotation: 45, mirror: false };
+    case Direction.NORTH:
+      return { rotation: 90, mirror: false };
+    case Direction.NORTHWEST:
+      return { rotation: 45, mirror: true };
+    case Direction.WEST:
+      return { rotation: 0, mirror: true };
+    case Direction.SOUTHWEST:
+      return { rotation: -45, mirror: true };
+    case Direction.SOUTH:
+      return { rotation: -90, mirror: false };
+    case Direction.SOUTHEAST:
+      return { rotation: -45, mirror: false };
+    default:
+      return { rotation: 0, mirror: false };
   }
 }
 
@@ -479,7 +838,7 @@ function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: nu
 /**
  * Draw a particle effect with fade-out
  */
-function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, now: number) {
+function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, now: number, imageCache: Map<string, HTMLImageElement>) {
   const elapsed = now - particle.startTime;
   if (elapsed >= particle.duration) return;
 
@@ -494,10 +853,23 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
   ctx.globalAlpha = alpha;
 
   // Check if particle has custom sprite
-  if (particle.sprite) {
-    // TODO: Render custom sprite when sprite system is implemented
-    // For now, draw a simple flash effect
-    drawDefaultParticle(ctx, px, py, progress);
+  if (particle.sprite?.spriteData) {
+    const spriteData = particle.sprite.spriteData;
+    const shape = spriteData.shape || 'circle';
+    const color = spriteData.primaryColor || '#ffff00';
+    const imageData = spriteData.idleImageData;
+
+    // Draw expanding effect
+    const radius = 4 + progress * 20;
+    drawShape(ctx, px, py, shape, color, radius, imageData, imageCache);
+
+    // Inner flash (only for non-image sprites)
+    if (!imageData && progress < 0.3) {
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.arc(px, py, 8 * (1 - progress / 0.3), 0, Math.PI * 2);
+      ctx.fill();
+    }
   } else {
     drawDefaultParticle(ctx, px, py, progress);
   }

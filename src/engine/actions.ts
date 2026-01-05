@@ -6,17 +6,20 @@ import type {
   CustomAttack,
   Projectile,
   ParticleEffect,
+  SpellAsset,
+  RelativeDirection,
 } from '../types/game';
 import {
   ActionType,
   Direction,
   TileType,
   AttackPattern,
+  SpellTemplate,
 } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds } from './utils';
-import { loadCustomAttack } from '../utils/assetStorage';
+import { loadCustomAttack, loadSpellAsset } from '../utils/assetStorage';
 
 /**
  * Normalize action type - handles both enum keys (e.g., "ATTACK_FORWARD")
@@ -45,6 +48,7 @@ function normalizeActionType(type: string): ActionType {
     'ATTACK_RANGE': ActionType.ATTACK_RANGE,
     'ATTACK_AOE': ActionType.ATTACK_AOE,
     'CUSTOM_ATTACK': ActionType.CUSTOM_ATTACK,
+    'SPELL': ActionType.SPELL,
     'IF_WALL': ActionType.IF_WALL,
     'IF_ENEMY': ActionType.IF_ENEMY,
     'WAIT': ActionType.WAIT,
@@ -112,6 +116,11 @@ export function executeAction(
     case ActionType.CUSTOM_ATTACK:
       console.log('[executeAction] CUSTOM_ATTACK case reached');
       executeCustomAttack(updatedCharacter, action, gameState);
+      return updatedCharacter;
+
+    case ActionType.SPELL:
+      console.log('[executeAction] SPELL case reached');
+      executeSpell(updatedCharacter, action, gameState);
       return updatedCharacter;
 
     default:
@@ -231,7 +240,15 @@ function moveCharacter(
     );
 
     if (enemyAtTarget) {
-      // Combat: Character attacks first (player initiative)
+      // Check if this is an enemy trying to move into another enemy (no combat, just block)
+      const isEnemyMoving = getEnemy(updatedChar.characterId) !== undefined;
+
+      if (isEnemyMoving) {
+        // Enemy-to-enemy collision: just wait, don't move, don't fight
+        return updatedChar;
+      }
+
+      // Combat: Character attacks enemy (player initiative)
       const charData = getCharacter(updatedChar.characterId);
       if (charData) {
         // Character attacks enemy first
@@ -244,7 +261,11 @@ function moveCharacter(
         if (!enemyAtTarget.dead) {
           const enemyData = getEnemy(enemyAtTarget.enemyId);
           if (enemyData) {
-            updatedChar.currentHealth -= enemyData.attackDamage;
+            // Use retaliationDamage if set, otherwise use regular attackDamage
+            const damageToApply = enemyData.retaliationDamage !== undefined
+              ? enemyData.retaliationDamage
+              : enemyData.attackDamage;
+            updatedChar.currentHealth -= damageToApply;
             if (updatedChar.currentHealth <= 0) {
               updatedChar.dead = true;
             }
@@ -459,6 +480,178 @@ function executeCustomAttack(
 }
 
 /**
+ * Convert relative direction to absolute direction based on current facing
+ */
+function relativeToAbsolute(facing: Direction, relative: RelativeDirection): Direction {
+  // Map each cardinal/ordinal direction to numeric angle (0 = North, clockwise)
+  const directionAngles: Record<Direction, number> = {
+    [Direction.NORTH]: 0,
+    [Direction.NORTHEAST]: 45,
+    [Direction.EAST]: 90,
+    [Direction.SOUTHEAST]: 135,
+    [Direction.SOUTH]: 180,
+    [Direction.SOUTHWEST]: 225,
+    [Direction.WEST]: 270,
+    [Direction.NORTHWEST]: 315,
+  };
+
+  // Map relative directions to angle offsets
+  const relativeOffsets: Record<RelativeDirection, number> = {
+    'forward': 0,
+    'forward_right': 45,
+    'right': 90,
+    'backward_right': 135,
+    'backward': 180,
+    'backward_left': 225,
+    'left': 270,
+    'forward_left': 315,
+  };
+
+  // Calculate absolute angle
+  const currentAngle = directionAngles[facing];
+  const offset = relativeOffsets[relative];
+  let absoluteAngle = (currentAngle + offset) % 360;
+
+  // Convert back to Direction enum
+  const angleToDirection: Record<number, Direction> = {
+    0: Direction.NORTH,
+    45: Direction.NORTHEAST,
+    90: Direction.EAST,
+    135: Direction.SOUTHEAST,
+    180: Direction.SOUTH,
+    225: Direction.SOUTHWEST,
+    270: Direction.WEST,
+    315: Direction.NORTHWEST,
+  };
+
+  return angleToDirection[absoluteAngle] || Direction.NORTH;
+}
+
+/**
+ * Execute a spell from the spell library
+ */
+function executeSpell(
+  character: PlacedCharacter,
+  action: CharacterAction,
+  gameState: GameState
+): void {
+  console.log('[executeSpell] Called with action:', action);
+
+  // Load spell from library
+  if (!action.spellId) {
+    console.warn('Spell ID not found in action');
+    return;
+  }
+
+  const spell = loadSpellAsset(action.spellId);
+  if (!spell) {
+    console.warn(`Spell not found: ${action.spellId}`);
+    return;
+  }
+
+  console.log('[executeSpell] Spell loaded:', spell);
+
+  // Determine which directions to cast the spell
+  let castDirections: Direction[] = [];
+
+  if (action.useRelativeOverride && action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0) {
+    // Use relative override from behavior action
+    castDirections = action.relativeDirectionOverride.map(relDir =>
+      relativeToAbsolute(character.facing, relDir)
+    );
+  } else if (action.directionOverride && action.directionOverride.length > 0) {
+    // Use absolute override from behavior action
+    castDirections = action.directionOverride;
+  } else if (spell.directionMode === 'current_facing') {
+    // Use character's facing direction
+    castDirections = [character.facing];
+  } else if (spell.directionMode === 'all_directions') {
+    // Cast in all 8 directions
+    castDirections = [
+      Direction.NORTH,
+      Direction.NORTHEAST,
+      Direction.EAST,
+      Direction.SOUTHEAST,
+      Direction.SOUTH,
+      Direction.SOUTHWEST,
+      Direction.WEST,
+      Direction.NORTHWEST,
+    ];
+  } else if (spell.directionMode === 'fixed' && spell.defaultDirections) {
+    // Use spell's configured directions
+    castDirections = spell.defaultDirections;
+  } else if (spell.directionMode === 'relative' && spell.relativeDirections) {
+    // Convert relative directions to absolute based on current facing
+    castDirections = spell.relativeDirections.map(relDir =>
+      relativeToAbsolute(character.facing, relDir)
+    );
+  }
+
+  console.log('[executeSpell] Casting in directions:', castDirections);
+
+  // Execute spell for each direction based on template type
+  for (const direction of castDirections) {
+    executeSpellInDirection(character, spell, direction, gameState);
+  }
+}
+
+/**
+ * Execute spell in a specific direction
+ */
+function executeSpellInDirection(
+  character: PlacedCharacter,
+  spell: SpellAsset,
+  direction: Direction,
+  gameState: GameState
+): void {
+  // Convert SpellAsset to CustomAttack format for execution
+  const attackData: CustomAttack = {
+    id: spell.id,
+    name: spell.name,
+    damage: spell.damage,
+    range: spell.range,
+    projectileSpeed: spell.projectileSpeed,
+    projectilePierces: spell.pierceEnemies,
+    aoeRadius: spell.radius,
+    projectileSprite: spell.sprites.projectile,
+    hitEffectSprite: spell.sprites.damageEffect,
+    castEffectSprite: spell.sprites.castEffect,
+    effectDuration: 300,
+    pattern: AttackPattern.PROJECTILE, // Default, will be set below
+  };
+
+  // Map spell template to attack pattern
+  switch (spell.templateType) {
+    case SpellTemplate.MELEE:
+      attackData.pattern = AttackPattern.MELEE;
+      // Temporarily set character facing for melee direction
+      const originalFacing = character.facing;
+      character.facing = direction;
+      executeMeleeAttack(character, attackData, gameState);
+      character.facing = originalFacing;
+      break;
+
+    case SpellTemplate.RANGE_LINEAR:
+    case SpellTemplate.MAGIC_LINEAR:
+      attackData.pattern = AttackPattern.PROJECTILE;
+      // Temporarily set character facing for projectile direction
+      const origFacing = character.facing;
+      character.facing = direction;
+      spawnProjectile(character, attackData, gameState);
+      character.facing = origFacing;
+      break;
+
+    case SpellTemplate.AOE:
+      attackData.pattern = AttackPattern.AOE_CIRCLE;
+      executeAOEAttack(character, attackData, gameState);
+      break;
+
+    default:
+      console.warn(`Spell template not yet implemented: ${spell.templateType}`);
+  }
+}
+
+/**
  * Spawn a projectile for a PROJECTILE attack
  */
 function spawnProjectile(
@@ -478,6 +671,9 @@ function spawnProjectile(
   const targetX = character.x + dx * range;
   const targetY = character.y + dy * range;
 
+  // Determine if source is an enemy or character
+  const isEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+
   // Create projectile
   const projectile: Projectile = {
     id: `proj_${Date.now()}_${Math.random()}`,
@@ -492,7 +688,8 @@ function spawnProjectile(
     speed,
     active: true,
     startTime: Date.now(),
-    sourceCharacterId: character.characterId,
+    sourceCharacterId: isEnemy ? undefined : character.characterId,
+    sourceEnemyId: isEnemy ? character.characterId : undefined,
   };
 
   gameState.activeProjectiles.push(projectile);

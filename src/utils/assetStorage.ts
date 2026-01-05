@@ -50,12 +50,31 @@ export interface DirectionalSpriteConfig {
 
   // Idle state (not moving) - for this specific direction
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
+  idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
 
   // Moving state (actively moving) - for this specific direction
   movingImageData?: string; // Base64 encoded GIF for moving state
+  movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
+
+  // Death state - for this specific direction
+  deathImageData?: string; // Base64 encoded PNG/GIF for death state
+  deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
+
+  // Casting state - when casting spell while stationary
+  castingImageData?: string; // Base64 encoded PNG/GIF for casting state
+  castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
 
   // Deprecated - for backwards compatibility
   imageData?: string; // Will be used as idleImageData if idleImageData not set
+}
+
+export interface SpriteSheetConfig {
+  imageData: string; // Base64 encoded sprite sheet image
+  frameCount: number; // Number of frames in the sheet
+  frameWidth?: number; // Width of each frame (if not provided, calculated from image width / frameCount)
+  frameHeight?: number; // Height of each frame (if not provided, uses full image height)
+  frameRate: number; // Frames per second (e.g., 10 fps)
+  loop?: boolean; // Whether to loop animation (default true)
 }
 
 export interface CustomSprite {
@@ -72,6 +91,17 @@ export interface CustomSprite {
   // Simple mode images (same for all directions)
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
   movingImageData?: string; // Base64 encoded GIF for moving state
+  idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
+  movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
+  deathImageData?: string; // Base64 encoded PNG/GIF for death state
+  deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
+  castingImageData?: string; // Base64 encoded PNG/GIF for casting state
+  castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
+
+  // Corpse sprite - left behind after death animation completes (non-directional)
+  corpseSpriteSheet?: SpriteSheetConfig; // Sprite sheet for corpse (typically static, 1 frame)
+  corpseImageData?: string; // Base64 encoded PNG/GIF for corpse
+  corpseHasCollision?: boolean; // Whether corpse blocks movement (default: false)
 
   // Deprecated - for backwards compatibility
   imageData?: string; // Will be used as idleImageData if idleImageData not set
@@ -305,4 +335,47 @@ export const deleteCustomAttack = (attackId: string): void => {
 export const loadCustomAttack = (attackId: string): CustomAttack | null => {
   const attacks = getCustomAttacks();
   return attacks.find(a => a.id === attackId) || null;
+};
+
+// ==========================================
+// SPELL ASSETS (New Spell System)
+// ==========================================
+
+import type { SpellAsset } from '../types/game';
+
+const SPELL_STORAGE_KEY = 'spell_assets';
+
+export const saveSpellAsset = (spell: SpellAsset): void => {
+  const spells = getSpellAssets();
+
+  const existingIndex = spells.findIndex(s => s.id === spell.id);
+  if (existingIndex >= 0) {
+    spells[existingIndex] = spell;
+  } else {
+    spells.push(spell);
+  }
+
+  localStorage.setItem(SPELL_STORAGE_KEY, JSON.stringify(spells));
+};
+
+export const getSpellAssets = (): SpellAsset[] => {
+  try {
+    const stored = localStorage.getItem(SPELL_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load spell assets:', e);
+    return [];
+  }
+};
+
+export const deleteSpellAsset = (spellId: string): void => {
+  const spells = getSpellAssets();
+  const filtered = spells.filter(s => s.id !== spellId);
+  localStorage.setItem(SPELL_STORAGE_KEY, JSON.stringify(filtered));
+};
+
+export const loadSpellAsset = (spellId: string): SpellAsset | null => {
+  const spells = getSpellAssets();
+  return spells.find(s => s.id === spellId) || null;
 };

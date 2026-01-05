@@ -7,6 +7,7 @@ interface ControlsProps {
   onPlay: () => void;
   onPause: () => void;
   onReset: () => void;
+  onWipe: () => void;
   onStep: () => void;
 }
 
@@ -16,6 +17,7 @@ export const Controls: React.FC<ControlsProps> = ({
   onPlay,
   onPause,
   onReset,
+  onWipe,
   onStep,
 }) => {
   return (
@@ -52,9 +54,16 @@ export const Controls: React.FC<ControlsProps> = ({
 
         <button
           onClick={onReset}
-          className="col-span-2 px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+          className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
         >
           🔄 Reset
+        </button>
+
+        <button
+          onClick={onWipe}
+          className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition"
+        >
+          🗑 Wipe
         </button>
       </div>
 

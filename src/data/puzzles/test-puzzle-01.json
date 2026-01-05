@@ -65,5 +65,8 @@
     }
   ],
   "maxCharacters": 3,
-  "maxTurns": 100
+  "maxTurns": 100,
+  "borderConfig": {
+    "style": "dungeon"
+  }
 }
