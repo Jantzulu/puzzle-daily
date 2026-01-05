@@ -582,6 +582,7 @@ function drawDirectionArrow(
   direction: Direction
 ) {
   const arrowSize = 8;
+  const diagonalOffset = arrowSize * 0.7; // For diagonal arrows
   ctx.fillStyle = 'white';
   ctx.beginPath();
 
@@ -591,20 +592,40 @@ function drawDirectionArrow(
       ctx.lineTo(cx - arrowSize / 2, cy);
       ctx.lineTo(cx + arrowSize / 2, cy);
       break;
+    case Direction.NORTHEAST:
+      ctx.moveTo(cx + diagonalOffset, cy - diagonalOffset);
+      ctx.lineTo(cx - diagonalOffset / 2, cy - diagonalOffset / 2);
+      ctx.lineTo(cx + diagonalOffset / 2, cy + diagonalOffset / 2);
+      break;
     case Direction.EAST:
       ctx.moveTo(cx + arrowSize, cy);
       ctx.lineTo(cx, cy - arrowSize / 2);
       ctx.lineTo(cx, cy + arrowSize / 2);
+      break;
+    case Direction.SOUTHEAST:
+      ctx.moveTo(cx + diagonalOffset, cy + diagonalOffset);
+      ctx.lineTo(cx + diagonalOffset / 2, cy - diagonalOffset / 2);
+      ctx.lineTo(cx - diagonalOffset / 2, cy + diagonalOffset / 2);
       break;
     case Direction.SOUTH:
       ctx.moveTo(cx, cy + arrowSize);
       ctx.lineTo(cx - arrowSize / 2, cy);
       ctx.lineTo(cx + arrowSize / 2, cy);
       break;
+    case Direction.SOUTHWEST:
+      ctx.moveTo(cx - diagonalOffset, cy + diagonalOffset);
+      ctx.lineTo(cx + diagonalOffset / 2, cy + diagonalOffset / 2);
+      ctx.lineTo(cx - diagonalOffset / 2, cy - diagonalOffset / 2);
+      break;
     case Direction.WEST:
       ctx.moveTo(cx - arrowSize, cy);
       ctx.lineTo(cx, cy - arrowSize / 2);
       ctx.lineTo(cx, cy + arrowSize / 2);
+      break;
+    case Direction.NORTHWEST:
+      ctx.moveTo(cx - diagonalOffset, cy - diagonalOffset);
+      ctx.lineTo(cx - diagonalOffset / 2, cy + diagonalOffset / 2);
+      ctx.lineTo(cx + diagonalOffset / 2, cy - diagonalOffset / 2);
       break;
   }
 
