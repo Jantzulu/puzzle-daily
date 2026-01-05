@@ -115,6 +115,9 @@ export function executeTurn(gameState: GameState): GameState {
       continue;
     }
 
+    // Debug: Log character behavior
+    console.log('[simulation] Character:', newCharacter.characterId, 'Behavior:', JSON.stringify(charData.behavior, null, 2));
+
     // Initialize parallel trackers if needed
     initializeParallelTrackers(newCharacter, charData);
 

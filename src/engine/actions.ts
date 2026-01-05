@@ -71,6 +71,9 @@ export function executeAction(
 ): PlacedCharacter {
   const updatedCharacter = { ...character };
 
+  // Debug: Log action details
+  console.log('[executeAction] Action:', action.type, 'turnDegrees:', action.turnDegrees, 'onWallCollision:', action.onWallCollision);
+
   // Normalize action type - handle both enum keys and values
   const normalizedType = normalizeActionType(action.type);
 
