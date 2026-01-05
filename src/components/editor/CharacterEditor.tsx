@@ -76,6 +76,9 @@ export const CharacterEditor: React.FC = () => {
   const handleSave = () => {
     if (!editingCharacter) return;
 
+    console.log('[CharacterEditor] Saving character:', editingCharacter.name);
+    console.log('[CharacterEditor] Behavior being saved:', JSON.stringify(editingCharacter.behavior, null, 2));
+
     saveCharacter(editingCharacter);
 
     // Refresh list
@@ -370,7 +373,11 @@ export const CharacterEditor: React.FC = () => {
                               <label className="text-xs text-gray-400">Turn degrees:</label>
                               <select
                                 value={action.turnDegrees || 90}
-                                onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 })}
+                                onChange={(e) => {
+                                  const newDegrees = parseInt(e.target.value) as 45 | 90;
+                                  console.log('[CharacterEditor] Changing turnDegrees to:', newDegrees, 'for action:', action);
+                                  updateBehaviorAction(index, { ...action, turnDegrees: newDegrees });
+                                }}
                                 className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
                               >
                                 <option value={90}>90° (Cardinal only)</option>
