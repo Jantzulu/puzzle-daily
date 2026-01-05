@@ -32,6 +32,7 @@ export function getDirectionOffset(direction: Direction): { dx: number; dy: numb
  * @param degrees - 45 for diagonal turns, 90 for cardinal turns (default: 90)
  */
 export function turnLeft(direction: Direction, degrees: 45 | 90 = 90): Direction {
+  console.log('[turnLeft] Direction:', direction, 'Degrees:', degrees, 'Type:', typeof degrees);
   if (degrees === 45) {
     // 45-degree turn (8-direction rotation)
     switch (direction) {
@@ -49,16 +50,16 @@ export function turnLeft(direction: Direction, degrees: 45 | 90 = 90): Direction
     // 90-degree turn (4-direction rotation) - normalize diagonals to nearest cardinal
     switch (direction) {
       case Direction.NORTH:
-      case Direction.NORTHWEST:
-        return Direction.WEST;
       case Direction.NORTHEAST:
+        return Direction.WEST;
       case Direction.EAST:
-        return Direction.NORTH;
       case Direction.SOUTHEAST:
+        return Direction.NORTH;
       case Direction.SOUTH:
-        return Direction.EAST;
       case Direction.SOUTHWEST:
+        return Direction.EAST;
       case Direction.WEST:
+      case Direction.NORTHWEST:
         return Direction.SOUTH;
       default: return direction;
     }
@@ -71,6 +72,7 @@ export function turnLeft(direction: Direction, degrees: 45 | 90 = 90): Direction
  * @param degrees - 45 for diagonal turns, 90 for cardinal turns (default: 90)
  */
 export function turnRight(direction: Direction, degrees: 45 | 90 = 90): Direction {
+  console.log('[turnRight] Direction:', direction, 'Degrees:', degrees, 'Type:', typeof degrees);
   if (degrees === 45) {
     // 45-degree turn (8-direction rotation)
     switch (direction) {
