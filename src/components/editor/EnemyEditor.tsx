@@ -408,11 +408,12 @@ export const EnemyEditor: React.FC = () => {
                                     <label className="text-xs text-gray-400">Turn degrees:</label>
                                     <select
                                       value={action.turnDegrees || 90}
-                                      onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 })}
+                                      onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
                                       className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
                                     >
-                                      <option value={90}>90° (Cardinal only)</option>
-                                      <option value={45}>45° (Includes diagonals)</option>
+                                      <option value={45}>45° (One diagonal step)</option>
+                                      <option value={90}>90° (Cardinal directions)</option>
+                                      <option value={135}>135° (Skip diagonal - for corners)</option>
                                     </select>
                                   </div>
                                 )}
@@ -424,11 +425,12 @@ export const EnemyEditor: React.FC = () => {
                                   <label className="text-xs text-gray-400">Turn degrees:</label>
                                   <select
                                     value={action.turnDegrees || 90}
-                                    onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 })}
+                                    onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
                                     className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
                                   >
-                                    <option value={90}>90° (Cardinal only)</option>
-                                    <option value={45}>45° (Includes diagonals)</option>
+                                    <option value={45}>45° (One diagonal step)</option>
+                                    <option value={90}>90° (Cardinal directions)</option>
+                                    <option value={135}>135° (Skip diagonal - for corners)</option>
                                   </select>
                                 </div>
                               </div>

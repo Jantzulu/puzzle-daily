@@ -140,7 +140,7 @@ function moveCharacter(
   gameState: GameState,
   tilesPerMove: number = 1,
   onWallCollision: WallCollisionBehavior = 'stop',
-  turnDegrees: 45 | 90 = 90
+  turnDegrees: 45 | 90 | 135 = 90
 ): PlacedCharacter {
   // Move multiple tiles if tilesPerMove > 1
   let updatedChar = { ...character };
