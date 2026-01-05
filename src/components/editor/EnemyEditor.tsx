@@ -175,11 +175,12 @@ export const EnemyEditor: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left column - Stats */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-bold mb-4">Enemy Stats</h2>
+            {/* Left column - Stats and Behavior */}
+            <div className="space-y-4">
+              <div className="bg-gray-800 p-4 rounded">
+                <h2 className="text-xl font-bold mb-4">Enemy Stats</h2>
 
-              <div className="space-y-3">
+                <div className="space-y-3">
                 <div>
                   <label className="block text-sm font-bold mb-1">Name</label>
                   <input
@@ -268,25 +269,13 @@ export const EnemyEditor: React.FC = () => {
                   • {editingEnemy.blocksMovementDead ? 'Corpse blocks movement' : 'Can walk over corpse'}
                 </p>
               </div>
-            </div>
+              </div>
 
-            {/* Right column - Sprite Editor */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-bold mb-4">Sprite Appearance</h2>
-              {editingEnemy.customSprite && (
-                <SpriteEditor
-                  sprite={editingEnemy.customSprite}
-                  onChange={updateSprite}
-                />
-              )}
-            </div>
-          </div>
+              {/* Behavior Editor (moved to left column) */}
+              <div className="bg-gray-800 p-4 rounded">
+                <h2 className="text-xl font-bold mb-4">Enemy Behavior</h2>
 
-          {/* Behavior Section */}
-          <div className="bg-gray-800 p-4 rounded">
-            <h2 className="text-xl font-bold mb-4">Enemy Behavior</h2>
-
-            <div className="space-y-4">
+                <div className="space-y-4">
               {/* Behavior Type */}
               <div>
                 <label className="block text-sm font-bold mb-2">Behavior Type</label>
@@ -671,6 +660,19 @@ export const EnemyEditor: React.FC = () => {
                     </p>
                   </div>
                 </>
+              )}
+                </div>
+              </div>
+            </div>
+
+            {/* Right column - Sprite Editor */}
+            <div className="bg-gray-800 p-4 rounded">
+              <h2 className="text-xl font-bold mb-4">Sprite Appearance</h2>
+              {editingEnemy.customSprite && (
+                <SpriteEditor
+                  sprite={editingEnemy.customSprite}
+                  onChange={updateSprite}
+                />
               )}
             </div>
           </div>
