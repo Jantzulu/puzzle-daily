@@ -211,6 +211,21 @@ export interface PlacedCharacter {
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
 
+/**
+ * Persistent area effect (like fire on the ground)
+ */
+export interface PersistentAreaEffect {
+  id: string;                   // Unique instance ID
+  x: number;                    // Grid position X
+  y: number;                    // Grid position Y
+  radius: number;               // Radius of effect
+  damagePerTurn: number;        // Damage dealt each turn
+  turnsRemaining: number;       // How many more turns it lasts
+  visualSprite?: SpriteReference; // Visual indicator
+  sourceCharacterId?: string;   // Who created this (for friendly fire rules)
+  sourceEnemyId?: string;       // If created by enemy
+}
+
 export interface GameState {
   puzzle: Puzzle;
   placedCharacters: PlacedCharacter[];
@@ -222,6 +237,7 @@ export interface GameState {
   // Attack system (Phase 2)
   activeProjectiles?: Projectile[];
   activeParticles?: ParticleEffect[];
+  persistentAreaEffects?: PersistentAreaEffect[];
 }
 
 export interface PlayerProgress {
@@ -311,6 +327,12 @@ export interface CustomAttack {
 
   // AOE targeting (for AOE patterns)
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
+  projectileBeforeAOE?: boolean; // True: Fire projectile that explodes into AOE
+
+  // Persistent AOE effects
+  persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
+  persistDamagePerTurn?: number; // Damage dealt each turn to units in the area
+  persistVisualSprite?: SpriteReference; // Visual indicator for persistent area
 
   // Visuals
   projectileSprite?: SpriteReference;  // Visual for projectile
@@ -432,8 +454,9 @@ export interface SpellAsset {
   defaultDirections?: Direction[]; // For 'fixed' mode
   relativeDirections?: RelativeDirection[]; // For 'relative' mode
 
-  // Damage
-  damage: number;
+  // Damage/Healing
+  damage?: number;              // Damage dealt (mutually exclusive with healing)
+  healing?: number;             // HP restored (mutually exclusive with damage)
 
   // Range/Area (conditional on template)
   range?: number;               // For linear spells (max tiles)
@@ -443,11 +466,20 @@ export interface SpellAsset {
   projectileSpeed?: number;     // Tiles per second
   pierceEnemies?: boolean;      // Continue through enemies
 
+  // AOE settings
+  aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
+  projectileBeforeAOE?: boolean; // True: Fire projectile that explodes into AOE
+
+  // Persistent AOE effects
+  persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
+  persistDamagePerTurn?: number; // Damage dealt each turn to units in the area
+
   // Visual configuration
   sprites: {
     projectile?: SpriteReference;      // For linear spells (per direction)
     damageEffect: SpriteReference;     // On successful hit
     castEffect?: SpriteReference;      // On caster when spell fires
+    persistentArea?: SpriteReference;  // Visual for persistent ground effects
   };
 
   // Metadata

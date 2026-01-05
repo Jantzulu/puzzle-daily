@@ -6,6 +6,7 @@ import type {
   CustomAttack,
   Projectile,
   ParticleEffect,
+  PersistentAreaEffect,
   SpellAsset,
   RelativeDirection,
 } from '../types/game';
@@ -735,7 +736,7 @@ function executeMeleeAttack(
 }
 
 /**
- * Execute AOE attack (circular area)
+ * Execute AOE attack/heal (circular area)
  */
 function executeAOEAttack(
   character: PlacedCharacter,
@@ -743,7 +744,9 @@ function executeAOEAttack(
   gameState: GameState
 ): void {
   const radius = attackData.aoeRadius || 2;
-  const damage = attackData.damage ?? 1;
+  const damage = attackData.damage ?? 0;
+  const healing = attackData.healing ?? 0;
+  const isHeal = healing > 0;
 
   // Determine center point
   let centerX = character.x;
@@ -757,26 +760,69 @@ function executeAOEAttack(
     centerY = character.y + dy * range;
   }
 
-  // Hit all enemies in radius
-  gameState.puzzle.enemies.forEach(enemy => {
-    if (enemy.dead) return;
+  // Apply instant damage/healing
+  if (!attackData.persistDuration || attackData.persistDuration === 0) {
+    if (isHeal) {
+      // Heal allies (characters) in radius
+      gameState.placedCharacters.forEach(ally => {
+        if (ally.dead || ally === character) return;
 
-    const distance = Math.sqrt(
-      Math.pow(enemy.x - centerX, 2) + Math.pow(enemy.y - centerY, 2)
-    );
+        const distance = Math.sqrt(
+          Math.pow(ally.x - centerX, 2) + Math.pow(ally.y - centerY, 2)
+        );
 
-    if (distance <= radius) {
-      enemy.currentHealth -= damage;
-      if (enemy.currentHealth <= 0) {
-        enemy.dead = true;
-      }
+        if (distance <= radius) {
+          ally.currentHealth = Math.min(ally.currentHealth + healing, getCharacter(ally.characterId)?.health ?? ally.currentHealth);
 
-      // Spawn hit effect on each enemy
-      if (attackData.hitEffectSprite) {
-        spawnParticle(enemy.x, enemy.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
-      }
+          // Spawn hit effect
+          if (attackData.hitEffectSprite) {
+            spawnParticle(ally.x, ally.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+          }
+        }
+      });
+    } else {
+      // Damage enemies in radius
+      gameState.puzzle.enemies.forEach(enemy => {
+        if (enemy.dead) return;
+
+        const distance = Math.sqrt(
+          Math.pow(enemy.x - centerX, 2) + Math.pow(enemy.y - centerY, 2)
+        );
+
+        if (distance <= radius) {
+          enemy.currentHealth -= damage;
+          if (enemy.currentHealth <= 0) {
+            enemy.dead = true;
+          }
+
+          // Spawn hit effect
+          if (attackData.hitEffectSprite) {
+            spawnParticle(enemy.x, enemy.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+          }
+        }
+      });
     }
-  });
+  }
+
+  // Create persistent area effect if duration > 0
+  if (attackData.persistDuration && attackData.persistDuration > 0) {
+    if (!gameState.persistentAreaEffects) {
+      gameState.persistentAreaEffects = [];
+    }
+
+    const persistentEffect: PersistentAreaEffect = {
+      id: `persist_${Date.now()}_${Math.random()}`,
+      x: centerX,
+      y: centerY,
+      radius,
+      damagePerTurn: attackData.persistDamagePerTurn || damage,
+      turnsRemaining: attackData.persistDuration,
+      visualSprite: attackData.persistVisualSprite,
+      sourceCharacterId: character.characterId,
+    };
+
+    gameState.persistentAreaEffects.push(persistentEffect);
+  }
 }
 
 /**

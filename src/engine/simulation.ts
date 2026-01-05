@@ -357,6 +357,9 @@ export function executeTurn(gameState: GameState): GameState {
   // Update particles (Phase 2)
   updateParticles(gameState);
 
+  // Process persistent area effects
+  processPersistentAreaEffects(gameState);
+
   // Check win/lose conditions
   checkGameConditions(gameState);
 
@@ -442,6 +445,7 @@ export function initializeGameState(puzzle: any): GameState {
     score: 0,
     activeProjectiles: [],
     activeParticles: [],
+    persistentAreaEffects: [],
   };
 }
 
@@ -644,4 +648,41 @@ function spawnParticleEffect(
 
 function isInBounds(x: number, y: number, width: number, height: number): boolean {
   return x >= 0 && x < width && y >= 0 && y < height;
+}
+
+/**
+ * Process persistent area effects (like fire on the ground)
+ * Damages enemies in the area each turn and decrements duration
+ */
+function processPersistentAreaEffects(gameState: GameState): void {
+  if (!gameState.persistentAreaEffects || gameState.persistentAreaEffects.length === 0) {
+    return;
+  }
+
+  // Process each persistent effect
+  gameState.persistentAreaEffects.forEach(effect => {
+    // Damage all enemies in radius
+    gameState.puzzle.enemies.forEach(enemy => {
+      if (enemy.dead) return;
+
+      const distance = Math.sqrt(
+        Math.pow(enemy.x - effect.x, 2) + Math.pow(enemy.y - effect.y, 2)
+      );
+
+      if (distance <= effect.radius) {
+        enemy.currentHealth -= effect.damagePerTurn;
+        if (enemy.currentHealth <= 0) {
+          enemy.dead = true;
+        }
+      }
+    });
+
+    // Decrement duration
+    effect.turnsRemaining--;
+  });
+
+  // Remove expired effects
+  gameState.persistentAreaEffects = gameState.persistentAreaEffects.filter(
+    effect => effect.turnsRemaining > 0
+  );
 }
