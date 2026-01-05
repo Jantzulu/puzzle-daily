@@ -396,14 +396,14 @@ function handleIfWall(
     (c) => c.x === checkX && c.y === checkY && !c.dead && c !== character
   );
   const isWallLikeCharacter = blockingCharacter ?
-    getCharacter(blockingCharacter.characterId)?.blocksMovement : false;
+    getCharacter(blockingCharacter.characterId)?.blocksMovementAlive : false;
 
   // Check for blocking dead enemy
   const blockingDeadEnemy = gameState.puzzle.enemies.find(
     (e) => e.x === checkX && e.y === checkY && e.dead
   );
   const isBlockingCorpse = blockingDeadEnemy ?
-    getEnemy(blockingDeadEnemy.enemyId)?.blocksMovement : false;
+    getEnemy(blockingDeadEnemy.enemyId)?.blocksMovementDead : false;
 
   const isWall =
     !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height) ||

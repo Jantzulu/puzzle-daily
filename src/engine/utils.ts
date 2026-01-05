@@ -13,6 +13,8 @@ export function getDirectionOffset(direction: Direction): { dx: number; dy: numb
       return { dx: 0, dy: 1 };
     case Direction.WEST:
       return { dx: -1, dy: 0 };
+    default:
+      return { dx: 0, dy: 0 };
   }
 }
 
@@ -29,6 +31,8 @@ export function turnLeft(direction: Direction): Direction {
       return Direction.EAST;
     case Direction.EAST:
       return Direction.NORTH;
+    default:
+      return direction;
   }
 }
 
@@ -45,6 +49,8 @@ export function turnRight(direction: Direction): Direction {
       return Direction.WEST;
     case Direction.WEST:
       return Direction.NORTH;
+    default:
+      return direction;
   }
 }
 
@@ -61,6 +67,8 @@ export function turnAround(direction: Direction): Direction {
       return Direction.WEST;
     case Direction.WEST:
       return Direction.EAST;
+    default:
+      return direction;
   }
 }
 

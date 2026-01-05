@@ -28,7 +28,7 @@ interface EditorState {
   puzzleName: string;
   puzzleId: string;
   maxCharacters: number;
-  maxTurns: number;
+  maxTurns?: number;
   availableCharacters: string[];
   winConditions: WinCondition[];
   borderConfig?: { style: 'none' | 'dungeon' | 'castle' | 'forest' | 'custom' };
@@ -640,6 +640,7 @@ export const MapEditor: React.FC = () => {
                 onPlay={handlePlay}
                 onPause={handlePause}
                 onReset={handleReset}
+                onWipe={() => {}}
                 onStep={handleStep}
               />
 

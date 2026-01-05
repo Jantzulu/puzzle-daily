@@ -123,7 +123,7 @@ export const Game: React.FC = () => {
     const resetPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const resetState = initializeGameState(resetPuzzle);
     // Restore the placed characters from when Play was pressed, resetting their state
-    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map(char => {
+    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
       const charData = getCharacter(char.characterId);
       return {
         ...char,

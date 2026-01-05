@@ -1,5 +1,5 @@
 import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker } from '../types/game';
-import { ActionType } from '../types/game';
+import { ActionType, Direction } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction } from './actions';
@@ -214,7 +214,7 @@ export function executeTurn(gameState: GameState): GameState {
     if (newEnemy.actionIndex === undefined) {
       newEnemy.actionIndex = 0;
       newEnemy.active = true;
-      newEnemy.facing = enemyData.behavior.defaultFacing || 'south';
+      newEnemy.facing = enemyData.behavior.defaultFacing || Direction.SOUTH;
     }
 
     if (!newEnemy.active) {
@@ -268,7 +268,7 @@ export function executeTurn(gameState: GameState): GameState {
             characterId: newEnemy.enemyId,
             x: newEnemy.x,
             y: newEnemy.y,
-            facing: newEnemy.facing || 'south',
+            facing: newEnemy.facing || Direction.SOUTH,
             currentHealth: newEnemy.currentHealth,
             actionIndex: 0,
             active: newEnemy.active || true,
@@ -317,7 +317,7 @@ export function executeTurn(gameState: GameState): GameState {
             characterId: newEnemy.enemyId,
             x: newEnemy.x,
             y: newEnemy.y,
-            facing: newEnemy.facing || 'south',
+            facing: newEnemy.facing || Direction.SOUTH,
             currentHealth: newEnemy.currentHealth,
             actionIndex: checkIndex,
             active: newEnemy.active || true,
