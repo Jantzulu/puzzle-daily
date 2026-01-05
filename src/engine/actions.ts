@@ -166,21 +166,30 @@ function moveCharacter(
   // Skip 'stop' and 'continue' behaviors - 'stop' means do nothing, 'continue' means ghost through
   if (willHitWall && onWallCollision !== 'continue' && onWallCollision !== 'stop') {
     console.log('[Wall Lookahead] TRIGGERING turn:', onWallCollision);
+    // Turn the character based on collision behavior
     switch (onWallCollision) {
       case 'turn_left':
         updatedChar.facing = turnLeft(updatedChar.facing);
-        return updatedChar;
+        direction = updatedChar.facing; // Update direction for movement below
+        console.log('[Wall Lookahead] Turned left, new facing:', updatedChar.facing);
+        break;
       case 'turn_right':
         updatedChar.facing = turnRight(updatedChar.facing);
-        return updatedChar;
+        direction = updatedChar.facing; // Update direction for movement below
+        console.log('[Wall Lookahead] Turned right, new facing:', updatedChar.facing);
+        break;
       case 'turn_around':
         updatedChar.facing = turnAround(updatedChar.facing);
-        return updatedChar;
+        direction = updatedChar.facing; // Update direction for movement below
+        console.log('[Wall Lookahead] Turned around, new facing:', updatedChar.facing);
+        break;
       default:
         // Unknown collision behavior, just stop
         console.log('[Wall Lookahead] Unknown collision behavior, stopping');
         return updatedChar;
     }
+    // After turning, continue with movement logic below to try moving in new direction
+    console.log('[Wall Lookahead] Will now try to move in new direction:', direction);
   }
 
   // If wall ahead and behavior is 'stop', just return without moving (but still consume the action)
