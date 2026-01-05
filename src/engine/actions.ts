@@ -155,9 +155,17 @@ function moveCharacter(
     gameState.puzzle.tiles[firstY]?.[firstX] === undefined ||
     gameState.puzzle.tiles[firstY]?.[firstX]?.type === TileType.WALL;
 
+  // Debug logging
+  if (willHitWall) {
+    console.log('[Wall Lookahead] Character at', updatedChar.x, updatedChar.y, 'facing', direction);
+    console.log('[Wall Lookahead] Will hit wall at', firstX, firstY);
+    console.log('[Wall Lookahead] onWallCollision:', onWallCollision);
+  }
+
   // If we'll hit a wall immediately, handle collision NOW (don't waste a turn)
   // Skip 'stop' and 'continue' behaviors - 'stop' means do nothing, 'continue' means ghost through
   if (willHitWall && onWallCollision !== 'continue' && onWallCollision !== 'stop') {
+    console.log('[Wall Lookahead] TRIGGERING turn:', onWallCollision);
     switch (onWallCollision) {
       case 'turn_left':
         updatedChar.facing = turnLeft(updatedChar.facing);
@@ -170,6 +178,7 @@ function moveCharacter(
         return updatedChar;
       default:
         // Unknown collision behavior, just stop
+        console.log('[Wall Lookahead] Unknown collision behavior, stopping');
         return updatedChar;
     }
   }
