@@ -72,6 +72,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           startTime: now,
           facingDuringMove: prevChar.facing,
         });
+      } else if (prevChar && prevChar.facing !== char.facing) {
+        // Character turned but didn't move (wall lookahead)
+        // Create a short "turning" animation to update the arrow immediately
+        newPositions.set(idx, {
+          fromX: char.x,
+          fromY: char.y,
+          toX: char.x,
+          toY: char.y,
+          startTime: now,
+          facingDuringMove: char.facing, // Show new facing immediately
+        });
       } else if (existing && now - existing.startTime < ANIMATION_DURATION) {
         // Keep existing animation
         newPositions.set(idx, existing);
@@ -100,6 +111,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           toY: enemy.y,
           startTime: now,
           facingDuringMove: prevEnemy.facing || Direction.SOUTH,
+        });
+      } else if (prevEnemy && prevEnemy.facing !== enemy.facing) {
+        // Enemy turned but didn't move (wall lookahead)
+        // Create a short "turning" animation to update the arrow immediately
+        newPositions.set(idx, {
+          fromX: enemy.x,
+          fromY: enemy.y,
+          toX: enemy.x,
+          toY: enemy.y,
+          startTime: now,
+          facingDuringMove: enemy.facing, // Show new facing immediately
         });
       } else if (existing && now - existing.startTime < ANIMATION_DURATION) {
         // Keep existing animation
