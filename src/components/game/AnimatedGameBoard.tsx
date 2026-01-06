@@ -43,6 +43,8 @@ interface AnimatedGameBoardProps {
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
+const NARROW_BORDER_SIZE = 12; // Very thin border for 1-tile narrow voids
+const NARROW_SIDE_BORDER_SIZE = 8; // Very thin side border for 1-tile narrow voids
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
 const MOVE_DURATION = 200; // First 50%: moving between tiles
 const IDLE_DURATION = 200; // Second 50%: idle on destination tile
@@ -68,6 +70,7 @@ interface BorderEdge {
   x: number;
   y: number;
   edge: EdgeType;
+  isNarrowVoid: boolean; // True if the void this edge borders is only 1 tile in the perpendicular dimension
 }
 
 // Corner types for smart border rendering
@@ -144,6 +147,45 @@ function isSmallVoidForBorderSkip(tiles: (import('../../types/game').TileOrNull)
 }
 
 /**
+ * Check if a void at (voidX, voidY) is narrow in the direction perpendicular to the given edge.
+ * For top/bottom edges, checks if the void is only 1 tile tall (narrow vertically).
+ * For left/right edges, checks if the void is only 1 tile wide (narrow horizontally).
+ */
+function isNarrowVoidForEdge(
+  tiles: (import('../../types/game').TileOrNull)[][],
+  voidX: number,
+  voidY: number,
+  edge: EdgeType,
+  width: number,
+  height: number
+): boolean {
+  // For top/bottom edges, check vertical depth of void
+  if (edge === 'top' || edge === 'bottom') {
+    // Check if there's a playable tile on the opposite side of the void
+    if (edge === 'top') {
+      // Void is above the tile at (voidX, voidY+1), check if there's playable above the void
+      return isTilePlayable(tiles, voidX, voidY - 1, width, height);
+    } else {
+      // Void is below the tile at (voidX, voidY-1), check if there's playable below the void
+      return isTilePlayable(tiles, voidX, voidY + 1, width, height);
+    }
+  }
+
+  // For left/right edges, check horizontal width of void
+  if (edge === 'left' || edge === 'right') {
+    if (edge === 'left') {
+      // Void is left of the tile, check if there's playable further left
+      return isTilePlayable(tiles, voidX - 1, voidY, width, height);
+    } else {
+      // Void is right of the tile, check if there's playable further right
+      return isTilePlayable(tiles, voidX + 1, voidY, width, height);
+    }
+  }
+
+  return false;
+}
+
+/**
  * Compute smart border edges and corners based on actual playable tile shapes
  */
 function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], width: number, height: number): SmartBorderData {
@@ -187,10 +229,10 @@ function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], 
       const hasLeft = leftVoid && !smallVoidsToSkip.has(`${x - 1},${y}`);
       const hasRight = rightVoid && !smallVoidsToSkip.has(`${x + 1},${y}`);
 
-      if (hasTop) edges.push({ x, y, edge: 'top' });
-      if (hasBottom) edges.push({ x, y, edge: 'bottom' });
-      if (hasLeft) edges.push({ x, y, edge: 'left' });
-      if (hasRight) edges.push({ x, y, edge: 'right' });
+      if (hasTop) edges.push({ x, y, edge: 'top', isNarrowVoid: isNarrowVoidForEdge(tiles, x, y - 1, 'top', width, height) });
+      if (hasBottom) edges.push({ x, y, edge: 'bottom', isNarrowVoid: isNarrowVoidForEdge(tiles, x, y + 1, 'bottom', width, height) });
+      if (hasLeft) edges.push({ x, y, edge: 'left', isNarrowVoid: isNarrowVoidForEdge(tiles, x - 1, y, 'left', width, height) });
+      if (hasRight) edges.push({ x, y, edge: 'right', isNarrowVoid: isNarrowVoidForEdge(tiles, x + 1, y, 'right', width, height) });
 
       // Detect corners by checking diagonal neighbors and edge combinations
       const topLeft = !isTilePlayable(tiles, x - 1, y - 1, width, height);
@@ -717,22 +759,22 @@ function drawSmartDungeonBorder(
   ctx.save();
 
   // Draw edge borders for each exposed tile edge
-  borderData.edges.forEach(({ x, y, edge }) => {
+  borderData.edges.forEach(({ x, y, edge, isNarrowVoid }) => {
     const px = offsetX + x * TILE_SIZE;
     const py = offsetY + y * TILE_SIZE;
 
     switch (edge) {
       case 'top':
-        drawTopWallSegment(ctx, px, py);
+        drawTopWallSegment(ctx, px, py, isNarrowVoid);
         break;
       case 'bottom':
-        drawBottomWallSegment(ctx, px, py);
+        drawBottomWallSegment(ctx, px, py, isNarrowVoid);
         break;
       case 'left':
-        drawLeftWallSegment(ctx, px, py);
+        drawLeftWallSegment(ctx, px, py, isNarrowVoid);
         break;
       case 'right':
-        drawRightWallSegment(ctx, px, py);
+        drawRightWallSegment(ctx, px, py, isNarrowVoid);
         break;
     }
   });
@@ -750,57 +792,70 @@ function drawSmartDungeonBorder(
 /**
  * Draw a top wall segment for a single tile edge
  */
-function drawTopWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+function drawTopWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
+  const borderSize = isNarrowVoid ? NARROW_BORDER_SIZE : BORDER_SIZE;
+
   // Main wall body (extends upward from tile)
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, BORDER_SIZE);
+  ctx.fillRect(px, py - borderSize, TILE_SIZE, borderSize);
 
-  // Shadow at bottom of wall
+  // Shadow at bottom of wall (scaled for narrow)
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px, py - 12, TILE_SIZE, 12);
+  const shadowHeight = isNarrowVoid ? 4 : 12;
+  ctx.fillRect(px, py - shadowHeight, TILE_SIZE, shadowHeight);
 
-  // Highlight at top
+  // Highlight at top (scaled for narrow)
   ctx.fillStyle = '#4a4a5a';
-  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, 8);
+  const highlightHeight = isNarrowVoid ? 3 : 8;
+  ctx.fillRect(px, py - borderSize, TILE_SIZE, highlightHeight);
 }
 
 /**
  * Draw a bottom wall segment for a single tile edge
  */
-function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
+  const borderSize = isNarrowVoid ? NARROW_BORDER_SIZE : BORDER_SIZE;
+
   // Main wall body (extends downward from tile)
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, BORDER_SIZE);
+  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, borderSize);
 
-  // Highlight at top edge of bottom wall
+  // Highlight at top edge of bottom wall (scaled for narrow)
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 8);
+  const highlightHeight = isNarrowVoid ? 3 : 8;
+  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, highlightHeight);
 }
 
 /**
  * Draw a left wall segment for a single tile edge
  */
-function drawLeftWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+function drawLeftWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
+  const borderSize = isNarrowVoid ? NARROW_SIDE_BORDER_SIZE : SIDE_BORDER_SIZE;
+
   // Main wall body (extends leftward from tile)
   ctx.fillStyle = '#323242';
-  ctx.fillRect(px - SIDE_BORDER_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
+  ctx.fillRect(px - borderSize, py, borderSize, TILE_SIZE);
 
-  // Inner edge (right side of left wall, darker)
+  // Inner edge (right side of left wall, darker) - scaled for narrow
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px - 6, py, 6, TILE_SIZE);
+  const edgeWidth = isNarrowVoid ? 2 : 6;
+  ctx.fillRect(px - edgeWidth, py, edgeWidth, TILE_SIZE);
 }
 
 /**
  * Draw a right wall segment for a single tile edge
  */
-function drawRightWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+function drawRightWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
+  const borderSize = isNarrowVoid ? NARROW_SIDE_BORDER_SIZE : SIDE_BORDER_SIZE;
+
   // Main wall body (extends rightward from tile)
   ctx.fillStyle = '#323242';
-  ctx.fillRect(px + TILE_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
+  ctx.fillRect(px + TILE_SIZE, py, borderSize, TILE_SIZE);
 
-  // Inner edge (left side of right wall, lighter)
+  // Inner edge (left side of right wall, lighter) - scaled for narrow
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(px + TILE_SIZE, py, 6, TILE_SIZE);
+  const edgeWidth = isNarrowVoid ? 2 : 6;
+  ctx.fillRect(px + TILE_SIZE, py, edgeWidth, TILE_SIZE);
 }
 
 /**
