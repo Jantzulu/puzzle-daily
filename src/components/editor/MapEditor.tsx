@@ -478,6 +478,13 @@ export const MapEditor: React.FC = () => {
 
   // Playtest handlers
   const handlePlaytest = () => {
+    // Build borderConfig from skin for compatibility with AnimatedGameBoard
+    const skin = state.skinId ? loadPuzzleSkin(state.skinId) : null;
+    const borderConfig: BorderConfig | undefined = skin ? {
+      style: Object.keys(skin.borderSprites).length > 0 ? 'custom' : 'dungeon',
+      customBorderSprites: Object.keys(skin.borderSprites).length > 0 ? skin.borderSprites : undefined,
+    } : undefined;
+
     const puzzle: Puzzle = {
       id: state.puzzleId,
       date: new Date().toISOString().split('T')[0],
@@ -491,7 +498,8 @@ export const MapEditor: React.FC = () => {
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
       maxTurns: state.maxTurns,
-      borderConfig: state.borderConfig,
+      borderConfig,
+      skinId: state.skinId,
     };
 
     // Store deep copy of original puzzle for reset
@@ -580,8 +588,7 @@ export const MapEditor: React.FC = () => {
   };
 
   // Calculate canvas size with borders
-  const borderStyle = state.borderConfig?.style || 'none';
-  const hasBorder = borderStyle !== 'none';
+  const hasBorder = state.skinId !== undefined && state.skinId !== '';
   const gridWidth = state.gridWidth * TILE_SIZE;
   const gridHeight = state.gridHeight * TILE_SIZE;
   const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
