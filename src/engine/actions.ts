@@ -1272,7 +1272,10 @@ export function evaluateTriggers(
         gameState
       );
 
+      console.log(`[TRIGGER-CHECK] ${entityType} ${character.characterId} | event: ${action.trigger.event} | triggered: ${triggered}`);
+
       if (triggered) {
+        console.log(`[TRIGGER-FIRE] ${entityType} ${character.characterId} executing ${action.type} (spellId: ${action.spellId || 'none'})`);
         const updatedCharacter = executeAction(character, action, gameState);
         Object.assign(character, updatedCharacter);
       }

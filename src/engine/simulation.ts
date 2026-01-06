@@ -422,12 +422,22 @@ export function executeTurn(gameState: GameState): GameState {
     }
   }
 
+  // Log state after priority enemies
+  const charHPAfterPriority = pendingCharacterTriggers.map(c => `${c.characterId}:${c.currentHealth}HP${c.dead ? '(dead)' : ''}`).join(', ');
+  const enemyHPAfterPriority = pendingEnemyTriggers.map(e => `${e.enemyId}:${e.currentHealth}HP${e.dead ? '(dead)' : ''}`).join(', ');
+  console.log(`[AFTER PRIORITY] Chars: ${charHPAfterPriority} | Enemies: ${enemyHPAfterPriority}`);
+
   // Execute character triggers (normal priority)
   for (const character of pendingCharacterTriggers) {
     if (!character.dead) {
       evaluateTriggers(character, gameState);
     }
   }
+
+  // Log state after character triggers
+  const charHPAfterChars = pendingCharacterTriggers.map(c => `${c.characterId}:${c.currentHealth}HP${c.dead ? '(dead)' : ''}`).join(', ');
+  const enemyHPAfterChars = pendingEnemyTriggers.map(e => `${e.enemyId}:${e.currentHealth}HP${e.dead ? '(dead)' : ''}`).join(', ');
+  console.log(`[AFTER CHARS] Chars: ${charHPAfterChars} | Enemies: ${enemyHPAfterChars}`);
 
   // Execute non-priority enemy triggers
   for (const enemy of pendingEnemyTriggers) {
