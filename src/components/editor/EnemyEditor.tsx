@@ -204,31 +204,38 @@ export const EnemyEditor: React.FC = () => {
                   <p className="text-xs text-gray-400 mt-1">Hit points before death</p>
                 </div>
 
-                <div>
-                  <label className="block text-sm font-bold mb-1">Attack Damage</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={editingEnemy.attackDamage}
-                    onChange={(e) => updateEnemy({ attackDamage: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Damage dealt when counterattacking</p>
-                </div>
+                {/* VESTIGIAL: Attack Damage and Retaliation Damage are legacy fields.
+                    Kept for backwards compatibility but hidden from UI.
+                    Use spell-based combat system instead via triggers. */}
+                {false && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-bold mb-1">Attack Damage</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={editingEnemy.attackDamage}
+                        onChange={(e) => updateEnemy({ attackDamage: parseInt(e.target.value) })}
+                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Damage dealt when counterattacking</p>
+                    </div>
 
-                <div>
-                  <label className="block text-sm font-bold mb-1">Retaliation Damage (Optional)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    max="10"
-                    value={editingEnemy.retaliationDamage !== undefined ? editingEnemy.retaliationDamage : editingEnemy.attackDamage}
-                    onChange={(e) => updateEnemy({ retaliationDamage: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Counterattack damage (defaults to Attack Damage if not set)</p>
-                </div>
+                    <div>
+                      <label className="block text-sm font-bold mb-1">Retaliation Damage (Optional)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="10"
+                        value={editingEnemy.retaliationDamage !== undefined ? editingEnemy.retaliationDamage : editingEnemy.attackDamage}
+                        onChange={(e) => updateEnemy({ retaliationDamage: parseInt(e.target.value) })}
+                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Counterattack damage (defaults to Attack Damage if not set)</p>
+                    </div>
+                  </>
+                )}
 
                 <div>
                   <label className="flex items-center gap-2">
@@ -270,38 +277,46 @@ export const EnemyEditor: React.FC = () => {
                 </div>
 
                 {/* Combat Toggles */}
-                <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
-                  <h3 className="text-sm font-bold text-gray-300">Combat Toggles (Backwards Compatibility)</h3>
-                  <div>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={editingEnemy.useAttackDamage || false}
-                        onChange={(e) => updateEnemy({
-                          useAttackDamage: e.target.checked
-                        })}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm font-bold">Use Attack Damage</span>
-                    </label>
-                    <p className="text-xs text-gray-400 mt-1">Use legacy collision damage system (default: false)</p>
-                  </div>
+                {/* VESTIGIAL: Combat Toggles for legacy attack/retaliation damage.
+                    Kept for backwards compatibility but hidden from UI.
+                    Use spell-based combat system instead via triggers. */}
+                {false && (
+                  <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
+                    <h3 className="text-sm font-bold text-gray-300">Combat Toggles (Backwards Compatibility)</h3>
+                    <div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={editingEnemy.useAttackDamage || false}
+                          onChange={(e) => updateEnemy({
+                            useAttackDamage: e.target.checked
+                          })}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm font-bold">Use Attack Damage</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mt-1">Use legacy collision damage system (default: false)</p>
+                    </div>
 
-                  <div>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={editingEnemy.useRetaliationDamage || false}
-                        onChange={(e) => updateEnemy({
-                          useRetaliationDamage: e.target.checked
-                        })}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm font-bold">Use Retaliation Damage</span>
-                    </label>
-                    <p className="text-xs text-gray-400 mt-1">Use legacy retaliation system (default: false)</p>
+                    <div>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={editingEnemy.useRetaliationDamage || false}
+                          onChange={(e) => updateEnemy({
+                            useRetaliationDamage: e.target.checked
+                          })}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm font-bold">Use Retaliation Damage</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mt-1">Use legacy retaliation system (default: false)</p>
+                    </div>
                   </div>
+                )}
 
+                {/* Melee Priority Toggle - still useful for spell-based combat */}
+                <div className="mt-4 pt-4 border-t border-gray-700">
                   <div>
                     <label className="flex items-center gap-2">
                       <input
@@ -314,21 +329,21 @@ export const EnemyEditor: React.FC = () => {
                       />
                       <span className="text-sm font-bold">Has Melee Priority</span>
                     </label>
-                    <p className="text-xs text-gray-400 mt-1">Enemy attacks before characters in melee combat (default: false)</p>
+                    <p className="text-xs text-gray-400 mt-1">Enemy attacks before characters when adjacent (default: false)</p>
                   </div>
                 </div>
               </div>
 
               <div className="mt-6 p-3 bg-gray-700 rounded">
-                <h3 className="text-sm font-bold mb-2">Combat Preview</h3>
+                <h3 className="text-sm font-bold mb-2">Entity Summary</h3>
                 <p className="text-xs text-gray-300">
                   • Takes {editingEnemy.health} hit{editingEnemy.health > 1 ? 's' : ''} to kill
-                  <br />
-                  • Deals {editingEnemy.attackDamage} damage on counterattack
                   <br />
                   • {editingEnemy.canOverlapEntities ? 'Can overlap with entities (ghost mode)' : 'Blocks entity movement'}
                   <br />
                   • {editingEnemy.behavesLikeWallDead ? 'Corpse behaves like wall' : 'Can walk over corpse'}
+                  <br />
+                  • {editingEnemy.hasMeleePriority ? 'Attacks before characters when adjacent' : 'Attacks after characters'}
                 </p>
               </div>
               </div>
@@ -376,9 +391,13 @@ export const EnemyEditor: React.FC = () => {
                       className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                     >
                       <option value={Direction.NORTH}>North ↑</option>
+                      <option value={Direction.NORTHEAST}>North-East ↗</option>
                       <option value={Direction.EAST}>East →</option>
+                      <option value={Direction.SOUTHEAST}>South-East ↘</option>
                       <option value={Direction.SOUTH}>South ↓</option>
+                      <option value={Direction.SOUTHWEST}>South-West ↙</option>
                       <option value={Direction.WEST}>West ←</option>
+                      <option value={Direction.NORTHWEST}>North-West ↖</option>
                     </select>
                   </div>
 
@@ -929,8 +948,9 @@ export const EnemyEditor: React.FC = () => {
                   <div>
                     <span className="text-gray-400">HP:</span> {enemy.health}
                   </div>
+                  {/* VESTIGIAL: ATK display hidden - use spell-based combat instead */}
                   <div>
-                    <span className="text-gray-400">ATK:</span> {enemy.attackDamage}
+                    <span className="text-gray-400">Type:</span> {enemy.behavior?.type || 'static'}
                   </div>
                   {enemy.canOverlapEntities && (
                     <div className="col-span-2 text-xs text-cyan-400">

@@ -1,11 +1,39 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig } from '../../types/game';
-import { TileType, Direction } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior } from '../../types/game';
+import { TileType, Direction, ActionType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { drawSprite } from '../editor/SpriteEditor';
+import { drawSprite, drawDeathSprite, hasDeathAnimation } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy } from '../../utils/assetStorage';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
+
+// Movement action types - entities with these actions should show direction arrow
+const MOVEMENT_ACTIONS = new Set([
+  ActionType.MOVE_FORWARD,
+  ActionType.MOVE_BACKWARD,
+  ActionType.MOVE_LEFT,
+  ActionType.MOVE_RIGHT,
+  ActionType.MOVE_DIAGONAL_NE,
+  ActionType.MOVE_DIAGONAL_NW,
+  ActionType.MOVE_DIAGONAL_SE,
+  ActionType.MOVE_DIAGONAL_SW,
+]);
+
+/**
+ * Check if a character's behavior contains any movement actions
+ */
+function hasMovementActions(behavior: CharacterAction[]): boolean {
+  return behavior.some(action => MOVEMENT_ACTIONS.has(action.type));
+}
+
+/**
+ * Check if an enemy's behavior pattern contains any movement actions
+ */
+function enemyHasMovementActions(behavior: EnemyBehavior | undefined): boolean {
+  if (!behavior || behavior.type !== 'active') return false;
+  if (!behavior.pattern || behavior.pattern.length === 0) return false;
+  return behavior.pattern.some(action => MOVEMENT_ACTIONS.has(action.type));
+}
 
 interface AnimatedGameBoardProps {
   gameState: GameState;
@@ -18,6 +46,7 @@ const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
 const MOVE_DURATION = 200; // First 50%: moving between tiles
 const IDLE_DURATION = 200; // Second 50%: idle on destination tile
+const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -44,6 +73,14 @@ interface CharacterAttack {
   direction: Direction;
 }
 
+// Track death animation state
+interface DeathAnimationState {
+  startTime: number;
+  x: number;
+  y: number;
+  facing: Direction;
+}
+
 export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -52,6 +89,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const prevCharactersRef = useRef<PlacedCharacter[]>([]);
   const prevEnemiesRef = useRef<PlacedEnemy[]>([]);
   const animationRef = useRef<number>();
+
+  // Track death animations - keyed by entity ID (characterId or index)
+  const [characterDeathAnimations, setCharacterDeathAnimations] = useState<Map<string, DeathAnimationState>>(new Map());
+  const [enemyDeathAnimations, setEnemyDeathAnimations] = useState<Map<number, DeathAnimationState>>(new Map());
+  const prevCharacterDeadStateRef = useRef<Map<string, boolean>>(new Map());
+  const prevEnemyDeadStateRef = useRef<Map<number, boolean>>(new Map());
 
   // Detect character movement
   useEffect(() => {
@@ -143,6 +186,80 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     prevEnemiesRef.current = [...gameState.puzzle.enemies];
   }, [gameState.puzzle.enemies]);
 
+  // Detect character deaths and trigger death animations
+  useEffect(() => {
+    const now = Date.now();
+    const newDeathAnimations = new Map(characterDeathAnimations);
+    let hasChanges = false;
+
+    gameState.placedCharacters.forEach((char) => {
+      const wasDeadBefore = prevCharacterDeadStateRef.current.get(char.characterId) || false;
+      const isDeadNow = char.dead || false;
+
+      // Entity just died - start death animation
+      if (!wasDeadBefore && isDeadNow) {
+        newDeathAnimations.set(char.characterId, {
+          startTime: now,
+          x: char.x,
+          y: char.y,
+          facing: char.facing,
+        });
+        hasChanges = true;
+      }
+
+      prevCharacterDeadStateRef.current.set(char.characterId, isDeadNow);
+    });
+
+    // Clean up old death animations that have completed
+    for (const [id, anim] of newDeathAnimations.entries()) {
+      if (now - anim.startTime > DEATH_ANIMATION_DURATION) {
+        newDeathAnimations.delete(id);
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      setCharacterDeathAnimations(newDeathAnimations);
+    }
+  }, [gameState.placedCharacters]);
+
+  // Detect enemy deaths and trigger death animations
+  useEffect(() => {
+    const now = Date.now();
+    const newDeathAnimations = new Map(enemyDeathAnimations);
+    let hasChanges = false;
+
+    gameState.puzzle.enemies.forEach((enemy, idx) => {
+      const wasDeadBefore = prevEnemyDeadStateRef.current.get(idx) || false;
+      const isDeadNow = enemy.dead || false;
+
+      // Entity just died - start death animation
+      if (!wasDeadBefore && isDeadNow) {
+        newDeathAnimations.set(idx, {
+          startTime: now,
+          x: enemy.x,
+          y: enemy.y,
+          facing: enemy.facing || Direction.SOUTH,
+        });
+        hasChanges = true;
+      }
+
+      prevEnemyDeadStateRef.current.set(idx, isDeadNow);
+    });
+
+    // Clean up old death animations that have completed
+    for (const [idx, anim] of newDeathAnimations.entries()) {
+      if (now - anim.startTime > DEATH_ANIMATION_DURATION) {
+        newDeathAnimations.delete(idx);
+        hasChanges = true;
+      }
+    }
+
+    if (hasChanges) {
+      setEnemyDeathAnimations(newDeathAnimations);
+    }
+  }, [gameState.puzzle.enemies]);
+
   // Animation loop
   useEffect(() => {
     const animate = () => {
@@ -223,57 +340,87 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Determine if game has started (for sprite selection)
       const gameStarted = gameState.gameStatus === 'running' || gameState.gameStatus === 'won' || gameState.gameStatus === 'lost';
 
-      // Draw enemies with animation
+      // Collect all entities for z-ordered rendering
+      // Ghost entities (canOverlapEntities=true) render on top of normal entities
+      interface RenderableEntity {
+        type: 'enemy' | 'character';
+        index: number;
+        isGhost: boolean;
+        entity: PlacedEnemy | PlacedCharacter;
+      }
+
+      const renderQueue: RenderableEntity[] = [];
+
+      // Add enemies to render queue
       gameState.puzzle.enemies.forEach((enemy, idx) => {
-        const anim = enemyPositions.get(idx);
-
-        if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
-          // Animating (only if game has started)
-          const elapsed = now - anim.startTime;
-
-          if (elapsed < MOVE_DURATION) {
-            // First 50%: Moving from old tile to new tile
-            const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-            const eased = easeInOutQuad(moveProgress);
-
-            const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
-            const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-
-            drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted);
-          } else {
-            // Second 50%: Idle on destination tile - show NEW facing direction
-            drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted);
-          }
-        } else {
-          // Not animating or game hasn't started - draw at actual position with idle sprite
-          drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted);
-        }
+        const enemyData = getEnemy(enemy.enemyId);
+        renderQueue.push({
+          type: 'enemy',
+          index: idx,
+          isGhost: enemyData?.canOverlapEntities || false,
+          entity: enemy,
+        });
       });
 
-      // Draw characters with animation
+      // Add characters to render queue
       gameState.placedCharacters.forEach((character, idx) => {
-        const anim = characterPositions.get(idx);
+        const charData = getCharacter(character.characterId);
+        renderQueue.push({
+          type: 'character',
+          index: idx,
+          isGhost: charData?.canOverlapEntities || false,
+          entity: character,
+        });
+      });
 
-        if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
-          // Animating (only if game has started)
-          const elapsed = now - anim.startTime;
+      // Sort: non-ghosts first, then ghosts (ghosts render on top)
+      renderQueue.sort((a, b) => {
+        if (a.isGhost === b.isGhost) return 0;
+        return a.isGhost ? 1 : -1;
+      });
 
-          if (elapsed < MOVE_DURATION) {
-            // First 50%: Moving from old tile to new tile
-            const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-            const eased = easeInOutQuad(moveProgress);
+      // Render all entities in z-order
+      renderQueue.forEach(({ type, index, entity }) => {
+        if (type === 'enemy') {
+          const enemy = entity as PlacedEnemy;
+          const anim = enemyPositions.get(index);
+          const deathAnim = enemyDeathAnimations.get(index);
 
-            const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
-            const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+          if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
+            const elapsed = now - anim.startTime;
 
-            drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted);
+            if (elapsed < MOVE_DURATION) {
+              const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+              const eased = easeInOutQuad(moveProgress);
+              const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
+              const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+              drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+            } else {
+              drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+            }
           } else {
-            // Second 50%: Idle on destination tile - show NEW facing direction
-            drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted);
+            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now);
           }
         } else {
-          // Not animating or game hasn't started - draw at actual position with idle sprite
-          drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted);
+          const character = entity as PlacedCharacter;
+          const anim = characterPositions.get(index);
+          const deathAnim = characterDeathAnimations.get(character.characterId);
+
+          if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
+            const elapsed = now - anim.startTime;
+
+            if (elapsed < MOVE_DURATION) {
+              const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+              const eased = easeInOutQuad(moveProgress);
+              const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
+              const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+              drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+            } else {
+              drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+            }
+          } else {
+            drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted, deathAnim, now);
+          }
         }
       });
 
@@ -290,7 +437,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, characterPositions, enemyPositions]);
+  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onTileClick) return;
@@ -457,7 +604,17 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
   ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
 }
 
-function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, renderX?: number, renderY?: number, isMoving: boolean = false, facingOverride?: Direction, gameStarted: boolean = true) {
+function drawEnemy(
+  ctx: CanvasRenderingContext2D,
+  enemy: PlacedEnemy,
+  renderX?: number,
+  renderY?: number,
+  isMoving: boolean = false,
+  facingOverride?: Direction,
+  gameStarted: boolean = true,
+  deathAnimState?: DeathAnimationState,
+  now: number = Date.now()
+) {
   const x = renderX !== undefined ? renderX : enemy.x;
   const y = renderY !== undefined ? renderY : enemy.y;
   const px = x * TILE_SIZE;
@@ -472,26 +629,54 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, renderX?: 
   const hasCustomSprite = enemyData && 'customSprite' in enemyData && enemyData.customSprite;
 
   if (hasCustomSprite && enemyData.customSprite) {
-    // Draw custom sprite with idle/moving state
     if (!enemy.dead) {
-      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving);
+      // Living enemy - draw normal sprite
+      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now);
     } else {
-      // Draw dimmed version when dead
-      ctx.globalAlpha = 0.3;
-      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false);
-      ctx.globalAlpha = 1.0;
+      // Dead enemy - use death sprite (animates then stays on final frame as corpse)
+      const hasDeathSprite = hasDeathAnimation(enemyData.customSprite);
+
+      if (hasDeathSprite) {
+        // Death sprite sheet will animate and stop on final frame (corpse state)
+        // Use the death animation start time for proper frame calculation
+        const deathStartTime = deathAnimState?.startTime || now;
+        drawDeathSprite(
+          ctx,
+          enemyData.customSprite,
+          px + TILE_SIZE / 2,
+          py + TILE_SIZE / 2,
+          TILE_SIZE,
+          deathAnimState?.facing || facing,
+          deathStartTime
+        );
+      } else {
+        // No death sprite - draw dimmed version with X
+        ctx.globalAlpha = 0.3;
+        drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
+        ctx.globalAlpha = 1.0;
+        drawDeadX(ctx, px, py);
+      }
     }
   } else {
-    // Default rendering
-    ctx.fillStyle = enemy.dead ? COLORS.deadEnemy : COLORS.enemy;
-    ctx.beginPath();
-    ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
-    ctx.fill();
+    // Default rendering (no custom sprite)
+    if (!enemy.dead) {
+      ctx.fillStyle = COLORS.enemy;
+      ctx.beginPath();
+      ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      // Dead default sprite
+      ctx.fillStyle = COLORS.deadEnemy;
+      ctx.beginPath();
+      ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+      ctx.fill();
+      drawDeadX(ctx, px, py);
+    }
   }
 
   if (!enemy.dead) {
-    // Only draw direction arrow if enemy has active behavior (can move)
-    if (enemyData && enemyData.behavior && enemyData.behavior.type === 'active') {
+    // Only draw direction arrow if enemy has movement actions in their behavior
+    if (enemyData && enemyHasMovementActions(enemyData.behavior)) {
       drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing || Direction.SOUTH);
     }
 
@@ -501,22 +686,32 @@ function drawEnemy(ctx: CanvasRenderingContext2D, enemy: PlacedEnemy, renderX?: 
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
     ctx.fillText(`HP:${enemy.currentHealth}`, px + TILE_SIZE / 2, py + TILE_SIZE - 12);
-  } else {
-    // Draw X for dead enemy
-    ctx.strokeStyle = 'white';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(px + TILE_SIZE / 3, py + TILE_SIZE / 3);
-    ctx.lineTo(px + (2 * TILE_SIZE) / 3, py + (2 * TILE_SIZE) / 3);
-    ctx.moveTo(px + (2 * TILE_SIZE) / 3, py + TILE_SIZE / 3);
-    ctx.lineTo(px + TILE_SIZE / 3, py + (2 * TILE_SIZE) / 3);
-    ctx.stroke();
   }
 }
 
-function drawCharacter(ctx: CanvasRenderingContext2D, character: PlacedCharacter, x: number, y: number, isMoving: boolean = false, facingOverride?: Direction, gameStarted: boolean = true) {
-  if (character.dead) return;
+// Helper to draw X over dead entities
+function drawDeadX(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  ctx.moveTo(px + TILE_SIZE / 3, py + TILE_SIZE / 3);
+  ctx.lineTo(px + (2 * TILE_SIZE) / 3, py + (2 * TILE_SIZE) / 3);
+  ctx.moveTo(px + (2 * TILE_SIZE) / 3, py + TILE_SIZE / 3);
+  ctx.lineTo(px + TILE_SIZE / 3, py + (2 * TILE_SIZE) / 3);
+  ctx.stroke();
+}
 
+function drawCharacter(
+  ctx: CanvasRenderingContext2D,
+  character: PlacedCharacter,
+  x: number,
+  y: number,
+  isMoving: boolean = false,
+  facingOverride?: Direction,
+  gameStarted: boolean = true,
+  deathAnimState?: DeathAnimationState,
+  now: number = Date.now()
+) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : character.facing;
@@ -529,45 +724,85 @@ function drawCharacter(ctx: CanvasRenderingContext2D, character: PlacedCharacter
   const hasCustomSprite = charData && 'customSprite' in charData && charData.customSprite;
 
   if (hasCustomSprite && charData.customSprite) {
-    // Draw custom sprite with directional support and idle/moving state
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+    if (!character.dead) {
+      // Living character - draw custom sprite with directional support and idle/moving state
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
 
-    drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving);
+      drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now);
 
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    } else {
+      // Dead character - use death sprite (animates then stays on final frame as corpse)
+      const hasDeathSprite = hasDeathAnimation(charData.customSprite);
+
+      if (hasDeathSprite) {
+        // Death sprite sheet will animate and stop on final frame (corpse state)
+        const deathStartTime = deathAnimState?.startTime || now;
+        drawDeathSprite(
+          ctx,
+          charData.customSprite,
+          px + TILE_SIZE / 2,
+          py + TILE_SIZE / 2,
+          TILE_SIZE,
+          deathAnimState?.facing || facing,
+          deathStartTime
+        );
+      } else {
+        // No death sprite - draw dimmed version with X
+        ctx.globalAlpha = 0.3;
+        drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
+        ctx.globalAlpha = 1.0;
+        drawDeadX(ctx, px, py);
+      }
+    }
   } else {
-    // Default rendering
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-    ctx.shadowBlur = 4;
-    ctx.shadowOffsetX = 2;
-    ctx.shadowOffsetY = 2;
+    // Default rendering (no custom sprite)
+    if (!character.dead) {
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
 
-    ctx.fillStyle = COLORS.character;
-    const size = TILE_SIZE * 0.6;
-    const offset = (TILE_SIZE - size) / 2;
-    ctx.fillRect(px + offset, py + offset, size, size);
+      ctx.fillStyle = COLORS.character;
+      const size = TILE_SIZE * 0.6;
+      const offset = (TILE_SIZE - size) / 2;
+      ctx.fillRect(px + offset, py + offset, size, size);
 
-    ctx.shadowColor = 'transparent';
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
+    } else {
+      // Dead default character - draw dimmed version with X
+      ctx.globalAlpha = 0.3;
+      ctx.fillStyle = COLORS.character;
+      const size = TILE_SIZE * 0.6;
+      const offset = (TILE_SIZE - size) / 2;
+      ctx.fillRect(px + offset, py + offset, size, size);
+      ctx.globalAlpha = 1.0;
+      drawDeadX(ctx, px, py);
+    }
   }
 
-  // Draw direction arrow
-  drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing);
+  if (!character.dead) {
+    // Only draw direction arrow if character has movement actions in their behavior
+    if (charData && hasMovementActions(charData.behavior || [])) {
+      drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing);
+    }
 
-  // Draw health
-  ctx.fillStyle = 'white';
-  ctx.font = 'bold 10px monospace';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'top';
-  ctx.fillText(`HP:${character.currentHealth}`, px + TILE_SIZE / 2, py + TILE_SIZE - 12);
+    // Draw health
+    ctx.fillStyle = 'white';
+    ctx.font = 'bold 10px monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'top';
+    ctx.fillText(`HP:${character.currentHealth}`, px + TILE_SIZE / 2, py + TILE_SIZE - 12);
+  }
 }
 
 function drawDirectionArrow(

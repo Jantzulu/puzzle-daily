@@ -768,7 +768,7 @@ export const MapEditor: React.FC = () => {
                     <option value="">-- Select Enemy --</option>
                     {allEnemies.map(enemy => (
                       <option key={enemy.id} value={enemy.id}>
-                        {enemy.name} (HP: {enemy.health}, ATK: {enemy.attackDamage})
+                        {enemy.name} (HP: {enemy.health})
                       </option>
                     ))}
                   </select>
@@ -800,7 +800,7 @@ export const MapEditor: React.FC = () => {
                         className="w-4 h-4"
                       />
                       <span className="text-sm flex-1">{char.name}</span>
-                      <span className="text-xs text-gray-400">HP:{char.health} ATK:{char.attackDamage}</span>
+                      <span className="text-xs text-gray-400">HP:{char.health}</span>
                     </label>
                   ))}
                 </div>

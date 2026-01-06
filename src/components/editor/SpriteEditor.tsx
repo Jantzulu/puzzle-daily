@@ -85,6 +85,78 @@ function drawSpriteSheet(
   }
 }
 
+/**
+ * Draw a sprite sheet with animation based on a specific start time
+ * Used for one-shot animations like death sprites where we need to track
+ * when the animation started and stop on the final frame
+ */
+function drawSpriteSheetFromStartTime(
+  ctx: CanvasRenderingContext2D,
+  sheet: import('../../utils/assetStorage').SpriteSheetConfig,
+  centerX: number,
+  centerY: number,
+  displayWidth: number,
+  displayHeight: number,
+  startTime: number,
+  now: number = Date.now()
+): void {
+  // Get or create cached image
+  let img = globalImageCache.get(sheet.imageData);
+  if (!img) {
+    img = new Image();
+    img.src = sheet.imageData;
+    globalImageCache.set(sheet.imageData, img);
+  }
+
+  // Wait for image to load
+  if (!img.complete || img.naturalWidth === 0) return;
+
+  // Calculate frame dimensions
+  const frameWidth = sheet.frameWidth || (img.naturalWidth / sheet.frameCount);
+  const frameHeight = sheet.frameHeight || img.naturalHeight;
+
+  // Calculate current frame based on elapsed time since start
+  const elapsed = now - startTime;
+  const frameDuration = 1000 / sheet.frameRate; // ms per frame
+  let currentFrame = Math.floor(elapsed / frameDuration);
+
+  // For non-looping animations (like death), clamp to final frame
+  if (sheet.loop === false && currentFrame >= sheet.frameCount) {
+    currentFrame = sheet.frameCount - 1;
+  } else if (sheet.loop !== false) {
+    // Looping animation
+    currentFrame = currentFrame % sheet.frameCount;
+  }
+
+  // Ensure frame is within bounds
+  currentFrame = Math.max(0, Math.min(currentFrame, sheet.frameCount - 1));
+
+  // Calculate display dimensions preserving aspect ratio
+  const frameAspectRatio = frameWidth / frameHeight;
+  let finalWidth = displayWidth;
+  let finalHeight = displayHeight;
+
+  if (frameAspectRatio > 1) {
+    finalHeight = displayWidth / frameAspectRatio;
+  } else {
+    finalWidth = displayHeight * frameAspectRatio;
+  }
+
+  // Draw the current frame
+  const sourceX = currentFrame * frameWidth;
+  const sourceY = 0;
+
+  try {
+    ctx.drawImage(
+      img,
+      sourceX, sourceY, frameWidth, frameHeight,
+      centerX - finalWidth / 2, centerY - finalHeight / 2, finalWidth, finalHeight
+    );
+  } catch (e) {
+    // Image not ready
+  }
+}
+
 interface SpriteEditorProps {
   sprite: CustomSprite;
   onChange: (sprite: CustomSprite) => void;
@@ -108,7 +180,44 @@ const DIRECTIONS: { key: SpriteDirection; label: string; arrow: string }[] = [
 export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
-  const [spriteMode, setSpriteMode] = useState<'simple' | 'directional'>(sprite.type || 'simple');
+  // Always use directional mode - 'default' direction serves as universal fallback
+  const spriteMode = 'directional' as const;
+
+  // Auto-migrate simple mode sprites to directional mode on first render
+  useEffect(() => {
+    if (sprite.type === 'simple' || !sprite.useDirectional) {
+      // Migrate simple mode data to directional 'default' config
+      const defaultConfig: DirectionalSpriteConfig = {
+        shape: sprite.shape || 'circle',
+        primaryColor: sprite.primaryColor || '#4caf50',
+        secondaryColor: sprite.secondaryColor || '#ffffff',
+        size: sprite.size || 0.6,
+        idleImageData: sprite.idleImageData || sprite.imageData,
+        movingImageData: sprite.movingImageData,
+        idleSpriteSheet: sprite.idleSpriteSheet,
+        movingSpriteSheet: sprite.movingSpriteSheet,
+        deathImageData: sprite.deathImageData,
+        deathSpriteSheet: sprite.deathSpriteSheet,
+        castingImageData: sprite.castingImageData,
+        castingSpriteSheet: sprite.castingSpriteSheet,
+      };
+
+      onChange({
+        id: sprite.id,
+        name: sprite.name,
+        type: 'directional',
+        useDirectional: true,
+        createdAt: sprite.createdAt,
+        directionalSprites: {
+          ...sprite.directionalSprites,
+          default: defaultConfig,
+        },
+        // Keep corpse sprite at root level (non-directional)
+        corpseSpriteSheet: sprite.corpseSpriteSheet,
+        corpseImageData: sprite.corpseImageData,
+      });
+    }
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -195,43 +304,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     renderPreview();
   }, [sprite, selectedDirection, spriteMode]);
 
-  const handleModeChange = (mode: 'simple' | 'directional') => {
-    setSpriteMode(mode);
-
-    if (mode === 'directional') {
-      // Switching to directional - clear simple mode data and initialize directional
-      const defaultConfig: DirectionalSpriteConfig = {
-        shape: sprite.shape || 'circle',
-        primaryColor: sprite.primaryColor || '#4caf50',
-        secondaryColor: sprite.secondaryColor || '#ffffff',
-        size: sprite.size || 0.6,
-      };
-
-      onChange({
-        id: sprite.id,
-        name: sprite.name,
-        type: 'directional',
-        useDirectional: true,
-        createdAt: sprite.createdAt,
-        directionalSprites: {
-          default: defaultConfig,
-        },
-      });
-    } else {
-      // Switching to simple - clear directional data and keep simple properties
-      onChange({
-        id: sprite.id,
-        name: sprite.name,
-        type: 'simple',
-        useDirectional: false,
-        createdAt: sprite.createdAt,
-        shape: sprite.shape || 'circle',
-        primaryColor: sprite.primaryColor || '#4caf50',
-        secondaryColor: sprite.secondaryColor || '#ffffff',
-        size: sprite.size || 0.6,
-      });
-    }
-  };
+  // Mode change function removed - always using directional mode now
 
   const handleShapeChange = (shape: DirectionalSpriteConfig['shape']) => {
     if (spriteMode === 'directional') {
@@ -1052,31 +1125,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
   return (
     <div className="space-y-4">
-      {/* Mode Toggle */}
-      <div>
-        <label className="block text-sm font-bold mb-2">Sprite Mode</label>
-        <div className="grid grid-cols-2 gap-2">
-          <button
-            onClick={() => handleModeChange('simple')}
-            className={`p-2 rounded ${
-              spriteMode === 'simple' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-          >
-            Simple (Same all directions)
-          </button>
-          <button
-            onClick={() => handleModeChange('directional')}
-            className={`p-2 rounded ${
-              spriteMode === 'directional' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-            }`}
-          >
-            Directional (8-way)
-          </button>
-        </div>
-      </div>
+      {/* Note: Always using directional mode now. The 'Default/Static' direction serves as the universal fallback. */}
 
-      {/* SIMPLE MODE UPLOADS */}
-      {spriteMode === 'simple' && (
+      {/* LEGACY SIMPLE MODE - condition will never be true, kept for reference during migration */}
+      {false && (
         <>
           {/* Simple Sprite Sheet Upload */}
           <div>
@@ -1416,8 +1468,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         </>
       )}
 
-      {/* DIRECTIONAL MODE UPLOADS */}
-      {spriteMode === 'directional' && (
+      {/* DIRECTIONAL MODE UPLOADS - Always shown now */}
+      {(
         <>
           {/* Direction Selector */}
           <div>
@@ -2067,7 +2119,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
       <div>
         <label className="block text-sm font-bold mb-2">
-          Preview {spriteMode === 'directional' ? `(${DIRECTIONS.find(d => d.key === selectedDirection)?.label})` : ''}
+          Preview ({DIRECTIONS.find(d => d.key === selectedDirection)?.label})
         </label>
         <canvas
           ref={canvasRef}
@@ -2421,4 +2473,154 @@ function drawStar(
   }
   ctx.closePath();
   ctx.fill();
+}
+
+/**
+ * Draw death animation sprite for an entity
+ * Returns true if a death sprite was drawn, false if not available
+ *
+ * @param startTime - When the death occurred (for proper frame calculation)
+ *                    For sprite sheets, this ensures animation plays from start and stops on final frame
+ */
+export function drawDeathSprite(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite,
+  centerX: number,
+  centerY: number,
+  tileSize: number,
+  direction?: Direction,
+  startTime: number = Date.now()
+): boolean {
+  const maxSize = (sprite.size || 0.6) * tileSize;
+  const now = Date.now();
+
+  // Check for directional death sprite first
+  if (sprite.useDirectional && sprite.directionalSprites && direction) {
+    const dirKey = mapGameDirectionToSpriteDirection(direction);
+    const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
+
+    if (dirConfig) {
+      // Check for death sprite sheet
+      if (dirConfig.deathSpriteSheet) {
+        // Force loop=false for death animations so they stop on final frame
+        const deathSheet = { ...dirConfig.deathSpriteSheet, loop: false };
+        drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now);
+        return true;
+      }
+      // Check for death image
+      if (dirConfig.deathImageData) {
+        drawImage(ctx, dirConfig.deathImageData, centerX, centerY, maxSize);
+        return true;
+      }
+    }
+  }
+
+  // Check for simple mode death sprite sheet
+  if (sprite.deathSpriteSheet) {
+    // Force loop=false for death animations so they stop on final frame
+    const deathSheet = { ...sprite.deathSpriteSheet, loop: false };
+    drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now);
+    return true;
+  }
+
+  // Check for simple mode death image
+  if (sprite.deathImageData) {
+    drawImage(ctx, sprite.deathImageData, centerX, centerY, maxSize);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Draw corpse sprite for a dead entity
+ * Returns true if a corpse sprite was drawn, false if not available
+ */
+export function drawCorpseSprite(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite,
+  centerX: number,
+  centerY: number,
+  tileSize: number,
+  now: number = Date.now()
+): boolean {
+  const maxSize = (sprite.size || 0.6) * tileSize;
+
+  // Check for corpse sprite sheet
+  if (sprite.corpseSpriteSheet) {
+    drawSpriteSheet(ctx, sprite.corpseSpriteSheet, centerX, centerY, maxSize, maxSize, now);
+    return true;
+  }
+
+  // Check for corpse image
+  if (sprite.corpseImageData) {
+    drawImage(ctx, sprite.corpseImageData, centerX, centerY, maxSize);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a sprite has any death animation configured
+ */
+export function hasDeathAnimation(sprite: CustomSprite): boolean {
+  // Check simple mode
+  if (sprite.deathSpriteSheet || sprite.deathImageData) {
+    return true;
+  }
+
+  // Check directional sprites
+  if (sprite.useDirectional && sprite.directionalSprites) {
+    for (const dir of Object.values(sprite.directionalSprites)) {
+      if (dir?.deathSpriteSheet || dir?.deathImageData) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Check if a sprite has any corpse sprite configured
+ */
+export function hasCorpseSprite(sprite: CustomSprite): boolean {
+  return !!(sprite.corpseSpriteSheet || sprite.corpseImageData);
+}
+
+/**
+ * Helper to draw an image from cache
+ */
+function drawImage(
+  ctx: CanvasRenderingContext2D,
+  imageData: string,
+  centerX: number,
+  centerY: number,
+  maxSize: number
+): void {
+  let img = globalImageCache.get(imageData);
+  if (!img) {
+    img = new Image();
+    img.src = imageData;
+    globalImageCache.set(imageData, img);
+  }
+
+  try {
+    let drawWidth = maxSize;
+    let drawHeight = maxSize;
+
+    if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+      const aspectRatio = img.naturalWidth / img.naturalHeight;
+      if (aspectRatio > 1) {
+        drawHeight = maxSize / aspectRatio;
+      } else {
+        drawWidth = maxSize * aspectRatio;
+      }
+    }
+
+    ctx.drawImage(img, centerX - drawWidth / 2, centerY - drawHeight / 2, drawWidth, drawHeight);
+  } catch (e) {
+    // Image not ready
+  }
 }

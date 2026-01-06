@@ -266,16 +266,15 @@ function moveCharacter(
       (c) => c.x === newX && c.y === newY && !c.dead && c !== updatedChar
     );
     if (otherCharacter) {
-      // Check if the moving entity can overlap (ghost mode)
+      // Check if EITHER entity can overlap (ghost mode - bidirectional)
       const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
-      if (movingEntityData?.canOverlapEntities) {
+      const otherCharData = getCharacter(otherCharacter.characterId);
+      if (movingEntityData?.canOverlapEntities || otherCharData?.canOverlapEntities) {
         // Ghost mode - can pass through, move to this tile
         updatedChar.x = newX;
         updatedChar.y = newY;
         continue; // Continue to next tile if multi-tile move
       }
-
-      const otherCharData = getCharacter(otherCharacter.characterId);
 
       // Check if character behaves like a wall (triggers wall collision behaviors)
       if (otherCharData?.behavesLikeWall) {
@@ -349,9 +348,10 @@ function moveCharacter(
     );
 
     if (enemyAtTarget) {
-      // Check if the moving entity can overlap (ghost mode)
+      // Check if EITHER entity can overlap (ghost mode - bidirectional)
       const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
-      if (movingEntityData?.canOverlapEntities) {
+      const targetEnemyData = getEnemy(enemyAtTarget.enemyId);
+      if (movingEntityData?.canOverlapEntities || targetEnemyData?.canOverlapEntities) {
         // Ghost mode - can pass through living enemies too
         updatedChar.x = newX;
         updatedChar.y = newY;
@@ -565,8 +565,8 @@ function handleIfWall(
   const blockingCharacter = gameState.placedCharacters.find(
     (c) => c.x === checkX && c.y === checkY && !c.dead && c !== character
   );
-  const isWallLikeCharacter = blockingCharacter ?
-    getCharacter(blockingCharacter.characterId)?.behavesLikeWall : false;
+  const blockingCharData = blockingCharacter ? getCharacter(blockingCharacter.characterId) : null;
+  const isWallLikeCharacter = blockingCharData?.behavesLikeWall || false;
 
   // Check for blocking dead enemy (behaves like wall)
   const blockingDeadEnemy = gameState.puzzle.enemies.find(
@@ -575,16 +575,27 @@ function handleIfWall(
   const isBlockingCorpse = blockingDeadEnemy ?
     getEnemy(blockingDeadEnemy.enemyId)?.behavesLikeWallDead : false;
 
-  // Check if this entity can overlap (ghost mode ignores blocking entities)
+  // Check for blocking living enemy
+  const blockingEnemy = gameState.puzzle.enemies.find(
+    (e) => e.x === checkX && e.y === checkY && !e.dead
+  );
+  const blockingEnemyData = blockingEnemy ? getEnemy(blockingEnemy.enemyId) : null;
+
+  // Check if EITHER entity can overlap (ghost mode - bidirectional)
   const movingEntityData = getCharacter(character.characterId) || getEnemy(character.characterId);
-  const canOverlap = movingEntityData?.canOverlapEntities;
+  const canOverlapCharacter = movingEntityData?.canOverlapEntities || blockingCharData?.canOverlapEntities;
+  const canOverlapEnemy = movingEntityData?.canOverlapEntities || blockingEnemyData?.canOverlapEntities;
+
+  // Check for blocking corpse data
+  const blockingCorpseData = blockingDeadEnemy ? getEnemy(blockingDeadEnemy.enemyId) : null;
+  const canOverlapCorpse = movingEntityData?.canOverlapEntities || blockingCorpseData?.canOverlapEntities;
 
   const isWall =
     !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height) ||
     !tile ||
     tile.type === TileType.WALL ||
-    (!canOverlap && isWallLikeCharacter) ||
-    (!canOverlap && isBlockingCorpse);
+    (!canOverlapCharacter && isWallLikeCharacter) ||
+    (!canOverlapCorpse && isBlockingCorpse);
 
   if (isWall && action.params?.then) {
     // Execute the "then" actions

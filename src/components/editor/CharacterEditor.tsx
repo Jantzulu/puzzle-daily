@@ -223,30 +223,37 @@ export const CharacterEditor: React.FC = () => {
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-sm font-bold mb-1">Attack Damage</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={editingCharacter.attackDamage}
-                      onChange={(e) => updateCharacter({ attackDamage: parseInt(e.target.value) })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                    />
-                  </div>
+                  {/* VESTIGIAL: Attack Damage and Retaliation Damage are legacy fields.
+                      Kept for backwards compatibility but hidden from UI.
+                      Use spell-based combat system instead via triggers. */}
+                  {false && (
+                    <>
+                      <div>
+                        <label className="block text-sm font-bold mb-1">Attack Damage</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="10"
+                          value={editingCharacter.attackDamage}
+                          onChange={(e) => updateCharacter({ attackDamage: parseInt(e.target.value) })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                        />
+                      </div>
 
-                  <div>
-                    <label className="block text-sm font-bold mb-1">Retaliation Damage</label>
-                    <input
-                      type="number"
-                      min="0"
-                      max="10"
-                      value={editingCharacter.retaliationDamage || 0}
-                      onChange={(e) => updateCharacter({ retaliationDamage: parseInt(e.target.value) || 0 })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                    />
-                    <p className="text-xs text-gray-400 mt-1">Damage dealt when enemies try to move onto this character (0 = no retaliation)</p>
-                  </div>
+                      <div>
+                        <label className="block text-sm font-bold mb-1">Retaliation Damage</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="10"
+                          value={editingCharacter.retaliationDamage || 0}
+                          onChange={(e) => updateCharacter({ retaliationDamage: parseInt(e.target.value) || 0 })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Damage dealt when enemies try to move onto this character (0 = no retaliation)</p>
+                      </div>
+                    </>
+                  )}
 
                   <div>
                     <label className="block text-sm font-bold mb-1">Default Facing</label>
@@ -256,9 +263,13 @@ export const CharacterEditor: React.FC = () => {
                       className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                     >
                       <option value={Direction.NORTH}>North ↑</option>
+                      <option value={Direction.NORTHEAST}>North-East ↗</option>
                       <option value={Direction.EAST}>East →</option>
+                      <option value={Direction.SOUTHEAST}>South-East ↘</option>
                       <option value={Direction.SOUTH}>South ↓</option>
+                      <option value={Direction.SOUTHWEST}>South-West ↙</option>
                       <option value={Direction.WEST}>West ←</option>
+                      <option value={Direction.NORTHWEST}>North-West ↖</option>
                     </select>
                   </div>
 
@@ -301,39 +312,43 @@ export const CharacterEditor: React.FC = () => {
                     <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors</p>
                   </div>
 
-                  {/* Combat Toggles */}
-                  <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
-                    <h3 className="text-sm font-bold text-gray-300">Combat Toggles (Backwards Compatibility)</h3>
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingCharacter.useAttackDamage || false}
-                          onChange={(e) => updateCharacter({
-                            useAttackDamage: e.target.checked
-                          })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm font-bold">Use Attack Damage</span>
-                      </label>
-                      <p className="text-xs text-gray-400 mt-1">Use legacy collision damage system (default: false)</p>
-                    </div>
+                  {/* VESTIGIAL: Combat Toggles are legacy fields.
+                      Kept for backwards compatibility but hidden from UI.
+                      Use spell-based combat system instead via triggers. */}
+                  {false && (
+                    <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
+                      <h3 className="text-sm font-bold text-gray-300">Combat Toggles (Backwards Compatibility)</h3>
+                      <div>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={editingCharacter.useAttackDamage || false}
+                            onChange={(e) => updateCharacter({
+                              useAttackDamage: e.target.checked
+                            })}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm font-bold">Use Attack Damage</span>
+                        </label>
+                        <p className="text-xs text-gray-400 mt-1">Use legacy collision damage system (default: false)</p>
+                      </div>
 
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingCharacter.useRetaliationDamage || false}
-                          onChange={(e) => updateCharacter({
-                            useRetaliationDamage: e.target.checked
-                          })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm font-bold">Use Retaliation Damage</span>
-                      </label>
-                      <p className="text-xs text-gray-400 mt-1">Use legacy retaliation system (default: false)</p>
+                      <div>
+                        <label className="flex items-center gap-2">
+                          <input
+                            type="checkbox"
+                            checked={editingCharacter.useRetaliationDamage || false}
+                            onChange={(e) => updateCharacter({
+                              useRetaliationDamage: e.target.checked
+                            })}
+                            className="w-4 h-4"
+                          />
+                          <span className="text-sm font-bold">Use Retaliation Damage</span>
+                        </label>
+                        <p className="text-xs text-gray-400 mt-1">Use legacy retaliation system (default: false)</p>
+                      </div>
                     </div>
-                  </div>
+                  )}
                 </div>
               </div>
 
@@ -894,10 +909,8 @@ export const CharacterEditor: React.FC = () => {
                   <div>
                     <span className="text-gray-400">HP:</span> {char.health}
                   </div>
+                  {/* VESTIGIAL: ATK display hidden - use spell-based combat instead */}
                   <div>
-                    <span className="text-gray-400">ATK:</span> {char.attackDamage}
-                  </div>
-                  <div className="col-span-2">
                     <span className="text-gray-400">Actions:</span> {char.behavior.length}
                   </div>
                 </div>
