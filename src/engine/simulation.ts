@@ -149,15 +149,24 @@ export function executeTurn(gameState: GameState): GameState {
     // Handle REPEAT action - loop back to beginning AND execute first action
     // Check for both enum value and string key
     if (currentAction.type === ActionType.REPEAT || currentAction.type === 'REPEAT') {
-      // If we skipped actions to get here, just reset index without executing
-      // This prevents double-execution when parallel actions are skipped
-      if (skippedAnyActions) {
-        newCharacter.actionIndex = -1; // Will be incremented to 0 at the end
-      } else {
-        // Normal case: reset and execute first action
-        newCharacter.actionIndex = 0;
-        const firstAction = charData.behavior[0];
-        if (firstAction && firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
+      // Reset to beginning
+      newCharacter.actionIndex = 0;
+
+      // Find the first SEQUENTIAL action (skip parallel actions)
+      let firstSequentialIndex = 0;
+      while (firstSequentialIndex < charData.behavior.length) {
+        const action = charData.behavior[firstSequentialIndex];
+        if (action.executionMode !== 'parallel' && action.executionMode !== 'parallel_with_previous') {
+          break;
+        }
+        firstSequentialIndex++;
+      }
+
+      // Execute the first sequential action
+      if (firstSequentialIndex < charData.behavior.length) {
+        const firstAction = charData.behavior[firstSequentialIndex];
+        if (firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
+          newCharacter.actionIndex = firstSequentialIndex;
           const updatedCharacter = executeAction(newCharacter, firstAction, gameState);
           Object.assign(newCharacter, updatedCharacter);
         }
@@ -258,22 +267,32 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Handle REPEAT action - loop back to beginning AND execute first action
     if (currentAction.type === ActionType.REPEAT || currentAction.type === 'REPEAT') {
-      // If we skipped actions to get here, just reset index without executing
-      // This prevents double-execution when parallel actions are skipped
-      if (skippedAnyActions) {
-        newEnemy.actionIndex = -1; // Will be incremented to 0 at the end
-      } else {
-        // Normal case: reset and execute first action
-        newEnemy.actionIndex = 0;
-        const firstAction = pattern[0];
-        if (firstAction && firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
+      // Reset to beginning
+      newEnemy.actionIndex = 0;
+
+      // Find the first SEQUENTIAL action (skip parallel actions)
+      let firstSequentialIndex = 0;
+      while (firstSequentialIndex < pattern.length) {
+        const action = pattern[firstSequentialIndex];
+        if (action.executionMode !== 'parallel' && action.executionMode !== 'parallel_with_previous') {
+          break;
+        }
+        firstSequentialIndex++;
+      }
+
+      // Execute the first sequential action
+      if (firstSequentialIndex < pattern.length) {
+        const firstAction = pattern[firstSequentialIndex];
+        if (firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
+          newEnemy.actionIndex = firstSequentialIndex;
+
           const tempChar: PlacedCharacter = {
             characterId: newEnemy.enemyId,
             x: newEnemy.x,
             y: newEnemy.y,
             facing: newEnemy.facing || Direction.SOUTH,
             currentHealth: newEnemy.currentHealth,
-            actionIndex: 0,
+            actionIndex: firstSequentialIndex,
             active: newEnemy.active || true,
             dead: newEnemy.dead,
           };
@@ -769,7 +788,7 @@ function triggerAOEExplosion(
     aoeCenteredOnCaster: true, // Force AOE to center on explosion point
   };
 
-  executeAOEAttack(tempChar, modifiedAttackData, gameState);
+  executeAOEAttack(tempChar, modifiedAttackData, Direction.SOUTH, gameState);
 }
 
 /**

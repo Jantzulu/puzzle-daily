@@ -79,12 +79,13 @@ export type ExecutionMode = 'sequential' | 'parallel' | 'parallel_with_previous'
 
 export type TriggerMode = 'interval' | 'on_event';
 
-export type TriggerEvent = 'enemy_adjacent' | 'enemy_in_range' | 'wall_ahead' | 'health_below_50';
+export type TriggerEvent = 'enemy_adjacent' | 'enemy_in_range' | 'contact_with_enemy' | 'wall_ahead' | 'health_below_50';
 
 export interface TriggerConfig {
   mode: TriggerMode;
   intervalMs?: number;        // For interval mode
   event?: TriggerEvent;       // For event mode
+  eventRange?: number;        // For 'enemy_in_range' event - how far to detect (tiles)
 }
 
 export interface CharacterAction {
@@ -107,6 +108,10 @@ export interface CharacterAction {
   directionOverride?: Direction[]; // Override spell's default directions (absolute)
   relativeDirectionOverride?: RelativeDirection[]; // Override with relative directions
   useRelativeOverride?: boolean; // If true, use relativeDirectionOverride instead of directionOverride
+
+  // Auto-targeting configuration
+  autoTargetNearestEnemy?: boolean; // Override spell direction to aim at closest enemy
+  maxTargets?: number;              // Maximum number of enemies to attack (for multi-target spells)
 }
 
 export interface Character {
@@ -118,9 +123,14 @@ export interface Character {
   attackDamage: number;
   defaultFacing: Direction;
   behavior: CharacterAction[];
-  blocksMovementAlive?: boolean; // If true, acts like a wall when alive
+  blocksMovementAlive?: boolean; // If true, blocks movement when alive (stops character)
   blocksMovementDead?: boolean; // If true, acts like a wall when dead (corpse blocks)
+  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors (mutually exclusive with blocksMovementAlive)
   retaliationDamage?: number; // Damage dealt when enemy attempts to move onto this character's tile
+
+  // Combat toggles (for backwards compatibility and fallback)
+  useAttackDamage?: boolean; // If true, use legacy collision damage system (default: false)
+  useRetaliationDamage?: boolean; // If true, use legacy retaliation system (default: false)
 }
 
 export interface Enemy {
@@ -130,9 +140,17 @@ export interface Enemy {
   health: number;
   attackDamage: number;
   behavior?: EnemyBehavior;
-  blocksMovementAlive?: boolean; // If true, blocks movement when alive
+  blocksMovementAlive?: boolean; // If true, blocks movement when alive (stops character)
   blocksMovementDead?: boolean; // If true, blocks movement when dead (wall corpse)
+  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors (mutually exclusive with blocksMovementAlive)
   retaliationDamage?: number; // Damage dealt when character attempts to move onto this enemy's tile
+
+  // Combat toggles (for backwards compatibility and fallback)
+  useAttackDamage?: boolean; // If true, use legacy collision damage system (default: false)
+  useRetaliationDamage?: boolean; // If true, use legacy retaliation system (default: false)
+
+  // Melee priority
+  hasMeleePriority?: boolean; // If true, this enemy attacks before characters in melee exchanges (default: false)
 }
 
 export interface EnemyBehavior {
@@ -462,6 +480,7 @@ export interface SpellAsset {
   // Range/Area (conditional on template)
   range?: number;               // For linear spells (max tiles)
   radius?: number;              // For AOE spells (tiles from center)
+  meleeRange?: number;          // For melee spells - how many tiles in attack direction (default: 1)
 
   // Projectile settings (for linear templates)
   projectileSpeed?: number;     // Tiles per second

@@ -267,12 +267,33 @@ export const CharacterEditor: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={editingCharacter.blocksMovementAlive || false}
-                        onChange={(e) => updateCharacter({ blocksMovementAlive: e.target.checked })}
+                        onChange={(e) => updateCharacter({
+                          blocksMovementAlive: e.target.checked,
+                          behavesLikeWall: e.target.checked ? false : editingCharacter.behavesLikeWall // Mutually exclusive
+                        })}
                         className="w-4 h-4"
+                        disabled={editingCharacter.behavesLikeWall}
                       />
                       <span className="text-sm font-bold">Blocks Movement (Alive)</span>
                     </label>
-                    <p className="text-xs text-gray-400 mt-1">Other characters can't pass through</p>
+                    <p className="text-xs text-gray-400 mt-1">Other characters stop when colliding (no turn behavior)</p>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editingCharacter.behavesLikeWall || false}
+                        onChange={(e) => updateCharacter({
+                          behavesLikeWall: e.target.checked,
+                          blocksMovementAlive: e.target.checked ? false : editingCharacter.blocksMovementAlive // Mutually exclusive
+                        })}
+                        className="w-4 h-4"
+                        disabled={editingCharacter.blocksMovementAlive}
+                      />
+                      <span className="text-sm font-bold">Behaves Like Wall (Alive)</span>
+                    </label>
+                    <p className="text-xs text-gray-400 mt-1">Triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
                   </div>
 
                   <div>

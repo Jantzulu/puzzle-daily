@@ -235,12 +235,33 @@ export const EnemyEditor: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={editingEnemy.blocksMovementAlive || false}
-                      onChange={(e) => updateEnemy({ blocksMovementAlive: e.target.checked })}
+                      onChange={(e) => updateEnemy({
+                        blocksMovementAlive: e.target.checked,
+                        behavesLikeWall: e.target.checked ? false : editingEnemy.behavesLikeWall // Mutually exclusive
+                      })}
                       className="w-4 h-4"
+                      disabled={editingEnemy.behavesLikeWall}
                     />
                     <span className="text-sm font-bold">Blocks Movement (Alive)</span>
                   </label>
-                  <p className="text-xs text-gray-400 mt-1">Characters can't move through when alive</p>
+                  <p className="text-xs text-gray-400 mt-1">Characters stop when colliding (no turn behavior)</p>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingEnemy.behavesLikeWall || false}
+                      onChange={(e) => updateEnemy({
+                        behavesLikeWall: e.target.checked,
+                        blocksMovementAlive: e.target.checked ? false : editingEnemy.blocksMovementAlive // Mutually exclusive
+                      })}
+                      className="w-4 h-4"
+                      disabled={editingEnemy.blocksMovementAlive}
+                    />
+                    <span className="text-sm font-bold">Behaves Like Wall (Alive)</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">Triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
                 </div>
 
                 <div>

@@ -166,3 +166,37 @@ export function turnAround(direction: Direction): Direction {
 export function isInBounds(x: number, y: number, width: number, height: number): boolean {
   return x >= 0 && x < width && y >= 0 && y < height;
 }
+
+/**
+ * Calculate distance between two points (Euclidean distance)
+ */
+export function calculateDistance(x1: number, y1: number, x2: number, y2: number): number {
+  return Math.sqrt(Math.pow(x2 - x1, 2) + Math.pow(y2 - y1, 2));
+}
+
+/**
+ * Calculate direction from one point to another
+ */
+export function calculateDirectionTo(fromX: number, fromY: number, toX: number, toY: number): Direction {
+  const dx = toX - fromX;
+  const dy = toY - fromY;
+
+  // Calculate angle in radians
+  const angle = Math.atan2(dy, dx);
+
+  // Convert to degrees (0 = east, 90 = south, 180 = west, 270 = north)
+  let degrees = angle * (180 / Math.PI);
+  if (degrees < 0) degrees += 360;
+
+  // Map to 8 directions
+  if (degrees >= 337.5 || degrees < 22.5) return Direction.EAST;
+  if (degrees >= 22.5 && degrees < 67.5) return Direction.SOUTHEAST;
+  if (degrees >= 67.5 && degrees < 112.5) return Direction.SOUTH;
+  if (degrees >= 112.5 && degrees < 157.5) return Direction.SOUTHWEST;
+  if (degrees >= 157.5 && degrees < 202.5) return Direction.WEST;
+  if (degrees >= 202.5 && degrees < 247.5) return Direction.NORTHWEST;
+  if (degrees >= 247.5 && degrees < 292.5) return Direction.NORTH;
+  if (degrees >= 292.5 && degrees < 337.5) return Direction.NORTHEAST;
+
+  return Direction.EAST; // Fallback
+}

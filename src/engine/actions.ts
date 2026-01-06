@@ -225,8 +225,31 @@ function moveCharacter(
       (c) => c.x === newX && c.y === newY && !c.dead && c !== updatedChar
     );
     if (otherCharacter) {
-      // Check if the other character blocks like a wall
       const otherCharData = getCharacter(otherCharacter.characterId);
+
+      // Check if character behaves like a wall (triggers wall collision behaviors)
+      if (otherCharData?.behavesLikeWall) {
+        // Handle like a wall collision based on behavior
+        switch (onWallCollision) {
+          case 'turn_left':
+            updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
+            return updatedChar;
+          case 'turn_right':
+            updatedChar.facing = turnRight(updatedChar.facing, turnDegrees);
+            return updatedChar;
+          case 'turn_around':
+            updatedChar.facing = turnAround(updatedChar.facing);
+            return updatedChar;
+          case 'continue':
+            // Skip this tile and continue to next
+            continue;
+          case 'stop':
+          default:
+            return updatedChar; // Stop movement
+        }
+      }
+
+      // Check if the other character blocks like a wall (just stops, no turn behavior)
       if (otherCharData?.blocksMovementAlive) {
         return updatedChar; // Blocked like a wall - stop here
       }
@@ -251,6 +274,30 @@ function moveCharacter(
     );
 
     if (enemyAtTarget) {
+      const enemyData = getEnemy(enemyAtTarget.enemyId);
+
+      // Check if enemy behaves like a wall (triggers wall collision behaviors)
+      if (enemyData?.behavesLikeWall) {
+        // Handle like a wall collision based on behavior
+        switch (onWallCollision) {
+          case 'turn_left':
+            updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
+            return updatedChar;
+          case 'turn_right':
+            updatedChar.facing = turnRight(updatedChar.facing, turnDegrees);
+            return updatedChar;
+          case 'turn_around':
+            updatedChar.facing = turnAround(updatedChar.facing);
+            return updatedChar;
+          case 'continue':
+            // Skip this tile and continue to next
+            continue;
+          case 'stop':
+          default:
+            return updatedChar; // Stop movement
+        }
+      }
+
       // Check if this is an enemy trying to move into another enemy (no combat, just block)
       const isEnemyMoving = getEnemy(updatedChar.characterId) !== undefined;
 
@@ -472,7 +519,7 @@ function executeCustomAttack(
       break;
 
     case AttackPattern.AOE_CIRCLE:
-      executeAOEAttack(character, attackData, gameState);
+      executeAOEAttack(character, attackData, character.facing, gameState);
       break;
 
     case AttackPattern.HEAL:
@@ -648,7 +695,18 @@ function executeSpellInDirection(
 
     case SpellTemplate.AOE:
       attackData.pattern = AttackPattern.AOE_CIRCLE;
-      executeAOEAttack(character, attackData, gameState);
+
+      // Check if this should be a projectile that explodes into AOE
+      if (attackData.projectileBeforeAOE) {
+        // Temporarily set character facing for projectile direction
+        const origFacing = character.facing;
+        character.facing = direction;
+        spawnProjectile(character, attackData, gameState);
+        character.facing = origFacing;
+      } else {
+        // Instant AOE attack
+        executeAOEAttack(character, attackData, direction, gameState);
+      }
       break;
 
     default:
@@ -743,6 +801,7 @@ function executeMeleeAttack(
 export function executeAOEAttack(
   character: PlacedCharacter,
   attackData: CustomAttack,
+  direction: Direction,
   gameState: GameState
 ): void {
   const radius = attackData.aoeRadius || 2;
@@ -755,9 +814,9 @@ export function executeAOEAttack(
   let centerY = character.y;
 
   if (!attackData.aoeCenteredOnCaster) {
-    // AOE at target tile (in facing direction at range)
+    // AOE at target tile (in specified direction at range)
     const range = attackData.range || 1;
-    const { dx, dy } = getDirectionOffset(character.facing);
+    const { dx, dy } = getDirectionOffset(direction);
     centerX = character.x + dx * range;
     centerY = character.y + dy * range;
   }

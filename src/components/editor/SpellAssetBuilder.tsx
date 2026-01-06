@@ -263,29 +263,30 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             </div>
           </div>
 
-          {/* Direction Configuration */}
-          <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Direction Configuration</h3>
+          {/* Direction Configuration - Hidden for self-centered AOE */}
+          {!(templateNeedsRadius && editedSpell.aoeCenteredOnCaster) && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Direction Configuration</h3>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Direction Mode *</label>
-              <select
-                value={editedSpell.directionMode}
-                onChange={(e) => setEditedSpell({ ...editedSpell, directionMode: e.target.value as DirectionMode })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-              >
-                <option value="current_facing">Current Facing (follows character direction)</option>
-                <option value="relative">Relative (relative to character facing)</option>
-                <option value="fixed">Fixed Directions (always same)</option>
-                <option value="all_directions">All Directions (360°)</option>
-              </select>
-              <p className="text-xs text-gray-400 mt-1">
-                {editedSpell.directionMode === 'current_facing' && 'Spell fires in the direction the caster is facing'}
-                {editedSpell.directionMode === 'relative' && 'Spell fires in direction(s) relative to caster (e.g., always to the right)'}
-                {editedSpell.directionMode === 'fixed' && 'Spell always fires in the same absolute direction(s)'}
-                {editedSpell.directionMode === 'all_directions' && 'Spell fires in all 8 directions at once'}
-              </p>
-            </div>
+              <div>
+                <label className="block text-sm font-medium mb-2">Direction Mode *</label>
+                <select
+                  value={editedSpell.directionMode}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, directionMode: e.target.value as DirectionMode })}
+                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                >
+                  <option value="current_facing">Current Facing (follows character direction)</option>
+                  <option value="relative">Relative (relative to character facing)</option>
+                  <option value="fixed">Fixed Directions (always same)</option>
+                  <option value="all_directions">All Directions (360°)</option>
+                </select>
+                <p className="text-xs text-gray-400 mt-1">
+                  {editedSpell.directionMode === 'current_facing' && 'Spell fires in the direction the caster is facing'}
+                  {editedSpell.directionMode === 'relative' && 'Spell fires in direction(s) relative to caster (e.g., always to the right)'}
+                  {editedSpell.directionMode === 'fixed' && 'Spell always fires in the same absolute direction(s)'}
+                  {editedSpell.directionMode === 'all_directions' && 'Spell fires in all 8 directions at once'}
+                </p>
+              </div>
 
             {editedSpell.directionMode === 'fixed' && (
               <div>
@@ -356,7 +357,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 </div>
               </div>
             )}
-          </div>
+            </div>
+          )}
 
           {/* Combat Stats */}
           <div className="space-y-4">
@@ -427,18 +429,25 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </p>
             </div>
 
-            {/* Range (for linear spells) */}
-            {templateNeedsRange && (
+            {/* Range (for linear spells and non-centered AOE) */}
+            {(templateNeedsRange || (templateNeedsRadius && !editedSpell.aoeCenteredOnCaster)) && (
               <div>
-                <label className="block text-sm font-medium mb-1">Max Range (tiles)</label>
+                <label className="block text-sm font-medium mb-1">
+                  {templateNeedsRange ? 'Max Range (tiles)' : 'AOE Distance (tiles)'}
+                </label>
                 <input
                   type="number"
                   min="1"
                   max="20"
-                  value={editedSpell.range || 5}
+                  value={editedSpell.range || (templateNeedsRange ? 5 : 2)}
                   onChange={(e) => setEditedSpell({ ...editedSpell, range: parseInt(e.target.value) || 1 })}
                   className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                 />
+                {templateNeedsRadius && !editedSpell.aoeCenteredOnCaster && (
+                  <p className="text-xs text-gray-400 mt-1">
+                    Distance from caster to AOE center point (in selected direction)
+                  </p>
+                )}
               </div>
             )}
 
@@ -492,26 +501,42 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 </div>
                 <p className="text-xs text-gray-400 mt-1">
                   {editedSpell.aoeCenteredOnCaster
-                    ? 'AOE centered on caster (e.g., Frost Nova)'
+                    ? 'AOE centered on caster (e.g., Frost Nova, Healing Aura)'
                     : 'AOE centered on target tile at range (e.g., Flamestrike)'}
                 </p>
+                {editedSpell.aoeCenteredOnCaster && (
+                  <div className="bg-blue-900 border border-blue-600 rounded p-2 mt-2">
+                    <p className="text-xs text-blue-200">
+                      When centered on caster, the AOE always appears around the caster regardless of direction. Direction settings are hidden because they don't apply.
+                    </p>
+                  </div>
+                )}
+                {!editedSpell.aoeCenteredOnCaster && (
+                  <div className="bg-purple-900 border border-purple-600 rounded p-2 mt-2">
+                    <p className="text-xs text-purple-200">
+                      When centered on target tile, the AOE appears at a distance from the caster in the selected direction. Use "AOE Distance" to control how far away the center point is.
+                    </p>
+                  </div>
+                )}
               </div>
 
-              {/* Projectile Before AOE */}
-              <div>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="checkbox"
-                    checked={editedSpell.projectileBeforeAOE || false}
-                    onChange={(e) => setEditedSpell({ ...editedSpell, projectileBeforeAOE: e.target.checked })}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm font-medium">Fire Projectile First</span>
-                </label>
-                <p className="text-xs text-gray-400 ml-6">
-                  If enabled, fires a projectile that explodes into AOE after traveling
-                </p>
-              </div>
+              {/* Projectile Before AOE - Only for non-centered AOE */}
+              {!editedSpell.aoeCenteredOnCaster && (
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editedSpell.projectileBeforeAOE || false}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, projectileBeforeAOE: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-medium">Fire Projectile First</span>
+                  </label>
+                  <p className="text-xs text-gray-400 ml-6">
+                    If enabled, fires a projectile that travels to the target location and explodes into AOE on impact
+                  </p>
+                </div>
+              )}
 
               {/* Persistent Effect Duration */}
               <div>
