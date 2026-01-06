@@ -801,13 +801,13 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
     ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
   }
 
-  // Bottom wall - thin wall-top (looking down at top surface of wall)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, SIDE_BORDER_SIZE);
-
-  // Inner edge of bottom wall-top
+  // Bottom wall - full thickness for outer perimeter (special case)
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 6);
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
+
+  // Bottom wall top edge highlight
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
 
   // Left wall (side view - THINNER)
   ctx.fillStyle = '#323242';
@@ -831,10 +831,10 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
   ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
   // Top-right - connects to tall front-facing wall
   ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Bottom-left - connects to thin wall-top
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
-  // Bottom-right - connects to thin wall-top
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+  // Bottom-left - connects to full thickness bottom wall
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Bottom-right - connects to full thickness bottom wall
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
 
   ctx.restore();
 }
