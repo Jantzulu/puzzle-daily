@@ -3,7 +3,8 @@ import { Link } from 'react-router-dom';
 import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, WinCondition, GameState, PlacedCharacter } from '../../types/game';
 import { TileType, Direction } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
-import { getAllEnemies } from '../../data/enemies';
+import { getAllEnemies, getEnemy } from '../../data/enemies';
+import { drawSprite } from './SpriteEditor';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
@@ -138,7 +139,7 @@ export const MapEditor: React.FC = () => {
     // Draw enemies
     state.enemies.forEach((enemy) => {
       if (!enemy.dead) {
-        drawEnemy(ctx, enemy.x, enemy.y);
+        drawEnemy(ctx, enemy.x, enemy.y, enemy.enemyId);
       }
     });
 
@@ -1077,10 +1078,20 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
   }
 }
 
-function drawEnemy(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function drawEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, enemyId?: string) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
+  // Try to get enemy data and draw custom sprite if available
+  if (enemyId) {
+    const enemyData = getEnemy(enemyId);
+    if (enemyData && 'customSprite' in enemyData && enemyData.customSprite) {
+      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE);
+      return;
+    }
+  }
+
+  // Fallback to red circle if no custom sprite
   ctx.fillStyle = '#f44336';
   ctx.beginPath();
   ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);

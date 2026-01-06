@@ -58,6 +58,109 @@ const COLORS = {
   collectible: '#ffd700',
 };
 
+// ==========================================
+// SMART BORDER TYPES AND DETECTION
+// ==========================================
+
+type EdgeType = 'top' | 'bottom' | 'left' | 'right';
+
+interface BorderEdge {
+  x: number;
+  y: number;
+  edge: EdgeType;
+}
+
+// Corner types for smart border rendering
+// Convex = outer corner (puzzle sticks out), Concave = inner corner (puzzle goes inward)
+type CornerType = 'convex-tl' | 'convex-tr' | 'convex-bl' | 'convex-br' |
+                  'concave-tl' | 'concave-tr' | 'concave-bl' | 'concave-br';
+
+interface BorderCorner {
+  x: number;
+  y: number;
+  type: CornerType;
+}
+
+interface SmartBorderData {
+  edges: BorderEdge[];
+  corners: BorderCorner[];
+  bounds: { minX: number; maxX: number; minY: number; maxY: number };
+}
+
+/**
+ * Check if a tile at (x, y) is playable (exists and is not null)
+ */
+function isTilePlayable(tiles: (import('../../types/game').TileOrNull)[][], x: number, y: number, width: number, height: number): boolean {
+  if (x < 0 || x >= width || y < 0 || y >= height) return false;
+  return tiles[y]?.[x] !== null && tiles[y]?.[x] !== undefined;
+}
+
+/**
+ * Compute smart border edges and corners based on actual playable tile shapes
+ */
+function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], width: number, height: number): SmartBorderData {
+  const edges: BorderEdge[] = [];
+  const corners: BorderCorner[] = [];
+  let minX = width, maxX = -1, minY = height, maxY = -1;
+
+  // Scan all tiles to find edges adjacent to void/null
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const isPlayable = isTilePlayable(tiles, x, y, width, height);
+      if (!isPlayable) continue;
+
+      // Track bounds
+      minX = Math.min(minX, x);
+      maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y);
+      maxY = Math.max(maxY, y);
+
+      // Check all 4 edges - if adjacent tile is void/null/out-of-bounds, we need a border
+      const hasTop = !isTilePlayable(tiles, x, y - 1, width, height);
+      const hasBottom = !isTilePlayable(tiles, x, y + 1, width, height);
+      const hasLeft = !isTilePlayable(tiles, x - 1, y, width, height);
+      const hasRight = !isTilePlayable(tiles, x + 1, y, width, height);
+
+      if (hasTop) edges.push({ x, y, edge: 'top' });
+      if (hasBottom) edges.push({ x, y, edge: 'bottom' });
+      if (hasLeft) edges.push({ x, y, edge: 'left' });
+      if (hasRight) edges.push({ x, y, edge: 'right' });
+
+      // Detect corners by checking diagonal neighbors and edge combinations
+      const topLeft = !isTilePlayable(tiles, x - 1, y - 1, width, height);
+      const topRight = !isTilePlayable(tiles, x + 1, y - 1, width, height);
+      const bottomLeft = !isTilePlayable(tiles, x - 1, y + 1, width, height);
+      const bottomRight = !isTilePlayable(tiles, x + 1, y + 1, width, height);
+
+      // Convex corners (outer corners - where two edges meet)
+      if (hasTop && hasLeft) corners.push({ x, y, type: 'convex-tl' });
+      if (hasTop && hasRight) corners.push({ x, y, type: 'convex-tr' });
+      if (hasBottom && hasLeft) corners.push({ x, y, type: 'convex-bl' });
+      if (hasBottom && hasRight) corners.push({ x, y, type: 'convex-br' });
+
+      // Concave corners (inner corners - where diagonal is void but adjacent are playable)
+      if (!hasTop && !hasLeft && topLeft) corners.push({ x, y, type: 'concave-tl' });
+      if (!hasTop && !hasRight && topRight) corners.push({ x, y, type: 'concave-tr' });
+      if (!hasBottom && !hasLeft && bottomLeft) corners.push({ x, y, type: 'concave-bl' });
+      if (!hasBottom && !hasRight && bottomRight) corners.push({ x, y, type: 'concave-br' });
+    }
+  }
+
+  return { edges, corners, bounds: { minX, maxX, minY, maxY } };
+}
+
+/**
+ * Check if puzzle has irregular shape (any null tiles within bounds)
+ */
+function hasIrregularShape(tiles: (import('../../types/game').TileOrNull)[][], width: number, height: number): boolean {
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (tiles[y]?.[x] === null) return true;
+    }
+  }
+  return false;
+}
+
 interface CharacterPosition {
   fromX: number;
   fromY: number;
@@ -283,7 +386,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Draw border first (if enabled)
       if (hasBorder) {
-        drawBorder(ctx, gameState.puzzle.width, gameState.puzzle.height, borderStyle, gameState.puzzle.borderConfig);
+        drawBorder(ctx, gameState.puzzle.width, gameState.puzzle.height, borderStyle, gameState.puzzle.borderConfig, gameState.puzzle.tiles);
       }
 
       // Save context and translate for grid rendering
@@ -492,14 +595,182 @@ function easeInOutQuad(t: number): number {
 // BORDER RENDERING
 // ==========================================
 
-function drawBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, style: string, config?: any) {
+function drawBorder(
+  ctx: CanvasRenderingContext2D,
+  gridWidth: number,
+  gridHeight: number,
+  style: string,
+  config?: any,
+  tiles?: (import('../../types/game').TileOrNull)[][]
+) {
   const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
   const totalHeight = gridHeight * TILE_SIZE + (BORDER_SIZE * 2);
 
+  // Check if we need smart borders (irregular shape with null tiles)
+  const useSmartBorder = tiles && hasIrregularShape(tiles, gridWidth, gridHeight);
+
   if (style === 'dungeon') {
-    drawDungeonBorder(ctx, gridWidth, gridHeight, totalWidth, totalHeight);
+    if (useSmartBorder && tiles) {
+      drawSmartDungeonBorder(ctx, tiles, gridWidth, gridHeight);
+    } else {
+      drawDungeonBorder(ctx, gridWidth, gridHeight, totalWidth, totalHeight);
+    }
   } else if (style === 'custom' && config?.customBorderSprites) {
     drawCustomBorder(ctx, gridWidth, gridHeight, totalWidth, totalHeight, config.customBorderSprites);
+  }
+}
+
+/**
+ * Draw smart dungeon border that conforms to irregular puzzle shapes
+ */
+function drawSmartDungeonBorder(
+  ctx: CanvasRenderingContext2D,
+  tiles: (import('../../types/game').TileOrNull)[][],
+  gridWidth: number,
+  gridHeight: number
+) {
+  const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
+  const offsetX = SIDE_BORDER_SIZE;
+  const offsetY = BORDER_SIZE;
+
+  ctx.save();
+
+  // Draw edge borders for each exposed tile edge
+  borderData.edges.forEach(({ x, y, edge }) => {
+    const px = offsetX + x * TILE_SIZE;
+    const py = offsetY + y * TILE_SIZE;
+
+    switch (edge) {
+      case 'top':
+        drawTopWallSegment(ctx, px, py);
+        break;
+      case 'bottom':
+        drawBottomWallSegment(ctx, px, py);
+        break;
+      case 'left':
+        drawLeftWallSegment(ctx, px, py);
+        break;
+      case 'right':
+        drawRightWallSegment(ctx, px, py);
+        break;
+    }
+  });
+
+  // Draw corners on top of edges
+  borderData.corners.forEach(({ x, y, type }) => {
+    const px = offsetX + x * TILE_SIZE;
+    const py = offsetY + y * TILE_SIZE;
+    drawCornerSegment(ctx, px, py, type);
+  });
+
+  ctx.restore();
+}
+
+/**
+ * Draw a top wall segment for a single tile edge
+ */
+function drawTopWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  // Main wall body (extends upward from tile)
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, BORDER_SIZE);
+
+  // Shadow at bottom of wall
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(px, py - 12, TILE_SIZE, 12);
+
+  // Highlight at top
+  ctx.fillStyle = '#4a4a5a';
+  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, 8);
+}
+
+/**
+ * Draw a bottom wall segment for a single tile edge
+ */
+function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  // Main wall body (extends downward from tile)
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, BORDER_SIZE);
+
+  // Highlight at top edge of bottom wall
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 8);
+}
+
+/**
+ * Draw a left wall segment for a single tile edge
+ */
+function drawLeftWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  // Main wall body (extends leftward from tile)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(px - SIDE_BORDER_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
+
+  // Inner edge (right side of left wall, darker)
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(px - 6, py, 6, TILE_SIZE);
+}
+
+/**
+ * Draw a right wall segment for a single tile edge
+ */
+function drawRightWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  // Main wall body (extends rightward from tile)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(px + TILE_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
+
+  // Inner edge (left side of right wall, lighter)
+  ctx.fillStyle = '#3a3a4a';
+  ctx.fillRect(px + TILE_SIZE, py, 6, TILE_SIZE);
+}
+
+/**
+ * Draw corner pieces for smart borders
+ */
+function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number, type: CornerType) {
+  ctx.fillStyle = '#1a1a2a'; // Dark corner color
+
+  switch (type) {
+    // Convex corners (outer corners - puzzle sticks out)
+    case 'convex-tl':
+      // Top-left corner piece
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
+    case 'convex-tr':
+      // Top-right corner piece
+      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
+    case 'convex-bl':
+      // Bottom-left corner piece
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
+    case 'convex-br':
+      // Bottom-right corner piece
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
+
+    // Concave corners (inner corners - puzzle goes inward)
+    // These fill in the gap where two walls meet at an inside corner
+    case 'concave-tl':
+      // Fill the inside corner at top-left
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      // Also need to connect the walls
+      ctx.fillStyle = '#323242';
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
+    case 'concave-tr':
+      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillStyle = '#323242';
+      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
+    case 'concave-bl':
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillStyle = '#323242';
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
+    case 'concave-br':
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillStyle = '#323242';
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      break;
   }
 }
 
@@ -573,23 +844,10 @@ function drawCustomBorder(ctx: CanvasRenderingContext2D, gridWidth: number, grid
   drawDungeonBorder(ctx, gridWidth, gridHeight, totalWidth, totalHeight);
 }
 
-function drawVoidTile(ctx: CanvasRenderingContext2D, x: number, y: number) {
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
-
-  // Draw as darker/void space to indicate non-playable area
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-
-  // Optional: add a subtle diagonal pattern to make it clear it's void
-  ctx.strokeStyle = '#151515';
-  ctx.lineWidth = 1;
-  ctx.beginPath();
-  ctx.moveTo(px, py);
-  ctx.lineTo(px + TILE_SIZE, py + TILE_SIZE);
-  ctx.moveTo(px + TILE_SIZE, py);
-  ctx.lineTo(px, py + TILE_SIZE);
-  ctx.stroke();
+function drawVoidTile(_ctx: CanvasRenderingContext2D, _x: number, _y: number) {
+  // Void tiles are truly transparent - we don't draw anything here.
+  // The border will be drawn around the edges of playable tiles instead.
+  // This allows the page background or parent element to show through.
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType) {
