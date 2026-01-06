@@ -382,9 +382,11 @@ export function executeTurn(gameState: GameState): GameState {
   gameState.puzzle.enemies = newEnemies;
 
   // Collect all pending enemy triggers
+  // Note: Include enemies that are not dead, regardless of 'active' status
+  // Static enemies (behavior.type !== 'active') don't have active=true but can still have triggers
   const pendingEnemyTriggers: PlacedEnemy[] = [];
   for (const enemy of gameState.puzzle.enemies) {
-    if (!enemy.dead && enemy.active) {
+    if (!enemy.dead) {
       pendingEnemyTriggers.push(enemy);
     }
   }

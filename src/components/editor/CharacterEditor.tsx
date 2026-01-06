@@ -562,14 +562,23 @@ export const CharacterEditor: React.FC = () => {
                                             })}
                                             className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
                                           >
-                                            <option value="enemy_adjacent">Enemy Adjacent</option>
-                                            <option value="enemy_in_range">Enemy in Range</option>
-                                            <option value="contact_with_enemy">Contact with Enemy</option>
-                                            <option value="wall_ahead">Wall Ahead</option>
-                                            <option value="health_below_50">Health Below 50%</option>
+                                            <optgroup label="Target Enemies (Attack)">
+                                              <option value="enemy_adjacent">Enemy Adjacent</option>
+                                              <option value="enemy_in_range">Enemy in Range</option>
+                                              <option value="contact_with_enemy">Contact with Enemy</option>
+                                            </optgroup>
+                                            <optgroup label="Target Characters (Heal)">
+                                              <option value="character_adjacent">Character Adjacent</option>
+                                              <option value="character_in_range">Character in Range</option>
+                                              <option value="contact_with_character">Contact with Character</option>
+                                            </optgroup>
+                                            <optgroup label="Other">
+                                              <option value="wall_ahead">Wall Ahead</option>
+                                              <option value="health_below_50">Health Below 50%</option>
+                                            </optgroup>
                                           </select>
                                         </div>
-                                        {action.trigger.event === 'enemy_in_range' && (
+                                        {(action.trigger.event === 'enemy_in_range' || action.trigger.event === 'character_in_range') && (
                                           <div>
                                             <label className="text-xs text-gray-400">Detection Range (tiles):</label>
                                             <input
