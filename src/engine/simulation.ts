@@ -72,8 +72,6 @@ export function executeParallelActions(gameState: GameState): void {
         }
 
         if (shouldExecute) {
-          // Execute the parallel action
-          console.log('[executeParallelActions] Executing parallel action:', action.type, 'for character at', character.x, character.y);
           const updatedCharacter = executeAction(character, action, gameState);
           Object.assign(character, updatedCharacter);
         }
@@ -114,9 +112,6 @@ export function executeTurn(gameState: GameState): GameState {
       newCharacters.push(newCharacter);
       continue;
     }
-
-    // Debug: Log character behavior
-    console.log('[simulation] Character:', newCharacter.characterId, 'Behavior:', JSON.stringify(charData.behavior, null, 2));
 
     // Initialize parallel trackers if needed
     initializeParallelTrackers(newCharacter, charData);
@@ -396,18 +391,16 @@ export function executeTurn(gameState: GameState): GameState {
   // 2. Characters (normal priority)
   // 3. Enemies without hasMeleePriority
 
-  console.log('[MELEE PRIORITY] ========== Starting Trigger Evaluation Phase ==========');
-  console.log('[MELEE PRIORITY] Pending character triggers:', pendingCharacterTriggers.length);
-  console.log('[MELEE PRIORITY] Pending enemy triggers:', pendingEnemyTriggers.length);
+  const priorityEnemyCount = pendingEnemyTriggers.filter(e => getEnemy(e.enemyId)?.hasMeleePriority).length;
+  const nonPriorityEnemyCount = pendingEnemyTriggers.length - priorityEnemyCount;
+
+  // Single condensed log per turn
+  console.log(`[TURN ${gameState.currentTurn}] Triggers: ${priorityEnemyCount} priority enemies → ${pendingCharacterTriggers.length} chars → ${nonPriorityEnemyCount} normal enemies`);
 
   // Execute priority enemies first
-  const priorityEnemyCount = pendingEnemyTriggers.filter(e => getEnemy(e.enemyId)?.hasMeleePriority).length;
-  console.log('[MELEE PRIORITY] Priority enemies to execute:', priorityEnemyCount);
-
   for (const enemy of pendingEnemyTriggers) {
     const enemyData = getEnemy(enemy.enemyId);
     if (enemyData?.hasMeleePriority) {
-      console.log('[MELEE PRIORITY] Executing PRIORITY enemy trigger:', enemy.enemyId, 'at', enemy.x, enemy.y, 'HP:', enemy.currentHealth);
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
         x: enemy.x,
@@ -426,32 +419,20 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.facing = tempCharForTrigger.facing;
       enemy.currentHealth = tempCharForTrigger.currentHealth;
       enemy.dead = tempCharForTrigger.dead;
-      console.log('[MELEE PRIORITY] Priority enemy after trigger - HP:', enemy.currentHealth, 'dead:', enemy.dead);
     }
   }
 
   // Execute character triggers (normal priority)
-  console.log('[MELEE PRIORITY] Executing character triggers...');
   for (const character of pendingCharacterTriggers) {
-    // Skip if character was killed by a priority enemy
     if (!character.dead) {
-      console.log('[MELEE PRIORITY] Executing character trigger:', character.characterId, 'at', character.x, character.y, 'HP:', character.currentHealth);
       evaluateTriggers(character, gameState);
-      console.log('[MELEE PRIORITY] Character after trigger - HP:', character.currentHealth, 'dead:', character.dead);
-    } else {
-      console.log('[MELEE PRIORITY] SKIPPING dead character:', character.characterId);
     }
   }
 
   // Execute non-priority enemy triggers
-  const nonPriorityEnemyCount = pendingEnemyTriggers.filter(e => !getEnemy(e.enemyId)?.hasMeleePriority).length;
-  console.log('[MELEE PRIORITY] Non-priority enemies to execute:', nonPriorityEnemyCount);
-
   for (const enemy of pendingEnemyTriggers) {
     const enemyData = getEnemy(enemy.enemyId);
-    // Skip if enemy was killed by a character or priority enemy
     if (!enemyData?.hasMeleePriority && !enemy.dead) {
-      console.log('[MELEE PRIORITY] Executing NON-PRIORITY enemy trigger:', enemy.enemyId, 'at', enemy.x, enemy.y, 'HP:', enemy.currentHealth);
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
         x: enemy.x,
@@ -470,13 +451,8 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.facing = tempCharForTrigger.facing;
       enemy.currentHealth = tempCharForTrigger.currentHealth;
       enemy.dead = tempCharForTrigger.dead;
-      console.log('[MELEE PRIORITY] Non-priority enemy after trigger - HP:', enemy.currentHealth, 'dead:', enemy.dead);
-    } else if (enemy.dead) {
-      console.log('[MELEE PRIORITY] SKIPPING dead non-priority enemy:', enemy.enemyId);
     }
   }
-
-  console.log('[MELEE PRIORITY] ========== Trigger Evaluation Complete ==========');
 
   // Update projectiles (Phase 2)
   updateProjectiles(gameState);

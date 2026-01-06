@@ -1231,16 +1231,12 @@ export function evaluateTriggers(
   }
 
   if (!behaviorActions) {
-    console.log('[evaluateTriggers] No behavior found for:', character.characterId, '(checked both character and enemy data)');
     return;
   }
 
-  console.log('[evaluateTriggers] Checking triggers for', entityType + ':', character.characterId, 'HP:', character.currentHealth, 'dead:', character.dead);
-
   // Check each action for event-based triggers
-  behaviorActions.forEach((action: CharacterAction, index: number) => {
+  behaviorActions.forEach((action: CharacterAction) => {
     if (action.trigger?.mode === 'on_event' && action.trigger.event) {
-      console.log('[evaluateTriggers] Action', index, '- checking trigger:', action.trigger.event, 'range:', action.trigger.eventRange);
       const triggered = checkTriggerCondition(
         character,
         action.trigger.event,
@@ -1248,14 +1244,11 @@ export function evaluateTriggers(
         gameState
       );
 
-      console.log('[evaluateTriggers] Trigger result:', triggered);
-
       if (triggered) {
-        // Execute the triggered action
-        console.log('[evaluateTriggers] Trigger FIRED:', action.trigger.event, 'executing action:', action.type);
+        // Log only when a trigger actually fires
+        console.log(`[TRIGGER] ${entityType} ${character.characterId} → ${action.trigger.event} → ${action.type}`);
         const updatedCharacter = executeAction(character, action, gameState);
         Object.assign(character, updatedCharacter);
-        console.log('[evaluateTriggers] After action - HP:', character.currentHealth, 'dead:', character.dead);
       }
     }
   });

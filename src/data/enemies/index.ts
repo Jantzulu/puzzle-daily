@@ -14,18 +14,12 @@ export const getEnemy = (id: string): Enemy | undefined => {
 
   // Check official enemies first
   if (officialEnemies[id]) {
-    const enemy = officialEnemies[id];
-    console.log('[getEnemy] Found official enemy:', id, 'hasMeleePriority:', enemy.hasMeleePriority);
-    return enemy;
+    return officialEnemies[id];
   }
 
   // Check custom enemies
   const customEnemies = getCustomEnemies();
-  const enemy = customEnemies.find(e => e.id === id);
-  if (enemy) {
-    console.log('[getEnemy] Found custom enemy:', id, 'hasMeleePriority:', enemy.hasMeleePriority);
-  }
-  return enemy;
+  return customEnemies.find(e => e.id === id);
 };
 
 export const getAllEnemies = (): Enemy[] => {

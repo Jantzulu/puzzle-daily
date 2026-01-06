@@ -27,13 +27,11 @@ export const getCharacter = (id: string): Character | undefined => {
   const customCharacters = getCustomCharacters();
   const customChar = customCharacters.find(c => c.id === id);
   if (customChar) {
-    console.log('[getCharacter] Loading CUSTOM character:', id, 'Behavior:', JSON.stringify(customChar.behavior, null, 2));
     return customChar;
   }
 
   // Check official characters as fallback
   if (officialCharacters[id]) {
-    console.log('[getCharacter] Loading OFFICIAL character:', id);
     return officialCharacters[id];
   }
 
