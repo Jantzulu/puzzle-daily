@@ -671,15 +671,16 @@ function executeSpell(
   // Check for auto-targeting
   if (action.autoTargetNearestEnemy) {
     const maxTargets = action.maxTargets || 1;
-    const nearestEnemies = findNearestEnemies(character, gameState, maxTargets);
+    const targetMode = action.autoTargetMode || 'omnidirectional';
+    const nearestEnemies = findNearestEnemies(character, gameState, maxTargets, targetMode);
 
     if (nearestEnemies.length > 0) {
       // Use directions to nearest enemies
       castDirections = nearestEnemies.map(target => target.direction);
-      console.log('[executeSpell] Auto-targeting', nearestEnemies.length, 'enemies');
+      console.log('[executeSpell] Auto-targeting', nearestEnemies.length, 'enemies in', targetMode, 'mode');
     } else {
       // No enemies found, don't cast
-      console.log('[executeSpell] Auto-targeting enabled but no enemies found');
+      console.log('[executeSpell] Auto-targeting enabled but no enemies found in', targetMode, 'mode');
       return;
     }
   } else if (action.useRelativeOverride && action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0) {
@@ -760,7 +761,7 @@ function executeSpellInDirection(
       const originalFacing = character.facing;
       character.facing = direction;
       // Use meleeRange from spell (defaults to 1 if not set)
-      executeMeleeAttack(character, attackData, gameState, spell.meleeRange || 1);
+      executeMeleeAttack(character, attackData, gameState, spell.meleeRange || 1, spell);
       character.facing = originalFacing;
       break;
 
@@ -852,13 +853,23 @@ function executeMeleeAttack(
   character: PlacedCharacter,
   attackData: CustomAttack,
   gameState: GameState,
-  meleeRange: number = 1
+  meleeRange: number = 1,
+  spell?: SpellAsset
 ): void {
   const { dx, dy } = getDirectionOffset(character.facing);
   const damage = attackData.damage ?? 1;
 
+  // Determine which sprite to use for attack visual
+  const attackSprite = spell?.sprites.meleeAttack;
+  const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
+
   // Handle range 0 as self-target
   if (meleeRange === 0) {
+    // Show attack sprite on caster's tile if not skipped
+    if (attackSprite && !skipCasterTile) {
+      spawnParticle(character.x, character.y, attackSprite, attackData.effectDuration || 300, gameState);
+    }
+
     // Find enemy on caster's own tile
     const enemy = gameState.puzzle.enemies.find(
       e => e.x === character.x && e.y === character.y && !e.dead
@@ -879,7 +890,7 @@ function executeMeleeAttack(
     return;
   }
 
-  // For range >= 1, hit all tiles in attack direction up to meleeRange
+  // For range >= 1, show attack sprites and deal damage
   for (let i = 1; i <= meleeRange; i++) {
     const targetX = character.x + dx * i;
     const targetY = character.y + dy * i;
@@ -887,6 +898,11 @@ function executeMeleeAttack(
     // Stop if out of bounds
     if (!isInBounds(targetX, targetY, gameState.puzzle.width, gameState.puzzle.height)) {
       break;
+    }
+
+    // Show attack sprite on this tile (simultaneously on all tiles)
+    if (attackSprite) {
+      spawnParticle(targetX, targetY, attackSprite, attackData.effectDuration || 300, gameState);
     }
 
     // Find enemy at target position
@@ -901,7 +917,7 @@ function executeMeleeAttack(
         enemy.dead = true;
       }
 
-      // Spawn hit effect (simultaneously on all hit tiles)
+      // Spawn hit effect (shows on top of attack sprite)
       if (attackData.hitEffectSprite) {
         spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
       }
@@ -1062,9 +1078,16 @@ function spawnParticle(
 function findNearestEnemies(
   character: PlacedCharacter,
   gameState: GameState,
-  maxTargets: number = 1
+  maxTargets: number = 1,
+  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
 ): Array<{ enemy: any; direction: Direction; distance: number }> {
   const livingEnemies = gameState.puzzle.enemies.filter(e => !e.dead);
+
+  // Cardinal directions: N, S, E, W
+  const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
+
+  // Diagonal directions: NE, SE, SW, NW
+  const diagonalDirections: Direction[] = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST];
 
   // Calculate distance and direction to each enemy
   const enemiesWithDistance = livingEnemies.map(enemy => ({
@@ -1073,11 +1096,19 @@ function findNearestEnemies(
     direction: calculateDirectionTo(character.x, character.y, enemy.x, enemy.y),
   }));
 
+  // Filter by directional mode
+  let filteredEnemies = enemiesWithDistance;
+  if (mode === 'cardinal') {
+    filteredEnemies = enemiesWithDistance.filter(e => cardinalDirections.includes(e.direction));
+  } else if (mode === 'diagonal') {
+    filteredEnemies = enemiesWithDistance.filter(e => diagonalDirections.includes(e.direction));
+  }
+
   // Sort by distance (closest first)
-  enemiesWithDistance.sort((a, b) => a.distance - b.distance);
+  filteredEnemies.sort((a, b) => a.distance - b.distance);
 
   // Return up to maxTargets
-  return enemiesWithDistance.slice(0, maxTargets);
+  return filteredEnemies.slice(0, maxTargets);
 }
 
 // ==========================================

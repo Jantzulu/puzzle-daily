@@ -111,6 +111,7 @@ export interface CharacterAction {
 
   // Auto-targeting configuration
   autoTargetNearestEnemy?: boolean; // Override spell direction to aim at closest enemy
+  autoTargetMode?: 'omnidirectional' | 'cardinal' | 'diagonal'; // Directional constraints for auto-targeting (default: omnidirectional)
   maxTargets?: number;              // Maximum number of enemies to attack (for multi-target spells)
 }
 
@@ -496,9 +497,13 @@ export interface SpellAsset {
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
   persistDamagePerTurn?: number; // Damage dealt each turn to units in the area
 
+  // Melee-specific settings
+  skipSpriteOnCasterTile?: boolean; // For melee spells - don't show attack sprite on caster's tile
+
   // Visual configuration
   sprites: {
     projectile?: SpriteReference;      // For linear spells (per direction)
+    meleeAttack?: SpriteReference;     // For melee spells - sprite shown on attack tiles
     damageEffect: SpriteReference;     // On successful hit
     castEffect?: SpriteReference;      // On caster when spell fires
     persistentArea?: SpriteReference;  // Visual for persistent ground effects

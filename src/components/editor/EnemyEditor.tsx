@@ -330,6 +330,21 @@ export const EnemyEditor: React.FC = () => {
                     </label>
                     <p className="text-xs text-gray-400 mt-1">Use legacy retaliation system (default: false)</p>
                   </div>
+
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editingEnemy.hasMeleePriority || false}
+                        onChange={(e) => updateEnemy({
+                          hasMeleePriority: e.target.checked
+                        })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-bold">Has Melee Priority</span>
+                    </label>
+                    <p className="text-xs text-gray-400 mt-1">Enemy attacks before characters in melee combat (default: false)</p>
+                  </div>
                 </div>
               </div>
 
@@ -772,23 +787,44 @@ export const EnemyEditor: React.FC = () => {
                                           </label>
                                         </div>
                                         {action.autoTargetNearestEnemy && (
-                                          <div>
-                                            <label className="text-xs text-gray-400">Max Targets:</label>
-                                            <input
-                                              type="number"
-                                              min="1"
-                                              max="10"
-                                              value={action.maxTargets || 1}
-                                              onChange={(e) => updateBehaviorAction(index, {
-                                                ...action,
-                                                maxTargets: parseInt(e.target.value) || 1
-                                              })}
-                                              className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                            />
-                                            <p className="text-[10px] text-gray-500 mt-1">
-                                              Number of nearest enemies to attack (for multi-target)
-                                            </p>
-                                          </div>
+                                          <>
+                                            <div>
+                                              <label className="text-xs text-gray-400">Targeting Mode:</label>
+                                              <select
+                                                value={action.autoTargetMode || 'omnidirectional'}
+                                                onChange={(e) => updateBehaviorAction(index, {
+                                                  ...action,
+                                                  autoTargetMode: e.target.value as 'omnidirectional' | 'cardinal' | 'diagonal'
+                                                })}
+                                                className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
+                                              >
+                                                <option value="omnidirectional">🎯 All Directions (360°)</option>
+                                                <option value="cardinal">↕↔ Cardinal Only (N/S/E/W)</option>
+                                                <option value="diagonal">⤫ Diagonal Only (NE/SE/SW/NW)</option>
+                                              </select>
+                                              <p className="text-[10px] text-gray-500 mt-1">
+                                                Directional constraint for target selection
+                                              </p>
+                                            </div>
+
+                                            <div>
+                                              <label className="text-xs text-gray-400">Max Targets:</label>
+                                              <input
+                                                type="number"
+                                                min="1"
+                                                max="10"
+                                                value={action.maxTargets || 1}
+                                                onChange={(e) => updateBehaviorAction(index, {
+                                                  ...action,
+                                                  maxTargets: parseInt(e.target.value) || 1
+                                                })}
+                                                className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
+                                              />
+                                              <p className="text-[10px] text-gray-500 mt-1">
+                                                Number of nearest enemies to attack (for multi-target)
+                                              </p>
+                                            </div>
+                                          </>
                                         )}
                                       </div>
 

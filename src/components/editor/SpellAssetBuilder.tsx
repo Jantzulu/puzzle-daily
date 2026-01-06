@@ -469,20 +469,40 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
             {/* Melee Range (for melee spells) */}
             {templateIsMelee && (
-              <div>
-                <label className="block text-sm font-medium mb-1">Melee Range (tiles)</label>
-                <input
-                  type="number"
-                  min="0"
-                  max="5"
-                  value={editedSpell.meleeRange || 1}
-                  onChange={(e) => setEditedSpell({ ...editedSpell, meleeRange: parseInt(e.target.value) || 1 })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                />
-                <p className="text-xs text-gray-400 mt-1">
-                  How many tiles in attack direction get hit. 0 = self-target only, 1 = adjacent tile (default), 2+ = extended reach
-                </p>
-              </div>
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Melee Range (tiles)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="5"
+                    value={editedSpell.meleeRange ?? 1}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value);
+                      setEditedSpell({ ...editedSpell, meleeRange: isNaN(val) ? 1 : val });
+                    }}
+                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  />
+                  <p className="text-xs text-gray-400 mt-1">
+                    How many tiles in attack direction get hit. 0 = self-target only, 1 = adjacent tile (default), 2+ = extended reach
+                  </p>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editedSpell.skipSpriteOnCasterTile || false}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, skipSpriteOnCasterTile: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-medium">Skip Attack Sprite on Caster Tile</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Don't show the attack sprite on the caster's tile (useful for range 1+ spells where you only want to see the sprite on the target tiles)
+                  </p>
+                </div>
+              </>
             )}
           </div>
 
