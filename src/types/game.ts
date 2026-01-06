@@ -111,8 +111,9 @@ export interface CharacterAction {
 
   // Auto-targeting configuration
   autoTargetNearestEnemy?: boolean; // Override spell direction to aim at closest enemy
+  autoTargetNearestCharacter?: boolean; // Override spell direction to aim at closest character (for enemies or healing)
   autoTargetMode?: 'omnidirectional' | 'cardinal' | 'diagonal'; // Directional constraints for auto-targeting (default: omnidirectional)
-  maxTargets?: number;              // Maximum number of enemies to attack (for multi-target spells)
+  maxTargets?: number;              // Maximum number of targets to attack/heal (for multi-target spells)
 }
 
 export interface Character {

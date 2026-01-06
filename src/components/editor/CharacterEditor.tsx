@@ -562,12 +562,12 @@ export const CharacterEditor: React.FC = () => {
                                             })}
                                             className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
                                           >
-                                            <optgroup label="Target Enemies (Attack)">
+                                            <optgroup label="Target Enemies">
                                               <option value="enemy_adjacent">Enemy Adjacent</option>
                                               <option value="enemy_in_range">Enemy in Range</option>
                                               <option value="contact_with_enemy">Contact with Enemy</option>
                                             </optgroup>
-                                            <optgroup label="Target Characters (Heal)">
+                                            <optgroup label="Target Characters">
                                               <option value="character_adjacent">Character Adjacent</option>
                                               <option value="character_in_range">Character in Range</option>
                                               <option value="contact_with_character">Contact with Character</option>
@@ -736,20 +736,38 @@ export const CharacterEditor: React.FC = () => {
                                   <div className="flex items-center gap-2">
                                     <input
                                       type="checkbox"
-                                      id={`auto-target-${index}`}
+                                      id={`auto-target-enemy-${index}`}
                                       checked={action.autoTargetNearestEnemy || false}
                                       onChange={(e) => updateBehaviorAction(index, {
                                         ...action,
                                         autoTargetNearestEnemy: e.target.checked,
+                                        autoTargetNearestCharacter: e.target.checked ? false : action.autoTargetNearestCharacter,
                                         maxTargets: e.target.checked ? (action.maxTargets || 1) : undefined
                                       })}
                                       className="w-4 h-4"
                                     />
-                                    <label htmlFor={`auto-target-${index}`} className="text-xs font-semibold text-gray-300 cursor-pointer">
+                                    <label htmlFor={`auto-target-enemy-${index}`} className="text-xs font-semibold text-gray-300 cursor-pointer">
                                       Auto-Target Nearest Enemy
                                     </label>
                                   </div>
-                                  {action.autoTargetNearestEnemy && (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      id={`auto-target-character-${index}`}
+                                      checked={action.autoTargetNearestCharacter || false}
+                                      onChange={(e) => updateBehaviorAction(index, {
+                                        ...action,
+                                        autoTargetNearestCharacter: e.target.checked,
+                                        autoTargetNearestEnemy: e.target.checked ? false : action.autoTargetNearestEnemy,
+                                        maxTargets: e.target.checked ? (action.maxTargets || 1) : undefined
+                                      })}
+                                      className="w-4 h-4"
+                                    />
+                                    <label htmlFor={`auto-target-character-${index}`} className="text-xs font-semibold text-gray-300 cursor-pointer">
+                                      Auto-Target Nearest Character
+                                    </label>
+                                  </div>
+                                  {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
                                     <>
                                       <div>
                                         <label className="text-xs text-gray-400">Targeting Mode:</label>
@@ -784,7 +802,7 @@ export const CharacterEditor: React.FC = () => {
                                           className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
                                         />
                                         <p className="text-[10px] text-gray-500 mt-1">
-                                          Number of nearest enemies to attack (for multi-target)
+                                          Number of nearest targets (for multi-target)
                                         </p>
                                       </div>
                                     </>
