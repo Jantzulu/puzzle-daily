@@ -178,8 +178,7 @@ export const MapEditor: React.FC = () => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const borderStyle = state.borderConfig?.style || 'none';
-    const hasBorder = borderStyle !== 'none';
+    const hasBorder = state.skinId !== undefined && state.skinId !== '';
     const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
     const offsetY = hasBorder ? BORDER_SIZE : 0;
 
