@@ -696,18 +696,30 @@ function executeSpell(
   // Determine which directions to cast the spell
   let castDirections: Direction[] = [];
 
-  // Check for auto-targeting
-  if (action.autoTargetNearestEnemy) {
+  // Check for auto-targeting (enemies targeting characters OR characters targeting enemies)
+  if (action.autoTargetNearestCharacter) {
+    // Used by enemies to target characters
+    const maxTargets = action.maxTargets || 1;
+    const targetMode = action.autoTargetMode || 'omnidirectional';
+    const nearestCharacters = findNearestCharacters(character, gameState, maxTargets, targetMode);
+
+    if (nearestCharacters.length > 0) {
+      castDirections = nearestCharacters.map(target => target.direction);
+      console.log('[executeSpell] Enemy auto-targeting', nearestCharacters.length, 'characters in', targetMode, 'mode');
+    } else {
+      console.log('[executeSpell] Enemy auto-targeting enabled but no characters found in', targetMode, 'mode');
+      return;
+    }
+  } else if (action.autoTargetNearestEnemy) {
+    // Used by characters to target enemies
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
     const nearestEnemies = findNearestEnemies(character, gameState, maxTargets, targetMode);
 
     if (nearestEnemies.length > 0) {
-      // Use directions to nearest enemies
       castDirections = nearestEnemies.map(target => target.direction);
       console.log('[executeSpell] Auto-targeting', nearestEnemies.length, 'enemies in', targetMode, 'mode');
     } else {
-      // No enemies found, don't cast
       console.log('[executeSpell] Auto-targeting enabled but no enemies found in', targetMode, 'mode');
       return;
     }
@@ -891,34 +903,59 @@ function executeMeleeAttack(
   const attackSprite = spell?.sprites.meleeAttack;
   const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
 
+  // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
+  const isEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+
   // Handle range 0 as self-target
   if (meleeRange === 0) {
-    console.log('[executeMeleeAttack] Range 0 attack from', character.characterId, 'at', character.x, character.y, 'damage:', damage);
+    console.log('[executeMeleeAttack] Range 0 attack from', character.characterId, 'at', character.x, character.y, 'damage:', damage, 'isEnemyCaster:', isEnemyCaster);
     // Show attack sprite on caster's tile if not skipped
     if (attackSprite && !skipCasterTile) {
       spawnParticle(character.x, character.y, attackSprite, attackData.effectDuration || 300, gameState);
     }
 
-    // Find enemy on caster's own tile
-    const enemy = gameState.puzzle.enemies.find(
-      e => e.x === character.x && e.y === character.y && !e.dead
-    );
+    if (isEnemyCaster) {
+      // Enemy attacking characters on same tile
+      const targetChar = gameState.placedCharacters.find(
+        c => c.x === character.x && c.y === character.y && !c.dead
+      );
 
-    if (enemy) {
-      console.log('[executeMeleeAttack] HIT enemy', enemy.enemyId, 'HP before:', enemy.currentHealth, '-> after:', enemy.currentHealth - damage);
-      enemy.currentHealth -= damage;
+      if (targetChar) {
+        console.log('[executeMeleeAttack] HIT character', targetChar.characterId, 'HP before:', targetChar.currentHealth, '-> after:', targetChar.currentHealth - damage);
+        targetChar.currentHealth -= damage;
 
-      if (enemy.currentHealth <= 0) {
-        enemy.dead = true;
-        console.log('[executeMeleeAttack] Enemy', enemy.enemyId, 'KILLED');
-      }
+        if (targetChar.currentHealth <= 0) {
+          targetChar.dead = true;
+          console.log('[executeMeleeAttack] Character', targetChar.characterId, 'KILLED');
+        }
 
-      // Spawn hit effect on caster's tile
-      if (attackData.hitEffectSprite) {
-        spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+        if (attackData.hitEffectSprite) {
+          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+        }
+      } else {
+        console.log('[executeMeleeAttack] No character found at caster tile');
       }
     } else {
-      console.log('[executeMeleeAttack] No enemy found at caster tile');
+      // Character attacking enemies on same tile
+      const enemy = gameState.puzzle.enemies.find(
+        e => e.x === character.x && e.y === character.y && !e.dead
+      );
+
+      if (enemy) {
+        console.log('[executeMeleeAttack] HIT enemy', enemy.enemyId, 'HP before:', enemy.currentHealth, '-> after:', enemy.currentHealth - damage);
+        enemy.currentHealth -= damage;
+
+        if (enemy.currentHealth <= 0) {
+          enemy.dead = true;
+          console.log('[executeMeleeAttack] Enemy', enemy.enemyId, 'KILLED');
+        }
+
+        if (attackData.hitEffectSprite) {
+          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+        }
+      } else {
+        console.log('[executeMeleeAttack] No enemy found at caster tile');
+      }
     }
     return;
   }
@@ -938,21 +975,41 @@ function executeMeleeAttack(
       spawnParticle(targetX, targetY, attackSprite, attackData.effectDuration || 300, gameState);
     }
 
-    // Find enemy at target position
-    const enemy = gameState.puzzle.enemies.find(
-      e => e.x === targetX && e.y === targetY && !e.dead
-    );
+    if (isEnemyCaster) {
+      // Enemy attacking characters
+      const targetChar = gameState.placedCharacters.find(
+        c => c.x === targetX && c.y === targetY && !c.dead
+      );
 
-    if (enemy) {
-      enemy.currentHealth -= damage;
+      if (targetChar) {
+        console.log('[executeMeleeAttack] Enemy HIT character', targetChar.characterId, 'HP:', targetChar.currentHealth, '->', targetChar.currentHealth - damage);
+        targetChar.currentHealth -= damage;
 
-      if (enemy.currentHealth <= 0) {
-        enemy.dead = true;
+        if (targetChar.currentHealth <= 0) {
+          targetChar.dead = true;
+          console.log('[executeMeleeAttack] Character', targetChar.characterId, 'KILLED by enemy');
+        }
+
+        if (attackData.hitEffectSprite) {
+          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+        }
       }
+    } else {
+      // Character attacking enemies
+      const enemy = gameState.puzzle.enemies.find(
+        e => e.x === targetX && e.y === targetY && !e.dead
+      );
 
-      // Spawn hit effect (shows on top of attack sprite)
-      if (attackData.hitEffectSprite) {
-        spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+      if (enemy) {
+        enemy.currentHealth -= damage;
+
+        if (enemy.currentHealth <= 0) {
+          enemy.dead = true;
+        }
+
+        if (attackData.hitEffectSprite) {
+          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+        }
       }
     }
   }
@@ -972,6 +1029,9 @@ export function executeAOEAttack(
   const healing = attackData.healing ?? 0;
   const isHeal = healing > 0;
 
+  // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
+  const isEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+
   // Determine center point
   let centerX = character.x;
   let centerY = character.y;
@@ -987,44 +1047,88 @@ export function executeAOEAttack(
   // Apply instant damage/healing
   if (!attackData.persistDuration || attackData.persistDuration === 0) {
     if (isHeal) {
-      // Heal allies (characters) in radius
-      gameState.placedCharacters.forEach(ally => {
-        if (ally.dead || ally === character) return;
+      // Heal allies in radius (characters heal characters, enemies heal enemies)
+      if (isEnemyCaster) {
+        // Enemy heals other enemies
+        gameState.puzzle.enemies.forEach(ally => {
+          if (ally.dead || ally.enemyId === character.characterId) return;
 
-        const distance = Math.sqrt(
-          Math.pow(ally.x - centerX, 2) + Math.pow(ally.y - centerY, 2)
-        );
+          const distance = Math.sqrt(
+            Math.pow(ally.x - centerX, 2) + Math.pow(ally.y - centerY, 2)
+          );
 
-        if (distance <= radius) {
-          ally.currentHealth = Math.min(ally.currentHealth + healing, getCharacter(ally.characterId)?.health ?? ally.currentHealth);
+          if (distance <= radius) {
+            const enemyData = getEnemy(ally.enemyId);
+            ally.currentHealth = Math.min(ally.currentHealth + healing, enemyData?.health ?? ally.currentHealth);
 
-          // Spawn hit effect
-          if (attackData.hitEffectSprite) {
-            spawnParticle(ally.x, ally.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+            if (attackData.hitEffectSprite) {
+              spawnParticle(ally.x, ally.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+            }
           }
-        }
-      });
+        });
+      } else {
+        // Character heals other characters
+        gameState.placedCharacters.forEach(ally => {
+          if (ally.dead || ally === character) return;
+
+          const distance = Math.sqrt(
+            Math.pow(ally.x - centerX, 2) + Math.pow(ally.y - centerY, 2)
+          );
+
+          if (distance <= radius) {
+            ally.currentHealth = Math.min(ally.currentHealth + healing, getCharacter(ally.characterId)?.health ?? ally.currentHealth);
+
+            if (attackData.hitEffectSprite) {
+              spawnParticle(ally.x, ally.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+            }
+          }
+        });
+      }
     } else {
-      // Damage enemies in radius
-      gameState.puzzle.enemies.forEach(enemy => {
-        if (enemy.dead) return;
+      // Damage targets in radius
+      if (isEnemyCaster) {
+        // Enemy damages characters
+        gameState.placedCharacters.forEach(target => {
+          if (target.dead) return;
 
-        const distance = Math.sqrt(
-          Math.pow(enemy.x - centerX, 2) + Math.pow(enemy.y - centerY, 2)
-        );
+          const distance = Math.sqrt(
+            Math.pow(target.x - centerX, 2) + Math.pow(target.y - centerY, 2)
+          );
 
-        if (distance <= radius) {
-          enemy.currentHealth -= damage;
-          if (enemy.currentHealth <= 0) {
-            enemy.dead = true;
+          if (distance <= radius) {
+            console.log('[executeAOEAttack] Enemy AOE HIT character', target.characterId, 'HP:', target.currentHealth, '->', target.currentHealth - damage);
+            target.currentHealth -= damage;
+            if (target.currentHealth <= 0) {
+              target.dead = true;
+              console.log('[executeAOEAttack] Character', target.characterId, 'KILLED by enemy AOE');
+            }
+
+            if (attackData.hitEffectSprite) {
+              spawnParticle(target.x, target.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+            }
           }
+        });
+      } else {
+        // Character damages enemies
+        gameState.puzzle.enemies.forEach(enemy => {
+          if (enemy.dead) return;
 
-          // Spawn hit effect
-          if (attackData.hitEffectSprite) {
-            spawnParticle(enemy.x, enemy.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+          const distance = Math.sqrt(
+            Math.pow(enemy.x - centerX, 2) + Math.pow(enemy.y - centerY, 2)
+          );
+
+          if (distance <= radius) {
+            enemy.currentHealth -= damage;
+            if (enemy.currentHealth <= 0) {
+              enemy.dead = true;
+            }
+
+            if (attackData.hitEffectSprite) {
+              spawnParticle(enemy.x, enemy.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+            }
           }
-        }
-      });
+        });
+      }
     }
   }
 
@@ -1142,6 +1246,46 @@ function findNearestEnemies(
 
   // Return up to maxTargets
   return filteredEnemies.slice(0, maxTargets);
+}
+
+/**
+ * Find the nearest living characters to an entity (used by enemies), up to maxTargets
+ * Returns array of {character, direction} sorted by distance (closest first)
+ */
+function findNearestCharacters(
+  entity: PlacedCharacter,
+  gameState: GameState,
+  maxTargets: number = 1,
+  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
+): Array<{ character: PlacedCharacter; direction: Direction; distance: number }> {
+  const livingCharacters = gameState.placedCharacters.filter(c => !c.dead);
+
+  // Cardinal directions: N, S, E, W
+  const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
+
+  // Diagonal directions: NE, SE, SW, NW
+  const diagonalDirections: Direction[] = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST];
+
+  // Calculate distance and direction to each character
+  const charactersWithDistance = livingCharacters.map(char => ({
+    character: char,
+    distance: calculateDistance(entity.x, entity.y, char.x, char.y),
+    direction: calculateDirectionTo(entity.x, entity.y, char.x, char.y),
+  }));
+
+  // Filter by directional mode
+  let filteredCharacters = charactersWithDistance;
+  if (mode === 'cardinal') {
+    filteredCharacters = charactersWithDistance.filter(c => cardinalDirections.includes(c.direction));
+  } else if (mode === 'diagonal') {
+    filteredCharacters = charactersWithDistance.filter(c => diagonalDirections.includes(c.direction));
+  }
+
+  // Sort by distance (closest first)
+  filteredCharacters.sort((a, b) => a.distance - b.distance);
+
+  // Return up to maxTargets
+  return filteredCharacters.slice(0, maxTargets);
 }
 
 // ==========================================
@@ -1276,7 +1420,27 @@ export function evaluateTriggers(
 
       if (triggered) {
         console.log(`[TRIGGER-FIRE] ${entityType} ${character.characterId} executing ${action.type} (spellId: ${action.spellId || 'none'})`);
-        const updatedCharacter = executeAction(character, action, gameState);
+
+        // For proximity-based triggers, automatically enable targeting toward the trigger source
+        // This ensures spells fire at the adjacent/nearby entity that triggered the event
+        let actionToExecute = action;
+        const event = action.trigger.event;
+
+        if (event === 'character_adjacent' || event === 'character_in_range' || event === 'contact_with_character') {
+          // Enemy triggered by character proximity - auto-target nearest character
+          if (!action.autoTargetNearestCharacter && !action.autoTargetNearestEnemy) {
+            actionToExecute = { ...action, autoTargetNearestCharacter: true };
+            console.log(`[TRIGGER-FIRE] Auto-targeting nearest character for ${event} trigger`);
+          }
+        } else if (event === 'enemy_adjacent' || event === 'enemy_in_range' || event === 'contact_with_enemy') {
+          // Character triggered by enemy proximity - auto-target nearest enemy
+          if (!action.autoTargetNearestEnemy && !action.autoTargetNearestCharacter) {
+            actionToExecute = { ...action, autoTargetNearestEnemy: true };
+            console.log(`[TRIGGER-FIRE] Auto-targeting nearest enemy for ${event} trigger`);
+          }
+        }
+
+        const updatedCharacter = executeAction(character, actionToExecute, gameState);
         Object.assign(character, updatedCharacter);
       }
     }
