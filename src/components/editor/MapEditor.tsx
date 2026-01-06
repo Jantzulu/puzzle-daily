@@ -1057,7 +1057,7 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
   const hasCustomBorders = skin && Object.keys(skin.borderSprites).length > 0;
 
   if (hasCustomBorders && skin) {
-    // Draw custom border sprites at their natural size (no stretching)
+    // Draw custom border sprites
     const sprites = skin.borderSprites;
     const wallFrontImg = loadSkinImage(sprites.wallFront || '');
     const wallSideImg = loadSkinImage(sprites.wallSide || '');
@@ -1067,37 +1067,33 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
     const cornerBLImg = loadSkinImage(sprites.cornerBottomLeft || '');
     const cornerBRImg = loadSkinImage(sprites.cornerBottomRight || '');
 
-    // Top wall - tile horizontally using image's natural width
+    // Top wall - fixed size (48x48), tiled horizontally
     if (wallFrontImg?.complete) {
-      const imgWidth = wallFrontImg.naturalWidth || TILE_SIZE;
-      const imgHeight = wallFrontImg.naturalHeight || BORDER_SIZE;
-      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += imgWidth) {
-        ctx.drawImage(wallFrontImg, x, BORDER_SIZE - imgHeight, imgWidth, imgHeight);
+      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
+        ctx.drawImage(wallFrontImg, x, 0, TILE_SIZE, BORDER_SIZE);
       }
     }
 
-    // Bottom wall - tile horizontally using image's natural width
+    // Bottom wall - fixed size (48x48), tiled horizontally
     if (wallBottomOuterImg?.complete) {
-      const imgWidth = wallBottomOuterImg.naturalWidth || TILE_SIZE;
-      const imgHeight = wallBottomOuterImg.naturalHeight || BORDER_SIZE;
-      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += imgWidth) {
-        ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, imgWidth, imgHeight);
+      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
+        ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, TILE_SIZE, BORDER_SIZE);
       }
     }
 
-    // Left wall - tile vertically using image's natural height
+    // Left wall - draw at natural size to avoid stretching thin sprites
     if (wallSideImg?.complete) {
-      const imgWidth = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
-      const imgHeight = wallSideImg.naturalHeight || TILE_SIZE;
+      const imgWidth = wallSideImg.naturalWidth;
+      const imgHeight = wallSideImg.naturalHeight;
       for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
         ctx.drawImage(wallSideImg, SIDE_BORDER_SIZE - imgWidth, y, imgWidth, imgHeight);
       }
     }
 
-    // Right wall (mirrored) - tile vertically using image's natural height
+    // Right wall (mirrored) - draw at natural size
     if (wallSideImg?.complete) {
-      const imgWidth = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
-      const imgHeight = wallSideImg.naturalHeight || TILE_SIZE;
+      const imgWidth = wallSideImg.naturalWidth;
+      const imgHeight = wallSideImg.naturalHeight;
       for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
         ctx.save();
         ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + imgWidth, y);
@@ -1107,7 +1103,7 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
       }
     }
 
-    // Corners - draw at natural size, positioned at corners
+    // Corners - draw at natural size to avoid stretching
     if (cornerTLImg?.complete) {
       const w = cornerTLImg.naturalWidth, h = cornerTLImg.naturalHeight;
       ctx.drawImage(cornerTLImg, SIDE_BORDER_SIZE - w, BORDER_SIZE - h, w, h);

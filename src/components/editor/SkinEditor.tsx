@@ -13,20 +13,21 @@ function fileToBase64(file: File): Promise<string> {
 }
 
 // Border sprite slot configuration
-// Note: Sprites are drawn at their natural size (no stretching) and tiled as needed
+// Top/bottom walls use fixed 48x48 sizing (stretched to fit)
+// Side walls and corners use natural size (no stretching)
 const BORDER_SPRITE_SLOTS: { key: keyof CustomBorderSprites; label: string; description: string; size: string }[] = [
-  { key: 'wallFront', label: 'Front Wall', description: 'Top edge wall (tiled horizontally)', size: 'Any size, tiles' },
-  { key: 'wallTop', label: 'Wall Top', description: 'Interior bottom edge (tiled horizontally)', size: 'Any size, tiles' },
-  { key: 'wallSide', label: 'Side Wall', description: 'Left/Right edges (tiled vertically)', size: 'Any size, tiles' },
-  { key: 'wallBottomOuter', label: 'Outer Bottom', description: 'Outer perimeter bottom (tiled horizontally)', size: 'Any size, tiles' },
-  { key: 'cornerTopLeft', label: 'Corner TL', description: 'Top-left outer corner', size: 'Any size' },
-  { key: 'cornerTopRight', label: 'Corner TR', description: 'Top-right outer corner', size: 'Any size' },
-  { key: 'cornerBottomLeft', label: 'Corner BL', description: 'Bottom-left outer corner', size: 'Any size' },
-  { key: 'cornerBottomRight', label: 'Corner BR', description: 'Bottom-right outer corner', size: 'Any size' },
-  { key: 'innerCornerTopLeft', label: 'Inner TL', description: 'Inner top-left corner', size: 'Any size' },
-  { key: 'innerCornerTopRight', label: 'Inner TR', description: 'Inner top-right corner', size: 'Any size' },
-  { key: 'innerCornerBottomLeft', label: 'Inner BL', description: 'Inner bottom-left corner', size: 'Any size' },
-  { key: 'innerCornerBottomRight', label: 'Inner BR', description: 'Inner bottom-right corner', size: 'Any size' },
+  { key: 'wallFront', label: 'Front Wall', description: 'Top edge wall (tiled)', size: '48x48' },
+  { key: 'wallTop', label: 'Wall Top', description: 'Interior bottom edge (tiled)', size: '48x24' },
+  { key: 'wallSide', label: 'Side Wall', description: 'Left/Right edges (natural size)', size: 'Any (e.g. 24x48)' },
+  { key: 'wallBottomOuter', label: 'Outer Bottom', description: 'Outer perimeter bottom (tiled)', size: '48x48' },
+  { key: 'cornerTopLeft', label: 'Corner TL', description: 'Top-left outer corner (natural size)', size: 'Any (e.g. 24x48)' },
+  { key: 'cornerTopRight', label: 'Corner TR', description: 'Top-right outer corner (natural size)', size: 'Any (e.g. 24x48)' },
+  { key: 'cornerBottomLeft', label: 'Corner BL', description: 'Bottom-left outer corner (natural size)', size: 'Any (e.g. 24x48)' },
+  { key: 'cornerBottomRight', label: 'Corner BR', description: 'Bottom-right outer corner (natural size)', size: 'Any (e.g. 24x48)' },
+  { key: 'innerCornerTopLeft', label: 'Inner TL', description: 'Inner top-left corner (natural size)', size: 'Any (e.g. 24x48)' },
+  { key: 'innerCornerTopRight', label: 'Inner TR', description: 'Inner top-right corner (natural size)', size: 'Any (e.g. 24x48)' },
+  { key: 'innerCornerBottomLeft', label: 'Inner BL', description: 'Inner bottom-left corner (natural size)', size: 'Any (e.g. 24x24)' },
+  { key: 'innerCornerBottomRight', label: 'Inner BR', description: 'Inner bottom-right corner (natural size)', size: 'Any (e.g. 24x24)' },
 ];
 
 // Tile sprite slot configuration

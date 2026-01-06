@@ -906,12 +906,10 @@ function drawCustomBorder(
   const cornerBLImg = loadBorderImage(sprites.cornerBottomLeft || '');
   const cornerBRImg = loadBorderImage(sprites.cornerBottomRight || '');
 
-  // Draw top wall - tile horizontally using image's natural width
+  // Draw top wall - fixed size (48x48), tiled horizontally
   if (wallFrontImg && wallFrontImg.complete) {
-    const imgWidth = wallFrontImg.naturalWidth || TILE_SIZE;
-    const imgHeight = wallFrontImg.naturalHeight || BORDER_SIZE;
-    for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += imgWidth) {
-      ctx.drawImage(wallFrontImg, x, BORDER_SIZE - imgHeight, imgWidth, imgHeight);
+    for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
+      ctx.drawImage(wallFrontImg, x, 0, TILE_SIZE, BORDER_SIZE);
     }
   } else {
     // Fallback to dungeon style
@@ -921,12 +919,10 @@ function drawCustomBorder(
     ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE - 12, gridPixelWidth, 12);
   }
 
-  // Draw bottom wall - tile horizontally using image's natural width
+  // Draw bottom wall - fixed size (48x48), tiled horizontally
   if (wallBottomOuterImg && wallBottomOuterImg.complete) {
-    const imgWidth = wallBottomOuterImg.naturalWidth || TILE_SIZE;
-    const imgHeight = wallBottomOuterImg.naturalHeight || BORDER_SIZE;
-    for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += imgWidth) {
-      ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, imgWidth, imgHeight);
+    for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
+      ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, TILE_SIZE, BORDER_SIZE);
     }
   } else {
     ctx.fillStyle = '#2a2a3a';
@@ -935,10 +931,10 @@ function drawCustomBorder(
     ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE + gridPixelHeight, gridPixelWidth, 8);
   }
 
-  // Draw left wall - tile vertically using image's natural height
+  // Draw left wall - natural size to avoid stretching thin sprites
   if (wallSideImg && wallSideImg.complete) {
-    const imgWidth = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
-    const imgHeight = wallSideImg.naturalHeight || TILE_SIZE;
+    const imgWidth = wallSideImg.naturalWidth;
+    const imgHeight = wallSideImg.naturalHeight;
     for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
       ctx.drawImage(wallSideImg, SIDE_BORDER_SIZE - imgWidth, y, imgWidth, imgHeight);
     }
@@ -949,10 +945,10 @@ function drawCustomBorder(
     ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
   }
 
-  // Draw right wall (mirrored) - tile vertically using image's natural height
+  // Draw right wall (mirrored) - natural size to avoid stretching
   if (wallSideImg && wallSideImg.complete) {
-    const imgWidth = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
-    const imgHeight = wallSideImg.naturalHeight || TILE_SIZE;
+    const imgWidth = wallSideImg.naturalWidth;
+    const imgHeight = wallSideImg.naturalHeight;
     for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
       ctx.save();
       ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + imgWidth, y);
@@ -967,7 +963,7 @@ function drawCustomBorder(
     ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
   }
 
-  // Draw corners at natural size, positioned at corners
+  // Draw corners at natural size to avoid stretching
   // Top-left corner
   if (cornerTLImg && cornerTLImg.complete) {
     const w = cornerTLImg.naturalWidth, h = cornerTLImg.naturalHeight;
@@ -1037,18 +1033,16 @@ function drawSmartCustomBorder(
 
   ctx.save();
 
-  // Draw edge borders for each exposed tile edge - use natural image sizes
+  // Draw edge borders for each exposed tile edge
   borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
     const px = offsetX + x * TILE_SIZE;
     const py = offsetY + y * TILE_SIZE;
 
     switch (edge) {
       case 'top':
-        // Top edge - front-facing wall
+        // Top edge - front-facing wall (fixed 48x48 size)
         if (wallFrontImg && wallFrontImg.complete) {
-          const w = wallFrontImg.naturalWidth || TILE_SIZE;
-          const h = wallFrontImg.naturalHeight || BORDER_SIZE;
-          ctx.drawImage(wallFrontImg, px, py - h, w, h);
+          ctx.drawImage(wallFrontImg, px, py - BORDER_SIZE, TILE_SIZE, BORDER_SIZE);
         } else {
           drawTopWallSegment(ctx, px, py);
         }
@@ -1057,37 +1051,33 @@ function drawSmartCustomBorder(
         // Bottom edge - thin wall-top for interior, full for outer
         if (isOuterEdge) {
           if (wallBottomOuterImg && wallBottomOuterImg.complete) {
-            const w = wallBottomOuterImg.naturalWidth || TILE_SIZE;
-            const h = wallBottomOuterImg.naturalHeight || BORDER_SIZE;
-            ctx.drawImage(wallBottomOuterImg, px, py + TILE_SIZE, w, h);
+            ctx.drawImage(wallBottomOuterImg, px, py + TILE_SIZE, TILE_SIZE, BORDER_SIZE);
           } else {
             drawBottomWallSegment(ctx, px, py, true);
           }
         } else {
           if (wallTopImg && wallTopImg.complete) {
-            const w = wallTopImg.naturalWidth || TILE_SIZE;
-            const h = wallTopImg.naturalHeight || SIDE_BORDER_SIZE;
-            ctx.drawImage(wallTopImg, px, py + TILE_SIZE, w, h);
+            ctx.drawImage(wallTopImg, px, py + TILE_SIZE, TILE_SIZE, SIDE_BORDER_SIZE);
           } else {
             drawBottomWallSegment(ctx, px, py, false);
           }
         }
         break;
       case 'left':
-        // Left edge - side wall
+        // Left edge - side wall (natural size to avoid stretching)
         if (wallSideImg && wallSideImg.complete) {
-          const w = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
-          const h = wallSideImg.naturalHeight || TILE_SIZE;
+          const w = wallSideImg.naturalWidth;
+          const h = wallSideImg.naturalHeight;
           ctx.drawImage(wallSideImg, px - w, py, w, h);
         } else {
           drawLeftWallSegment(ctx, px, py);
         }
         break;
       case 'right':
-        // Right edge - side wall (mirrored)
+        // Right edge - side wall (mirrored, natural size)
         if (wallSideImg && wallSideImg.complete) {
-          const w = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
-          const h = wallSideImg.naturalHeight || TILE_SIZE;
+          const w = wallSideImg.naturalWidth;
+          const h = wallSideImg.naturalHeight;
           ctx.save();
           ctx.translate(px + TILE_SIZE + w, py);
           ctx.scale(-1, 1);
@@ -1100,7 +1090,7 @@ function drawSmartCustomBorder(
     }
   });
 
-  // Draw corners on top of edges - use natural image sizes
+  // Draw corners on top of edges (natural size to avoid stretching)
   borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
     const px = offsetX + x * TILE_SIZE;
     const py = offsetY + y * TILE_SIZE;
