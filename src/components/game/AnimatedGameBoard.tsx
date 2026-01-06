@@ -68,6 +68,7 @@ interface BorderEdge {
   x: number;
   y: number;
   edge: EdgeType;
+  isOuterEdge: boolean; // True if this edge is on the outer perimeter of the puzzle
 }
 
 // Corner types for smart border rendering
@@ -79,6 +80,7 @@ interface BorderCorner {
   x: number;
   y: number;
   type: CornerType;
+  isOuterBottom: boolean; // True if this corner connects to outer perimeter bottom edge
 }
 
 interface SmartBorderData {
@@ -121,10 +123,16 @@ function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], 
       const hasLeft = !isTilePlayable(tiles, x - 1, y, width, height);
       const hasRight = !isTilePlayable(tiles, x + 1, y, width, height);
 
-      if (hasTop) edges.push({ x, y, edge: 'top' });
-      if (hasBottom) edges.push({ x, y, edge: 'bottom' });
-      if (hasLeft) edges.push({ x, y, edge: 'left' });
-      if (hasRight) edges.push({ x, y, edge: 'right' });
+      // Determine if edges are on outer perimeter (adjacent to out-of-bounds) vs interior (adjacent to void tile)
+      const isTopOuter = y - 1 < 0;
+      const isBottomOuter = y + 1 >= height;
+      const isLeftOuter = x - 1 < 0;
+      const isRightOuter = x + 1 >= width;
+
+      if (hasTop) edges.push({ x, y, edge: 'top', isOuterEdge: isTopOuter });
+      if (hasBottom) edges.push({ x, y, edge: 'bottom', isOuterEdge: isBottomOuter });
+      if (hasLeft) edges.push({ x, y, edge: 'left', isOuterEdge: isLeftOuter });
+      if (hasRight) edges.push({ x, y, edge: 'right', isOuterEdge: isRightOuter });
 
       // Detect corners by checking diagonal neighbors and edge combinations
       const topLeft = !isTilePlayable(tiles, x - 1, y - 1, width, height);
@@ -133,16 +141,16 @@ function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], 
       const bottomRight = !isTilePlayable(tiles, x + 1, y + 1, width, height);
 
       // Convex corners (outer corners - where two edges meet)
-      if (hasTop && hasLeft) corners.push({ x, y, type: 'convex-tl' });
-      if (hasTop && hasRight) corners.push({ x, y, type: 'convex-tr' });
-      if (hasBottom && hasLeft) corners.push({ x, y, type: 'convex-bl' });
-      if (hasBottom && hasRight) corners.push({ x, y, type: 'convex-br' });
+      if (hasTop && hasLeft) corners.push({ x, y, type: 'convex-tl', isOuterBottom: false });
+      if (hasTop && hasRight) corners.push({ x, y, type: 'convex-tr', isOuterBottom: false });
+      if (hasBottom && hasLeft) corners.push({ x, y, type: 'convex-bl', isOuterBottom: isBottomOuter });
+      if (hasBottom && hasRight) corners.push({ x, y, type: 'convex-br', isOuterBottom: isBottomOuter });
 
       // Concave corners (inner corners - where diagonal is void but adjacent are playable)
-      if (!hasTop && !hasLeft && topLeft) corners.push({ x, y, type: 'concave-tl' });
-      if (!hasTop && !hasRight && topRight) corners.push({ x, y, type: 'concave-tr' });
-      if (!hasBottom && !hasLeft && bottomLeft) corners.push({ x, y, type: 'concave-bl' });
-      if (!hasBottom && !hasRight && bottomRight) corners.push({ x, y, type: 'concave-br' });
+      if (!hasTop && !hasLeft && topLeft) corners.push({ x, y, type: 'concave-tl', isOuterBottom: false });
+      if (!hasTop && !hasRight && topRight) corners.push({ x, y, type: 'concave-tr', isOuterBottom: false });
+      if (!hasBottom && !hasLeft && bottomLeft) corners.push({ x, y, type: 'concave-bl', isOuterBottom: isBottomOuter });
+      if (!hasBottom && !hasRight && bottomRight) corners.push({ x, y, type: 'concave-br', isOuterBottom: isBottomOuter });
     }
   }
 
@@ -636,7 +644,7 @@ function drawSmartDungeonBorder(
   ctx.save();
 
   // Draw edge borders for each exposed tile edge
-  borderData.edges.forEach(({ x, y, edge }) => {
+  borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
     const px = offsetX + x * TILE_SIZE;
     const py = offsetY + y * TILE_SIZE;
 
@@ -645,7 +653,7 @@ function drawSmartDungeonBorder(
         drawTopWallSegment(ctx, px, py);
         break;
       case 'bottom':
-        drawBottomWallSegment(ctx, px, py);
+        drawBottomWallSegment(ctx, px, py, isOuterEdge);
         break;
       case 'left':
         drawLeftWallSegment(ctx, px, py);
@@ -657,10 +665,10 @@ function drawSmartDungeonBorder(
   });
 
   // Draw corners on top of edges
-  borderData.corners.forEach(({ x, y, type }) => {
+  borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
     const px = offsetX + x * TILE_SIZE;
     const py = offsetY + y * TILE_SIZE;
-    drawCornerSegment(ctx, px, py, type);
+    drawCornerSegment(ctx, px, py, type, isOuterBottom);
   });
 
   ctx.restore();
@@ -685,17 +693,27 @@ function drawTopWallSegment(ctx: CanvasRenderingContext2D, px: number, py: numbe
 
 /**
  * Draw a bottom wall segment for a single tile edge
- * This represents looking DOWN at the top surface of a wall below - a thin horizontal "wall top"
- * Same thickness as side walls (SIDE_BORDER_SIZE) but oriented horizontally
+ * Interior voids: thin wall-top (looking down at top surface)
+ * Outer perimeter: full thickness wall
  */
-function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
-  // Thin wall top (horizontal strip at bottom of tile, same thickness as side walls)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, SIDE_BORDER_SIZE);
+function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isOuterEdge: boolean = false) {
+  if (isOuterEdge) {
+    // Full thickness for outer perimeter bottom wall
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, BORDER_SIZE);
 
-  // Inner edge (top of the wall top, darker)
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 6);
+    // Top edge highlight
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 8);
+  } else {
+    // Thin wall top for interior voids
+    ctx.fillStyle = '#323242';
+    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, SIDE_BORDER_SIZE);
+
+    // Inner edge (top of the wall top, darker)
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 6);
+  }
 }
 
 /**
@@ -727,10 +745,13 @@ function drawRightWallSegment(ctx: CanvasRenderingContext2D, px: number, py: num
 /**
  * Draw corner pieces for smart borders
  * Top corners connect tall front-facing walls (BORDER_SIZE height)
- * Bottom corners connect thin wall-tops (SIDE_BORDER_SIZE height)
+ * Bottom corners: outer perimeter = full thickness, interior = thin wall-top
  */
-function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number, type: CornerType) {
+function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number, type: CornerType, isOuterBottom: boolean = false) {
   ctx.fillStyle = '#1a1a2a'; // Dark corner color
+
+  // Determine bottom corner height based on whether it's outer perimeter
+  const bottomHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
 
   switch (type) {
     // Convex corners (outer corners - puzzle sticks out)
@@ -743,12 +764,12 @@ function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number
       ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
       break;
     case 'convex-bl':
-      // Bottom-left corner - connects to thin wall-top
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+      // Bottom-left corner
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
       break;
     case 'convex-br':
-      // Bottom-right corner - connects to thin wall-top
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+      // Bottom-right corner
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
       break;
 
     // Concave corners (inner corners - puzzle goes inward)
@@ -763,14 +784,14 @@ function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number
       ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
       break;
     case 'concave-bl':
-      // Inner bottom-left - connects to thin wall-top
+      // Inner bottom-left
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
       break;
     case 'concave-br':
-      // Inner bottom-right - connects to thin wall-top
+      // Inner bottom-right
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
       break;
   }
 }
