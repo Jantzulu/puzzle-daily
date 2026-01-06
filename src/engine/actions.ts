@@ -379,6 +379,8 @@ function moveCharacter(
         // Determine who attacks first based on priority
         const enemyHasPriority = enemyDataForCombat.hasMeleePriority === true;
 
+        console.log(`[COMBAT] ${updatedChar.characterId} vs ${enemyAtTarget.enemyId} | Enemy priority: ${enemyHasPriority} | Char HP: ${updatedChar.currentHealth}, ATK: ${charData.attackDamage} | Enemy HP: ${enemyAtTarget.currentHealth}, ATK: ${enemyDataForCombat.attackDamage}`);
+
         if (enemyHasPriority) {
           // Enemy attacks first (enemy has priority)
           const damageToCharacter = enemyDataForCombat.retaliationDamage !== undefined
