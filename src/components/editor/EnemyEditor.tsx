@@ -234,17 +234,13 @@ export const EnemyEditor: React.FC = () => {
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={editingEnemy.blocksMovementAlive || false}
-                      onChange={(e) => updateEnemy({
-                        blocksMovementAlive: e.target.checked,
-                        behavesLikeWall: e.target.checked ? false : editingEnemy.behavesLikeWall // Mutually exclusive
-                      })}
+                      checked={editingEnemy.canOverlapEntities || false}
+                      onChange={(e) => updateEnemy({ canOverlapEntities: e.target.checked })}
                       className="w-4 h-4"
-                      disabled={editingEnemy.behavesLikeWall}
                     />
-                    <span className="text-sm font-bold">Blocks Movement (Alive)</span>
+                    <span className="text-sm font-bold">Can Overlap Entities</span>
                   </label>
-                  <p className="text-xs text-gray-400 mt-1">Characters stop when colliding (no turn behavior)</p>
+                  <p className="text-xs text-gray-400 mt-1">Can walk through other entities (ghost mode). Enables "Overlap with" triggers.</p>
                 </div>
 
                 <div>
@@ -252,12 +248,8 @@ export const EnemyEditor: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={editingEnemy.behavesLikeWall || false}
-                      onChange={(e) => updateEnemy({
-                        behavesLikeWall: e.target.checked,
-                        blocksMovementAlive: e.target.checked ? false : editingEnemy.blocksMovementAlive // Mutually exclusive
-                      })}
+                      onChange={(e) => updateEnemy({ behavesLikeWall: e.target.checked })}
                       className="w-4 h-4"
-                      disabled={editingEnemy.blocksMovementAlive}
                     />
                     <span className="text-sm font-bold">Behaves Like Wall (Alive)</span>
                   </label>
@@ -268,34 +260,13 @@ export const EnemyEditor: React.FC = () => {
                   <label className="flex items-center gap-2">
                     <input
                       type="checkbox"
-                      checked={editingEnemy.blocksMovementDead || false}
-                      onChange={(e) => updateEnemy({
-                        blocksMovementDead: e.target.checked,
-                        behavesLikeWallDead: e.target.checked ? false : editingEnemy.behavesLikeWallDead // Mutually exclusive
-                      })}
-                      className="w-4 h-4"
-                      disabled={editingEnemy.behavesLikeWallDead}
-                    />
-                    <span className="text-sm font-bold">Blocks Movement (Dead)</span>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-1">Corpse stops movement (no turn behavior)</p>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
                       checked={editingEnemy.behavesLikeWallDead || false}
-                      onChange={(e) => updateEnemy({
-                        behavesLikeWallDead: e.target.checked,
-                        blocksMovementDead: e.target.checked ? false : editingEnemy.blocksMovementDead // Mutually exclusive
-                      })}
+                      onChange={(e) => updateEnemy({ behavesLikeWallDead: e.target.checked })}
                       className="w-4 h-4"
-                      disabled={editingEnemy.blocksMovementDead}
                     />
                     <span className="text-sm font-bold">Behaves Like Wall (Dead)</span>
                   </label>
-                  <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
+                  <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors</p>
                 </div>
 
                 {/* Combat Toggles */}
@@ -355,9 +326,9 @@ export const EnemyEditor: React.FC = () => {
                   <br />
                   • Deals {editingEnemy.attackDamage} damage on counterattack
                   <br />
-                  • {editingEnemy.blocksMovementAlive ? 'Blocks movement when alive' : 'Can pass through when alive'}
+                  • {editingEnemy.canOverlapEntities ? 'Can overlap with entities (ghost mode)' : 'Blocks entity movement'}
                   <br />
-                  • {editingEnemy.blocksMovementDead ? 'Corpse blocks movement' : 'Can walk over corpse'}
+                  • {editingEnemy.behavesLikeWallDead ? 'Corpse behaves like wall' : 'Can walk over corpse'}
                 </p>
               </div>
               </div>
@@ -611,12 +582,12 @@ export const EnemyEditor: React.FC = () => {
                                                   <optgroup label="Target Characters">
                                                     <option value="character_adjacent">Character Adjacent</option>
                                                     <option value="character_in_range">Character in Range</option>
-                                                    <option value="contact_with_character">Contact with Character</option>
+                                                    <option value="contact_with_character">Overlap with Character</option>
                                                   </optgroup>
                                                   <optgroup label="Target Enemies">
                                                     <option value="enemy_adjacent">Enemy Adjacent</option>
                                                     <option value="enemy_in_range">Enemy in Range</option>
-                                                    <option value="contact_with_enemy">Contact with Enemy</option>
+                                                    <option value="contact_with_enemy">Overlap with Enemy</option>
                                                   </optgroup>
                                                   <optgroup label="Other">
                                                     <option value="wall_ahead">Wall Ahead</option>
@@ -961,9 +932,9 @@ export const EnemyEditor: React.FC = () => {
                   <div>
                     <span className="text-gray-400">ATK:</span> {enemy.attackDamage}
                   </div>
-                  {enemy.blocksMovement && (
-                    <div className="col-span-2 text-xs text-yellow-400">
-                      🚧 Blocks movement
+                  {enemy.canOverlapEntities && (
+                    <div className="col-span-2 text-xs text-cyan-400">
+                      👻 Ghost mode
                     </div>
                   )}
                 </div>

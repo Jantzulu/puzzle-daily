@@ -125,10 +125,9 @@ export interface Character {
   attackDamage: number;
   defaultFacing: Direction;
   behavior: CharacterAction[];
-  blocksMovementAlive?: boolean; // If true, blocks movement when alive (stops character)
-  blocksMovementDead?: boolean; // If true, blocks movement when dead (corpse stops character)
-  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive (mutually exclusive with blocksMovementAlive)
-  behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead (mutually exclusive with blocksMovementDead)
+  canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
+  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
+  behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
   retaliationDamage?: number; // Damage dealt when enemy attempts to move onto this character's tile
 
   // Combat toggles (for backwards compatibility and fallback)
@@ -143,10 +142,9 @@ export interface Enemy {
   health: number;
   attackDamage: number;
   behavior?: EnemyBehavior;
-  blocksMovementAlive?: boolean; // If true, blocks movement when alive (stops character)
-  blocksMovementDead?: boolean; // If true, blocks movement when dead (corpse stops character)
-  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive (mutually exclusive with blocksMovementAlive)
-  behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead (mutually exclusive with blocksMovementDead)
+  canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
+  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
+  behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
   retaliationDamage?: number; // Damage dealt when character attempts to move onto this enemy's tile
 
   // Combat toggles (for backwards compatibility and fallback)

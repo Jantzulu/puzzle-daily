@@ -266,17 +266,13 @@ export const CharacterEditor: React.FC = () => {
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
-                        checked={editingCharacter.blocksMovementAlive || false}
-                        onChange={(e) => updateCharacter({
-                          blocksMovementAlive: e.target.checked,
-                          behavesLikeWall: e.target.checked ? false : editingCharacter.behavesLikeWall // Mutually exclusive
-                        })}
+                        checked={editingCharacter.canOverlapEntities || false}
+                        onChange={(e) => updateCharacter({ canOverlapEntities: e.target.checked })}
                         className="w-4 h-4"
-                        disabled={editingCharacter.behavesLikeWall}
                       />
-                      <span className="text-sm font-bold">Blocks Movement (Alive)</span>
+                      <span className="text-sm font-bold">Can Overlap Entities</span>
                     </label>
-                    <p className="text-xs text-gray-400 mt-1">Other characters stop when colliding (no turn behavior)</p>
+                    <p className="text-xs text-gray-400 mt-1">Can walk through other entities (ghost mode). Enables "Overlap with" triggers.</p>
                   </div>
 
                   <div>
@@ -284,12 +280,8 @@ export const CharacterEditor: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={editingCharacter.behavesLikeWall || false}
-                        onChange={(e) => updateCharacter({
-                          behavesLikeWall: e.target.checked,
-                          blocksMovementAlive: e.target.checked ? false : editingCharacter.blocksMovementAlive // Mutually exclusive
-                        })}
+                        onChange={(e) => updateCharacter({ behavesLikeWall: e.target.checked })}
                         className="w-4 h-4"
-                        disabled={editingCharacter.blocksMovementAlive}
                       />
                       <span className="text-sm font-bold">Behaves Like Wall (Alive)</span>
                     </label>
@@ -300,34 +292,13 @@ export const CharacterEditor: React.FC = () => {
                     <label className="flex items-center gap-2">
                       <input
                         type="checkbox"
-                        checked={editingCharacter.blocksMovementDead || false}
-                        onChange={(e) => updateCharacter({
-                          blocksMovementDead: e.target.checked,
-                          behavesLikeWallDead: e.target.checked ? false : editingCharacter.behavesLikeWallDead // Mutually exclusive
-                        })}
-                        className="w-4 h-4"
-                        disabled={editingCharacter.behavesLikeWallDead}
-                      />
-                      <span className="text-sm font-bold">Blocks Movement (Dead)</span>
-                    </label>
-                    <p className="text-xs text-gray-400 mt-1">Corpse stops movement (no turn behavior)</p>
-                  </div>
-
-                  <div>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
                         checked={editingCharacter.behavesLikeWallDead || false}
-                        onChange={(e) => updateCharacter({
-                          behavesLikeWallDead: e.target.checked,
-                          blocksMovementDead: e.target.checked ? false : editingCharacter.blocksMovementDead // Mutually exclusive
-                        })}
+                        onChange={(e) => updateCharacter({ behavesLikeWallDead: e.target.checked })}
                         className="w-4 h-4"
-                        disabled={editingCharacter.blocksMovementDead}
                       />
                       <span className="text-sm font-bold">Behaves Like Wall (Dead)</span>
                     </label>
-                    <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
+                    <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors</p>
                   </div>
 
                   {/* Combat Toggles */}
@@ -565,12 +536,12 @@ export const CharacterEditor: React.FC = () => {
                                             <optgroup label="Target Enemies">
                                               <option value="enemy_adjacent">Enemy Adjacent</option>
                                               <option value="enemy_in_range">Enemy in Range</option>
-                                              <option value="contact_with_enemy">Contact with Enemy</option>
+                                              <option value="contact_with_enemy">Overlap with Enemy</option>
                                             </optgroup>
                                             <optgroup label="Target Characters">
                                               <option value="character_adjacent">Character Adjacent</option>
                                               <option value="character_in_range">Character in Range</option>
-                                              <option value="contact_with_character">Contact with Character</option>
+                                              <option value="contact_with_character">Overlap with Character</option>
                                             </optgroup>
                                             <optgroup label="Other">
                                               <option value="wall_ahead">Wall Ahead</option>

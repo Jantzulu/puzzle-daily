@@ -266,6 +266,15 @@ function moveCharacter(
       (c) => c.x === newX && c.y === newY && !c.dead && c !== updatedChar
     );
     if (otherCharacter) {
+      // Check if the moving entity can overlap (ghost mode)
+      const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
+      if (movingEntityData?.canOverlapEntities) {
+        // Ghost mode - can pass through, move to this tile
+        updatedChar.x = newX;
+        updatedChar.y = newY;
+        continue; // Continue to next tile if multi-tile move
+      }
+
       const otherCharData = getCharacter(otherCharacter.characterId);
 
       // Check if character behaves like a wall (triggers wall collision behaviors)
@@ -290,10 +299,6 @@ function moveCharacter(
         }
       }
 
-      // Check if the other character blocks like a wall (just stops, no turn behavior)
-      if (otherCharData?.blocksMovementAlive) {
-        return updatedChar; // Blocked like a wall - stop here
-      }
       // Otherwise, just wait (doesn't trigger IF_WALL, character will try again next turn)
       return updatedChar;
     }
@@ -307,6 +312,15 @@ function moveCharacter(
 
       // Check if dead enemy behaves like a wall (triggers wall collision behaviors)
       if (enemyData?.behavesLikeWallDead) {
+        // Check if the moving entity can overlap (ghost mode)
+        const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
+        if (movingEntityData?.canOverlapEntities) {
+          // Ghost mode - can pass through corpses too
+          updatedChar.x = newX;
+          updatedChar.y = newY;
+          continue;
+        }
+
         // Handle like a wall collision based on behavior
         switch (onWallCollision) {
           case 'turn_left':
@@ -326,11 +340,7 @@ function moveCharacter(
             return updatedChar; // Stop movement
         }
       }
-
-      // Check if dead enemy blocks movement (just stops, no turn behavior)
-      if (enemyData?.blocksMovementDead) {
-        return updatedChar; // Dead enemy blocks movement - stop here
-      }
+      // Dead enemies without behavesLikeWallDead can be walked over
     }
 
     // Check for living enemy at target position
@@ -339,6 +349,15 @@ function moveCharacter(
     );
 
     if (enemyAtTarget) {
+      // Check if the moving entity can overlap (ghost mode)
+      const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
+      if (movingEntityData?.canOverlapEntities) {
+        // Ghost mode - can pass through living enemies too
+        updatedChar.x = newX;
+        updatedChar.y = newY;
+        continue;
+      }
+
       const enemyData = getEnemy(enemyAtTarget.enemyId);
 
       // Check if enemy behaves like a wall (triggers wall collision behaviors)
@@ -547,21 +566,25 @@ function handleIfWall(
     (c) => c.x === checkX && c.y === checkY && !c.dead && c !== character
   );
   const isWallLikeCharacter = blockingCharacter ?
-    getCharacter(blockingCharacter.characterId)?.blocksMovementAlive : false;
+    getCharacter(blockingCharacter.characterId)?.behavesLikeWall : false;
 
-  // Check for blocking dead enemy
+  // Check for blocking dead enemy (behaves like wall)
   const blockingDeadEnemy = gameState.puzzle.enemies.find(
     (e) => e.x === checkX && e.y === checkY && e.dead
   );
   const isBlockingCorpse = blockingDeadEnemy ?
-    getEnemy(blockingDeadEnemy.enemyId)?.blocksMovementDead : false;
+    getEnemy(blockingDeadEnemy.enemyId)?.behavesLikeWallDead : false;
+
+  // Check if this entity can overlap (ghost mode ignores blocking entities)
+  const movingEntityData = getCharacter(character.characterId) || getEnemy(character.characterId);
+  const canOverlap = movingEntityData?.canOverlapEntities;
 
   const isWall =
     !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height) ||
     !tile ||
     tile.type === TileType.WALL ||
-    isWallLikeCharacter ||
-    isBlockingCorpse;
+    (!canOverlap && isWallLikeCharacter) ||
+    (!canOverlap && isBlockingCorpse);
 
   if (isWall && action.params?.then) {
     // Execute the "then" actions
