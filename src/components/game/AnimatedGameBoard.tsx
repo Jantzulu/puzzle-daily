@@ -580,7 +580,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       width={canvasWidth}
       height={canvasHeight}
       onClick={handleCanvasClick}
-      className="border-2 border-gray-600 cursor-pointer rounded"
+      className="cursor-pointer"
       style={{ imageRendering: 'auto' }}
     />
   );
