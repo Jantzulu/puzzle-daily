@@ -1140,11 +1140,11 @@ export function checkTriggerCondition(
 
     case 'enemy_in_range':
       // Check if any enemy is within specified range
-      const range = eventRange || 3; // Default to 3 if not specified
+      const enemyRange = eventRange || 3; // Default to 3 if not specified
       return gameState.puzzle.enemies.some(enemy => {
         if (enemy.dead) return false;
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
-        return distance <= range;
+        return distance <= enemyRange;
       });
 
     case 'contact_with_enemy':
@@ -1152,6 +1152,33 @@ export function checkTriggerCondition(
       return gameState.puzzle.enemies.some(enemy => {
         if (enemy.dead) return false;
         return enemy.x === character.x && enemy.y === character.y;
+      });
+
+    case 'character_adjacent':
+      // Check if any character is within 1 tile (adjacent, including diagonals)
+      // Used by enemies to detect nearby characters
+      return gameState.placedCharacters.some(char => {
+        if (char.dead) return false;
+        const distance = calculateDistance(character.x, character.y, char.x, char.y);
+        return distance <= 1.42; // sqrt(2) for diagonal adjacency
+      });
+
+    case 'character_in_range':
+      // Check if any character is within specified range
+      // Used by enemies to detect characters at a distance
+      const charRange = eventRange || 3; // Default to 3 if not specified
+      return gameState.placedCharacters.some(char => {
+        if (char.dead) return false;
+        const distance = calculateDistance(character.x, character.y, char.x, char.y);
+        return distance <= charRange;
+      });
+
+    case 'contact_with_character':
+      // Check if entity is on the same tile as a character
+      // Used by enemies to detect characters in melee range
+      return gameState.placedCharacters.some(char => {
+        if (char.dead) return false;
+        return char.x === character.x && char.y === character.y;
       });
 
     case 'wall_ahead':
@@ -1180,23 +1207,38 @@ export function checkTriggerCondition(
 }
 
 /**
- * Evaluate all triggers for a character after movement and execute matching actions
- * This should be called AFTER a character moves to their ending position
+ * Evaluate all triggers for a character or enemy after movement and execute matching actions
+ * This should be called AFTER a character/enemy moves to their ending position
  */
 export function evaluateTriggers(
   character: PlacedCharacter,
   gameState: GameState
 ): void {
+  // Try to get character data first, then fall back to enemy data
   const charData = getCharacter(character.characterId);
-  if (!charData || !charData.behavior) {
-    console.log('[evaluateTriggers] No character data or behavior for:', character.characterId);
+  const enemyData = !charData ? getEnemy(character.characterId) : null;
+
+  // Get the behavior array from character or enemy
+  let behaviorActions: CharacterAction[] | undefined;
+  let entityType: 'character' | 'enemy' = 'character';
+
+  if (charData?.behavior) {
+    behaviorActions = charData.behavior;
+    entityType = 'character';
+  } else if (enemyData?.behavior?.pattern) {
+    behaviorActions = enemyData.behavior.pattern;
+    entityType = 'enemy';
+  }
+
+  if (!behaviorActions) {
+    console.log('[evaluateTriggers] No behavior found for:', character.characterId, '(checked both character and enemy data)');
     return;
   }
 
-  console.log('[evaluateTriggers] Checking triggers for:', character.characterId, 'HP:', character.currentHealth, 'dead:', character.dead);
+  console.log('[evaluateTriggers] Checking triggers for', entityType + ':', character.characterId, 'HP:', character.currentHealth, 'dead:', character.dead);
 
   // Check each action for event-based triggers
-  charData.behavior.forEach((action: CharacterAction, index: number) => {
+  behaviorActions.forEach((action: CharacterAction, index: number) => {
     if (action.trigger?.mode === 'on_event' && action.trigger.event) {
       console.log('[evaluateTriggers] Action', index, '- checking trigger:', action.trigger.event, 'range:', action.trigger.eventRange);
       const triggered = checkTriggerCondition(
