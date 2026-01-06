@@ -1231,7 +1231,14 @@ export function evaluateTriggers(
   }
 
   if (!behaviorActions) {
+    console.log(`[TRIGGER-DEBUG] ${character.characterId} has NO behavior actions`);
     return;
+  }
+
+  // Count how many trigger actions exist
+  const triggerActions = behaviorActions.filter(a => a.trigger?.mode === 'on_event');
+  if (triggerActions.length === 0) {
+    console.log(`[TRIGGER-DEBUG] ${entityType} ${character.characterId} has ${behaviorActions.length} actions but NONE have on_event triggers`);
   }
 
   // Check each action for event-based triggers
@@ -1245,10 +1252,11 @@ export function evaluateTriggers(
       );
 
       if (triggered) {
-        // Log only when a trigger actually fires
         console.log(`[TRIGGER] ${entityType} ${character.characterId} → ${action.trigger.event} → ${action.type}`);
         const updatedCharacter = executeAction(character, action, gameState);
         Object.assign(character, updatedCharacter);
+      } else {
+        console.log(`[TRIGGER-DEBUG] ${entityType} ${character.characterId} → ${action.trigger.event} = FALSE`);
       }
     }
   });
