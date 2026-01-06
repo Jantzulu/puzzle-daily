@@ -569,7 +569,7 @@ export const EnemyEditor: React.FC = () => {
                                               onChange={(e) => {
                                                 const newTrigger: TriggerConfig = {
                                                   mode: e.target.value as any,
-                                                  ...(e.target.value === 'interval' ? { intervalMs: 600 } : { event: 'enemy_adjacent' })
+                                                  ...(e.target.value === 'interval' ? { intervalMs: 600 } : { event: 'character_adjacent' })
                                                 };
                                                 updateBehaviorAction(index, { ...action, trigger: newTrigger });
                                               }}
@@ -601,21 +601,21 @@ export const EnemyEditor: React.FC = () => {
                                               <div>
                                                 <label className="text-xs text-gray-400">Event:</label>
                                                 <select
-                                                  value={action.trigger.event || 'enemy_adjacent'}
+                                                  value={action.trigger.event || 'character_adjacent'}
                                                   onChange={(e) => updateBehaviorAction(index, {
                                                     ...action,
                                                     trigger: { ...action.trigger!, event: e.target.value as any }
                                                   })}
                                                   className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
                                                 >
-                                                  <option value="enemy_adjacent">Enemy Adjacent</option>
-                                                  <option value="enemy_in_range">Enemy in Range</option>
-                                                  <option value="contact_with_enemy">Contact with Enemy</option>
+                                                  <option value="character_adjacent">Character Adjacent</option>
+                                                  <option value="character_in_range">Character in Range</option>
+                                                  <option value="contact_with_character">Contact with Character</option>
                                                   <option value="wall_ahead">Wall Ahead</option>
                                                   <option value="health_below_50">Health Below 50%</option>
                                                 </select>
                                               </div>
-                                              {action.trigger.event === 'enemy_in_range' && (
+                                              {(action.trigger.event === 'character_in_range' || action.trigger.event === 'enemy_in_range') && (
                                                 <div>
                                                   <label className="text-xs text-gray-400">Detection Range (tiles):</label>
                                                   <input
