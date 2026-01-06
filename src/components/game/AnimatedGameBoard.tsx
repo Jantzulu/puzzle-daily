@@ -41,10 +41,8 @@ interface AnimatedGameBoardProps {
 }
 
 const TILE_SIZE = 48;
-const BORDER_SIZE = 48; // Border thickness for top/bottom
-const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
-const NARROW_BORDER_SIZE = 12; // Very thin border for 1-tile narrow voids
-const NARROW_SIDE_BORDER_SIZE = 8; // Very thin side border for 1-tile narrow voids
+const BORDER_SIZE = 48; // Border offset for canvas layout (space reserved for potential interior walls)
+const SIDE_BORDER_SIZE = 24; // Side border offset for canvas layout
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
 const MOVE_DURATION = 200; // First 50%: moving between tiles
 const IDLE_DURATION = 200; // Second 50%: idle on destination tile
@@ -70,7 +68,7 @@ interface BorderEdge {
   x: number;
   y: number;
   edge: EdgeType;
-  isNarrowVoid: boolean; // True if the void this edge borders is only 1 tile in the perpendicular dimension
+  isInteriorWall: boolean; // True if this is an interior wall (should be rendered as tall front-facing wall)
 }
 
 // Corner types for smart border rendering
@@ -147,42 +145,52 @@ function isSmallVoidForBorderSkip(tiles: (import('../../types/game').TileOrNull)
 }
 
 /**
- * Check if a void at (voidX, voidY) is narrow in the direction perpendicular to the given edge.
- * For top/bottom edges, checks if the void is only 1 tile tall (narrow vertically).
- * For left/right edges, checks if the void is only 1 tile wide (narrow horizontally).
+ * Check if an edge represents an "interior wall" that should be rendered as a tall front-facing wall.
+ *
+ * In top-down dungeon style:
+ * - Only TOP edges can be interior walls (when you're looking "up" at a wall from below)
+ * - A top edge is an interior wall in these cases:
+ *   1. It's on the absolute top row of the playable area (the main "ceiling" of the dungeon)
+ *   2. There are playable tiles above the void (interior corridors/rooms)
+ * - Bottom, left, and right edges are always thin trim (floor edges or side views)
  */
-function isNarrowVoidForEdge(
+function isInteriorWallEdge(
   tiles: (import('../../types/game').TileOrNull)[][],
-  voidX: number,
-  voidY: number,
+  tileX: number,
+  tileY: number,
   edge: EdgeType,
   width: number,
   height: number
 ): boolean {
-  // For top/bottom edges, check vertical depth of void
-  if (edge === 'top' || edge === 'bottom') {
-    // Check if there's a playable tile on the opposite side of the void
-    if (edge === 'top') {
-      // Void is above the tile at (voidX, voidY+1), check if there's playable above the void
-      return isTilePlayable(tiles, voidX, voidY - 1, width, height);
-    } else {
-      // Void is below the tile at (voidX, voidY-1), check if there's playable below the void
-      return isTilePlayable(tiles, voidX, voidY + 1, width, height);
+  // Only top edges can be interior walls (front-facing walls you look up at)
+  if (edge !== 'top') {
+    return false;
+  }
+
+  // Check if this tile is on the topmost row of playable tiles in this column
+  // If so, it's the main ceiling wall and should be tall
+  let isTopmostInColumn = true;
+  for (let checkY = 0; checkY < tileY; checkY++) {
+    if (isTilePlayable(tiles, tileX, checkY, width, height)) {
+      isTopmostInColumn = false;
+      break;
     }
   }
 
-  // For left/right edges, check horizontal width of void
-  if (edge === 'left' || edge === 'right') {
-    if (edge === 'left') {
-      // Void is left of the tile, check if there's playable further left
-      return isTilePlayable(tiles, voidX - 1, voidY, width, height);
-    } else {
-      // Void is right of the tile, check if there's playable further right
-      return isTilePlayable(tiles, voidX + 1, voidY, width, height);
+  if (isTopmostInColumn) {
+    return true; // This is the ceiling - render as tall interior wall
+  }
+
+  // For non-topmost tiles, check if there are playable tiles above the void
+  // This handles interior corridors where you look up at a wall with more dungeon above
+  const voidY = tileY - 1;
+  for (let checkY = voidY - 1; checkY >= 0; checkY--) {
+    if (isTilePlayable(tiles, tileX, checkY, width, height)) {
+      return true; // Found playable space above - this is an interior wall
     }
   }
 
-  return false;
+  return false; // No playable space above and not the topmost - outer perimeter edge
 }
 
 /**
@@ -229,10 +237,10 @@ function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], 
       const hasLeft = leftVoid && !smallVoidsToSkip.has(`${x - 1},${y}`);
       const hasRight = rightVoid && !smallVoidsToSkip.has(`${x + 1},${y}`);
 
-      if (hasTop) edges.push({ x, y, edge: 'top', isNarrowVoid: isNarrowVoidForEdge(tiles, x, y - 1, 'top', width, height) });
-      if (hasBottom) edges.push({ x, y, edge: 'bottom', isNarrowVoid: isNarrowVoidForEdge(tiles, x, y + 1, 'bottom', width, height) });
-      if (hasLeft) edges.push({ x, y, edge: 'left', isNarrowVoid: isNarrowVoidForEdge(tiles, x - 1, y, 'left', width, height) });
-      if (hasRight) edges.push({ x, y, edge: 'right', isNarrowVoid: isNarrowVoidForEdge(tiles, x + 1, y, 'right', width, height) });
+      if (hasTop) edges.push({ x, y, edge: 'top', isInteriorWall: isInteriorWallEdge(tiles, x, y, 'top', width, height) });
+      if (hasBottom) edges.push({ x, y, edge: 'bottom', isInteriorWall: false }); // Bottom edges are always thin trim
+      if (hasLeft) edges.push({ x, y, edge: 'left', isInteriorWall: false }); // Side edges are always thin trim
+      if (hasRight) edges.push({ x, y, edge: 'right', isInteriorWall: false }); // Side edges are always thin trim
 
       // Detect corners by checking diagonal neighbors and edge combinations
       const topLeft = !isTilePlayable(tiles, x - 1, y - 1, width, height);
@@ -759,22 +767,26 @@ function drawSmartDungeonBorder(
   ctx.save();
 
   // Draw edge borders for each exposed tile edge
-  borderData.edges.forEach(({ x, y, edge, isNarrowVoid }) => {
+  borderData.edges.forEach(({ x, y, edge, isInteriorWall }) => {
     const px = offsetX + x * TILE_SIZE;
     const py = offsetY + y * TILE_SIZE;
 
     switch (edge) {
       case 'top':
-        drawTopWallSegment(ctx, px, py, isNarrowVoid);
+        if (isInteriorWall) {
+          drawInteriorWallSegment(ctx, px, py); // Full tall front-facing wall
+        } else {
+          drawTrimSegment(ctx, px, py, 'top'); // Thin trim for outer perimeter
+        }
         break;
       case 'bottom':
-        drawBottomWallSegment(ctx, px, py, isNarrowVoid);
+        drawTrimSegment(ctx, px, py, 'bottom'); // Always thin trim
         break;
       case 'left':
-        drawLeftWallSegment(ctx, px, py, isNarrowVoid);
+        drawTrimSegment(ctx, px, py, 'left'); // Always thin trim
         break;
       case 'right':
-        drawRightWallSegment(ctx, px, py, isNarrowVoid);
+        drawTrimSegment(ctx, px, py, 'right'); // Always thin trim
         break;
     }
   });
@@ -790,122 +802,87 @@ function drawSmartDungeonBorder(
 }
 
 /**
- * Draw a top wall segment for a single tile edge
+ * Draw a full interior wall segment - this is a front-facing wall you look "up" at
+ * Only used for TOP edges that are interior walls (have playable space above the void)
  */
-function drawTopWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
-  const borderSize = isNarrowVoid ? NARROW_BORDER_SIZE : BORDER_SIZE;
-
-  // Main wall body (extends upward from tile)
+function drawInteriorWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  // Main wall body (extends upward from tile) - full height for interior walls
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(px, py - borderSize, TILE_SIZE, borderSize);
+  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, BORDER_SIZE);
 
-  // Shadow at bottom of wall (scaled for narrow)
+  // Shadow at bottom of wall (where wall meets floor)
   ctx.fillStyle = '#2a2a3a';
-  const shadowHeight = isNarrowVoid ? 4 : 12;
-  ctx.fillRect(px, py - shadowHeight, TILE_SIZE, shadowHeight);
+  ctx.fillRect(px, py - 12, TILE_SIZE, 12);
 
-  // Highlight at top (scaled for narrow)
+  // Highlight at top of wall
   ctx.fillStyle = '#4a4a5a';
-  const highlightHeight = isNarrowVoid ? 3 : 8;
-  ctx.fillRect(px, py - borderSize, TILE_SIZE, highlightHeight);
+  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, 8);
 }
 
 /**
- * Draw a bottom wall segment for a single tile edge
+ * Draw a thin trim segment for outer perimeter edges
+ * Used for all edges that are on the outer boundary of the dungeon
  */
-function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
-  const borderSize = isNarrowVoid ? NARROW_BORDER_SIZE : BORDER_SIZE;
+function drawTrimSegment(ctx: CanvasRenderingContext2D, px: number, py: number, edge: EdgeType) {
+  const TRIM_SIZE = 6; // Thin trim for outer edges
 
-  // Main wall body (extends downward from tile)
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, borderSize);
+  ctx.fillStyle = '#1a1a2a'; // Dark trim color
 
-  // Highlight at top edge of bottom wall (scaled for narrow)
-  ctx.fillStyle = '#3a3a4a';
-  const highlightHeight = isNarrowVoid ? 3 : 8;
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, highlightHeight);
-}
-
-/**
- * Draw a left wall segment for a single tile edge
- */
-function drawLeftWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
-  const borderSize = isNarrowVoid ? NARROW_SIDE_BORDER_SIZE : SIDE_BORDER_SIZE;
-
-  // Main wall body (extends leftward from tile)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(px - borderSize, py, borderSize, TILE_SIZE);
-
-  // Inner edge (right side of left wall, darker) - scaled for narrow
-  ctx.fillStyle = '#2a2a3a';
-  const edgeWidth = isNarrowVoid ? 2 : 6;
-  ctx.fillRect(px - edgeWidth, py, edgeWidth, TILE_SIZE);
-}
-
-/**
- * Draw a right wall segment for a single tile edge
- */
-function drawRightWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number, isNarrowVoid: boolean = false) {
-  const borderSize = isNarrowVoid ? NARROW_SIDE_BORDER_SIZE : SIDE_BORDER_SIZE;
-
-  // Main wall body (extends rightward from tile)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(px + TILE_SIZE, py, borderSize, TILE_SIZE);
-
-  // Inner edge (left side of right wall, lighter) - scaled for narrow
-  ctx.fillStyle = '#3a3a4a';
-  const edgeWidth = isNarrowVoid ? 2 : 6;
-  ctx.fillRect(px + TILE_SIZE, py, edgeWidth, TILE_SIZE);
+  switch (edge) {
+    case 'top':
+      // Thin trim above the tile
+      ctx.fillRect(px, py - TRIM_SIZE, TILE_SIZE, TRIM_SIZE);
+      break;
+    case 'bottom':
+      // Thin trim below the tile
+      ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, TRIM_SIZE);
+      break;
+    case 'left':
+      // Thin trim to the left of the tile
+      ctx.fillRect(px - TRIM_SIZE, py, TRIM_SIZE, TILE_SIZE);
+      break;
+    case 'right':
+      // Thin trim to the right of the tile
+      ctx.fillRect(px + TILE_SIZE, py, TRIM_SIZE, TILE_SIZE);
+      break;
+  }
 }
 
 /**
  * Draw corner pieces for smart borders
+ * All corners use thin trim since they're on the outer perimeter
  */
 function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number, type: CornerType) {
-  ctx.fillStyle = '#1a1a2a'; // Dark corner color
+  const TRIM_SIZE = 6; // Match trim size from drawTrimSegment
+  ctx.fillStyle = '#1a1a2a'; // Dark trim color
 
   switch (type) {
     // Convex corners (outer corners - puzzle sticks out)
     case 'convex-tl':
-      // Top-left corner piece
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px - TRIM_SIZE, py - TRIM_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
     case 'convex-tr':
-      // Top-right corner piece
-      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px + TILE_SIZE, py - TRIM_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
     case 'convex-bl':
-      // Bottom-left corner piece
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px - TRIM_SIZE, py + TILE_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
     case 'convex-br':
-      // Bottom-right corner piece
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
 
     // Concave corners (inner corners - puzzle goes inward)
-    // These fill in the gap where two walls meet at an inside corner
     case 'concave-tl':
-      // Fill the inside corner at top-left
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
-      // Also need to connect the walls
-      ctx.fillStyle = '#323242';
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px - TRIM_SIZE, py - TRIM_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
     case 'concave-tr':
-      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
-      ctx.fillStyle = '#323242';
-      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px + TILE_SIZE, py - TRIM_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
     case 'concave-bl':
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
-      ctx.fillStyle = '#323242';
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px - TRIM_SIZE, py + TILE_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
     case 'concave-br':
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
-      ctx.fillStyle = '#323242';
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, TRIM_SIZE, TRIM_SIZE);
       break;
   }
 }
@@ -913,63 +890,48 @@ function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number
 function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, totalWidth: number, totalHeight: number) {
   const gridPixelWidth = gridWidth * TILE_SIZE;
   const gridPixelHeight = gridHeight * TILE_SIZE;
+  const TRIM_SIZE = 6; // Thin trim for outer perimeter edges
 
   ctx.save();
 
-  // Background behind border (dark void)
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(0, 0, totalWidth, totalHeight);
-
-  // Top wall (front-facing with depth)
+  // TOP WALL - This IS an interior wall (you're looking up at it from below)
+  // Full tall wall with depth
   ctx.fillStyle = '#3a3a4a'; // Stone color
-  ctx.fillRect(0, 0, totalWidth, BORDER_SIZE);
+  ctx.fillRect(SIDE_BORDER_SIZE, 0, gridPixelWidth, BORDER_SIZE);
 
-  // Add stone texture/depth to top wall
-  ctx.fillStyle = '#2a2a3a'; // Shadow
-  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
-    ctx.fillRect(x, BORDER_SIZE - 12, TILE_SIZE - 2, 12);
-  }
+  // Add shadow at bottom of top wall
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE - 12, gridPixelWidth, 12);
 
   // Top wall highlight
   ctx.fillStyle = '#4a4a5a';
-  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
-    ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
-  }
+  ctx.fillRect(SIDE_BORDER_SIZE, 0, gridPixelWidth, 8);
 
-  // Bottom wall (simpler, just top edge visible)
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
+  // BOTTOM, LEFT, RIGHT - These are outer perimeter, use thin trim
+  ctx.fillStyle = '#1a1a2a'; // Dark trim color
 
-  // Bottom wall top edge
-  ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
+  // Bottom trim
+  ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE + gridPixelHeight, gridPixelWidth, TRIM_SIZE);
 
-  // Left wall (side view - THINNER)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+  // Left trim
+  ctx.fillRect(SIDE_BORDER_SIZE - TRIM_SIZE, BORDER_SIZE, TRIM_SIZE, gridPixelHeight);
 
-  // Left wall inner edge
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
+  // Right trim
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, TRIM_SIZE, gridPixelHeight);
 
-  // Right wall (side view - THINNER)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
-
-  // Right wall inner edge
-  ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
-
-  // Corners (darker, showing depth)
+  // Corners - top corners connect to tall wall, bottom corners are trim
+  // Top-left corner (connects tall wall to left trim)
   ctx.fillStyle = '#1a1a2a';
-  // Top-left
-  ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Top-right
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Bottom-left
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Bottom-right
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  ctx.fillRect(SIDE_BORDER_SIZE - TRIM_SIZE, 0, TRIM_SIZE, BORDER_SIZE);
+
+  // Top-right corner (connects tall wall to right trim)
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, TRIM_SIZE, BORDER_SIZE);
+
+  // Bottom-left corner (trim)
+  ctx.fillRect(SIDE_BORDER_SIZE - TRIM_SIZE, BORDER_SIZE + gridPixelHeight, TRIM_SIZE, TRIM_SIZE);
+
+  // Bottom-right corner (trim)
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, TRIM_SIZE, TRIM_SIZE);
 
   ctx.restore();
 }
