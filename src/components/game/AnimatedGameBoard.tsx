@@ -96,12 +96,71 @@ function isTilePlayable(tiles: (import('../../types/game').TileOrNull)[][], x: n
 }
 
 /**
+ * Check if a void tile at (voidX, voidY) is a small void that should skip interior borders
+ * This includes:
+ * - Interior holes (surrounded on all 4 cardinal sides by playable tiles)
+ * - Edge notches (1-tile deep voids at the puzzle edge)
+ * Small voids look cramped with borders inside, so we skip them
+ */
+function isSmallVoidForBorderSkip(tiles: (import('../../types/game').TileOrNull)[][], voidX: number, voidY: number, width: number, height: number): boolean {
+  // Check cardinal neighbors - count how many are playable vs void/edge
+  const topPlayable = isTilePlayable(tiles, voidX, voidY - 1, width, height);
+  const bottomPlayable = isTilePlayable(tiles, voidX, voidY + 1, width, height);
+  const leftPlayable = isTilePlayable(tiles, voidX - 1, voidY, width, height);
+  const rightPlayable = isTilePlayable(tiles, voidX + 1, voidY, width, height);
+
+  // Check if neighbors are out of bounds (edge of puzzle grid)
+  const topIsEdge = voidY - 1 < 0;
+  const bottomIsEdge = voidY + 1 >= height;
+  const leftIsEdge = voidX - 1 < 0;
+  const rightIsEdge = voidX + 1 >= width;
+
+  // Count playable neighbors
+  const playableCount = [topPlayable, bottomPlayable, leftPlayable, rightPlayable].filter(Boolean).length;
+
+  // If surrounded on all 4 sides by playable tiles, it's an interior hole - skip borders
+  if (playableCount === 4) {
+    return true;
+  }
+
+  // For edge notches: if 3 sides are playable and 1 side is the puzzle edge, skip borders
+  // This handles 1-tile deep notches cut into the edge of the puzzle
+  if (playableCount === 3) {
+    const edgeCount = [topIsEdge, bottomIsEdge, leftIsEdge, rightIsEdge].filter(Boolean).length;
+    if (edgeCount >= 1) {
+      return true;
+    }
+  }
+
+  // For corner notches: if 2 sides are playable and 2 sides are puzzle edge
+  if (playableCount === 2) {
+    const edgeCount = [topIsEdge, bottomIsEdge, leftIsEdge, rightIsEdge].filter(Boolean).length;
+    if (edgeCount >= 2) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+/**
  * Compute smart border edges and corners based on actual playable tile shapes
  */
 function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], width: number, height: number): SmartBorderData {
   const edges: BorderEdge[] = [];
   const corners: BorderCorner[] = [];
   let minX = width, maxX = -1, minY = height, maxY = -1;
+
+  // First, identify all small voids where we should skip interior borders
+  // This includes interior holes AND edge notches
+  const smallVoidsToSkip = new Set<string>();
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      if (!isTilePlayable(tiles, x, y, width, height) && isSmallVoidForBorderSkip(tiles, x, y, width, height)) {
+        smallVoidsToSkip.add(`${x},${y}`);
+      }
+    }
+  }
 
   // Scan all tiles to find edges adjacent to void/null
   for (let y = 0; y < height; y++) {
@@ -116,10 +175,17 @@ function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], 
       maxY = Math.max(maxY, y);
 
       // Check all 4 edges - if adjacent tile is void/null/out-of-bounds, we need a border
-      const hasTop = !isTilePlayable(tiles, x, y - 1, width, height);
-      const hasBottom = !isTilePlayable(tiles, x, y + 1, width, height);
-      const hasLeft = !isTilePlayable(tiles, x - 1, y, width, height);
-      const hasRight = !isTilePlayable(tiles, x + 1, y, width, height);
+      // UNLESS the adjacent void is a small interior hole (skip borders for those)
+      const topVoid = !isTilePlayable(tiles, x, y - 1, width, height);
+      const bottomVoid = !isTilePlayable(tiles, x, y + 1, width, height);
+      const leftVoid = !isTilePlayable(tiles, x - 1, y, width, height);
+      const rightVoid = !isTilePlayable(tiles, x + 1, y, width, height);
+
+      // Skip border if the adjacent void is a small void (interior hole or edge notch)
+      const hasTop = topVoid && !smallVoidsToSkip.has(`${x},${y - 1}`);
+      const hasBottom = bottomVoid && !smallVoidsToSkip.has(`${x},${y + 1}`);
+      const hasLeft = leftVoid && !smallVoidsToSkip.has(`${x - 1},${y}`);
+      const hasRight = rightVoid && !smallVoidsToSkip.has(`${x + 1},${y}`);
 
       if (hasTop) edges.push({ x, y, edge: 'top' });
       if (hasBottom) edges.push({ x, y, edge: 'bottom' });
@@ -139,10 +205,19 @@ function computeSmartBorder(tiles: (import('../../types/game').TileOrNull)[][], 
       if (hasBottom && hasRight) corners.push({ x, y, type: 'convex-br' });
 
       // Concave corners (inner corners - where diagonal is void but adjacent are playable)
-      if (!hasTop && !hasLeft && topLeft) corners.push({ x, y, type: 'concave-tl' });
-      if (!hasTop && !hasRight && topRight) corners.push({ x, y, type: 'concave-tr' });
-      if (!hasBottom && !hasLeft && bottomLeft) corners.push({ x, y, type: 'concave-bl' });
-      if (!hasBottom && !hasRight && bottomRight) corners.push({ x, y, type: 'concave-br' });
+      // Only draw if the diagonal void is not a small void (interior hole or edge notch)
+      if (!hasTop && !hasLeft && topLeft && !smallVoidsToSkip.has(`${x - 1},${y - 1}`)) {
+        corners.push({ x, y, type: 'concave-tl' });
+      }
+      if (!hasTop && !hasRight && topRight && !smallVoidsToSkip.has(`${x + 1},${y - 1}`)) {
+        corners.push({ x, y, type: 'concave-tr' });
+      }
+      if (!hasBottom && !hasLeft && bottomLeft && !smallVoidsToSkip.has(`${x - 1},${y + 1}`)) {
+        corners.push({ x, y, type: 'concave-bl' });
+      }
+      if (!hasBottom && !hasRight && bottomRight && !smallVoidsToSkip.has(`${x + 1},${y + 1}`)) {
+        corners.push({ x, y, type: 'concave-br' });
+      }
     }
   }
 
@@ -567,6 +642,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
   const hasBorder = borderStyle !== 'none';
+  const isIrregular = hasIrregularShape(gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height);
 
   const gridWidth = gameState.puzzle.width * TILE_SIZE;
   const gridHeight = gameState.puzzle.height * TILE_SIZE;
@@ -574,13 +650,18 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
+  // For irregular shapes, don't show the canvas border (it shows the rectangular bounds)
+  const canvasClassName = isIrregular
+    ? "cursor-pointer"
+    : "border-2 border-gray-600 cursor-pointer rounded";
+
   return (
     <canvas
       ref={canvasRef}
       width={canvasWidth}
       height={canvasHeight}
       onClick={handleCanvasClick}
-      className="border-2 border-gray-600 cursor-pointer rounded"
+      className={canvasClassName}
       style={{ imageRendering: 'auto' }}
     />
   );

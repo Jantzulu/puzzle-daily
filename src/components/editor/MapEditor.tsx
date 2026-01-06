@@ -1086,12 +1086,28 @@ function drawEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, enemyId?
   if (enemyId) {
     const enemyData = getEnemy(enemyId);
     if (enemyData && 'customSprite' in enemyData && enemyData.customSprite) {
-      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE);
-      return;
+      const sprite = enemyData.customSprite;
+
+      // Try to draw the sprite - pass undefined for direction to use 'default'
+      // Also pass false for isMoving since we want the idle/static sprite
+      drawSprite(ctx, sprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, undefined, false);
+
+      // Check if anything was actually drawn by seeing if sprite has visual data
+      // If sprite uses directional mode, check for 'default' config with image data
+      const hasVisualData = sprite.useDirectional
+        ? sprite.directionalSprites?.['default']?.idleImageData ||
+          sprite.directionalSprites?.['default']?.imageData ||
+          sprite.directionalSprites?.['default']?.idleSpriteSheet
+        : sprite.idleImageData || sprite.imageData || sprite.idleSpriteSheet || sprite.shape;
+
+      if (hasVisualData) {
+        return;
+      }
+      // If no visual data, fall through to red circle fallback
     }
   }
 
-  // Fallback to red circle if no custom sprite
+  // Fallback to red circle if no custom sprite or sprite has no visual data
   ctx.fillStyle = '#f44336';
   ctx.beginPath();
   ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
