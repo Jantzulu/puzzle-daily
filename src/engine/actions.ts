@@ -371,28 +371,54 @@ function moveCharacter(
         return updatedChar;
       }
 
-      // Combat: Character attacks enemy (player initiative)
+      // Combat: Check if enemy has melee priority
       const charData = getCharacter(updatedChar.characterId);
-      if (charData) {
-        // Character attacks enemy first
-        enemyAtTarget.currentHealth -= charData.attackDamage;
-        if (enemyAtTarget.currentHealth <= 0) {
-          enemyAtTarget.dead = true;
-        }
+      const enemyDataForCombat = getEnemy(enemyAtTarget.enemyId);
 
-        // Enemy counterattacks ONLY if still alive
-        if (!enemyAtTarget.dead) {
-          const enemyData = getEnemy(enemyAtTarget.enemyId);
-          if (enemyData) {
-            // Use retaliationDamage if set, otherwise use regular attackDamage
-            const damageToApply = enemyData.retaliationDamage !== undefined
-              ? enemyData.retaliationDamage
-              : enemyData.attackDamage;
-            updatedChar.currentHealth -= damageToApply;
+      if (charData && enemyDataForCombat) {
+        // Determine who attacks first based on priority
+        const enemyHasPriority = enemyDataForCombat.hasMeleePriority === true;
+
+        if (enemyHasPriority) {
+          // Enemy attacks first (enemy has priority)
+          const damageToCharacter = enemyDataForCombat.retaliationDamage !== undefined
+            ? enemyDataForCombat.retaliationDamage
+            : enemyDataForCombat.attackDamage;
+          updatedChar.currentHealth -= damageToCharacter;
+          if (updatedChar.currentHealth <= 0) {
+            updatedChar.dead = true;
+          }
+
+          // Character counterattacks ONLY if still alive
+          if (!updatedChar.dead) {
+            enemyAtTarget.currentHealth -= charData.attackDamage;
+            if (enemyAtTarget.currentHealth <= 0) {
+              enemyAtTarget.dead = true;
+            }
+          }
+        } else {
+          // Character attacks first (default - player initiative)
+          enemyAtTarget.currentHealth -= charData.attackDamage;
+          if (enemyAtTarget.currentHealth <= 0) {
+            enemyAtTarget.dead = true;
+          }
+
+          // Enemy counterattacks ONLY if still alive
+          if (!enemyAtTarget.dead) {
+            const damageToCharacter = enemyDataForCombat.retaliationDamage !== undefined
+              ? enemyDataForCombat.retaliationDamage
+              : enemyDataForCombat.attackDamage;
+            updatedChar.currentHealth -= damageToCharacter;
             if (updatedChar.currentHealth <= 0) {
               updatedChar.dead = true;
             }
           }
+        }
+      } else if (charData) {
+        // Fallback: just character data available (shouldn't normally happen)
+        enemyAtTarget.currentHealth -= charData.attackDamage;
+        if (enemyAtTarget.currentHealth <= 0) {
+          enemyAtTarget.dead = true;
         }
       }
 
@@ -1231,14 +1257,7 @@ export function evaluateTriggers(
   }
 
   if (!behaviorActions) {
-    console.log(`[TRIGGER-DEBUG] ${character.characterId} has NO behavior actions`);
     return;
-  }
-
-  // Count how many trigger actions exist
-  const triggerActions = behaviorActions.filter(a => a.trigger?.mode === 'on_event');
-  if (triggerActions.length === 0) {
-    console.log(`[TRIGGER-DEBUG] ${entityType} ${character.characterId} has ${behaviorActions.length} actions but NONE have on_event triggers`);
   }
 
   // Check each action for event-based triggers
@@ -1252,11 +1271,8 @@ export function evaluateTriggers(
       );
 
       if (triggered) {
-        console.log(`[TRIGGER] ${entityType} ${character.characterId} → ${action.trigger.event} → ${action.type}`);
         const updatedCharacter = executeAction(character, action, gameState);
         Object.assign(character, updatedCharacter);
-      } else {
-        console.log(`[TRIGGER-DEBUG] ${entityType} ${character.characterId} → ${action.trigger.event} = FALSE`);
       }
     }
   });
