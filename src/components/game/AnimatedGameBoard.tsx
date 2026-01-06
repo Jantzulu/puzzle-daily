@@ -685,15 +685,17 @@ function drawTopWallSegment(ctx: CanvasRenderingContext2D, px: number, py: numbe
 
 /**
  * Draw a bottom wall segment for a single tile edge
+ * This represents looking DOWN at the top surface of a wall below - a thin horizontal "wall top"
+ * Same thickness as side walls (SIDE_BORDER_SIZE) but oriented horizontally
  */
 function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
-  // Main wall body (extends downward from tile)
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, BORDER_SIZE);
+  // Thin wall top (horizontal strip at bottom of tile, same thickness as side walls)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, SIDE_BORDER_SIZE);
 
-  // Highlight at top edge of bottom wall
-  ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 8);
+  // Inner edge (top of the wall top, darker)
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 6);
 }
 
 /**
@@ -724,6 +726,8 @@ function drawRightWallSegment(ctx: CanvasRenderingContext2D, px: number, py: num
 
 /**
  * Draw corner pieces for smart borders
+ * Top corners connect tall front-facing walls (BORDER_SIZE height)
+ * Bottom corners connect thin wall-tops (SIDE_BORDER_SIZE height)
  */
 function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number, type: CornerType) {
   ctx.fillStyle = '#1a1a2a'; // Dark corner color
@@ -731,45 +735,42 @@ function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number
   switch (type) {
     // Convex corners (outer corners - puzzle sticks out)
     case 'convex-tl':
-      // Top-left corner piece
+      // Top-left corner - connects to tall front-facing wall
       ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
       break;
     case 'convex-tr':
-      // Top-right corner piece
+      // Top-right corner - connects to tall front-facing wall
       ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
       break;
     case 'convex-bl':
-      // Bottom-left corner piece
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      // Bottom-left corner - connects to thin wall-top
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
       break;
     case 'convex-br':
-      // Bottom-right corner piece
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      // Bottom-right corner - connects to thin wall-top
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
       break;
 
     // Concave corners (inner corners - puzzle goes inward)
-    // These fill in the gap where two walls meet at an inside corner
     case 'concave-tl':
-      // Fill the inside corner at top-left
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
-      // Also need to connect the walls
+      // Inner top-left - connects to tall front-facing wall
       ctx.fillStyle = '#323242';
       ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
       break;
     case 'concave-tr':
-      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      // Inner top-right - connects to tall front-facing wall
       ctx.fillStyle = '#323242';
       ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
       break;
     case 'concave-bl':
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      // Inner bottom-left - connects to thin wall-top
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
       break;
     case 'concave-br':
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      // Inner bottom-right - connects to thin wall-top
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
       break;
   }
 }
@@ -800,13 +801,13 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
     ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
   }
 
-  // Bottom wall (simpler, just top edge visible)
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
+  // Bottom wall - thin wall-top (looking down at top surface of wall)
+  ctx.fillStyle = '#323242';
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, SIDE_BORDER_SIZE);
 
-  // Bottom wall top edge
-  ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
+  // Inner edge of bottom wall-top
+  ctx.fillStyle = '#2a2a3a';
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 6);
 
   // Left wall (side view - THINNER)
   ctx.fillStyle = '#323242';
@@ -826,14 +827,14 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
 
   // Corners (darker, showing depth)
   ctx.fillStyle = '#1a1a2a';
-  // Top-left
+  // Top-left - connects to tall front-facing wall
   ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Top-right
+  // Top-right - connects to tall front-facing wall
   ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Bottom-left
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Bottom-right
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  // Bottom-left - connects to thin wall-top
+  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+  // Bottom-right - connects to thin wall-top
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
 
   ctx.restore();
 }
