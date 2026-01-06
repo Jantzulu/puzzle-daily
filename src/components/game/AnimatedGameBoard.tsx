@@ -147,12 +147,11 @@ function isSmallVoidForBorderSkip(tiles: (import('../../types/game').TileOrNull)
 /**
  * Check if an edge represents an "interior wall" that should be rendered as a tall front-facing wall.
  *
- * In top-down dungeon style:
- * - Only TOP edges can be interior walls (when you're looking "up" at a wall from below)
- * - A top edge is an interior wall in these cases:
- *   1. It's on the absolute top row of the playable area (the main "ceiling" of the dungeon)
- *   2. There are playable tiles above the void (interior corridors/rooms)
- * - Bottom, left, and right edges are always thin trim (floor edges or side views)
+ * In top-down dungeon style (based on reference images):
+ * - Tall walls appear when you're looking UP into a void that has MORE DUNGEON above it
+ * - This means: playable tile below void, void in middle, playable tiles above void
+ * - The outer perimeter (top edge of entire dungeon) is NOT an interior wall - it's just trim
+ * - Only TOP edges of tiles can be interior walls (you're looking up at them)
  */
 function isInteriorWallEdge(
   tiles: (import('../../types/game').TileOrNull)[][],
@@ -167,30 +166,19 @@ function isInteriorWallEdge(
     return false;
   }
 
-  // Check if this tile is on the topmost row of playable tiles in this column
-  // If so, it's the main ceiling wall and should be tall
-  let isTopmostInColumn = true;
-  for (let checkY = 0; checkY < tileY; checkY++) {
-    if (isTilePlayable(tiles, tileX, checkY, width, height)) {
-      isTopmostInColumn = false;
-      break;
-    }
-  }
-
-  if (isTopmostInColumn) {
-    return true; // This is the ceiling - render as tall interior wall
-  }
-
-  // For non-topmost tiles, check if there are playable tiles above the void
-  // This handles interior corridors where you look up at a wall with more dungeon above
+  // The void is at tileY - 1 (the tile above the current one)
   const voidY = tileY - 1;
+
+  // For this to be an interior wall, there must be playable tiles ABOVE the void
+  // This means we're looking UP into a void that has more dungeon above it
   for (let checkY = voidY - 1; checkY >= 0; checkY--) {
     if (isTilePlayable(tiles, tileX, checkY, width, height)) {
-      return true; // Found playable space above - this is an interior wall
+      return true; // Found playable space above the void - this IS an interior wall
     }
   }
 
-  return false; // No playable space above and not the topmost - outer perimeter edge
+  // No playable tiles above the void - this is the outer top edge, use trim
+  return false;
 }
 
 /**
@@ -894,21 +882,14 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
 
   ctx.save();
 
-  // TOP WALL - This IS an interior wall (you're looking up at it from below)
-  // Full tall wall with depth
-  ctx.fillStyle = '#3a3a4a'; // Stone color
-  ctx.fillRect(SIDE_BORDER_SIZE, 0, gridPixelWidth, BORDER_SIZE);
+  // For a rectangular puzzle with no voids, ALL edges are outer perimeter
+  // There are no interior walls because there's no void with dungeon above it
+  // All edges get thin trim
 
-  // Add shadow at bottom of top wall
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE - 12, gridPixelWidth, 12);
-
-  // Top wall highlight
-  ctx.fillStyle = '#4a4a5a';
-  ctx.fillRect(SIDE_BORDER_SIZE, 0, gridPixelWidth, 8);
-
-  // BOTTOM, LEFT, RIGHT - These are outer perimeter, use thin trim
   ctx.fillStyle = '#1a1a2a'; // Dark trim color
+
+  // Top trim
+  ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE - TRIM_SIZE, gridPixelWidth, TRIM_SIZE);
 
   // Bottom trim
   ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE + gridPixelHeight, gridPixelWidth, TRIM_SIZE);
@@ -919,18 +900,14 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
   // Right trim
   ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, TRIM_SIZE, gridPixelHeight);
 
-  // Corners - top corners connect to tall wall, bottom corners are trim
-  // Top-left corner (connects tall wall to left trim)
-  ctx.fillStyle = '#1a1a2a';
-  ctx.fillRect(SIDE_BORDER_SIZE - TRIM_SIZE, 0, TRIM_SIZE, BORDER_SIZE);
-
-  // Top-right corner (connects tall wall to right trim)
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, TRIM_SIZE, BORDER_SIZE);
-
-  // Bottom-left corner (trim)
+  // Corners (all trim)
+  // Top-left
+  ctx.fillRect(SIDE_BORDER_SIZE - TRIM_SIZE, BORDER_SIZE - TRIM_SIZE, TRIM_SIZE, TRIM_SIZE);
+  // Top-right
+  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE - TRIM_SIZE, TRIM_SIZE, TRIM_SIZE);
+  // Bottom-left
   ctx.fillRect(SIDE_BORDER_SIZE - TRIM_SIZE, BORDER_SIZE + gridPixelHeight, TRIM_SIZE, TRIM_SIZE);
-
-  // Bottom-right corner (trim)
+  // Bottom-right
   ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, TRIM_SIZE, TRIM_SIZE);
 
   ctx.restore();
