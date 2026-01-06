@@ -145,17 +145,57 @@ function moveCharacter(
   // Move multiple tiles if tilesPerMove > 1
   let updatedChar = { ...character };
 
-  // PRE-CHECK: Look ahead to see if we'll hit a wall on first move
+  // PRE-CHECK: Look ahead to see if we'll hit a wall or wall-behaving entity on first move
   // This prevents wasting a turn when facing a wall
   const { dx: firstDx, dy: firstDy } = getDirectionOffset(direction);
   const firstX = updatedChar.x + firstDx;
   const firstY = updatedChar.y + firstDy;
 
-  const willHitWall =
+  let willHitWall =
     !isInBounds(firstX, firstY, gameState.puzzle.width, gameState.puzzle.height) ||
     gameState.puzzle.tiles[firstY]?.[firstX] === null ||
     gameState.puzzle.tiles[firstY]?.[firstX] === undefined ||
     gameState.puzzle.tiles[firstY]?.[firstX]?.type === TileType.WALL;
+
+  // Also check for entities that behave like walls
+  if (!willHitWall && isInBounds(firstX, firstY, gameState.puzzle.width, gameState.puzzle.height)) {
+    // Check for living character with behavesLikeWall
+    const wallCharacter = gameState.placedCharacters.find(
+      (c) => c.x === firstX && c.y === firstY && !c.dead && c !== updatedChar
+    );
+    if (wallCharacter) {
+      const wallCharData = getCharacter(wallCharacter.characterId);
+      if (wallCharData?.behavesLikeWall) {
+        willHitWall = true;
+      }
+    }
+
+    // Check for living enemy with behavesLikeWall
+    if (!willHitWall) {
+      const wallEnemy = gameState.puzzle.enemies.find(
+        (e) => e.x === firstX && e.y === firstY && !e.dead
+      );
+      if (wallEnemy) {
+        const wallEnemyData = getEnemy(wallEnemy.enemyId);
+        if (wallEnemyData?.behavesLikeWall) {
+          willHitWall = true;
+        }
+      }
+    }
+
+    // Check for dead enemy with behavesLikeWallDead
+    if (!willHitWall) {
+      const deadWallEnemy = gameState.puzzle.enemies.find(
+        (e) => e.x === firstX && e.y === firstY && e.dead
+      );
+      if (deadWallEnemy) {
+        const deadWallEnemyData = getEnemy(deadWallEnemy.enemyId);
+        if (deadWallEnemyData?.behavesLikeWallDead) {
+          willHitWall = true;
+        }
+      }
+    }
+  }
 
   // If we'll hit a wall immediately, handle collision NOW (don't waste a turn)
   // Skip 'stop' and 'continue' behaviors - 'stop' means do nothing, 'continue' means ghost through
