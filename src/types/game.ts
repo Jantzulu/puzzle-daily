@@ -195,17 +195,25 @@ export interface CustomBorderSprites {
   wallSide?: string;            // Side wall (24px wide) - used for left/right edges
   wallBottomOuter?: string;     // Outer perimeter bottom wall (48px tall) - optional, falls back to wallFront
 
-  // Convex corners (outer corners where puzzle sticks out)
+  // Convex corners - Full size (outer corners on puzzle perimeter, 24x48px)
   cornerTopLeft?: string;       // Top-left outer corner (24x48px)
   cornerTopRight?: string;      // Top-right outer corner (24x48px)
-  cornerBottomLeft?: string;    // Bottom-left outer corner (24x24px for interior, 24x48px for outer)
-  cornerBottomRight?: string;   // Bottom-right outer corner (24x24px for interior, 24x48px for outer)
+  cornerBottomLeft?: string;    // Bottom-left outer corner (24x48px)
+  cornerBottomRight?: string;   // Bottom-right outer corner (24x48px)
 
-  // Concave corners (inner corners where puzzle goes inward)
+  // Convex corners - Thin size (for interior void edges, 24x24px)
+  cornerBottomLeftThin?: string;    // Bottom-left thin corner (24x24px)
+  cornerBottomRightThin?: string;   // Bottom-right thin corner (24x24px)
+
+  // Concave corners - Full size (inner corners, 24x48px)
   innerCornerTopLeft?: string;      // Inner top-left corner (24x48px)
   innerCornerTopRight?: string;     // Inner top-right corner (24x48px)
-  innerCornerBottomLeft?: string;   // Inner bottom-left corner (24x24px)
-  innerCornerBottomRight?: string;  // Inner bottom-right corner (24x24px)
+  innerCornerBottomLeft?: string;   // Inner bottom-left corner (24x48px)
+  innerCornerBottomRight?: string;  // Inner bottom-right corner (24x48px)
+
+  // Concave corners - Thin size (for interior void edges, 24x24px)
+  innerCornerBottomLeftThin?: string;   // Inner bottom-left thin corner (24x24px)
+  innerCornerBottomRightThin?: string;  // Inner bottom-right thin corner (24x24px)
 }
 
 export interface BorderConfig {

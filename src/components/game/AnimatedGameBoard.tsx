@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy } from '../../utils/assetStorage';
+import { loadPuzzleSkin } from '../../utils/assetStorage';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
 
 // Movement action types - entities with these actions should show direction arrow
@@ -386,6 +387,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Clear
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Load skin for tile sprites
+      const skin = gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null;
+      const tileSprites = skin?.tileSprites;
+
       // Calculate grid offset (for borders)
       const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
       const hasBorder = borderStyle !== 'none';
@@ -415,7 +420,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         for (let x = 0; x < gameState.puzzle.width; x++) {
           const tile = gameState.puzzle.tiles[y][x];
           if (tile) {
-            drawTile(ctx, x, y, tile.type);
+            drawTile(ctx, x, y, tile.type, tileSprites);
           } else {
             // Draw void/null tile
             drawVoidTile(ctx, x, y);
@@ -879,6 +884,21 @@ function loadBorderImage(src: string): HTMLImageElement | null {
   return img;
 }
 
+// Image cache for tile sprites
+const tileImageCache = new Map<string, HTMLImageElement>();
+
+function loadTileImage(src: string): HTMLImageElement | null {
+  if (!src) return null;
+
+  let img = tileImageCache.get(src);
+  if (!img) {
+    img = new Image();
+    img.src = src;
+    tileImageCache.set(src, img);
+  }
+  return img;
+}
+
 function drawCustomBorder(
   ctx: CanvasRenderingContext2D,
   gridWidth: number,
@@ -1014,14 +1034,22 @@ function drawSmartCustomBorder(
   const wallTopImg = loadBorderImage(sprites.wallTop || '');
   const wallSideImg = loadBorderImage(sprites.wallSide || '');
   const wallBottomOuterImg = loadBorderImage(sprites.wallBottomOuter || sprites.wallFront || '');
+  // Full-size corners (24x48)
   const cornerTLImg = loadBorderImage(sprites.cornerTopLeft || '');
   const cornerTRImg = loadBorderImage(sprites.cornerTopRight || '');
   const cornerBLImg = loadBorderImage(sprites.cornerBottomLeft || '');
   const cornerBRImg = loadBorderImage(sprites.cornerBottomRight || '');
+  // Thin corners (24x24) - fall back to full-size if not provided
+  const cornerBLThinImg = loadBorderImage(sprites.cornerBottomLeftThin || sprites.cornerBottomLeft || '');
+  const cornerBRThinImg = loadBorderImage(sprites.cornerBottomRightThin || sprites.cornerBottomRight || '');
+  // Full-size inner corners (24x48)
   const innerCornerTLImg = loadBorderImage(sprites.innerCornerTopLeft || '');
   const innerCornerTRImg = loadBorderImage(sprites.innerCornerTopRight || '');
   const innerCornerBLImg = loadBorderImage(sprites.innerCornerBottomLeft || '');
   const innerCornerBRImg = loadBorderImage(sprites.innerCornerBottomRight || '');
+  // Thin inner corners (24x24) - fall back to full-size if not provided
+  const innerCornerBLThinImg = loadBorderImage(sprites.innerCornerBottomLeftThin || sprites.innerCornerBottomLeft || '');
+  const innerCornerBRThinImg = loadBorderImage(sprites.innerCornerBottomRightThin || sprites.innerCornerBottomRight || '');
 
   ctx.save();
 
@@ -1102,17 +1130,35 @@ function drawSmartCustomBorder(
         }
         break;
       case 'convex-bl':
-        if (cornerBLImg && cornerBLImg.complete) {
-          ctx.drawImage(cornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
+        // Use thin variant for interior voids, full for outer perimeter
+        if (isOuterBottom) {
+          if (cornerBLImg && cornerBLImg.complete) {
+            ctx.drawImage(cornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         } else {
-          drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          if (cornerBLThinImg && cornerBLThinImg.complete) {
+            ctx.drawImage(cornerBLThinImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         }
         break;
       case 'convex-br':
-        if (cornerBRImg && cornerBRImg.complete) {
-          ctx.drawImage(cornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
+        // Use thin variant for interior voids, full for outer perimeter
+        if (isOuterBottom) {
+          if (cornerBRImg && cornerBRImg.complete) {
+            ctx.drawImage(cornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         } else {
-          drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          if (cornerBRThinImg && cornerBRThinImg.complete) {
+            ctx.drawImage(cornerBRThinImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         }
         break;
       case 'concave-tl':
@@ -1130,17 +1176,35 @@ function drawSmartCustomBorder(
         }
         break;
       case 'concave-bl':
-        if (innerCornerBLImg && innerCornerBLImg.complete) {
-          ctx.drawImage(innerCornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
+        // Use thin variant for interior voids, full for outer perimeter
+        if (isOuterBottom) {
+          if (innerCornerBLImg && innerCornerBLImg.complete) {
+            ctx.drawImage(innerCornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         } else {
-          drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          if (innerCornerBLThinImg && innerCornerBLThinImg.complete) {
+            ctx.drawImage(innerCornerBLThinImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         }
         break;
       case 'concave-br':
-        if (innerCornerBRImg && innerCornerBRImg.complete) {
-          ctx.drawImage(innerCornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
+        // Use thin variant for interior voids, full for outer perimeter
+        if (isOuterBottom) {
+          if (innerCornerBRImg && innerCornerBRImg.complete) {
+            ctx.drawImage(innerCornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         } else {
-          drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          if (innerCornerBRThinImg && innerCornerBRThinImg.complete) {
+            ctx.drawImage(innerCornerBRThinImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+          } else {
+            drawCornerSegment(ctx, px, py, type, isOuterBottom);
+          }
         }
         break;
     }
@@ -1155,10 +1219,29 @@ function drawVoidTile(_ctx: CanvasRenderingContext2D, _x: number, _y: number) {
   // This allows the page background or parent element to show through.
 }
 
-function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType) {
+function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
+  // Determine which sprite to use based on tile type
+  const isWall = type === TileType.WALL;
+  const isGoal = type === TileType.GOAL;
+  const spriteKey = isGoal ? 'goal' : (isWall ? 'wall' : 'empty');
+  const spriteUrl = tileSprites?.[spriteKey];
+
+  if (spriteUrl) {
+    const tileImg = loadTileImage(spriteUrl);
+    if (tileImg?.complete) {
+      ctx.drawImage(tileImg, px, py, TILE_SIZE, TILE_SIZE);
+      // Still draw grid lines on top
+      ctx.strokeStyle = COLORS.grid;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+      return;
+    }
+  }
+
+  // Fallback to default colors
   ctx.fillStyle = type === TileType.WALL ? COLORS.wall : COLORS.empty;
   ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
 

@@ -15,18 +15,27 @@ function fileToBase64(file: File): Promise<string> {
 // Border sprite slot configuration
 // All sprites use fixed sizes (stretched to fit the border dimensions)
 const BORDER_SPRITE_SLOTS: { key: keyof CustomBorderSprites; label: string; description: string; size: string }[] = [
+  // Walls
   { key: 'wallFront', label: 'Front Wall', description: 'Top edge wall (tiled)', size: '48x48' },
   { key: 'wallTop', label: 'Wall Top', description: 'Interior bottom edge (tiled)', size: '48x24' },
   { key: 'wallSide', label: 'Side Wall', description: 'Left/Right edges (tiled)', size: '24x48' },
   { key: 'wallBottomOuter', label: 'Outer Bottom', description: 'Outer perimeter bottom (tiled)', size: '48x48' },
-  { key: 'cornerTopLeft', label: 'Corner TL', description: 'Top-left outer corner', size: '24x48' },
-  { key: 'cornerTopRight', label: 'Corner TR', description: 'Top-right outer corner', size: '24x48' },
-  { key: 'cornerBottomLeft', label: 'Corner BL', description: 'Bottom-left outer corner', size: '24x48' },
-  { key: 'cornerBottomRight', label: 'Corner BR', description: 'Bottom-right outer corner', size: '24x48' },
-  { key: 'innerCornerTopLeft', label: 'Inner TL', description: 'Inner top-left corner', size: '24x48' },
-  { key: 'innerCornerTopRight', label: 'Inner TR', description: 'Inner top-right corner', size: '24x48' },
-  { key: 'innerCornerBottomLeft', label: 'Inner BL', description: 'Inner bottom-left corner', size: '24x24' },
-  { key: 'innerCornerBottomRight', label: 'Inner BR', description: 'Inner bottom-right corner', size: '24x24' },
+  // Outer corners - Full size (puzzle perimeter)
+  { key: 'cornerTopLeft', label: 'Corner TL', description: 'Top-left outer corner (full)', size: '24x48' },
+  { key: 'cornerTopRight', label: 'Corner TR', description: 'Top-right outer corner (full)', size: '24x48' },
+  { key: 'cornerBottomLeft', label: 'Corner BL', description: 'Bottom-left outer corner (full)', size: '24x48' },
+  { key: 'cornerBottomRight', label: 'Corner BR', description: 'Bottom-right outer corner (full)', size: '24x48' },
+  // Outer corners - Thin size (interior voids)
+  { key: 'cornerBottomLeftThin', label: 'Corner BL Thin', description: 'Bottom-left outer corner (thin)', size: '24x24' },
+  { key: 'cornerBottomRightThin', label: 'Corner BR Thin', description: 'Bottom-right outer corner (thin)', size: '24x24' },
+  // Inner corners - Full size
+  { key: 'innerCornerTopLeft', label: 'Inner TL', description: 'Inner top-left corner (full)', size: '24x48' },
+  { key: 'innerCornerTopRight', label: 'Inner TR', description: 'Inner top-right corner (full)', size: '24x48' },
+  { key: 'innerCornerBottomLeft', label: 'Inner BL', description: 'Inner bottom-left corner (full)', size: '24x48' },
+  { key: 'innerCornerBottomRight', label: 'Inner BR', description: 'Inner bottom-right corner (full)', size: '24x48' },
+  // Inner corners - Thin size (interior voids)
+  { key: 'innerCornerBottomLeftThin', label: 'Inner BL Thin', description: 'Inner bottom-left corner (thin)', size: '24x24' },
+  { key: 'innerCornerBottomRightThin', label: 'Inner BR Thin', description: 'Inner bottom-right corner (thin)', size: '24x24' },
 ];
 
 // Tile sprite slot configuration
