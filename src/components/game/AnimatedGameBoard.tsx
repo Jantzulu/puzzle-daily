@@ -931,12 +931,10 @@ function drawCustomBorder(
     ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE + gridPixelHeight, gridPixelWidth, 8);
   }
 
-  // Draw left wall - natural size to avoid stretching thin sprites
+  // Draw left wall - fixed size tiled vertically
   if (wallSideImg && wallSideImg.complete) {
-    const imgWidth = wallSideImg.naturalWidth;
-    const imgHeight = wallSideImg.naturalHeight;
-    for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
-      ctx.drawImage(wallSideImg, SIDE_BORDER_SIZE - imgWidth, y, imgWidth, imgHeight);
+    for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
+      ctx.drawImage(wallSideImg, 0, y, SIDE_BORDER_SIZE, TILE_SIZE);
     }
   } else {
     ctx.fillStyle = '#323242';
@@ -945,15 +943,13 @@ function drawCustomBorder(
     ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
   }
 
-  // Draw right wall (mirrored) - natural size to avoid stretching
+  // Draw right wall (mirrored) - fixed size tiled vertically
   if (wallSideImg && wallSideImg.complete) {
-    const imgWidth = wallSideImg.naturalWidth;
-    const imgHeight = wallSideImg.naturalHeight;
-    for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
+    for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
       ctx.save();
-      ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + imgWidth, y);
+      ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + SIDE_BORDER_SIZE, y);
       ctx.scale(-1, 1);
-      ctx.drawImage(wallSideImg, 0, 0, imgWidth, imgHeight);
+      ctx.drawImage(wallSideImg, 0, 0, SIDE_BORDER_SIZE, TILE_SIZE);
       ctx.restore();
     }
   } else {
@@ -963,11 +959,10 @@ function drawCustomBorder(
     ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
   }
 
-  // Draw corners at natural size to avoid stretching
+  // Draw corners - fixed sizes
   // Top-left corner
   if (cornerTLImg && cornerTLImg.complete) {
-    const w = cornerTLImg.naturalWidth, h = cornerTLImg.naturalHeight;
-    ctx.drawImage(cornerTLImg, SIDE_BORDER_SIZE - w, BORDER_SIZE - h, w, h);
+    ctx.drawImage(cornerTLImg, 0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
     ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
@@ -975,8 +970,7 @@ function drawCustomBorder(
 
   // Top-right corner
   if (cornerTRImg && cornerTRImg.complete) {
-    const w = cornerTRImg.naturalWidth, h = cornerTRImg.naturalHeight;
-    ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE - h, w, h);
+    ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
     ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
@@ -984,8 +978,7 @@ function drawCustomBorder(
 
   // Bottom-left corner
   if (cornerBLImg && cornerBLImg.complete) {
-    const w = cornerBLImg.naturalWidth, h = cornerBLImg.naturalHeight;
-    ctx.drawImage(cornerBLImg, SIDE_BORDER_SIZE - w, BORDER_SIZE + gridPixelHeight, w, h);
+    ctx.drawImage(cornerBLImg, 0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
     ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
@@ -993,8 +986,7 @@ function drawCustomBorder(
 
   // Bottom-right corner
   if (cornerBRImg && cornerBRImg.complete) {
-    const w = cornerBRImg.naturalWidth, h = cornerBRImg.naturalHeight;
-    ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, w, h);
+    ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
     ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
@@ -1064,24 +1056,20 @@ function drawSmartCustomBorder(
         }
         break;
       case 'left':
-        // Left edge - side wall (natural size to avoid stretching)
+        // Left edge - side wall (fixed size)
         if (wallSideImg && wallSideImg.complete) {
-          const w = wallSideImg.naturalWidth;
-          const h = wallSideImg.naturalHeight;
-          ctx.drawImage(wallSideImg, px - w, py, w, h);
+          ctx.drawImage(wallSideImg, px - SIDE_BORDER_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
         } else {
           drawLeftWallSegment(ctx, px, py);
         }
         break;
       case 'right':
-        // Right edge - side wall (mirrored, natural size)
+        // Right edge - side wall (mirrored, fixed size)
         if (wallSideImg && wallSideImg.complete) {
-          const w = wallSideImg.naturalWidth;
-          const h = wallSideImg.naturalHeight;
           ctx.save();
-          ctx.translate(px + TILE_SIZE + w, py);
+          ctx.translate(px + TILE_SIZE + SIDE_BORDER_SIZE, py);
           ctx.scale(-1, 1);
-          ctx.drawImage(wallSideImg, 0, 0, w, h);
+          ctx.drawImage(wallSideImg, 0, 0, SIDE_BORDER_SIZE, TILE_SIZE);
           ctx.restore();
         } else {
           drawRightWallSegment(ctx, px, py);
@@ -1090,72 +1078,67 @@ function drawSmartCustomBorder(
     }
   });
 
-  // Draw corners on top of edges (natural size to avoid stretching)
+  // Draw corners on top of edges (fixed sizes)
   borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
     const px = offsetX + x * TILE_SIZE;
     const py = offsetY + y * TILE_SIZE;
 
+    // Determine corner height based on outer/inner positioning
+    const cornerHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
+
     switch (type) {
       case 'convex-tl':
         if (cornerTLImg && cornerTLImg.complete) {
-          const w = cornerTLImg.naturalWidth, h = cornerTLImg.naturalHeight;
-          ctx.drawImage(cornerTLImg, px - w, py - h, w, h);
+          ctx.drawImage(cornerTLImg, px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'convex-tr':
         if (cornerTRImg && cornerTRImg.complete) {
-          const w = cornerTRImg.naturalWidth, h = cornerTRImg.naturalHeight;
-          ctx.drawImage(cornerTRImg, px + TILE_SIZE, py - h, w, h);
+          ctx.drawImage(cornerTRImg, px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'convex-bl':
         if (cornerBLImg && cornerBLImg.complete) {
-          const w = cornerBLImg.naturalWidth, h = cornerBLImg.naturalHeight;
-          ctx.drawImage(cornerBLImg, px - w, py + TILE_SIZE, w, h);
+          ctx.drawImage(cornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'convex-br':
         if (cornerBRImg && cornerBRImg.complete) {
-          const w = cornerBRImg.naturalWidth, h = cornerBRImg.naturalHeight;
-          ctx.drawImage(cornerBRImg, px + TILE_SIZE, py + TILE_SIZE, w, h);
+          ctx.drawImage(cornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'concave-tl':
         if (innerCornerTLImg && innerCornerTLImg.complete) {
-          const w = innerCornerTLImg.naturalWidth, h = innerCornerTLImg.naturalHeight;
-          ctx.drawImage(innerCornerTLImg, px - w, py - h, w, h);
+          ctx.drawImage(innerCornerTLImg, px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'concave-tr':
         if (innerCornerTRImg && innerCornerTRImg.complete) {
-          const w = innerCornerTRImg.naturalWidth, h = innerCornerTRImg.naturalHeight;
-          ctx.drawImage(innerCornerTRImg, px + TILE_SIZE, py - h, w, h);
+          ctx.drawImage(innerCornerTRImg, px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'concave-bl':
         if (innerCornerBLImg && innerCornerBLImg.complete) {
-          const w = innerCornerBLImg.naturalWidth, h = innerCornerBLImg.naturalHeight;
-          ctx.drawImage(innerCornerBLImg, px - w, py + TILE_SIZE, w, h);
+          ctx.drawImage(innerCornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'concave-br':
         if (innerCornerBRImg && innerCornerBRImg.complete) {
-          const w = innerCornerBRImg.naturalWidth, h = innerCornerBRImg.naturalHeight;
-          ctx.drawImage(innerCornerBRImg, px + TILE_SIZE, py + TILE_SIZE, w, h);
+          ctx.drawImage(innerCornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, cornerHeight);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }

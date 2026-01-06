@@ -1067,59 +1067,43 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
     const cornerBLImg = loadSkinImage(sprites.cornerBottomLeft || '');
     const cornerBRImg = loadSkinImage(sprites.cornerBottomRight || '');
 
-    // Top wall - fixed size (48x48), tiled horizontally
+    // Top wall
     if (wallFrontImg?.complete) {
       for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
         ctx.drawImage(wallFrontImg, x, 0, TILE_SIZE, BORDER_SIZE);
       }
     }
 
-    // Bottom wall - fixed size (48x48), tiled horizontally
+    // Bottom wall
     if (wallBottomOuterImg?.complete) {
       for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
         ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, TILE_SIZE, BORDER_SIZE);
       }
     }
 
-    // Left wall - draw at natural size to avoid stretching thin sprites
+    // Left wall
     if (wallSideImg?.complete) {
-      const imgWidth = wallSideImg.naturalWidth;
-      const imgHeight = wallSideImg.naturalHeight;
-      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
-        ctx.drawImage(wallSideImg, SIDE_BORDER_SIZE - imgWidth, y, imgWidth, imgHeight);
+      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
+        ctx.drawImage(wallSideImg, 0, y, SIDE_BORDER_SIZE, TILE_SIZE);
       }
     }
 
-    // Right wall (mirrored) - draw at natural size
+    // Right wall (mirrored)
     if (wallSideImg?.complete) {
-      const imgWidth = wallSideImg.naturalWidth;
-      const imgHeight = wallSideImg.naturalHeight;
-      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
+      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
         ctx.save();
-        ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + imgWidth, y);
+        ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + SIDE_BORDER_SIZE, y);
         ctx.scale(-1, 1);
-        ctx.drawImage(wallSideImg, 0, 0, imgWidth, imgHeight);
+        ctx.drawImage(wallSideImg, 0, 0, SIDE_BORDER_SIZE, TILE_SIZE);
         ctx.restore();
       }
     }
 
-    // Corners - draw at natural size to avoid stretching
-    if (cornerTLImg?.complete) {
-      const w = cornerTLImg.naturalWidth, h = cornerTLImg.naturalHeight;
-      ctx.drawImage(cornerTLImg, SIDE_BORDER_SIZE - w, BORDER_SIZE - h, w, h);
-    }
-    if (cornerTRImg?.complete) {
-      const w = cornerTRImg.naturalWidth, h = cornerTRImg.naturalHeight;
-      ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE - h, w, h);
-    }
-    if (cornerBLImg?.complete) {
-      const w = cornerBLImg.naturalWidth, h = cornerBLImg.naturalHeight;
-      ctx.drawImage(cornerBLImg, SIDE_BORDER_SIZE - w, BORDER_SIZE + gridPixelHeight, w, h);
-    }
-    if (cornerBRImg?.complete) {
-      const w = cornerBRImg.naturalWidth, h = cornerBRImg.naturalHeight;
-      ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, w, h);
-    }
+    // Corners
+    if (cornerTLImg?.complete) ctx.drawImage(cornerTLImg, 0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    if (cornerTRImg?.complete) ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    if (cornerBLImg?.complete) ctx.drawImage(cornerBLImg, 0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    if (cornerBRImg?.complete) ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
   } else {
     // Default dungeon style rendering
     // Top wall (front-facing with depth)
