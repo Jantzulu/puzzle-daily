@@ -195,9 +195,6 @@ export function executeTurn(gameState: GameState): GameState {
     // Advance to next action
     newCharacter.actionIndex++;
 
-    // Evaluate triggers after movement (check ending position)
-    evaluateTriggers(newCharacter, gameState);
-
     newCharacters.push(newCharacter);
 
     // Update gameState immediately so collision detection sees the new position
@@ -205,6 +202,14 @@ export function executeTurn(gameState: GameState): GameState {
   }
 
   gameState.placedCharacters = newCharacters;
+
+  // Collect all pending character triggers (defer evaluation for melee priority)
+  const pendingCharacterTriggers: PlacedCharacter[] = [];
+  for (const character of gameState.placedCharacters) {
+    if (!character.dead && character.active) {
+      pendingCharacterTriggers.push(character);
+    }
+  }
 
   // Create new enemy array with new enemy objects to trigger React re-render
   // Process sequentially to ensure collision detection works correctly
@@ -368,27 +373,6 @@ export function executeTurn(gameState: GameState): GameState {
     // Advance to next action
     newEnemy.actionIndex = (newEnemy.actionIndex || 0) + 1;
 
-    // Evaluate triggers after enemy movement (check ending position)
-    // Convert enemy to PlacedCharacter format for trigger evaluation
-    const tempCharForTrigger: PlacedCharacter = {
-      characterId: newEnemy.enemyId,
-      x: newEnemy.x,
-      y: newEnemy.y,
-      facing: newEnemy.facing || Direction.SOUTH,
-      currentHealth: newEnemy.currentHealth,
-      actionIndex: newEnemy.actionIndex || 0,
-      active: newEnemy.active || true,
-      dead: newEnemy.dead,
-    };
-    evaluateTriggers(tempCharForTrigger, gameState);
-
-    // Copy back any changes from trigger execution
-    newEnemy.x = tempCharForTrigger.x;
-    newEnemy.y = tempCharForTrigger.y;
-    newEnemy.facing = tempCharForTrigger.facing;
-    newEnemy.currentHealth = tempCharForTrigger.currentHealth;
-    newEnemy.dead = tempCharForTrigger.dead;
-
     newEnemies.push(newEnemy);
 
     // Update gameState immediately so collision detection sees the new position
@@ -396,6 +380,74 @@ export function executeTurn(gameState: GameState): GameState {
   }
 
   gameState.puzzle.enemies = newEnemies;
+
+  // Collect all pending enemy triggers
+  const pendingEnemyTriggers: PlacedEnemy[] = [];
+  for (const enemy of gameState.puzzle.enemies) {
+    if (!enemy.dead && enemy.active) {
+      pendingEnemyTriggers.push(enemy);
+    }
+  }
+
+  // Execute triggers in priority order:
+  // 1. Enemies with hasMeleePriority
+  // 2. Characters (normal priority)
+  // 3. Enemies without hasMeleePriority
+
+  // Execute priority enemies first
+  for (const enemy of pendingEnemyTriggers) {
+    const enemyData = getEnemy(enemy.enemyId);
+    if (enemyData?.hasMeleePriority) {
+      const tempCharForTrigger: PlacedCharacter = {
+        characterId: enemy.enemyId,
+        x: enemy.x,
+        y: enemy.y,
+        facing: enemy.facing || Direction.SOUTH,
+        currentHealth: enemy.currentHealth,
+        actionIndex: enemy.actionIndex || 0,
+        active: enemy.active || true,
+        dead: enemy.dead,
+      };
+      evaluateTriggers(tempCharForTrigger, gameState);
+
+      // Copy back any changes from trigger execution
+      enemy.x = tempCharForTrigger.x;
+      enemy.y = tempCharForTrigger.y;
+      enemy.facing = tempCharForTrigger.facing;
+      enemy.currentHealth = tempCharForTrigger.currentHealth;
+      enemy.dead = tempCharForTrigger.dead;
+    }
+  }
+
+  // Execute character triggers (normal priority)
+  for (const character of pendingCharacterTriggers) {
+    evaluateTriggers(character, gameState);
+  }
+
+  // Execute non-priority enemy triggers
+  for (const enemy of pendingEnemyTriggers) {
+    const enemyData = getEnemy(enemy.enemyId);
+    if (!enemyData?.hasMeleePriority) {
+      const tempCharForTrigger: PlacedCharacter = {
+        characterId: enemy.enemyId,
+        x: enemy.x,
+        y: enemy.y,
+        facing: enemy.facing || Direction.SOUTH,
+        currentHealth: enemy.currentHealth,
+        actionIndex: enemy.actionIndex || 0,
+        active: enemy.active || true,
+        dead: enemy.dead,
+      };
+      evaluateTriggers(tempCharForTrigger, gameState);
+
+      // Copy back any changes from trigger execution
+      enemy.x = tempCharForTrigger.x;
+      enemy.y = tempCharForTrigger.y;
+      enemy.facing = tempCharForTrigger.facing;
+      enemy.currentHealth = tempCharForTrigger.currentHealth;
+      enemy.dead = tempCharForTrigger.dead;
+    }
+  }
 
   // Update projectiles (Phase 2)
   updateProjectiles(gameState);
