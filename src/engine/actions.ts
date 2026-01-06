@@ -865,6 +865,7 @@ function executeMeleeAttack(
 
   // Handle range 0 as self-target
   if (meleeRange === 0) {
+    console.log('[executeMeleeAttack] Range 0 attack from', character.characterId, 'at', character.x, character.y, 'damage:', damage);
     // Show attack sprite on caster's tile if not skipped
     if (attackSprite && !skipCasterTile) {
       spawnParticle(character.x, character.y, attackSprite, attackData.effectDuration || 300, gameState);
@@ -876,16 +877,20 @@ function executeMeleeAttack(
     );
 
     if (enemy) {
+      console.log('[executeMeleeAttack] HIT enemy', enemy.enemyId, 'HP before:', enemy.currentHealth, '-> after:', enemy.currentHealth - damage);
       enemy.currentHealth -= damage;
 
       if (enemy.currentHealth <= 0) {
         enemy.dead = true;
+        console.log('[executeMeleeAttack] Enemy', enemy.enemyId, 'KILLED');
       }
 
       // Spawn hit effect on caster's tile
       if (attackData.hitEffectSprite) {
         spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
       }
+    } else {
+      console.log('[executeMeleeAttack] No enemy found at caster tile');
     }
     return;
   }
@@ -1183,11 +1188,17 @@ export function evaluateTriggers(
   gameState: GameState
 ): void {
   const charData = getCharacter(character.characterId);
-  if (!charData || !charData.behavior) return;
+  if (!charData || !charData.behavior) {
+    console.log('[evaluateTriggers] No character data or behavior for:', character.characterId);
+    return;
+  }
+
+  console.log('[evaluateTriggers] Checking triggers for:', character.characterId, 'HP:', character.currentHealth, 'dead:', character.dead);
 
   // Check each action for event-based triggers
-  charData.behavior.forEach((action: CharacterAction) => {
+  charData.behavior.forEach((action: CharacterAction, index: number) => {
     if (action.trigger?.mode === 'on_event' && action.trigger.event) {
+      console.log('[evaluateTriggers] Action', index, '- checking trigger:', action.trigger.event, 'range:', action.trigger.eventRange);
       const triggered = checkTriggerCondition(
         character,
         action.trigger.event,
@@ -1195,11 +1206,14 @@ export function evaluateTriggers(
         gameState
       );
 
+      console.log('[evaluateTriggers] Trigger result:', triggered);
+
       if (triggered) {
         // Execute the triggered action
-        console.log('[evaluateTriggers] Trigger fired:', action.trigger.event, 'executing action:', action.type);
+        console.log('[evaluateTriggers] Trigger FIRED:', action.trigger.event, 'executing action:', action.type);
         const updatedCharacter = executeAction(character, action, gameState);
         Object.assign(character, updatedCharacter);
+        console.log('[evaluateTriggers] After action - HP:', character.currentHealth, 'dead:', character.dead);
       }
     }
   });
