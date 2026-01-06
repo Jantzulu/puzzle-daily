@@ -269,12 +269,33 @@ export const EnemyEditor: React.FC = () => {
                     <input
                       type="checkbox"
                       checked={editingEnemy.blocksMovementDead || false}
-                      onChange={(e) => updateEnemy({ blocksMovementDead: e.target.checked })}
+                      onChange={(e) => updateEnemy({
+                        blocksMovementDead: e.target.checked,
+                        behavesLikeWallDead: e.target.checked ? false : editingEnemy.behavesLikeWallDead // Mutually exclusive
+                      })}
                       className="w-4 h-4"
+                      disabled={editingEnemy.behavesLikeWallDead}
                     />
                     <span className="text-sm font-bold">Blocks Movement (Dead)</span>
                   </label>
-                  <p className="text-xs text-gray-400 mt-1">Corpse acts like a wall after death</p>
+                  <p className="text-xs text-gray-400 mt-1">Corpse stops movement (no turn behavior)</p>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingEnemy.behavesLikeWallDead || false}
+                      onChange={(e) => updateEnemy({
+                        behavesLikeWallDead: e.target.checked,
+                        blocksMovementDead: e.target.checked ? false : editingEnemy.blocksMovementDead // Mutually exclusive
+                      })}
+                      className="w-4 h-4"
+                      disabled={editingEnemy.blocksMovementDead}
+                    />
+                    <span className="text-sm font-bold">Behaves Like Wall (Dead)</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
                 </div>
               </div>
 

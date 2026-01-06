@@ -263,6 +263,30 @@ function moveCharacter(
     );
     if (deadEnemy) {
       const enemyData = getEnemy(deadEnemy.enemyId);
+
+      // Check if dead enemy behaves like a wall (triggers wall collision behaviors)
+      if (enemyData?.behavesLikeWallDead) {
+        // Handle like a wall collision based on behavior
+        switch (onWallCollision) {
+          case 'turn_left':
+            updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
+            return updatedChar;
+          case 'turn_right':
+            updatedChar.facing = turnRight(updatedChar.facing, turnDegrees);
+            return updatedChar;
+          case 'turn_around':
+            updatedChar.facing = turnAround(updatedChar.facing);
+            return updatedChar;
+          case 'continue':
+            // Skip this tile and continue to next
+            continue;
+          case 'stop':
+          default:
+            return updatedChar; // Stop movement
+        }
+      }
+
+      // Check if dead enemy blocks movement (just stops, no turn behavior)
       if (enemyData?.blocksMovementDead) {
         return updatedChar; // Dead enemy blocks movement - stop here
       }

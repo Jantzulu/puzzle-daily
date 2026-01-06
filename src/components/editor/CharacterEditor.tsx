@@ -301,12 +301,33 @@ export const CharacterEditor: React.FC = () => {
                       <input
                         type="checkbox"
                         checked={editingCharacter.blocksMovementDead || false}
-                        onChange={(e) => updateCharacter({ blocksMovementDead: e.target.checked })}
+                        onChange={(e) => updateCharacter({
+                          blocksMovementDead: e.target.checked,
+                          behavesLikeWallDead: e.target.checked ? false : editingCharacter.behavesLikeWallDead // Mutually exclusive
+                        })}
                         className="w-4 h-4"
+                        disabled={editingCharacter.behavesLikeWallDead}
                       />
                       <span className="text-sm font-bold">Blocks Movement (Dead)</span>
                     </label>
-                    <p className="text-xs text-gray-400 mt-1">Corpse blocks movement like a wall</p>
+                    <p className="text-xs text-gray-400 mt-1">Corpse stops movement (no turn behavior)</p>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editingCharacter.behavesLikeWallDead || false}
+                        onChange={(e) => updateCharacter({
+                          behavesLikeWallDead: e.target.checked,
+                          blocksMovementDead: e.target.checked ? false : editingCharacter.blocksMovementDead // Mutually exclusive
+                        })}
+                        className="w-4 h-4"
+                        disabled={editingCharacter.blocksMovementDead}
+                      />
+                      <span className="text-sm font-bold">Behaves Like Wall (Dead)</span>
+                    </label>
+                    <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
                   </div>
                 </div>
               </div>

@@ -124,8 +124,9 @@ export interface Character {
   defaultFacing: Direction;
   behavior: CharacterAction[];
   blocksMovementAlive?: boolean; // If true, blocks movement when alive (stops character)
-  blocksMovementDead?: boolean; // If true, acts like a wall when dead (corpse blocks)
-  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors (mutually exclusive with blocksMovementAlive)
+  blocksMovementDead?: boolean; // If true, blocks movement when dead (corpse stops character)
+  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive (mutually exclusive with blocksMovementAlive)
+  behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead (mutually exclusive with blocksMovementDead)
   retaliationDamage?: number; // Damage dealt when enemy attempts to move onto this character's tile
 
   // Combat toggles (for backwards compatibility and fallback)
@@ -141,8 +142,9 @@ export interface Enemy {
   attackDamage: number;
   behavior?: EnemyBehavior;
   blocksMovementAlive?: boolean; // If true, blocks movement when alive (stops character)
-  blocksMovementDead?: boolean; // If true, blocks movement when dead (wall corpse)
-  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors (mutually exclusive with blocksMovementAlive)
+  blocksMovementDead?: boolean; // If true, blocks movement when dead (corpse stops character)
+  behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive (mutually exclusive with blocksMovementAlive)
+  behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead (mutually exclusive with blocksMovementDead)
   retaliationDamage?: number; // Damage dealt when character attempts to move onto this enemy's tile
 
   // Combat toggles (for backwards compatibility and fallback)
