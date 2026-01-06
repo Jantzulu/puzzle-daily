@@ -113,6 +113,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateNeedsRange = editedSpell.templateType === 'range_linear' || editedSpell.templateType === 'magic_linear';
   const templateNeedsRadius = editedSpell.templateType === 'aoe';
   const templateNeedsProjectileSettings = templateNeedsRange;
+  const templateIsMelee = editedSpell.templateType === 'melee';
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -463,6 +464,24 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   onChange={(e) => setEditedSpell({ ...editedSpell, radius: parseInt(e.target.value) || 1 })}
                   className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                 />
+              </div>
+            )}
+
+            {/* Melee Range (for melee spells) */}
+            {templateIsMelee && (
+              <div>
+                <label className="block text-sm font-medium mb-1">Melee Range (tiles)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="5"
+                  value={editedSpell.meleeRange || 1}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, meleeRange: parseInt(e.target.value) || 1 })}
+                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                />
+                <p className="text-xs text-gray-400 mt-1">
+                  How many tiles in attack direction get hit. 0 = self-target only, 1 = adjacent tile (default), 2+ = extended reach
+                </p>
               </div>
             )}
           </div>

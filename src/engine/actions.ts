@@ -9,6 +9,7 @@ import type {
   PersistentAreaEffect,
   SpellAsset,
   RelativeDirection,
+  TriggerEvent,
 } from '../types/game';
 import {
   ActionType,
@@ -19,7 +20,7 @@ import {
 } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds } from './utils';
+import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo } from './utils';
 import { loadCustomAttack, loadSpellAsset } from '../utils/assetStorage';
 
 /**
@@ -579,7 +580,8 @@ function executeCustomAttack(
       break;
 
     case AttackPattern.MELEE:
-      executeMeleeAttack(character, attackData, gameState);
+      // For custom attacks, meleeRange comes from attackData.range (defaults to 1)
+      executeMeleeAttack(character, attackData, gameState, attackData.range || 1);
       break;
 
     case AttackPattern.AOE_CIRCLE:
@@ -666,7 +668,21 @@ function executeSpell(
   // Determine which directions to cast the spell
   let castDirections: Direction[] = [];
 
-  if (action.useRelativeOverride && action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0) {
+  // Check for auto-targeting
+  if (action.autoTargetNearestEnemy) {
+    const maxTargets = action.maxTargets || 1;
+    const nearestEnemies = findNearestEnemies(character, gameState, maxTargets);
+
+    if (nearestEnemies.length > 0) {
+      // Use directions to nearest enemies
+      castDirections = nearestEnemies.map(target => target.direction);
+      console.log('[executeSpell] Auto-targeting', nearestEnemies.length, 'enemies');
+    } else {
+      // No enemies found, don't cast
+      console.log('[executeSpell] Auto-targeting enabled but no enemies found');
+      return;
+    }
+  } else if (action.useRelativeOverride && action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0) {
     // Use relative override from behavior action
     castDirections = action.relativeDirectionOverride.map(relDir =>
       relativeToAbsolute(character.facing, relDir)
@@ -743,7 +759,8 @@ function executeSpellInDirection(
       // Temporarily set character facing for melee direction
       const originalFacing = character.facing;
       character.facing = direction;
-      executeMeleeAttack(character, attackData, gameState);
+      // Use meleeRange from spell (defaults to 1 if not set)
+      executeMeleeAttack(character, attackData, gameState, spell.meleeRange || 1);
       character.facing = originalFacing;
       break;
 
@@ -829,32 +846,65 @@ function spawnProjectile(
 
 /**
  * Execute melee attack (instant, no projectile)
+ * Supports meleeRange to hit multiple tiles in attack direction
  */
 function executeMeleeAttack(
   character: PlacedCharacter,
   attackData: CustomAttack,
-  gameState: GameState
+  gameState: GameState,
+  meleeRange: number = 1
 ): void {
   const { dx, dy } = getDirectionOffset(character.facing);
-  const targetX = character.x + dx;
-  const targetY = character.y + dy;
+  const damage = attackData.damage ?? 1;
 
-  // Find enemy at target position
-  const enemy = gameState.puzzle.enemies.find(
-    e => e.x === targetX && e.y === targetY && !e.dead
-  );
+  // Handle range 0 as self-target
+  if (meleeRange === 0) {
+    // Find enemy on caster's own tile
+    const enemy = gameState.puzzle.enemies.find(
+      e => e.x === character.x && e.y === character.y && !e.dead
+    );
 
-  if (enemy) {
-    const damage = attackData.damage ?? 1;
-    enemy.currentHealth -= damage;
+    if (enemy) {
+      enemy.currentHealth -= damage;
 
-    if (enemy.currentHealth <= 0) {
-      enemy.dead = true;
+      if (enemy.currentHealth <= 0) {
+        enemy.dead = true;
+      }
+
+      // Spawn hit effect on caster's tile
+      if (attackData.hitEffectSprite) {
+        spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+      }
+    }
+    return;
+  }
+
+  // For range >= 1, hit all tiles in attack direction up to meleeRange
+  for (let i = 1; i <= meleeRange; i++) {
+    const targetX = character.x + dx * i;
+    const targetY = character.y + dy * i;
+
+    // Stop if out of bounds
+    if (!isInBounds(targetX, targetY, gameState.puzzle.width, gameState.puzzle.height)) {
+      break;
     }
 
-    // Spawn hit effect
-    if (attackData.hitEffectSprite) {
-      spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+    // Find enemy at target position
+    const enemy = gameState.puzzle.enemies.find(
+      e => e.x === targetX && e.y === targetY && !e.dead
+    );
+
+    if (enemy) {
+      enemy.currentHealth -= damage;
+
+      if (enemy.currentHealth <= 0) {
+        enemy.dead = true;
+      }
+
+      // Spawn hit effect (simultaneously on all hit tiles)
+      if (attackData.hitEffectSprite) {
+        spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+      }
     }
   }
 }
@@ -999,4 +1049,127 @@ function spawnParticle(
   };
 
   gameState.activeParticles.push(particle);
+}
+
+// ==========================================
+// AUTO-TARGETING SYSTEM (Phase 2)
+// ==========================================
+
+/**
+ * Find the nearest living enemies to a character, up to maxTargets
+ * Returns array of {enemy, direction} sorted by distance (closest first)
+ */
+function findNearestEnemies(
+  character: PlacedCharacter,
+  gameState: GameState,
+  maxTargets: number = 1
+): Array<{ enemy: any; direction: Direction; distance: number }> {
+  const livingEnemies = gameState.puzzle.enemies.filter(e => !e.dead);
+
+  // Calculate distance and direction to each enemy
+  const enemiesWithDistance = livingEnemies.map(enemy => ({
+    enemy,
+    distance: calculateDistance(character.x, character.y, enemy.x, enemy.y),
+    direction: calculateDirectionTo(character.x, character.y, enemy.x, enemy.y),
+  }));
+
+  // Sort by distance (closest first)
+  enemiesWithDistance.sort((a, b) => a.distance - b.distance);
+
+  // Return up to maxTargets
+  return enemiesWithDistance.slice(0, maxTargets);
+}
+
+// ==========================================
+// TRIGGER SYSTEM (Phase 2)
+// ==========================================
+
+/**
+ * Check if a trigger condition is met for a character
+ */
+export function checkTriggerCondition(
+  character: PlacedCharacter,
+  event: TriggerEvent,
+  eventRange: number | undefined,
+  gameState: GameState
+): boolean {
+  switch (event) {
+    case 'enemy_adjacent':
+      // Check if any enemy is within 1 tile (adjacent, including diagonals)
+      return gameState.puzzle.enemies.some(enemy => {
+        if (enemy.dead) return false;
+        const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
+        return distance <= 1.42; // sqrt(2) for diagonal adjacency
+      });
+
+    case 'enemy_in_range':
+      // Check if any enemy is within specified range
+      const range = eventRange || 3; // Default to 3 if not specified
+      return gameState.puzzle.enemies.some(enemy => {
+        if (enemy.dead) return false;
+        const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
+        return distance <= range;
+      });
+
+    case 'contact_with_enemy':
+      // Check if character is on the same tile as an enemy
+      return gameState.puzzle.enemies.some(enemy => {
+        if (enemy.dead) return false;
+        return enemy.x === character.x && enemy.y === character.y;
+      });
+
+    case 'wall_ahead':
+      // Check if there's a wall in front of the character
+      const { dx, dy } = getDirectionOffset(character.facing);
+      const checkX = character.x + dx;
+      const checkY = character.y + dy;
+
+      if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
+        return true;
+      }
+
+      const tile = gameState.puzzle.tiles[checkY]?.[checkX];
+      return !tile || tile.type === TileType.WALL;
+
+    case 'health_below_50':
+      // Check if character health is below 50%
+      const charData = getCharacter(character.characterId);
+      if (!charData) return false;
+      return character.currentHealth < charData.health * 0.5;
+
+    default:
+      console.warn(`Unknown trigger event: ${event}`);
+      return false;
+  }
+}
+
+/**
+ * Evaluate all triggers for a character after movement and execute matching actions
+ * This should be called AFTER a character moves to their ending position
+ */
+export function evaluateTriggers(
+  character: PlacedCharacter,
+  gameState: GameState
+): void {
+  const charData = getCharacter(character.characterId);
+  if (!charData || !charData.behavior) return;
+
+  // Check each action for event-based triggers
+  charData.behavior.forEach((action: CharacterAction) => {
+    if (action.trigger?.mode === 'on_event' && action.trigger.event) {
+      const triggered = checkTriggerCondition(
+        character,
+        action.trigger.event,
+        action.trigger.eventRange,
+        gameState
+      );
+
+      if (triggered) {
+        // Execute the triggered action
+        console.log('[evaluateTriggers] Trigger fired:', action.trigger.event, 'executing action:', action.type);
+        const updatedCharacter = executeAction(character, action, gameState);
+        Object.assign(character, updatedCharacter);
+      }
+    }
+  });
 }

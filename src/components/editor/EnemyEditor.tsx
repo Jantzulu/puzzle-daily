@@ -297,6 +297,40 @@ export const EnemyEditor: React.FC = () => {
                   </label>
                   <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
                 </div>
+
+                {/* Combat Toggles */}
+                <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
+                  <h3 className="text-sm font-bold text-gray-300">Combat Toggles (Backwards Compatibility)</h3>
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editingEnemy.useAttackDamage || false}
+                        onChange={(e) => updateEnemy({
+                          useAttackDamage: e.target.checked
+                        })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-bold">Use Attack Damage</span>
+                    </label>
+                    <p className="text-xs text-gray-400 mt-1">Use legacy collision damage system (default: false)</p>
+                  </div>
+
+                  <div>
+                    <label className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={editingEnemy.useRetaliationDamage || false}
+                        onChange={(e) => updateEnemy({
+                          useRetaliationDamage: e.target.checked
+                        })}
+                        className="w-4 h-4"
+                      />
+                      <span className="text-sm font-bold">Use Retaliation Damage</span>
+                    </label>
+                    <p className="text-xs text-gray-400 mt-1">Use legacy retaliation system (default: false)</p>
+                  </div>
+                </div>
               </div>
 
               <div className="mt-6 p-3 bg-gray-700 rounded">
@@ -548,22 +582,41 @@ export const EnemyEditor: React.FC = () => {
                                             </div>
                                           )}
                                           {action.trigger?.mode === 'on_event' && (
-                                            <div>
-                                              <label className="text-xs text-gray-400">Event:</label>
-                                              <select
-                                                value={action.trigger.event || 'enemy_adjacent'}
-                                                onChange={(e) => updateBehaviorAction(index, {
-                                                  ...action,
-                                                  trigger: { ...action.trigger!, event: e.target.value as any }
-                                                })}
-                                                className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                              >
-                                                <option value="enemy_adjacent">Enemy Adjacent</option>
-                                                <option value="enemy_in_range">Enemy in Range</option>
-                                                <option value="wall_ahead">Wall Ahead</option>
-                                                <option value="health_below_50">Health Below 50%</option>
-                                              </select>
-                                            </div>
+                                            <>
+                                              <div>
+                                                <label className="text-xs text-gray-400">Event:</label>
+                                                <select
+                                                  value={action.trigger.event || 'enemy_adjacent'}
+                                                  onChange={(e) => updateBehaviorAction(index, {
+                                                    ...action,
+                                                    trigger: { ...action.trigger!, event: e.target.value as any }
+                                                  })}
+                                                  className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
+                                                >
+                                                  <option value="enemy_adjacent">Enemy Adjacent</option>
+                                                  <option value="enemy_in_range">Enemy in Range</option>
+                                                  <option value="contact_with_enemy">Contact with Enemy</option>
+                                                  <option value="wall_ahead">Wall Ahead</option>
+                                                  <option value="health_below_50">Health Below 50%</option>
+                                                </select>
+                                              </div>
+                                              {action.trigger.event === 'enemy_in_range' && (
+                                                <div>
+                                                  <label className="text-xs text-gray-400">Detection Range (tiles):</label>
+                                                  <input
+                                                    type="number"
+                                                    min="1"
+                                                    max="10"
+                                                    value={action.trigger.eventRange || 3}
+                                                    onChange={(e) => updateBehaviorAction(index, {
+                                                      ...action,
+                                                      trigger: { ...action.trigger!, eventRange: parseInt(e.target.value) || 3 }
+                                                    })}
+                                                    className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
+                                                  />
+                                                </div>
+                                              )}
+                                            </>
                                           )}
                                         </div>
                                       )}
@@ -697,6 +750,45 @@ export const EnemyEditor: React.FC = () => {
                                                 : `Absolute override: ${action.directionOverride?.length || 0} direction(s)`}
                                             </p>
                                           </>
+                                        )}
+                                      </div>
+
+                                      {/* Auto-Targeting */}
+                                      <div className="bg-gray-800 p-2 rounded space-y-2">
+                                        <div className="flex items-center gap-2">
+                                          <input
+                                            type="checkbox"
+                                            id={`auto-target-${index}`}
+                                            checked={action.autoTargetNearestEnemy || false}
+                                            onChange={(e) => updateBehaviorAction(index, {
+                                              ...action,
+                                              autoTargetNearestEnemy: e.target.checked,
+                                              maxTargets: e.target.checked ? (action.maxTargets || 1) : undefined
+                                            })}
+                                            className="w-4 h-4"
+                                          />
+                                          <label htmlFor={`auto-target-${index}`} className="text-xs font-semibold text-gray-300 cursor-pointer">
+                                            Auto-Target Nearest Enemy
+                                          </label>
+                                        </div>
+                                        {action.autoTargetNearestEnemy && (
+                                          <div>
+                                            <label className="text-xs text-gray-400">Max Targets:</label>
+                                            <input
+                                              type="number"
+                                              min="1"
+                                              max="10"
+                                              value={action.maxTargets || 1}
+                                              onChange={(e) => updateBehaviorAction(index, {
+                                                ...action,
+                                                maxTargets: parseInt(e.target.value) || 1
+                                              })}
+                                              className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
+                                            />
+                                            <p className="text-[10px] text-gray-500 mt-1">
+                                              Number of nearest enemies to attack (for multi-target)
+                                            </p>
+                                          </div>
                                         )}
                                       </div>
 

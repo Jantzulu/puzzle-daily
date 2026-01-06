@@ -2,7 +2,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker } f
 import { ActionType, Direction } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
 
 /**
  * Initialize parallel action trackers for a character
@@ -195,6 +195,9 @@ export function executeTurn(gameState: GameState): GameState {
     // Advance to next action
     newCharacter.actionIndex++;
 
+    // Evaluate triggers after movement (check ending position)
+    evaluateTriggers(newCharacter, gameState);
+
     newCharacters.push(newCharacter);
 
     // Update gameState immediately so collision detection sees the new position
@@ -364,6 +367,27 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Advance to next action
     newEnemy.actionIndex = (newEnemy.actionIndex || 0) + 1;
+
+    // Evaluate triggers after enemy movement (check ending position)
+    // Convert enemy to PlacedCharacter format for trigger evaluation
+    const tempCharForTrigger: PlacedCharacter = {
+      characterId: newEnemy.enemyId,
+      x: newEnemy.x,
+      y: newEnemy.y,
+      facing: newEnemy.facing || Direction.SOUTH,
+      currentHealth: newEnemy.currentHealth,
+      actionIndex: newEnemy.actionIndex || 0,
+      active: newEnemy.active || true,
+      dead: newEnemy.dead,
+    };
+    evaluateTriggers(tempCharForTrigger, gameState);
+
+    // Copy back any changes from trigger execution
+    newEnemy.x = tempCharForTrigger.x;
+    newEnemy.y = tempCharForTrigger.y;
+    newEnemy.facing = tempCharForTrigger.facing;
+    newEnemy.currentHealth = tempCharForTrigger.currentHealth;
+    newEnemy.dead = tempCharForTrigger.dead;
 
     newEnemies.push(newEnemy);
 
