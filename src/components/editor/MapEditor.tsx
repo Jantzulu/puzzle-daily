@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, WinCondition, GameState, PlacedCharacter } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, WinCondition, GameState, PlacedCharacter, BorderConfig } from '../../types/game';
 import { TileType, Direction } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
 import { getAllEnemies, getEnemy } from '../../data/enemies';
@@ -10,6 +10,8 @@ import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin } from '../../utils/assetStorage';
+import type { PuzzleSkin } from '../../types/game';
 
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
@@ -32,7 +34,8 @@ interface EditorState {
   maxTurns?: number;
   availableCharacters: string[];
   winConditions: WinCondition[];
-  borderConfig?: { style: 'none' | 'dungeon' | 'castle' | 'forest' | 'custom' };
+  borderConfig?: BorderConfig; // Legacy - kept for backwards compatibility
+  skinId?: string; // Reference to PuzzleSkin
 
   // Editor state
   selectedTool: ToolType;
@@ -55,7 +58,7 @@ export const MapEditor: React.FC = () => {
     maxTurns: 100,
     availableCharacters: ['knight_01'],
     winConditions: [{ type: 'defeat_all_enemies' }],
-    borderConfig: { style: 'dungeon' },
+    skinId: 'builtin_dungeon', // Default skin
 
     selectedTool: 'wall',
     isDrawing: false,
@@ -71,6 +74,9 @@ export const MapEditor: React.FC = () => {
   // Library state
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
   const [showLibrary, setShowLibrary] = useState(false);
+
+  // Puzzle skins state
+  const [availableSkins, setAvailableSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
 
   // Enemy/Character selection
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
@@ -110,15 +116,16 @@ export const MapEditor: React.FC = () => {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    const borderStyle = state.borderConfig?.style || 'none';
-    const hasBorder = borderStyle !== 'none';
+    // Get current skin
+    const currentSkin = state.skinId ? loadPuzzleSkin(state.skinId) : null;
+    const hasBorder = currentSkin !== null;
 
     // Clear
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Draw border if enabled
-    if (hasBorder) {
-      drawDungeonBorder(ctx, state.gridWidth, state.gridHeight);
+    // Draw border if skin is selected
+    if (hasBorder && currentSkin) {
+      drawDungeonBorder(ctx, state.gridWidth, state.gridHeight, currentSkin);
     }
 
     // Translate for grid rendering if border is enabled
@@ -132,7 +139,7 @@ export const MapEditor: React.FC = () => {
     for (let y = 0; y < state.gridHeight; y++) {
       for (let x = 0; x < state.gridWidth; x++) {
         const tile = state.tiles[y][x];
-        drawTile(ctx, x, y, tile);
+        drawTile(ctx, x, y, tile, currentSkin);
       }
     }
 
@@ -151,7 +158,7 @@ export const MapEditor: React.FC = () => {
     });
 
     ctx.restore();
-  }, [state.tiles, state.enemies, state.collectibles, state.gridWidth, state.gridHeight, state.mode, state.borderConfig]);
+  }, [state.tiles, state.enemies, state.collectibles, state.gridWidth, state.gridHeight, state.mode, state.skinId]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setState(prev => ({ ...prev, isDrawing: true }));
@@ -271,6 +278,13 @@ export const MapEditor: React.FC = () => {
   };
 
   const getCurrentPuzzle = (): Puzzle => {
+    // Build borderConfig from skin for compatibility with AnimatedGameBoard
+    const skin = state.skinId ? loadPuzzleSkin(state.skinId) : null;
+    const borderConfig: BorderConfig | undefined = skin ? {
+      style: Object.keys(skin.borderSprites).length > 0 ? 'custom' : 'dungeon',
+      customBorderSprites: Object.keys(skin.borderSprites).length > 0 ? skin.borderSprites : undefined,
+    } : undefined;
+
     return {
       id: state.puzzleId,
       date: new Date().toISOString().split('T')[0],
@@ -284,7 +298,8 @@ export const MapEditor: React.FC = () => {
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
       maxTurns: state.maxTurns,
-      borderConfig: state.borderConfig,
+      borderConfig,
+      skinId: state.skinId,
     };
   };
 
@@ -353,7 +368,7 @@ export const MapEditor: React.FC = () => {
       maxTurns: puzzle.maxTurns,
       availableCharacters: puzzle.availableCharacters,
       winConditions: puzzle.winConditions,
-      borderConfig: puzzle.borderConfig || { style: 'dungeon' },
+      skinId: puzzle.skinId || 'builtin_dungeon',
     }));
 
     setShowLibrary(false);
@@ -406,7 +421,7 @@ export const MapEditor: React.FC = () => {
         maxTurns: puzzle.maxTurns,
         availableCharacters: puzzle.availableCharacters,
         winConditions: puzzle.winConditions,
-        borderConfig: puzzle.borderConfig || { style: 'dungeon' },
+        skinId: puzzle.skinId || 'builtin_dungeon',
       }));
 
       alert('Puzzle loaded successfully!');
@@ -851,6 +866,26 @@ export const MapEditor: React.FC = () => {
                   />
                 </div>
                 <div>
+                  <label className="block text-sm mb-1">Visual Skin</label>
+                  <select
+                    value={state.skinId || 'builtin_dungeon'}
+                    onChange={(e) => {
+                      setState(prev => ({ ...prev, skinId: e.target.value }));
+                      setAvailableSkins(getAllPuzzleSkins()); // Refresh in case new skins were added
+                    }}
+                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  >
+                    {availableSkins.map((skin) => (
+                      <option key={skin.id} value={skin.id}>
+                        {skin.name} {skin.isBuiltIn ? '(Built-in)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-400 mt-1">
+                    Create skins in Asset Manager → Skins
+                  </p>
+                </div>
+                <div>
                   <label className="block text-sm mb-1">Max Characters</label>
                   <input
                     type="number"
@@ -965,6 +1000,7 @@ export const MapEditor: React.FC = () => {
                 )}
               </div>
             )}
+
           </div>
         </div>
       </div>
@@ -985,7 +1021,21 @@ function createEmptyGrid(width: number, height: number): TileOrNull[][] {
   return grid;
 }
 
-function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number) {
+// Image cache for skin sprites
+const skinImageCache = new Map<string, HTMLImageElement>();
+
+function loadSkinImage(src: string): HTMLImageElement | null {
+  if (!src) return null;
+  let img = skinImageCache.get(src);
+  if (!img) {
+    img = new Image();
+    img.src = src;
+    skinImageCache.set(src, img);
+  }
+  return img;
+}
+
+function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, skin?: PuzzleSkin | null) {
   const gridPixelWidth = gridWidth * TILE_SIZE;
   const gridPixelHeight = gridHeight * TILE_SIZE;
   const totalWidth = gridPixelWidth + (SIDE_BORDER_SIZE * 2);
@@ -997,61 +1047,115 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
   ctx.fillStyle = '#0a0a0a';
   ctx.fillRect(0, 0, totalWidth, totalHeight);
 
-  // Top wall (front-facing with depth)
-  ctx.fillStyle = '#3a3a4a'; // Stone color
-  ctx.fillRect(0, 0, totalWidth, BORDER_SIZE);
+  // Check if skin has custom border sprites
+  const hasCustomBorders = skin && Object.keys(skin.borderSprites).length > 0;
 
-  // Add stone texture/depth to top wall
-  ctx.fillStyle = '#2a2a3a'; // Shadow
-  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
-    ctx.fillRect(x, BORDER_SIZE - 12, TILE_SIZE - 2, 12);
+  if (hasCustomBorders && skin) {
+    // Draw custom border sprites
+    const sprites = skin.borderSprites;
+    const wallFrontImg = loadSkinImage(sprites.wallFront || '');
+    const wallSideImg = loadSkinImage(sprites.wallSide || '');
+    const wallBottomOuterImg = loadSkinImage(sprites.wallBottomOuter || sprites.wallFront || '');
+    const cornerTLImg = loadSkinImage(sprites.cornerTopLeft || '');
+    const cornerTRImg = loadSkinImage(sprites.cornerTopRight || '');
+    const cornerBLImg = loadSkinImage(sprites.cornerBottomLeft || '');
+    const cornerBRImg = loadSkinImage(sprites.cornerBottomRight || '');
+
+    // Top wall
+    if (wallFrontImg?.complete) {
+      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
+        ctx.drawImage(wallFrontImg, x, 0, TILE_SIZE, BORDER_SIZE);
+      }
+    }
+
+    // Bottom wall
+    if (wallBottomOuterImg?.complete) {
+      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
+        ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, TILE_SIZE, BORDER_SIZE);
+      }
+    }
+
+    // Left wall
+    if (wallSideImg?.complete) {
+      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
+        ctx.drawImage(wallSideImg, 0, y, SIDE_BORDER_SIZE, TILE_SIZE);
+      }
+    }
+
+    // Right wall (mirrored)
+    if (wallSideImg?.complete) {
+      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
+        ctx.save();
+        ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + SIDE_BORDER_SIZE, y);
+        ctx.scale(-1, 1);
+        ctx.drawImage(wallSideImg, 0, 0, SIDE_BORDER_SIZE, TILE_SIZE);
+        ctx.restore();
+      }
+    }
+
+    // Corners
+    if (cornerTLImg?.complete) ctx.drawImage(cornerTLImg, 0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    if (cornerTRImg?.complete) ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    if (cornerBLImg?.complete) ctx.drawImage(cornerBLImg, 0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    if (cornerBRImg?.complete) ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  } else {
+    // Default dungeon style rendering
+    // Top wall (front-facing with depth)
+    ctx.fillStyle = '#3a3a4a'; // Stone color
+    ctx.fillRect(0, 0, totalWidth, BORDER_SIZE);
+
+    // Add stone texture/depth to top wall
+    ctx.fillStyle = '#2a2a3a'; // Shadow
+    for (let x = 0; x < totalWidth; x += TILE_SIZE) {
+      ctx.fillRect(x, BORDER_SIZE - 12, TILE_SIZE - 2, 12);
+    }
+
+    // Top wall highlight
+    ctx.fillStyle = '#4a4a5a';
+    for (let x = 0; x < totalWidth; x += TILE_SIZE) {
+      ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
+    }
+
+    // Bottom wall (simpler, just top edge visible)
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
+
+    // Bottom wall top edge
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
+
+    // Left wall (side view - THINNER)
+    ctx.fillStyle = '#323242';
+    ctx.fillRect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+
+    // Left wall inner edge
+    ctx.fillStyle = '#2a2a3a';
+    ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
+
+    // Right wall (side view - THINNER)
+    ctx.fillStyle = '#323242';
+    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+
+    // Right wall inner edge
+    ctx.fillStyle = '#3a3a4a';
+    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
+
+    // Corners (darker, showing depth)
+    ctx.fillStyle = '#1a1a2a';
+    // Top-left
+    ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    // Top-right
+    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    // Bottom-left
+    ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    // Bottom-right
+    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
   }
-
-  // Top wall highlight
-  ctx.fillStyle = '#4a4a5a';
-  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
-    ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
-  }
-
-  // Bottom wall (simpler, just top edge visible)
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
-
-  // Bottom wall top edge
-  ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
-
-  // Left wall (side view - THINNER)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
-
-  // Left wall inner edge
-  ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
-
-  // Right wall (side view - THINNER)
-  ctx.fillStyle = '#323242';
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
-
-  // Right wall inner edge
-  ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
-
-  // Corners (darker, showing depth)
-  ctx.fillStyle = '#1a1a2a';
-  // Top-left
-  ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Top-right
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Bottom-left
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
-  // Bottom-right
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
 
   ctx.restore();
 }
 
-function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: TileOrNull) {
+function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: TileOrNull, skin?: PuzzleSkin | null) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
@@ -1068,9 +1172,26 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
     ctx.lineTo(px, py + TILE_SIZE);
     ctx.stroke();
   } else {
-    // Normal tile
-    ctx.fillStyle = tile.type === TileType.WALL ? '#4a4a4a' : '#2a2a2a';
-    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+    // Check for custom tile sprites
+    const tileSprites = skin?.tileSprites;
+    const isWall = tile.type === TileType.WALL;
+    const spriteKey = isWall ? 'wall' : 'empty';
+    const spriteUrl = tileSprites?.[spriteKey];
+
+    if (spriteUrl) {
+      const tileImg = loadSkinImage(spriteUrl);
+      if (tileImg?.complete) {
+        ctx.drawImage(tileImg, px, py, TILE_SIZE, TILE_SIZE);
+      } else {
+        // Fallback while image loads
+        ctx.fillStyle = isWall ? '#4a4a4a' : '#2a2a2a';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+      }
+    } else {
+      // Default colors
+      ctx.fillStyle = isWall ? '#4a4a4a' : '#2a2a2a';
+      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+    }
 
     ctx.strokeStyle = '#1a1a1a';
     ctx.lineWidth = 1;
@@ -1126,3 +1247,4 @@ function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number, ty
   ctx.closePath();
   ctx.fill();
 }
+

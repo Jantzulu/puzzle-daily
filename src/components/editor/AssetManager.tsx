@@ -3,8 +3,9 @@ import { Link } from 'react-router-dom';
 import { CharacterEditor } from './CharacterEditor';
 import { EnemyEditor } from './EnemyEditor';
 import { SpellLibrary } from './SpellLibrary';
+import { SkinEditor } from './SkinEditor';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'tiles' | 'collectibles';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'skins' | 'tiles' | 'collectibles';
 
 export const AssetManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AssetTab>('characters');
@@ -54,6 +55,16 @@ export const AssetManager: React.FC = () => {
               ✨ Spells
             </button>
             <button
+              onClick={() => setActiveTab('skins')}
+              className={`px-4 py-2 rounded-t ${
+                activeTab === 'skins'
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+              }`}
+            >
+              🎨 Skins
+            </button>
+            <button
               onClick={() => setActiveTab('tiles')}
               className={`px-4 py-2 rounded-t ${
                 activeTab === 'tiles'
@@ -82,6 +93,7 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'characters' && <CharacterEditor />}
         {activeTab === 'enemies' && <EnemyEditor />}
         {activeTab === 'spells' && <SpellLibrary />}
+        {activeTab === 'skins' && <SkinEditor />}
         {activeTab === 'tiles' && <TileEditorPlaceholder />}
         {activeTab === 'collectibles' && <CollectibleEditorPlaceholder />}
       </div>

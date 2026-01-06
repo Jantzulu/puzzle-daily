@@ -379,3 +379,117 @@ export const loadSpellAsset = (spellId: string): SpellAsset | null => {
   const spells = getSpellAssets();
   return spells.find(s => s.id === spellId) || null;
 };
+
+// ==========================================
+// CUSTOM BORDER SPRITES
+// ==========================================
+
+import type { CustomBorderSprites } from '../types/game';
+
+const BORDER_SPRITES_STORAGE_KEY = 'custom_border_sprites';
+
+export interface SavedBorderSpriteSet {
+  id: string;
+  name: string;
+  sprites: CustomBorderSprites;
+  createdAt: string;
+}
+
+export const saveBorderSpriteSet = (spriteSet: SavedBorderSpriteSet): void => {
+  const sets = getBorderSpriteSets();
+
+  const existingIndex = sets.findIndex(s => s.id === spriteSet.id);
+  if (existingIndex >= 0) {
+    sets[existingIndex] = spriteSet;
+  } else {
+    sets.push(spriteSet);
+  }
+
+  localStorage.setItem(BORDER_SPRITES_STORAGE_KEY, JSON.stringify(sets));
+};
+
+export const getBorderSpriteSets = (): SavedBorderSpriteSet[] => {
+  try {
+    const stored = localStorage.getItem(BORDER_SPRITES_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load border sprite sets:', e);
+    return [];
+  }
+};
+
+export const deleteBorderSpriteSet = (setId: string): void => {
+  const sets = getBorderSpriteSets();
+  const filtered = sets.filter(s => s.id !== setId);
+  localStorage.setItem(BORDER_SPRITES_STORAGE_KEY, JSON.stringify(filtered));
+};
+
+export const loadBorderSpriteSet = (setId: string): SavedBorderSpriteSet | null => {
+  const sets = getBorderSpriteSets();
+  return sets.find(s => s.id === setId) || null;
+};
+
+// ==========================================
+// PUZZLE SKINS
+// ==========================================
+
+import type { PuzzleSkin } from '../types/game';
+
+const PUZZLE_SKINS_STORAGE_KEY = 'puzzle_skins';
+
+// Built-in default skin (dungeon style)
+export const DEFAULT_DUNGEON_SKIN: PuzzleSkin = {
+  id: 'builtin_dungeon',
+  name: 'Classic Dungeon',
+  description: 'Default dungeon-style borders with stone walls',
+  borderSprites: {}, // Empty = use default dungeon rendering
+  createdAt: '2024-01-01T00:00:00.000Z',
+  isBuiltIn: true,
+};
+
+export const savePuzzleSkin = (skin: PuzzleSkin): void => {
+  const skins = getPuzzleSkins();
+
+  const existingIndex = skins.findIndex(s => s.id === skin.id);
+  if (existingIndex >= 0) {
+    skins[existingIndex] = skin;
+  } else {
+    skins.push(skin);
+  }
+
+  localStorage.setItem(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(skins));
+};
+
+export const getPuzzleSkins = (): PuzzleSkin[] => {
+  try {
+    const stored = localStorage.getItem(PUZZLE_SKINS_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load puzzle skins:', e);
+    return [];
+  }
+};
+
+export const getAllPuzzleSkins = (): PuzzleSkin[] => {
+  // Return built-in skins + custom skins
+  return [DEFAULT_DUNGEON_SKIN, ...getPuzzleSkins()];
+};
+
+export const deletePuzzleSkin = (skinId: string): void => {
+  // Don't allow deleting built-in skins
+  if (skinId.startsWith('builtin_')) return;
+
+  const skins = getPuzzleSkins();
+  const filtered = skins.filter(s => s.id !== skinId);
+  localStorage.setItem(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(filtered));
+};
+
+export const loadPuzzleSkin = (skinId: string): PuzzleSkin | null => {
+  // Check built-in skins first
+  if (skinId === 'builtin_dungeon') return DEFAULT_DUNGEON_SKIN;
+
+  const skins = getPuzzleSkins();
+  return skins.find(s => s.id === skinId) || null;
+};

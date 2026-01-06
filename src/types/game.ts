@@ -188,18 +188,57 @@ export interface WinCondition {
 
 export type BorderStyle = 'none' | 'dungeon' | 'castle' | 'forest' | 'custom';
 
+export interface CustomBorderSprites {
+  // Wall segments (tileable horizontally/vertically)
+  wallFront?: string;           // Front-facing wall (48px tall) - used for top edges
+  wallTop?: string;             // Top surface of wall (24px tall) - used for interior bottom edges
+  wallSide?: string;            // Side wall (24px wide) - used for left/right edges
+  wallBottomOuter?: string;     // Outer perimeter bottom wall (48px tall) - optional, falls back to wallFront
+
+  // Convex corners (outer corners where puzzle sticks out)
+  cornerTopLeft?: string;       // Top-left outer corner (24x48px)
+  cornerTopRight?: string;      // Top-right outer corner (24x48px)
+  cornerBottomLeft?: string;    // Bottom-left outer corner (24x24px for interior, 24x48px for outer)
+  cornerBottomRight?: string;   // Bottom-right outer corner (24x24px for interior, 24x48px for outer)
+
+  // Concave corners (inner corners where puzzle goes inward)
+  innerCornerTopLeft?: string;      // Inner top-left corner (24x48px)
+  innerCornerTopRight?: string;     // Inner top-right corner (24x48px)
+  innerCornerBottomLeft?: string;   // Inner bottom-left corner (24x24px)
+  innerCornerBottomRight?: string;  // Inner bottom-right corner (24x24px)
+}
+
 export interface BorderConfig {
   style: BorderStyle;
-  customBorderSprites?: {
-    topWall?: string;        // Base64 image for top border (front-facing wall)
-    bottomWall?: string;     // Base64 image for bottom border (back wall)
-    leftWall?: string;       // Base64 image for left border (side wall)
-    rightWall?: string;      // Base64 image for right border (side wall)
-    topLeftCorner?: string;  // Base64 image for top-left corner
-    topRightCorner?: string; // Base64 image for top-right corner
-    bottomLeftCorner?: string;  // Base64 image for bottom-left corner
-    bottomRightCorner?: string; // Base64 image for bottom-right corner
-  };
+  customBorderSprites?: CustomBorderSprites;
+}
+
+// ==========================================
+// PUZZLE SKIN SYSTEM
+// ==========================================
+
+export interface TileSprites {
+  empty?: string;           // Floor tile sprite (tileable)
+  wall?: string;            // Wall tile sprite (tileable)
+  void?: string;            // Void/transparent area appearance (optional)
+  goal?: string;            // Goal tile sprite
+}
+
+export interface PuzzleSkin {
+  id: string;
+  name: string;
+  description?: string;
+  thumbnailPreview?: string;  // Auto-generated or user-uploaded preview image
+
+  // Border sprites (walls around the puzzle)
+  borderSprites: CustomBorderSprites;
+
+  // Tile sprites (the actual floor/wall tiles)
+  tileSprites?: TileSprites;
+
+  // Metadata
+  createdAt: string;
+  isBuiltIn?: boolean;       // True for default/built-in skins
 }
 
 export interface Puzzle {
@@ -215,7 +254,8 @@ export interface Puzzle {
   winConditions: WinCondition[];
   maxCharacters: number;
   maxTurns?: number; // Optional turn limit to prevent infinite loops
-  borderConfig?: BorderConfig; // Optional border decoration
+  borderConfig?: BorderConfig; // Optional border decoration (legacy, use skinId instead)
+  skinId?: string; // Reference to PuzzleSkin for visual theming
 }
 
 export interface PlacedCharacter {
