@@ -1057,7 +1057,7 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
   const hasCustomBorders = skin && Object.keys(skin.borderSprites).length > 0;
 
   if (hasCustomBorders && skin) {
-    // Draw custom border sprites
+    // Draw custom border sprites at their natural size (no stretching)
     const sprites = skin.borderSprites;
     const wallFrontImg = loadSkinImage(sprites.wallFront || '');
     const wallSideImg = loadSkinImage(sprites.wallSide || '');
@@ -1067,43 +1067,63 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
     const cornerBLImg = loadSkinImage(sprites.cornerBottomLeft || '');
     const cornerBRImg = loadSkinImage(sprites.cornerBottomRight || '');
 
-    // Top wall
+    // Top wall - tile horizontally using image's natural width
     if (wallFrontImg?.complete) {
-      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
-        ctx.drawImage(wallFrontImg, x, 0, TILE_SIZE, BORDER_SIZE);
+      const imgWidth = wallFrontImg.naturalWidth || TILE_SIZE;
+      const imgHeight = wallFrontImg.naturalHeight || BORDER_SIZE;
+      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += imgWidth) {
+        ctx.drawImage(wallFrontImg, x, BORDER_SIZE - imgHeight, imgWidth, imgHeight);
       }
     }
 
-    // Bottom wall
+    // Bottom wall - tile horizontally using image's natural width
     if (wallBottomOuterImg?.complete) {
-      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
-        ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, TILE_SIZE, BORDER_SIZE);
+      const imgWidth = wallBottomOuterImg.naturalWidth || TILE_SIZE;
+      const imgHeight = wallBottomOuterImg.naturalHeight || BORDER_SIZE;
+      for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += imgWidth) {
+        ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, imgWidth, imgHeight);
       }
     }
 
-    // Left wall
+    // Left wall - tile vertically using image's natural height
     if (wallSideImg?.complete) {
-      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
-        ctx.drawImage(wallSideImg, 0, y, SIDE_BORDER_SIZE, TILE_SIZE);
+      const imgWidth = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
+      const imgHeight = wallSideImg.naturalHeight || TILE_SIZE;
+      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
+        ctx.drawImage(wallSideImg, SIDE_BORDER_SIZE - imgWidth, y, imgWidth, imgHeight);
       }
     }
 
-    // Right wall (mirrored)
+    // Right wall (mirrored) - tile vertically using image's natural height
     if (wallSideImg?.complete) {
-      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
+      const imgWidth = wallSideImg.naturalWidth || SIDE_BORDER_SIZE;
+      const imgHeight = wallSideImg.naturalHeight || TILE_SIZE;
+      for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += imgHeight) {
         ctx.save();
-        ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + SIDE_BORDER_SIZE, y);
+        ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + imgWidth, y);
         ctx.scale(-1, 1);
-        ctx.drawImage(wallSideImg, 0, 0, SIDE_BORDER_SIZE, TILE_SIZE);
+        ctx.drawImage(wallSideImg, 0, 0, imgWidth, imgHeight);
         ctx.restore();
       }
     }
 
-    // Corners
-    if (cornerTLImg?.complete) ctx.drawImage(cornerTLImg, 0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-    if (cornerTRImg?.complete) ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
-    if (cornerBLImg?.complete) ctx.drawImage(cornerBLImg, 0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
-    if (cornerBRImg?.complete) ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    // Corners - draw at natural size, positioned at corners
+    if (cornerTLImg?.complete) {
+      const w = cornerTLImg.naturalWidth, h = cornerTLImg.naturalHeight;
+      ctx.drawImage(cornerTLImg, SIDE_BORDER_SIZE - w, BORDER_SIZE - h, w, h);
+    }
+    if (cornerTRImg?.complete) {
+      const w = cornerTRImg.naturalWidth, h = cornerTRImg.naturalHeight;
+      ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE - h, w, h);
+    }
+    if (cornerBLImg?.complete) {
+      const w = cornerBLImg.naturalWidth, h = cornerBLImg.naturalHeight;
+      ctx.drawImage(cornerBLImg, SIDE_BORDER_SIZE - w, BORDER_SIZE + gridPixelHeight, w, h);
+    }
+    if (cornerBRImg?.complete) {
+      const w = cornerBRImg.naturalWidth, h = cornerBRImg.naturalHeight;
+      ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, w, h);
+    }
   } else {
     // Default dungeon style rendering
     // Top wall (front-facing with depth)
