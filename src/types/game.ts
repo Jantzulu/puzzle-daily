@@ -215,6 +215,12 @@ export interface PlacedEnemy {
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
 }
 
+export interface PlacedObject {
+  objectId: string;
+  x: number;
+  y: number;
+}
+
 export interface PlacedCollectible {
   type: 'coin' | 'gem';
   x: number;
@@ -300,6 +306,7 @@ export interface Puzzle {
   tiles: TileOrNull[][]; // Can contain null for non-rectangular maps
   enemies: PlacedEnemy[];
   collectibles: PlacedCollectible[];
+  placedObjects?: PlacedObject[]; // Objects placed on the map
   availableCharacters: string[];
   winConditions: WinCondition[];
   maxCharacters: number;

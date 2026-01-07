@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, WinCondition, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
@@ -10,7 +10,7 @@ import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, type CustomObject } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, type CustomObject } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -250,6 +250,7 @@ interface EditorState {
   tiles: TileOrNull[][];
   enemies: PlacedEnemy[];
   collectibles: PlacedCollectible[];
+  placedObjects: PlacedObject[];
 
   // Metadata
   puzzleName: string;
@@ -275,6 +276,7 @@ export const MapEditor: React.FC = () => {
     tiles: createEmptyGrid(8, 8),
     enemies: [],
     collectibles: [],
+    placedObjects: [],
 
     puzzleName: 'New Puzzle',
     puzzleId: 'puzzle_' + Date.now(),
@@ -373,6 +375,16 @@ export const MapEditor: React.FC = () => {
       }
     }
 
+    // Draw objects below entities (sorted by y position for proper layering)
+    const belowObjects = state.placedObjects.filter(obj => {
+      const objData = loadObject(obj.objectId);
+      return !objData?.renderLayer || objData.renderLayer === 'below_entities';
+    }).sort((a, b) => a.y - b.y);
+
+    belowObjects.forEach((obj) => {
+      drawObject(ctx, obj.x, obj.y, obj.objectId);
+    });
+
     // Draw enemies
     state.enemies.forEach((enemy) => {
       if (!enemy.dead) {
@@ -387,8 +399,18 @@ export const MapEditor: React.FC = () => {
       }
     });
 
+    // Draw objects above entities (sorted by y position for proper layering)
+    const aboveObjects = state.placedObjects.filter(obj => {
+      const objData = loadObject(obj.objectId);
+      return objData?.renderLayer === 'above_entities';
+    }).sort((a, b) => a.y - b.y);
+
+    aboveObjects.forEach((obj) => {
+      drawObject(ctx, obj.x, obj.y, obj.objectId);
+    });
+
     ctx.restore();
-  }, [state.tiles, state.enemies, state.collectibles, state.gridWidth, state.gridHeight, state.mode, state.skinId]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId]);
 
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     setState(prev => ({ ...prev, isDrawing: true }));
@@ -486,6 +508,35 @@ export const MapEditor: React.FC = () => {
       return;
     }
 
+    // Handle object placement
+    if (state.selectedTool === 'object') {
+      if (!selectedObjectId) {
+        alert('Please select an object type first!');
+        return;
+      }
+
+      setState(prev => {
+        // Check if object already exists at this position
+        const existingObjIndex = prev.placedObjects.findIndex(o => o.x === x && o.y === y);
+
+        if (existingObjIndex >= 0) {
+          // Remove existing object
+          const newObjects = [...prev.placedObjects];
+          newObjects.splice(existingObjIndex, 1);
+          return { ...prev, placedObjects: newObjects };
+        } else {
+          // Add new object
+          const newObject: PlacedObject = {
+            objectId: selectedObjectId,
+            x,
+            y,
+          };
+          return { ...prev, placedObjects: [...prev.placedObjects, newObject] };
+        }
+      });
+      return;
+    }
+
     // Handle custom tile placement
     if (state.selectedTool === 'custom') {
       if (!selectedCustomTileTypeId) {
@@ -569,6 +620,7 @@ export const MapEditor: React.FC = () => {
       tiles: state.tiles,
       enemies: state.enemies,
       collectibles: state.collectibles,
+      placedObjects: state.placedObjects,
       availableCharacters: state.availableCharacters,
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
@@ -637,6 +689,7 @@ export const MapEditor: React.FC = () => {
       tiles: puzzle.tiles,
       enemies: puzzle.enemies,
       collectibles: puzzle.collectibles,
+      placedObjects: puzzle.placedObjects || [],
       puzzleName: puzzle.name,
       puzzleId: puzzle.id,
       maxCharacters: puzzle.maxCharacters,
@@ -740,6 +793,10 @@ export const MapEditor: React.FC = () => {
       const newCollectibles = prev.collectibles
         .filter(collectible => collectible.x >= 0 && collectible.x < width && collectible.y >= 0 && collectible.y < height);
 
+      // Keep object positions (only if they fit in new bounds)
+      const newPlacedObjects = prev.placedObjects
+        .filter(obj => obj.x >= 0 && obj.x < width && obj.y >= 0 && obj.y < height);
+
       return {
         ...prev,
         gridWidth: width,
@@ -747,6 +804,7 @@ export const MapEditor: React.FC = () => {
         tiles: newTiles,
         enemies: newEnemies,
         collectibles: newCollectibles,
+        placedObjects: newPlacedObjects,
       };
     });
   };
@@ -769,6 +827,7 @@ export const MapEditor: React.FC = () => {
       tiles: state.tiles,
       enemies: state.enemies.map(e => ({ ...e })), // Deep copy
       collectibles: state.collectibles.map(c => ({ ...c })), // Deep copy
+      placedObjects: state.placedObjects.map(o => ({ ...o })), // Deep copy
       availableCharacters: state.availableCharacters,
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
@@ -1917,5 +1976,34 @@ function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number, ty
 
   ctx.closePath();
   ctx.fill();
+}
+
+function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectId: string) {
+  const objectData = loadObject(objectId);
+  if (!objectData) return;
+
+  const px = x * TILE_SIZE;
+  const py = y * TILE_SIZE;
+
+  // Calculate center position based on anchor point
+  let centerX = px + TILE_SIZE / 2;
+  let centerY = py + TILE_SIZE / 2;
+
+  if (objectData.anchorPoint === 'bottom_center') {
+    // For bottom_center, the sprite's bottom aligns with tile center
+    // This means the sprite center is higher up
+    const spriteSize = (objectData.customSprite?.size || 1) * TILE_SIZE;
+    centerY = py + TILE_SIZE / 2 - spriteSize / 2 + TILE_SIZE / 2;
+  }
+
+  // Draw custom sprite if available
+  if (objectData.customSprite) {
+    const spriteSize = objectData.customSprite.size * TILE_SIZE;
+    drawSprite(ctx, objectData.customSprite, centerX, centerY, spriteSize);
+  } else {
+    // Fallback: draw a simple brown square
+    ctx.fillStyle = '#8b4513';
+    ctx.fillRect(px + TILE_SIZE / 4, py + TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2);
+  }
 }
 
