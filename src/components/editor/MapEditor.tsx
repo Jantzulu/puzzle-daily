@@ -10,7 +10,7 @@ import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, type CustomObject } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -185,11 +185,63 @@ const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children
   );
 };
 
+// Tooltip component for object info
+const ObjectTooltip: React.FC<{ object: CustomObject; children: React.ReactNode }> = ({ object, children }) => {
+  const [show, setShow] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPosition({ x: rect.left + rect.width / 2, y: rect.bottom });
+    timeoutRef.current = setTimeout(() => setShow(true), 400);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setShow(false);
+  };
+
+  return (
+    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+      {children}
+      {show && (
+        <div
+          className="fixed z-[9999] w-52 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
+        >
+          <div className="font-bold text-white mb-1">{object.name}</div>
+          {object.description && (
+            <div className="text-gray-400 mb-1">{object.description}</div>
+          )}
+          <div className="text-gray-300 space-y-0.5">
+            <div>Collision: <span className="capitalize">{object.collisionType.replace('_', ' ')}</span></div>
+            <div>Anchor: <span className="capitalize">{object.anchorPoint.replace('_', ' ')}</span></div>
+            {object.effects.length > 0 && (
+              <div className="mt-1 pt-1 border-t border-gray-700">
+                <div className="font-semibold mb-0.5">Effects:</div>
+                {object.effects.map((effect, i) => (
+                  <div key={i} className="text-gray-400">
+                    • {effect.type.charAt(0).toUpperCase() + effect.type.slice(1)}
+                    {effect.value ? ` (${effect.value})` : ''} - r{effect.radius}
+                    {effect.affectsCharacters && effect.affectsEnemies ? ' [All]' :
+                     effect.affectsCharacters ? ' [Chars]' : ' [Enemies]'}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
 
-type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'custom';
+type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'object' | 'custom';
 type EditorMode = 'edit' | 'playtest';
 
 interface EditorState {
@@ -254,10 +306,12 @@ export const MapEditor: React.FC = () => {
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [selectedCustomTileTypeId, setSelectedCustomTileTypeId] = useState<string | null>(null);
 
-  // Enemy/Character selection
+  // Enemy/Character/Object selection
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
+  const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
   const allEnemies = getAllEnemies();
   const allCharacters = getAllCharacters();
+  const allObjects = getAllObjects();
 
   // Simulation loop (for playtest mode)
   useEffect(() => {
@@ -1068,9 +1122,9 @@ export const MapEditor: React.FC = () => {
                     Enemy
                   </button>
                   <button
-                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
+                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'object' }))}
                     className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      state.selectedTool === 'object' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
                     }`}
                   >
                     Object
@@ -1235,6 +1289,59 @@ export const MapEditor: React.FC = () => {
                           </ActionTooltip>
                         );
                       })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Object Type Selector - List style with sprites and tooltips */}
+              {state.selectedTool === 'object' && (
+                <div className="bg-gray-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">Select Object</h2>
+                  {allObjects.length === 0 ? (
+                    <div className="text-center py-4">
+                      <p className="text-sm text-gray-400 mb-2">No objects available.</p>
+                      <a href="/assets" className="text-blue-400 hover:underline text-sm">
+                        Create objects in Asset Manager
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {allObjects.map(obj => (
+                        <ObjectTooltip key={obj.id} object={obj}>
+                          <button
+                            onClick={() => setSelectedObjectId(obj.id)}
+                            className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                              selectedObjectId === obj.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                            }`}
+                          >
+                            <SpriteThumbnail sprite={obj.customSprite} size={32} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{obj.name}</div>
+                              <div className="text-xs text-gray-400 capitalize">
+                                {obj.collisionType.replace('_', ' ')}
+                                {obj.effects.length > 0 && ` • ${obj.effects.length} effect${obj.effects.length > 1 ? 's' : ''}`}
+                              </div>
+                            </div>
+                            {obj.effects.length > 0 && (
+                              <div className="flex gap-1 flex-shrink-0">
+                                {obj.effects.slice(0, 2).map((effect, i) => (
+                                  <span
+                                    key={i}
+                                    className={`text-xs px-1.5 py-0.5 rounded ${
+                                      effect.type === 'damage' ? 'bg-red-900 text-red-300' :
+                                      effect.type === 'heal' ? 'bg-green-900 text-green-300' :
+                                      'bg-blue-900 text-blue-300'
+                                    }`}
+                                  >
+                                    {effect.type.charAt(0).toUpperCase()}
+                                  </span>
+                                ))}
+                              </div>
+                            )}
+                          </button>
+                        </ObjectTooltip>
+                      ))}
                     </div>
                   )}
                 </div>

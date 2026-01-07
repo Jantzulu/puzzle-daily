@@ -5,8 +5,9 @@ import { EnemyEditor } from './EnemyEditor';
 import { SpellLibrary } from './SpellLibrary';
 import { SkinEditor } from './SkinEditor';
 import { TileTypeEditor } from './TileTypeEditor';
+import { ObjectEditor } from './ObjectEditor';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'skins' | 'tiles' | 'collectibles';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'skins' | 'tiles' | 'objects' | 'collectibles';
 
 export const AssetManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AssetTab>('characters');
@@ -76,6 +77,16 @@ export const AssetManager: React.FC = () => {
               🎨 Skins
             </button>
             <button
+              onClick={() => setActiveTab('objects')}
+              className={`px-4 py-2 rounded-t ${
+                activeTab === 'objects'
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+              }`}
+            >
+              🏺 Objects
+            </button>
+            <button
               onClick={() => setActiveTab('collectibles')}
               className={`px-4 py-2 rounded-t ${
                 activeTab === 'collectibles'
@@ -96,6 +107,7 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'spells' && <SpellLibrary />}
         {activeTab === 'skins' && <SkinEditor />}
         {activeTab === 'tiles' && <TileTypeEditor />}
+        {activeTab === 'objects' && <ObjectEditor />}
         {activeTab === 'collectibles' && <CollectibleEditorPlaceholder />}
       </div>
     </div>

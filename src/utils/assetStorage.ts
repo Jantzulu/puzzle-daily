@@ -4,6 +4,7 @@ const CHARACTER_STORAGE_KEY = 'custom_characters';
 const ENEMY_STORAGE_KEY = 'custom_enemies';
 const TILE_STORAGE_KEY = 'custom_tiles';
 const COLLECTIBLE_STORAGE_KEY = 'custom_collectibles';
+const OBJECT_STORAGE_KEY = 'custom_objects';
 const HIDDEN_ASSETS_KEY = 'hidden_official_assets';
 
 // ============ HIDDEN ASSETS MANAGEMENT ============
@@ -139,6 +140,45 @@ export interface CustomCollectibleType {
   baseType: 'coin' | 'gem';
   customSprite?: CustomSprite;
   scoreValue: number;
+  isCustom: boolean;
+  createdAt: string;
+}
+
+// ============ CUSTOM OBJECT TYPES ============
+
+export type ObjectCollisionType = 'none' | 'wall' | 'stop_movement';
+export type ObjectAnchorPoint = 'center' | 'bottom_center';
+
+export interface ObjectEffectConfig {
+  type: 'damage' | 'heal' | 'slow' | 'speed_boost' | 'teleport';
+  value?: number; // Damage/heal amount, or speed multiplier
+  radius: number; // Tiles from object center
+  affectsCharacters?: boolean;
+  affectsEnemies?: boolean;
+  triggerOnTurnStart?: boolean; // Effect triggers at start of each turn
+  triggerOnEnter?: boolean; // Effect triggers when entity enters radius
+}
+
+export interface CustomObject {
+  id: string;
+  name: string;
+  description?: string;
+  customSprite?: CustomSprite;
+
+  // Positioning
+  anchorPoint: ObjectAnchorPoint; // Where sprite is anchored to tile
+
+  // Collision
+  collisionType: ObjectCollisionType;
+
+  // Effects
+  effects: ObjectEffectConfig[];
+
+  // Visual properties
+  renderLayer?: 'below_entities' | 'above_entities'; // Render order relative to entities on same tile
+  castsShadow?: boolean;
+
+  // Metadata
   isCustom: boolean;
   createdAt: string;
 }
@@ -496,4 +536,46 @@ export const loadPuzzleSkin = (skinId: string): PuzzleSkin | null => {
 
   const skins = getPuzzleSkins();
   return skins.find(s => s.id === skinId) || null;
+};
+
+// ============ OBJECT STORAGE ============
+
+export const saveObject = (object: CustomObject): void => {
+  const objects = getCustomObjects();
+  const existingIndex = objects.findIndex(o => o.id === object.id);
+
+  if (existingIndex >= 0) {
+    objects[existingIndex] = { ...object, createdAt: new Date().toISOString() };
+  } else {
+    objects.push({ ...object, createdAt: new Date().toISOString(), isCustom: true });
+  }
+
+  localStorage.setItem(OBJECT_STORAGE_KEY, JSON.stringify(objects));
+};
+
+export const getCustomObjects = (): CustomObject[] => {
+  const stored = localStorage.getItem(OBJECT_STORAGE_KEY);
+  if (!stored) return [];
+
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to parse custom objects:', e);
+    return [];
+  }
+};
+
+export const deleteObject = (objectId: string): void => {
+  const objects = getCustomObjects();
+  const filtered = objects.filter(o => o.id !== objectId);
+  localStorage.setItem(OBJECT_STORAGE_KEY, JSON.stringify(filtered));
+};
+
+export const loadObject = (objectId: string): CustomObject | null => {
+  const objects = getCustomObjects();
+  return objects.find(o => o.id === objectId) || null;
+};
+
+export const getAllObjects = (): CustomObject[] => {
+  return getCustomObjects();
 };
