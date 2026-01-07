@@ -24,14 +24,14 @@ const BEHAVIOR_OPTIONS: { type: TileBehaviorType; label: string; description: st
 
 // Direction options for direction_change behavior
 const DIRECTION_OPTIONS: { value: Direction; label: string }[] = [
-  { value: 'north', label: 'North (↑)' },
-  { value: 'northeast', label: 'Northeast (↗)' },
-  { value: 'east', label: 'East (→)' },
-  { value: 'southeast', label: 'Southeast (↘)' },
-  { value: 'south', label: 'South (↓)' },
-  { value: 'southwest', label: 'Southwest (↙)' },
-  { value: 'west', label: 'West (←)' },
-  { value: 'northwest', label: 'Northwest (↖)' },
+  { value: 'north', label: 'North' },
+  { value: 'northeast', label: 'Northeast' },
+  { value: 'east', label: 'East' },
+  { value: 'southeast', label: 'Southeast' },
+  { value: 'south', label: 'South' },
+  { value: 'southwest', label: 'Southwest' },
+  { value: 'west', label: 'West' },
+  { value: 'northwest', label: 'Northwest' },
 ];
 
 // Teleport group labels (A-Z)
@@ -60,7 +60,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
         </span>
         <button
           onClick={onRemove}
-          className="text-red-400 hover:text-red-300 text-sm"
+          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
         >
           Remove
         </button>
@@ -222,6 +222,18 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
   );
 };
 
+// Get behavior icon
+const getBehaviorIcon = (type: TileBehaviorType): string => {
+  switch (type) {
+    case 'damage': return '🔥';
+    case 'teleport': return '🌀';
+    case 'direction_change': return '➡️';
+    case 'ice': return '❄️';
+    case 'pressure_plate': return '⬇️';
+    default: return '?';
+  }
+};
+
 export const TileTypeEditor: React.FC = () => {
   const [tileTypes, setTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -262,6 +274,7 @@ export const TileTypeEditor: React.FC = () => {
     refreshTileTypes();
     setSelectedId(editing.id);
     setIsCreating(false);
+    alert('Tile type saved!');
   };
 
   const handleDelete = (id: string) => {
@@ -327,226 +340,226 @@ export const TileTypeEditor: React.FC = () => {
     setEditing({ ...editing, customSprite: undefined });
   };
 
-  // Get behavior icon
-  const getBehaviorIcon = (type: TileBehaviorType): string => {
-    switch (type) {
-      case 'damage': return '🔥';
-      case 'teleport': return '🌀';
-      case 'direction_change': return '➡️';
-      case 'ice': return '❄️';
-      case 'pressure_plate': return '⬇️';
-      default: return '?';
-    }
-  };
-
   return (
-    <div className="flex h-full">
-      {/* Left sidebar - Tile type list */}
-      <div className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
-        <div className="p-4 border-b border-gray-700">
-          <h2 className="text-lg font-bold mb-3">Tile Types</h2>
-          <button
-            onClick={handleNew}
-            className="w-full bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded text-sm"
-          >
-            + New Tile Type
-          </button>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-2">
-          {tileTypes.length === 0 ? (
-            <p className="text-gray-400 text-sm text-center py-4">
-              No custom tile types yet.
-              <br />
-              Click "New Tile Type" to create one.
-            </p>
-          ) : (
-            tileTypes.map(tileType => (
-              <div
-                key={tileType.id}
-                onClick={() => handleSelect(tileType.id)}
-                className={`p-3 rounded cursor-pointer mb-2 ${
-                  selectedId === tileType.id
-                    ? 'bg-blue-600'
-                    : 'bg-gray-700 hover:bg-gray-600'
-                }`}
+    <div className="p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex gap-8">
+          {/* Tile Type List */}
+          <div className="w-72 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold">Custom Tile Types</h2>
+              <button
+                onClick={handleNew}
+                className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700"
               >
-                <div className="flex items-center gap-2">
-                  {/* Preview thumbnail */}
-                  <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center overflow-hidden">
-                    {tileType.customSprite?.idleImageData ? (
-                      <img
-                        src={tileType.customSprite.idleImageData}
-                        alt=""
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <span className="text-lg">
-                        {tileType.behaviors[0] ? getBehaviorIcon(tileType.behaviors[0].type) : '⬜'}
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium truncate">{tileType.name}</div>
-                    <div className="text-xs text-gray-400">
-                      {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
+                + New
+              </button>
+            </div>
+
+            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
+              {tileTypes.length === 0 ? (
+                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                  No custom tile types yet.
+                  <br />
+                  Click "+ New" to create one.
+                </div>
+              ) : (
+                tileTypes.map(tileType => (
+                  <div
+                    key={tileType.id}
+                    className={`p-3 rounded cursor-pointer transition-colors ${
+                      selectedId === tileType.id
+                        ? 'bg-blue-600'
+                        : 'bg-gray-800 hover:bg-gray-700'
+                    }`}
+                    onClick={() => handleSelect(tileType.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        {/* Preview thumbnail */}
+                        <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {tileType.customSprite?.idleImageData ? (
+                            <img
+                              src={tileType.customSprite.idleImageData}
+                              alt=""
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-lg">
+                              {tileType.behaviors[0] ? getBehaviorIcon(tileType.behaviors[0].type) : '⬜'}
+                            </span>
+                          )}
+                        </div>
+                        <div>
+                          <h3 className="font-bold">{tileType.name}</h3>
+                          <p className="text-xs text-gray-400">
+                            {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
+                          </p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(tileType.id);
+                        }}
+                        className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-
-      {/* Right panel - Editor */}
-      <div className="flex-1 overflow-y-auto p-6">
-        {editing ? (
-          <div className="max-w-2xl">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-xl font-bold">
-                {isCreating ? 'Create Tile Type' : 'Edit Tile Type'}
-              </h2>
-              <div className="flex gap-2">
-                {!isCreating && (
-                  <button
-                    onClick={() => handleDelete(editing.id)}
-                    className="bg-red-600 hover:bg-red-500 text-white px-3 py-1.5 rounded text-sm"
-                  >
-                    Delete
-                  </button>
-                )}
-                <button
-                  onClick={handleSave}
-                  className="bg-green-600 hover:bg-green-500 text-white px-4 py-1.5 rounded text-sm"
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-
-            {/* Basic Info */}
-            <div className="bg-gray-800 rounded p-4 mb-4">
-              <h3 className="font-medium mb-3">Basic Info</h3>
-              <div className="space-y-3">
-                <div>
-                  <label className="text-sm text-gray-300">Name</label>
-                  <input
-                    type="text"
-                    value={editing.name}
-                    onChange={e => setEditing({ ...editing, name: e.target.value })}
-                    className="w-full bg-gray-700 rounded px-3 py-2 mt-1"
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-300">Description</label>
-                  <textarea
-                    value={editing.description || ''}
-                    onChange={e => setEditing({ ...editing, description: e.target.value })}
-                    className="w-full bg-gray-700 rounded px-3 py-2 mt-1 h-20 resize-none"
-                    placeholder="Optional description..."
-                  />
-                </div>
-                <div>
-                  <label className="text-sm text-gray-300">Base Type</label>
-                  <select
-                    value={editing.baseType}
-                    onChange={e => setEditing({ ...editing, baseType: e.target.value as 'empty' | 'wall' })}
-                    className="w-full bg-gray-700 rounded px-3 py-2 mt-1"
-                  >
-                    <option value="empty">Empty (Walkable)</option>
-                    <option value="wall">Wall (Blocked)</option>
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Determines if characters can walk on this tile.
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            {/* Behaviors */}
-            <div className="bg-gray-800 rounded p-4 mb-4">
-              <h3 className="font-medium mb-3">Behaviors</h3>
-              {editing.behaviors.length === 0 ? (
-                <p className="text-gray-400 text-sm mb-3">
-                  No behaviors added. Add behaviors to make this tile interactive.
-                </p>
-              ) : (
-                editing.behaviors.map((behavior, idx) => (
-                  <BehaviorEditor
-                    key={idx}
-                    behavior={behavior}
-                    onChange={b => handleUpdateBehavior(idx, b)}
-                    onRemove={() => handleRemoveBehavior(idx)}
-                  />
                 ))
               )}
-              <select
-                value=""
-                onChange={e => {
-                  if (!e.target.value) return;
-                  handleAddBehavior(e.target.value as TileBehaviorType);
-                  e.target.value = '';
-                }}
-                className="w-full bg-gray-700 rounded px-3 py-2"
-              >
-                <option value="">+ Add Behavior...</option>
-                {BEHAVIOR_OPTIONS.map(opt => (
-                  <option key={opt.type} value={opt.type}>
-                    {opt.label} - {opt.description}
-                  </option>
-                ))}
-              </select>
             </div>
+          </div>
 
-            {/* Sprite */}
-            <div className="bg-gray-800 rounded p-4">
-              <h3 className="font-medium mb-3">Tile Sprite</h3>
-              <p className="text-sm text-gray-400 mb-3">
-                Upload a custom sprite for this tile type. If not set, a default visual will be used based on behaviors.
-              </p>
-
-              {editing.customSprite?.idleImageData ? (
-                <div className="flex items-center gap-4">
-                  <div className="w-24 h-24 bg-gray-700 rounded overflow-hidden">
-                    <img
-                      src={editing.customSprite.idleImageData}
-                      alt="Tile sprite"
-                      className="w-full h-full object-contain"
-                    />
-                  </div>
+          {/* Tile Type Editor */}
+          <div className="flex-1">
+            {editing ? (
+              <div className="space-y-6">
+                {/* Header */}
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">
+                    {isCreating ? 'Create New Tile Type' : `Edit: ${editing.name}`}
+                  </h2>
                   <button
-                    onClick={handleSpriteRemove}
-                    className="text-red-400 hover:text-red-300 text-sm"
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
                   >
-                    Remove Sprite
+                    💾 Save Tile Type
                   </button>
                 </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-600 rounded cursor-pointer hover:border-gray-500">
-                  <span className="text-gray-400">Click to upload sprite</span>
-                  <span className="text-xs text-gray-500 mt-1">48x48 recommended</span>
-                  <input
-                    type="file"
-                    accept="image/*"
+
+                {/* Basic Info */}
+                <div className="bg-gray-800 p-4 rounded space-y-3">
+                  <h3 className="text-lg font-bold">Basic Info</h3>
+                  <div>
+                    <label className="block text-sm mb-1">Name</label>
+                    <input
+                      type="text"
+                      value={editing.name}
+                      onChange={e => setEditing({ ...editing, name: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Description</label>
+                    <textarea
+                      value={editing.description || ''}
+                      onChange={e => setEditing({ ...editing, description: e.target.value })}
+                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      rows={2}
+                      placeholder="Optional description..."
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Base Type</label>
+                    <select
+                      value={editing.baseType}
+                      onChange={e => setEditing({ ...editing, baseType: e.target.value as 'empty' | 'wall' })}
+                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                    >
+                      <option value="empty">Empty (Walkable)</option>
+                      <option value="wall">Wall (Blocked)</option>
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">
+                      Determines if characters can walk on this tile.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Behaviors */}
+                <div className="bg-gray-800 p-4 rounded">
+                  <h3 className="text-lg font-bold mb-4">Behaviors</h3>
+                  {editing.behaviors.length === 0 ? (
+                    <p className="text-gray-400 text-sm mb-3">
+                      No behaviors added. Add behaviors to make this tile interactive.
+                    </p>
+                  ) : (
+                    editing.behaviors.map((behavior, idx) => (
+                      <BehaviorEditor
+                        key={idx}
+                        behavior={behavior}
+                        onChange={b => handleUpdateBehavior(idx, b)}
+                        onRemove={() => handleRemoveBehavior(idx)}
+                      />
+                    ))
+                  )}
+                  <select
+                    value=""
                     onChange={e => {
-                      const file = e.target.files?.[0];
-                      if (file) handleSpriteUpload(file);
+                      if (!e.target.value) return;
+                      handleAddBehavior(e.target.value as TileBehaviorType);
+                      e.target.value = '';
                     }}
-                    className="hidden"
-                  />
-                </label>
-              )}
-            </div>
+                    className="w-full px-3 py-2 bg-gray-700 rounded"
+                  >
+                    <option value="">+ Add Behavior...</option>
+                    {BEHAVIOR_OPTIONS.map(opt => (
+                      <option key={opt.type} value={opt.type}>
+                        {opt.label} - {opt.description}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Tile Sprite */}
+                <div className="bg-gray-800 p-4 rounded">
+                  <h3 className="text-lg font-bold mb-4">Tile Sprite</h3>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Upload a custom sprite for this tile type. If not set, a default visual will be used based on behaviors.
+                  </p>
+
+                  {editing.customSprite?.idleImageData ? (
+                    <div className="relative inline-block">
+                      <img
+                        src={editing.customSprite.idleImageData}
+                        alt="Tile sprite"
+                        className="w-24 h-24 object-contain bg-gray-600 rounded"
+                      />
+                      <button
+                        onClick={handleSpriteRemove}
+                        className="absolute top-0 right-0 px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ) : (
+                    <label className="block cursor-pointer">
+                      <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-gray-400 hover:border-gray-400">
+                        <span>+ Upload Sprite</span>
+                        <span className="text-xs text-gray-500 mt-1">48x48 recommended</span>
+                      </div>
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={e => {
+                          const file = e.target.files?.[0];
+                          if (file) handleSpriteUpload(file);
+                        }}
+                        className="hidden"
+                      />
+                    </label>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div className="bg-gray-800 p-8 rounded text-center">
+                <h2 className="text-2xl font-bold mb-4">Custom Tile Type Editor</h2>
+                <p className="text-gray-400 mb-6">
+                  Create custom tile types with special behaviors like damage zones, teleporters,
+                  ice tiles, and pressure plates. Tile types can be placed in the map editor.
+                </p>
+                <button
+                  onClick={handleNew}
+                  className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700"
+                >
+                  + Create New Tile Type
+                </button>
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center justify-center h-full text-gray-400">
-            <div className="text-center">
-              <p className="text-lg mb-2">Select a tile type to edit</p>
-              <p className="text-sm">or create a new one</p>
-            </div>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

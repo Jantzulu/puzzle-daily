@@ -175,10 +175,6 @@ export interface Character {
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
   retaliationDamage?: number; // Damage dealt when enemy attempts to move onto this character's tile
-
-  // Combat toggles (for backwards compatibility and fallback)
-  useAttackDamage?: boolean; // If true, use legacy collision damage system (default: false)
-  useRetaliationDamage?: boolean; // If true, use legacy retaliation system (default: false)
 }
 
 export interface Enemy {
@@ -192,10 +188,6 @@ export interface Enemy {
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
   retaliationDamage?: number; // Damage dealt when character attempts to move onto this enemy's tile
-
-  // Combat toggles (for backwards compatibility and fallback)
-  useAttackDamage?: boolean; // If true, use legacy collision damage system (default: false)
-  useRetaliationDamage?: boolean; // If true, use legacy retaliation system (default: false)
 
   // Melee priority
   hasMeleePriority?: boolean; // If true, this enemy attacks before characters in melee exchanges (default: false)

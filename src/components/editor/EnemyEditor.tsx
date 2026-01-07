@@ -276,46 +276,7 @@ export const EnemyEditor: React.FC = () => {
                   <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors</p>
                 </div>
 
-                {/* Combat Toggles */}
-                {/* VESTIGIAL: Combat Toggles for legacy attack/retaliation damage.
-                    Kept for backwards compatibility but hidden from UI.
-                    Use spell-based combat system instead via triggers. */}
-                {false && (
-                  <div className="mt-4 pt-4 border-t border-gray-700 space-y-3">
-                    <h3 className="text-sm font-bold text-gray-300">Combat Toggles (Backwards Compatibility)</h3>
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingEnemy.useAttackDamage || false}
-                          onChange={(e) => updateEnemy({
-                            useAttackDamage: e.target.checked
-                          })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm font-bold">Use Attack Damage</span>
-                      </label>
-                      <p className="text-xs text-gray-400 mt-1">Use legacy collision damage system (default: false)</p>
-                    </div>
-
-                    <div>
-                      <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editingEnemy.useRetaliationDamage || false}
-                          onChange={(e) => updateEnemy({
-                            useRetaliationDamage: e.target.checked
-                          })}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm font-bold">Use Retaliation Damage</span>
-                      </label>
-                      <p className="text-xs text-gray-400 mt-1">Use legacy retaliation system (default: false)</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Melee Priority Toggle - still useful for spell-based combat */}
+                {/* Melee Priority Toggle */}
                 <div className="mt-4 pt-4 border-t border-gray-700">
                   <div>
                     <label className="flex items-center gap-2">

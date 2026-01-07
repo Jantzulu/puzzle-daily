@@ -1331,8 +1331,12 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
         // Blue tint with diagonal lines
         ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-        // Draw diagonal lines pattern
-        ctx.strokeStyle = 'rgba(150, 220, 255, 0.5)';
+        // Draw diagonal lines pattern with clipping
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.clip();
+        ctx.strokeStyle = 'rgba(150, 220, 255, 0.6)';
         ctx.lineWidth = 1;
         for (let i = -TILE_SIZE; i < TILE_SIZE * 2; i += 8) {
           ctx.beginPath();
@@ -1340,6 +1344,7 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
           ctx.lineTo(px + i + TILE_SIZE, py + TILE_SIZE);
           ctx.stroke();
         }
+        ctx.restore();
         break;
 
       case 'pressure_plate':
