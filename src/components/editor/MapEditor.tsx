@@ -883,7 +883,15 @@ export const MapEditor: React.FC = () => {
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-7xl mx-auto">
         <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-4xl font-bold">Map Editor</h1>
+          <div className="flex items-center gap-4">
+            <h1 className="text-4xl font-bold">Map Editor</h1>
+            <button
+              onClick={handlePlaytest}
+              className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 font-bold"
+            >
+              ▶ Play Test
+            </button>
+          </div>
           <div className="flex gap-2">
             <Link to="/assets" className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700">
               Asset Manager
@@ -895,7 +903,7 @@ export const MapEditor: React.FC = () => {
         </div>
 
         <div className="flex gap-6">
-          {/* Left Column - Canvas, Grid Size, Playtest */}
+          {/* Left Column - Canvas, Grid Size, Selected Characters */}
           <div className="flex-shrink-0 space-y-4">
             <canvas
               ref={canvasRef}
@@ -992,15 +1000,6 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
             </div>
-
-            {/* Playtest Button */}
-            <button
-              onClick={handlePlaytest}
-              className="w-full px-4 py-3 bg-purple-600 rounded hover:bg-purple-700 font-bold text-lg"
-              style={{ maxWidth: canvasWidth }}
-            >
-              ▶ Play Test
-            </button>
           </div>
 
           {/* Right Side - Two Columns */}
