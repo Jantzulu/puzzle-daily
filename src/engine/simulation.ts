@@ -556,6 +556,7 @@ export function initializeGameState(puzzle: any): GameState {
     activeProjectiles: [],
     activeParticles: [],
     persistentAreaEffects: [],
+    tileStates: new Map(), // Initialize empty tile runtime states
   };
 }
 

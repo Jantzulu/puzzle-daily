@@ -4,8 +4,9 @@ import { TileType, Direction, ActionType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation } from '../editor/SpriteEditor';
-import type { CustomCharacter, CustomEnemy } from '../../utils/assetStorage';
-import { loadPuzzleSkin } from '../../utils/assetStorage';
+import type { CustomCharacter, CustomEnemy, CustomTileType } from '../../utils/assetStorage';
+import { loadPuzzleSkin, loadTileType } from '../../utils/assetStorage';
+import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
 
 // Movement action types - entities with these actions should show direction arrow
@@ -420,7 +421,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         for (let x = 0; x < gameState.puzzle.width; x++) {
           const tile = gameState.puzzle.tiles[y][x];
           if (tile) {
-            drawTile(ctx, x, y, tile.type, tileSprites);
+            drawTile(ctx, x, y, tile.type, tileSprites, tile);
           } else {
             // Draw void/null tile
             drawVoidTile(ctx, x, y);
@@ -1219,11 +1220,32 @@ function drawVoidTile(_ctx: CanvasRenderingContext2D, _x: number, _y: number) {
   // This allows the page background or parent element to show through.
 }
 
-function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites) {
+function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
-  // Determine which sprite to use based on tile type
+  // Check for custom tile type
+  let customTileType: CustomTileType | null = null;
+  if (tile?.customTileTypeId) {
+    customTileType = loadTileType(tile.customTileTypeId);
+  }
+
+  // First: Draw custom tile sprite if available
+  if (customTileType?.customSprite?.idleImageData) {
+    const customImg = loadTileImage(customTileType.customSprite.idleImageData);
+    if (customImg?.complete) {
+      ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
+      // Draw grid lines
+      ctx.strokeStyle = COLORS.grid;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+      // Draw behavior indicators on top
+      drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+      return;
+    }
+  }
+
+  // Second: Use skin tile sprites if available
   const isWall = type === TileType.WALL;
   const isGoal = type === TileType.GOAL;
   const spriteKey = isGoal ? 'goal' : (isWall ? 'wall' : 'empty');
@@ -1237,6 +1259,10 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
       ctx.strokeStyle = COLORS.grid;
       ctx.lineWidth = 1;
       ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+      // Draw behavior indicators if this is a custom tile
+      if (customTileType) {
+        drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+      }
       return;
     }
   }
@@ -1248,6 +1274,101 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
   ctx.strokeStyle = COLORS.grid;
   ctx.lineWidth = 1;
   ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+
+  // Draw behavior indicators if this is a custom tile without custom sprite
+  if (customTileType) {
+    drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+  }
+}
+
+/**
+ * Draw visual indicators for tile behaviors
+ */
+function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, py: number, tileType: CustomTileType, tile?: Tile | null) {
+  const centerX = px + TILE_SIZE / 2;
+  const centerY = py + TILE_SIZE / 2;
+
+  for (const behavior of tileType.behaviors) {
+    switch (behavior.type) {
+      case 'damage':
+        // Red tint overlay
+        ctx.fillStyle = 'rgba(255, 0, 0, 0.2)';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        // Fire icon
+        ctx.font = '16px Arial';
+        ctx.fillStyle = 'rgba(255, 100, 0, 0.8)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('🔥', centerX, centerY);
+        break;
+
+      case 'teleport':
+        // Purple glow
+        ctx.fillStyle = 'rgba(128, 0, 255, 0.2)';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        // Show teleport group letter
+        const groupId = tile?.teleportGroupId || behavior.teleportGroupId || 'A';
+        ctx.font = 'bold 20px Arial';
+        ctx.fillStyle = 'rgba(200, 100, 255, 0.9)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(groupId, centerX, centerY);
+        break;
+
+      case 'direction_change':
+        // Arrow showing forced direction
+        ctx.fillStyle = 'rgba(0, 200, 255, 0.3)';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        const arrow = getDirectionArrow(behavior.newFacing);
+        ctx.font = 'bold 24px Arial';
+        ctx.fillStyle = 'rgba(0, 200, 255, 0.9)';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(arrow, centerX, centerY);
+        break;
+
+      case 'ice':
+        // Blue tint with diagonal lines
+        ctx.fillStyle = 'rgba(100, 200, 255, 0.3)';
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        // Draw diagonal lines pattern
+        ctx.strokeStyle = 'rgba(150, 220, 255, 0.5)';
+        ctx.lineWidth = 1;
+        for (let i = -TILE_SIZE; i < TILE_SIZE * 2; i += 8) {
+          ctx.beginPath();
+          ctx.moveTo(px + i, py);
+          ctx.lineTo(px + i + TILE_SIZE, py + TILE_SIZE);
+          ctx.stroke();
+        }
+        break;
+
+      case 'pressure_plate':
+        // Button-like appearance
+        ctx.fillStyle = 'rgba(100, 100, 100, 0.3)';
+        ctx.fillRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+        ctx.strokeStyle = 'rgba(80, 80, 80, 0.8)';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+        break;
+    }
+  }
+}
+
+/**
+ * Get arrow character for direction
+ */
+function getDirectionArrow(direction?: string): string {
+  switch (direction) {
+    case 'north': return '↑';
+    case 'northeast': return '↗';
+    case 'east': return '→';
+    case 'southeast': return '↘';
+    case 'south': return '↓';
+    case 'southwest': return '↙';
+    case 'west': return '←';
+    case 'northwest': return '↖';
+    default: return '→';
+  }
 }
 
 function drawEnemy(

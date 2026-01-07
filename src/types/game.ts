@@ -18,10 +18,56 @@ export enum TileType {
   TELEPORT = 'teleport',
 }
 
+// ==========================================
+// CUSTOM TILE TYPE SYSTEM
+// ==========================================
+
+export type TileBehaviorType =
+  | 'damage'
+  | 'teleport'
+  | 'direction_change'
+  | 'ice'
+  | 'pressure_plate';
+
+export interface PressurePlateEffect {
+  type: 'toggle_wall' | 'spawn_enemy' | 'despawn_enemy' | 'trigger_teleport';
+  targetX?: number;
+  targetY?: number;
+  targetEnemyId?: string;  // For spawn/despawn
+  stayPressed?: boolean;   // Require standing on plate vs. step once
+}
+
+export interface TileBehaviorConfig {
+  type: TileBehaviorType;
+
+  // Damage behavior
+  damageAmount?: number;
+  damageOnce?: boolean;  // Only damage first time stepped on per puzzle run
+
+  // Teleport behavior - tiles with same group ID are linked (bidirectional)
+  teleportGroupId?: string;
+
+  // Direction change behavior
+  newFacing?: Direction;
+
+  // Ice behavior (inherits movement direction, slides until wall)
+  // No extra params needed
+
+  // Pressure plate behavior
+  pressurePlateEffects?: PressurePlateEffect[];
+}
+
+export interface TileRuntimeState {
+  damagedEntities?: Set<string>;  // For damageOnce tracking
+  pressurePlateActive?: boolean;
+}
+
 export interface Tile {
   x: number;
   y: number;
   type: TileType;
+  customTileTypeId?: string;  // Reference to CustomTileType
+  teleportGroupId?: string;   // Which teleport group this tile belongs to
   content?: TileContent;
 }
 
@@ -307,6 +353,9 @@ export interface GameState {
   activeProjectiles?: Projectile[];
   activeParticles?: ParticleEffect[];
   persistentAreaEffects?: PersistentAreaEffect[];
+
+  // Custom tile behavior runtime state
+  tileStates?: Map<string, TileRuntimeState>;  // Key: "x,y"
 }
 
 export interface PlayerProgress {

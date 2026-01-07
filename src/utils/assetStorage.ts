@@ -1,4 +1,4 @@
-import type { Character, Enemy } from '../types/game';
+import type { Character, Enemy, TileBehaviorConfig } from '../types/game';
 
 const CHARACTER_STORAGE_KEY = 'custom_characters';
 const ENEMY_STORAGE_KEY = 'custom_enemies';
@@ -128,7 +128,9 @@ export interface CustomEnemy extends Enemy {
 export interface CustomTileType {
   id: string;
   name: string;
+  description?: string;
   baseType: 'empty' | 'wall';
+  behaviors: TileBehaviorConfig[];  // Multiple behaviors allowed (stacking)
   customSprite?: CustomSprite;
   isCustom: boolean;
   createdAt: string;
@@ -259,6 +261,11 @@ export const deleteTileType = (tileId: string): void => {
   const tiles = getCustomTileTypes();
   const filtered = tiles.filter(t => t.id !== tileId);
   localStorage.setItem(TILE_STORAGE_KEY, JSON.stringify(filtered));
+};
+
+export const loadTileType = (tileId: string): CustomTileType | null => {
+  const tiles = getCustomTileTypes();
+  return tiles.find(t => t.id === tileId) || null;
 };
 
 // ============ COLLECTIBLE STORAGE ============

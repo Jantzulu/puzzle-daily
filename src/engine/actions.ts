@@ -10,6 +10,9 @@ import type {
   SpellAsset,
   RelativeDirection,
   TriggerEvent,
+  Tile,
+  TileBehaviorConfig,
+  TileRuntimeState,
 } from '../types/game';
 import {
   ActionType,
@@ -21,7 +24,7 @@ import {
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo } from './utils';
-import { loadCustomAttack, loadSpellAsset } from '../utils/assetStorage';
+import { loadCustomAttack, loadSpellAsset, loadTileType } from '../utils/assetStorage';
 
 /**
  * Normalize action type - handles both enum keys (e.g., "ATTACK_FORWARD")
@@ -129,6 +132,321 @@ export function executeAction(
     default:
       console.warn(`Unhandled action type: ${action.type}`);
       return updatedCharacter;
+  }
+}
+
+// ==========================================
+// CUSTOM TILE BEHAVIOR PROCESSING
+// ==========================================
+
+/**
+ * Get or create tile runtime state
+ */
+function getTileState(gameState: GameState, x: number, y: number): TileRuntimeState {
+  if (!gameState.tileStates) {
+    gameState.tileStates = new Map();
+  }
+  const key = `${x},${y}`;
+  if (!gameState.tileStates.has(key)) {
+    gameState.tileStates.set(key, {});
+  }
+  return gameState.tileStates.get(key)!;
+}
+
+/**
+ * Process all tile behaviors when a character steps on a tile
+ * Returns the updated character (may have moved due to teleport/ice)
+ */
+function processTileBehaviors(
+  character: PlacedCharacter,
+  tile: Tile,
+  movementDirection: Direction,
+  gameState: GameState
+): PlacedCharacter {
+  if (!tile.customTileTypeId) {
+    return character;
+  }
+
+  const tileType = loadTileType(tile.customTileTypeId);
+  if (!tileType || !tileType.behaviors || tileType.behaviors.length === 0) {
+    return character;
+  }
+
+  let updatedChar = { ...character };
+
+  for (const behavior of tileType.behaviors) {
+    switch (behavior.type) {
+      case 'damage':
+        updatedChar = processDamageBehavior(updatedChar, tile, behavior, gameState);
+        break;
+      case 'teleport':
+        updatedChar = processTeleportBehavior(updatedChar, tile, behavior, gameState);
+        break;
+      case 'direction_change':
+        if (behavior.newFacing) {
+          updatedChar.facing = behavior.newFacing;
+        }
+        break;
+      case 'ice':
+        updatedChar = processIceBehavior(updatedChar, movementDirection, gameState);
+        break;
+      case 'pressure_plate':
+        processPressurePlateBehavior(tile, behavior, gameState);
+        break;
+    }
+
+    // Stop processing if character died
+    if (updatedChar.dead) {
+      break;
+    }
+  }
+
+  return updatedChar;
+}
+
+/**
+ * Process damage tile behavior
+ */
+function processDamageBehavior(
+  character: PlacedCharacter,
+  tile: Tile,
+  behavior: TileBehaviorConfig,
+  gameState: GameState
+): PlacedCharacter {
+  const damage = behavior.damageAmount || 1;
+  const tileState = getTileState(gameState, tile.x, tile.y);
+
+  // Check if this should only damage once
+  if (behavior.damageOnce) {
+    if (!tileState.damagedEntities) {
+      tileState.damagedEntities = new Set();
+    }
+    // Use character position + id as unique key
+    const entityKey = character.characterId;
+    if (tileState.damagedEntities.has(entityKey)) {
+      // Already damaged this entity
+      return character;
+    }
+    tileState.damagedEntities.add(entityKey);
+  }
+
+  const updatedChar = { ...character };
+  updatedChar.currentHealth -= damage;
+  console.log(`[TILE DAMAGE] ${character.characterId} took ${damage} damage from tile at (${tile.x},${tile.y}). HP: ${updatedChar.currentHealth}`);
+
+  if (updatedChar.currentHealth <= 0) {
+    updatedChar.dead = true;
+  }
+
+  return updatedChar;
+}
+
+/**
+ * Process teleport tile behavior (bidirectional)
+ */
+function processTeleportBehavior(
+  character: PlacedCharacter,
+  tile: Tile,
+  behavior: TileBehaviorConfig,
+  gameState: GameState
+): PlacedCharacter {
+  const groupId = tile.teleportGroupId || behavior.teleportGroupId;
+  if (!groupId) {
+    return character;
+  }
+
+  // Find another tile with the same teleport group ID
+  let destinationTile: Tile | null = null;
+
+  for (let y = 0; y < gameState.puzzle.height; y++) {
+    for (let x = 0; x < gameState.puzzle.width; x++) {
+      const checkTile = gameState.puzzle.tiles[y]?.[x];
+      if (!checkTile) continue;
+      if (checkTile.x === tile.x && checkTile.y === tile.y) continue; // Skip source tile
+
+      // Check if this tile has the same teleport group
+      if (checkTile.teleportGroupId === groupId) {
+        destinationTile = checkTile;
+        break;
+      }
+
+      // Also check if the tile's custom type has teleport behavior with matching group
+      if (checkTile.customTileTypeId) {
+        const checkTileType = loadTileType(checkTile.customTileTypeId);
+        if (checkTileType) {
+          const teleportBehavior = checkTileType.behaviors.find(b => b.type === 'teleport');
+          if (teleportBehavior?.teleportGroupId === groupId) {
+            destinationTile = checkTile;
+            break;
+          }
+        }
+      }
+    }
+    if (destinationTile) break;
+  }
+
+  if (!destinationTile) {
+    console.log(`[TELEPORT] No destination found for group ${groupId}`);
+    return character;
+  }
+
+  console.log(`[TELEPORT] ${character.characterId} teleported from (${tile.x},${tile.y}) to (${destinationTile.x},${destinationTile.y})`);
+
+  return {
+    ...character,
+    x: destinationTile.x,
+    y: destinationTile.y,
+  };
+}
+
+/**
+ * Process ice tile behavior - slide until hitting a wall
+ */
+function processIceBehavior(
+  character: PlacedCharacter,
+  movementDirection: Direction,
+  gameState: GameState
+): PlacedCharacter {
+  let updatedChar = { ...character };
+  const { dx, dy } = getDirectionOffset(movementDirection);
+
+  // Keep sliding until we hit something
+  let maxSlides = 50; // Prevent infinite loops
+  while (maxSlides > 0) {
+    maxSlides--;
+
+    const nextX = updatedChar.x + dx;
+    const nextY = updatedChar.y + dy;
+
+    // Check if next position is blocked
+    if (!isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height)) {
+      break; // Hit edge
+    }
+
+    const nextTile = gameState.puzzle.tiles[nextY]?.[nextX];
+    if (!nextTile || nextTile.type === TileType.WALL) {
+      break; // Hit wall or void
+    }
+
+    // Check for custom tile type that's a wall
+    if (nextTile.customTileTypeId) {
+      const nextTileType = loadTileType(nextTile.customTileTypeId);
+      if (nextTileType?.baseType === 'wall') {
+        break; // Hit custom wall
+      }
+    }
+
+    // Check for blocking entities
+    const blockingChar = gameState.placedCharacters.find(
+      c => c.x === nextX && c.y === nextY && !c.dead && c !== updatedChar
+    );
+    if (blockingChar) {
+      const blockingCharData = getCharacter(blockingChar.characterId);
+      if (!blockingCharData?.canOverlapEntities) {
+        break; // Hit character
+      }
+    }
+
+    const blockingEnemy = gameState.puzzle.enemies.find(
+      e => e.x === nextX && e.y === nextY && !e.dead
+    );
+    if (blockingEnemy) {
+      const blockingEnemyData = getEnemy(blockingEnemy.enemyId);
+      if (!blockingEnemyData?.canOverlapEntities) {
+        break; // Hit enemy
+      }
+    }
+
+    // Move to next tile
+    updatedChar.x = nextX;
+    updatedChar.y = nextY;
+
+    console.log(`[ICE] ${character.characterId} sliding to (${nextX},${nextY})`);
+
+    // Check if the new tile is NOT ice - stop sliding
+    const newTile = gameState.puzzle.tiles[nextY][nextX];
+    if (newTile?.customTileTypeId) {
+      const newTileType = loadTileType(newTile.customTileTypeId);
+      if (newTileType) {
+        const hasIce = newTileType.behaviors.some(b => b.type === 'ice');
+        if (!hasIce) {
+          // Process other behaviors on this non-ice tile
+          updatedChar = processTileBehaviors(updatedChar, newTile, movementDirection, gameState);
+          break;
+        }
+      }
+    } else {
+      // Not a custom tile, stop sliding
+      break;
+    }
+  }
+
+  return updatedChar;
+}
+
+/**
+ * Process pressure plate behavior
+ */
+function processPressurePlateBehavior(
+  tile: Tile,
+  behavior: TileBehaviorConfig,
+  gameState: GameState
+): void {
+  const tileState = getTileState(gameState, tile.x, tile.y);
+  tileState.pressurePlateActive = true;
+
+  if (!behavior.pressurePlateEffects) {
+    return;
+  }
+
+  for (const effect of behavior.pressurePlateEffects) {
+    switch (effect.type) {
+      case 'toggle_wall':
+        if (effect.targetX !== undefined && effect.targetY !== undefined) {
+          const targetTile = gameState.puzzle.tiles[effect.targetY]?.[effect.targetX];
+          if (targetTile) {
+            // Toggle between wall and empty
+            targetTile.type = targetTile.type === TileType.WALL ? TileType.EMPTY : TileType.WALL;
+            console.log(`[PRESSURE PLATE] Toggled wall at (${effect.targetX},${effect.targetY}) to ${targetTile.type}`);
+          }
+        }
+        break;
+
+      case 'spawn_enemy':
+        // Find dormant enemy at target location and activate it
+        if (effect.targetX !== undefined && effect.targetY !== undefined) {
+          const enemy = gameState.puzzle.enemies.find(
+            e => e.x === effect.targetX && e.y === effect.targetY && e.dead
+          );
+          if (enemy) {
+            enemy.dead = false;
+            const enemyData = getEnemy(enemy.enemyId);
+            if (enemyData) {
+              enemy.currentHealth = enemyData.health;
+            }
+            console.log(`[PRESSURE PLATE] Spawned enemy at (${effect.targetX},${effect.targetY})`);
+          }
+        }
+        break;
+
+      case 'despawn_enemy':
+        if (effect.targetX !== undefined && effect.targetY !== undefined) {
+          const enemy = gameState.puzzle.enemies.find(
+            e => e.x === effect.targetX && e.y === effect.targetY && !e.dead
+          );
+          if (enemy) {
+            enemy.dead = true;
+            console.log(`[PRESSURE PLATE] Despawned enemy at (${effect.targetX},${effect.targetY})`);
+          }
+        }
+        break;
+
+      case 'trigger_teleport':
+        // Could trigger a teleport effect at target location
+        // For now, just log
+        console.log(`[PRESSURE PLATE] Trigger teleport at (${effect.targetX},${effect.targetY})`);
+        break;
+    }
   }
 }
 
@@ -464,6 +782,17 @@ function moveCharacter(
     if (collectible) {
       collectible.collected = true;
       gameState.score += collectible.scoreValue;
+    }
+
+    // Process custom tile behaviors (damage, teleport, ice, etc.)
+    const currentTile = gameState.puzzle.tiles[updatedChar.y]?.[updatedChar.x];
+    if (currentTile && currentTile.customTileTypeId) {
+      updatedChar = processTileBehaviors(updatedChar, currentTile, currentDirection, gameState);
+
+      // If character died from tile damage, stop processing
+      if (updatedChar.dead) {
+        return updatedChar;
+      }
     }
   }
 

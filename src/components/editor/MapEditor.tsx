@@ -10,14 +10,15 @@ import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { getAllPuzzleSkins, loadPuzzleSkin } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
+import type { CustomTileType } from '../../utils/assetStorage';
 
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
 
-type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible';
+type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'custom';
 type EditorMode = 'edit' | 'playtest';
 
 interface EditorState {
@@ -77,6 +78,10 @@ export const MapEditor: React.FC = () => {
 
   // Puzzle skins state
   const [availableSkins, setAvailableSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
+
+  // Custom tile types state
+  const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
+  const [selectedCustomTileTypeId, setSelectedCustomTileTypeId] = useState<string | null>(null);
 
   // Enemy/Character selection
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
@@ -252,6 +257,52 @@ export const MapEditor: React.FC = () => {
           };
           return { ...prev, collectibles: [...prev.collectibles, newCollectible] };
         }
+      });
+      return;
+    }
+
+    // Handle custom tile placement
+    if (state.selectedTool === 'custom') {
+      if (!selectedCustomTileTypeId) {
+        alert('Please select a custom tile type first!');
+        return;
+      }
+
+      const tileType = loadTileType(selectedCustomTileTypeId);
+      if (!tileType) return;
+
+      setState(prev => {
+        const newTiles = prev.tiles.map(row => [...row]);
+
+        // Get existing tile or create new one
+        const existingTile = newTiles[y][x];
+
+        if (existingTile?.customTileTypeId === selectedCustomTileTypeId) {
+          // Clicking on same custom tile removes the custom type
+          newTiles[y][x] = {
+            x, y,
+            type: tileType.baseType === 'wall' ? TileType.WALL : TileType.EMPTY,
+          };
+        } else {
+          // Place custom tile
+          const baseTileType = tileType.baseType === 'wall' ? TileType.WALL : TileType.EMPTY;
+
+          // For teleport tiles, assign a group ID
+          let teleportGroupId: string | undefined;
+          const teleportBehavior = tileType.behaviors.find(b => b.type === 'teleport');
+          if (teleportBehavior) {
+            teleportGroupId = teleportBehavior.teleportGroupId || 'A';
+          }
+
+          newTiles[y][x] = {
+            x, y,
+            type: baseTileType,
+            customTileTypeId: selectedCustomTileTypeId,
+            teleportGroupId,
+          };
+        }
+
+        return { ...prev, tiles: newTiles };
       });
       return;
     }
@@ -772,8 +823,81 @@ export const MapEditor: React.FC = () => {
                 >
                   Collectible
                 </button>
+                <button
+                  onClick={() => {
+                    setCustomTileTypes(getCustomTileTypes()); // Refresh list
+                    setState(prev => ({ ...prev, selectedTool: 'custom' }));
+                  }}
+                  className={`p-3 rounded ${
+                    state.selectedTool === 'custom' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                  }`}
+                >
+                  Custom
+                </button>
               </div>
             </div>
+
+            {/* Custom Tile Type Selector */}
+            {state.selectedTool === 'custom' && (
+              <div className="bg-gray-800 p-4 rounded">
+                <h2 className="text-xl font-bold mb-4">Custom Tile Type</h2>
+                {customTileTypes.length === 0 ? (
+                  <div className="text-sm text-gray-400">
+                    <p>No custom tile types available.</p>
+                    <p className="mt-2">
+                      Create tile types in{' '}
+                      <a href="/assets" className="text-blue-400 hover:underline">
+                        Asset Manager → Tiles
+                      </a>
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {customTileTypes.map(tileType => {
+                      const isSelected = selectedCustomTileTypeId === tileType.id;
+                      const behaviorIcons = tileType.behaviors.map(b => {
+                        switch (b.type) {
+                          case 'damage': return '🔥';
+                          case 'teleport': return '🌀';
+                          case 'direction_change': return '➡️';
+                          case 'ice': return '❄️';
+                          case 'pressure_plate': return '⬇️';
+                          default: return '?';
+                        }
+                      }).join(' ');
+
+                      return (
+                        <button
+                          key={tileType.id}
+                          onClick={() => setSelectedCustomTileTypeId(tileType.id)}
+                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                            isSelected ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                          }`}
+                        >
+                          <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center overflow-hidden">
+                            {tileType.customSprite?.idleImageData ? (
+                              <img
+                                src={tileType.customSprite.idleImageData}
+                                alt=""
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <span className="text-sm">{behaviorIcons || '⬜'}</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{tileType.name}</div>
+                            <div className="text-xs text-gray-400">
+                              {tileType.baseType} • {behaviorIcons}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Enemy Type Selector */}
             {state.selectedTool === 'enemy' && (
