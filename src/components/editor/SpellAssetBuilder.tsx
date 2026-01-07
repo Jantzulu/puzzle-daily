@@ -33,6 +33,34 @@ interface SpellSpriteEditorProps {
   helpText?: string;
 }
 
+// Static color class mappings for Tailwind JIT compatibility
+const colorClasses: Record<string, { bg: string; hover: string; fileBg: string; fileHover: string }> = {
+  blue: {
+    bg: 'bg-blue-600',
+    hover: 'hover:bg-blue-700',
+    fileBg: 'file:bg-blue-600',
+    fileHover: 'hover:file:bg-blue-700',
+  },
+  red: {
+    bg: 'bg-red-600',
+    hover: 'hover:bg-red-700',
+    fileBg: 'file:bg-red-600',
+    fileHover: 'hover:file:bg-red-700',
+  },
+  purple: {
+    bg: 'bg-purple-600',
+    hover: 'hover:bg-purple-700',
+    fileBg: 'file:bg-purple-600',
+    fileHover: 'hover:file:bg-purple-700',
+  },
+  green: {
+    bg: 'bg-green-600',
+    hover: 'hover:bg-green-700',
+    fileBg: 'file:bg-green-600',
+    fileHover: 'hover:file:bg-green-700',
+  },
+};
+
 const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
   label,
   spriteRef,
@@ -42,6 +70,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
   helpText,
 }) => {
   const spriteData = spriteRef?.spriteData || {};
+  const colors = colorClasses[accentColor] || colorClasses.blue;
 
   // Determine current mode based on sprite data
   const getCurrentMode = (): SpellSpriteMode => {
@@ -150,9 +179,6 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
     });
   };
 
-  const bgColorClass = `bg-${accentColor}-600`;
-  const hoverColorClass = `hover:bg-${accentColor}-700`;
-
   return (
     <div className="bg-gray-900 p-3 rounded">
       <label className="block text-sm font-medium mb-2">{label}</label>
@@ -164,7 +190,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           onClick={() => handleModeChange('shape')}
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'shape'
-              ? `bg-${accentColor}-600 text-white`
+              ? `${colors.bg} text-white`
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
@@ -174,7 +200,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           onClick={() => handleModeChange('image')}
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'image'
-              ? `bg-${accentColor}-600 text-white`
+              ? `${colors.bg} text-white`
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
@@ -184,7 +210,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           onClick={() => handleModeChange('spritesheet')}
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'spritesheet'
-              ? `bg-${accentColor}-600 text-white`
+              ? `${colors.bg} text-white`
               : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
           }`}
         >
@@ -207,7 +233,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   })}
                   className={`px-2 py-1 rounded text-xs transition-colors ${
                     spriteData.shape === shape
-                      ? `bg-${accentColor}-600 text-white`
+                      ? `${colors.bg} text-white`
                       : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
                   }`}
                 >
@@ -246,7 +272,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               type="file"
               accept="image/png,image/gif"
               onChange={handleImageUpload}
-              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-${accentColor}-600 file:text-white hover:file:bg-${accentColor}-700`}
+              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
             />
             {spriteData.idleImageData && (
               <div className="mt-2 p-2 bg-gray-800 rounded flex items-center justify-center">
@@ -308,7 +334,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               type="file"
               accept="image/png,image/jpg,image/jpeg"
               onChange={handleSpriteSheetUpload}
-              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-${accentColor}-600 file:text-white hover:file:bg-${accentColor}-700`}
+              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
             />
           </div>
 
