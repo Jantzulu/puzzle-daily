@@ -1993,9 +1993,9 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   let centerY = py + TILE_SIZE / 2;
 
   if (objectData.anchorPoint === 'bottom_center') {
-    // For bottom_center, the sprite's bottom aligns with tile bottom
-    // This means the sprite center is higher up
-    centerY = py + TILE_SIZE - spriteSize / 2;
+    // For bottom_center: sprite's bottom edge aligns with tile's center
+    // So sprite center is offset upward by half the sprite height
+    centerY = py + TILE_SIZE / 2 - spriteSize / 2;
   }
 
   // Draw custom sprite if available
