@@ -799,6 +799,57 @@ export const MapEditor: React.FC = () => {
               </div>
             </div>
 
+            {/* Selected Characters - Shows selected available characters with sprites */}
+            <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: canvasWidth }}>
+              <h2 className="text-lg font-bold mb-3">Selected Characters</h2>
+              {state.availableCharacters.length === 0 ? (
+                <p className="text-sm text-gray-400">No characters selected</p>
+              ) : (
+                <div
+                  className="grid gap-2"
+                  style={{
+                    gridTemplateColumns: `repeat(${Math.min(state.maxCharacters, 5)}, 1fr)`
+                  }}
+                >
+                  {Array.from({ length: state.maxCharacters }).map((_, index) => {
+                    const charId = state.availableCharacters[index];
+                    const char = charId ? getCharacter(charId) : null;
+
+                    return (
+                      <div
+                        key={index}
+                        className={`aspect-square rounded flex flex-col items-center justify-center p-1 ${
+                          char ? 'bg-gray-700' : 'bg-gray-800 border border-dashed border-gray-600'
+                        }`}
+                        title={char?.name || 'Empty slot'}
+                      >
+                        {char ? (
+                          <>
+                            <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center">
+                              {char.customSprite?.idleImageData ? (
+                                <img
+                                  src={char.customSprite.idleImageData}
+                                  alt={char.name}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <div className="w-full h-full bg-blue-600 rounded-full" />
+                              )}
+                            </div>
+                            <span className="text-xs text-gray-300 truncate w-full text-center mt-1">
+                              {char.name.length > 6 ? char.name.slice(0, 6) + '...' : char.name}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-gray-600 text-xs">Empty</span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {/* Playtest Button */}
             <button
               onClick={handlePlaytest}
@@ -811,60 +862,9 @@ export const MapEditor: React.FC = () => {
 
           {/* Right Side - Two Columns */}
           <div className="flex-1 grid grid-cols-2 gap-4 content-start">
-            {/* Column 1 - Actions, Tools, Tile/Enemy Selectors */}
+            {/* Column 1 (Left) - Tools, Tile/Enemy Selectors, Available Characters */}
             <div className="space-y-4">
-              {/* Actions - First */}
-              <div className="bg-gray-800 p-4 rounded space-y-2">
-                <h2 className="text-lg font-bold mb-2">Actions</h2>
-                <button
-                  onClick={handleNewPuzzle}
-                  className="w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
-                >
-                  New
-                </button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-                  >
-                    Save
-                  </button>
-                  <button
-                    onClick={handleSaveAs}
-                    className="px-4 py-2 bg-green-700 rounded hover:bg-green-800"
-                  >
-                    Save As
-                  </button>
-                </div>
-                <button
-                  onClick={() => setShowLibrary(!showLibrary)}
-                  className="w-full px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-                >
-                  Library ({savedPuzzles.length})
-                </button>
-                <div className="grid grid-cols-2 gap-2">
-                  <button
-                    onClick={handleExport}
-                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
-                  >
-                    Export
-                  </button>
-                  <button
-                    onClick={handleImport}
-                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
-                  >
-                    Import
-                  </button>
-                </div>
-                <button
-                  onClick={handleClear}
-                  className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700"
-                >
-                  Clear Grid
-                </button>
-              </div>
-
-              {/* Tools - Reduced (only Enemy, Collectible, Tile) */}
+              {/* Tools - At top of left column */}
               <div className="bg-gray-800 p-4 rounded">
                 <h2 className="text-lg font-bold mb-3">Tools</h2>
                 <div className="grid grid-cols-3 gap-2">
@@ -894,7 +894,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
                     }`}
                   >
-                    Item
+                    Object
                   </button>
                 </div>
               </div>
@@ -1014,73 +1014,141 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
-              {/* Enemy Type Selector */}
+              {/* Enemy Type Selector - List style with sprites */}
               {state.selectedTool === 'enemy' && (
                 <div className="bg-gray-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Select Enemy</h2>
                   {allEnemies.length === 0 ? (
                     <p className="text-sm text-gray-400">No enemies available. Create enemies in Asset Manager!</p>
                   ) : (
-                    <select
-                      value={selectedEnemyId || ''}
-                      onChange={(e) => setSelectedEnemyId(e.target.value)}
-                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                    >
-                      <option value="">-- Select Enemy --</option>
-                      {allEnemies.map(enemy => (
-                        <option key={enemy.id} value={enemy.id}>
-                          {enemy.name} (HP: {enemy.health})
-                        </option>
-                      ))}
-                    </select>
-                  )}
-                </div>
-              )}
-
-              {/* Library Panel - Moved to column 1, below other panels */}
-              {showLibrary && (
-                <div className="bg-gray-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Saved Puzzles</h2>
-                  {savedPuzzles.length === 0 ? (
-                    <p className="text-gray-400 text-sm">No saved puzzles yet</p>
-                  ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {savedPuzzles.map((puzzle) => (
-                        <div
-                          key={puzzle.id}
-                          className="bg-gray-700 p-3 rounded flex justify-between items-start"
+                      {allEnemies.map(enemy => (
+                        <button
+                          key={enemy.id}
+                          onClick={() => setSelectedEnemyId(enemy.id)}
+                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                            selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                          }`}
                         >
+                          <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-gray-600">
+                            {enemy.customSprite?.idleImageData ? (
+                              <img
+                                src={enemy.customSprite.idleImageData}
+                                alt={enemy.name}
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-6 h-6 bg-red-500 rounded-full" />
+                            )}
+                          </div>
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-sm truncate">{puzzle.name}</h3>
-                            <p className="text-xs text-gray-400">
-                              {puzzle.width}×{puzzle.height} • {puzzle.enemies.length} enemies
-                            </p>
+                            <div className="text-sm font-medium truncate">{enemy.name}</div>
+                            <div className="text-xs text-gray-400">HP: {enemy.health}</div>
                           </div>
-                          <div className="flex gap-1 ml-2">
-                            <button
-                              onClick={() => handleLoadFromLibrary(puzzle.id)}
-                              className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
-                            >
-                              Load
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFromLibrary(puzzle.id)}
-                              className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
                 </div>
               )}
+
+              {/* Available Characters - At bottom of left column */}
+              <div className="bg-gray-800 p-4 rounded">
+                <h2 className="text-lg font-bold mb-3">Available Characters</h2>
+                <p className="text-xs text-gray-400 mb-3">Select which characters players can use</p>
+                {allCharacters.length === 0 ? (
+                  <p className="text-sm text-gray-400">No characters available</p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {allCharacters.map(char => (
+                      <label key={char.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={state.availableCharacters.includes(char.id)}
+                          onChange={(e) => {
+                            setState(prev => ({
+                              ...prev,
+                              availableCharacters: e.target.checked
+                                ? [...prev.availableCharacters, char.id]
+                                : prev.availableCharacters.filter(id => id !== char.id)
+                            }));
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-gray-600">
+                          {char.customSprite?.idleImageData ? (
+                            <img
+                              src={char.customSprite.idleImageData}
+                              alt={char.name}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="w-6 h-6 bg-blue-500 rounded-full" />
+                          )}
+                        </div>
+                        <span className="text-sm flex-1 truncate">{char.name}</span>
+                        <span className="text-xs text-gray-400">HP:{char.health}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
-            {/* Column 2 - Puzzle Info, Available Characters */}
+            {/* Column 2 (Right) - Actions, Puzzle Info, Library */}
             <div className="space-y-4">
-              {/* Puzzle Info - Second */}
+              {/* Actions - At top of right column */}
+              <div className="bg-gray-800 p-4 rounded space-y-2">
+                <h2 className="text-lg font-bold mb-2">Actions</h2>
+                <button
+                  onClick={handleNewPuzzle}
+                  className="w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                >
+                  New
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleSaveAs}
+                    className="px-4 py-2 bg-green-700 rounded hover:bg-green-800"
+                  >
+                    Save As
+                  </button>
+                </div>
+                <button
+                  onClick={() => setShowLibrary(!showLibrary)}
+                  className="w-full px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+                >
+                  Library ({savedPuzzles.length})
+                </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleExport}
+                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
+                  >
+                    Export
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
+                  >
+                    Import
+                  </button>
+                </div>
+                <button
+                  onClick={handleClear}
+                  className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                >
+                  Clear Grid
+                </button>
+              </div>
+
+              {/* Puzzle Info - Below Actions */}
               <div className="bg-gray-800 p-4 rounded">
                 <h2 className="text-lg font-bold mb-3">Puzzle Info</h2>
                 <div className="space-y-3">
@@ -1137,36 +1205,45 @@ export const MapEditor: React.FC = () => {
                 </div>
               </div>
 
-              {/* Available Characters */}
-              <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-lg font-bold mb-3">Available Characters</h2>
-                <p className="text-xs text-gray-400 mb-3">Select which characters players can use</p>
-                {allCharacters.length === 0 ? (
-                  <p className="text-sm text-gray-400">No characters available</p>
-                ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
-                    {allCharacters.map(char => (
-                      <label key={char.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={state.availableCharacters.includes(char.id)}
-                          onChange={(e) => {
-                            setState(prev => ({
-                              ...prev,
-                              availableCharacters: e.target.checked
-                                ? [...prev.availableCharacters, char.id]
-                                : prev.availableCharacters.filter(id => id !== char.id)
-                            }));
-                          }}
-                          className="w-4 h-4"
-                        />
-                        <span className="text-sm flex-1">{char.name}</span>
-                        <span className="text-xs text-gray-400">HP:{char.health}</span>
-                      </label>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Library Panel */}
+              {showLibrary && (
+                <div className="bg-gray-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">Saved Puzzles</h2>
+                  {savedPuzzles.length === 0 ? (
+                    <p className="text-gray-400 text-sm">No saved puzzles yet</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {savedPuzzles.map((puzzle) => (
+                        <div
+                          key={puzzle.id}
+                          className="bg-gray-700 p-3 rounded flex justify-between items-start"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-sm truncate">{puzzle.name}</h3>
+                            <p className="text-xs text-gray-400">
+                              {puzzle.width}×{puzzle.height} • {puzzle.enemies.length} enemies
+                            </p>
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            <button
+                              onClick={() => handleLoadFromLibrary(puzzle.id)}
+                              className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
+                            >
+                              Load
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFromLibrary(puzzle.id)}
+                              className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
