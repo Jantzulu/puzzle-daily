@@ -748,17 +748,17 @@ export const MapEditor: React.FC = () => {
           <h1 className="text-4xl font-bold">Map Editor</h1>
           <div className="flex gap-2">
             <Link to="/assets" className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700">
-              🎨 Asset Manager
+              Asset Manager
             </Link>
             <Link to="/" className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">
-              ← Back to Game
+              Back to Game
             </Link>
           </div>
         </div>
 
-        <div className="flex gap-8">
-          {/* Canvas */}
-          <div className="flex-1 space-y-4">
+        <div className="flex gap-6">
+          {/* Left Column - Canvas, Grid Size, Playtest */}
+          <div className="flex-shrink-0 space-y-4">
             <canvas
               ref={canvasRef}
               width={canvasWidth}
@@ -769,92 +769,195 @@ export const MapEditor: React.FC = () => {
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
             />
+
+            {/* Grid Size - Below puzzle, centered */}
+            <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: canvasWidth }}>
+              <h2 className="text-lg font-bold mb-3">Grid Size</h2>
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm mb-1">Width: {state.gridWidth}</label>
+                  <input
+                    type="range"
+                    min="3"
+                    max="20"
+                    value={state.gridWidth}
+                    onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
+                    className="w-full"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="block text-sm mb-1">Height: {state.gridHeight}</label>
+                  <input
+                    type="range"
+                    min="3"
+                    max="20"
+                    value={state.gridHeight}
+                    onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
+                    className="w-full"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Playtest Button */}
             <button
               onClick={handlePlaytest}
               className="w-full px-4 py-3 bg-purple-600 rounded hover:bg-purple-700 font-bold text-lg"
+              style={{ maxWidth: canvasWidth }}
             >
               ▶ Play Test
             </button>
           </div>
 
-          {/* Sidebar */}
-          <div className="w-80 space-y-6">
-            {/* Tools */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-bold mb-4">Tools</h2>
-              <div className="grid grid-cols-2 gap-2">
+          {/* Right Side - Two Columns */}
+          <div className="flex-1 grid grid-cols-2 gap-4 content-start">
+            {/* Column 1 - Actions, Tools, Tile/Enemy Selectors */}
+            <div className="space-y-4">
+              {/* Actions - First */}
+              <div className="bg-gray-800 p-4 rounded space-y-2">
+                <h2 className="text-lg font-bold mb-2">Actions</h2>
                 <button
-                  onClick={() => setState(prev => ({ ...prev, selectedTool: 'empty' }))}
-                  className={`p-3 rounded ${
-                    state.selectedTool === 'empty' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
+                  onClick={handleNewPuzzle}
+                  className="w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
                 >
-                  Empty
+                  New
                 </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleSave}
+                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={handleSaveAs}
+                    className="px-4 py-2 bg-green-700 rounded hover:bg-green-800"
+                  >
+                    Save As
+                  </button>
+                </div>
                 <button
-                  onClick={() => setState(prev => ({ ...prev, selectedTool: 'wall' }))}
-                  className={`p-3 rounded ${
-                    state.selectedTool === 'wall' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
+                  onClick={() => setShowLibrary(!showLibrary)}
+                  className="w-full px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
                 >
-                  Wall
+                  Library ({savedPuzzles.length})
                 </button>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={handleExport}
+                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
+                  >
+                    Export
+                  </button>
+                  <button
+                    onClick={handleImport}
+                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
+                  >
+                    Import
+                  </button>
+                </div>
                 <button
-                  onClick={() => setState(prev => ({ ...prev, selectedTool: 'void' }))}
-                  className={`p-3 rounded ${
-                    state.selectedTool === 'void' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
+                  onClick={handleClear}
+                  className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700"
                 >
-                  Void
-                </button>
-                <button
-                  onClick={() => setState(prev => ({ ...prev, selectedTool: 'enemy' }))}
-                  className={`p-3 rounded ${
-                    state.selectedTool === 'enemy' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                >
-                  Enemy
-                </button>
-                <button
-                  onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
-                  className={`p-3 rounded ${
-                    state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                >
-                  Collectible
-                </button>
-                <button
-                  onClick={() => {
-                    setCustomTileTypes(getCustomTileTypes()); // Refresh list
-                    setState(prev => ({ ...prev, selectedTool: 'custom' }));
-                  }}
-                  className={`p-3 rounded ${
-                    state.selectedTool === 'custom' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                  }`}
-                >
-                  Custom
+                  Clear Grid
                 </button>
               </div>
-            </div>
 
-            {/* Custom Tile Type Selector */}
-            {state.selectedTool === 'custom' && (
+              {/* Tools - Reduced (only Enemy, Collectible, Tile) */}
               <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">Custom Tile Type</h2>
-                {customTileTypes.length === 0 ? (
-                  <div className="text-sm text-gray-400">
-                    <p>No custom tile types available.</p>
-                    <p className="mt-2">
-                      Create tile types in{' '}
-                      <a href="/assets" className="text-blue-400 hover:underline">
-                        Asset Manager → Tiles
-                      </a>
-                    </p>
-                  </div>
-                ) : (
+                <h2 className="text-lg font-bold mb-3">Tools</h2>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    onClick={() => {
+                      setCustomTileTypes(getCustomTileTypes()); // Refresh list
+                      setState(prev => ({ ...prev, selectedTool: 'custom' }));
+                    }}
+                    className={`p-3 rounded text-sm ${
+                      state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall'
+                        ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    Tile
+                  </button>
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'enemy' }))}
+                    className={`p-3 rounded text-sm ${
+                      state.selectedTool === 'enemy' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    Enemy
+                  </button>
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
+                    className={`p-3 rounded text-sm ${
+                      state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    Item
+                  </button>
+                </div>
+              </div>
+
+              {/* Tile Selector - Shows when Tile tool is selected */}
+              {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (
+                <div className="bg-gray-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">Tile Type</h2>
                   <div className="space-y-2">
+                    {/* Built-in tiles: Void at top */}
+                    <button
+                      onClick={() => setState(prev => ({ ...prev, selectedTool: 'void' }))}
+                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                        state.selectedTool === 'void' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="w-8 h-8 bg-gray-900 rounded flex items-center justify-center">
+                        <span className="text-gray-600">✕</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">Void</div>
+                        <div className="text-xs text-gray-400">Empty space (no tile)</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setState(prev => ({ ...prev, selectedTool: 'empty' }))}
+                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                        state.selectedTool === 'empty' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center">
+                        <span className="text-gray-400">⬜</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">Empty</div>
+                        <div className="text-xs text-gray-400">Walkable floor tile</div>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setState(prev => ({ ...prev, selectedTool: 'wall' }))}
+                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                        state.selectedTool === 'wall' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="w-8 h-8 bg-gray-500 rounded flex items-center justify-center">
+                        <span className="text-gray-300">▓</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium">Wall</div>
+                        <div className="text-xs text-gray-400">Impassable barrier</div>
+                      </div>
+                    </button>
+
+                    {/* Divider if custom tiles exist */}
+                    {customTileTypes.length > 0 && (
+                      <div className="border-t border-gray-600 my-2 pt-2">
+                        <div className="text-xs text-gray-400 mb-2">Custom Tiles</div>
+                      </div>
+                    )}
+
+                    {/* Custom tiles */}
                     {customTileTypes.map(tileType => {
-                      const isSelected = selectedCustomTileTypeId === tileType.id;
+                      const isSelected = selectedCustomTileTypeId === tileType.id && state.selectedTool === 'custom';
                       const behaviorIcons = tileType.behaviors.map(b => {
                         switch (b.type) {
                           case 'damage': return '🔥';
@@ -869,7 +972,10 @@ export const MapEditor: React.FC = () => {
                       return (
                         <button
                           key={tileType.id}
-                          onClick={() => setSelectedCustomTileTypeId(tileType.id)}
+                          onClick={() => {
+                            setSelectedCustomTileTypeId(tileType.id);
+                            setState(prev => ({ ...prev, selectedTool: 'custom' }));
+                          }}
                           className={`w-full p-2 rounded text-left flex items-center gap-2 ${
                             isSelected ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
                           }`}
@@ -894,243 +1000,174 @@ export const MapEditor: React.FC = () => {
                         </button>
                       );
                     })}
+
+                    {/* Link to create custom tiles */}
+                    {customTileTypes.length === 0 && (
+                      <p className="text-xs text-gray-400 mt-2">
+                        Create custom tiles in{' '}
+                        <a href="/assets" className="text-blue-400 hover:underline">
+                          Asset Manager → Tiles
+                        </a>
+                      </p>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                </div>
+              )}
 
-            {/* Enemy Type Selector */}
-            {state.selectedTool === 'enemy' && (
-              <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">Select Enemy Type</h2>
-                {allEnemies.length === 0 ? (
-                  <p className="text-sm text-gray-400">No enemies available. Create enemies in Asset Manager!</p>
-                ) : (
-                  <select
-                    value={selectedEnemyId || ''}
-                    onChange={(e) => setSelectedEnemyId(e.target.value)}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white mb-2"
-                  >
-                    <option value="">-- Select Enemy --</option>
-                    {allEnemies.map(enemy => (
-                      <option key={enemy.id} value={enemy.id}>
-                        {enemy.name} (HP: {enemy.health})
-                      </option>
-                    ))}
-                  </select>
-                )}
-              </div>
-            )}
+              {/* Enemy Type Selector */}
+              {state.selectedTool === 'enemy' && (
+                <div className="bg-gray-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">Select Enemy</h2>
+                  {allEnemies.length === 0 ? (
+                    <p className="text-sm text-gray-400">No enemies available. Create enemies in Asset Manager!</p>
+                  ) : (
+                    <select
+                      value={selectedEnemyId || ''}
+                      onChange={(e) => setSelectedEnemyId(e.target.value)}
+                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                    >
+                      <option value="">-- Select Enemy --</option>
+                      {allEnemies.map(enemy => (
+                        <option key={enemy.id} value={enemy.id}>
+                          {enemy.name} (HP: {enemy.health})
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </div>
+              )}
 
-            {/* Available Characters */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-bold mb-4">Available Characters</h2>
-              <p className="text-xs text-gray-400 mb-3">Select which characters players can use in this puzzle</p>
-              {allCharacters.length === 0 ? (
-                <p className="text-sm text-gray-400">No characters available</p>
-              ) : (
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {allCharacters.map(char => (
-                    <label key={char.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={state.availableCharacters.includes(char.id)}
-                        onChange={(e) => {
-                          setState(prev => ({
-                            ...prev,
-                            availableCharacters: e.target.checked
-                              ? [...prev.availableCharacters, char.id]
-                              : prev.availableCharacters.filter(id => id !== char.id)
-                          }));
-                        }}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm flex-1">{char.name}</span>
-                      <span className="text-xs text-gray-400">HP:{char.health}</span>
-                    </label>
-                  ))}
+              {/* Library Panel - Moved to column 1, below other panels */}
+              {showLibrary && (
+                <div className="bg-gray-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">Saved Puzzles</h2>
+                  {savedPuzzles.length === 0 ? (
+                    <p className="text-gray-400 text-sm">No saved puzzles yet</p>
+                  ) : (
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {savedPuzzles.map((puzzle) => (
+                        <div
+                          key={puzzle.id}
+                          className="bg-gray-700 p-3 rounded flex justify-between items-start"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <h3 className="font-bold text-sm truncate">{puzzle.name}</h3>
+                            <p className="text-xs text-gray-400">
+                              {puzzle.width}×{puzzle.height} • {puzzle.enemies.length} enemies
+                            </p>
+                          </div>
+                          <div className="flex gap-1 ml-2">
+                            <button
+                              onClick={() => handleLoadFromLibrary(puzzle.id)}
+                              className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
+                            >
+                              Load
+                            </button>
+                            <button
+                              onClick={() => handleDeleteFromLibrary(puzzle.id)}
+                              className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
 
-            {/* Grid Size */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-bold mb-4">Grid Size</h2>
-              <div className="space-y-2">
-                <div>
-                  <label className="block text-sm mb-1">Width: {state.gridWidth}</label>
-                  <input
-                    type="range"
-                    min="3"
-                    max="20"
-                    value={state.gridWidth}
-                    onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
-                    className="w-full"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Height: {state.gridHeight}</label>
-                  <input
-                    type="range"
-                    min="3"
-                    max="20"
-                    value={state.gridHeight}
-                    onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Puzzle Info */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-bold mb-4">Puzzle Info</h2>
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-sm mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={state.puzzleName}
-                    onChange={(e) => setState(prev => ({ ...prev, puzzleName: e.target.value }))}
-                    className="w-full px-3 py-2 bg-gray-700 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Visual Skin</label>
-                  <select
-                    value={state.skinId || 'builtin_dungeon'}
-                    onChange={(e) => {
-                      setState(prev => ({ ...prev, skinId: e.target.value }));
-                      setAvailableSkins(getAllPuzzleSkins()); // Refresh in case new skins were added
-                    }}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                  >
-                    {availableSkins.map((skin) => (
-                      <option key={skin.id} value={skin.id}>
-                        {skin.name} {skin.isBuiltIn ? '(Built-in)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                  <p className="text-xs text-gray-400 mt-1">
-                    Create skins in Asset Manager → Skins
-                  </p>
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Max Characters</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={state.maxCharacters}
-                    onChange={(e) => setState(prev => ({ ...prev, maxCharacters: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 bg-gray-700 rounded"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm mb-1">Max Turns</label>
-                  <input
-                    type="number"
-                    min="10"
-                    max="1000"
-                    value={state.maxTurns}
-                    onChange={(e) => setState(prev => ({ ...prev, maxTurns: Number(e.target.value) }))}
-                    className="w-full px-3 py-2 bg-gray-700 rounded"
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Actions */}
-            <div className="bg-gray-800 p-4 rounded space-y-2">
-              <button
-                onClick={handleNewPuzzle}
-                className="w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
-              >
-                New
-              </button>
-              <div className="grid grid-cols-2 gap-2">
-                <button
-                  onClick={handleSave}
-                  className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-                >
-                  💾 Save
-                </button>
-                <button
-                  onClick={handleSaveAs}
-                  className="px-4 py-2 bg-green-700 rounded hover:bg-green-800"
-                >
-                  Save As
-                </button>
-              </div>
-              <button
-                onClick={() => setShowLibrary(!showLibrary)}
-                className="w-full px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-              >
-                📚 Library ({savedPuzzles.length})
-              </button>
-              <button
-                onClick={handleExport}
-                className="w-full px-4 py-2 bg-green-700 rounded hover:bg-green-800"
-              >
-                Export JSON
-              </button>
-              <button
-                onClick={handleImport}
-                className="w-full px-4 py-2 bg-blue-700 rounded hover:bg-blue-800"
-              >
-                Import JSON
-              </button>
-              <button
-                onClick={handleClear}
-                className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700"
-              >
-                Clear Grid
-              </button>
-            </div>
-
-            {/* Library Panel */}
-            {showLibrary && (
+            {/* Column 2 - Puzzle Info, Available Characters */}
+            <div className="space-y-4">
+              {/* Puzzle Info - Second */}
               <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">Saved Puzzles</h2>
-                {savedPuzzles.length === 0 ? (
-                  <p className="text-gray-400 text-sm">No saved puzzles yet</p>
+                <h2 className="text-lg font-bold mb-3">Puzzle Info</h2>
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm mb-1">Name</label>
+                    <input
+                      type="text"
+                      value={state.puzzleName}
+                      onChange={(e) => setState(prev => ({ ...prev, puzzleName: e.target.value }))}
+                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Visual Skin</label>
+                    <select
+                      value={state.skinId || 'builtin_dungeon'}
+                      onChange={(e) => {
+                        setState(prev => ({ ...prev, skinId: e.target.value }));
+                        setAvailableSkins(getAllPuzzleSkins()); // Refresh in case new skins were added
+                      }}
+                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                    >
+                      {availableSkins.map((skin) => (
+                        <option key={skin.id} value={skin.id}>
+                          {skin.name} {skin.isBuiltIn ? '(Built-in)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <div>
+                      <label className="block text-sm mb-1">Max Chars</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="10"
+                        value={state.maxCharacters}
+                        onChange={(e) => setState(prev => ({ ...prev, maxCharacters: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Max Turns</label>
+                      <input
+                        type="number"
+                        min="10"
+                        max="1000"
+                        value={state.maxTurns}
+                        onChange={(e) => setState(prev => ({ ...prev, maxTurns: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Available Characters */}
+              <div className="bg-gray-800 p-4 rounded">
+                <h2 className="text-lg font-bold mb-3">Available Characters</h2>
+                <p className="text-xs text-gray-400 mb-3">Select which characters players can use</p>
+                {allCharacters.length === 0 ? (
+                  <p className="text-sm text-gray-400">No characters available</p>
                 ) : (
-                  <div className="space-y-2 max-h-96 overflow-y-auto">
-                    {savedPuzzles.map((puzzle) => (
-                      <div
-                        key={puzzle.id}
-                        className="bg-gray-700 p-3 rounded flex justify-between items-start"
-                      >
-                        <div className="flex-1">
-                          <h3 className="font-bold">{puzzle.name}</h3>
-                          <p className="text-xs text-gray-400">
-                            {puzzle.width}×{puzzle.height} • {puzzle.enemies.length} enemies
-                          </p>
-                          <p className="text-xs text-gray-500">
-                            {new Date(puzzle.savedAt).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleLoadFromLibrary(puzzle.id)}
-                            className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
-                          >
-                            Load
-                          </button>
-                          <button
-                            onClick={() => handleDeleteFromLibrary(puzzle.id)}
-                            className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                          >
-                            ✕
-                          </button>
-                        </div>
-                      </div>
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {allCharacters.map(char => (
+                      <label key={char.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={state.availableCharacters.includes(char.id)}
+                          onChange={(e) => {
+                            setState(prev => ({
+                              ...prev,
+                              availableCharacters: e.target.checked
+                                ? [...prev.availableCharacters, char.id]
+                                : prev.availableCharacters.filter(id => id !== char.id)
+                            }));
+                          }}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm flex-1">{char.name}</span>
+                        <span className="text-xs text-gray-400">HP:{char.health}</span>
+                      </label>
                     ))}
                   </div>
                 )}
               </div>
-            )}
-
+            </div>
           </div>
         </div>
       </div>
