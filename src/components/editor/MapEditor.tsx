@@ -96,12 +96,14 @@ const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> =
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent parent ActionTooltip from showing
     const rect = e.currentTarget.getBoundingClientRect();
     setPosition({ x: rect.left + rect.width / 2, y: rect.bottom });
     timeoutRef.current = setTimeout(() => setShow(true), 300);
   };
 
-  const handleMouseLeave = () => {
+  const handleMouseLeave = (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent parent ActionTooltip from triggering
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setShow(false);
   };
