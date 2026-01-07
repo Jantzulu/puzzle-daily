@@ -400,7 +400,7 @@ export const EnemyEditor: React.FC = () => {
                       </button>
                     </div>
 
-                    <div className="space-y-2">
+                    <div className="space-y-2 max-h-[32rem] overflow-y-auto">
                       {(editingEnemy.behavior?.pattern || []).length === 0 ? (
                         <p className="text-sm text-gray-400 text-center py-4">
                           No actions yet. Add actions to define how this enemy moves and behaves.

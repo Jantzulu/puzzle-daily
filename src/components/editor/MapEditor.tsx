@@ -89,27 +89,30 @@ const formatActionSequence = (behavior: CharacterAction[] | undefined): string[]
   });
 };
 
-// Tooltip component for spell info
+// Tooltip component for spell info - marks element with data attribute to prevent action tooltip
 const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> = ({ spell, children }) => {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent parent ActionTooltip from showing
     const rect = e.currentTarget.getBoundingClientRect();
     setPosition({ x: rect.left + rect.width / 2, y: rect.bottom });
     timeoutRef.current = setTimeout(() => setShow(true), 300);
   };
 
-  const handleMouseLeave = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent parent ActionTooltip from triggering
+  const handleMouseLeave = () => {
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
     setShow(false);
   };
 
   return (
-    <div className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+    <div
+      className="relative inline-block"
+      data-spell-tooltip="true"
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
       {children}
       {show && (
         <div
@@ -131,7 +134,7 @@ const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> =
   );
 };
 
-// Tooltip component for action sequence
+// Tooltip component for action sequence - checks if mouse is over spell tooltip area
 const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children: React.ReactNode }> = ({ actions, children }) => {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
@@ -139,6 +142,11 @@ const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children
   const sequence = formatActionSequence(actions);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
+    // Check if the mouse entered from a spell tooltip area - don't show action tooltip
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-spell-tooltip="true"]')) {
+      return;
+    }
     const rect = e.currentTarget.getBoundingClientRect();
     // Position tooltip below the element, centered horizontally
     setPosition({ x: rect.left + rect.width / 2, y: rect.bottom });
@@ -150,8 +158,17 @@ const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children
     setShow(false);
   };
 
+  // Also handle mouse movement to hide tooltip when entering spell area
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    if (target.closest('[data-spell-tooltip="true"]')) {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      setShow(false);
+    }
+  };
+
   return (
-    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
+    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave} onMouseMove={handleMouseMove}>
       {children}
       {show && (
         <div

@@ -353,7 +353,7 @@ export const CharacterEditor: React.FC = () => {
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-96 overflow-y-auto">
+                <div className="space-y-2 max-h-[32rem] overflow-y-auto">
                   {editingCharacter.behavior.map((action, index) => (
                     <div key={index} className="bg-gray-700 p-3 rounded">
                       <div className="flex gap-2 items-center mb-2">
