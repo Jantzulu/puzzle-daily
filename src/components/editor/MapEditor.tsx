@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, WinCondition, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
-import { TileType, Direction } from '../../types/game';
+import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { drawSprite } from './SpriteEditor';
@@ -23,7 +23,8 @@ const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => 
 
   for (const action of behavior) {
     // Check for SPELL action type with spellId reference (from spell editor)
-    if (action.type === 'SPELL' && action.spellId) {
+    // ActionType.SPELL = 'spell' (lowercase)
+    if (action.type === ActionType.SPELL && action.spellId) {
       if (!seenIds.has(action.spellId)) {
         const spell = loadSpellAsset(action.spellId);
         if (spell) {
@@ -33,7 +34,7 @@ const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => 
       }
     }
     // Check for CUSTOM_ATTACK action type (inline attack definition - legacy)
-    if (action.type === 'CUSTOM_ATTACK' && action.customAttack) {
+    if (action.type === ActionType.CUSTOM_ATTACK && action.customAttack) {
       const attack = action.customAttack;
       if (!seenIds.has(attack.id)) {
         spells.push({
@@ -58,26 +59,29 @@ const formatActionSequence = (behavior: CharacterAction[] | undefined): string[]
   return behavior.map((action, i) => {
     const num = i + 1;
     switch (action.type) {
-      case 'SPELL':
+      case ActionType.SPELL:
         if (action.spellId) {
           const spell = loadSpellAsset(action.spellId);
           if (spell) return `${num}. ${spell.name}`;
         }
         return `${num}. Cast Spell`;
-      case 'CUSTOM_ATTACK':
+      case ActionType.CUSTOM_ATTACK:
         return `${num}. ${action.customAttack?.name || 'Attack'}`;
-      case 'ATTACK_RANGE':
+      case ActionType.ATTACK_RANGE:
         return `${num}. Ranged Attack`;
-      case 'MOVE':
-      case 'MOVE_FORWARD':
+      case ActionType.MOVE_FORWARD:
         return `${num}. Move Forward`;
-      case 'TURN_LEFT':
+      case ActionType.MOVE_BACKWARD:
+        return `${num}. Move Backward`;
+      case ActionType.TURN_LEFT:
         return `${num}. Turn Left`;
-      case 'TURN_RIGHT':
+      case ActionType.TURN_RIGHT:
         return `${num}. Turn Right`;
-      case 'WAIT':
+      case ActionType.TURN_AROUND:
+        return `${num}. Turn Around`;
+      case ActionType.WAIT:
         return `${num}. Wait`;
-      case 'REPEAT':
+      case ActionType.REPEAT:
         return `${num}. Repeat`;
       default:
         return `${num}. ${action.type}`;
