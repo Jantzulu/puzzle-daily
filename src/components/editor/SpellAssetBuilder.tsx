@@ -592,29 +592,26 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateIsMelee = editedSpell.templateType === 'melee';
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-3xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-2xl font-bold">
-            {spell ? 'Edit Spell' : 'Create New Spell'}
-          </h2>
-
-          {/* Action Buttons - Top */}
-          <div className="flex gap-3">
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 font-semibold"
-            >
-              Save to Library
-            </button>
-            <button
-              onClick={onCancel}
-              className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
-            >
-              Cancel
-            </button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">
+          {spell ? 'Edit Spell' : 'Create New Spell'}
+        </h2>
+        <div className="flex gap-3">
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+          >
+            Save Spell
+          </button>
+          <button
+            onClick={onCancel}
+            className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+          >
+            Cancel
+          </button>
         </div>
+      </div>
 
         <div className="space-y-6">
           {/* Basic Info */}
@@ -1177,6 +1174,5 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           </div>
         </div>
       </div>
-    </div>
   );
 };

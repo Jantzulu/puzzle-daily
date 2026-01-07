@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Direction, ActionType } from '../../types/game';
-import type { CharacterAction, EnemyBehavior, SpellAsset, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
+import type { CharacterAction, EnemyBehavior, ExecutionMode, TriggerConfig } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
 import { saveEnemy, getCustomEnemies, deleteEnemy, loadSpellAsset } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
@@ -8,36 +8,41 @@ import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
 
-// Filter out legacy attack actions - use SPELL instead
 const ACTION_TYPES = Object.values(ActionType).filter(
   type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
 );
 
 export const EnemyEditor: React.FC = () => {
-  const [enemies, setEnemies] = useState<CustomEnemy[]>(() => {
-    return getAllEnemies().map(e => ({
-      ...e,
-      isCustom: true,
-      createdAt: e.createdAt || new Date().toISOString(),
-      customSprite: e.customSprite
-    } as CustomEnemy));
-  });
-  const [editingEnemy, setEditingEnemy] = useState<CustomEnemy | null>(null);
-  const [showEditor, setShowEditor] = useState(false);
-  const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null); // Index of action being edited
+  const refreshEnemies = () => getAllEnemies().map(e => ({
+    ...e,
+    isCustom: true,
+    createdAt: e.createdAt || new Date().toISOString(),
+    customSprite: e.customSprite
+  } as CustomEnemy));
 
-  const createNewEnemy = () => {
+  const [enemies, setEnemies] = useState<CustomEnemy[]>(refreshEnemies);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<CustomEnemy | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
+
+  const handleSelect = (id: string) => {
+    const enemy = enemies.find(e => e.id === id);
+    if (enemy) {
+      setSelectedId(id);
+      setEditing({ ...enemy, behavior: { ...enemy.behavior, pattern: [...(enemy.behavior?.pattern || [])] } });
+      setIsCreating(false);
+    }
+  };
+
+  const handleNew = () => {
     const newEnemy: CustomEnemy = {
       id: 'enemy_' + Date.now(),
       name: 'New Enemy',
       spriteId: 'custom_sprite_' + Date.now(),
       health: 1,
       attackDamage: 1,
-      behavior: {
-        type: 'static', // Default to static (doesn't move)
-        defaultFacing: Direction.SOUTH,
-        pattern: []
-      },
+      behavior: { type: 'static', defaultFacing: Direction.SOUTH, pattern: [] },
       customSprite: {
         id: 'sprite_' + Date.now(),
         name: 'Custom Sprite',
@@ -51,927 +56,464 @@ export const EnemyEditor: React.FC = () => {
       isCustom: true,
       createdAt: new Date().toISOString(),
     };
-
-    setEditingEnemy(newEnemy);
-    setShowEditor(true);
+    setEditing(newEnemy);
+    setSelectedId(null);
+    setIsCreating(true);
   };
 
   const handleSave = () => {
-    if (!editingEnemy) return;
-
-    saveEnemy(editingEnemy);
-
-    // Refresh list
-    setEnemies(getAllEnemies().map(e => ({
-      ...e,
-      isCustom: true,
-      createdAt: e.createdAt || new Date().toISOString(),
-      customSprite: e.customSprite
-    } as CustomEnemy)));
-
-    setShowEditor(false);
-    setEditingEnemy(null);
-    alert(`Saved "${editingEnemy.name}"!`);
-  };
-
-  const handleEdit = (enemy: CustomEnemy) => {
-    setEditingEnemy({ ...enemy });
-    setShowEditor(true);
+    if (!editing) return;
+    saveEnemy(editing);
+    setEnemies(refreshEnemies());
+    setSelectedId(editing.id);
+    setIsCreating(false);
+    alert(`Saved "${editing.name}"!`);
   };
 
   const handleDelete = (id: string) => {
     if (!confirm('Delete this enemy?')) return;
     deleteEnemy(id);
-
-    // Refresh list
-    setEnemies(getAllEnemies().map(e => ({
-      ...e,
-      isCustom: true,
-      createdAt: e.createdAt || new Date().toISOString(),
-      customSprite: e.customSprite
-    } as CustomEnemy)));
-  };
-
-  const handleCancel = () => {
-    setShowEditor(false);
-    setEditingEnemy(null);
+    setEnemies(refreshEnemies());
+    if (selectedId === id) {
+      setSelectedId(null);
+      setEditing(null);
+    }
   };
 
   const updateEnemy = (updates: Partial<CustomEnemy>) => {
-    if (!editingEnemy) return;
-    setEditingEnemy({ ...editingEnemy, ...updates });
+    if (!editing) return;
+    setEditing({ ...editing, ...updates });
   };
 
   const updateSprite = (sprite: CustomSprite) => {
-    if (!editingEnemy) return;
-    setEditingEnemy({ ...editingEnemy, customSprite: sprite });
+    if (!editing) return;
+    setEditing({ ...editing, customSprite: sprite });
   };
 
   const updateBehavior = (behavior: EnemyBehavior) => {
-    if (!editingEnemy) return;
-    setEditingEnemy({ ...editingEnemy, behavior });
+    if (!editing) return;
+    setEditing({ ...editing, behavior });
   };
 
-  const addBehaviorAction = () => {
-    if (!editingEnemy || !editingEnemy.behavior) return;
-    const newPattern = [...(editingEnemy.behavior.pattern || []), { type: ActionType.MOVE_FORWARD }];
-    updateBehavior({ ...editingEnemy.behavior, pattern: newPattern });
+  const addAction = () => {
+    if (!editing?.behavior) return;
+    const newPattern = [...(editing.behavior.pattern || []), { type: ActionType.MOVE_FORWARD }];
+    updateBehavior({ ...editing.behavior, pattern: newPattern });
   };
 
-  const removeBehaviorAction = (index: number) => {
-    if (!editingEnemy || !editingEnemy.behavior) return;
-    const newPattern = editingEnemy.behavior.pattern?.filter((_, i) => i !== index) || [];
-    updateBehavior({ ...editingEnemy.behavior, pattern: newPattern });
+  const removeAction = (index: number) => {
+    if (!editing?.behavior) return;
+    const newPattern = editing.behavior.pattern?.filter((_, i) => i !== index) || [];
+    updateBehavior({ ...editing.behavior, pattern: newPattern });
   };
 
-  const updateBehaviorAction = (index: number, action: CharacterAction) => {
-    if (!editingEnemy || !editingEnemy.behavior) return;
-    const newPattern = [...(editingEnemy.behavior.pattern || [])];
+  const updateAction = (index: number, action: CharacterAction) => {
+    if (!editing?.behavior) return;
+    const newPattern = [...(editing.behavior.pattern || [])];
     newPattern[index] = action;
-    updateBehavior({ ...editingEnemy.behavior, pattern: newPattern });
+    updateBehavior({ ...editing.behavior, pattern: newPattern });
   };
 
-  const moveActionUp = (index: number) => {
-    if (!editingEnemy || !editingEnemy.behavior || index === 0) return;
-    const newPattern = [...(editingEnemy.behavior.pattern || [])];
-    [newPattern[index - 1], newPattern[index]] = [newPattern[index], newPattern[index - 1]];
-    updateBehavior({ ...editingEnemy.behavior, pattern: newPattern });
-  };
-
-  const moveActionDown = (index: number) => {
-    if (!editingEnemy || !editingEnemy.behavior) return;
-    const pattern = editingEnemy.behavior.pattern || [];
-    if (index === pattern.length - 1) return;
+  const moveAction = (index: number, dir: 'up' | 'down') => {
+    if (!editing?.behavior) return;
+    const pattern = editing.behavior.pattern || [];
+    if (dir === 'up' && index === 0) return;
+    if (dir === 'down' && index === pattern.length - 1) return;
     const newPattern = [...pattern];
-    [newPattern[index], newPattern[index + 1]] = [newPattern[index + 1], newPattern[index]];
-    updateBehavior({ ...editingEnemy.behavior, pattern: newPattern });
+    const swapIdx = dir === 'up' ? index - 1 : index + 1;
+    [newPattern[index], newPattern[swapIdx]] = [newPattern[swapIdx], newPattern[index]];
+    updateBehavior({ ...editing.behavior, pattern: newPattern });
   };
 
-  // Enemy Editor Modal
-  const renderEditor = () => {
-    if (!showEditor || !editingEnemy) return null;
-
-    return (
-      <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-        <div className="bg-gray-800 rounded-lg p-6 max-w-6xl w-full max-h-[90vh] overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-2xl font-bold">Enemy Editor</h2>
-
-            {/* Action Buttons - Top */}
-            <div className="flex gap-3">
-              <button
-                onClick={handleSave}
-                className="px-4 py-2 bg-green-600 rounded hover:bg-green-700 font-semibold"
-              >
-                💾 Save
-              </button>
-              <button
-                onClick={handleCancel}
-                className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
-              >
-                Cancel
+  return (
+    <div className="p-8">
+      <div className="max-w-7xl mx-auto">
+        <div className="flex gap-8">
+          {/* Enemy List - Left Sidebar */}
+          <div className="w-72 space-y-4">
+            <div className="flex justify-between items-center">
+              <h2 className="text-xl font-bold">Enemies</h2>
+              <button onClick={handleNew} className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700">
+                + New
               </button>
             </div>
-          </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Left column - Stats and Behavior */}
-            <div className="space-y-4">
-              <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">Enemy Stats</h2>
-
-                <div className="space-y-3">
-                <div>
-                  <label className="block text-sm font-bold mb-1">Name</label>
-                  <input
-                    type="text"
-                    value={editingEnemy.name}
-                    onChange={(e) => updateEnemy({ name: e.target.value })}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                  />
+            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
+              {enemies.length === 0 ? (
+                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                  No enemies yet.<br />Click "+ New" to create one.
                 </div>
-
-                <div>
-                  <label className="block text-sm font-bold mb-1">Health</label>
-                  <input
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={editingEnemy.health}
-                    onChange={(e) => updateEnemy({ health: parseInt(e.target.value) })}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                  />
-                  <p className="text-xs text-gray-400 mt-1">Hit points before death</p>
-                </div>
-
-                {/* VESTIGIAL: Attack Damage and Retaliation Damage are legacy fields.
-                    Kept for backwards compatibility but hidden from UI.
-                    Use spell-based combat system instead via triggers. */}
-                {false && (
-                  <>
-                    <div>
-                      <label className="block text-sm font-bold mb-1">Attack Damage</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="10"
-                        value={editingEnemy.attackDamage}
-                        onChange={(e) => updateEnemy({ attackDamage: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                      />
-                      <p className="text-xs text-gray-400 mt-1">Damage dealt when counterattacking</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-bold mb-1">Retaliation Damage (Optional)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="10"
-                        value={editingEnemy.retaliationDamage !== undefined ? editingEnemy.retaliationDamage : editingEnemy.attackDamage}
-                        onChange={(e) => updateEnemy({ retaliationDamage: parseInt(e.target.value) })}
-                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                      />
-                      <p className="text-xs text-gray-400 mt-1">Counterattack damage (defaults to Attack Damage if not set)</p>
-                    </div>
-                  </>
-                )}
-
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingEnemy.canOverlapEntities || false}
-                      onChange={(e) => updateEnemy({ canOverlapEntities: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-bold">Can Overlap Entities</span>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-1">Can walk through other entities (ghost mode). Enables "Overlap with" triggers.</p>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingEnemy.behavesLikeWall || false}
-                      onChange={(e) => updateEnemy({ behavesLikeWall: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-bold">Behaves Like Wall (Alive)</span>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-1">Triggers wall collision behaviors (turn_left, turn_right, etc.)</p>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingEnemy.behavesLikeWallDead || false}
-                      onChange={(e) => updateEnemy({ behavesLikeWallDead: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-bold">Behaves Like Wall (Dead)</span>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors</p>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingEnemy.blocksMovement || false}
-                      onChange={(e) => updateEnemy({ blocksMovement: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-bold">Blocks Movement (Alive)</span>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-1">Stops entities without triggering wall reactions</p>
-                </div>
-
-                <div>
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editingEnemy.blocksMovementDead || false}
-                      onChange={(e) => updateEnemy({ blocksMovementDead: e.target.checked })}
-                      className="w-4 h-4"
-                    />
-                    <span className="text-sm font-bold">Blocks Movement (Dead)</span>
-                  </label>
-                  <p className="text-xs text-gray-400 mt-1">Corpse stops entities without triggering wall reactions</p>
-                </div>
-
-                {/* Melee Priority Toggle */}
-                <div className="mt-4 pt-4 border-t border-gray-700">
-                  <div>
-                    <label className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        checked={editingEnemy.hasMeleePriority || false}
-                        onChange={(e) => updateEnemy({
-                          hasMeleePriority: e.target.checked
-                        })}
-                        className="w-4 h-4"
-                      />
-                      <span className="text-sm font-bold">Has Melee Priority</span>
-                    </label>
-                    <p className="text-xs text-gray-400 mt-1">Enemy attacks before characters when adjacent (default: false)</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-6 p-3 bg-gray-700 rounded">
-                <h3 className="text-sm font-bold mb-2">Entity Summary</h3>
-                <p className="text-xs text-gray-300">
-                  • Takes {editingEnemy.health} hit{editingEnemy.health > 1 ? 's' : ''} to kill
-                  <br />
-                  • {editingEnemy.canOverlapEntities ? 'Can overlap with entities (ghost mode)' : 'Blocks entity movement'}
-                  <br />
-                  • {editingEnemy.behavesLikeWallDead ? 'Corpse behaves like wall' : 'Can walk over corpse'}
-                  <br />
-                  • {editingEnemy.hasMeleePriority ? 'Attacks before characters when adjacent' : 'Attacks after characters'}
-                </p>
-              </div>
-              </div>
-
-              {/* Behavior Editor (moved to left column) */}
-              <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-xl font-bold mb-4">Enemy Behavior</h2>
-
-                <div className="space-y-4">
-              {/* Behavior Type */}
-              <div>
-                <label className="block text-sm font-bold mb-2">Behavior Type</label>
-                <select
-                  value={editingEnemy.behavior?.type || 'static'}
-                  onChange={(e) => updateBehavior({
-                    ...editingEnemy.behavior,
-                    type: e.target.value as 'static' | 'active',
-                    defaultFacing: editingEnemy.behavior?.defaultFacing || Direction.SOUTH,
-                    pattern: editingEnemy.behavior?.pattern || []
-                  })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                >
-                  <option value="static">Static (Doesn't Move)</option>
-                  <option value="active">Active (Has AI Behavior)</option>
-                </select>
-                <p className="text-xs text-gray-400 mt-1">
-                  {editingEnemy.behavior?.type === 'static'
-                    ? 'Enemy stays in place and only fights when attacked'
-                    : 'Enemy moves and acts according to its behavior pattern'}
-                </p>
-              </div>
-
-              {/* Active Behavior Configuration */}
-              {editingEnemy.behavior?.type === 'active' && (
-                <>
-                  {/* Default Facing */}
-                  <div>
-                    <label className="block text-sm font-bold mb-2">Default Facing Direction</label>
-                    <select
-                      value={editingEnemy.behavior?.defaultFacing || Direction.SOUTH}
-                      onChange={(e) => updateBehavior({
-                        ...editingEnemy.behavior!,
-                        defaultFacing: e.target.value as Direction
-                      })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
-                    >
-                      <option value={Direction.NORTH}>North ↑</option>
-                      <option value={Direction.NORTHEAST}>North-East ↗</option>
-                      <option value={Direction.EAST}>East →</option>
-                      <option value={Direction.SOUTHEAST}>South-East ↘</option>
-                      <option value={Direction.SOUTH}>South ↓</option>
-                      <option value={Direction.SOUTHWEST}>South-West ↙</option>
-                      <option value={Direction.WEST}>West ←</option>
-                      <option value={Direction.NORTHWEST}>North-West ↖</option>
-                    </select>
-                  </div>
-
-                  {/* Action Pattern */}
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <label className="text-sm font-bold">Action Pattern</label>
+              ) : (
+                enemies.map(enemy => (
+                  <div
+                    key={enemy.id}
+                    className={`p-3 rounded cursor-pointer transition-colors ${
+                      selectedId === enemy.id ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'
+                    }`}
+                    onClick={() => handleSelect(enemy.id)}
+                  >
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center gap-2">
+                        <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <SpriteThumbnail sprite={enemy.customSprite} size={40} />
+                        </div>
+                        <div>
+                          <h3 className="font-bold">{enemy.name}</h3>
+                          <p className="text-xs text-gray-400">
+                            HP: {enemy.health} • {enemy.behavior?.type || 'static'}
+                          </p>
+                        </div>
+                      </div>
                       <button
-                        onClick={addBehaviorAction}
-                        className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
+                        onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
+                        className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
                       >
-                        + Add Action
+                        ✕
                       </button>
                     </div>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
 
-                    <div className="space-y-2 max-h-[32rem] overflow-y-auto">
-                      {(editingEnemy.behavior?.pattern || []).length === 0 ? (
-                        <p className="text-sm text-gray-400 text-center py-4">
-                          No actions yet. Add actions to define how this enemy moves and behaves.
-                        </p>
-                      ) : (
-                        editingEnemy.behavior!.pattern!.map((action, index) => (
-                          <div key={index} className="bg-gray-700 p-3 rounded">
-                            <div className="flex gap-2 items-center mb-2">
-                              <div className="flex flex-col gap-1">
-                                <button
-                                  onClick={() => moveActionUp(index)}
-                                  disabled={index === 0}
-                                  className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                                  title="Move up"
-                                >
-                                  ↑
-                                </button>
-                                <button
-                                  onClick={() => moveActionDown(index)}
-                                  disabled={index === editingEnemy.behavior!.pattern!.length - 1}
-                                  className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30 disabled:cursor-not-allowed"
-                                  title="Move down"
-                                >
-                                  ↓
-                                </button>
-                              </div>
-                              <span className="text-sm text-gray-400 w-6">{index + 1}.</span>
-                              <select
-                                value={action.type}
-                                onChange={(e) => updateBehaviorAction(index, { ...action, type: e.target.value as ActionType })}
-                                className="flex-1 px-2 py-1 bg-gray-600 rounded text-sm text-white"
-                              >
-                                {ACTION_TYPES.map(type => (
-                                  <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
-                                ))}
-                              </select>
-                              <button
-                                onClick={() => removeBehaviorAction(index)}
-                                className="px-2 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
-                              >
-                                ✕
+          {/* Enemy Editor - Right Panel */}
+          <div className="flex-1">
+            {editing ? (
+              <div className="space-y-6">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-2xl font-bold">
+                    {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
+                  </h2>
+                  <button onClick={handleSave} className="px-4 py-2 bg-green-600 rounded hover:bg-green-700">
+                    Save Enemy
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {/* Left Column */}
+                  <div className="space-y-6">
+                    {/* Basic Info */}
+                    <div className="bg-gray-800 p-4 rounded space-y-3">
+                      <h3 className="text-lg font-bold">Basic Info</h3>
+                      <div>
+                        <label className="block text-sm mb-1">Name</label>
+                        <input
+                          type="text"
+                          value={editing.name}
+                          onChange={(e) => updateEnemy({ name: e.target.value })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Health</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max="20"
+                          value={editing.health}
+                          onChange={(e) => updateEnemy({ health: parseInt(e.target.value) })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Properties */}
+                    <div className="bg-gray-800 p-4 rounded space-y-2">
+                      <h3 className="text-lg font-bold mb-3">Properties</h3>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.canOverlapEntities || false}
+                          onChange={(e) => updateEnemy({ canOverlapEntities: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Can Overlap Entities (Ghost)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.behavesLikeWall || false}
+                          onChange={(e) => updateEnemy({ behavesLikeWall: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Behaves Like Wall (Alive)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.behavesLikeWallDead || false}
+                          onChange={(e) => updateEnemy({ behavesLikeWallDead: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Behaves Like Wall (Dead)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.blocksMovement || false}
+                          onChange={(e) => updateEnemy({ blocksMovement: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Blocks Movement (Alive)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.blocksMovementDead || false}
+                          onChange={(e) => updateEnemy({ blocksMovementDead: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Blocks Movement (Dead)</span>
+                      </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.hasMeleePriority || false}
+                          onChange={(e) => updateEnemy({ hasMeleePriority: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Has Melee Priority</span>
+                      </label>
+                    </div>
+
+                    {/* Behavior */}
+                    <div className="bg-gray-800 p-4 rounded space-y-3">
+                      <h3 className="text-lg font-bold">Behavior</h3>
+                      <div>
+                        <label className="block text-sm mb-1">Type</label>
+                        <select
+                          value={editing.behavior?.type || 'static'}
+                          onChange={(e) => updateBehavior({
+                            ...editing.behavior!,
+                            type: e.target.value as 'static' | 'active',
+                            defaultFacing: editing.behavior?.defaultFacing || Direction.SOUTH,
+                            pattern: editing.behavior?.pattern || []
+                          })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                        >
+                          <option value="static">Static</option>
+                          <option value="active">Active</option>
+                        </select>
+                      </div>
+
+                      {editing.behavior?.type === 'active' && (
+                        <>
+                          <div>
+                            <label className="block text-sm mb-1">Default Facing</label>
+                            <select
+                              value={editing.behavior?.defaultFacing || Direction.SOUTH}
+                              onChange={(e) => updateBehavior({ ...editing.behavior!, defaultFacing: e.target.value as Direction })}
+                              className="w-full px-3 py-2 bg-gray-700 rounded"
+                            >
+                              <option value={Direction.NORTH}>North ↑</option>
+                              <option value={Direction.EAST}>East →</option>
+                              <option value={Direction.SOUTH}>South ↓</option>
+                              <option value={Direction.WEST}>West ←</option>
+                            </select>
+                          </div>
+
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <label className="text-sm font-bold">Action Pattern</label>
+                              <button onClick={addAction} className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700">
+                                + Add
                               </button>
                             </div>
-                            {action.type.startsWith('move_') && (
-                              <div className="ml-8 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">Tiles per move:</label>
-                                  <input
-                                    type="number"
-                                    min="1"
-                                    max="5"
-                                    value={action.tilesPerMove || 1}
-                                    onChange={(e) => updateBehaviorAction(index, { ...action, tilesPerMove: parseInt(e.target.value) || 1 })}
-                                    className="w-16 px-2 py-1 bg-gray-600 rounded text-sm text-white"
-                                  />
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">On wall collision:</label>
-                                  <select
-                                    value={action.onWallCollision || 'stop'}
-                                    onChange={(e) => updateBehaviorAction(index, { ...action, onWallCollision: e.target.value as any })}
-                                    className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
-                                  >
-                                    <option value="stop">Stop</option>
-                                    <option value="turn_left">Turn Left</option>
-                                    <option value="turn_right">Turn Right</option>
-                                    <option value="turn_around">Turn Around</option>
-                                    <option value="continue">Continue (skip wall)</option>
-                                  </select>
-                                </div>
-                                {(action.onWallCollision === 'turn_left' || action.onWallCollision === 'turn_right') && (
-                                  <div className="flex items-center gap-2">
-                                    <label className="text-xs text-gray-400">Turn degrees:</label>
-                                    <select
-                                      value={action.turnDegrees || 90}
-                                      onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-                                      className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
-                                    >
-                                      <option value={45}>45° (One diagonal step)</option>
-                                      <option value={90}>90° (Cardinal directions)</option>
-                                      <option value={135}>135° (Skip diagonal - for corners)</option>
-                                    </select>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                            {(action.type === ActionType.TURN_LEFT || action.type === ActionType.TURN_RIGHT) && (
-                              <div className="ml-8 space-y-2">
-                                <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">Turn degrees:</label>
-                                  <select
-                                    value={action.turnDegrees || 90}
-                                    onChange={(e) => updateBehaviorAction(index, { ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-                                    className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs text-white"
-                                  >
-                                    <option value={45}>45° (One diagonal step)</option>
-                                    <option value={90}>90° (Cardinal directions)</option>
-                                    <option value={135}>135° (Skip diagonal - for corners)</option>
-                                  </select>
-                                </div>
-                              </div>
-                            )}
-                            {action.type === ActionType.SPELL && (() => {
-                              const spell = action.spellId ? loadSpellAsset(action.spellId) : null;
-                              return (
-                                <div className="ml-8 space-y-3">
-                                  {spell ? (
-                                    <div className="space-y-2">
-                                      {/* Spell Info */}
-                                      <div className="flex items-start gap-2 bg-gray-800 p-2 rounded">
-                                        {spell.thumbnailIcon && (
-                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-10 h-10 object-contain bg-gray-900 rounded border border-gray-600" />
-                                        )}
-                                        <div className="flex-1 min-w-0">
-                                          <div className="font-semibold text-sm">{spell.name}</div>
-                                          <div className="text-xs text-gray-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
-                                          {spell.description && <div className="text-xs text-gray-400 mt-1">{spell.description}</div>}
-                                        </div>
-                                      </div>
-
-                                      {/* Execution Mode */}
-                                      <div>
-                                        <label className="text-xs text-gray-400">Execution Mode:</label>
-                                        <select
-                                          value={action.executionMode || 'sequential'}
-                                          onChange={(e) => updateBehaviorAction(index, { ...action, executionMode: e.target.value as ExecutionMode })}
-                                          className="w-full px-2 py-1 bg-gray-600 rounded text-sm text-white mt-1"
-                                        >
-                                          <option value="sequential">Sequential (waits its turn)</option>
-                                          <option value="parallel">Parallel (runs independently)</option>
-                                          <option value="parallel_with_previous">Parallel with Previous (runs with previous action)</option>
-                                        </select>
-                                      </div>
-
-                                      {/* Trigger Config (for parallel mode) */}
-                                      {action.executionMode === 'parallel' && (
-                                        <div className="bg-gray-800 p-2 rounded space-y-2">
-                                          <div className="text-xs font-semibold text-gray-300">Parallel Trigger:</div>
-                                          <div>
-                                            <label className="text-xs text-gray-400">Mode:</label>
-                                            <select
-                                              value={action.trigger?.mode || 'interval'}
-                                              onChange={(e) => {
-                                                const newTrigger: TriggerConfig = {
-                                                  mode: e.target.value as any,
-                                                  ...(e.target.value === 'interval' ? { intervalMs: 600 } : { event: 'character_adjacent' })
-                                                };
-                                                updateBehaviorAction(index, { ...action, trigger: newTrigger });
-                                              }}
-                                              className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                            >
-                                              <option value="interval">Interval (every X ms)</option>
-                                              <option value="on_event">On Event</option>
-                                            </select>
-                                          </div>
-                                          {action.trigger?.mode === 'interval' && (
-                                            <div>
-                                              <label className="text-xs text-gray-400">Interval (ms):</label>
-                                              <input
-                                                type="number"
-                                                min="100"
-                                                max="5000"
-                                                step="100"
-                                                value={action.trigger.intervalMs || 600}
-                                                onChange={(e) => updateBehaviorAction(index, {
-                                                  ...action,
-                                                  trigger: { ...action.trigger!, intervalMs: parseInt(e.target.value) || 600 }
-                                                })}
-                                                className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                              />
-                                            </div>
-                                          )}
-                                          {action.trigger?.mode === 'on_event' && (
-                                            <>
-                                              <div>
-                                                <label className="text-xs text-gray-400">Event:</label>
-                                                <select
-                                                  value={action.trigger.event || 'character_adjacent'}
-                                                  onChange={(e) => updateBehaviorAction(index, {
-                                                    ...action,
-                                                    trigger: { ...action.trigger!, event: e.target.value as any }
-                                                  })}
-                                                  className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                                >
-                                                  <optgroup label="Target Characters">
-                                                    <option value="character_adjacent">Character Adjacent</option>
-                                                    <option value="character_in_range">Character in Range</option>
-                                                    <option value="contact_with_character">Overlap with Character</option>
-                                                  </optgroup>
-                                                  <optgroup label="Target Enemies">
-                                                    <option value="enemy_adjacent">Enemy Adjacent</option>
-                                                    <option value="enemy_in_range">Enemy in Range</option>
-                                                    <option value="contact_with_enemy">Overlap with Enemy</option>
-                                                  </optgroup>
-                                                  <optgroup label="Other">
-                                                    <option value="wall_ahead">Wall Ahead</option>
-                                                    <option value="health_below_50">Health Below 50%</option>
-                                                  </optgroup>
-                                                </select>
-                                              </div>
-                                              {(action.trigger.event === 'character_in_range' || action.trigger.event === 'enemy_in_range') && (
-                                                <div>
-                                                  <label className="text-xs text-gray-400">Detection Range (tiles):</label>
-                                                  <input
-                                                    type="number"
-                                                    min="1"
-                                                    max="10"
-                                                    value={action.trigger.eventRange || 3}
-                                                    onChange={(e) => updateBehaviorAction(index, {
-                                                      ...action,
-                                                      trigger: { ...action.trigger!, eventRange: parseInt(e.target.value) || 3 }
-                                                    })}
-                                                    className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                                  />
-                                                </div>
-                                              )}
-                                            </>
-                                          )}
-                                        </div>
-                                      )}
-
-                                      {/* Direction Override */}
-                                      <div className="bg-gray-800 p-2 rounded space-y-2">
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="checkbox"
-                                            id={`override-dir-${index}`}
-                                            checked={(!!action.directionOverride && action.directionOverride.length > 0) || (!!action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0)}
-                                            onChange={(e) => {
-                                              if (e.target.checked) {
-                                                updateBehaviorAction(index, { ...action, directionOverride: [Direction.NORTH], useRelativeOverride: false });
-                                              } else {
-                                                updateBehaviorAction(index, { ...action, directionOverride: undefined, relativeDirectionOverride: undefined, useRelativeOverride: false });
-                                              }
-                                            }}
-                                            className="w-4 h-4"
-                                          />
-                                          <label htmlFor={`override-dir-${index}`} className="text-xs font-semibold text-gray-300 cursor-pointer">
-                                            Override Spell Directions
-                                          </label>
-                                        </div>
-
-                                        {((action.directionOverride && action.directionOverride.length > 0) || (action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0)) && (
-                                          <>
-                                            {/* Mode Toggle */}
-                                            <div className="flex gap-2">
-                                              <button
-                                                onClick={() => updateBehaviorAction(index, { ...action, useRelativeOverride: false, relativeDirectionOverride: undefined, directionOverride: action.directionOverride || [Direction.NORTH] })}
-                                                className={`flex-1 px-2 py-1 rounded text-[10px] transition-colors ${
-                                                  !action.useRelativeOverride
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                                }`}
-                                              >
-                                                Absolute
-                                              </button>
-                                              <button
-                                                onClick={() => updateBehaviorAction(index, { ...action, useRelativeOverride: true, directionOverride: undefined, relativeDirectionOverride: action.relativeDirectionOverride || ['forward' as RelativeDirection] })}
-                                                className={`flex-1 px-2 py-1 rounded text-[10px] transition-colors ${
-                                                  action.useRelativeOverride
-                                                    ? 'bg-blue-600 text-white'
-                                                    : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                                                }`}
-                                              >
-                                                Relative
-                                              </button>
-                                            </div>
-
-                                            {/* Absolute Directions */}
-                                            {!action.useRelativeOverride && (
-                                              <div className="grid grid-cols-4 gap-1">
-                                                {[
-                                                  { dir: Direction.NORTH, label: 'N', arrow: '↑' },
-                                                  { dir: Direction.NORTHEAST, label: 'NE', arrow: '↗' },
-                                                  { dir: Direction.EAST, label: 'E', arrow: '→' },
-                                                  { dir: Direction.SOUTHEAST, label: 'SE', arrow: '↘' },
-                                                  { dir: Direction.SOUTH, label: 'S', arrow: '↓' },
-                                                  { dir: Direction.SOUTHWEST, label: 'SW', arrow: '↙' },
-                                                  { dir: Direction.WEST, label: 'W', arrow: '←' },
-                                                  { dir: Direction.NORTHWEST, label: 'NW', arrow: '↖' },
-                                                ].map(({ dir, label, arrow }) => {
-                                                  const isSelected = action.directionOverride?.includes(dir);
-                                                  return (
-                                                    <button
-                                                      key={dir}
-                                                      onClick={() => {
-                                                        const current = action.directionOverride || [];
-                                                        const newDirs = isSelected
-                                                          ? current.filter(d => d !== dir)
-                                                          : [...current, dir];
-                                                        updateBehaviorAction(index, { ...action, directionOverride: newDirs.length > 0 ? newDirs : [Direction.NORTH] });
-                                                      }}
-                                                      className={`p-1 rounded border text-xs transition-colors ${
-                                                        isSelected
-                                                          ? 'border-green-500 bg-green-900'
-                                                          : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                                                      }`}
-                                                    >
-                                                      <div className="text-sm">{arrow}</div>
-                                                      <div className="text-[10px]">{label}</div>
-                                                    </button>
-                                                  );
-                                                })}
-                                              </div>
-                                            )}
-
-                                            {/* Relative Directions */}
-                                            {action.useRelativeOverride && (
-                                              <div className="grid grid-cols-4 gap-1">
-                                                {[
-                                                  { value: 'forward' as RelativeDirection, label: 'Fwd', arrow: '↑' },
-                                                  { value: 'forward_right' as RelativeDirection, label: 'F-R', arrow: '↗' },
-                                                  { value: 'right' as RelativeDirection, label: 'Right', arrow: '→' },
-                                                  { value: 'backward_right' as RelativeDirection, label: 'B-R', arrow: '↘' },
-                                                  { value: 'backward' as RelativeDirection, label: 'Back', arrow: '↓' },
-                                                  { value: 'backward_left' as RelativeDirection, label: 'B-L', arrow: '↙' },
-                                                  { value: 'left' as RelativeDirection, label: 'Left', arrow: '←' },
-                                                  { value: 'forward_left' as RelativeDirection, label: 'F-L', arrow: '↖' },
-                                                ].map(({ value, label, arrow }) => {
-                                                  const isSelected = action.relativeDirectionOverride?.includes(value);
-                                                  return (
-                                                    <button
-                                                      key={value}
-                                                      onClick={() => {
-                                                        const current = action.relativeDirectionOverride || [];
-                                                        const newDirs = isSelected
-                                                          ? current.filter(d => d !== value)
-                                                          : [...current, value];
-                                                        updateBehaviorAction(index, { ...action, relativeDirectionOverride: newDirs.length > 0 ? newDirs : ['forward' as RelativeDirection] });
-                                                      }}
-                                                      className={`p-1 rounded border text-xs transition-colors ${
-                                                        isSelected
-                                                          ? 'border-green-500 bg-green-900'
-                                                          : 'border-gray-600 bg-gray-700 hover:border-gray-500'
-                                                      }`}
-                                                    >
-                                                      <div className="text-sm">{arrow}</div>
-                                                      <div className="text-[10px]">{label}</div>
-                                                    </button>
-                                                  );
-                                                })}
-                                              </div>
-                                            )}
-
-                                            <p className="text-[10px] text-gray-500">
-                                              {action.useRelativeOverride
-                                                ? `Relative override: ${action.relativeDirectionOverride?.length || 0} direction(s)`
-                                                : `Absolute override: ${action.directionOverride?.length || 0} direction(s)`}
-                                            </p>
-                                          </>
-                                        )}
-                                      </div>
-
-                                      {/* Auto-Targeting */}
-                                      <div className="bg-gray-800 p-2 rounded space-y-2">
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="checkbox"
-                                            id={`auto-target-character-${index}`}
-                                            checked={action.autoTargetNearestCharacter || false}
-                                            onChange={(e) => updateBehaviorAction(index, {
-                                              ...action,
-                                              autoTargetNearestCharacter: e.target.checked,
-                                              autoTargetNearestEnemy: e.target.checked ? false : action.autoTargetNearestEnemy,
-                                              maxTargets: e.target.checked ? (action.maxTargets || 1) : undefined
-                                            })}
-                                            className="w-4 h-4"
-                                          />
-                                          <label htmlFor={`auto-target-character-${index}`} className="text-xs font-semibold text-gray-300 cursor-pointer">
-                                            Auto-Target Nearest Character
-                                          </label>
-                                        </div>
-                                        <div className="flex items-center gap-2">
-                                          <input
-                                            type="checkbox"
-                                            id={`auto-target-enemy-${index}`}
-                                            checked={action.autoTargetNearestEnemy || false}
-                                            onChange={(e) => updateBehaviorAction(index, {
-                                              ...action,
-                                              autoTargetNearestEnemy: e.target.checked,
-                                              autoTargetNearestCharacter: e.target.checked ? false : action.autoTargetNearestCharacter,
-                                              maxTargets: e.target.checked ? (action.maxTargets || 1) : undefined
-                                            })}
-                                            className="w-4 h-4"
-                                          />
-                                          <label htmlFor={`auto-target-enemy-${index}`} className="text-xs font-semibold text-gray-300 cursor-pointer">
-                                            Auto-Target Nearest Enemy
-                                          </label>
-                                        </div>
-                                        {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
-                                          <>
-                                            <div>
-                                              <label className="text-xs text-gray-400">Targeting Mode:</label>
-                                              <select
-                                                value={action.autoTargetMode || 'omnidirectional'}
-                                                onChange={(e) => updateBehaviorAction(index, {
-                                                  ...action,
-                                                  autoTargetMode: e.target.value as 'omnidirectional' | 'cardinal' | 'diagonal'
-                                                })}
-                                                className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                              >
-                                                <option value="omnidirectional">🎯 All Directions (360°)</option>
-                                                <option value="cardinal">↕↔ Cardinal Only (N/S/E/W)</option>
-                                                <option value="diagonal">⤫ Diagonal Only (NE/SE/SW/NW)</option>
-                                              </select>
-                                              <p className="text-[10px] text-gray-500 mt-1">
-                                                Directional constraint for target selection
-                                              </p>
-                                            </div>
-
-                                            <div>
-                                              <label className="text-xs text-gray-400">Max Targets:</label>
-                                              <input
-                                                type="number"
-                                                min="1"
-                                                max="10"
-                                                value={action.maxTargets || 1}
-                                                onChange={(e) => updateBehaviorAction(index, {
-                                                  ...action,
-                                                  maxTargets: parseInt(e.target.value) || 1
-                                                })}
-                                                className="w-full px-2 py-1 bg-gray-600 rounded text-xs text-white mt-1"
-                                              />
-                                              <p className="text-[10px] text-gray-500 mt-1">
-                                                Number of nearest targets (for multi-target)
-                                              </p>
-                                            </div>
-                                          </>
-                                        )}
-                                      </div>
-
-                                      {/* Change Spell Button */}
-                                      <button
-                                        onClick={() => setShowSpellPicker(index)}
-                                        className="w-full px-3 py-1.5 bg-blue-600 rounded text-xs hover:bg-blue-700"
-                                      >
-                                        Change Spell
-                                      </button>
-                                    </div>
-                                  ) : (
-                                    <div>
-                                      <p className="text-xs text-gray-400 mb-2">No spell selected</p>
-                                      <button
-                                        onClick={() => setShowSpellPicker(index)}
-                                        className="px-3 py-1 bg-green-600 rounded text-xs hover:bg-green-700"
-                                      >
-                                        Select Spell
-                                      </button>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })()}
+                            <div className="space-y-2 max-h-[32rem] overflow-y-auto">
+                              {(editing.behavior?.pattern || []).map((action, index) => (
+                                <EnemyActionRow
+                                  key={index}
+                                  action={action}
+                                  index={index}
+                                  totalActions={editing.behavior!.pattern!.length}
+                                  onUpdate={(a) => updateAction(index, a)}
+                                  onRemove={() => removeAction(index)}
+                                  onMoveUp={() => moveAction(index, 'up')}
+                                  onMoveDown={() => moveAction(index, 'down')}
+                                  onSelectSpell={() => setShowSpellPicker(index)}
+                                />
+                              ))}
+                            </div>
                           </div>
-                        ))
+                        </>
                       )}
                     </div>
-
-                    <p className="text-xs text-gray-400 mt-2">
-                      Tip: Add REPEAT at the end to loop the behavior pattern
-                    </p>
                   </div>
-                </>
-              )}
+
+                  {/* Right Column - Sprite */}
+                  <div className="bg-gray-800 p-4 rounded">
+                    <h3 className="text-lg font-bold mb-4">Sprite</h3>
+                    {editing.customSprite && (
+                      <SpriteEditor sprite={editing.customSprite} onChange={updateSprite} />
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-
-            {/* Right column - Sprite Editor */}
-            <div className="bg-gray-800 p-4 rounded">
-              <h2 className="text-xl font-bold mb-4">Sprite Appearance</h2>
-              {editingEnemy.customSprite && (
-                <SpriteEditor
-                  sprite={editingEnemy.customSprite}
-                  onChange={updateSprite}
-                />
-              )}
-            </div>
+            ) : (
+              <div className="bg-gray-800 p-8 rounded text-center">
+                <h2 className="text-2xl font-bold mb-4">Enemy Editor</h2>
+                <p className="text-gray-400 mb-6">
+                  Create and customize enemies with unique sprites and behaviors.
+                </p>
+                <button onClick={handleNew} className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700">
+                  + Create New Enemy
+                </button>
+              </div>
+            )}
           </div>
-
-        {/* Spell Picker Modal */}
-        {showSpellPicker !== null && editingEnemy && editingEnemy.behavior && (
-          <SpellPicker
-            onSelect={(spell) => {
-              // Update the action with the selected spell
-              const pattern = editingEnemy.behavior!.pattern || [];
-              updateBehaviorAction(showSpellPicker, {
-                ...pattern[showSpellPicker],
-                spellId: spell.id,
-                executionMode: pattern[showSpellPicker].executionMode || 'sequential',
-              });
-              setShowSpellPicker(null);
-            }}
-            onCancel={() => setShowSpellPicker(null)}
-          />
-        )}
         </div>
       </div>
-    );
-  };
 
-  // Library view
+      {/* Spell Picker Modal */}
+      {showSpellPicker !== null && editing?.behavior && (
+        <SpellPicker
+          onSelect={(spell) => {
+            const pattern = editing.behavior!.pattern || [];
+            updateAction(showSpellPicker, {
+              ...pattern[showSpellPicker],
+              spellId: spell.id,
+              executionMode: pattern[showSpellPicker].executionMode || 'sequential',
+            });
+            setShowSpellPicker(null);
+          }}
+          onCancel={() => setShowSpellPicker(null)}
+        />
+      )}
+    </div>
+  );
+};
+
+// Reusable action row component
+interface EnemyActionRowProps {
+  action: CharacterAction;
+  index: number;
+  totalActions: number;
+  onUpdate: (action: CharacterAction) => void;
+  onRemove: () => void;
+  onMoveUp: () => void;
+  onMoveDown: () => void;
+  onSelectSpell: () => void;
+}
+
+const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
+  action, index, totalActions, onUpdate, onRemove, onMoveUp, onMoveDown, onSelectSpell
+}) => {
+  const spell = action.spellId ? loadSpellAsset(action.spellId) : null;
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
-      <div className="max-w-6xl mx-auto">
-        <div className="mb-6 flex justify-between items-center">
-          <h1 className="text-3xl font-bold">Enemy Library</h1>
-          <button
-            onClick={createNewEnemy}
-            className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-          >
-            + New Enemy
-          </button>
+    <div className="bg-gray-700 p-3 rounded">
+      <div className="flex gap-2 items-center mb-2">
+        <div className="flex flex-col gap-1">
+          <button onClick={onMoveUp} disabled={index === 0}
+            className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30">↑</button>
+          <button onClick={onMoveDown} disabled={index === totalActions - 1}
+            className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30">↓</button>
         </div>
+        <span className="text-sm text-gray-400 w-6">{index + 1}.</span>
+        <select
+          value={action.type}
+          onChange={(e) => onUpdate({ ...action, type: e.target.value as ActionType })}
+          className="flex-1 px-2 py-1 bg-gray-600 rounded text-sm"
+        >
+          {ACTION_TYPES.map(type => (
+            <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
+          ))}
+        </select>
+        <button onClick={onRemove} className="px-2 py-1 text-sm bg-red-600 rounded hover:bg-red-700">✕</button>
+      </div>
 
-        {enemies.length === 0 ? (
-          <div className="bg-gray-800 p-8 rounded text-center">
-            <p className="text-gray-400">No custom enemies yet. Create one to get started!</p>
+      {action.type.startsWith('move_') && (
+        <div className="ml-8 space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Tiles:</label>
+            <input type="number" min="1" max="5" value={action.tilesPerMove || 1}
+              onChange={(e) => onUpdate({ ...action, tilesPerMove: parseInt(e.target.value) || 1 })}
+              className="w-16 px-2 py-1 bg-gray-600 rounded text-sm" />
+            <label className="text-xs text-gray-400">Wall:</label>
+            <select value={action.onWallCollision || 'stop'}
+              onChange={(e) => onUpdate({ ...action, onWallCollision: e.target.value as any })}
+              className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs">
+              <option value="stop">Stop</option>
+              <option value="turn_left">Turn Left</option>
+              <option value="turn_right">Turn Right</option>
+              <option value="turn_around">Turn Around</option>
+              <option value="continue">Continue</option>
+            </select>
           </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {enemies.map((enemy) => (
-              <div key={enemy.id} className="bg-gray-800 p-4 rounded">
-                <div className="flex gap-3 mb-3">
-                  <SpriteThumbnail sprite={enemy.customSprite} size={64} />
-                  <div className="flex-1">
-                    <h3 className="font-bold text-lg">{enemy.name}</h3>
-                  </div>
-                </div>
+        </div>
+      )}
 
-                <div className="grid grid-cols-2 gap-2 text-sm mb-3">
-                  <div>
-                    <span className="text-gray-400">HP:</span> {enemy.health}
-                  </div>
-                  {/* VESTIGIAL: ATK display hidden - use spell-based combat instead */}
-                  <div>
-                    <span className="text-gray-400">Type:</span> {enemy.behavior?.type || 'static'}
-                  </div>
-                  {enemy.canOverlapEntities && (
-                    <div className="col-span-2 text-xs text-cyan-400">
-                      👻 Ghost mode
-                    </div>
+      {(action.type === ActionType.TURN_LEFT || action.type === ActionType.TURN_RIGHT) && (
+        <div className="ml-8">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-gray-400">Degrees:</label>
+            <select value={action.turnDegrees || 90}
+              onChange={(e) => onUpdate({ ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
+              className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs">
+              <option value={45}>45°</option>
+              <option value={90}>90°</option>
+              <option value={135}>135°</option>
+            </select>
+          </div>
+        </div>
+      )}
+
+      {action.type === ActionType.SPELL && (
+        <div className="ml-8 space-y-2">
+          {spell ? (
+            <div className="flex items-center gap-2 bg-gray-800 p-2 rounded">
+              {spell.thumbnailIcon && <img src={spell.thumbnailIcon} alt={spell.name} className="w-8 h-8 object-contain" />}
+              <div className="flex-1">
+                <div className="text-sm font-semibold">{spell.name}</div>
+                <div className="text-xs text-gray-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
+              </div>
+              <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">Change</button>
+            </div>
+          ) : (
+            <button onClick={onSelectSpell} className="px-3 py-1 bg-green-600 rounded text-xs hover:bg-green-700">Select Spell</button>
+          )}
+
+          {spell && (
+            <>
+              <div>
+                <label className="text-xs text-gray-400">Execution:</label>
+                <select value={action.executionMode || 'sequential'}
+                  onChange={(e) => onUpdate({ ...action, executionMode: e.target.value as ExecutionMode })}
+                  className="w-full px-2 py-1 bg-gray-600 rounded text-xs mt-1">
+                  <option value="sequential">Sequential</option>
+                  <option value="parallel">Parallel</option>
+                  <option value="parallel_with_previous">Parallel with Previous</option>
+                </select>
+              </div>
+
+              {action.executionMode === 'parallel' && (
+                <div className="bg-gray-800 p-2 rounded space-y-2">
+                  <div className="text-xs font-semibold text-gray-300">Trigger:</div>
+                  <select value={action.trigger?.mode || 'interval'}
+                    onChange={(e) => {
+                      const newTrigger: TriggerConfig = {
+                        mode: e.target.value as any,
+                        ...(e.target.value === 'interval' ? { intervalMs: 600 } : { event: 'character_adjacent' })
+                      };
+                      onUpdate({ ...action, trigger: newTrigger });
+                    }}
+                    className="w-full px-2 py-1 bg-gray-600 rounded text-xs">
+                    <option value="interval">Interval</option>
+                    <option value="on_event">On Event</option>
+                  </select>
+                  {action.trigger?.mode === 'interval' && (
+                    <input type="number" min="100" max="5000" step="100" value={action.trigger.intervalMs || 600}
+                      onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, intervalMs: parseInt(e.target.value) || 600 } })}
+                      className="w-full px-2 py-1 bg-gray-600 rounded text-xs" placeholder="ms" />
+                  )}
+                  {action.trigger?.mode === 'on_event' && (
+                    <select value={action.trigger.event || 'character_adjacent'}
+                      onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, event: e.target.value as any } })}
+                      className="w-full px-2 py-1 bg-gray-600 rounded text-xs">
+                      <option value="character_adjacent">Character Adjacent</option>
+                      <option value="character_in_range">Character in Range</option>
+                      <option value="wall_ahead">Wall Ahead</option>
+                      <option value="health_below_50">Health Below 50%</option>
+                    </select>
                   )}
                 </div>
+              )}
 
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => handleEdit(enemy)}
-                    className="flex-1 px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
-                  >
-                    Edit
-                  </button>
-                  <button
-                    onClick={() => handleDelete(enemy.id)}
-                    className="px-3 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </div>
-
-                <p className="text-xs text-gray-500 mt-2">
-                  {new Date(enemy.createdAt).toLocaleDateString()}
-                </p>
+              <div className="bg-gray-800 p-2 rounded space-y-1">
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={action.autoTargetNearestCharacter || false}
+                    onChange={(e) => onUpdate({ ...action, autoTargetNearestCharacter: e.target.checked, autoTargetNearestEnemy: false })}
+                    className="w-3 h-3" />
+                  Auto-Target Character
+                </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input type="checkbox" checked={action.autoTargetNearestEnemy || false}
+                    onChange={(e) => onUpdate({ ...action, autoTargetNearestEnemy: e.target.checked, autoTargetNearestCharacter: false })}
+                    className="w-3 h-3" />
+                  Auto-Target Enemy
+                </label>
               </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Enemy Editor Modal */}
-      {renderEditor()}
+            </>
+          )}
+        </div>
+      )}
     </div>
   );
 };
