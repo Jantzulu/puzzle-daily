@@ -106,12 +106,23 @@ const TileEditorPlaceholder: React.FC = () => (
   <div className="p-8">
     <div className="max-w-6xl mx-auto">
       <div className="bg-gray-800 p-8 rounded text-center">
-        <h2 className="text-2xl font-bold mb-4">Tile Editor</h2>
-        <p className="text-gray-400">
-          Coming soon! For now, tiles use default appearances (empty/wall).
-          <br />
-          Custom tile sprites can be added in a future update.
+        <h2 className="text-2xl font-bold mb-4">Tile Type Editor</h2>
+        <p className="text-gray-400 mb-4">
+          Coming soon! Create custom tile types with unique behaviors.
         </p>
+        <div className="text-left max-w-md mx-auto text-gray-500 text-sm">
+          <p className="font-semibold text-gray-300 mb-2">Planned tile behaviors:</p>
+          <ul className="list-disc list-inside space-y-1">
+            <li>Damage tiles - deal damage when stepped on</li>
+            <li>Teleport tiles - transport to linked teleport</li>
+            <li>Direction tiles - force facing change</li>
+            <li>Ice tiles - continue sliding until hitting wall</li>
+            <li>Pressure plates - trigger events when activated</li>
+          </ul>
+          <p className="mt-4 text-gray-400">
+            Each tile type will have a default sprite that can be overridden in the <span className="text-blue-400">Skins</span> tab.
+          </p>
+        </div>
       </div>
     </div>
   </div>

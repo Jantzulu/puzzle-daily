@@ -2,6 +2,26 @@
 
 ## Recent Changes (January 2026)
 
+### ✨ Puzzle Skins System
+
+**Added complete visual theming system for puzzles:**
+
+- **Skin Editor** in Asset Manager with 18 border sprite slots
+- **Border sprites**: walls (front, top, side, bottom), corners (full and thin variants)
+- **Tile sprites**: floor, wall, and goal tile customization
+- **Smart borders**: Automatically adapts to irregular puzzle shapes with void tiles
+- **Thin corner variants**: Separate sprites for interior voids (24x24) vs perimeter (24x48)
+- **Skin selection** in Map Editor puzzle settings
+- **Play mode support**: Tile sprites now render during gameplay
+
+**Technical Details:**
+- `PuzzleSkin` interface with `borderSprites` and `tileSprites`
+- `skinId` reference on puzzles (replaces legacy `borderConfig`)
+- Image caching for performance
+- Fallback to default visuals when sprites not provided
+
+---
+
 ### ✨ Parallel With Previous Execution Mode
 
 **Added `parallel_with_previous` execution mode for backward-looking parallel actions:**
@@ -280,13 +300,16 @@ For parallel spells:
 
 ## Upcoming Features
 
-### 🎨 Visual Effects System (In Progress)
-- Sprite configuration for spells:
-  - Projectile sprites (per direction)
-  - Hit/damage effect sprites
-  - Cast effect sprites
-- Integration with existing sprite system
-- Visual editor for effect configuration
+### 🧱 Custom Tile Types (Next Up)
+- Tile type editor with behavior configuration
+- Behavior types: damage, teleport, direction change, ice/slip, pressure plates
+- Default sprites per tile type
+- Integration with Skins for visual overrides
+
+### 🎨 Enhanced Visual Effects (Planned)
+- Per-direction projectile sprites
+- Cast effect sprites
+- Visual effect preview in builder
 
 ### 🔊 Sound Effects System (Planned)
 - Sound effect triggers:
@@ -298,9 +321,10 @@ For parallel spells:
 - Audio library management
 - Volume controls
 
-### 🐛 Known Issues
-- Wall lookahead bug (from previous session - not yet addressed)
-- Event-based triggers for parallel actions not yet implemented
+### ✅ Recently Fixed
+- Wall lookahead bug (fixed)
+- Event-based triggers for parallel actions (implemented)
+- Spell visual effects (basic shapes/colors + PNG/GIF upload)
 
 ---
 

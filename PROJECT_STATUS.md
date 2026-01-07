@@ -54,8 +54,8 @@
 - [x] Character asset builder
 - [x] Enemy asset builder
 - [x] Spell asset builder
-- [x] Tile type builder
-- [x] Collectible type builder
+- [ ] Tile type builder (placeholder - planned for behavior-based tiles)
+- [ ] Collectible type builder (placeholder - planned)
 - [x] Sprite editor (shapes, colors, directional sprites, image upload)
 - [x] Puzzle editor
 - [x] Behavior action editor
@@ -66,19 +66,21 @@
 - [x] Thumbnail previews
 - [x] Spell picker modal
 - [x] Idle vs Moving sprite states
+- [x] Puzzle Skin editor (border sprites, tile sprites)
 
 #### Asset Management
 - [x] LocalStorage persistence
 - [x] Custom character storage
 - [x] Custom enemy storage
 - [x] Custom spell storage
-- [x] Custom tile storage
-- [x] Custom collectible storage
+- [x] Custom puzzle skin storage
+- [ ] Custom tile type storage (planned)
+- [ ] Custom collectible storage (planned)
 - [x] Asset hiding (for official assets)
 - [x] Import/Export (basic)
 
 #### UI/UX
-- [x] Asset manager with tabs (Characters, Enemies, Spells, Tiles, Collectibles)
+- [x] Asset manager with tabs (Characters, Enemies, Spells, Skins, Tiles, Collectibles)
 - [x] Grid-based asset browsing
 - [x] Search and filter
 - [x] Empty states with CTAs
@@ -90,15 +92,35 @@
 ### 🚧 In Progress
 
 #### Visual Effects System
-- [ ] Sprite configuration UI for spells
+- [x] Basic projectile/damage effect sprites (shape + color)
+- [x] PNG/GIF upload for spell effects
+- [ ] Enhanced sprite configuration UI for spells
   - [ ] Projectile sprite picker (per direction)
   - [ ] Damage effect sprite picker
   - [ ] Cast effect sprite picker
 - [ ] Visual effect preview in builder
-- [ ] Effect sprite animation system
-- [ ] Integration with existing sprite assets
+
+#### Puzzle Skins System (Recently Completed)
+- [x] Skin editor with border sprites (18 slots including thin variants)
+- [x] Tile sprites (empty, wall, goal)
+- [x] Skin selection in Map Editor
+- [x] Tile sprites render in both editor and play mode
+- [x] Smart border rendering for irregular puzzle shapes
 
 ### 📋 Planned Features
+
+#### Custom Tile Types (Behavior-Based)
+- [ ] Tile type editor with behavior configuration
+- [ ] Tile behaviors:
+  - [ ] Damage tiles (deal damage when stepped on)
+  - [ ] Teleport tiles (transport to linked teleport tile)
+  - [ ] Water/hazard tiles
+  - [ ] Direction-changing tiles (force facing change)
+  - [ ] Ice/slippery tiles (continue movement)
+  - [ ] Pressure plates / switches
+- [ ] Default sprite per tile type
+- [ ] Tile type sprites overridable via Skins
+- [ ] Tile types placeable in Map Editor
 
 #### Sound System
 - [ ] Sound effect library management
@@ -163,18 +185,11 @@
 ## 🐛 Known Issues
 
 ### High Priority
-- [ ] **Wall lookahead bug** - Characters don't properly detect walls ahead before moving
-  - Impact: Affects wall collision behavior configuration
-  - Status: Identified, not yet fixed
+- [x] ~~**Wall lookahead bug** - Characters don't properly detect walls ahead before moving~~ (Fixed)
 
 ### Medium Priority
-- [ ] Event-based triggers not implemented
-  - Impact: Parallel actions can only use interval triggers
-  - Workaround: Use interval-based triggers instead
-
-- [ ] No visual effects configured for spells
-  - Impact: All spells use default visuals
-  - Workaround: Waiting for visual effects system
+- [x] ~~Event-based triggers not implemented~~ (Fixed)
+- [x] ~~No visual effects configured for spells~~ (Fixed - basic shapes/colors and PNG/GIF upload available)
 
 ### Low Priority
 - [ ] Spell picker search doesn't filter by template type
@@ -189,44 +204,35 @@
 
 ## 🎯 Immediate Next Steps
 
-### Current Sprint: Visual Effects System
+### Current Sprint: Custom Tile Types
 
-**Goal:** Allow users to configure custom visuals for spell effects
+**Goal:** Create tile types with behaviors that affect gameplay
+
+**Tasks:**
+1. [ ] Design tile type data structure (behavior configs)
+2. [ ] Create tile type editor UI
+3. [ ] Implement tile behaviors in game engine
+4. [ ] Add tile type selection to Map Editor
+5. [ ] Integrate with Skins system for visual overrides
+6. [ ] Test with various tile configurations
+
+### Next Sprint: Enhanced Visual Effects
+
+**Goal:** Improve spell visual configuration with better UI
 
 **Tasks:**
 1. [ ] Design sprite picker UI component
-2. [ ] Add sprite selection to spell builder:
-   - [ ] Projectile sprite field (per direction)
-   - [ ] Damage effect sprite field
-   - [ ] Cast effect sprite field
-3. [ ] Integrate with existing sprite system
-4. [ ] Update projectile rendering to use configured sprites
-5. [ ] Update particle rendering to use configured sprites
-6. [ ] Add visual preview in spell builder
-7. [ ] Test with various sprite configurations
-
-**Estimated Completion:** 1-2 sessions
-
-### Next Sprint: Sound Effects System
-
-**Goal:** Add audio feedback for game events
-
-**Tasks:**
-1. [ ] Design sound library management UI
-2. [ ] Implement sound file upload/storage
-3. [ ] Create sound picker component
-4. [ ] Add sound triggers to spell system
-5. [ ] Implement audio playback system
-6. [ ] Add volume controls
-7. [ ] Test with various sound effects
-
-**Estimated Completion:** 2-3 sessions
+2. [ ] Add per-direction projectile sprites
+3. [ ] Add cast effect configuration
+4. [ ] Add visual preview in spell builder
 
 ### Future Sprints:
-1. **Advanced Spell Features** - Status effects, cooldowns, combos
-2. **AI Improvements** - Pathfinding, line of sight
-3. **Level Progression** - Campaign mode, unlocks
-4. **Polish & Optimization** - Performance, UX improvements
+1. **Sound Effects System** - Audio feedback for game events
+2. **Custom Collectibles** - Collectible types with behaviors
+3. **Advanced Spell Features** - Status effects, cooldowns, combos
+4. **AI Improvements** - Pathfinding, line of sight
+5. **Level Progression** - Campaign mode, unlocks
+6. **Polish & Optimization** - Performance, UX improvements
 
 ---
 
@@ -379,4 +385,4 @@ src/
 
 ---
 
-**Status Summary:** The core spell system is complete and working well. Next focus is adding visual effects to make spells look unique and exciting, followed by sound effects for audio feedback.
+**Status Summary:** The core spell system and puzzle skins are complete. Next focus is adding behavior-based tile types (damage tiles, teleporters, etc.) to expand gameplay possibilities, followed by enhanced visual effects and sound.

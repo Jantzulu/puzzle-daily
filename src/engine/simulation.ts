@@ -66,8 +66,7 @@ export function executeParallelActions(gameState: GameState): void {
             tracker.lastTriggerTime = now;
           }
         } else if (action.trigger?.mode === 'on_event') {
-          // TODO: Implement event-based triggers
-          // For now, skip event-based parallel actions
+          // Event-based triggers are evaluated via evaluateTriggers()
           shouldExecute = false;
         }
 
@@ -78,8 +77,6 @@ export function executeParallelActions(gameState: GameState): void {
       }
     }
   }
-
-  // TODO: Process parallel actions for enemies if needed
 }
 
 /**
