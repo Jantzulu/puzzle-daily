@@ -1292,7 +1292,7 @@ function executeMeleeAttack(
     console.log('[executeMeleeAttack] Range 0 attack from', character.characterId, 'at', character.x, character.y, 'damage:', damage, 'isEnemyCaster:', isEnemyCaster);
     // Show attack sprite on caster's tile if not skipped
     if (attackSprite && !skipCasterTile) {
-      spawnParticle(character.x, character.y, attackSprite, attackData.effectDuration || 300, gameState);
+      spawnParticle(character.x, character.y, attackSprite, attackData.effectDuration || 300, gameState, character.facing);
     }
 
     if (isEnemyCaster) {
@@ -1311,7 +1311,7 @@ function executeMeleeAttack(
         }
 
         if (attackData.hitEffectSprite) {
-          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       } else {
         console.log('[executeMeleeAttack] No character found at caster tile');
@@ -1332,7 +1332,7 @@ function executeMeleeAttack(
         }
 
         if (attackData.hitEffectSprite) {
-          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       } else {
         console.log('[executeMeleeAttack] No enemy found at caster tile');
@@ -1353,7 +1353,7 @@ function executeMeleeAttack(
 
     // Show attack sprite on this tile (simultaneously on all tiles)
     if (attackSprite) {
-      spawnParticle(targetX, targetY, attackSprite, attackData.effectDuration || 300, gameState);
+      spawnParticle(targetX, targetY, attackSprite, attackData.effectDuration || 300, gameState, character.facing);
     }
 
     if (isEnemyCaster) {
@@ -1372,7 +1372,7 @@ function executeMeleeAttack(
         }
 
         if (attackData.hitEffectSprite) {
-          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     } else {
@@ -1389,7 +1389,7 @@ function executeMeleeAttack(
         }
 
         if (attackData.hitEffectSprite) {
-          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     }
@@ -1560,13 +1560,15 @@ function executeHeal(
 
 /**
  * Spawn a particle effect
+ * @param direction Optional direction for directional sprites (melee attacks)
  */
 function spawnParticle(
   x: number,
   y: number,
   sprite: any,
   duration: number,
-  gameState: GameState
+  gameState: GameState,
+  direction?: Direction
 ): void {
   if (!gameState.activeParticles) {
     gameState.activeParticles = [];
@@ -1580,6 +1582,7 @@ function spawnParticle(
     startTime: Date.now(),
     duration,
     alpha: 1.0,
+    rotation: direction, // Store direction for rotation calculation in rendering
   };
 
   gameState.activeParticles.push(particle);

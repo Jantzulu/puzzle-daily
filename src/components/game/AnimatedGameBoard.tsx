@@ -61,6 +61,207 @@ const COLORS = {
 };
 
 // ==========================================
+// SPELL SPRITE SHEET RENDERING
+// ==========================================
+
+interface SpriteSheetConfig {
+  imageData: string;
+  frameCount: number;
+  frameWidth?: number;
+  frameHeight?: number;
+  frameRate: number;
+  loop?: boolean;
+}
+
+// Cache for sprite sheet animation state
+const spellSpriteSheetStates = new Map<string, { currentFrame: number; lastFrameTime: number }>();
+
+/**
+ * Draw a spell sprite sheet with optional rotation and mirroring
+ * Used for projectiles and particle effects that need directional rotation
+ */
+function drawSpellSpriteSheet(
+  ctx: CanvasRenderingContext2D,
+  spriteSheet: SpriteSheetConfig,
+  px: number,
+  py: number,
+  size: number,
+  imageCache: Map<string, HTMLImageElement>,
+  now: number,
+  rotationConfig?: { rotation: number; mirror: boolean }
+): boolean {
+  // Get or create cached image
+  let img = imageCache.get(spriteSheet.imageData);
+  if (!img) {
+    img = new Image();
+    img.src = spriteSheet.imageData;
+    imageCache.set(spriteSheet.imageData, img);
+  }
+
+  // Wait for image to load
+  if (!img.complete || img.naturalWidth === 0) return false;
+
+  // Get or initialize animation state
+  const stateKey = spriteSheet.imageData;
+  let state = spellSpriteSheetStates.get(stateKey);
+  if (!state) {
+    state = { currentFrame: 0, lastFrameTime: now };
+    spellSpriteSheetStates.set(stateKey, state);
+  }
+
+  // Calculate frame dimensions
+  const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
+  const frameHeight = spriteSheet.frameHeight || img.naturalHeight;
+
+  // Update animation frame based on frame rate
+  const frameDuration = 1000 / spriteSheet.frameRate;
+  if (now - state.lastFrameTime >= frameDuration) {
+    state.currentFrame++;
+    if (state.currentFrame >= spriteSheet.frameCount) {
+      state.currentFrame = spriteSheet.loop !== false ? 0 : spriteSheet.frameCount - 1;
+    }
+    state.lastFrameTime = now;
+  }
+
+  // Calculate display dimensions preserving aspect ratio
+  const frameAspectRatio = frameWidth / frameHeight;
+  let finalWidth = size;
+  let finalHeight = size;
+  if (frameAspectRatio > 1) {
+    finalHeight = size / frameAspectRatio;
+  } else {
+    finalWidth = size * frameAspectRatio;
+  }
+
+  // Draw the current frame
+  const sourceX = state.currentFrame * frameWidth;
+  const sourceY = 0;
+
+  try {
+    ctx.save();
+
+    if (rotationConfig) {
+      // Move to center point
+      ctx.translate(px, py);
+      // Apply rotation (convert degrees to radians)
+      ctx.rotate((rotationConfig.rotation * Math.PI) / 180);
+      // Apply mirroring
+      if (rotationConfig.mirror) {
+        ctx.scale(-1, 1);
+      }
+      // Draw centered at origin
+      ctx.drawImage(
+        img,
+        sourceX, sourceY, frameWidth, frameHeight,
+        -finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight
+      );
+    } else {
+      // No rotation - draw normally centered on position
+      ctx.drawImage(
+        img,
+        sourceX, sourceY, frameWidth, frameHeight,
+        px - finalWidth / 2, py - finalHeight / 2, finalWidth, finalHeight
+      );
+    }
+
+    ctx.restore();
+    return true;
+  } catch (e) {
+    ctx.restore();
+    return false;
+  }
+}
+
+/**
+ * Draw a spell sprite sheet based on start time (for one-shot animations)
+ * Used for particle effects that should play once and hold on final frame
+ */
+function drawSpellSpriteSheetFromStartTime(
+  ctx: CanvasRenderingContext2D,
+  spriteSheet: SpriteSheetConfig,
+  px: number,
+  py: number,
+  size: number,
+  imageCache: Map<string, HTMLImageElement>,
+  startTime: number,
+  now: number,
+  rotationConfig?: { rotation: number; mirror: boolean }
+): boolean {
+  // Get or create cached image
+  let img = imageCache.get(spriteSheet.imageData);
+  if (!img) {
+    img = new Image();
+    img.src = spriteSheet.imageData;
+    imageCache.set(spriteSheet.imageData, img);
+  }
+
+  // Wait for image to load
+  if (!img.complete || img.naturalWidth === 0) return false;
+
+  // Calculate frame dimensions
+  const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
+  const frameHeight = spriteSheet.frameHeight || img.naturalHeight;
+
+  // Calculate current frame based on elapsed time since start
+  const elapsed = now - startTime;
+  const frameDuration = 1000 / spriteSheet.frameRate;
+  let currentFrame = Math.floor(elapsed / frameDuration);
+
+  // For non-looping animations, clamp to final frame
+  if (spriteSheet.loop === false && currentFrame >= spriteSheet.frameCount) {
+    currentFrame = spriteSheet.frameCount - 1;
+  } else if (spriteSheet.loop !== false) {
+    currentFrame = currentFrame % spriteSheet.frameCount;
+  }
+
+  // Ensure frame is within bounds
+  currentFrame = Math.max(0, Math.min(currentFrame, spriteSheet.frameCount - 1));
+
+  // Calculate display dimensions preserving aspect ratio
+  const frameAspectRatio = frameWidth / frameHeight;
+  let finalWidth = size;
+  let finalHeight = size;
+  if (frameAspectRatio > 1) {
+    finalHeight = size / frameAspectRatio;
+  } else {
+    finalWidth = size * frameAspectRatio;
+  }
+
+  // Draw the current frame
+  const sourceX = currentFrame * frameWidth;
+  const sourceY = 0;
+
+  try {
+    ctx.save();
+
+    if (rotationConfig) {
+      ctx.translate(px, py);
+      ctx.rotate((rotationConfig.rotation * Math.PI) / 180);
+      if (rotationConfig.mirror) {
+        ctx.scale(-1, 1);
+      }
+      ctx.drawImage(
+        img,
+        sourceX, sourceY, frameWidth, frameHeight,
+        -finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight
+      );
+    } else {
+      ctx.drawImage(
+        img,
+        sourceX, sourceY, frameWidth, frameHeight,
+        px - finalWidth / 2, py - finalHeight / 2, finalWidth, finalHeight
+      );
+    }
+
+    ctx.restore();
+    return true;
+  } catch (e) {
+    ctx.restore();
+    return false;
+  }
+}
+
+// ==========================================
 // SMART BORDER TYPES AND DETECTION
 // ==========================================
 
@@ -443,7 +644,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         console.log('[AnimatedGameBoard] Drawing', gameState.activeProjectiles.length, 'projectiles');
         gameState.activeProjectiles.forEach(projectile => {
           console.log('[AnimatedGameBoard] Projectile at', projectile.x, projectile.y, 'active:', projectile.active);
-          drawProjectile(ctx, projectile, imageCache.current);
+          drawProjectile(ctx, projectile, imageCache.current, now);
         });
       }
 
@@ -1820,8 +2021,9 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
 
 /**
  * Draw a projectile - uses fractional coordinates for smooth movement
+ * Supports: basic shapes, static images/GIFs, and animated sprite sheets
  */
-function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, imageCache: Map<string, HTMLImageElement>) {
+function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, imageCache: Map<string, HTMLImageElement>, now: number) {
   if (!projectile.active) return;
 
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
@@ -1831,13 +2033,31 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   // Check if projectile has custom sprite
   if (projectile.attackData.projectileSprite?.spriteData) {
     const spriteData = projectile.attackData.projectileSprite.spriteData;
-    const shape = spriteData.shape || 'circle';
-    const color = spriteData.primaryColor || '#ff6600';
-    const imageData = spriteData.idleImageData;
 
     // Calculate rotation and mirroring based on direction
     // Base image is East (→), apply transforms for other directions
     const rotationConfig = getRotationForDirection(projectile.direction);
+
+    // Check for sprite sheet first (highest priority)
+    if (spriteData.spriteSheet) {
+      const spriteSize = 24; // Size for projectile sprite sheets
+      drawSpellSpriteSheet(
+        ctx,
+        spriteData.spriteSheet,
+        px,
+        py,
+        spriteSize,
+        imageCache,
+        now,
+        rotationConfig
+      );
+      return;
+    }
+
+    // Fall back to static image or shape
+    const shape = spriteData.shape || 'circle';
+    const color = spriteData.primaryColor || '#ff6600';
+    const imageData = spriteData.idleImageData;
 
     drawShape(ctx, px, py, shape, color, 8, imageData, imageCache, rotationConfig);
   } else {
@@ -1897,6 +2117,8 @@ function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: nu
 
 /**
  * Draw a particle effect with fade-out
+ * Supports: basic shapes, static images/GIFs, and animated sprite sheets
+ * For melee attacks and directional effects, applies rotation based on particle.rotation
  */
 function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, now: number, imageCache: Map<string, HTMLImageElement>) {
   const elapsed = now - particle.startTime;
@@ -1915,16 +2137,44 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
   // Check if particle has custom sprite
   if (particle.sprite?.spriteData) {
     const spriteData = particle.sprite.spriteData;
+
+    // Get rotation config if particle has a direction (for melee attack sprites)
+    // The rotation field stores the Direction enum value
+    let rotationConfig: { rotation: number; mirror: boolean } | undefined;
+    if (particle.rotation !== undefined) {
+      rotationConfig = getRotationForDirection(particle.rotation as Direction);
+    }
+
+    // Check for sprite sheet first (highest priority)
+    if (spriteData.spriteSheet) {
+      const spriteSize = 32; // Size for particle sprite sheets
+      // Use start time-based rendering for one-shot animations (common for hit effects)
+      drawSpellSpriteSheetFromStartTime(
+        ctx,
+        spriteData.spriteSheet,
+        px,
+        py,
+        spriteSize,
+        imageCache,
+        particle.startTime,
+        now,
+        rotationConfig
+      );
+      ctx.restore();
+      return;
+    }
+
+    // Fall back to static image or shape
     const shape = spriteData.shape || 'circle';
     const color = spriteData.primaryColor || '#ffff00';
     const imageData = spriteData.idleImageData;
 
-    // Draw expanding effect
-    const radius = 4 + progress * 20;
-    drawShape(ctx, px, py, shape, color, radius, imageData, imageCache);
+    // Draw expanding effect for shapes, static size for images
+    const radius = imageData ? 12 : (4 + progress * 20);
+    drawShape(ctx, px, py, shape, color, radius, imageData, imageCache, rotationConfig);
 
     // Inner flash (only for non-image sprites)
-    if (!imageData && progress < 0.3) {
+    if (!imageData && !spriteData.spriteSheet && progress < 0.3) {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(px, py, 8 * (1 - progress / 0.3), 0, Math.PI * 2);

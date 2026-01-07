@@ -1,5 +1,6 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection } from '../../types/game';
+import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset } from '../../utils/assetStorage';
 
 interface SpellAssetBuilderProps {
@@ -18,6 +19,477 @@ const ALL_DIRECTIONS: { value: Direction; label: string; arrow: string }[] = [
   { value: 'west' as Direction, label: 'West', arrow: '←' },
   { value: 'northwest' as Direction, label: 'Northwest', arrow: '↖' },
 ];
+
+// Sprite mode type for spell sprites
+type SpellSpriteMode = 'shape' | 'image' | 'spritesheet';
+
+// Reusable component for spell sprite configuration (projectile, melee attack, hit effect)
+interface SpellSpriteEditorProps {
+  label: string;
+  spriteRef: SpriteReference | undefined;
+  onChange: (sprite: SpriteReference) => void;
+  accentColor: string; // 'blue', 'red', 'green', etc.
+  showDirectionalPreview?: boolean; // Show 8-direction rotation preview
+  helpText?: string;
+}
+
+const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
+  label,
+  spriteRef,
+  onChange,
+  accentColor,
+  showDirectionalPreview = false,
+  helpText,
+}) => {
+  const spriteData = spriteRef?.spriteData || {};
+
+  // Determine current mode based on sprite data
+  const getCurrentMode = (): SpellSpriteMode => {
+    if (spriteData.spriteSheet) return 'spritesheet';
+    if (spriteData.idleImageData || spriteData.type === 'image') return 'image';
+    return 'shape';
+  };
+
+  const [mode, setMode] = useState<SpellSpriteMode>(getCurrentMode());
+
+  // Update mode when spriteRef changes
+  useEffect(() => {
+    setMode(getCurrentMode());
+  }, [spriteRef]);
+
+  const handleModeChange = (newMode: SpellSpriteMode) => {
+    setMode(newMode);
+
+    // Update sprite data based on mode
+    if (newMode === 'shape') {
+      onChange({
+        type: 'inline',
+        spriteData: {
+          ...spriteData,
+          type: 'simple',
+          idleImageData: undefined,
+          spriteSheet: undefined,
+        }
+      });
+    } else if (newMode === 'image') {
+      onChange({
+        type: 'inline',
+        spriteData: {
+          ...spriteData,
+          type: 'image',
+          spriteSheet: undefined,
+        }
+      });
+    } else if (newMode === 'spritesheet') {
+      onChange({
+        type: 'inline',
+        spriteData: {
+          ...spriteData,
+          type: 'spritesheet',
+          idleImageData: undefined,
+        }
+      });
+    }
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+      onChange({
+        type: 'inline',
+        spriteData: {
+          ...spriteData,
+          type: 'image',
+          idleImageData: imageData,
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+      const spriteSheetConfig: SpriteSheetConfig = {
+        imageData,
+        frameCount: 4,
+        frameRate: 10,
+        loop: true,
+      };
+      onChange({
+        type: 'inline',
+        spriteData: {
+          ...spriteData,
+          type: 'spritesheet',
+          spriteSheet: spriteSheetConfig,
+        }
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSpriteSheetConfigChange = (field: keyof SpriteSheetConfig, value: number | boolean) => {
+    if (!spriteData.spriteSheet) return;
+    onChange({
+      type: 'inline',
+      spriteData: {
+        ...spriteData,
+        spriteSheet: {
+          ...spriteData.spriteSheet,
+          [field]: value,
+        }
+      }
+    });
+  };
+
+  const bgColorClass = `bg-${accentColor}-600`;
+  const hoverColorClass = `hover:bg-${accentColor}-700`;
+
+  return (
+    <div className="bg-gray-900 p-3 rounded">
+      <label className="block text-sm font-medium mb-2">{label}</label>
+      {helpText && <p className="text-xs text-gray-500 mb-2">{helpText}</p>}
+
+      {/* Mode Toggle: Shape vs Image vs Sprite Sheet */}
+      <div className="flex gap-2 mb-3">
+        <button
+          onClick={() => handleModeChange('shape')}
+          className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
+            mode === 'shape'
+              ? `bg-${accentColor}-600 text-white`
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Basic Shape
+        </button>
+        <button
+          onClick={() => handleModeChange('image')}
+          className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
+            mode === 'image'
+              ? `bg-${accentColor}-600 text-white`
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Image/GIF
+        </button>
+        <button
+          onClick={() => handleModeChange('spritesheet')}
+          className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
+            mode === 'spritesheet'
+              ? `bg-${accentColor}-600 text-white`
+              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+          }`}
+        >
+          Sprite Sheet
+        </button>
+      </div>
+
+      {/* Shape Mode */}
+      {mode === 'shape' && (
+        <>
+          <div className="mb-2">
+            <label className="block text-xs text-gray-400 mb-1">Shape</label>
+            <div className="grid grid-cols-5 gap-2">
+              {['circle', 'square', 'triangle', 'star', 'diamond'].map((shape) => (
+                <button
+                  key={shape}
+                  onClick={() => onChange({
+                    type: 'inline',
+                    spriteData: { ...spriteData, shape, type: 'simple' }
+                  })}
+                  className={`px-2 py-1 rounded text-xs transition-colors ${
+                    spriteData.shape === shape
+                      ? `bg-${accentColor}-600 text-white`
+                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  }`}
+                >
+                  {shape}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Color</label>
+            <input
+              type="color"
+              value={spriteData.primaryColor || '#ff6600'}
+              onChange={(e) => onChange({
+                type: 'inline',
+                spriteData: { ...spriteData, primaryColor: e.target.value, type: 'simple' }
+              })}
+              className="w-full h-10 rounded cursor-pointer"
+            />
+          </div>
+        </>
+      )}
+
+      {/* Image Mode */}
+      {mode === 'image' && (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Upload PNG/GIF</label>
+            {showDirectionalPreview && (
+              <p className="text-xs text-gray-500 mb-2">
+                Upload image pointing <strong>East (→)</strong>. It will auto-rotate for all directions.
+              </p>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/gif"
+              onChange={handleImageUpload}
+              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-${accentColor}-600 file:text-white hover:file:bg-${accentColor}-700`}
+            />
+            {spriteData.idleImageData && (
+              <div className="mt-2 p-2 bg-gray-800 rounded flex items-center justify-center">
+                <img
+                  src={spriteData.idleImageData}
+                  alt="Preview"
+                  className="max-h-16 pixelated"
+                />
+              </div>
+            )}
+          </div>
+
+          {/* Directional Preview */}
+          {showDirectionalPreview && spriteData.idleImageData && (
+            <div>
+              <label className="block text-xs text-gray-400 mb-2">Directional Preview</label>
+              <div className="grid grid-cols-4 gap-2 bg-gray-800 p-3 rounded">
+                {[
+                  { label: 'E', rotation: 0, mirror: false },
+                  { label: 'NE', rotation: 45, mirror: false },
+                  { label: 'N', rotation: 90, mirror: false },
+                  { label: 'NW', rotation: 45, mirror: true },
+                  { label: 'W', rotation: 0, mirror: true },
+                  { label: 'SW', rotation: -45, mirror: true },
+                  { label: 'S', rotation: -90, mirror: false },
+                  { label: 'SE', rotation: -45, mirror: false },
+                ].map(({ label, rotation, mirror }) => (
+                  <div key={label} className="flex flex-col items-center gap-1 p-2 bg-gray-900 rounded">
+                    <span className="text-xs text-gray-400 font-bold">{label}</span>
+                    <div className="w-12 h-12 flex items-center justify-center bg-gray-700 rounded">
+                      <img
+                        src={spriteData.idleImageData}
+                        alt={`${label} direction`}
+                        className="max-w-10 max-h-10 pixelated"
+                        style={{
+                          transform: `rotate(${rotation}deg) scaleX(${mirror ? -1 : 1})`,
+                        }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Sprite Sheet Mode */}
+      {mode === 'spritesheet' && (
+        <div className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">Upload Sprite Sheet (horizontal strip)</label>
+            {showDirectionalPreview && (
+              <p className="text-xs text-gray-500 mb-2">
+                Upload sprite sheet with frames pointing <strong>East (→)</strong>. It will auto-rotate for all directions.
+              </p>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpg,image/jpeg"
+              onChange={handleSpriteSheetUpload}
+              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-${accentColor}-600 file:text-white hover:file:bg-${accentColor}-700`}
+            />
+          </div>
+
+          {spriteData.spriteSheet && (
+            <>
+              {/* Sprite Sheet Preview */}
+              <div className="p-2 bg-gray-800 rounded">
+                <img
+                  src={spriteData.spriteSheet.imageData}
+                  alt="Sprite sheet preview"
+                  className="max-h-16 pixelated mx-auto"
+                />
+              </div>
+
+              {/* Sprite Sheet Configuration */}
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="32"
+                    value={spriteData.spriteSheet.frameCount || 4}
+                    onChange={(e) => handleSpriteSheetConfigChange('frameCount', parseInt(e.target.value) || 1)}
+                    className="w-full px-2 py-1 bg-gray-700 rounded text-sm text-white"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="60"
+                    value={spriteData.spriteSheet.frameRate || 10}
+                    onChange={(e) => handleSpriteSheetConfigChange('frameRate', parseInt(e.target.value) || 10)}
+                    className="w-full px-2 py-1 bg-gray-700 rounded text-sm text-white"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={spriteData.spriteSheet.loop !== false}
+                    onChange={(e) => handleSpriteSheetConfigChange('loop', e.target.checked)}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-xs text-gray-400">Loop Animation</span>
+                </label>
+              </div>
+
+              {/* Animated Preview */}
+              <div>
+                <label className="block text-xs text-gray-400 mb-2">Animation Preview</label>
+                <SpriteSheetPreview spriteSheet={spriteData.spriteSheet} />
+              </div>
+
+              {/* Directional Preview for Sprite Sheets */}
+              {showDirectionalPreview && (
+                <div>
+                  <label className="block text-xs text-gray-400 mb-2">Directional Preview (first frame)</label>
+                  <div className="grid grid-cols-4 gap-2 bg-gray-800 p-3 rounded">
+                    {[
+                      { label: 'E', rotation: 0, mirror: false },
+                      { label: 'NE', rotation: 45, mirror: false },
+                      { label: 'N', rotation: 90, mirror: false },
+                      { label: 'NW', rotation: 45, mirror: true },
+                      { label: 'W', rotation: 0, mirror: true },
+                      { label: 'SW', rotation: -45, mirror: true },
+                      { label: 'S', rotation: -90, mirror: false },
+                      { label: 'SE', rotation: -45, mirror: false },
+                    ].map(({ label, rotation, mirror }) => (
+                      <div key={label} className="flex flex-col items-center gap-1 p-2 bg-gray-900 rounded">
+                        <span className="text-xs text-gray-400 font-bold">{label}</span>
+                        <SpriteSheetPreview
+                          spriteSheet={spriteData.spriteSheet}
+                          rotation={rotation}
+                          mirror={mirror}
+                          size={40}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Animated sprite sheet preview component
+interface SpriteSheetPreviewProps {
+  spriteSheet: SpriteSheetConfig;
+  rotation?: number;
+  mirror?: boolean;
+  size?: number;
+}
+
+const SpriteSheetPreview: React.FC<SpriteSheetPreviewProps> = ({
+  spriteSheet,
+  rotation = 0,
+  mirror = false,
+  size = 48
+}) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [currentFrame, setCurrentFrame] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentFrame(prev => {
+        const next = prev + 1;
+        if (next >= spriteSheet.frameCount) {
+          return spriteSheet.loop !== false ? 0 : spriteSheet.frameCount - 1;
+        }
+        return next;
+      });
+    }, 1000 / spriteSheet.frameRate);
+
+    return () => clearInterval(interval);
+  }, [spriteSheet.frameCount, spriteSheet.frameRate, spriteSheet.loop]);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
+      const frameHeight = spriteSheet.frameHeight || img.naturalHeight;
+
+      // Save context
+      ctx.save();
+
+      // Move to center for rotation
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate((rotation * Math.PI) / 180);
+      if (mirror) {
+        ctx.scale(-1, 1);
+      }
+
+      // Calculate display size preserving aspect ratio
+      const aspectRatio = frameWidth / frameHeight;
+      let drawWidth = size;
+      let drawHeight = size;
+      if (aspectRatio > 1) {
+        drawHeight = size / aspectRatio;
+      } else {
+        drawWidth = size * aspectRatio;
+      }
+
+      // Draw current frame
+      ctx.drawImage(
+        img,
+        currentFrame * frameWidth, 0, frameWidth, frameHeight,
+        -drawWidth / 2, -drawHeight / 2, drawWidth, drawHeight
+      );
+
+      ctx.restore();
+    };
+    img.src = spriteSheet.imageData;
+  }, [spriteSheet, currentFrame, rotation, mirror, size]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={size}
+      height={size}
+      className="bg-gray-700 rounded"
+    />
+  );
+};
 
 export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onSave, onCancel }) => {
   const [editedSpell, setEditedSpell] = useState<SpellAsset>(spell || {
@@ -658,404 +1130,46 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
             {/* Projectile Visual (for linear spells) */}
             {templateNeedsProjectileSettings && (
-              <div className="bg-gray-900 p-3 rounded">
-                <label className="block text-sm font-medium mb-2">Projectile Appearance</label>
+              <SpellSpriteEditor
+                label="Projectile Appearance"
+                spriteRef={editedSpell.sprites?.projectile}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, projectile: sprite }
+                })}
+                accentColor="blue"
+                showDirectionalPreview={true}
+                helpText="Configure how the projectile looks as it travels"
+              />
+            )}
 
-                {/* Mode Toggle: Shape vs Image */}
-                <div className="flex gap-2 mb-3">
-                  <button
-                    onClick={() => {
-                      const sprites = editedSpell.sprites || {};
-                      const projectile = sprites.projectile || { type: 'inline' as const, spriteData: {} };
-                      setEditedSpell({
-                        ...editedSpell,
-                        sprites: {
-                          ...sprites,
-                          projectile: {
-                            ...projectile,
-                            spriteData: {
-                              ...(projectile.spriteData || {}),
-                              type: 'simple',
-                              idleImageData: undefined,
-                            }
-                          }
-                        }
-                      });
-                    }}
-                    className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
-                      !editedSpell.sprites?.projectile?.spriteData?.idleImageData
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
-                  >
-                    Basic Shape
-                  </button>
-                  <button
-                    onClick={() => {
-                      const sprites = editedSpell.sprites || {};
-                      const projectile = sprites.projectile || { type: 'inline' as const, spriteData: {} };
-                      setEditedSpell({
-                        ...editedSpell,
-                        sprites: {
-                          ...sprites,
-                          projectile: {
-                            ...projectile,
-                            spriteData: {
-                              ...(projectile.spriteData || {}),
-                              type: 'image',
-                              // Initialize with empty string to trigger UI display
-                              idleImageData: projectile.spriteData?.idleImageData || '',
-                            }
-                          }
-                        }
-                      });
-                    }}
-                    className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
-                      editedSpell.sprites?.projectile?.spriteData?.type === 'image'
-                        ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                    }`}
-                  >
-                    Custom Image
-                  </button>
-                </div>
-
-                {/* Shape-based (default) */}
-                {editedSpell.sprites?.projectile?.spriteData?.type !== 'image' && (
-                  <>
-                    {/* Shape */}
-                    <div className="mb-2">
-                      <label className="block text-xs text-gray-400 mb-1">Shape</label>
-                      <div className="grid grid-cols-5 gap-2">
-                        {['circle', 'square', 'triangle', 'star', 'diamond'].map((shape) => (
-                          <button
-                            key={shape}
-                            onClick={() => {
-                              const sprites = editedSpell.sprites || {};
-                              const projectile = sprites.projectile || { type: 'inline' as const, spriteData: {} };
-                              setEditedSpell({
-                                ...editedSpell,
-                                sprites: {
-                                  ...sprites,
-                                  projectile: {
-                                    ...projectile,
-                                    spriteData: {
-                                      ...(projectile.spriteData || {}),
-                                      shape,
-                                      type: 'simple',
-                                    }
-                                  }
-                                }
-                              });
-                            }}
-                            className={`px-2 py-1 rounded text-xs transition-colors ${
-                              editedSpell.sprites?.projectile?.spriteData?.shape === shape
-                                ? 'bg-blue-600 text-white'
-                                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                            }`}
-                          >
-                            {shape}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Color */}
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Color</label>
-                      <input
-                        type="color"
-                        value={editedSpell.sprites?.projectile?.spriteData?.primaryColor || '#ff6600'}
-                        onChange={(e) => {
-                          const sprites = editedSpell.sprites || {};
-                          const projectile = sprites.projectile || { type: 'inline' as const, spriteData: {} };
-                          setEditedSpell({
-                            ...editedSpell,
-                            sprites: {
-                              ...sprites,
-                              projectile: {
-                                ...projectile,
-                                spriteData: {
-                                  ...(projectile.spriteData || {}),
-                                  primaryColor: e.target.value,
-                                  type: 'simple',
-                                }
-                              }
-                            }
-                          });
-                        }}
-                        className="w-full h-10 rounded cursor-pointer"
-                      />
-                    </div>
-                  </>
-                )}
-
-                {/* Image Upload */}
-                {editedSpell.sprites?.projectile?.spriteData?.type === 'image' && (
-                  <div className="space-y-3">
-                    <div>
-                      <label className="block text-xs text-gray-400 mb-1">Upload PNG/GIF (Base Image)</label>
-                      <p className="text-xs text-gray-500 mb-2">
-                        Upload your projectile image pointing <strong>East (left-to-right →)</strong>.
-                        The system will automatically rotate/mirror it for all 8 directions.
-                      </p>
-                      <input
-                        type="file"
-                        accept="image/png,image/gif"
-                        onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          const reader = new FileReader();
-                          reader.onload = (event) => {
-                            const imageData = event.target?.result as string;
-                            const sprites = editedSpell.sprites || {};
-                            const projectile = sprites.projectile || { type: 'inline' as const, spriteData: {} };
-                            setEditedSpell({
-                              ...editedSpell,
-                              sprites: {
-                                ...sprites,
-                                projectile: {
-                                  ...projectile,
-                                  spriteData: {
-                                    ...(projectile.spriteData || {}),
-                                    type: 'image',
-                                    idleImageData: imageData,
-                                  }
-                                }
-                              }
-                            });
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-                    />
-                    {editedSpell.sprites?.projectile?.spriteData?.idleImageData && (
-                      <div className="mt-2 p-2 bg-gray-800 rounded flex items-center justify-center">
-                        <img
-                          src={editedSpell.sprites.projectile.spriteData.idleImageData}
-                          alt="Projectile preview"
-                          className="max-h-16 pixelated"
-                        />
-                      </div>
-                    )}
-                    </div>
-
-                    {/* Rotation Preview */}
-                    {editedSpell.sprites?.projectile?.spriteData?.idleImageData && (
-                      <div>
-                        <label className="block text-xs text-gray-400 mb-2">Directional Preview</label>
-                        <div className="grid grid-cols-4 gap-2 bg-gray-800 p-3 rounded">
-                          {[
-                            { label: 'E', rotation: 0, mirror: false },
-                            { label: 'NE', rotation: 45, mirror: false },
-                            { label: 'N', rotation: 90, mirror: false },
-                            { label: 'NW', rotation: 45, mirror: true },
-                            { label: 'W', rotation: 0, mirror: true },
-                            { label: 'SW', rotation: -45, mirror: true },
-                            { label: 'S', rotation: -90, mirror: false },
-                            { label: 'SE', rotation: -45, mirror: false },
-                          ].map(({ label, rotation, mirror }) => (
-                            <div key={label} className="flex flex-col items-center gap-1 p-2 bg-gray-900 rounded">
-                              <span className="text-xs text-gray-400 font-bold">{label}</span>
-                              <div className="w-12 h-12 flex items-center justify-center bg-gray-700 rounded">
-                                <img
-                                  src={editedSpell.sprites.projectile?.spriteData?.idleImageData || ''}
-                                  alt={`${label} direction`}
-                                  className="max-w-10 max-h-10 pixelated"
-                                  style={{
-                                    transform: `rotate(${rotation}deg) scaleX(${mirror ? -1 : 1})`,
-                                  }}
-                                />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
+            {/* Melee Attack Sprite (for melee spells) */}
+            {templateIsMelee && (
+              <SpellSpriteEditor
+                label="Melee Attack Sprite"
+                spriteRef={editedSpell.sprites?.meleeAttack}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, meleeAttack: sprite }
+                })}
+                accentColor="purple"
+                showDirectionalPreview={true}
+                helpText="Sprite shown on attack tiles during melee attack"
+              />
             )}
 
             {/* Damage Effect Visual */}
-            <div className="bg-gray-900 p-3 rounded">
-              <label className="block text-sm font-medium mb-2">Damage Effect (on hit)</label>
-
-              {/* Mode Toggle: Shape vs Image */}
-              <div className="flex gap-2 mb-3">
-                <button
-                  onClick={() => {
-                    const sprites = editedSpell.sprites || {};
-                    const damageEffect = sprites.damageEffect || { type: 'inline' as const, spriteData: {} };
-                    setEditedSpell({
-                      ...editedSpell,
-                      sprites: {
-                        ...sprites,
-                        damageEffect: {
-                          ...damageEffect,
-                          spriteData: {
-                            ...(damageEffect.spriteData || {}),
-                            type: 'simple',
-                            idleImageData: undefined,
-                          }
-                        }
-                      }
-                    });
-                  }}
-                  className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
-                    !editedSpell.sprites?.damageEffect?.spriteData?.idleImageData
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Basic Shape
-                </button>
-                <button
-                  onClick={() => {
-                    const sprites = editedSpell.sprites || {};
-                    const damageEffect = sprites.damageEffect || { type: 'inline' as const, spriteData: {} };
-                    setEditedSpell({
-                      ...editedSpell,
-                      sprites: {
-                        ...sprites,
-                        damageEffect: {
-                          ...damageEffect,
-                          spriteData: {
-                            ...(damageEffect.spriteData || {}),
-                            type: 'image',
-                          }
-                        }
-                      }
-                    });
-                  }}
-                  className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
-                    editedSpell.sprites?.damageEffect?.spriteData?.idleImageData
-                      ? 'bg-red-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                  }`}
-                >
-                  Custom Image
-                </button>
-              </div>
-
-              {/* Shape-based (default) */}
-              {!editedSpell.sprites?.damageEffect?.spriteData?.idleImageData && (
-                <>
-                  {/* Shape */}
-                  <div className="mb-2">
-                    <label className="block text-xs text-gray-400 mb-1">Shape</label>
-                    <div className="grid grid-cols-5 gap-2">
-                      {['circle', 'square', 'triangle', 'star', 'diamond'].map((shape) => (
-                        <button
-                          key={shape}
-                          onClick={() => {
-                            const sprites = editedSpell.sprites || {};
-                            const damageEffect = sprites.damageEffect || { type: 'inline' as const, spriteData: {} };
-                            setEditedSpell({
-                              ...editedSpell,
-                              sprites: {
-                                ...sprites,
-                                damageEffect: {
-                                  ...damageEffect,
-                                  spriteData: {
-                                    ...(damageEffect.spriteData || {}),
-                                    shape,
-                                    type: 'simple',
-                                  }
-                                }
-                              }
-                            });
-                          }}
-                          className={`px-2 py-1 rounded text-xs transition-colors ${
-                            editedSpell.sprites?.damageEffect?.spriteData?.shape === shape
-                              ? 'bg-red-600 text-white'
-                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
-                          }`}
-                        >
-                          {shape}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Color */}
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Color</label>
-                    <input
-                      type="color"
-                      value={editedSpell.sprites?.damageEffect?.spriteData?.primaryColor || '#ff0000'}
-                      onChange={(e) => {
-                        const sprites = editedSpell.sprites || {};
-                        const damageEffect = sprites.damageEffect || { type: 'inline' as const, spriteData: {} };
-                        setEditedSpell({
-                          ...editedSpell,
-                          sprites: {
-                            ...sprites,
-                            damageEffect: {
-                              ...damageEffect,
-                              spriteData: {
-                                ...(damageEffect.spriteData || {}),
-                                primaryColor: e.target.value,
-                                type: 'simple',
-                              }
-                            }
-                          }
-                        });
-                      }}
-                      className="w-full h-10 rounded cursor-pointer"
-                    />
-                  </div>
-                </>
-              )}
-
-              {/* Image Upload */}
-              {editedSpell.sprites?.damageEffect?.spriteData?.idleImageData && (
-                <div>
-                  <label className="block text-xs text-gray-400 mb-1">Upload PNG/GIF</label>
-                  <input
-                    type="file"
-                    accept="image/png,image/gif"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) {
-                        const reader = new FileReader();
-                        reader.onload = (event) => {
-                          const imageData = event.target?.result as string;
-                          const sprites = editedSpell.sprites || {};
-                          const damageEffect = sprites.damageEffect || { type: 'inline' as const, spriteData: {} };
-                          setEditedSpell({
-                            ...editedSpell,
-                            sprites: {
-                              ...sprites,
-                              damageEffect: {
-                                ...damageEffect,
-                                spriteData: {
-                                  ...(damageEffect.spriteData || {}),
-                                  type: 'image',
-                                  idleImageData: imageData,
-                                }
-                              }
-                            }
-                          });
-                        };
-                        reader.readAsDataURL(file);
-                      }
-                    }}
-                    className="w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs file:bg-red-600 file:text-white hover:file:bg-red-700"
-                  />
-                  {editedSpell.sprites?.damageEffect?.spriteData?.idleImageData && (
-                    <div className="mt-2 p-2 bg-gray-800 rounded flex items-center justify-center">
-                      <img
-                        src={editedSpell.sprites.damageEffect.spriteData.idleImageData}
-                        alt="Damage effect preview"
-                        className="max-h-16 pixelated"
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
+            <SpellSpriteEditor
+              label="Damage Effect (on hit)"
+              spriteRef={editedSpell.sprites?.damageEffect}
+              onChange={(sprite) => setEditedSpell({
+                ...editedSpell,
+                sprites: { ...editedSpell.sprites, damageEffect: sprite }
+              })}
+              accentColor="red"
+              showDirectionalPreview={false}
+              helpText="Visual effect shown when target takes damage"
+            />
           </div>
         </div>
       </div>
