@@ -276,6 +276,32 @@ export const EnemyEditor: React.FC = () => {
                   <p className="text-xs text-gray-400 mt-1">Corpse triggers wall collision behaviors</p>
                 </div>
 
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingEnemy.blocksMovement || false}
+                      onChange={(e) => updateEnemy({ blocksMovement: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-bold">Blocks Movement (Alive)</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">Stops entities without triggering wall reactions</p>
+                </div>
+
+                <div>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editingEnemy.blocksMovementDead || false}
+                      onChange={(e) => updateEnemy({ blocksMovementDead: e.target.checked })}
+                      className="w-4 h-4"
+                    />
+                    <span className="text-sm font-bold">Blocks Movement (Dead)</span>
+                  </label>
+                  <p className="text-xs text-gray-400 mt-1">Corpse stops entities without triggering wall reactions</p>
+                </div>
+
                 {/* Melee Priority Toggle */}
                 <div className="mt-4 pt-4 border-t border-gray-700">
                   <div>

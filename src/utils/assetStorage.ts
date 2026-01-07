@@ -98,10 +98,7 @@ export interface CustomSprite {
   castingImageData?: string; // Base64 encoded PNG/GIF for casting state
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
 
-  // Corpse sprite - left behind after death animation completes (non-directional)
-  corpseSpriteSheet?: SpriteSheetConfig; // Sprite sheet for corpse (typically static, 1 frame)
-  corpseImageData?: string; // Base64 encoded PNG/GIF for corpse
-  corpseHasCollision?: boolean; // Whether corpse blocks movement (default: false)
+  // Note: Corpse appearance is handled by the final frame of the Death sprite sheet
 
   // Deprecated - for backwards compatibility
   imageData?: string; // Will be used as idleImageData if idleImageData not set

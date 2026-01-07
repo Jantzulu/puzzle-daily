@@ -174,6 +174,8 @@ export interface Character {
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
+  blocksMovement?: boolean; // If true, stops entities trying to walk through (no wall reaction, just stops them)
+  blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
   retaliationDamage?: number; // Damage dealt when enemy attempts to move onto this character's tile
 }
 
@@ -187,6 +189,8 @@ export interface Enemy {
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
+  blocksMovement?: boolean; // If true, stops entities trying to walk through (no wall reaction, just stops them)
+  blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
   retaliationDamage?: number; // Damage dealt when character attempts to move onto this enemy's tile
 
   // Melee priority

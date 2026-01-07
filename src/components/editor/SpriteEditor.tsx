@@ -212,9 +212,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           ...sprite.directionalSprites,
           default: defaultConfig,
         },
-        // Keep corpse sprite at root level (non-directional)
-        corpseSpriteSheet: sprite.corpseSpriteSheet,
-        corpseImageData: sprite.corpseImageData,
       });
     }
   }, []);
@@ -1054,74 +1051,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const hasCastingImage = spriteMode === 'directional'
     ? sprite.directionalSprites?.[selectedDirection]?.castingImageData
     : sprite.castingImageData;
-
-  // Corpse sprite handlers (non-directional, always simple mode)
-  const handleCorpseImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const corpseImageData = event.target?.result as string;
-      onChange({ ...sprite, corpseImageData });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleCorpseSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG)');
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const imageData = event.target?.result as string;
-
-      const spriteSheetConfig = {
-        imageData,
-        frameCount: 1, // Corpses are typically static
-        frameRate: 10,
-        loop: false,
-      };
-
-      onChange({ ...sprite, corpseSpriteSheet: spriteSheetConfig });
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const handleCorpseSpriteSheetConfigChange = (field: string, value: any) => {
-    if (sprite.corpseSpriteSheet) {
-      onChange({
-        ...sprite,
-        corpseSpriteSheet: {
-          ...sprite.corpseSpriteSheet,
-          [field]: value,
-        },
-      });
-    }
-  };
-
-  const clearCorpseSpriteSheet = () => {
-    const { corpseSpriteSheet, ...rest } = sprite;
-    onChange({ ...rest });
-  };
-
-  const clearCorpseImage = () => {
-    const { corpseImageData, ...rest } = sprite;
-    onChange({ ...rest });
-  };
-
-  const hasCorpseSpriteSheet = !!sprite.corpseSpriteSheet;
-  const hasCorpseImage = !!sprite.corpseImageData;
 
   return (
     <div className="space-y-4">
@@ -1995,127 +1924,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         </>
       )}
 
-      {/* CORPSE SPRITE (Non-directional, always applies) */}
-      <div className="bg-gray-900 p-4 rounded border-2 border-gray-700">
-        <h3 className="text-lg font-semibold mb-3 text-gray-300">🪦 Corpse Sprite (After Death)</h3>
-        <p className="text-xs text-gray-400 mb-4">
-          Corpse appears after death animation completes. Non-directional (same for all directions).
-        </p>
-
-        {/* Corpse Sprite Sheet Upload */}
-        <div className="mb-4">
-          <label className="block text-sm font-bold mb-2">Corpse Sprite Sheet (Animated)</label>
-          <div className="space-y-2">
-            <div className="flex gap-2 items-start">
-              <input
-                type="file"
-                accept="image/png,image/jpg,image/jpeg"
-                onChange={handleCorpseSpriteSheetUpload}
-                className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-gray-600 file:text-white hover:file:bg-gray-500"
-              />
-              {hasCorpseSpriteSheet && (
-                <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img
-                    src={sprite.corpseSpriteSheet?.imageData}
-                    alt="Corpse sprite sheet"
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-              )}
-            </div>
-            {hasCorpseSpriteSheet && (
-              <>
-                <div className="grid grid-cols-2 gap-2">
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="64"
-                      value={sprite.corpseSpriteSheet?.frameCount || 1}
-                      onChange={(e) => handleCorpseSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                      className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="60"
-                      value={sprite.corpseSpriteSheet?.frameRate || 10}
-                      onChange={(e) => handleCorpseSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                      className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
-                    />
-                  </div>
-                </div>
-                <button
-                  onClick={clearCorpseSpriteSheet}
-                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                >
-                  ✕ Clear Corpse Sprite Sheet
-                </button>
-              </>
-            )}
-            <p className="text-xs text-gray-400">
-              {hasCorpseSpriteSheet ? '✓ Corpse sprite sheet configured' : 'No sprite sheet - use static image below'}
-            </p>
-          </div>
-        </div>
-
-        {/* Corpse Static Image Upload */}
-        <div className="mb-4">
-          <label className="block text-sm font-bold mb-2">Corpse Image (Static)</label>
-          <div className="space-y-2">
-            <div className="flex gap-2 items-start">
-              <input
-                type="file"
-                accept="image/png,image/jpg,image/jpeg"
-                onChange={handleCorpseImageUpload}
-                className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
-              />
-              {hasCorpseImage && (
-                <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img
-                    src={sprite.corpseImageData}
-                    alt="Corpse static"
-                    className="max-w-full max-h-full object-contain"
-                  />
-                </div>
-              )}
-            </div>
-            {hasCorpseImage && (
-              <button
-                onClick={clearCorpseImage}
-                className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-              >
-                ✕ Clear Corpse Image
-              </button>
-            )}
-            <p className="text-xs text-gray-400">
-              {hasCorpseImage ? '✓ Corpse image uploaded' : 'No corpse image - will use default shape'}
-            </p>
-          </div>
-        </div>
-
-        {/* Corpse Collision Toggle */}
-        <div>
-          <label className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              checked={sprite.corpseHasCollision || false}
-              onChange={(e) => onChange({ ...sprite, corpseHasCollision: e.target.checked })}
-              className="w-4 h-4"
-            />
-            <span className="text-sm font-medium">Corpse Blocks Movement</span>
-          </label>
-          <p className="text-xs text-gray-400 ml-6">
-            {sprite.corpseHasCollision
-              ? '🚧 Corpse acts as a wall - units cannot walk through'
-              : '🚶 Corpse is walkable - units can pass through (default)'}
-          </p>
-        </div>
-      </div>
+      {/* Note: Corpse appearance is now handled by the final frame of the Death sprite sheet */}
 
       <div>
         <label className="block text-sm font-bold mb-2">
@@ -2533,35 +2342,6 @@ export function drawDeathSprite(
 }
 
 /**
- * Draw corpse sprite for a dead entity
- * Returns true if a corpse sprite was drawn, false if not available
- */
-export function drawCorpseSprite(
-  ctx: CanvasRenderingContext2D,
-  sprite: CustomSprite,
-  centerX: number,
-  centerY: number,
-  tileSize: number,
-  now: number = Date.now()
-): boolean {
-  const maxSize = (sprite.size || 0.6) * tileSize;
-
-  // Check for corpse sprite sheet
-  if (sprite.corpseSpriteSheet) {
-    drawSpriteSheet(ctx, sprite.corpseSpriteSheet, centerX, centerY, maxSize, maxSize, now);
-    return true;
-  }
-
-  // Check for corpse image
-  if (sprite.corpseImageData) {
-    drawImage(ctx, sprite.corpseImageData, centerX, centerY, maxSize);
-    return true;
-  }
-
-  return false;
-}
-
-/**
  * Check if a sprite has any death animation configured
  */
 export function hasDeathAnimation(sprite: CustomSprite): boolean {
@@ -2580,13 +2360,6 @@ export function hasDeathAnimation(sprite: CustomSprite): boolean {
   }
 
   return false;
-}
-
-/**
- * Check if a sprite has any corpse sprite configured
- */
-export function hasCorpseSprite(sprite: CustomSprite): boolean {
-  return !!(sprite.corpseSpriteSheet || sprite.corpseImageData);
 }
 
 /**

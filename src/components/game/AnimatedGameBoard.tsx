@@ -46,8 +46,8 @@ const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
-const MOVE_DURATION = 200; // First 50%: moving between tiles
-const IDLE_DURATION = 200; // Second 50%: idle on destination tile
+const MOVE_DURATION = 280; // First 70%: moving between tiles (slower movement)
+const IDLE_DURATION = 120; // Second 30%: idle on destination tile
 const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 
 const COLORS = {

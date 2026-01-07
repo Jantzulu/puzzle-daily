@@ -616,6 +616,11 @@ function moveCharacter(
         }
       }
 
+      // Check if character blocks movement (stops without triggering wall reactions)
+      if (otherCharData?.blocksMovement) {
+        return updatedChar; // Just stop, no wall collision behavior
+      }
+
       // Otherwise, just wait (doesn't trigger IF_WALL, character will try again next turn)
       return updatedChar;
     }
@@ -657,7 +662,15 @@ function moveCharacter(
             return updatedChar; // Stop movement
         }
       }
-      // Dead enemies without behavesLikeWallDead can be walked over
+
+      // Check if dead enemy blocks movement (stops without triggering wall reactions)
+      if (enemyData?.blocksMovementDead) {
+        const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
+        if (!movingEntityData?.canOverlapEntities) {
+          return updatedChar; // Just stop, no wall collision behavior
+        }
+      }
+      // Dead enemies without behavesLikeWallDead or blocksMovementDead can be walked over
     }
 
     // Check for living enemy at target position
@@ -698,6 +711,11 @@ function moveCharacter(
           default:
             return updatedChar; // Stop movement
         }
+      }
+
+      // Check if enemy blocks movement (stops without triggering wall reactions)
+      if (enemyData?.blocksMovement) {
+        return updatedChar; // Just stop, no wall collision behavior, no combat
       }
 
       // Check if this is an enemy trying to move into another enemy (no combat, just block)
