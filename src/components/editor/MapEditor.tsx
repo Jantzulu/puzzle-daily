@@ -13,6 +13,7 @@ import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
+import { SpriteThumbnail } from './SpriteThumbnail';
 
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
@@ -825,17 +826,7 @@ export const MapEditor: React.FC = () => {
                       >
                         {char ? (
                           <>
-                            <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center">
-                              {char.customSprite?.idleImageData ? (
-                                <img
-                                  src={char.customSprite.idleImageData}
-                                  alt={char.name}
-                                  className="w-full h-full object-cover"
-                                />
-                              ) : (
-                                <div className="w-full h-full bg-blue-600 rounded-full" />
-                              )}
-                            </div>
+                            <SpriteThumbnail sprite={char.customSprite} size={32} />
                             <span className="text-xs text-gray-300 truncate w-full text-center mt-1">
                               {char.name.length > 6 ? char.name.slice(0, 6) + '...' : char.name}
                             </span>
@@ -1030,17 +1021,7 @@ export const MapEditor: React.FC = () => {
                             selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
                           }`}
                         >
-                          <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-gray-600">
-                            {enemy.customSprite?.idleImageData ? (
-                              <img
-                                src={enemy.customSprite.idleImageData}
-                                alt={enemy.name}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-6 h-6 bg-red-500 rounded-full" />
-                            )}
-                          </div>
+                          <SpriteThumbnail sprite={enemy.customSprite} size={32} />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{enemy.name}</div>
                             <div className="text-xs text-gray-400">HP: {enemy.health}</div>
@@ -1075,17 +1056,7 @@ export const MapEditor: React.FC = () => {
                           }}
                           className="w-4 h-4"
                         />
-                        <div className="w-8 h-8 rounded overflow-hidden flex items-center justify-center bg-gray-600">
-                          {char.customSprite?.idleImageData ? (
-                            <img
-                              src={char.customSprite.idleImageData}
-                              alt={char.name}
-                              className="w-full h-full object-cover"
-                            />
-                          ) : (
-                            <div className="w-6 h-6 bg-blue-500 rounded-full" />
-                          )}
-                        </div>
+                        <SpriteThumbnail sprite={char.customSprite} size={32} />
                         <span className="text-sm flex-1 truncate">{char.name}</span>
                         <span className="text-xs text-gray-400">HP:{char.health}</span>
                       </label>
