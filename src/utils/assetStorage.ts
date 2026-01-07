@@ -108,6 +108,11 @@ export interface CustomSprite {
   directionalSprites?: Partial<Record<SpriteDirection, DirectionalSpriteConfig>>;
   useDirectional?: boolean; // If true, use directional sprites when available
 
+  // Triggered sprite (for static objects - alternate appearance when entity nearby)
+  triggerType?: 'none' | 'character_nearby' | 'enemy_nearby' | 'any_entity_nearby';
+  triggeredImageData?: string; // Base64 encoded PNG/GIF for triggered state
+  triggeredSpriteSheet?: SpriteSheetConfig; // Sprite sheet for triggered animation
+
   createdAt: string;
 }
 

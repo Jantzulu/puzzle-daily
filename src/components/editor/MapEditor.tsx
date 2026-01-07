@@ -1985,21 +1985,23 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
+  // Get sprite size (default to 0.8 if not set)
+  const spriteSize = (objectData.customSprite?.size || 0.8) * TILE_SIZE;
+
   // Calculate center position based on anchor point
   let centerX = px + TILE_SIZE / 2;
   let centerY = py + TILE_SIZE / 2;
 
   if (objectData.anchorPoint === 'bottom_center') {
-    // For bottom_center, the sprite's bottom aligns with tile center
+    // For bottom_center, the sprite's bottom aligns with tile bottom
     // This means the sprite center is higher up
-    const spriteSize = (objectData.customSprite?.size || 1) * TILE_SIZE;
-    centerY = py + TILE_SIZE / 2 - spriteSize / 2 + TILE_SIZE / 2;
+    centerY = py + TILE_SIZE - spriteSize / 2;
   }
 
   // Draw custom sprite if available
   if (objectData.customSprite) {
-    const spriteSize = objectData.customSprite.size * TILE_SIZE;
-    drawSprite(ctx, objectData.customSprite, centerX, centerY, spriteSize);
+    // Use drawSprite which handles images, spritesheets, and shape fallbacks
+    drawSprite(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
   } else {
     // Fallback: draw a simple brown square
     ctx.fillStyle = '#8b4513';

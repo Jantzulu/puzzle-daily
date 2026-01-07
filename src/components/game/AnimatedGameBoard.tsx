@@ -4,8 +4,8 @@ import { TileType, Direction, ActionType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation } from '../editor/SpriteEditor';
-import type { CustomCharacter, CustomEnemy, CustomTileType } from '../../utils/assetStorage';
-import { loadPuzzleSkin, loadTileType } from '../../utils/assetStorage';
+import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject } from '../../utils/assetStorage';
+import { loadPuzzleSkin, loadTileType, loadObject } from '../../utils/assetStorage';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
 
@@ -630,6 +630,20 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         }
       }
 
+      // Draw objects below entities (sorted by y for proper layering)
+      if (gameState.puzzle.placedObjects) {
+        const belowObjects = gameState.puzzle.placedObjects
+          .filter(obj => {
+            const objData = loadObject(obj.objectId);
+            return !objData?.renderLayer || objData.renderLayer === 'below_entities';
+          })
+          .sort((a, b) => a.y - b.y);
+
+        belowObjects.forEach(obj => {
+          drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
+        });
+      }
+
       // Draw collectibles
       gameState.puzzle.collectibles.forEach((collectible) => {
         if (!collectible.collected) {
@@ -741,6 +755,20 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         }
       });
+
+      // Draw objects above entities (sorted by y for proper layering)
+      if (gameState.puzzle.placedObjects) {
+        const aboveObjects = gameState.puzzle.placedObjects
+          .filter(obj => {
+            const objData = loadObject(obj.objectId);
+            return objData?.renderLayer === 'above_entities';
+          })
+          .sort((a, b) => a.y - b.y);
+
+        aboveObjects.forEach(obj => {
+          drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
+        });
+      }
 
       // Restore context (undo translate offset)
       ctx.restore();
@@ -1863,6 +1891,35 @@ function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number) {
 
   ctx.closePath();
   ctx.fill();
+}
+
+function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: number, y: number) {
+  const objectData = loadObject(objectId);
+  if (!objectData) return;
+
+  const px = x * TILE_SIZE;
+  const py = y * TILE_SIZE;
+
+  // Get sprite size (default to 0.8 if not set)
+  const spriteSize = (objectData.customSprite?.size || 0.8) * TILE_SIZE;
+
+  // Calculate center position based on anchor point
+  let centerX = px + TILE_SIZE / 2;
+  let centerY = py + TILE_SIZE / 2;
+
+  if (objectData.anchorPoint === 'bottom_center') {
+    // For bottom_center, the sprite's bottom aligns with tile bottom
+    centerY = py + TILE_SIZE - spriteSize / 2;
+  }
+
+  // Draw custom sprite if available
+  if (objectData.customSprite) {
+    drawSprite(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
+  } else {
+    // Fallback: draw a simple brown square
+    ctx.fillStyle = '#8b4513';
+    ctx.fillRect(px + TILE_SIZE / 4, py + TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2);
+  }
 }
 
 // ==========================================

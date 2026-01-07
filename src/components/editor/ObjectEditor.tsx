@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectCollisionType, ObjectAnchorPoint } from '../../utils/assetStorage';
 import { saveObject, getCustomObjects, deleteObject } from '../../utils/assetStorage';
-import { SpriteEditor } from './SpriteEditor';
+import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 
 const COLLISION_TYPES: { value: ObjectCollisionType; label: string; description: string }[] = [
@@ -245,7 +245,7 @@ export const ObjectEditor: React.FC = () => {
                 <div className="bg-gray-800 p-4 rounded">
                   <h3 className="text-lg font-bold mb-4">Sprite</h3>
                   {editing.customSprite && (
-                    <SpriteEditor
+                    <StaticSpriteEditor
                       sprite={editing.customSprite}
                       onChange={updateSprite}
                     />
