@@ -51,11 +51,22 @@ const formatActionSequence = (behavior: CharacterAction[] | undefined): string[]
 // Tooltip component for spell info
 const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> = ({ spell, children }) => {
   const [show, setShow] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  const handleMouseEnter = () => {
+    timeoutRef.current = setTimeout(() => setShow(true), 300);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setShow(false);
+  };
+
   return (
-    <div className="relative inline-block" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+    <div className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
       {show && (
-        <div className="absolute z-50 left-full ml-2 top-0 w-48 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs">
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none">
           <div className="font-bold text-white mb-1">{spell.name}</div>
           <div className="text-gray-400 mb-1">{spell.description}</div>
           <div className="text-gray-300">
@@ -74,12 +85,23 @@ const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> =
 // Tooltip component for action sequence
 const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children: React.ReactNode }> = ({ actions, children }) => {
   const [show, setShow] = useState(false);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sequence = formatActionSequence(actions);
+
+  const handleMouseEnter = () => {
+    timeoutRef.current = setTimeout(() => setShow(true), 400);
+  };
+
+  const handleMouseLeave = () => {
+    if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    setShow(false);
+  };
+
   return (
-    <div className="relative" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+    <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
       {show && (
-        <div className="absolute z-50 left-full ml-2 top-0 w-40 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs">
+        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none">
           <div className="font-bold text-white mb-1">Action Sequence</div>
           {sequence.map((action, i) => (
             <div key={i} className="text-gray-300">{action}</div>
