@@ -15,31 +15,41 @@ import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
 
-// Helper to get first spell from character/enemy behavior
-const getFirstSpell = (behavior: CharacterAction[] | undefined): SpellAsset | null => {
-  if (!behavior) return null;
+// Helper to get all spells from character/enemy behavior
+const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
+  if (!behavior) return [];
+  const spells: SpellAsset[] = [];
+  const seenIds = new Set<string>(); // Avoid duplicates if same spell used multiple times
+
   for (const action of behavior) {
-    // Check for SPELL action type with spellId reference
+    // Check for SPELL action type with spellId reference (from spell editor)
     if (action.type === 'SPELL' && action.spellId) {
-      const spell = loadSpellAsset(action.spellId);
-      if (spell) return spell;
+      if (!seenIds.has(action.spellId)) {
+        const spell = loadSpellAsset(action.spellId);
+        if (spell) {
+          spells.push(spell);
+          seenIds.add(action.spellId);
+        }
+      }
     }
-    // Check for CUSTOM_ATTACK action type (inline attack definition)
+    // Check for CUSTOM_ATTACK action type (inline attack definition - legacy)
     if (action.type === 'CUSTOM_ATTACK' && action.customAttack) {
-      // Convert inline customAttack to SpellAsset-like structure for display
       const attack = action.customAttack;
-      return {
-        id: attack.id,
-        name: attack.name,
-        description: `${attack.pattern} attack`,
-        templateType: attack.pattern === 'projectile' ? 'range_linear' : 'melee',
-        damage: attack.damage,
-        range: attack.range,
-        thumbnailIcon: '', // No thumbnail for inline attacks
-      } as SpellAsset;
+      if (!seenIds.has(attack.id)) {
+        spells.push({
+          id: attack.id,
+          name: attack.name,
+          description: `${attack.pattern} attack`,
+          templateType: attack.pattern === 'projectile' ? 'range_linear' : 'melee',
+          damage: attack.damage,
+          range: attack.range,
+          thumbnailIcon: '', // No thumbnail for inline attacks
+        } as SpellAsset);
+        seenIds.add(attack.id);
+      }
     }
   }
-  return null;
+  return spells;
 };
 
 // Helper to format action sequence for display
@@ -960,7 +970,7 @@ export const MapEditor: React.FC = () => {
                   {Array.from({ length: state.maxCharacters }).map((_, index) => {
                     const charId = state.availableCharacters[index];
                     const char = charId ? getCharacter(charId) : null;
-                    const spell = char ? getFirstSpell(char.behavior) : null;
+                    const spells = char ? getAllSpells(char.behavior) : [];
 
                     return (
                       <ActionTooltip key={index} actions={char?.behavior}>
@@ -976,16 +986,20 @@ export const MapEditor: React.FC = () => {
                               <span className="text-sm font-medium text-gray-200 truncate w-full text-center mt-1">
                                 {char.name.length > 8 ? char.name.slice(0, 8) + '...' : char.name}
                               </span>
-                              {spell && (
-                                <SpellTooltip spell={spell}>
-                                  <div className="mt-1 w-6 h-6 rounded overflow-hidden cursor-help">
-                                    {spell.thumbnailIcon ? (
-                                      <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
-                                    )}
-                                  </div>
-                                </SpellTooltip>
+                              {spells.length > 0 && (
+                                <div className="mt-1 flex gap-1 justify-center">
+                                  {spells.map(spell => (
+                                    <SpellTooltip key={spell.id} spell={spell}>
+                                      <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                                        {spell.thumbnailIcon ? (
+                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                        )}
+                                      </div>
+                                    </SpellTooltip>
+                                  ))}
+                                </div>
                               )}
                             </>
                           ) : (
@@ -1165,7 +1179,7 @@ export const MapEditor: React.FC = () => {
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
                       {allEnemies.map(enemy => {
-                        const spell = getFirstSpell(enemy.behavior?.pattern);
+                        const spells = getAllSpells(enemy.behavior?.pattern);
                         return (
                           <ActionTooltip key={enemy.id} actions={enemy.behavior?.pattern}>
                             <button
@@ -1179,16 +1193,20 @@ export const MapEditor: React.FC = () => {
                                 <div className="text-sm font-medium truncate">{enemy.name}</div>
                                 <div className="text-xs text-gray-400">HP: {enemy.health}</div>
                               </div>
-                              {spell && (
-                                <SpellTooltip spell={spell}>
-                                  <div className="w-6 h-6 rounded overflow-hidden cursor-help flex-shrink-0">
-                                    {spell.thumbnailIcon ? (
-                                      <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
-                                    ) : (
-                                      <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
-                                    )}
-                                  </div>
-                                </SpellTooltip>
+                              {spells.length > 0 && (
+                                <div className="flex gap-1 flex-shrink-0">
+                                  {spells.map(spell => (
+                                    <SpellTooltip key={spell.id} spell={spell}>
+                                      <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                                        {spell.thumbnailIcon ? (
+                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                        )}
+                                      </div>
+                                    </SpellTooltip>
+                                  ))}
+                                </div>
                               )}
                             </button>
                           </ActionTooltip>
@@ -1208,7 +1226,7 @@ export const MapEditor: React.FC = () => {
                 ) : (
                   <div className="space-y-2 max-h-80 overflow-y-auto">
                     {allCharacters.map(char => {
-                      const spell = getFirstSpell(char.behavior);
+                      const spells = getAllSpells(char.behavior);
                       return (
                         <ActionTooltip key={char.id} actions={char.behavior}>
                           <label className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
@@ -1230,16 +1248,20 @@ export const MapEditor: React.FC = () => {
                               <div className="text-sm font-medium truncate">{char.name}</div>
                               <div className="text-xs text-gray-400">HP: {char.health}</div>
                             </div>
-                            {spell && (
-                              <SpellTooltip spell={spell}>
-                                <div className="w-6 h-6 rounded overflow-hidden cursor-help flex-shrink-0">
-                                  {spell.thumbnailIcon ? (
-                                    <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
-                                  )}
-                                </div>
-                              </SpellTooltip>
+                            {spells.length > 0 && (
+                              <div className="flex gap-1 flex-shrink-0">
+                                {spells.map(spell => (
+                                  <SpellTooltip key={spell.id} spell={spell}>
+                                    <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                                      {spell.thumbnailIcon ? (
+                                        <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                      ) : (
+                                        <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                      )}
+                                    </div>
+                                  </SpellTooltip>
+                                ))}
+                              </div>
                             )}
                           </label>
                         </ActionTooltip>
