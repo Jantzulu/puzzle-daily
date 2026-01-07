@@ -2119,6 +2119,10 @@ function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: nu
  * Draw a particle effect with fade-out
  * Supports: basic shapes, static images/GIFs, and animated sprite sheets
  * For melee attacks and directional effects, applies rotation based on particle.rotation
+ *
+ * Spritesheet behavior:
+ * - Non-looping spritesheets play once and hold on final frame until duration expires
+ * - No fade-out is applied to spritesheets (they just disappear when done)
  */
 function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, now: number, imageCache: Map<string, HTMLImageElement>) {
   const elapsed = now - particle.startTime;
@@ -2126,13 +2130,6 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
 
   const px = particle.x * TILE_SIZE + TILE_SIZE / 2;
   const py = particle.y * TILE_SIZE + TILE_SIZE / 2;
-
-  // Calculate fade-out alpha
-  const progress = elapsed / particle.duration;
-  const alpha = particle.alpha || (1 - progress); // Fade out over time
-
-  ctx.save();
-  ctx.globalAlpha = alpha;
 
   // Check if particle has custom sprite
   if (particle.sprite?.spriteData) {
@@ -2147,11 +2144,26 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
 
     // Check for sprite sheet first (highest priority)
     if (spriteData.spriteSheet) {
+      const spriteSheet = spriteData.spriteSheet;
+
+      // For non-looping spritesheets, check if animation is complete
+      // If so, don't draw anything (particle will be cleaned up by duration)
+      if (spriteSheet.loop === false) {
+        const animationDuration = (spriteSheet.frameCount / spriteSheet.frameRate) * 1000;
+        if (elapsed >= animationDuration) {
+          // Animation complete - don't draw, let particle expire
+          return;
+        }
+      }
+
+      ctx.save();
+      // No fade-out for spritesheets - they just play and disappear
+      ctx.globalAlpha = 1.0;
+
       const spriteSize = 32; // Size for particle sprite sheets
-      // Use start time-based rendering for one-shot animations (common for hit effects)
       drawSpellSpriteSheetFromStartTime(
         ctx,
-        spriteData.spriteSheet,
+        spriteSheet,
         px,
         py,
         spriteSize,
@@ -2164,6 +2176,13 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
       return;
     }
 
+    // Calculate fade-out alpha for non-spritesheet sprites
+    const progress = elapsed / particle.duration;
+    const alpha = particle.alpha || (1 - progress); // Fade out over time
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+
     // Fall back to static image or shape
     const shape = spriteData.shape || 'circle';
     const color = spriteData.primaryColor || '#ffff00';
@@ -2174,17 +2193,24 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
     drawShape(ctx, px, py, shape, color, radius, imageData, imageCache, rotationConfig);
 
     // Inner flash (only for non-image sprites)
-    if (!imageData && !spriteData.spriteSheet && progress < 0.3) {
+    if (!imageData && progress < 0.3) {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(px, py, 8 * (1 - progress / 0.3), 0, Math.PI * 2);
       ctx.fill();
     }
-  } else {
-    drawDefaultParticle(ctx, px, py, progress);
-  }
 
-  ctx.restore();
+    ctx.restore();
+  } else {
+    // Default particle with fade-out
+    const progress = elapsed / particle.duration;
+    const alpha = particle.alpha || (1 - progress);
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    drawDefaultParticle(ctx, px, py, progress);
+    ctx.restore();
+  }
 }
 
 /**

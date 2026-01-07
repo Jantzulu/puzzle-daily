@@ -72,53 +72,31 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
   const spriteData = spriteRef?.spriteData || {};
   const colors = colorClasses[accentColor] || colorClasses.blue;
 
-  // Determine current mode based on sprite data
+  // Determine current mode based on sprite data - only used for initial state
   const getCurrentMode = (): SpellSpriteMode => {
     if (spriteData.spriteSheet) return 'spritesheet';
-    if (spriteData.idleImageData || spriteData.type === 'image') return 'image';
+    if (spriteData.idleImageData) return 'image';
+    if (spriteData.type === 'spritesheet') return 'spritesheet';
+    if (spriteData.type === 'image') return 'image';
     return 'shape';
   };
 
-  const [mode, setMode] = useState<SpellSpriteMode>(getCurrentMode());
+  const [mode, setMode] = useState<SpellSpriteMode>(getCurrentMode);
 
-  // Update mode when spriteRef changes
+  // Only sync mode from external data when the spriteRef ID changes (editing different spell)
+  // This prevents the jitter when mode is changed but no file uploaded yet
+  const spriteRefId = spriteRef?.spriteId;
   useEffect(() => {
-    setMode(getCurrentMode());
-  }, [spriteRef]);
+    // Reset to detected mode only when switching to a different stored sprite
+    if (spriteRefId) {
+      setMode(getCurrentMode());
+    }
+  }, [spriteRefId]);
 
   const handleModeChange = (newMode: SpellSpriteMode) => {
     setMode(newMode);
-
-    // Update sprite data based on mode
-    if (newMode === 'shape') {
-      onChange({
-        type: 'inline',
-        spriteData: {
-          ...spriteData,
-          type: 'simple',
-          idleImageData: undefined,
-          spriteSheet: undefined,
-        }
-      });
-    } else if (newMode === 'image') {
-      onChange({
-        type: 'inline',
-        spriteData: {
-          ...spriteData,
-          type: 'image',
-          spriteSheet: undefined,
-        }
-      });
-    } else if (newMode === 'spritesheet') {
-      onChange({
-        type: 'inline',
-        spriteData: {
-          ...spriteData,
-          type: 'spritesheet',
-          idleImageData: undefined,
-        }
-      });
-    }
+    // Don't call onChange here - just update local mode state
+    // The actual data update happens when user uploads a file or changes shape/color
   };
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1169,10 +1147,10 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               />
             )}
 
-            {/* Melee Attack Sprite (for melee spells) */}
+            {/* Attack Appearance (for melee spells) - uses meleeAttack sprite field */}
             {templateIsMelee && (
               <SpellSpriteEditor
-                label="Melee Attack Sprite"
+                label="Attack Appearance"
                 spriteRef={editedSpell.sprites?.meleeAttack}
                 onChange={(sprite) => setEditedSpell({
                   ...editedSpell,
@@ -1180,7 +1158,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 })}
                 accentColor="purple"
                 showDirectionalPreview={true}
-                helpText="Sprite shown on attack tiles during melee attack"
+                helpText="Sprite shown on all attack tiles (may be in different direction than caster is facing)"
               />
             )}
 
@@ -1194,7 +1172,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               })}
               accentColor="red"
               showDirectionalPreview={false}
-              helpText="Visual effect shown when target takes damage"
+              helpText="Visual effect shown only when target actually takes damage"
             />
           </div>
         </div>
