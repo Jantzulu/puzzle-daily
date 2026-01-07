@@ -1,8 +1,11 @@
 import type { Character } from '../../types/game';
-import { getCustomCharacters, isAssetHidden } from '../../utils/assetStorage';
+import { getCustomCharacters, isAssetHidden, type CustomCharacter } from '../../utils/assetStorage';
 import knightData from './knight.json';
 import archerData from './archer.json';
 import fireballMageData from './archer-fireball.json';
+
+// Type that includes both base Character and optional customSprite
+export type CharacterWithSprite = Character & { customSprite?: CustomCharacter['customSprite'] };
 
 const officialCharacters: Record<string, Character> = {
   [knightData.id]: knightData as Character,
@@ -17,7 +20,7 @@ export const isOfficialCharacter = (id: string): boolean => {
   return id in officialCharacters;
 };
 
-export const getCharacter = (id: string): Character | undefined => {
+export const getCharacter = (id: string): CharacterWithSprite | undefined => {
   // Check if hidden
   if (isAssetHidden(id)) {
     return undefined;
@@ -38,12 +41,12 @@ export const getCharacter = (id: string): Character | undefined => {
   return undefined;
 };
 
-export const getAllCharacters = (): Character[] => {
+export const getAllCharacters = (): CharacterWithSprite[] => {
   const customCharacters = getCustomCharacters();
   const customIds = new Set(customCharacters.map(c => c.id));
 
   // Start with custom characters (includes edited official ones)
-  const allCharacters = [...customCharacters];
+  const allCharacters: CharacterWithSprite[] = [...customCharacters];
 
   // Add official characters that haven't been overridden or hidden
   for (const official of Object.values(officialCharacters)) {

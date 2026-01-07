@@ -1059,7 +1059,7 @@ export const MapEditor: React.FC = () => {
                 {allCharacters.length === 0 ? (
                   <p className="text-sm text-gray-400">No characters available</p>
                 ) : (
-                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                  <div className="space-y-2 max-h-80 overflow-y-auto">
                     {allCharacters.map(char => (
                       <label key={char.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
                         <input
