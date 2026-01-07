@@ -1,19 +1,94 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, WinCondition, GameState, PlacedCharacter, BorderConfig } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, WinCondition, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
 import { TileType, Direction } from '../../types/game';
-import { getAllCharacters, getCharacter } from '../../data/characters';
-import { getAllEnemies, getEnemy } from '../../data/enemies';
+import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
+import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { drawSprite } from './SpriteEditor';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
+
+// Helper to get first spell from character/enemy behavior
+const getFirstSpell = (behavior: CharacterAction[] | undefined): SpellAsset | null => {
+  if (!behavior) return null;
+  for (const action of behavior) {
+    if (action.type === 'SPELL' && action.spellId) {
+      const spell = loadSpellAsset(action.spellId);
+      if (spell) return spell;
+    }
+  }
+  return null;
+};
+
+// Helper to format action sequence for display
+const formatActionSequence = (behavior: CharacterAction[] | undefined): string[] => {
+  if (!behavior || behavior.length === 0) return ['No actions defined'];
+  return behavior.map((action, i) => {
+    let desc = `${i + 1}. ${action.type}`;
+    if (action.type === 'SPELL' && action.spellId) {
+      const spell = loadSpellAsset(action.spellId);
+      if (spell) desc = `${i + 1}. ${spell.name}`;
+    } else if (action.type === 'MOVE') {
+      desc = `${i + 1}. Move`;
+    } else if (action.type === 'TURN_LEFT') {
+      desc = `${i + 1}. Turn Left`;
+    } else if (action.type === 'TURN_RIGHT') {
+      desc = `${i + 1}. Turn Right`;
+    } else if (action.type === 'WAIT') {
+      desc = `${i + 1}. Wait`;
+    }
+    return desc;
+  });
+};
+
+// Tooltip component for spell info
+const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> = ({ spell, children }) => {
+  const [show, setShow] = useState(false);
+  return (
+    <div className="relative inline-block" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && (
+        <div className="absolute z-50 left-full ml-2 top-0 w-48 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs">
+          <div className="font-bold text-white mb-1">{spell.name}</div>
+          <div className="text-gray-400 mb-1">{spell.description}</div>
+          <div className="text-gray-300">
+            {spell.damage && <div>Damage: {spell.damage}</div>}
+            {spell.healing && <div>Healing: {spell.healing}</div>}
+            {spell.range && <div>Range: {spell.range}</div>}
+            {spell.radius && <div>Radius: {spell.radius}</div>}
+            <div>Type: {spell.templateType}</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Tooltip component for action sequence
+const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children: React.ReactNode }> = ({ actions, children }) => {
+  const [show, setShow] = useState(false);
+  const sequence = formatActionSequence(actions);
+  return (
+    <div className="relative" onMouseEnter={() => setShow(true)} onMouseLeave={() => setShow(false)}>
+      {children}
+      {show && (
+        <div className="absolute z-50 left-full ml-2 top-0 w-40 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs">
+          <div className="font-bold text-white mb-1">Action Sequence</div>
+          {sequence.map((action, i) => (
+            <div key={i} className="text-gray-300">{action}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
 
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
@@ -815,26 +890,41 @@ export const MapEditor: React.FC = () => {
                   {Array.from({ length: state.maxCharacters }).map((_, index) => {
                     const charId = state.availableCharacters[index];
                     const char = charId ? getCharacter(charId) : null;
+                    const spell = char ? getFirstSpell(char.behavior) : null;
 
                     return (
-                      <div
-                        key={index}
-                        className={`aspect-square rounded flex flex-col items-center justify-center p-1 ${
-                          char ? 'bg-gray-700' : 'bg-gray-800 border border-dashed border-gray-600'
-                        }`}
-                        title={char?.name || 'Empty slot'}
-                      >
-                        {char ? (
-                          <>
-                            <SpriteThumbnail sprite={char.customSprite} size={32} />
-                            <span className="text-xs text-gray-300 truncate w-full text-center mt-1">
-                              {char.name.length > 6 ? char.name.slice(0, 6) + '...' : char.name}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-gray-600 text-xs">Empty</span>
-                        )}
-                      </div>
+                      <ActionTooltip key={index} actions={char?.behavior}>
+                        <div
+                          className={`rounded flex flex-col items-center justify-center p-2 ${
+                            char ? 'bg-gray-700' : 'bg-gray-800 border border-dashed border-gray-600'
+                          }`}
+                          title={char?.name || 'Empty slot'}
+                        >
+                          {char ? (
+                            <>
+                              <SpriteThumbnail sprite={char.customSprite} size={48} />
+                              <span className="text-sm font-medium text-gray-200 truncate w-full text-center mt-1">
+                                {char.name.length > 8 ? char.name.slice(0, 8) + '...' : char.name}
+                              </span>
+                              {spell && (
+                                <SpellTooltip spell={spell}>
+                                  <div className="mt-1 w-6 h-6 rounded overflow-hidden cursor-help">
+                                    {spell.thumbnailIcon ? (
+                                      <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                    )}
+                                  </div>
+                                </SpellTooltip>
+                              )}
+                            </>
+                          ) : (
+                            <div className="h-16 flex items-center justify-center">
+                              <span className="text-gray-600 text-xs">Empty</span>
+                            </div>
+                          )}
+                        </div>
+                      </ActionTooltip>
                     );
                   })}
                 </div>
@@ -1013,21 +1103,36 @@ export const MapEditor: React.FC = () => {
                     <p className="text-sm text-gray-400">No enemies available. Create enemies in Asset Manager!</p>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {allEnemies.map(enemy => (
-                        <button
-                          key={enemy.id}
-                          onClick={() => setSelectedEnemyId(enemy.id)}
-                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                            selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
-                          }`}
-                        >
-                          <SpriteThumbnail sprite={enemy.customSprite} size={32} />
-                          <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{enemy.name}</div>
-                            <div className="text-xs text-gray-400">HP: {enemy.health}</div>
-                          </div>
-                        </button>
-                      ))}
+                      {allEnemies.map(enemy => {
+                        const spell = getFirstSpell(enemy.behavior?.pattern);
+                        return (
+                          <ActionTooltip key={enemy.id} actions={enemy.behavior?.pattern}>
+                            <button
+                              onClick={() => setSelectedEnemyId(enemy.id)}
+                              className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                                selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                              }`}
+                            >
+                              <SpriteThumbnail sprite={enemy.customSprite} size={32} />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">{enemy.name}</div>
+                                <div className="text-xs text-gray-400">HP: {enemy.health}</div>
+                              </div>
+                              {spell && (
+                                <SpellTooltip spell={spell}>
+                                  <div className="w-6 h-6 rounded overflow-hidden cursor-help flex-shrink-0">
+                                    {spell.thumbnailIcon ? (
+                                      <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                    )}
+                                  </div>
+                                </SpellTooltip>
+                              )}
+                            </button>
+                          </ActionTooltip>
+                        );
+                      })}
                     </div>
                   )}
                 </div>
@@ -1041,26 +1146,44 @@ export const MapEditor: React.FC = () => {
                   <p className="text-sm text-gray-400">No characters available</p>
                 ) : (
                   <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {allCharacters.map(char => (
-                      <label key={char.id} className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={state.availableCharacters.includes(char.id)}
-                          onChange={(e) => {
-                            setState(prev => ({
-                              ...prev,
-                              availableCharacters: e.target.checked
-                                ? [...prev.availableCharacters, char.id]
-                                : prev.availableCharacters.filter(id => id !== char.id)
-                            }));
-                          }}
-                          className="w-4 h-4"
-                        />
-                        <SpriteThumbnail sprite={char.customSprite} size={32} />
-                        <span className="text-sm flex-1 truncate">{char.name}</span>
-                        <span className="text-xs text-gray-400">HP:{char.health}</span>
-                      </label>
-                    ))}
+                    {allCharacters.map(char => {
+                      const spell = getFirstSpell(char.behavior);
+                      return (
+                        <ActionTooltip key={char.id} actions={char.behavior}>
+                          <label className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={state.availableCharacters.includes(char.id)}
+                              onChange={(e) => {
+                                setState(prev => ({
+                                  ...prev,
+                                  availableCharacters: e.target.checked
+                                    ? [...prev.availableCharacters, char.id]
+                                    : prev.availableCharacters.filter(id => id !== char.id)
+                                }));
+                              }}
+                              className="w-4 h-4"
+                            />
+                            <SpriteThumbnail sprite={char.customSprite} size={32} />
+                            <div className="flex-1 min-w-0">
+                              <div className="text-sm font-medium truncate">{char.name}</div>
+                              <div className="text-xs text-gray-400">HP: {char.health}</div>
+                            </div>
+                            {spell && (
+                              <SpellTooltip spell={spell}>
+                                <div className="w-6 h-6 rounded overflow-hidden cursor-help flex-shrink-0">
+                                  {spell.thumbnailIcon ? (
+                                    <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                  ) : (
+                                    <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                  )}
+                                </div>
+                              </SpellTooltip>
+                            )}
+                          </label>
+                        </ActionTooltip>
+                      );
+                    })}
                   </div>
                 )}
               </div>
