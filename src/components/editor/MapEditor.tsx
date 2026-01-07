@@ -19,9 +19,24 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 const getFirstSpell = (behavior: CharacterAction[] | undefined): SpellAsset | null => {
   if (!behavior) return null;
   for (const action of behavior) {
+    // Check for SPELL action type with spellId reference
     if (action.type === 'SPELL' && action.spellId) {
       const spell = loadSpellAsset(action.spellId);
       if (spell) return spell;
+    }
+    // Check for CUSTOM_ATTACK action type (inline attack definition)
+    if (action.type === 'CUSTOM_ATTACK' && action.customAttack) {
+      // Convert inline customAttack to SpellAsset-like structure for display
+      const attack = action.customAttack;
+      return {
+        id: attack.id,
+        name: attack.name,
+        description: `${attack.pattern} attack`,
+        templateType: attack.pattern === 'projectile' ? 'range_linear' : 'melee',
+        damage: attack.damage,
+        range: attack.range,
+        thumbnailIcon: '', // No thumbnail for inline attacks
+      } as SpellAsset;
     }
   }
   return null;
@@ -31,29 +46,44 @@ const getFirstSpell = (behavior: CharacterAction[] | undefined): SpellAsset | nu
 const formatActionSequence = (behavior: CharacterAction[] | undefined): string[] => {
   if (!behavior || behavior.length === 0) return ['No actions defined'];
   return behavior.map((action, i) => {
-    let desc = `${i + 1}. ${action.type}`;
-    if (action.type === 'SPELL' && action.spellId) {
-      const spell = loadSpellAsset(action.spellId);
-      if (spell) desc = `${i + 1}. ${spell.name}`;
-    } else if (action.type === 'MOVE') {
-      desc = `${i + 1}. Move`;
-    } else if (action.type === 'TURN_LEFT') {
-      desc = `${i + 1}. Turn Left`;
-    } else if (action.type === 'TURN_RIGHT') {
-      desc = `${i + 1}. Turn Right`;
-    } else if (action.type === 'WAIT') {
-      desc = `${i + 1}. Wait`;
+    const num = i + 1;
+    switch (action.type) {
+      case 'SPELL':
+        if (action.spellId) {
+          const spell = loadSpellAsset(action.spellId);
+          if (spell) return `${num}. ${spell.name}`;
+        }
+        return `${num}. Cast Spell`;
+      case 'CUSTOM_ATTACK':
+        return `${num}. ${action.customAttack?.name || 'Attack'}`;
+      case 'ATTACK_RANGE':
+        return `${num}. Ranged Attack`;
+      case 'MOVE':
+      case 'MOVE_FORWARD':
+        return `${num}. Move Forward`;
+      case 'TURN_LEFT':
+        return `${num}. Turn Left`;
+      case 'TURN_RIGHT':
+        return `${num}. Turn Right`;
+      case 'WAIT':
+        return `${num}. Wait`;
+      case 'REPEAT':
+        return `${num}. Repeat`;
+      default:
+        return `${num}. ${action.type}`;
     }
-    return desc;
   });
 };
 
 // Tooltip component for spell info
 const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> = ({ spell, children }) => {
   const [show, setShow] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setPosition({ x: rect.left + rect.width / 2, y: rect.bottom });
     timeoutRef.current = setTimeout(() => setShow(true), 300);
   };
 
@@ -66,7 +96,10 @@ const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> =
     <div className="relative inline-block" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
       {show && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-48 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none">
+        <div
+          className="fixed z-[9999] w-48 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
+        >
           <div className="font-bold text-white mb-1">{spell.name}</div>
           <div className="text-gray-400 mb-1">{spell.description}</div>
           <div className="text-gray-300">
@@ -85,10 +118,14 @@ const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> =
 // Tooltip component for action sequence
 const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children: React.ReactNode }> = ({ actions, children }) => {
   const [show, setShow] = useState(false);
+  const [position, setPosition] = useState({ x: 0, y: 0 });
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const sequence = formatActionSequence(actions);
 
-  const handleMouseEnter = () => {
+  const handleMouseEnter = (e: React.MouseEvent) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    // Position tooltip below the element, centered horizontally
+    setPosition({ x: rect.left + rect.width / 2, y: rect.bottom });
     timeoutRef.current = setTimeout(() => setShow(true), 400);
   };
 
@@ -101,7 +138,10 @@ const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children
     <div className="relative" onMouseEnter={handleMouseEnter} onMouseLeave={handleMouseLeave}>
       {children}
       {show && (
-        <div className="absolute z-50 bottom-full left-1/2 -translate-x-1/2 mb-2 w-44 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none">
+        <div
+          className="fixed z-[9999] w-44 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
+        >
           <div className="font-bold text-white mb-1">Action Sequence</div>
           {sequence.map((action, i) => (
             <div key={i} className="text-gray-300">{action}</div>
