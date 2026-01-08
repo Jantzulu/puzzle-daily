@@ -1028,28 +1028,44 @@ export const MapEditor: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            <h1 className="text-4xl font-bold">Map Editor</h1>
-            <button
-              onClick={handlePlaytest}
-              className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 font-bold"
-            >
-              ▶ Play Test
-            </button>
-          </div>
-          <div className="flex gap-2">
-            <Link to="/assets" className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700">
-              Asset Manager
-            </Link>
-            <Link to="/" className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">
-              Back to Game
-            </Link>
+        <div className="mb-6 flex items-center gap-4">
+          <h1 className="text-4xl font-bold">Map Editor</h1>
+          <button
+            onClick={handlePlaytest}
+            className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 font-bold"
+          >
+            ▶ Play Test
+          </button>
+          {/* Grid Size - inline in header */}
+          <div className="flex items-center gap-3 bg-gray-800 px-4 py-2 rounded">
+            <span className="text-sm font-medium text-gray-300">Grid:</span>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-400">W</label>
+              <input
+                type="number"
+                min="3"
+                max="20"
+                value={state.gridWidth}
+                onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
+                className="w-12 px-2 py-1 bg-gray-700 rounded text-sm text-center"
+              />
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-gray-400">H</label>
+              <input
+                type="number"
+                min="3"
+                max="20"
+                value={state.gridHeight}
+                onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
+                className="w-12 px-2 py-1 bg-gray-700 rounded text-sm text-center"
+              />
+            </div>
           </div>
         </div>
 
         <div className="flex gap-6">
-          {/* Left Column - Canvas, Grid Size, Selected Characters */}
+          {/* Left Column - Canvas, Selected Characters */}
           <div className="flex-shrink-0 space-y-4">
             <canvas
               ref={canvasRef}
@@ -1061,35 +1077,6 @@ export const MapEditor: React.FC = () => {
               onMouseUp={handleCanvasMouseUp}
               onMouseLeave={handleCanvasMouseUp}
             />
-
-            {/* Grid Size - Below puzzle, centered */}
-            <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: canvasWidth }}>
-              <h2 className="text-lg font-bold mb-3">Grid Size</h2>
-              <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm mb-1">Width: {state.gridWidth}</label>
-                  <input
-                    type="range"
-                    min="3"
-                    max="20"
-                    value={state.gridWidth}
-                    onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
-                    className="w-full"
-                  />
-                </div>
-                <div className="flex-1">
-                  <label className="block text-sm mb-1">Height: {state.gridHeight}</label>
-                  <input
-                    type="range"
-                    min="3"
-                    max="20"
-                    value={state.gridHeight}
-                    onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
-                    className="w-full"
-                  />
-                </div>
-              </div>
-            </div>
 
             {/* Selected Characters - Shows selected available characters with sprites */}
             <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: canvasWidth }}>

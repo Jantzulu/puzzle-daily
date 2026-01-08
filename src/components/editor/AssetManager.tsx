@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
 import { CharacterEditor } from './CharacterEditor';
 import { EnemyEditor } from './EnemyEditor';
 import { SpellLibrary } from './SpellLibrary';
@@ -17,11 +16,8 @@ export const AssetManager: React.FC = () => {
       {/* Header with tabs */}
       <div className="bg-gray-800 border-b border-gray-700">
         <div className="max-w-7xl mx-auto px-8 py-4">
-          <div className="flex justify-between items-center mb-4">
+          <div className="mb-4">
             <h1 className="text-3xl font-bold">Asset Manager</h1>
-            <Link to="/editor" className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700">
-              ← Back to Map Editor
-            </Link>
           </div>
 
           {/* Tabs */}
