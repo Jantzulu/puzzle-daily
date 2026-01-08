@@ -583,6 +583,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
     // Save to library
     saveSpellAsset(editedSpell);
+    alert(`Saved "${editedSpell.name}"!`);
     onSave(editedSpell);
   };
 

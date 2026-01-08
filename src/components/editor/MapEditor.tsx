@@ -766,6 +766,7 @@ export const MapEditor: React.FC = () => {
       tiles: createEmptyGrid(prev.gridWidth, prev.gridHeight),
       enemies: [],
       collectibles: [],
+      placedObjects: [],
     }));
   };
 
