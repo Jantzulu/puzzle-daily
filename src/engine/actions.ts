@@ -1280,8 +1280,30 @@ function executeMeleeAttack(
   const { dx, dy } = getDirectionOffset(character.facing);
   const damage = attackData.damage ?? 1;
 
-  // Determine which sprite to use for attack visual
-  const attackSprite = spell?.sprites.meleeAttack;
+  // Determine which sprite to use for attack visual (shows on all targeted tiles)
+  // Priority: spell.sprites.meleeAttack > default visual
+  let attackSprite = spell?.sprites.meleeAttack;
+
+  // Helper to check if a sprite is properly configured
+  const hasValidSprite = (sprite: any) => {
+    if (!sprite?.spriteData) return false;
+    const data = sprite.spriteData;
+    return data.shape || data.idleImageData || data.spriteSheet;
+  };
+
+  // If no dedicated attack sprite configured, use a default attack visual
+  // This ensures melee attacks are ALWAYS visible on targeted tiles
+  if (!hasValidSprite(attackSprite)) {
+    attackSprite = {
+      type: 'inline',
+      spriteData: {
+        shape: 'star',
+        primaryColor: '#ffcc00',
+        type: 'simple'
+      }
+    };
+  }
+
   const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
 
   // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
