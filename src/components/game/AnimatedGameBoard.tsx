@@ -50,7 +50,7 @@ const MOVE_DURATION = 280; // First 70%: moving between tiles (slower movement)
 const IDLE_DURATION = 120; // Second 30%: idle on destination tile
 const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
-const TELEPORT_APPEAR_DURATION = 150; // ms to show teleport sprite at destination
+const TELEPORT_APPEAR_DURATION = 300; // ms to show teleport sprite at destination
 
 const COLORS = {
   empty: '#2a2a2a',
