@@ -40,7 +40,7 @@ export interface PressurePlateEffect {
 export interface TeleportSpriteConfig {
   imageData: string;           // Base64 image data
   frameCount?: number;         // For spritesheets (default: 1)
-  frameRate?: number;          // Frames per second (default: 8)
+  frameRate?: number;          // Frames per second (default: 10)
   loop?: boolean;              // Loop animation (default: true)
 }
 

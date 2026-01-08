@@ -50,6 +50,7 @@ const MOVE_DURATION = 280; // First 70%: moving between tiles (slower movement)
 const IDLE_DURATION = 120; // Second 30%: idle on destination tile
 const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
+const TELEPORT_APPEAR_DURATION = 150; // ms to show teleport sprite at destination
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -293,7 +294,7 @@ function drawTeleportSprite(
   if (!img.complete || img.naturalWidth === 0) return false;
 
   const frameCount = teleportSprite.frameCount || 1;
-  const frameRate = teleportSprite.frameRate || 8;
+  const frameRate = teleportSprite.frameRate || 10;
   const loop = teleportSprite.loop !== false;
 
   // Calculate frame dimensions (horizontal spritesheet)
@@ -835,7 +836,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             const elapsed = now - anim.startTime;
 
             if (anim.teleported) {
-              // Teleport animation: walk to teleport tile, then appear at destination
+              // Teleport animation: walk to teleport tile, show at destination briefly, then normal
               const teleportTileX = enemy.teleportFromX ?? anim.fromX;
               const teleportTileY = enemy.teleportFromY ?? anim.fromY;
 
@@ -854,8 +855,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 } else {
                   drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
                 }
+              } else if (enemy.teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
+                // Phase 2: Show teleport sprite briefly at destination
+                const pixelX = anim.toX * TILE_SIZE + TILE_SIZE / 2;
+                const pixelY = anim.toY * TILE_SIZE + TILE_SIZE / 2;
+                drawTeleportSprite(ctx, enemy.teleportSprite, pixelX, pixelY, TILE_SIZE, anim.startTime, now);
               } else {
-                // Phase 2: Appear at destination
+                // Phase 3: Appear at destination with normal sprite
                 drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
               }
             } else {
@@ -892,7 +898,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             const elapsed = now - anim.startTime;
 
             if (anim.teleported) {
-              // Teleport animation: walk to teleport tile, then appear at destination
+              // Teleport animation: walk to teleport tile, show at destination briefly, then normal
               // Get the teleport source tile from character state
               const teleportTileX = character.teleportFromX ?? anim.fromX;
               const teleportTileY = character.teleportFromY ?? anim.fromY;
@@ -912,8 +918,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 } else {
                   drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
                 }
+              } else if (character.teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
+                // Phase 2: Show teleport sprite briefly at destination
+                const pixelX = anim.toX * TILE_SIZE + TILE_SIZE / 2;
+                const pixelY = anim.toY * TILE_SIZE + TILE_SIZE / 2;
+                drawTeleportSprite(ctx, character.teleportSprite, pixelX, pixelY, TILE_SIZE, anim.startTime, now);
               } else {
-                // Phase 2: Appear at destination (no animation, instant teleport)
+                // Phase 3: Appear at destination with normal sprite
                 drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
               }
             } else {

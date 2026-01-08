@@ -152,12 +152,12 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                     <label className="text-xs text-gray-400">Frame Rate (fps)</label>
                     <input
                       type="number"
-                      value={behavior.teleportSprite.frameRate || 8}
+                      value={behavior.teleportSprite.frameRate || 10}
                       onChange={e => onChange({
                         ...behavior,
                         teleportSprite: {
                           ...behavior.teleportSprite!,
-                          frameRate: Math.max(1, parseInt(e.target.value) || 8)
+                          frameRate: Math.max(1, parseInt(e.target.value) || 10)
                         }
                       })}
                       className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
@@ -199,7 +199,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                         teleportSprite: {
                           imageData: base64,
                           frameCount: 1,
-                          frameRate: 8,
+                          frameRate: 10,
                           loop: true
                         }
                       });
