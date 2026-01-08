@@ -98,6 +98,13 @@ export function executeTurn(gameState: GameState): GameState {
     // Create a new character object (shallow copy)
     const newCharacter = { ...character };
 
+    // Clear animation flags from previous turn (animation has completed)
+    newCharacter.justTeleported = false;
+    newCharacter.teleportFromX = undefined;
+    newCharacter.teleportFromY = undefined;
+    newCharacter.teleportSprite = undefined;
+    newCharacter.iceSlideDistance = undefined;
+
     if (!newCharacter.active || newCharacter.dead) {
       newCharacters.push(newCharacter);
       continue;
@@ -211,6 +218,13 @@ export function executeTurn(gameState: GameState): GameState {
     // Create a new enemy object (shallow copy)
     const newEnemy = { ...enemy };
 
+    // Clear animation flags from previous turn (animation has completed)
+    newEnemy.justTeleported = false;
+    newEnemy.teleportFromX = undefined;
+    newEnemy.teleportFromY = undefined;
+    newEnemy.teleportSprite = undefined;
+    newEnemy.iceSlideDistance = undefined;
+
     if (newEnemy.dead) {
       newEnemies.push(newEnemy);
       continue;
@@ -304,6 +318,12 @@ export function executeTurn(gameState: GameState): GameState {
           newEnemy.facing = updatedChar.facing;
           newEnemy.currentHealth = updatedChar.currentHealth;
           newEnemy.dead = updatedChar.dead;
+          // Copy teleport animation state
+          newEnemy.justTeleported = updatedChar.justTeleported;
+          newEnemy.teleportFromX = updatedChar.teleportFromX;
+          newEnemy.teleportFromY = updatedChar.teleportFromY;
+          newEnemy.teleportSprite = updatedChar.teleportSprite;
+          newEnemy.iceSlideDistance = updatedChar.iceSlideDistance;
         }
       }
     } else {
@@ -328,6 +348,12 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.facing = updatedChar.facing;
       newEnemy.currentHealth = updatedChar.currentHealth;
       newEnemy.dead = updatedChar.dead;
+      // Copy teleport animation state
+      newEnemy.justTeleported = updatedChar.justTeleported;
+      newEnemy.teleportFromX = updatedChar.teleportFromX;
+      newEnemy.teleportFromY = updatedChar.teleportFromY;
+      newEnemy.teleportSprite = updatedChar.teleportSprite;
+      newEnemy.iceSlideDistance = updatedChar.iceSlideDistance;
 
       // Also execute any parallel_with_previous actions that follow
       let checkIndex = (newEnemy.actionIndex || 0) + 1;
@@ -353,6 +379,12 @@ export function executeTurn(gameState: GameState): GameState {
           newEnemy.facing = parallelResult.facing;
           newEnemy.currentHealth = parallelResult.currentHealth;
           newEnemy.dead = parallelResult.dead;
+          // Copy teleport animation state
+          newEnemy.justTeleported = parallelResult.justTeleported;
+          newEnemy.teleportFromX = parallelResult.teleportFromX;
+          newEnemy.teleportFromY = parallelResult.teleportFromY;
+          newEnemy.teleportSprite = parallelResult.teleportSprite;
+          newEnemy.iceSlideDistance = parallelResult.iceSlideDistance;
 
           checkIndex++;
         } else {

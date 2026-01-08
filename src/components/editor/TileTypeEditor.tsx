@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction } from '../../types/game';
+import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, TeleportSpriteConfig } from '../../types/game';
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType } from '../../utils/assetStorage';
 
@@ -93,20 +93,123 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
 
       {/* Teleport behavior config */}
       {behavior.type === 'teleport' && (
-        <div>
-          <label className="text-sm text-gray-300">Teleport Group</label>
-          <select
-            value={behavior.teleportGroupId || 'A'}
-            onChange={e => onChange({ ...behavior, teleportGroupId: e.target.value })}
-            className="w-full bg-gray-600 rounded px-2 py-1 text-sm mt-1"
-          >
-            {TELEPORT_GROUPS.map(group => (
-              <option key={group} value={group}>{group}</option>
-            ))}
-          </select>
-          <p className="text-xs text-gray-400 mt-1">
-            Tiles with the same group teleport to each other (bidirectional)
-          </p>
+        <div className="space-y-3">
+          <div>
+            <label className="text-sm text-gray-300">Teleport Group</label>
+            <select
+              value={behavior.teleportGroupId || 'A'}
+              onChange={e => onChange({ ...behavior, teleportGroupId: e.target.value })}
+              className="w-full bg-gray-600 rounded px-2 py-1 text-sm mt-1"
+            >
+              {TELEPORT_GROUPS.map(group => (
+                <option key={group} value={group}>{group}</option>
+              ))}
+            </select>
+            <p className="text-xs text-gray-400 mt-1">
+              Tiles with the same group teleport to each other (bidirectional)
+            </p>
+          </div>
+
+          {/* Teleport Sprite (optional) */}
+          <div>
+            <label className="text-sm text-gray-300">Teleporting Sprite (Optional)</label>
+            <p className="text-xs text-gray-400 mb-2">
+              Custom sprite shown on entities while teleporting. Supports spritesheets.
+            </p>
+            {behavior.teleportSprite?.imageData ? (
+              <div className="space-y-2">
+                <div className="flex items-start gap-3">
+                  <img
+                    src={behavior.teleportSprite.imageData}
+                    alt="Teleport sprite"
+                    className="w-16 h-16 object-contain bg-gray-600 rounded"
+                  />
+                  <button
+                    onClick={() => onChange({ ...behavior, teleportSprite: undefined })}
+                    className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    Remove
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-400">Frame Count</label>
+                    <input
+                      type="number"
+                      value={behavior.teleportSprite.frameCount || 1}
+                      onChange={e => onChange({
+                        ...behavior,
+                        teleportSprite: {
+                          ...behavior.teleportSprite!,
+                          frameCount: Math.max(1, parseInt(e.target.value) || 1)
+                        }
+                      })}
+                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      min="1"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Frame Rate (fps)</label>
+                    <input
+                      type="number"
+                      value={behavior.teleportSprite.frameRate || 8}
+                      onChange={e => onChange({
+                        ...behavior,
+                        teleportSprite: {
+                          ...behavior.teleportSprite!,
+                          frameRate: Math.max(1, parseInt(e.target.value) || 8)
+                        }
+                      })}
+                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      min="1"
+                    />
+                  </div>
+                </div>
+                <label className="flex items-center text-xs text-gray-300">
+                  <input
+                    type="checkbox"
+                    checked={behavior.teleportSprite.loop !== false}
+                    onChange={e => onChange({
+                      ...behavior,
+                      teleportSprite: {
+                        ...behavior.teleportSprite!,
+                        loop: e.target.checked
+                      }
+                    })}
+                    className="mr-2"
+                  />
+                  Loop animation
+                </label>
+              </div>
+            ) : (
+              <label className="block cursor-pointer">
+                <div className="w-full h-16 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 text-sm">
+                  <span>+ Upload Teleport Sprite</span>
+                  <span className="text-xs text-gray-500">Single image or horizontal spritesheet</span>
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      const base64 = await fileToBase64(file);
+                      onChange({
+                        ...behavior,
+                        teleportSprite: {
+                          imageData: base64,
+                          frameCount: 1,
+                          frameRate: 8,
+                          loop: true
+                        }
+                      });
+                    }
+                  }}
+                  className="hidden"
+                />
+              </label>
+            )}
+          </div>
         </div>
       )}
 

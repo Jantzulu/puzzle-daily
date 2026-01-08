@@ -296,6 +296,10 @@ function processTeleportBehavior(
     ...character,
     x: destinationTile.x,
     y: destinationTile.y,
+    justTeleported: true,
+    teleportFromX: tile.x,
+    teleportFromY: tile.y,
+    teleportSprite: behavior.teleportSprite,
   };
 }
 
@@ -309,6 +313,7 @@ function processIceBehavior(
 ): PlacedCharacter {
   let updatedChar = { ...character };
   const { dx, dy } = getDirectionOffset(movementDirection);
+  let slideCount = 0;
 
   // Keep sliding until we hit something
   let maxSlides = 50; // Prevent infinite loops
@@ -360,8 +365,9 @@ function processIceBehavior(
     // Move to next tile
     updatedChar.x = nextX;
     updatedChar.y = nextY;
+    slideCount++;
 
-    console.log(`[ICE] ${character.characterId} sliding to (${nextX},${nextY})`);
+    console.log(`[ICE] ${character.characterId} sliding to (${nextX},${nextY}) (slide ${slideCount})`);
 
     // Check if the new tile is NOT ice - stop sliding
     const newTile = gameState.puzzle.tiles[nextY][nextX];
@@ -379,6 +385,11 @@ function processIceBehavior(
       // Not a custom tile, stop sliding
       break;
     }
+  }
+
+  // Track the slide distance for animation pacing
+  if (slideCount > 0) {
+    updatedChar.iceSlideDistance = slideCount;
   }
 
   return updatedChar;

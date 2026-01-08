@@ -37,6 +37,13 @@ export interface PressurePlateEffect {
   stayPressed?: boolean;   // Require standing on plate vs. step once
 }
 
+export interface TeleportSpriteConfig {
+  imageData: string;           // Base64 image data
+  frameCount?: number;         // For spritesheets (default: 1)
+  frameRate?: number;          // Frames per second (default: 8)
+  loop?: boolean;              // Loop animation (default: true)
+}
+
 export interface TileBehaviorConfig {
   type: TileBehaviorType;
 
@@ -46,6 +53,7 @@ export interface TileBehaviorConfig {
 
   // Teleport behavior - tiles with same group ID are linked (bidirectional)
   teleportGroupId?: string;
+  teleportSprite?: TeleportSpriteConfig;  // Custom sprite shown during teleportation
 
   // Direction change behavior
   newFacing?: Direction;
@@ -213,6 +221,11 @@ export interface PlacedEnemy {
   actionIndex?: number; // For active enemies with behavior patterns
   active?: boolean; // For active enemies
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
+  justTeleported?: boolean; // Set when teleporting, cleared after animation
+  teleportFromX?: number;   // Origin tile before teleport
+  teleportFromY?: number;
+  teleportSprite?: TeleportSpriteConfig; // Custom sprite during teleportation
+  iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
 }
 
 export interface PlacedObject {
@@ -325,6 +338,11 @@ export interface PlacedCharacter {
   active: boolean;
   dead: boolean;
   parallelTrackers?: ParallelActionTracker[]; // For parallel spell execution
+  justTeleported?: boolean; // Set when teleporting, cleared after animation
+  teleportFromX?: number;   // Origin tile before teleport
+  teleportFromY?: number;
+  teleportSprite?: TeleportSpriteConfig; // Custom sprite during teleportation
+  iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';

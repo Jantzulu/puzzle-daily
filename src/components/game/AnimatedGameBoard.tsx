@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, TeleportSpriteConfig } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -49,6 +49,7 @@ const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn 
 const MOVE_DURATION = 280; // First 70%: moving between tiles (slower movement)
 const IDLE_DURATION = 120; // Second 30%: idle on destination tile
 const DEATH_ANIMATION_DURATION = 500; // ms for death animation
+const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -262,6 +263,82 @@ function drawSpellSpriteSheetFromStartTime(
 }
 
 // ==========================================
+// TELEPORT SPRITE RENDERING
+// ==========================================
+
+// Cache for teleport sprite images
+const teleportSpriteImageCache = new Map<string, HTMLImageElement>();
+
+/**
+ * Draw a teleport sprite (with optional spritesheet animation) at the given position
+ */
+function drawTeleportSprite(
+  ctx: CanvasRenderingContext2D,
+  teleportSprite: TeleportSpriteConfig,
+  px: number,
+  py: number,
+  size: number,
+  startTime: number,
+  now: number
+): boolean {
+  // Get or create cached image
+  let img = teleportSpriteImageCache.get(teleportSprite.imageData);
+  if (!img) {
+    img = new Image();
+    img.src = teleportSprite.imageData;
+    teleportSpriteImageCache.set(teleportSprite.imageData, img);
+  }
+
+  // Wait for image to load
+  if (!img.complete || img.naturalWidth === 0) return false;
+
+  const frameCount = teleportSprite.frameCount || 1;
+  const frameRate = teleportSprite.frameRate || 8;
+  const loop = teleportSprite.loop !== false;
+
+  // Calculate frame dimensions (horizontal spritesheet)
+  const frameWidth = img.naturalWidth / frameCount;
+  const frameHeight = img.naturalHeight;
+
+  // Calculate current frame based on elapsed time
+  const elapsed = now - startTime;
+  const frameDuration = 1000 / frameRate;
+  let currentFrame = Math.floor(elapsed / frameDuration);
+
+  // Handle looping vs clamping to final frame
+  if (loop) {
+    currentFrame = currentFrame % frameCount;
+  } else {
+    currentFrame = Math.min(currentFrame, frameCount - 1);
+  }
+
+  // Calculate display dimensions preserving aspect ratio
+  const frameAspectRatio = frameWidth / frameHeight;
+  let finalWidth = size;
+  let finalHeight = size;
+  if (frameAspectRatio > 1) {
+    finalHeight = size / frameAspectRatio;
+  } else {
+    finalWidth = size * frameAspectRatio;
+  }
+
+  // Draw the current frame centered at position
+  const sourceX = currentFrame * frameWidth;
+  const sourceY = 0;
+
+  try {
+    ctx.drawImage(
+      img,
+      sourceX, sourceY, frameWidth, frameHeight,
+      px - finalWidth / 2, py - finalHeight / 2, finalWidth, finalHeight
+    );
+    return true;
+  } catch (e) {
+    return false;
+  }
+}
+
+// ==========================================
 // SMART BORDER TYPES AND DETECTION
 // ==========================================
 
@@ -379,6 +456,8 @@ interface CharacterPosition {
   toY: number;
   startTime: number;
   facingDuringMove: Direction; // Direction character is moving (before wall lookahead changes it)
+  teleported?: boolean; // If true, this is a teleport - animate to fromX/fromY then appear at toX/toY
+  iceSlideDistance?: number; // If set, slow down animation proportionally
 }
 
 interface CharacterAttack {
@@ -424,16 +503,31 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Check if facing also changed (wall lookahead: turn + move in same turn)
         const facingChanged = prevChar.facing !== char.facing;
 
-        newPositions.set(idx, {
-          fromX: prevChar.x,
-          fromY: prevChar.y,
-          toX: char.x,
-          toY: char.y,
-          startTime: now,
-          // If facing changed, use NEW facing (wall lookahead scenario)
-          // Otherwise use old facing (normal movement)
-          facingDuringMove: facingChanged ? char.facing : prevChar.facing,
-        });
+        // Check if this was a teleport
+        if (char.justTeleported && char.teleportFromX !== undefined && char.teleportFromY !== undefined) {
+          // Teleport animation: animate from previous position TO the teleport tile,
+          // then appear at destination
+          newPositions.set(idx, {
+            fromX: prevChar.x,
+            fromY: prevChar.y,
+            toX: char.x,  // Final destination
+            toY: char.y,
+            startTime: now,
+            facingDuringMove: facingChanged ? char.facing : prevChar.facing,
+            teleported: true,
+          });
+        } else {
+          // Normal movement animation (or ice slide)
+          newPositions.set(idx, {
+            fromX: prevChar.x,
+            fromY: prevChar.y,
+            toX: char.x,
+            toY: char.y,
+            startTime: now,
+            facingDuringMove: facingChanged ? char.facing : prevChar.facing,
+            iceSlideDistance: char.iceSlideDistance,
+          });
+        }
       } else if (prevChar && prevChar.facing !== char.facing) {
         // Character turned but didn't move (wall lookahead)
         // Create a short "turning" animation to update the arrow immediately
@@ -469,16 +563,30 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Check if facing also changed (wall lookahead: turn + move in same turn)
         const facingChanged = prevEnemy.facing !== enemy.facing;
 
-        newPositions.set(idx, {
-          fromX: prevEnemy.x,
-          fromY: prevEnemy.y,
-          toX: enemy.x,
-          toY: enemy.y,
-          startTime: now,
-          // If facing changed, use NEW facing (wall lookahead scenario)
-          // Otherwise use old facing (normal movement)
-          facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
-        });
+        // Check if this was a teleport
+        if (enemy.justTeleported && enemy.teleportFromX !== undefined && enemy.teleportFromY !== undefined) {
+          // Teleport animation
+          newPositions.set(idx, {
+            fromX: prevEnemy.x,
+            fromY: prevEnemy.y,
+            toX: enemy.x,
+            toY: enemy.y,
+            startTime: now,
+            facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
+            teleported: true,
+          });
+        } else {
+          // Normal movement animation (or ice slide)
+          newPositions.set(idx, {
+            fromX: prevEnemy.x,
+            fromY: prevEnemy.y,
+            toX: enemy.x,
+            toY: enemy.y,
+            startTime: now,
+            facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
+            iceSlideDistance: enemy.iceSlideDistance,
+          });
+        }
       } else if (prevEnemy && prevEnemy.facing !== enemy.facing) {
         // Enemy turned but didn't move (wall lookahead)
         // Create a short "turning" animation to update the arrow immediately
@@ -718,17 +826,54 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const anim = enemyPositions.get(index);
           const deathAnim = enemyDeathAnimations.get(index);
 
-          if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
+          // Calculate effective animation duration for ice slides
+          const effectiveAnimDuration = anim?.iceSlideDistance
+            ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION
+            : ANIMATION_DURATION;
+
+          if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted) {
             const elapsed = now - anim.startTime;
 
-            if (elapsed < MOVE_DURATION) {
-              const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-              const eased = easeInOutQuad(moveProgress);
-              const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
-              const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-              drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+            if (anim.teleported) {
+              // Teleport animation: walk to teleport tile, then appear at destination
+              const teleportTileX = enemy.teleportFromX ?? anim.fromX;
+              const teleportTileY = enemy.teleportFromY ?? anim.fromY;
+
+              if (elapsed < MOVE_DURATION) {
+                // Phase 1: Animate walking TO the teleport tile
+                const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+                const eased = easeInOutQuad(moveProgress);
+                const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
+                const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
+
+                // Use custom teleport sprite if available
+                if (enemy.teleportSprite) {
+                  const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
+                  const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
+                  drawTeleportSprite(ctx, enemy.teleportSprite, pixelX, pixelY, TILE_SIZE, anim.startTime, now);
+                } else {
+                  drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+                }
+              } else {
+                // Phase 2: Appear at destination
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+              }
             } else {
-              drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+              // Normal movement animation (or ice slide)
+              // Calculate effective duration for ice slides
+              const effectiveMoveDuration = anim.iceSlideDistance
+                ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE
+                : MOVE_DURATION;
+
+              if (elapsed < effectiveMoveDuration) {
+                const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
+                const eased = easeInOutQuad(moveProgress);
+                const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
+                const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+              } else {
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+              }
             }
           } else {
             drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now);
@@ -738,17 +883,55 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const anim = characterPositions.get(index);
           const deathAnim = characterDeathAnimations.get(character.characterId);
 
-          if (anim && now - anim.startTime < ANIMATION_DURATION && gameStarted) {
+          // Calculate effective animation duration for ice slides
+          const effectiveAnimDuration = anim?.iceSlideDistance
+            ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION
+            : ANIMATION_DURATION;
+
+          if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted) {
             const elapsed = now - anim.startTime;
 
-            if (elapsed < MOVE_DURATION) {
-              const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-              const eased = easeInOutQuad(moveProgress);
-              const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
-              const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-              drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+            if (anim.teleported) {
+              // Teleport animation: walk to teleport tile, then appear at destination
+              // Get the teleport source tile from character state
+              const teleportTileX = character.teleportFromX ?? anim.fromX;
+              const teleportTileY = character.teleportFromY ?? anim.fromY;
+
+              if (elapsed < MOVE_DURATION) {
+                // Phase 1: Animate walking TO the teleport tile
+                const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
+                const eased = easeInOutQuad(moveProgress);
+                const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
+                const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
+
+                // Use custom teleport sprite if available
+                if (character.teleportSprite) {
+                  const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
+                  const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
+                  drawTeleportSprite(ctx, character.teleportSprite, pixelX, pixelY, TILE_SIZE, anim.startTime, now);
+                } else {
+                  drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+                }
+              } else {
+                // Phase 2: Appear at destination (no animation, instant teleport)
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+              }
             } else {
-              drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+              // Normal movement animation (or ice slide)
+              // Calculate effective duration for ice slides
+              const effectiveMoveDuration = anim.iceSlideDistance
+                ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE
+                : MOVE_DURATION;
+
+              if (elapsed < effectiveMoveDuration) {
+                const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
+                const eased = easeInOutQuad(moveProgress);
+                const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
+                const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+              } else {
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+              }
             }
           } else {
             drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted, deathAnim, now);
