@@ -1160,18 +1160,35 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               />
             )}
 
-            {/* Damage Effect Visual */}
-            <SpellSpriteEditor
-              label="Damage Effect (on hit)"
-              spriteRef={editedSpell.sprites?.damageEffect}
-              onChange={(sprite) => setEditedSpell({
-                ...editedSpell,
-                sprites: { ...editedSpell.sprites, damageEffect: sprite }
-              })}
-              accentColor="red"
-              showDirectionalPreview={false}
-              helpText="Visual effect shown only when target actually takes damage"
-            />
+            {/* Damage Effect Visual - only show for damage spells */}
+            {!editedSpell.healing && (
+              <SpellSpriteEditor
+                label="Damage Effect (on hit)"
+                spriteRef={editedSpell.sprites?.damageEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, damageEffect: sprite }
+                })}
+                accentColor="red"
+                showDirectionalPreview={false}
+                helpText="Visual effect shown only when target actually takes damage"
+              />
+            )}
+
+            {/* Healing Effect Visual - only show for healing spells */}
+            {editedSpell.healing && (
+              <SpellSpriteEditor
+                label="Healing Effect (on heal)"
+                spriteRef={editedSpell.sprites?.healingEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, healingEffect: sprite }
+                })}
+                accentColor="green"
+                showDirectionalPreview={false}
+                helpText="Visual effect shown when target is healed"
+              />
+            )}
           </div>
         </div>
       </div>

@@ -1169,6 +1169,7 @@ function executeSpellInDirection(
     persistVisualSprite: spell.sprites.persistentArea,
     projectileSprite: spell.sprites.projectile,
     hitEffectSprite: spell.sprites.damageEffect,
+    healingEffectSprite: spell.sprites.healingEffect,
     castEffectSprite: spell.sprites.castEffect,
     effectDuration: 300,
     pattern: AttackPattern.PROJECTILE, // Default, will be set below
@@ -1464,8 +1465,10 @@ export function executeAOEAttack(
             const enemyData = getEnemy(ally.enemyId);
             ally.currentHealth = Math.min(ally.currentHealth + healing, enemyData?.health ?? ally.currentHealth);
 
-            if (attackData.hitEffectSprite) {
-              spawnParticle(ally.x, ally.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+            // Use healing effect sprite if available, fallback to hit effect
+            const healSprite = attackData.healingEffectSprite || attackData.hitEffectSprite;
+            if (healSprite) {
+              spawnParticle(ally.x, ally.y, healSprite, attackData.effectDuration || 300, gameState);
             }
           }
         });
@@ -1481,8 +1484,10 @@ export function executeAOEAttack(
           if (distance <= radius) {
             ally.currentHealth = Math.min(ally.currentHealth + healing, getCharacter(ally.characterId)?.health ?? ally.currentHealth);
 
-            if (attackData.hitEffectSprite) {
-              spawnParticle(ally.x, ally.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState);
+            // Use healing effect sprite if available, fallback to hit effect
+            const healSprite = attackData.healingEffectSprite || attackData.hitEffectSprite;
+            if (healSprite) {
+              spawnParticle(ally.x, ally.y, healSprite, attackData.effectDuration || 300, gameState);
             }
           }
         });

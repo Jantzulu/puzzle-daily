@@ -457,7 +457,8 @@ export interface CustomAttack {
 
   // Visuals
   projectileSprite?: SpriteReference;  // Visual for projectile
-  hitEffectSprite?: SpriteReference;   // Particle on impact
+  hitEffectSprite?: SpriteReference;   // Particle on damage impact
+  healingEffectSprite?: SpriteReference; // Particle on healing
   castEffectSprite?: SpriteReference;  // Effect on caster
 
   // Animation timing
@@ -603,7 +604,8 @@ export interface SpellAsset {
   sprites: {
     projectile?: SpriteReference;      // For linear spells (per direction)
     meleeAttack?: SpriteReference;     // For melee spells - sprite shown on attack tiles
-    damageEffect: SpriteReference;     // On successful hit
+    damageEffect: SpriteReference;     // On successful damage hit
+    healingEffect?: SpriteReference;   // On successful heal (falls back to damageEffect if not set)
     castEffect?: SpriteReference;      // On caster when spell fires
     persistentArea?: SpriteReference;  // Visual for persistent ground effects
   };

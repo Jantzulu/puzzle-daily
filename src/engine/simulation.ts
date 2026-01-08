@@ -670,12 +670,13 @@ export function updateProjectiles(gameState: GameState): void {
             const maxHealth = charData?.health ?? hitAlly.currentHealth;
             hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
 
-            // Spawn hit effect
-            if (proj.attackData.hitEffectSprite) {
+            // Spawn healing effect (prefer healing sprite, fallback to hit effect)
+            const healSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
+            if (healSprite) {
               spawnParticleEffect(
                 hitAlly.x,
                 hitAlly.y,
-                proj.attackData.hitEffectSprite,
+                healSprite,
                 proj.attackData.effectDuration || 300,
                 gameState
               );
@@ -768,12 +769,13 @@ export function updateProjectiles(gameState: GameState): void {
             const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
             hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
 
-            // Spawn hit effect
-            if (proj.attackData.hitEffectSprite) {
+            // Spawn healing effect (prefer healing sprite, fallback to hit effect)
+            const healSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
+            if (healSprite) {
               spawnParticleEffect(
                 hitAllyEnemy.x,
                 hitAllyEnemy.y,
-                proj.attackData.hitEffectSprite,
+                healSprite,
                 proj.attackData.effectDuration || 300,
                 gameState
               );

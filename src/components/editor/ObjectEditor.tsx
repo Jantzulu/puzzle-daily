@@ -1,14 +1,8 @@
 import React, { useState } from 'react';
-import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectCollisionType, ObjectAnchorPoint } from '../../utils/assetStorage';
+import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint } from '../../utils/assetStorage';
 import { saveObject, getCustomObjects, deleteObject } from '../../utils/assetStorage';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
-
-const COLLISION_TYPES: { value: ObjectCollisionType; label: string; description: string }[] = [
-  { value: 'none', label: 'No Collision', description: 'Entities can walk through freely' },
-  { value: 'wall', label: 'Wall', description: 'Acts like a wall - triggers wall collision behaviors' },
-  { value: 'stop_movement', label: 'Stop Movement', description: 'Stops entity movement but no wall reaction' },
-];
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
   { value: 'center', label: 'Center', description: 'Sprite center aligned to tile center' },
@@ -70,7 +64,6 @@ export const ObjectEditor: React.FC = () => {
         createdAt: new Date().toISOString(),
       },
       anchorPoint: 'center',
-      collisionType: 'none',
       effects: [],
       renderLayer: 'below_entities',
       castsShadow: false,
@@ -179,8 +172,7 @@ export const ObjectEditor: React.FC = () => {
                         <div>
                           <h3 className="font-bold">{obj.name}</h3>
                           <p className="text-xs text-gray-400 capitalize">
-                            {obj.collisionType.replace('_', ' ')}
-                            {obj.effects.length > 0 && ` • ${obj.effects.length} effect${obj.effects.length !== 1 ? 's' : ''}`}
+                            {obj.effects.length > 0 ? `${obj.effects.length} effect${obj.effects.length !== 1 ? 's' : ''}` : 'Decorative'}
                           </p>
                         </div>
                       </div>
@@ -280,26 +272,6 @@ export const ObjectEditor: React.FC = () => {
                       <option value="below_entities">Below Entities</option>
                       <option value="above_entities">Above Entities</option>
                     </select>
-                  </div>
-                </div>
-
-                {/* Collision */}
-                <div className="bg-gray-800 p-4 rounded">
-                  <h3 className="text-lg font-bold mb-3">Collision</h3>
-                  <div>
-                    <label className="block text-sm mb-1">Collision Type</label>
-                    <select
-                      value={editing.collisionType}
-                      onChange={(e) => setEditing({ ...editing, collisionType: e.target.value as ObjectCollisionType })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
-                    >
-                      {COLLISION_TYPES.map(ct => (
-                        <option key={ct.value} value={ct.value}>{ct.label}</option>
-                      ))}
-                    </select>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {COLLISION_TYPES.find(ct => ct.value === editing.collisionType)?.description}
-                    </p>
                   </div>
                 </div>
 
@@ -417,8 +389,8 @@ export const ObjectEditor: React.FC = () => {
               <div className="bg-gray-800 p-8 rounded text-center">
                 <h2 className="text-2xl font-bold mb-4">Object Editor</h2>
                 <p className="text-gray-400 mb-6">
-                  Create objects with custom sprites that can be placed on tiles.
-                  Objects can have collision, deal damage, heal, and more!
+                  Create decorative objects with custom sprites that can be placed on tiles.
+                  For collision, use tiles with wall behavior instead.
                 </p>
                 <button
                   onClick={handleNew}
