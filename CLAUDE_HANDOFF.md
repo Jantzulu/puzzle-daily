@@ -1,177 +1,311 @@
 # Puzzle Game - Claude Handoff Document
 
-This document provides context for continuing development on this project.
-
 ## Project Overview
 
-This is a **turn-based puzzle game** built with **React + TypeScript + Vite**. Players place characters on a puzzle grid and watch them execute pre-programmed behaviors in a simulation. The game features custom sprites, enemies, spells, skins, and tile types.
+**Puzzle Daily** is a turn-based puzzle game built with React, TypeScript, and Vite. Players place characters on a grid, define their behavior patterns, and watch them automatically solve puzzles. The project includes comprehensive asset management systems for characters, enemies, spells, puzzle skins, and tile types.
 
-### Core Concept
-- Characters have behavior sequences (move forward, turn, attack, etc.)
-- Simulation runs turn-by-turn with characters and enemies acting simultaneously
-- Goal: Navigate characters to reach the goal tile while avoiding/defeating enemies
+**Tech Stack:** React 19, TypeScript 5.9, Vite 7, Tailwind CSS 3, Canvas-based rendering
+**Status:** Active Development (January 2026)
 
-## Tech Stack
+---
 
-- **Frontend**: React 18 + TypeScript
-- **Build**: Vite 7.x
-- **Styling**: Tailwind CSS
-- **Routing**: React Router DOM
-- **Storage**: localStorage for custom assets (no backend)
-
-## Key Directories
-
-```
-puzzle-game/
-├── src/
-│   ├── components/
-│   │   ├── editor/           # Asset editors (characters, enemies, spells, skins, tiles)
-│   │   │   ├── AssetManager.tsx      # Tab container for all editors
-│   │   │   ├── CharacterEditor.tsx   # Create/edit characters
-│   │   │   ├── EnemyEditor.tsx       # Create/edit enemies
-│   │   │   ├── SpellLibrary.tsx      # Spell creation
-│   │   │   ├── SkinEditor.tsx        # Puzzle visual themes
-│   │   │   ├── TileTypeEditor.tsx    # Custom tile behaviors
-│   │   │   ├── MapEditor.tsx         # Puzzle level designer
-│   │   │   └── SpriteEditor.tsx      # Sprite configuration (directional, animations)
-│   │   └── game/
-│   │       ├── AnimatedGameBoard.tsx # Canvas-based game rendering
-│   │       └── CharacterSelector.tsx # Character placement UI
-│   ├── engine/
-│   │   ├── actions.ts        # Movement, combat, spell execution
-│   │   └── simulation.ts     # Turn execution, game state management
-│   ├── types/
-│   │   └── game.ts           # All TypeScript interfaces
-│   ├── utils/
-│   │   └── assetStorage.ts   # localStorage CRUD for custom assets
-│   └── data/
-│       ├── characters/       # Default character JSON files
-│       └── enemies/          # Default enemy JSON files
-```
-
-## Major Systems
-
-### 1. Character/Enemy Behavior System
-Characters and enemies have a `behavior` array of `CharacterAction` objects:
-- Action types: `MOVE_FORWARD`, `TURN_LEFT`, `TURN_RIGHT`, `WAIT`, `ATTACK`, `SPELL`, `IF_WALL`, etc.
-- Actions can have triggers: `interval` (time-based) or `on_event` (condition-based)
-- Wall collision behaviors: `stop`, `turn_left`, `turn_right`, `turn_around`, `continue`
-
-### 2. Sprite System (`SpriteEditor.tsx`)
-- **Directional sprites**: Different appearances per 8 directions
-- **Animation states**: Idle, Moving, Death, Casting (each can have sprite sheets)
-- **Death handling**: Death sprite sheet's final frame serves as the corpse appearance
-- Sprites are stored as base64 in localStorage
-
-### 3. Custom Tile Types (`TileTypeEditor.tsx`)
-Tiles can have behaviors:
-- `damage`: Deal damage when stepped on
-- `teleport`: Transport to linked teleport tile (bidirectional, grouped by letter A-Z)
-- `direction_change`: Force entity to face a specific direction
-- `ice`: Slide until hitting a wall
-- `pressure_plate`: Trigger events (toggle walls, spawn enemies)
-
-### 4. Skin System (`SkinEditor.tsx`)
-Puzzle visual themes with:
-- Border sprites (walls, corners - many variants for inner/outer/thin)
-- Tile sprites (floor, wall, goal)
-
-### 5. Spell System (`SpellLibrary.tsx`)
-Spells have:
-- Projectile configuration (speed, range, piercing)
-- Effects (damage, healing, knockback)
-- Visual sprites
-
-### 6. Combat System
-- Characters have `attackDamage` and optional `retaliationDamage`
-- Enemies can have `hasMeleePriority` to attack first in melee exchanges
-- Entity properties:
-  - `behavesLikeWall` / `behavesLikeWallDead`: Triggers wall collision reactions
-  - `blocksMovement` / `blocksMovementDead`: Stops movement without triggering wall reactions
-  - `canOverlapEntities`: Ghost mode - can pass through other entities
-
-## Recent Changes (Latest Session)
-
-1. **Movement Animation Timing**: Changed from 50/50 to 70/30 split (more time moving, less idle)
-   - `MOVE_DURATION = 280ms`, `IDLE_DURATION = 120ms`
-
-2. **Removed Corpse Sprite System**: Corpse appearance is now handled by the final frame of the Death sprite sheet
-   - Removed: `corpseSpriteSheet`, `corpseImageData`, `corpseHasCollision` fields
-   - Removed: `drawCorpseSprite()`, `hasCorpseSprite()` functions
-   - Removed: Corpse sprite UI section in SpriteEditor
-
-3. **Added Movement Blocking Fields**:
-   - `blocksMovement`: When alive, stops entities without triggering wall reactions
-   - `blocksMovementDead`: When dead, corpse stops entities without triggering wall reactions
-   - Different from `behavesLikeWall` which triggers turn_left/turn_right/etc. behaviors
-
-4. **Custom Tile Fixes**:
-   - Fixed custom tiles not rendering in Map Editor
-   - Fixed ice tile visual bug (diagonal lines extending outside tile bounds) using canvas clipping
-   - Reformatted TileTypeEditor to match SkinEditor layout
-   - Reordered Asset Manager tabs: Characters, Enemies, Spells, Tiles, Skins, Collectibles
-
-5. **Removed Vestigial Toggle Flags**:
-   - Removed `useAttackDamage` and `useRetaliationDamage` from Character/Enemy interfaces
-   - These flags were never actually checked in the combat code
-
-## Key Files to Know
-
-| File | Purpose |
-|------|---------|
-| `src/types/game.ts` | All TypeScript interfaces - start here for data structures |
-| `src/engine/actions.ts` | Movement, combat, spell execution logic |
-| `src/engine/simulation.ts` | Turn execution, game state initialization |
-| `src/components/game/AnimatedGameBoard.tsx` | Canvas rendering of the game |
-| `src/components/editor/MapEditor.tsx` | Puzzle level designer |
-| `src/utils/assetStorage.ts` | localStorage CRUD operations |
-
-## Constants & Magic Numbers
-
-- `TILE_SIZE = 48` pixels
-- `BORDER_SIZE = 48` pixels (top/bottom)
-- `SIDE_BORDER_SIZE = 24` pixels (left/right)
-- `ANIMATION_DURATION = 400ms` per turn
-- `MOVE_DURATION = 280ms` (70% of turn)
-- `IDLE_DURATION = 120ms` (30% of turn)
-- `DEATH_ANIMATION_DURATION = 500ms`
-
-## Running the Project
+## Quick Start
 
 ```bash
 cd puzzle-game
 npm install
-npm run dev     # Development server
+npm run dev     # Development server with HMR
 npm run build   # Production build
 ```
 
-## Known Patterns
+---
 
-1. **Custom assets stored in localStorage** with prefixes:
-   - `puzzleSkins_`
-   - `customCharacters_`
-   - `customEnemies_`
-   - `customTileTypes_`
-   - `spellLibrary_`
+## Directory Structure
 
-2. **Canvas rendering** uses `requestAnimationFrame` loop in AnimatedGameBoard
+```
+puzzle-game/
+├── src/
+│   ├── types/
+│   │   └── game.ts                 # Master type definitions (all interfaces/enums)
+│   ├── engine/
+│   │   ├── simulation.ts           # Turn-based game loop (600ms per turn)
+│   │   ├── actions.ts              # Action execution logic
+│   │   └── utils.ts                # Direction/math utilities
+│   ├── components/
+│   │   ├── game/
+│   │   │   ├── Game.tsx            # Main play mode
+│   │   │   ├── AnimatedGameBoard.tsx  # Canvas rendering engine (largest file)
+│   │   │   ├── Controls.tsx        # Play/Pause/Reset UI
+│   │   │   └── CharacterSelector.tsx
+│   │   └── editor/
+│   │       ├── AssetManager.tsx    # Hub for all asset editors
+│   │       ├── CharacterEditor.tsx # Create/edit characters
+│   │       ├── EnemyEditor.tsx     # Create/edit enemies
+│   │       ├── SpellAssetBuilder.tsx  # Spell creation (50KB)
+│   │       ├── MapEditor.tsx       # Puzzle editor (80KB)
+│   │       ├── SpriteEditor.tsx    # Sprite creation (90KB)
+│   │       ├── SkinEditor.tsx      # Puzzle skins
+│   │       ├── TileTypeEditor.tsx  # Tile behaviors
+│   │       └── ObjectEditor.tsx    # Static objects
+│   ├── data/
+│   │   ├── characters/             # Official characters (JSON)
+│   │   ├── enemies/                # Official enemies (JSON)
+│   │   └── puzzles/                # Official puzzles (JSON)
+│   └── utils/
+│       ├── assetStorage.ts         # LocalStorage persistence
+│       └── puzzleStorage.ts        # Puzzle save/load
+├── PROJECT_STATUS.md               # Detailed development status
+└── CHANGELOG.md                    # Recent changes log
+```
 
-3. **Direction system**: 8 directions - `north`, `northeast`, `east`, `southeast`, `south`, `southwest`, `west`, `northwest`
+---
 
-4. **Sprite direction mapping**: `default`, `north`, `northeast`, `east`, `southeast`, `south`, `southwest`, `west`, `northwest` (default is fallback)
+## Key Systems
 
-## Potential Future Work
+### 1. Game Engine (`src/engine/`)
 
-- Collectible Editor (currently placeholder)
-- Puzzle sharing/import/export
-- Sound effects
-- More spell effects
-- Tutorial system
-- Level progression
+**simulation.ts** - Turn-based loop:
+- `executeTurn()`: Process one turn for all entities
+- `executeParallelActions()`: Run parallel spells on independent timers
+- Turn interval: 600ms
 
-## Important Notes
+**actions.ts** - Action dispatcher:
+- Movement: MOVE_FORWARD, MOVE_BACKWARD, diagonals
+- Rotation: TURN_LEFT, TURN_RIGHT, TURN_AROUND
+- Combat: SPELL (spell system), CUSTOM_ATTACK (legacy)
+- Conditional: IF_WALL, IF_ENEMY
+- Special: WAIT, REPEAT, TELEPORT
 
-- Death animations stay on final frame (no separate corpse sprite)
-- Teleport tiles are bidirectional and grouped by letter (A↔A, B↔B, etc.)
-- `behavesLikeWall` triggers IF_WALL reactions; `blocksMovement` just stops movement silently
-- Ghost mode (`canOverlapEntities`) is bidirectional - if either entity has it, they can overlap
+**Movement Features:**
+- 8-directional movement (N, NE, E, SE, S, SW, W, NW)
+- Wall collision behaviors: stop, turn_left, turn_right, turn_around, continue
+- Multi-tile movement per action
+
+### 2. Rendering (`src/components/game/AnimatedGameBoard.tsx`)
+
+**60fps canvas-based rendering:**
+- Smooth character movement (280ms walking + 120ms idle)
+- Projectile motion (time-based)
+- Death animations (500ms)
+- Ice slide animations (120ms per tile)
+- Teleportation animations (300ms at destination)
+
+**Sprite System:**
+- Directional sprites (8 directions)
+- Animation states: idle, moving, death, casting
+- Sprite sheet support with frame configuration
+- Shape-based fallbacks (circle, square, triangle, star, diamond)
+
+**Visual Elements:**
+- Tiles with custom skins
+- Border sprites (18 slots for puzzle frames)
+- Projectiles and particle effects
+- Persistent area effects (fire, poison, etc.)
+
+### 3. Spell System (`SpellAssetBuilder.tsx`)
+
+**Templates:**
+- Melee (single adjacent tile)
+- Range Linear (projectile in straight line)
+- Magic Linear (magical projectile)
+- AOE (area of effect)
+
+**Direction Modes:**
+- `current_facing` - Use caster's facing direction
+- `fixed` - Predefined directions
+- `all_directions` - Fire in all 8 directions
+- `relative` - Forward/backward relative to facing
+
+**Features:**
+- Auto-targeting nearest enemy
+- Pierce through multiple targets
+- Persistent ground effects (damage per turn)
+
+### 4. Custom Tile Behaviors (`TileTypeEditor.tsx`)
+
+**Behavior Types:**
+- **Damage tiles**: Deal damage when stepped on
+- **Teleport tiles**: Bidirectional linking via groupId, custom teleport sprites
+- **Direction change**: Force entity facing
+- **Ice/slippery**: Continue sliding in same direction
+- **Pressure plates**: Toggle walls, spawn enemies
+
+### 5. Asset Storage (`src/utils/assetStorage.ts`)
+
+All custom assets persist to LocalStorage:
+- Characters, Enemies, Spells
+- Sprites (with directional variants)
+- Puzzle Skins, Tile Types, Objects
+
+---
+
+## Recent Session Changes (January 2026)
+
+### Teleport Sprite System
+
+**Added custom "being teleported" sprite option for teleport tiles:**
+
+1. **New Interface** (`src/types/game.ts`):
+```typescript
+export interface TeleportSpriteConfig {
+  imageData: string;      // Base64 image data
+  frameCount?: number;    // For spritesheets (default: 1)
+  frameRate?: number;     // Frames per second (default: 10)
+  loop?: boolean;         // Loop animation (default: true)
+}
+```
+
+2. **Added to entities** (`game.ts`):
+- `TileBehaviorConfig.teleportSprite` - Configure on tile
+- `PlacedCharacter.teleportSprite` - Runtime state
+- `PlacedEnemy.teleportSprite` - Runtime state
+
+3. **Three-phase teleport animation** (`AnimatedGameBoard.tsx`):
+- Phase 1: Walk to teleport tile with teleport sprite
+- Phase 2: Show teleport sprite at destination (300ms)
+- Phase 3: Show normal sprite
+
+4. **Key Constants**:
+```typescript
+const TELEPORT_APPEAR_DURATION = 300; // ms to show teleport sprite at destination
+```
+
+5. **Files Modified**:
+- `src/types/game.ts` - Added TeleportSpriteConfig, teleportSprite fields
+- `src/engine/actions.ts` - Pass teleportSprite in processTeleportBehavior
+- `src/engine/simulation.ts` - Copy teleport state to enemies, clear on turn start
+- `src/components/editor/TileTypeEditor.tsx` - UI for teleport sprite upload
+- `src/components/game/AnimatedGameBoard.tsx` - drawTeleportSprite function, 3-phase rendering
+
+---
+
+## Important Code Patterns
+
+### Execution Modes
+
+```typescript
+// Sequential (default) - one action per turn
+{ "type": "MOVE_FORWARD" }
+
+// Parallel - runs alongside next action
+{ "type": "SPELL", "spellId": "fireball", "executionMode": "parallel" }
+
+// Parallel with previous - runs alongside previous action
+{ "type": "SPELL", "spellId": "shield", "executionMode": "parallel_with_previous" }
+```
+
+### State Management
+
+```typescript
+// Immutable updates
+setGameState((prevState) => {
+  const newState = executeTurn({ ...prevState })
+  return newState
+})
+```
+
+### Animation Loop
+
+```typescript
+requestAnimationFrame(animate) {
+  const progress = (now - actionStartTime) / ANIMATION_DURATION
+  character.screenX = lerp(fromX, toX, progress)
+  draw()
+}
+```
+
+---
+
+## Type Definitions Quick Reference
+
+Key interfaces in `src/types/game.ts`:
+
+- `Character` / `PlacedCharacter` - Player entities
+- `Enemy` / `PlacedEnemy` - Enemy entities
+- `GameState` - Full game state including grid, entities, projectiles
+- `Puzzle` - Puzzle definition with tiles, enemies, win conditions
+- `SpellAsset` - Reusable spell configuration
+- `CustomSprite` - Sprite with directional variants and animation states
+- `PuzzleSkin` - Border and tile sprites for puzzle theming
+- `TileBehaviorConfig` - Custom tile behavior configuration
+- `Projectile` - Active projectile in flight
+- `ParticleEffect` - Visual effects (damage numbers, cast effects)
+
+---
+
+## Common Development Tasks
+
+### Adding a New Action Type
+
+1. Add to `ActionType` enum in `src/types/game.ts`
+2. Add case in `executeAction()` in `src/engine/actions.ts`
+3. Implement action logic
+4. Update any relevant editors
+
+### Adding a New Tile Behavior
+
+1. Add to `TileBehaviorType` enum
+2. Add config fields to `TileBehaviorConfig`
+3. Implement in movement/collision logic
+4. Add UI in TileTypeEditor
+
+### Creating Custom Assets
+
+1. Asset Manager → Select tab (Characters, Enemies, Spells, etc.)
+2. Click "New" button
+3. Configure settings
+4. Save (persists to LocalStorage)
+
+---
+
+## Build Commands
+
+```bash
+npm run dev          # Development server (HMR)
+npm run build        # Production build
+npm run build:check  # Build with type checking
+npm run lint         # ESLint
+npm run preview      # Preview production build
+```
+
+---
+
+## Git Workflow
+
+- Main branch is production-ready
+- Commit messages include emoji footer for Claude-generated commits
+- No force pushing to main
+
+---
+
+## Known Areas for Improvement
+
+1. **Sound system** - Not yet implemented
+2. **Undo/Redo** - Not available in editors
+3. **AI pathfinding** - Enemies use simple patterns only
+4. **Multiplayer** - Single player only
+
+---
+
+## File Size Reference
+
+| File | Size | Purpose |
+|------|------|---------|
+| SpriteEditor.tsx | 90KB | Sprite creation with animations |
+| MapEditor.tsx | 80KB | Puzzle editor |
+| SpellAssetBuilder.tsx | 50KB | Spell creation |
+| AnimatedGameBoard.tsx | 40KB | Main rendering engine |
+| game.ts | ~650 lines | All type definitions |
+
+---
+
+## Summary
+
+This is a fully-featured puzzle game creation toolkit. The architecture emphasizes:
+
+1. **Asset-first design** - All content is stored as reusable assets
+2. **Dual execution model** - Sequential and parallel action modes
+3. **60fps rendering** - Smooth canvas-based animations
+4. **Full customization** - Characters, enemies, spells, tiles, skins all configurable
+
+The project is active with all builds passing. Custom content persists to LocalStorage.
