@@ -329,35 +329,64 @@ export const MapEditor: React.FC = () => {
   const [canRedo, setCanRedo] = useState(false);
   const [redrawCounter, setRedrawCounter] = useState(0);
 
-  // Push state to history (call after significant changes)
-  const pushToHistory = useCallback(() => {
-    console.log('[MapEditor] pushToHistory called');
-    historyRef.current.push({
+  // Snapshot taken before drawing starts
+  const snapshotBeforeDrawRef = useRef<{
+    tiles: TileOrNull[][];
+    enemies: PlacedEnemy[];
+    collectibles: PlacedCollectible[];
+    placedObjects: PlacedObject[];
+  } | null>(null);
+
+  // Save snapshot before drawing starts (call on mouseDown)
+  const saveSnapshotBeforeDraw = useCallback(() => {
+    snapshotBeforeDrawRef.current = {
+      tiles: JSON.parse(JSON.stringify(state.tiles)),
+      enemies: JSON.parse(JSON.stringify(state.enemies)),
+      collectibles: JSON.parse(JSON.stringify(state.collectibles)),
+      placedObjects: JSON.parse(JSON.stringify(state.placedObjects)),
+    };
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects]);
+
+  // Push state to history after drawing completes (call on mouseUp if changes were made)
+  const pushToHistoryAfterDraw = useCallback(() => {
+    // Only push if we have a snapshot and state actually changed
+    if (!snapshotBeforeDrawRef.current) return;
+
+    const before = snapshotBeforeDrawRef.current;
+    const after = {
       tiles: state.tiles,
       enemies: state.enemies,
       collectibles: state.collectibles,
       placedObjects: state.placedObjects,
-    });
+    };
+
+    // Check if anything actually changed
+    const changed = JSON.stringify(before) !== JSON.stringify(after);
+    if (!changed) {
+      snapshotBeforeDrawRef.current = null;
+      return;
+    }
+
+    // Update history: set present to snapshot (before), then push new state (after)
+    // This ensures undo restores the "before" state and redo restores the "after" state
+    historyRef.current.state.present = before;
+    historyRef.current.push(after);
+
     setCanUndo(historyRef.current.canUndo);
     setCanRedo(historyRef.current.canRedo);
-    console.log('[MapEditor] after pushToHistory: canUndo=', historyRef.current.canUndo, 'canRedo=', historyRef.current.canRedo);
+    snapshotBeforeDrawRef.current = null;
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects]);
 
   // Sync the canUndo/canRedo state with the history manager
   const syncHistoryState = useCallback(() => {
-    const newCanUndo = historyRef.current.canUndo;
-    const newCanRedo = historyRef.current.canRedo;
-    console.log('[MapEditor] syncHistoryState: canUndo=', newCanUndo, 'canRedo=', newCanRedo);
-    setCanUndo(newCanUndo);
-    setCanRedo(newCanRedo);
+    setCanUndo(historyRef.current.canUndo);
+    setCanRedo(historyRef.current.canRedo);
   }, []);
 
   // Undo handler
   const handleUndo = useCallback(() => {
-    console.log('[MapEditor] handleUndo called');
     const previous = historyRef.current.undo();
     if (previous) {
-      console.log('[MapEditor] undo returned state, applying...');
       setState(prev => ({
         ...prev,
         tiles: previous.tiles,
@@ -365,19 +394,15 @@ export const MapEditor: React.FC = () => {
         collectibles: previous.collectibles,
         placedObjects: previous.placedObjects,
       }));
-      setRedrawCounter(c => c + 1); // Force canvas redraw
+      setRedrawCounter(c => c + 1);
       syncHistoryState();
-    } else {
-      console.log('[MapEditor] undo returned null');
     }
   }, [syncHistoryState]);
 
   // Redo handler
   const handleRedo = useCallback(() => {
-    console.log('[MapEditor] handleRedo called');
     const next = historyRef.current.redo();
     if (next) {
-      console.log('[MapEditor] redo returned state, applying...');
       setState(prev => ({
         ...prev,
         tiles: next.tiles,
@@ -385,10 +410,8 @@ export const MapEditor: React.FC = () => {
         collectibles: next.collectibles,
         placedObjects: next.placedObjects,
       }));
-      setRedrawCounter(c => c + 1); // Force canvas redraw
+      setRedrawCounter(c => c + 1);
       syncHistoryState();
-    } else {
-      console.log('[MapEditor] redo returned null');
     }
   }, [syncHistoryState]);
 
@@ -546,26 +569,25 @@ export const MapEditor: React.FC = () => {
     ctx.restore();
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter]);
 
-  // Track if we need to push history on mouse up
-  const didModifyRef = useRef(false);
-
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    // Push current state to history before starting to draw
-    pushToHistory();
-    didModifyRef.current = false;
+    // Save snapshot of state before drawing starts
+    saveSnapshotBeforeDraw();
     setState(prev => ({ ...prev, isDrawing: true }));
     handleCanvasClick(e);
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!state.isDrawing) return;
-    didModifyRef.current = true;
     handleCanvasClick(e);
   };
 
   const handleCanvasMouseUp = () => {
     setState(prev => ({ ...prev, isDrawing: false }));
-    // The history was already pushed before we started drawing
+    // Push the new state to history after drawing completes
+    // Use setTimeout to ensure state has updated before comparing
+    setTimeout(() => {
+      pushToHistoryAfterDraw();
+    }, 0);
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {

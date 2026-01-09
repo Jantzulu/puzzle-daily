@@ -42,7 +42,6 @@ export function createHistoryManager<T>(initialState: T): HistoryManager<T> {
     },
 
     undo(): T | null {
-      console.log('[History] undo called, past.length:', history.past.length, 'future.length:', history.future.length);
       if (history.past.length === 0) return null;
 
       const previous = history.past[history.past.length - 1];
@@ -52,16 +51,11 @@ export function createHistoryManager<T>(initialState: T): HistoryManager<T> {
       history.past = newPast;
       history.present = previous;
 
-      console.log('[History] after undo, past.length:', history.past.length, 'future.length:', history.future.length);
       return JSON.parse(JSON.stringify(previous));
     },
 
     redo(): T | null {
-      console.log('[History] redo called, past.length:', history.past.length, 'future.length:', history.future.length);
-      if (history.future.length === 0) {
-        console.log('[History] redo: no future states available');
-        return null;
-      }
+      if (history.future.length === 0) return null;
 
       const next = history.future[0];
       const newFuture = history.future.slice(1);
@@ -70,27 +64,20 @@ export function createHistoryManager<T>(initialState: T): HistoryManager<T> {
       history.future = newFuture;
       history.present = next;
 
-      console.log('[History] after redo, past.length:', history.past.length, 'future.length:', history.future.length);
       return JSON.parse(JSON.stringify(next));
     },
 
     push(newState: T): void {
-      console.log('[History] push called, past.length:', history.past.length, 'future.length:', history.future.length);
-      // Deep clone to avoid mutation issues
       const clonedState = JSON.parse(JSON.stringify(newState));
 
-      // Add current state to past
       history.past = [...history.past, history.present];
 
-      // Limit history size
       if (history.past.length > MAX_HISTORY_SIZE) {
         history.past = history.past.slice(-MAX_HISTORY_SIZE);
       }
 
-      // Set new present and clear future
       history.present = clonedState;
       history.future = [];
-      console.log('[History] after push, past.length:', history.past.length, 'future.length:', history.future.length);
     },
 
     clear(): void {
