@@ -330,6 +330,7 @@ export const MapEditor: React.FC = () => {
 
   // Push state to history (call after significant changes)
   const pushToHistory = useCallback(() => {
+    console.log('[MapEditor] pushToHistory called');
     historyRef.current.push({
       tiles: state.tiles,
       enemies: state.enemies,
@@ -338,18 +339,24 @@ export const MapEditor: React.FC = () => {
     });
     setCanUndo(historyRef.current.canUndo);
     setCanRedo(historyRef.current.canRedo);
+    console.log('[MapEditor] after pushToHistory: canUndo=', historyRef.current.canUndo, 'canRedo=', historyRef.current.canRedo);
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects]);
 
   // Sync the canUndo/canRedo state with the history manager
   const syncHistoryState = useCallback(() => {
-    setCanUndo(historyRef.current.canUndo);
-    setCanRedo(historyRef.current.canRedo);
+    const newCanUndo = historyRef.current.canUndo;
+    const newCanRedo = historyRef.current.canRedo;
+    console.log('[MapEditor] syncHistoryState: canUndo=', newCanUndo, 'canRedo=', newCanRedo);
+    setCanUndo(newCanUndo);
+    setCanRedo(newCanRedo);
   }, []);
 
   // Undo handler
   const handleUndo = useCallback(() => {
+    console.log('[MapEditor] handleUndo called');
     const previous = historyRef.current.undo();
     if (previous) {
+      console.log('[MapEditor] undo returned state, applying...');
       setState(prev => ({
         ...prev,
         tiles: previous.tiles,
@@ -358,13 +365,17 @@ export const MapEditor: React.FC = () => {
         placedObjects: previous.placedObjects,
       }));
       syncHistoryState();
+    } else {
+      console.log('[MapEditor] undo returned null');
     }
   }, [syncHistoryState]);
 
   // Redo handler
   const handleRedo = useCallback(() => {
+    console.log('[MapEditor] handleRedo called');
     const next = historyRef.current.redo();
     if (next) {
+      console.log('[MapEditor] redo returned state, applying...');
       setState(prev => ({
         ...prev,
         tiles: next.tiles,
@@ -373,6 +384,8 @@ export const MapEditor: React.FC = () => {
         placedObjects: next.placedObjects,
       }));
       syncHistoryState();
+    } else {
+      console.log('[MapEditor] redo returned null');
     }
   }, [syncHistoryState]);
 
