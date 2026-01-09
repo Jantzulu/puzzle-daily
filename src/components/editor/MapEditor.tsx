@@ -327,6 +327,7 @@ export const MapEditor: React.FC = () => {
   }));
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+  const [redrawCounter, setRedrawCounter] = useState(0);
 
   // Push state to history (call after significant changes)
   const pushToHistory = useCallback(() => {
@@ -364,6 +365,7 @@ export const MapEditor: React.FC = () => {
         collectibles: previous.collectibles,
         placedObjects: previous.placedObjects,
       }));
+      setRedrawCounter(c => c + 1); // Force canvas redraw
       syncHistoryState();
     } else {
       console.log('[MapEditor] undo returned null');
@@ -383,6 +385,7 @@ export const MapEditor: React.FC = () => {
         collectibles: next.collectibles,
         placedObjects: next.placedObjects,
       }));
+      setRedrawCounter(c => c + 1); // Force canvas redraw
       syncHistoryState();
     } else {
       console.log('[MapEditor] redo returned null');
@@ -541,7 +544,7 @@ export const MapEditor: React.FC = () => {
     });
 
     ctx.restore();
-  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId]);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId, redrawCounter]);
 
   // Track if we need to push history on mouse up
   const didModifyRef = useRef(false);
