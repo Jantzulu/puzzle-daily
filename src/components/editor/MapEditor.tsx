@@ -340,6 +340,12 @@ export const MapEditor: React.FC = () => {
     setCanRedo(historyRef.current.canRedo);
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects]);
 
+  // Sync the canUndo/canRedo state with the history manager
+  const syncHistoryState = useCallback(() => {
+    setCanUndo(historyRef.current.canUndo);
+    setCanRedo(historyRef.current.canRedo);
+  }, []);
+
   // Undo handler
   const handleUndo = useCallback(() => {
     const previous = historyRef.current.undo();
@@ -351,10 +357,9 @@ export const MapEditor: React.FC = () => {
         collectibles: previous.collectibles,
         placedObjects: previous.placedObjects,
       }));
-      setCanUndo(historyRef.current.canUndo);
-      setCanRedo(historyRef.current.canRedo);
+      syncHistoryState();
     }
-  }, []);
+  }, [syncHistoryState]);
 
   // Redo handler
   const handleRedo = useCallback(() => {
@@ -367,10 +372,9 @@ export const MapEditor: React.FC = () => {
         collectibles: next.collectibles,
         placedObjects: next.placedObjects,
       }));
-      setCanUndo(historyRef.current.canUndo);
-      setCanRedo(historyRef.current.canRedo);
+      syncHistoryState();
     }
-  }, []);
+  }, [syncHistoryState]);
 
   // Keyboard shortcuts for undo/redo
   useEffect(() => {
