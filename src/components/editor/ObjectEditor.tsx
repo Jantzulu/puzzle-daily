@@ -3,7 +3,7 @@ import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint 
 import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../utils/assetStorage';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
-import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
+import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
   { value: 'center', label: 'Center', description: 'Sprite center aligned to tile center' },
@@ -139,6 +139,17 @@ export const ObjectEditor: React.FC = () => {
     setEditing({ ...editing, effects: newEffects });
   };
 
+  const handleFolderChange = (objId: string, folderId: string | undefined) => {
+    const obj = objects.find(o => o.id === objId);
+    if (obj) {
+      saveObject({ ...obj, folderId });
+      refreshObjects();
+      if (editing && editing.id === objId) {
+        setEditing({ ...editing, folderId });
+      }
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
@@ -202,15 +213,22 @@ export const ObjectEditor: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(obj.id);
-                        }}
-                        className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <InlineFolderPicker
+                          category="objects"
+                          currentFolderId={obj.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(obj.id, folderId)}
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(obj.id);
+                          }}
+                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, TeleportSpriteConfig } from '../../types/game';
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
-import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
+import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -453,6 +453,17 @@ export const TileTypeEditor: React.FC = () => {
     setEditing({ ...editing, customSprite: undefined });
   };
 
+  const handleFolderChange = (tileTypeId: string, folderId: string | undefined) => {
+    const tileType = tileTypes.find(t => t.id === tileTypeId);
+    if (tileType) {
+      saveTileType({ ...tileType, folderId });
+      refreshTileTypes();
+      if (editing && editing.id === tileTypeId) {
+        setEditing({ ...editing, folderId });
+      }
+    }
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
@@ -526,15 +537,22 @@ export const TileTypeEditor: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(tileType.id);
-                        }}
-                        className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <InlineFolderPicker
+                          category="tiles"
+                          currentFolderId={tileType.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(tileType.id, folderId)}
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(tileType.id);
+                          }}
+                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

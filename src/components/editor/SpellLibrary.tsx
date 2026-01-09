@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { SpellAsset } from '../../types/game';
-import { getSpellAssets, deleteSpellAsset, getFolders } from '../../utils/assetStorage';
+import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
-import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
+import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 
 export const SpellLibrary: React.FC = () => {
   const [spells, setSpells] = useState<SpellAsset[]>([]);
@@ -40,6 +40,17 @@ export const SpellLibrary: React.FC = () => {
     if (selectedId === spellId) {
       setSelectedId(null);
       setEditingSpell(null);
+    }
+  };
+
+  const handleFolderChange = (spellId: string, folderId: string | undefined) => {
+    const spell = spells.find(s => s.id === spellId);
+    if (spell) {
+      saveSpellAsset({ ...spell, folderId });
+      loadSpells();
+      if (editingSpell && editingSpell.id === spellId) {
+        setEditingSpell({ ...editingSpell, folderId });
+      }
     }
   };
 
@@ -147,7 +158,12 @@ export const SpellLibrary: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex items-center gap-1">
+                        <InlineFolderPicker
+                          category="spells"
+                          currentFolderId={spell.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(spell.id, folderId)}
+                        />
                         <button
                           onClick={(e) => handleDuplicate(spell, e)}
                           className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"

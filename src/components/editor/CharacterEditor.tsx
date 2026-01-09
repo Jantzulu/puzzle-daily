@@ -8,7 +8,7 @@ import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { AttackEditor } from './AttackEditor';
 import { SpellPicker } from './SpellPicker';
-import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
+import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 
 // Filter out legacy attack actions - use SPELL instead
 const ACTION_TYPES = Object.values(ActionType).filter(
@@ -113,6 +113,18 @@ export const CharacterEditor: React.FC = () => {
     if (selectedId === id) {
       setSelectedId(null);
       setEditing(null);
+    }
+  };
+
+  const handleFolderChange = (charId: string, folderId: string | undefined) => {
+    const char = characters.find(c => c.id === charId);
+    if (char) {
+      saveCharacter({ ...char, folderId });
+      refreshCharacters();
+      // Also update editing state if this character is being edited
+      if (editing && editing.id === charId) {
+        setEditing({ ...editing, folderId });
+      }
     }
   };
 
@@ -227,15 +239,22 @@ export const CharacterEditor: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(char.id);
-                        }}
-                        className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <InlineFolderPicker
+                          category="characters"
+                          currentFolderId={char.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(char.id, folderId)}
+                        />
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(char.id);
+                          }}
+                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))

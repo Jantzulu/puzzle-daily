@@ -244,3 +244,102 @@ export function useFilteredAssets<T extends { folderId?: string }>(
   // Specific folder - show assets in that folder
   return assets.filter(a => a.folderId === selectedFolderId);
 }
+
+// Inline folder assignment button for asset list items
+interface InlineFolderPickerProps {
+  category: AssetCategory;
+  currentFolderId?: string;
+  onFolderChange: (folderId: string | undefined) => void;
+}
+
+export const InlineFolderPicker: React.FC<InlineFolderPickerProps> = ({
+  category,
+  currentFolderId,
+  onFolderChange,
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [folders, setFolders] = useState<AssetFolder[]>(() => getFolders(category));
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Refresh folders when opening
+  useEffect(() => {
+    if (isOpen) {
+      setFolders(getFolders(category));
+    }
+  }, [isOpen, category]);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [isOpen]);
+
+  const currentFolder = currentFolderId ? folders.find(f => f.id === currentFolderId) : null;
+
+  const handleSelect = (folderId: string | undefined, e: React.MouseEvent) => {
+    e.stopPropagation();
+    onFolderChange(folderId);
+    setIsOpen(false);
+  };
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          setIsOpen(!isOpen);
+        }}
+        className={`p-1.5 rounded text-xs transition-colors ${
+          currentFolder
+            ? 'bg-blue-600 hover:bg-blue-700 text-white'
+            : 'bg-gray-600 hover:bg-gray-500 text-gray-300'
+        }`}
+        title={currentFolder ? `Folder: ${currentFolder.name}` : 'Assign to folder'}
+      >
+        📁
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 z-50 mt-1 w-40 bg-gray-800 border border-gray-600 rounded shadow-lg max-h-48 overflow-y-auto">
+          {/* Uncategorized option */}
+          <button
+            onClick={(e) => handleSelect(undefined, e)}
+            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${
+              !currentFolderId ? 'bg-blue-600' : ''
+            }`}
+          >
+            None
+          </button>
+
+          {folders.length > 0 && <div className="border-t border-gray-600" />}
+
+          {/* Folder list */}
+          {folders.map(folder => (
+            <button
+              key={folder.id}
+              onClick={(e) => handleSelect(folder.id, e)}
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${
+                currentFolderId === folder.id ? 'bg-blue-600' : ''
+              }`}
+            >
+              📁 {folder.name}
+            </button>
+          ))}
+
+          {folders.length === 0 && (
+            <div className="px-3 py-2 text-xs text-gray-400">
+              No folders yet. Create one from the filter dropdown.
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};

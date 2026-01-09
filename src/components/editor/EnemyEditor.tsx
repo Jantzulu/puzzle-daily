@@ -7,7 +7,7 @@ import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
-import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
+import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 
 const ACTION_TYPES = Object.values(ActionType).filter(
   type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
@@ -86,6 +86,17 @@ export const EnemyEditor: React.FC = () => {
     if (selectedId === id) {
       setSelectedId(null);
       setEditing(null);
+    }
+  };
+
+  const handleFolderChange = (enemyId: string, folderId: string | undefined) => {
+    const enemy = enemies.find(e => e.id === enemyId);
+    if (enemy) {
+      saveEnemy({ ...enemy, folderId });
+      setEnemies(refreshEnemies());
+      if (editing && editing.id === enemyId) {
+        setEditing({ ...editing, folderId });
+      }
     }
   };
 
@@ -190,12 +201,19 @@ export const EnemyEditor: React.FC = () => {
                           </p>
                         </div>
                       </div>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
-                        className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                      >
-                        ✕
-                      </button>
+                      <div className="flex items-center gap-1">
+                        <InlineFolderPicker
+                          category="enemies"
+                          currentFolderId={enemy.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(enemy.id, folderId)}
+                        />
+                        <button
+                          onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
+                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
                     </div>
                   </div>
                 ))
