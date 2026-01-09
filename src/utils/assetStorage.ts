@@ -39,6 +39,69 @@ export const isAssetHidden = (assetId: string): boolean => {
   return getHiddenAssets().has(assetId);
 };
 
+// ============ FOLDER MANAGEMENT ============
+
+const FOLDERS_STORAGE_KEY = 'asset_folders';
+
+export type AssetCategory = 'characters' | 'enemies' | 'spells' | 'tiles' | 'skins' | 'objects' | 'collectibles';
+
+export interface AssetFolder {
+  id: string;
+  name: string;
+  category: AssetCategory;
+  createdAt: string;
+}
+
+export const getFolders = (category?: AssetCategory): AssetFolder[] => {
+  const stored = localStorage.getItem(FOLDERS_STORAGE_KEY);
+  if (!stored) return [];
+  try {
+    const folders: AssetFolder[] = JSON.parse(stored);
+    if (category) {
+      return folders.filter(f => f.category === category);
+    }
+    return folders;
+  } catch (e) {
+    return [];
+  }
+};
+
+export const saveFolder = (folder: AssetFolder): void => {
+  const folders = getFolders();
+  const existingIndex = folders.findIndex(f => f.id === folder.id);
+  if (existingIndex >= 0) {
+    folders[existingIndex] = folder;
+  } else {
+    folders.push(folder);
+  }
+  localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+};
+
+export const deleteFolder = (folderId: string): void => {
+  const folders = getFolders().filter(f => f.id !== folderId);
+  localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+};
+
+export const createFolder = (name: string, category: AssetCategory): AssetFolder => {
+  const folder: AssetFolder = {
+    id: 'folder_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+    name,
+    category,
+    createdAt: new Date().toISOString(),
+  };
+  saveFolder(folder);
+  return folder;
+};
+
+export const renameFolder = (folderId: string, newName: string): void => {
+  const folders = getFolders();
+  const folder = folders.find(f => f.id === folderId);
+  if (folder) {
+    folder.name = newName;
+    localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+  }
+};
+
 // ============ CUSTOM ASSET TYPES ============
 
 export type SpriteDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | 'default';
@@ -120,12 +183,14 @@ export interface CustomCharacter extends Character {
   customSprite?: CustomSprite;
   isCustom: boolean;
   createdAt: string;
+  folderId?: string; // Optional folder assignment
 }
 
 export interface CustomEnemy extends Enemy {
   customSprite?: CustomSprite;
   isCustom: boolean;
   createdAt: string;
+  folderId?: string; // Optional folder assignment
 }
 
 export interface CustomTileType {
@@ -137,6 +202,7 @@ export interface CustomTileType {
   customSprite?: CustomSprite;
   isCustom: boolean;
   createdAt: string;
+  folderId?: string; // Optional folder assignment
 }
 
 export interface CustomCollectibleType {
@@ -147,6 +213,7 @@ export interface CustomCollectibleType {
   scoreValue: number;
   isCustom: boolean;
   createdAt: string;
+  folderId?: string; // Optional folder assignment
 }
 
 // ============ CUSTOM OBJECT TYPES ============
@@ -186,6 +253,7 @@ export interface CustomObject {
   // Metadata
   isCustom: boolean;
   createdAt: string;
+  folderId?: string; // Optional folder assignment
 }
 
 // ============ CHARACTER STORAGE ============

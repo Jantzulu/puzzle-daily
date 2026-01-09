@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, TeleportSpriteConfig } from '../../types/game';
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
-import { getCustomTileTypes, saveTileType, deleteTileType } from '../../utils/assetStorage';
+import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
+import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -342,6 +343,15 @@ export const TileTypeEditor: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomTileType | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
+  // Filter tile types based on folder and search term
+  const folderFilteredTileTypes = useFilteredAssets(tileTypes, selectedFolderId);
+  const filteredTileTypes = folderFilteredTileTypes.filter(tileType =>
+    tileType.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (tileType.description && tileType.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   const refreshTileTypes = () => {
     setTileTypes(getCustomTileTypes());
@@ -459,15 +469,31 @@ export const TileTypeEditor: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
-              {tileTypes.length === 0 ? (
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+            />
+
+            {/* Folder Filter */}
+            <FolderDropdown
+              category="tiles"
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={setSelectedFolderId}
+            />
+
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+              {filteredTileTypes.length === 0 ? (
                 <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
-                  No custom tile types yet.
+                  {searchTerm ? 'No tile types match your search.' : 'No custom tile types yet.'}
                   <br />
-                  Click "+ New" to create one.
+                  {!searchTerm && 'Click "+ New" to create one.'}
                 </div>
               ) : (
-                tileTypes.map(tileType => (
+                filteredTileTypes.map(tileType => (
                   <div
                     key={tileType.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
@@ -554,6 +580,19 @@ export const TileTypeEditor: React.FC = () => {
                       rows={2}
                       placeholder="Optional description..."
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Folder</label>
+                    <select
+                      value={editing.folderId || ''}
+                      onChange={e => setEditing({ ...editing, folderId: e.target.value || undefined })}
+                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                    >
+                      <option value="">Uncategorized</option>
+                      {getFolders('tiles').map(folder => (
+                        <option key={folder.id} value={folder.id}>{folder.name}</option>
+                      ))}
+                    </select>
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Base Type</label>

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { PuzzleSkin, CustomBorderSprites, TileSprites } from '../../types/game';
-import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders } from '../../utils/assetStorage';
+import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -50,6 +51,15 @@ export const SkinEditor: React.FC = () => {
   const [selectedSkinId, setSelectedSkinId] = useState<string | null>(null);
   const [editingSkin, setEditingSkin] = useState<PuzzleSkin | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
+  // Filter skins based on folder and search term
+  const folderFilteredSkins = useFilteredAssets(skins, selectedFolderId);
+  const filteredSkins = folderFilteredSkins.filter(skin =>
+    skin.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (skin.description && skin.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   const refreshSkins = () => {
     setSkins(getAllPuzzleSkins());
@@ -166,8 +176,31 @@ export const SkinEditor: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
-              {skins.map((skin) => (
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+            />
+
+            {/* Folder Filter */}
+            <FolderDropdown
+              category="skins"
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={setSelectedFolderId}
+            />
+
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+              {filteredSkins.length === 0 ? (
+                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                  {searchTerm ? 'No skins match your search.' : 'No puzzle skins yet.'}
+                  <br />
+                  {!searchTerm && 'Click "+ New" to create one.'}
+                </div>
+              ) : (
+              filteredSkins.map((skin) => (
                 <div
                   key={skin.id}
                   className={`p-3 rounded cursor-pointer transition-colors ${
@@ -202,7 +235,8 @@ export const SkinEditor: React.FC = () => {
                     )}
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           </div>
 
@@ -253,6 +287,20 @@ export const SkinEditor: React.FC = () => {
                       className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
                       rows={2}
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Folder</label>
+                    <select
+                      value={editingSkin.folderId || ''}
+                      onChange={(e) => setEditingSkin({ ...editingSkin, folderId: e.target.value || undefined })}
+                      disabled={isBuiltIn}
+                      className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
+                    >
+                      <option value="">Uncategorized</option>
+                      {getFolders('skins').map(folder => (
+                        <option key={folder.id} value={folder.id}>{folder.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

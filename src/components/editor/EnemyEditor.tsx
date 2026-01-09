@@ -2,11 +2,12 @@ import React, { useState } from 'react';
 import { Direction, ActionType } from '../../types/game';
 import type { CharacterAction, EnemyBehavior, ExecutionMode, TriggerConfig } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, getCustomEnemies, deleteEnemy, loadSpellAsset } from '../../utils/assetStorage';
+import { saveEnemy, getCustomEnemies, deleteEnemy, loadSpellAsset, getFolders } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
+import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 
 const ACTION_TYPES = Object.values(ActionType).filter(
   type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
@@ -25,6 +26,14 @@ export const EnemyEditor: React.FC = () => {
   const [editing, setEditing] = useState<CustomEnemy | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
+  // Filter enemies based on folder and search term
+  const folderFilteredEnemies = useFilteredAssets(enemies, selectedFolderId);
+  const filteredEnemies = folderFilteredEnemies.filter(enemy =>
+    enemy.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const handleSelect = (id: string) => {
     const enemy = enemies.find(e => e.id === id);
@@ -138,13 +147,30 @@ export const EnemyEditor: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
-              {enemies.length === 0 ? (
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+            />
+
+            {/* Folder Filter */}
+            <FolderDropdown
+              category="enemies"
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={setSelectedFolderId}
+            />
+
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+              {filteredEnemies.length === 0 ? (
                 <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
-                  No enemies yet.<br />Click "+ New" to create one.
+                  {searchTerm ? 'No enemies match your search.' : 'No enemies yet.'}
+                  <br />{!searchTerm && 'Click "+ New" to create one.'}
                 </div>
               ) : (
-                enemies.map(enemy => (
+                filteredEnemies.map(enemy => (
                   <div
                     key={enemy.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
@@ -204,6 +230,19 @@ export const EnemyEditor: React.FC = () => {
                           onChange={(e) => updateEnemy({ name: e.target.value })}
                           className="w-full px-3 py-2 bg-gray-700 rounded"
                         />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Folder</label>
+                        <select
+                          value={editing.folderId || ''}
+                          onChange={(e) => updateEnemy({ folderId: e.target.value || undefined })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                        >
+                          <option value="">Uncategorized</option>
+                          {getFolders('enemies').map(folder => (
+                            <option key={folder.id} value={folder.id}>{folder.name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div>
                         <label className="block text-sm mb-1">Health</label>

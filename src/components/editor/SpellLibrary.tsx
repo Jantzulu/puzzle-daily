@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import type { SpellAsset } from '../../types/game';
-import { getSpellAssets, deleteSpellAsset } from '../../utils/assetStorage';
+import { getSpellAssets, deleteSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
+import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 
 export const SpellLibrary: React.FC = () => {
   const [spells, setSpells] = useState<SpellAsset[]>([]);
@@ -9,6 +10,7 @@ export const SpellLibrary: React.FC = () => {
   const [editingSpell, setEditingSpell] = useState<SpellAsset | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
   const loadSpells = () => {
     setSpells(getSpellAssets());
@@ -68,7 +70,9 @@ export const SpellLibrary: React.FC = () => {
     setSelectedId(null);
   };
 
-  const filteredSpells = spells.filter(spell =>
+  // Filter spells based on folder and search term
+  const folderFilteredSpells = useFilteredAssets(spells, selectedFolderId);
+  const filteredSpells = folderFilteredSpells.filter(spell =>
     spell.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     spell.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
@@ -98,7 +102,14 @@ export const SpellLibrary: React.FC = () => {
               className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-300px)] overflow-y-auto">
+            {/* Folder Filter */}
+            <FolderDropdown
+              category="spells"
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={setSelectedFolderId}
+            />
+
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredSpells.length === 0 ? (
                 <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
                   {searchTerm ? 'No matches' : 'No spells yet.'}

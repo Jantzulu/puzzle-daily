@@ -2,12 +2,13 @@ import React, { useState } from 'react';
 import { Direction, ActionType } from '../../types/game';
 import type { CharacterAction, CustomAttack, SpellAsset, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
-import { saveCharacter, getCustomCharacters, deleteCharacter, loadSpellAsset } from '../../utils/assetStorage';
+import { saveCharacter, getCustomCharacters, deleteCharacter, loadSpellAsset, getFolders } from '../../utils/assetStorage';
 import { getAllCharacters } from '../../data/characters';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { AttackEditor } from './AttackEditor';
 import { SpellPicker } from './SpellPicker';
+import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 
 // Filter out legacy attack actions - use SPELL instead
 const ACTION_TYPES = Object.values(ActionType).filter(
@@ -42,6 +43,15 @@ export const CharacterEditor: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [editingAttack, setEditingAttack] = useState<{ attack: CustomAttack; actionIndex: number } | null>(null);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
+  // Filter characters based on folder and search term
+  const folderFilteredCharacters = useFilteredAssets(characters, selectedFolderId);
+  const filteredCharacters = folderFilteredCharacters.filter(char =>
+    char.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    char.description.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const refreshCharacters = () => {
     setCharacters(getAllCharacters().map(ensureCustomSprite));
@@ -171,15 +181,31 @@ export const CharacterEditor: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
-              {characters.length === 0 ? (
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+            />
+
+            {/* Folder Filter */}
+            <FolderDropdown
+              category="characters"
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={setSelectedFolderId}
+            />
+
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+              {filteredCharacters.length === 0 ? (
                 <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
-                  No characters yet.
+                  {searchTerm ? 'No characters match your search.' : 'No characters yet.'}
                   <br />
-                  Click "+ New" to create one.
+                  {!searchTerm && 'Click "+ New" to create one.'}
                 </div>
               ) : (
-                characters.map(char => (
+                filteredCharacters.map(char => (
                   <div
                     key={char.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
@@ -257,6 +283,19 @@ export const CharacterEditor: React.FC = () => {
                           className="w-full px-3 py-2 bg-gray-700 rounded"
                           rows={2}
                         />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Folder</label>
+                        <select
+                          value={editing.folderId || ''}
+                          onChange={(e) => updateCharacter({ folderId: e.target.value || undefined })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                        >
+                          <option value="">Uncategorized</option>
+                          {getFolders('characters').map(folder => (
+                            <option key={folder.id} value={folder.id}>{folder.name}</option>
+                          ))}
+                        </select>
                       </div>
                       <div className="grid grid-cols-2 gap-3">
                         <div>

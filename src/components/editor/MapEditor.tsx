@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
@@ -10,10 +10,12 @@ import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
+import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, type CustomObject } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
+import { createHistoryManager } from '../../utils/historyManager';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -268,27 +270,42 @@ interface EditorState {
   mode: EditorMode;
 }
 
+// Helper to create default editor state
+const createDefaultEditorState = (): EditorState => ({
+  gridWidth: 8,
+  gridHeight: 8,
+  tiles: createEmptyGrid(8, 8),
+  enemies: [],
+  collectibles: [],
+  placedObjects: [],
+
+  puzzleName: 'New Puzzle',
+  puzzleId: 'puzzle_' + Date.now(),
+  maxCharacters: 3,
+  maxTurns: 100,
+  availableCharacters: ['knight_01'],
+  winConditions: [{ type: 'defeat_all_enemies' }],
+  skinId: 'builtin_dungeon', // Default skin
+
+  selectedTool: 'wall',
+  isDrawing: false,
+  mode: 'edit',
+});
+
 export const MapEditor: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [state, setState] = useState<EditorState>({
-    gridWidth: 8,
-    gridHeight: 8,
-    tiles: createEmptyGrid(8, 8),
-    enemies: [],
-    collectibles: [],
-    placedObjects: [],
-
-    puzzleName: 'New Puzzle',
-    puzzleId: 'puzzle_' + Date.now(),
-    maxCharacters: 3,
-    maxTurns: 100,
-    availableCharacters: ['knight_01'],
-    winConditions: [{ type: 'defeat_all_enemies' }],
-    skinId: 'builtin_dungeon', // Default skin
-
-    selectedTool: 'wall',
-    isDrawing: false,
-    mode: 'edit',
+  const [state, setState] = useState<EditorState>(() => {
+    // Check for cached state from previous tab visit
+    const cached = getCachedEditorState();
+    if (cached) {
+      return {
+        ...cached,
+        selectedTool: cached.selectedTool as ToolType || 'wall',
+        isDrawing: false,
+        mode: 'edit' as EditorMode,
+      };
+    }
+    return createDefaultEditorState();
   });
 
   // Playtest state
@@ -300,6 +317,79 @@ export const MapEditor: React.FC = () => {
   // Library state
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
   const [showLibrary, setShowLibrary] = useState(false);
+
+  // History manager for undo/redo
+  const historyRef = useRef(createHistoryManager({
+    tiles: state.tiles,
+    enemies: state.enemies,
+    collectibles: state.collectibles,
+    placedObjects: state.placedObjects,
+  }));
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+
+  // Push state to history (call after significant changes)
+  const pushToHistory = useCallback(() => {
+    historyRef.current.push({
+      tiles: state.tiles,
+      enemies: state.enemies,
+      collectibles: state.collectibles,
+      placedObjects: state.placedObjects,
+    });
+    setCanUndo(historyRef.current.canUndo);
+    setCanRedo(historyRef.current.canRedo);
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects]);
+
+  // Undo handler
+  const handleUndo = useCallback(() => {
+    const previous = historyRef.current.undo();
+    if (previous) {
+      setState(prev => ({
+        ...prev,
+        tiles: previous.tiles,
+        enemies: previous.enemies,
+        collectibles: previous.collectibles,
+        placedObjects: previous.placedObjects,
+      }));
+      setCanUndo(historyRef.current.canUndo);
+      setCanRedo(historyRef.current.canRedo);
+    }
+  }, []);
+
+  // Redo handler
+  const handleRedo = useCallback(() => {
+    const next = historyRef.current.redo();
+    if (next) {
+      setState(prev => ({
+        ...prev,
+        tiles: next.tiles,
+        enemies: next.enemies,
+        collectibles: next.collectibles,
+        placedObjects: next.placedObjects,
+      }));
+      setCanUndo(historyRef.current.canUndo);
+      setCanRedo(historyRef.current.canRedo);
+    }
+  }, []);
+
+  // Keyboard shortcuts for undo/redo
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle in edit mode
+      if (state.mode !== 'edit') return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        handleUndo();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        e.preventDefault();
+        handleRedo();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [state.mode, handleUndo, handleRedo]);
 
   // Puzzle skins state
   const [availableSkins, setAvailableSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
@@ -314,6 +404,30 @@ export const MapEditor: React.FC = () => {
   const allEnemies = getAllEnemies();
   const allCharacters = getAllCharacters();
   const allObjects = getAllObjects();
+
+  // Cache editor state when it changes (for persistence across tab switches)
+  useEffect(() => {
+    // Only cache when in edit mode (not during playtest)
+    if (state.mode === 'edit') {
+      cacheEditorState({
+        gridWidth: state.gridWidth,
+        gridHeight: state.gridHeight,
+        tiles: state.tiles,
+        enemies: state.enemies,
+        collectibles: state.collectibles,
+        placedObjects: state.placedObjects,
+        puzzleName: state.puzzleName,
+        puzzleId: state.puzzleId,
+        maxCharacters: state.maxCharacters,
+        maxTurns: state.maxTurns,
+        availableCharacters: state.availableCharacters,
+        winConditions: state.winConditions,
+        borderConfig: state.borderConfig,
+        skinId: state.skinId,
+        selectedTool: state.selectedTool,
+      });
+    }
+  }, [state]);
 
   // Simulation loop (for playtest mode)
   useEffect(() => {
@@ -412,18 +526,26 @@ export const MapEditor: React.FC = () => {
     ctx.restore();
   }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, state.gridWidth, state.gridHeight, state.mode, state.skinId]);
 
+  // Track if we need to push history on mouse up
+  const didModifyRef = useRef(false);
+
   const handleCanvasMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    // Push current state to history before starting to draw
+    pushToHistory();
+    didModifyRef.current = false;
     setState(prev => ({ ...prev, isDrawing: true }));
     handleCanvasClick(e);
   };
 
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!state.isDrawing) return;
+    didModifyRef.current = true;
     handleCanvasClick(e);
   };
 
   const handleCanvasMouseUp = () => {
     setState(prev => ({ ...prev, isDrawing: false }));
+    // The history was already pushed before we started drawing
   };
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -761,6 +883,12 @@ export const MapEditor: React.FC = () => {
   const handleClear = () => {
     if (!confirm('Clear the entire grid?')) return;
 
+    // Push to history before clearing (so we can undo)
+    pushToHistory();
+
+    // Clear the cached state as well
+    clearCachedEditorState();
+
     setState(prev => ({
       ...prev,
       tiles: createEmptyGrid(prev.gridWidth, prev.gridHeight),
@@ -771,6 +899,9 @@ export const MapEditor: React.FC = () => {
   };
 
   const handleResize = (width: number, height: number) => {
+    // Push to history before resizing
+    pushToHistory();
+
     setState(prev => {
       // Create new grid
       const newTiles = createEmptyGrid(width, height);
@@ -1062,6 +1193,33 @@ export const MapEditor: React.FC = () => {
                 className="w-12 px-2 py-1 bg-gray-700 rounded text-sm text-center"
               />
             </div>
+          </div>
+          {/* Undo/Redo buttons */}
+          <div className="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded">
+            <button
+              onClick={handleUndo}
+              disabled={!canUndo}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                canUndo
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              }`}
+              title="Undo (Ctrl+Z)"
+            >
+              ↩ Undo
+            </button>
+            <button
+              onClick={handleRedo}
+              disabled={!canRedo}
+              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
+                canRedo
+                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+              }`}
+              title="Redo (Ctrl+Y)"
+            >
+              Redo ↪
+            </button>
           </div>
         </div>
 

@@ -308,6 +308,7 @@ export interface PuzzleSkin {
   // Metadata
   createdAt: string;
   isBuiltIn?: boolean;       // True for default/built-in skins
+  folderId?: string;         // Optional folder assignment
 }
 
 export interface Puzzle {
@@ -631,6 +632,7 @@ export interface SpellAsset {
   // Metadata
   createdAt: string;
   isCustom: boolean;            // User-created vs built-in
+  folderId?: string;            // Optional folder assignment
 }
 
 /**

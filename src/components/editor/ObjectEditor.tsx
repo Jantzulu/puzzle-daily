@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint } from '../../utils/assetStorage';
-import { saveObject, getCustomObjects, deleteObject } from '../../utils/assetStorage';
+import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../utils/assetStorage';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
+import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
   { value: 'center', label: 'Center', description: 'Sprite center aligned to tile center' },
@@ -34,6 +35,15 @@ export const ObjectEditor: React.FC = () => {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomObject | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+
+  // Filter objects based on folder and search term
+  const folderFilteredObjects = useFilteredAssets(objects, selectedFolderId);
+  const filteredObjects = folderFilteredObjects.filter(obj =>
+    obj.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (obj.description && obj.description.toLowerCase().includes(searchTerm.toLowerCase()))
+  );
 
   const refreshObjects = () => {
     setObjects(getCustomObjects());
@@ -145,15 +155,31 @@ export const ObjectEditor: React.FC = () => {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-[calc(100vh-250px)] overflow-y-auto">
-              {objects.length === 0 ? (
+            {/* Search */}
+            <input
+              type="text"
+              placeholder="Search..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+            />
+
+            {/* Folder Filter */}
+            <FolderDropdown
+              category="objects"
+              selectedFolderId={selectedFolderId}
+              onFolderSelect={setSelectedFolderId}
+            />
+
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+              {filteredObjects.length === 0 ? (
                 <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
-                  No objects yet.
+                  {searchTerm ? 'No objects match your search.' : 'No objects yet.'}
                   <br />
-                  Click "+ New" to create one.
+                  {!searchTerm && 'Click "+ New" to create one.'}
                 </div>
               ) : (
-                objects.map(obj => (
+                filteredObjects.map(obj => (
                   <div
                     key={obj.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
@@ -230,6 +256,19 @@ export const ObjectEditor: React.FC = () => {
                       rows={2}
                       placeholder="Optional description..."
                     />
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Folder</label>
+                    <select
+                      value={editing.folderId || ''}
+                      onChange={e => setEditing({ ...editing, folderId: e.target.value || undefined })}
+                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                    >
+                      <option value="">Uncategorized</option>
+                      {getFolders('objects').map(folder => (
+                        <option key={folder.id} value={folder.id}>{folder.name}</option>
+                      ))}
+                    </select>
                   </div>
                 </div>
 

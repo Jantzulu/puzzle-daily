@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
-import { saveSpellAsset } from '../../utils/assetStorage';
+import { saveSpellAsset, getFolders } from '../../utils/assetStorage';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -641,6 +641,21 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 placeholder="Describe what this spell does..."
                 rows={2}
               />
+            </div>
+
+            {/* Folder */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Folder</label>
+              <select
+                value={editedSpell.folderId || ''}
+                onChange={(e) => setEditedSpell({ ...editedSpell, folderId: e.target.value || undefined })}
+                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+              >
+                <option value="">Uncategorized</option>
+                {getFolders('spells').map(folder => (
+                  <option key={folder.id} value={folder.id}>{folder.name}</option>
+                ))}
+              </select>
             </div>
 
             {/* Thumbnail Icon */}
