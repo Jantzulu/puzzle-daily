@@ -1,13 +1,14 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { drawSprite, drawDeathSprite, hasDeathAnimation } from '../editor/SpriteEditor';
+import { drawSprite, drawDeathSprite, hasDeathAnimation, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject } from '../../utils/assetStorage';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
+import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -89,20 +90,15 @@ function drawSpellSpriteSheet(
   px: number,
   py: number,
   size: number,
-  imageCache: Map<string, HTMLImageElement>,
+  _imageCache: Map<string, HTMLImageElement>,  // Unused, kept for backwards compatibility
   now: number,
   rotationConfig?: { rotation: number; mirror: boolean }
 ): boolean {
-  // Get or create cached image
-  let img = imageCache.get(spriteSheet.imageData);
-  if (!img) {
-    img = new Image();
-    img.src = spriteSheet.imageData;
-    imageCache.set(spriteSheet.imageData, img);
-  }
+  // Use centralized image loader with load notifications
+  const img = loadImage(spriteSheet.imageData);
 
   // Wait for image to load
-  if (!img.complete || img.naturalWidth === 0) return false;
+  if (!img || !img.complete || img.naturalWidth === 0) return false;
 
   // Get or initialize animation state
   const stateKey = spriteSheet.imageData;
@@ -185,21 +181,16 @@ function drawSpellSpriteSheetFromStartTime(
   px: number,
   py: number,
   size: number,
-  imageCache: Map<string, HTMLImageElement>,
+  _imageCache: Map<string, HTMLImageElement>,  // Unused, kept for backwards compatibility
   startTime: number,
   now: number,
   rotationConfig?: { rotation: number; mirror: boolean }
 ): boolean {
-  // Get or create cached image
-  let img = imageCache.get(spriteSheet.imageData);
-  if (!img) {
-    img = new Image();
-    img.src = spriteSheet.imageData;
-    imageCache.set(spriteSheet.imageData, img);
-  }
+  // Use centralized image loader with load notifications
+  const img = loadImage(spriteSheet.imageData);
 
   // Wait for image to load
-  if (!img.complete || img.naturalWidth === 0) return false;
+  if (!img || !img.complete || img.naturalWidth === 0) return false;
 
   // Calculate frame dimensions
   const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
@@ -268,9 +259,6 @@ function drawSpellSpriteSheetFromStartTime(
 // ACTIVATION SPRITE RENDERING (for teleport tile effects)
 // ==========================================
 
-// Cache for activation sprite images
-const activationSpriteImageCache = new Map<string, HTMLImageElement>();
-
 /**
  * Draw an activation sprite (with optional spritesheet animation) at the given tile position
  * Used to show visual effects on tiles when activated (e.g., teleport tiles)
@@ -284,16 +272,11 @@ function drawActivationSprite(
   startTime: number,
   now: number
 ): boolean {
-  // Get or create cached image
-  let img = activationSpriteImageCache.get(activationSprite.imageData);
-  if (!img) {
-    img = new Image();
-    img.src = activationSprite.imageData;
-    activationSpriteImageCache.set(activationSprite.imageData, img);
-  }
+  // Use centralized image loader with load notifications
+  const img = loadImage(activationSprite.imageData);
 
   // Wait for image to load
-  if (!img.complete || img.naturalWidth === 0) return false;
+  if (!img || !img.complete || img.naturalWidth === 0) return false;
 
   const frameCount = activationSprite.frameCount || 1;
   const frameRate = activationSprite.frameRate || 10;
@@ -514,6 +497,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Track tile activations (e.g., teleport tile effects)
   const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
+
+  // Force re-render when images finish loading
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const unsubscribe1 = subscribeToImageLoads(() => forceUpdate(n => n + 1));
+    const unsubscribe2 = subscribeToSpriteImageLoads(() => forceUpdate(n => n + 1));
+    return () => {
+      unsubscribe1();
+      unsubscribe2();
+    };
+  }, []);
 
 
   // Detect character movement
@@ -1403,34 +1397,13 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
   ctx.restore();
 }
 
-// Image cache for custom border sprites
-const borderImageCache = new Map<string, HTMLImageElement>();
-
+// Use centralized image loader for border and tile sprites
 function loadBorderImage(src: string): HTMLImageElement | null {
-  if (!src) return null;
-
-  let img = borderImageCache.get(src);
-  if (!img) {
-    img = new Image();
-    img.src = src;
-    borderImageCache.set(src, img);
-  }
-  return img;
+  return loadImage(src);
 }
 
-// Image cache for tile sprites
-const tileImageCache = new Map<string, HTMLImageElement>();
-
 function loadTileImage(src: string): HTMLImageElement | null {
-  if (!src) return null;
-
-  let img = tileImageCache.get(src);
-  if (!img) {
-    img = new Image();
-    img.src = src;
-    tileImageCache.set(src, img);
-  }
-  return img;
+  return loadImage(src);
 }
 
 function drawCustomBorder(
@@ -2267,45 +2240,41 @@ function drawShape(
   color: string,
   size: number,
   imageData?: string,
-  imageCache?: Map<string, HTMLImageElement>,
+  _imageCache?: Map<string, HTMLImageElement>,  // Unused, kept for backwards compatibility
   rotationConfig?: { rotation: number; mirror: boolean }
 ) {
   ctx.save();
 
   // If there's an image, draw it instead of a shape
-  if (imageData && imageCache) {
-    let img = imageCache.get(imageData);
-
-    if (!img) {
-      // Create and cache the image
-      img = new Image();
-      img.src = imageData;
-      imageCache.set(imageData, img);
-    }
+  if (imageData) {
+    // Use centralized image loader with load notifications
+    const img = loadImage(imageData);
 
     // Draw the image (browser handles GIF animation automatically)
     // Use try-catch to handle cases where image isn't loaded yet
     try {
-      const imgSize = size * 3; // Make image larger
+      if (img && img.complete && img.naturalWidth > 0) {
+        const imgSize = size * 3; // Make image larger
 
-      // Apply rotation and mirroring if specified
-      if (rotationConfig) {
-        // Move to center point
-        ctx.translate(px, py);
+        // Apply rotation and mirroring if specified
+        if (rotationConfig) {
+          // Move to center point
+          ctx.translate(px, py);
 
-        // Apply rotation (convert degrees to radians)
-        ctx.rotate((rotationConfig.rotation * Math.PI) / 180);
+          // Apply rotation (convert degrees to radians)
+          ctx.rotate((rotationConfig.rotation * Math.PI) / 180);
 
-        // Apply mirroring
-        if (rotationConfig.mirror) {
-          ctx.scale(-1, 1);
+          // Apply mirroring
+          if (rotationConfig.mirror) {
+            ctx.scale(-1, 1);
+          }
+
+          // Draw centered at origin
+          ctx.drawImage(img, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+        } else {
+          // No rotation - draw normally
+          ctx.drawImage(img, px - imgSize / 2, py - imgSize / 2, imgSize, imgSize);
         }
-
-        // Draw centered at origin
-        ctx.drawImage(img, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
-      } else {
-        // No rotation - draw normally
-        ctx.drawImage(img, px - imgSize / 2, py - imgSize / 2, imgSize, imgSize);
       }
     } catch (e) {
       // Image not ready yet, will draw on next frame

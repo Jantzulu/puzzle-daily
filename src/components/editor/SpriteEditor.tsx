@@ -5,6 +5,52 @@ import { Direction } from '../../types/game';
 // Global image cache for GIF animation support
 const globalImageCache = new Map<string, HTMLImageElement>();
 
+// Set of callbacks to notify when sprite images finish loading
+const spriteLoadCallbacks = new Set<() => void>();
+
+// Set of images currently loading
+const loadingSpriteImages = new Set<string>();
+
+/**
+ * Subscribe to sprite image load events. Returns unsubscribe function.
+ */
+export function subscribeToSpriteImageLoads(callback: () => void): () => void {
+  spriteLoadCallbacks.add(callback);
+  return () => spriteLoadCallbacks.delete(callback);
+}
+
+/**
+ * Notify all subscribers that a sprite image has loaded.
+ */
+function notifySpriteImageLoaded() {
+  spriteLoadCallbacks.forEach(cb => cb());
+}
+
+/**
+ * Load a sprite image with caching and load notification.
+ */
+function loadSpriteImage(src: string): HTMLImageElement {
+  let img = globalImageCache.get(src);
+  if (!img) {
+    img = new Image();
+    globalImageCache.set(src, img);
+
+    if (!loadingSpriteImages.has(src)) {
+      loadingSpriteImages.add(src);
+      img.onload = () => {
+        loadingSpriteImages.delete(src);
+        notifySpriteImageLoaded();
+      };
+      img.onerror = () => {
+        loadingSpriteImages.delete(src);
+      };
+    }
+
+    img.src = src;
+  }
+  return img;
+}
+
 // Sprite sheet animation state
 interface SpriteSheetState {
   currentFrame: number;
@@ -24,13 +70,8 @@ function drawSpriteSheet(
   displayHeight: number,
   now: number
 ): void {
-  // Get or create cached image
-  let img = globalImageCache.get(sheet.imageData);
-  if (!img) {
-    img = new Image();
-    img.src = sheet.imageData;
-    globalImageCache.set(sheet.imageData, img);
-  }
+  // Get or create cached image with load notification
+  const img = loadSpriteImage(sheet.imageData);
 
   // Wait for image to load
   if (!img.complete || img.naturalWidth === 0) return;
@@ -100,13 +141,8 @@ function drawSpriteSheetFromStartTime(
   startTime: number,
   now: number = Date.now()
 ): void {
-  // Get or create cached image
-  let img = globalImageCache.get(sheet.imageData);
-  if (!img) {
-    img = new Image();
-    img.src = sheet.imageData;
-    globalImageCache.set(sheet.imageData, img);
-  }
+  // Get or create cached image with load notification
+  const img = loadSpriteImage(sheet.imageData);
 
   // Wait for image to load
   if (!img.complete || img.naturalWidth === 0) return;
@@ -2034,13 +2070,8 @@ function drawSpriteConfig(
     : (config.idleImageData || config.imageData);
 
   if (imageToUse) {
-    // Use cached image for GIF animation support
-    let img = globalImageCache.get(imageToUse);
-    if (!img) {
-      img = new Image();
-      img.src = imageToUse;
-      globalImageCache.set(imageToUse, img);
-    }
+    // Use cached image with load notification for GIF animation support
+    const img = loadSpriteImage(imageToUse);
 
     // Draw the image - for GIFs, the browser handles animation automatically
     // We draw even if not fully loaded to ensure GIF animation starts properly
@@ -2158,13 +2189,8 @@ export function drawSprite(
     : (sprite.idleImageData || sprite.imageData);
 
   if (spriteImageToUse) {
-    // Use cached image for GIF animation support
-    let img = globalImageCache.get(spriteImageToUse);
-    if (!img) {
-      img = new Image();
-      img.src = spriteImageToUse;
-      globalImageCache.set(spriteImageToUse, img);
-    }
+    // Use cached image with load notification for GIF animation support
+    const img = loadSpriteImage(spriteImageToUse);
 
     // Draw the image - for GIFs, the browser handles animation automatically
     // We draw even if not fully loaded to ensure GIF animation starts properly
@@ -2372,12 +2398,7 @@ function drawImage(
   centerY: number,
   maxSize: number
 ): void {
-  let img = globalImageCache.get(imageData);
-  if (!img) {
-    img = new Image();
-    img.src = imageData;
-    globalImageCache.set(imageData, img);
-  }
+  const img = loadSpriteImage(imageData);
 
   try {
     let drawWidth = maxSize;
