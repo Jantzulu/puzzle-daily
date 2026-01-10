@@ -226,6 +226,8 @@ export interface PlacedEnemy {
   teleportFromY?: number;
   teleportSprite?: TeleportSpriteConfig; // Custom sprite during teleportation
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
+  willTeleportNextMove?: boolean; // Set when character will step onto teleport tile next move
+  teleportEffectTurnsRemaining?: number; // Turns to keep showing teleport effect after arriving
 }
 
 export interface PlacedObject {
@@ -344,6 +346,8 @@ export interface PlacedCharacter {
   teleportFromY?: number;
   teleportSprite?: TeleportSpriteConfig; // Custom sprite during teleportation
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
+  willTeleportNextMove?: boolean; // Set when enemy will step onto teleport tile next move
+  teleportEffectTurnsRemaining?: number; // Turns to keep showing teleport effect after arriving
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
