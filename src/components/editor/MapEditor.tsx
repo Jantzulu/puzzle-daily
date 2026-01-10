@@ -1221,19 +1221,19 @@ export const MapEditor: React.FC = () => {
 
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Game Board */}
-            <div className="flex-1">
+            <div className="flex-1 flex flex-col items-center">
               <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={true} />
 
               {/* Victory/Defeat Message */}
               {gameState.gameStatus === 'victory' && (
-                <div className="mt-4 p-4 bg-green-700 rounded text-center">
+                <div className="mt-4 p-4 bg-green-700 rounded text-center w-full max-w-md">
                   <h2 className="text-2xl font-bold">Victory!</h2>
                   <p className="mt-2">Characters used: {gameState.placedCharacters.length}</p>
                 </div>
               )}
 
               {gameState.gameStatus === 'defeat' && (
-                <div className="mt-4 p-4 bg-red-700 rounded text-center">
+                <div className="mt-4 p-4 bg-red-700 rounded text-center w-full max-w-md">
                   <h2 className="text-2xl font-bold">Defeat</h2>
                   <p className="mt-2">Try again!</p>
                 </div>
@@ -1241,7 +1241,7 @@ export const MapEditor: React.FC = () => {
 
               {/* Character Selector - below puzzle */}
               {gameState.gameStatus === 'setup' && (
-                <div className="mt-4">
+                <div className="mt-4 w-full max-w-md">
                   <CharacterSelector
                     availableCharacterIds={gameState.puzzle.availableCharacters}
                     selectedCharacterId={selectedCharacterId}

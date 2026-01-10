@@ -2706,7 +2706,7 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full">
+    <div ref={containerRef} className="w-full flex justify-center">
       <AnimatedGameBoard {...props} maxWidth={maxWidth} />
     </div>
   );
