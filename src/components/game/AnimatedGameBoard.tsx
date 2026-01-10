@@ -1750,11 +1750,19 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     customTileType = loadTileType(tile.customTileTypeId);
   }
 
+  // Determine base tile color for transparency support
+  const isWall = type === TileType.WALL;
+  const isGoal = type === TileType.GOAL;
+  const baseColor = isWall ? COLORS.wall : COLORS.empty;
+
   // Priority 1: Check for skin-specific custom tile sprite
   if (tile?.customTileTypeId && customTileSprites?.[tile.customTileTypeId]) {
     const skinCustomSprite = customTileSprites[tile.customTileTypeId];
     const customImg = loadTileImage(skinCustomSprite);
     if (customImg?.complete) {
+      // Draw base color first for transparency support
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
       ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
       // Draw grid lines
       ctx.strokeStyle = COLORS.grid;
@@ -1772,6 +1780,9 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
   if (customTileType?.customSprite?.idleImageData) {
     const customImg = loadTileImage(customTileType.customSprite.idleImageData);
     if (customImg?.complete) {
+      // Draw base color first for transparency support
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
       ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
       // Draw grid lines
       ctx.strokeStyle = COLORS.grid;
@@ -1784,14 +1795,15 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
   }
 
   // Priority 3: Use skin tile sprites if available
-  const isWall = type === TileType.WALL;
-  const isGoal = type === TileType.GOAL;
   const spriteKey = isGoal ? 'goal' : (isWall ? 'wall' : 'empty');
   const spriteUrl = tileSprites?.[spriteKey];
 
   if (spriteUrl) {
     const tileImg = loadTileImage(spriteUrl);
     if (tileImg?.complete) {
+      // Draw base color first for transparency support
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
       ctx.drawImage(tileImg, px, py, TILE_SIZE, TILE_SIZE);
       // Still draw grid lines on top
       ctx.strokeStyle = COLORS.grid;

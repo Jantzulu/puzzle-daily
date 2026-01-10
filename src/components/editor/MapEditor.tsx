@@ -1983,10 +1983,17 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
     customTileType = loadTileType(tile.customTileTypeId);
   }
 
+  // Determine base tile color for transparency support
+  const isWall = tile.type === TileType.WALL;
+  const baseColor = isWall ? '#4a4a4a' : '#2a2a2a';
+
   // First: Draw custom tile sprite if available
   if (customTileType?.customSprite?.idleImageData) {
     const customImg = loadSkinImage(customTileType.customSprite.idleImageData);
     if (customImg?.complete) {
+      // Draw base color first for transparency support
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
       ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
       ctx.strokeStyle = '#1a1a1a';
       ctx.lineWidth = 1;
@@ -1998,22 +2005,24 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
 
   // Second: Use skin tile sprites if available
   const tileSprites = skin?.tileSprites;
-  const isWall = tile.type === TileType.WALL;
   const spriteKey = isWall ? 'wall' : 'empty';
   const spriteUrl = tileSprites?.[spriteKey];
 
   if (spriteUrl) {
     const tileImg = loadSkinImage(spriteUrl);
     if (tileImg?.complete) {
+      // Draw base color first for transparency support
+      ctx.fillStyle = baseColor;
+      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
       ctx.drawImage(tileImg, px, py, TILE_SIZE, TILE_SIZE);
     } else {
       // Fallback while image loads
-      ctx.fillStyle = isWall ? '#4a4a4a' : '#2a2a2a';
+      ctx.fillStyle = baseColor;
       ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
     }
   } else {
     // Default colors
-    ctx.fillStyle = isWall ? '#4a4a4a' : '#2a2a2a';
+    ctx.fillStyle = baseColor;
     ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
   }
 
