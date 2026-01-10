@@ -1307,27 +1307,59 @@ export const MapEditor: React.FC = () => {
             {/* Grid Size */}
             <div className="flex items-center gap-2 md:gap-3 bg-gray-800 px-3 py-1.5 md:px-4 md:py-2 rounded">
               <span className="text-xs md:text-sm font-medium text-gray-300">Grid:</span>
-              <div className="flex items-center gap-1 md:gap-2">
+              <div className="flex items-center gap-1">
                 <label className="text-xs text-gray-400">W</label>
-                <input
-                  type="number"
-                  min="3"
-                  max="20"
-                  value={state.gridWidth}
-                  onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
-                  className="w-10 md:w-12 px-1 md:px-2 py-1 bg-gray-700 rounded text-sm text-center"
-                />
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleResize(state.gridWidth - 1, state.gridHeight)}
+                    disabled={state.gridWidth <= 3}
+                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="3"
+                    max="20"
+                    value={state.gridWidth}
+                    onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
+                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    onClick={() => handleResize(state.gridWidth + 1, state.gridHeight)}
+                    disabled={state.gridWidth >= 20}
+                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
-              <div className="flex items-center gap-1 md:gap-2">
+              <div className="flex items-center gap-1">
                 <label className="text-xs text-gray-400">H</label>
-                <input
-                  type="number"
-                  min="3"
-                  max="20"
-                  value={state.gridHeight}
-                  onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
-                  className="w-10 md:w-12 px-1 md:px-2 py-1 bg-gray-700 rounded text-sm text-center"
-                />
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleResize(state.gridWidth, state.gridHeight - 1)}
+                    disabled={state.gridHeight <= 3}
+                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                  >
+                    −
+                  </button>
+                  <input
+                    type="number"
+                    min="3"
+                    max="20"
+                    value={state.gridHeight}
+                    onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
+                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <button
+                    onClick={() => handleResize(state.gridWidth, state.gridHeight + 1)}
+                    disabled={state.gridHeight >= 20}
+                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                  >
+                    +
+                  </button>
+                </div>
               </div>
             </div>
             {/* Undo/Redo buttons */}
