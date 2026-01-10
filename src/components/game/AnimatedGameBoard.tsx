@@ -509,6 +509,20 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     };
   }, []);
 
+  // Force re-render after puzzle loads to ensure images are displayed
+  // This handles the case where images finish loading before the component subscribes
+  useEffect(() => {
+    // Schedule multiple re-renders to catch late-loading images
+    const timer1 = setTimeout(() => forceUpdate(n => n + 1), 50);
+    const timer2 = setTimeout(() => forceUpdate(n => n + 1), 150);
+    const timer3 = setTimeout(() => forceUpdate(n => n + 1), 300);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [gameState.puzzle.id]);
+
 
   // Detect character movement
   useEffect(() => {

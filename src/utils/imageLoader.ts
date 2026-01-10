@@ -12,6 +12,9 @@ const imageCache = new Map<string, HTMLImageElement>();
 // Set of images currently loading (to avoid duplicate onload handlers)
 const loadingImages = new Set<string>();
 
+// Flag to schedule a single notification on next frame (for batching)
+let pendingNotification = false;
+
 /**
  * Subscribe to image load events. Returns unsubscribe function.
  */
@@ -22,9 +25,16 @@ export function subscribeToImageLoads(callback: () => void): () => void {
 
 /**
  * Notify all subscribers that an image has loaded.
+ * Uses requestAnimationFrame to batch multiple load events.
  */
 function notifyImageLoaded() {
-  loadCallbacks.forEach(cb => cb());
+  if (!pendingNotification) {
+    pendingNotification = true;
+    requestAnimationFrame(() => {
+      pendingNotification = false;
+      loadCallbacks.forEach(cb => cb());
+    });
+  }
 }
 
 /**
@@ -35,12 +45,10 @@ export function loadImage(src: string): HTMLImageElement | null {
   if (!src) return null;
 
   let img = imageCache.get(src);
-  if (!img) {
-    img = new Image();
-    imageCache.set(src, img);
-
-    // Only add onload handler if we haven't already
-    if (!loadingImages.has(src)) {
+  if (img) {
+    // Image exists in cache - check if it's still loading
+    if (!img.complete && !loadingImages.has(src)) {
+      // Image in cache but not complete and no handler - re-attach handler
       loadingImages.add(src);
       img.onload = () => {
         loadingImages.delete(src);
@@ -50,9 +58,23 @@ export function loadImage(src: string): HTMLImageElement | null {
         loadingImages.delete(src);
       };
     }
-
-    img.src = src;
+    return img;
   }
+
+  // Create new image
+  img = new Image();
+  imageCache.set(src, img);
+  loadingImages.add(src);
+
+  img.onload = () => {
+    loadingImages.delete(src);
+    notifyImageLoaded();
+  };
+  img.onerror = () => {
+    loadingImages.delete(src);
+  };
+
+  img.src = src;
 
   return img;
 }

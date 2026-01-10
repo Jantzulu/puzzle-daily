@@ -11,6 +11,9 @@ const spriteLoadCallbacks = new Set<() => void>();
 // Set of images currently loading
 const loadingSpriteImages = new Set<string>();
 
+// Flag to schedule a single notification on next frame (for batching)
+let pendingSpriteNotification = false;
+
 /**
  * Subscribe to sprite image load events. Returns unsubscribe function.
  */
@@ -21,9 +24,16 @@ export function subscribeToSpriteImageLoads(callback: () => void): () => void {
 
 /**
  * Notify all subscribers that a sprite image has loaded.
+ * Uses requestAnimationFrame to batch multiple load events.
  */
 function notifySpriteImageLoaded() {
-  spriteLoadCallbacks.forEach(cb => cb());
+  if (!pendingSpriteNotification) {
+    pendingSpriteNotification = true;
+    requestAnimationFrame(() => {
+      pendingSpriteNotification = false;
+      spriteLoadCallbacks.forEach(cb => cb());
+    });
+  }
 }
 
 /**
@@ -31,11 +41,10 @@ function notifySpriteImageLoaded() {
  */
 function loadSpriteImage(src: string): HTMLImageElement {
   let img = globalImageCache.get(src);
-  if (!img) {
-    img = new Image();
-    globalImageCache.set(src, img);
-
-    if (!loadingSpriteImages.has(src)) {
+  if (img) {
+    // Image exists in cache - check if it's still loading
+    if (!img.complete && !loadingSpriteImages.has(src)) {
+      // Image in cache but not complete and no handler - re-attach handler
       loadingSpriteImages.add(src);
       img.onload = () => {
         loadingSpriteImages.delete(src);
@@ -45,9 +54,24 @@ function loadSpriteImage(src: string): HTMLImageElement {
         loadingSpriteImages.delete(src);
       };
     }
-
-    img.src = src;
+    return img;
   }
+
+  // Create new image
+  img = new Image();
+  globalImageCache.set(src, img);
+  loadingSpriteImages.add(src);
+
+  img.onload = () => {
+    loadingSpriteImages.delete(src);
+    notifySpriteImageLoaded();
+  };
+  img.onerror = () => {
+    loadingSpriteImages.delete(src);
+  };
+
+  img.src = src;
+
   return img;
 }
 
