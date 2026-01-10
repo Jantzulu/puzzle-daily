@@ -102,7 +102,6 @@ export function executeTurn(gameState: GameState): GameState {
     newCharacter.justTeleported = false;
     newCharacter.teleportFromX = undefined;
     newCharacter.teleportFromY = undefined;
-    newCharacter.teleportSprite = undefined;
     newCharacter.iceSlideDistance = undefined;
 
     if (!newCharacter.active || newCharacter.dead) {
@@ -222,7 +221,6 @@ export function executeTurn(gameState: GameState): GameState {
     newEnemy.justTeleported = false;
     newEnemy.teleportFromX = undefined;
     newEnemy.teleportFromY = undefined;
-    newEnemy.teleportSprite = undefined;
     newEnemy.iceSlideDistance = undefined;
 
     if (newEnemy.dead) {
@@ -322,7 +320,6 @@ export function executeTurn(gameState: GameState): GameState {
           newEnemy.justTeleported = updatedChar.justTeleported;
           newEnemy.teleportFromX = updatedChar.teleportFromX;
           newEnemy.teleportFromY = updatedChar.teleportFromY;
-          newEnemy.teleportSprite = updatedChar.teleportSprite;
           newEnemy.iceSlideDistance = updatedChar.iceSlideDistance;
         }
       }
@@ -352,7 +349,6 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.justTeleported = updatedChar.justTeleported;
       newEnemy.teleportFromX = updatedChar.teleportFromX;
       newEnemy.teleportFromY = updatedChar.teleportFromY;
-      newEnemy.teleportSprite = updatedChar.teleportSprite;
       newEnemy.iceSlideDistance = updatedChar.iceSlideDistance;
 
       // Also execute any parallel_with_previous actions that follow
@@ -383,7 +379,6 @@ export function executeTurn(gameState: GameState): GameState {
           newEnemy.justTeleported = parallelResult.justTeleported;
           newEnemy.teleportFromX = parallelResult.teleportFromX;
           newEnemy.teleportFromY = parallelResult.teleportFromY;
-          newEnemy.teleportSprite = parallelResult.teleportSprite;
           newEnemy.iceSlideDistance = parallelResult.iceSlideDistance;
 
           checkIndex++;

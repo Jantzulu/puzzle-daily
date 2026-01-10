@@ -44,6 +44,15 @@ export interface TeleportSpriteConfig {
   loop?: boolean;              // Loop animation (default: true)
 }
 
+export interface ActivationSpriteConfig {
+  imageData: string;           // Base64 image data
+  frameCount?: number;         // For spritesheets (default: 1)
+  frameRate?: number;          // Frames per second (default: 10)
+  loop?: boolean;              // Loop animation (default: true)
+  opacity?: number;            // Opacity 0-1 (default: 1)
+  durationMs?: number;         // How long to show the activation sprite (default: 800ms)
+}
+
 export interface TileBehaviorConfig {
   type: TileBehaviorType;
 
@@ -53,7 +62,8 @@ export interface TileBehaviorConfig {
 
   // Teleport behavior - tiles with same group ID are linked (bidirectional)
   teleportGroupId?: string;
-  teleportSprite?: TeleportSpriteConfig;  // Custom sprite shown during teleportation
+  teleportSprite?: TeleportSpriteConfig;  // DEPRECATED: Use activationSprite instead
+  activationSprite?: ActivationSpriteConfig;  // Sprite shown on tile when activated (e.g., teleport effect)
 
   // Direction change behavior
   newFacing?: Direction;
@@ -224,10 +234,8 @@ export interface PlacedEnemy {
   justTeleported?: boolean; // Set when teleporting, cleared after animation
   teleportFromX?: number;   // Origin tile before teleport
   teleportFromY?: number;
-  teleportSprite?: TeleportSpriteConfig; // Custom sprite during teleportation
+  teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
-  willTeleportNextMove?: boolean; // Set when character will step onto teleport tile next move
-  teleportEffectTurnsRemaining?: number; // Turns to keep showing teleport effect after arriving
 }
 
 export interface PlacedObject {
@@ -344,10 +352,8 @@ export interface PlacedCharacter {
   justTeleported?: boolean; // Set when teleporting, cleared after animation
   teleportFromX?: number;   // Origin tile before teleport
   teleportFromY?: number;
-  teleportSprite?: TeleportSpriteConfig; // Custom sprite during teleportation
+  teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
-  willTeleportNextMove?: boolean; // Set when enemy will step onto teleport tile next move
-  teleportEffectTurnsRemaining?: number; // Turns to keep showing teleport effect after arriving
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';

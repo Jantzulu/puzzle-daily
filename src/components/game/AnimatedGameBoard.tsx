@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, TeleportSpriteConfig } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -50,8 +50,7 @@ const MOVE_DURATION = 280; // First 70%: moving between tiles (slower movement)
 const IDLE_DURATION = 120; // Second 30%: idle on destination tile
 const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
-const TELEPORT_APPEAR_DURATION = 600; // ms to show teleport sprite at destination (rematerialization)
-const TELEPORT_DEMATERIALIZE_START = 0.15; // Start showing teleport sprite early in walk (15%) for dematerialization
+const TELEPORT_APPEAR_DURATION = 100; // Small delay after walking to teleport tile before appearing at destination
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -265,38 +264,40 @@ function drawSpellSpriteSheetFromStartTime(
 }
 
 // ==========================================
-// TELEPORT SPRITE RENDERING
+// ACTIVATION SPRITE RENDERING (for teleport tile effects)
 // ==========================================
 
-// Cache for teleport sprite images
-const teleportSpriteImageCache = new Map<string, HTMLImageElement>();
+// Cache for activation sprite images
+const activationSpriteImageCache = new Map<string, HTMLImageElement>();
 
 /**
- * Draw a teleport sprite (with optional spritesheet animation) at the given position
+ * Draw an activation sprite (with optional spritesheet animation) at the given tile position
+ * Used to show visual effects on tiles when activated (e.g., teleport tiles)
  */
-function drawTeleportSprite(
+function drawActivationSprite(
   ctx: CanvasRenderingContext2D,
-  teleportSprite: TeleportSpriteConfig,
-  px: number,
-  py: number,
-  size: number,
+  activationSprite: ActivationSpriteConfig,
+  tileX: number,
+  tileY: number,
+  tileSize: number,
   startTime: number,
   now: number
 ): boolean {
   // Get or create cached image
-  let img = teleportSpriteImageCache.get(teleportSprite.imageData);
+  let img = activationSpriteImageCache.get(activationSprite.imageData);
   if (!img) {
     img = new Image();
-    img.src = teleportSprite.imageData;
-    teleportSpriteImageCache.set(teleportSprite.imageData, img);
+    img.src = activationSprite.imageData;
+    activationSpriteImageCache.set(activationSprite.imageData, img);
   }
 
   // Wait for image to load
   if (!img.complete || img.naturalWidth === 0) return false;
 
-  const frameCount = teleportSprite.frameCount || 1;
-  const frameRate = teleportSprite.frameRate || 10;
-  const loop = teleportSprite.loop !== false;
+  const frameCount = activationSprite.frameCount || 1;
+  const frameRate = activationSprite.frameRate || 10;
+  const loop = activationSprite.loop !== false;
+  const opacity = activationSprite.opacity ?? 1;
 
   // Calculate frame dimensions (horizontal spritesheet)
   const frameWidth = img.naturalWidth / frameCount;
@@ -314,28 +315,26 @@ function drawTeleportSprite(
     currentFrame = Math.min(currentFrame, frameCount - 1);
   }
 
-  // Calculate display dimensions preserving aspect ratio
-  const frameAspectRatio = frameWidth / frameHeight;
-  let finalWidth = size;
-  let finalHeight = size;
-  if (frameAspectRatio > 1) {
-    finalHeight = size / frameAspectRatio;
-  } else {
-    finalWidth = size * frameAspectRatio;
-  }
-
-  // Draw the current frame centered at position
+  // Calculate display dimensions - fill the tile
   const sourceX = currentFrame * frameWidth;
   const sourceY = 0;
 
+  // Position at tile's top-left corner (not centered)
+  const px = tileX * tileSize;
+  const py = tileY * tileSize;
+
   try {
+    ctx.save();
+    ctx.globalAlpha = opacity;
     ctx.drawImage(
       img,
       sourceX, sourceY, frameWidth, frameHeight,
-      px - finalWidth / 2, py - finalHeight / 2, finalWidth, finalHeight
+      px, py, tileSize, tileSize
     );
+    ctx.restore();
     return true;
   } catch (e) {
+    ctx.restore();
     return false;
   }
 }
@@ -380,14 +379,14 @@ function isTilePlayable(tiles: (import('../../types/game').TileOrNull)[][], x: n
 }
 
 /**
- * Get the teleport sprite from a tile if it has teleport behavior
+ * Get the activation sprite from a tile if it has teleport behavior with activation sprite
  */
-function getTeleportSpriteFromTile(tile: Tile | null | undefined): TeleportSpriteConfig | undefined {
+function getActivationSpriteFromTile(tile: Tile | null | undefined): ActivationSpriteConfig | undefined {
   if (!tile?.customTileTypeId) return undefined;
   const tileType = loadTileType(tile.customTileTypeId);
   if (!tileType?.behaviors) return undefined;
   const teleportBehavior = tileType.behaviors.find(b => b.type === 'teleport');
-  return teleportBehavior?.teleportSprite;
+  return teleportBehavior?.activationSprite;
 }
 
 /**
@@ -469,9 +468,18 @@ interface CharacterPosition {
   toY: number;
   startTime: number;
   facingDuringMove: Direction; // Direction character is moving (before wall lookahead changes it)
-  teleported?: boolean; // If true, this is a teleport - animate to fromX/fromY then appear at toX/toY
+  teleported?: boolean; // If true, this is a teleport - animate walking to source tile, then appear at destination
   iceSlideDistance?: number; // If set, slow down animation proportionally
-  teleportSprite?: TeleportSpriteConfig; // Sprite to use for teleport effect
+  teleportSourceX?: number; // The teleport tile the entity stepped on
+  teleportSourceY?: number;
+}
+
+// Track active tile activations (e.g., teleport effects shown on tiles)
+interface TileActivation {
+  x: number;
+  y: number;
+  startTime: number;
+  activationSprite: ActivationSpriteConfig;
 }
 
 interface CharacterAttack {
@@ -503,10 +511,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const prevCharacterDeadStateRef = useRef<Map<string, boolean>>(new Map());
   const prevEnemyDeadStateRef = useRef<Map<number, boolean>>(new Map());
 
+  // Track tile activations (e.g., teleport tile effects)
+  const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
+
 
   // Detect character movement
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
+    const newActivations: TileActivation[] = [];
     const now = Date.now();
 
     gameState.placedCharacters.forEach((char, idx) => {
@@ -522,6 +534,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         if (char.justTeleported && char.teleportFromX !== undefined && char.teleportFromY !== undefined) {
           // Teleport animation: animate from previous position TO the teleport tile,
           // then appear at destination
+          const teleportSourceX = char.teleportFromX;
+          const teleportSourceY = char.teleportFromY;
+
           newPositions.set(idx, {
             fromX: prevChar.x,
             fromY: prevChar.y,
@@ -530,8 +545,33 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             startTime: now,
             facingDuringMove: facingChanged ? char.facing : prevChar.facing,
             teleported: true,
-            teleportSprite: char.teleportSprite,
+            teleportSourceX,
+            teleportSourceY,
           });
+
+          // Trigger activation sprites on both source and destination teleport tiles
+          const sourceTile = gameState.puzzle.tiles[teleportSourceY]?.[teleportSourceX];
+          const destTile = gameState.puzzle.tiles[char.y]?.[char.x];
+
+          const sourceActivationSprite = getActivationSpriteFromTile(sourceTile);
+          const destActivationSprite = getActivationSpriteFromTile(destTile);
+
+          if (sourceActivationSprite) {
+            newActivations.push({
+              x: teleportSourceX,
+              y: teleportSourceY,
+              startTime: now,
+              activationSprite: sourceActivationSprite,
+            });
+          }
+          if (destActivationSprite) {
+            newActivations.push({
+              x: char.x,
+              y: char.y,
+              startTime: now,
+              activationSprite: destActivationSprite,
+            });
+          }
         } else {
           // Normal movement animation
           newPositions.set(idx, {
@@ -562,12 +602,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     });
 
     setCharacterPositions(newPositions);
+    if (newActivations.length > 0) {
+      setTileActivations(prev => [...prev, ...newActivations]);
+    }
     prevCharactersRef.current = [...gameState.placedCharacters];
   }, [gameState.placedCharacters]);
 
   // Detect enemy movement
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
+    const newActivations: TileActivation[] = [];
     const now = Date.now();
 
     gameState.puzzle.enemies.forEach((enemy, idx) => {
@@ -582,6 +626,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Check if this was a teleport
         if (enemy.justTeleported && enemy.teleportFromX !== undefined && enemy.teleportFromY !== undefined) {
           // Teleport animation
+          const teleportSourceX = enemy.teleportFromX;
+          const teleportSourceY = enemy.teleportFromY;
+
           newPositions.set(idx, {
             fromX: prevEnemy.x,
             fromY: prevEnemy.y,
@@ -590,8 +637,33 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             startTime: now,
             facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
             teleported: true,
-            teleportSprite: enemy.teleportSprite,
+            teleportSourceX,
+            teleportSourceY,
           });
+
+          // Trigger activation sprites on both source and destination teleport tiles
+          const sourceTile = gameState.puzzle.tiles[teleportSourceY]?.[teleportSourceX];
+          const destTile = gameState.puzzle.tiles[enemy.y]?.[enemy.x];
+
+          const sourceActivationSprite = getActivationSpriteFromTile(sourceTile);
+          const destActivationSprite = getActivationSpriteFromTile(destTile);
+
+          if (sourceActivationSprite) {
+            newActivations.push({
+              x: teleportSourceX,
+              y: teleportSourceY,
+              startTime: now,
+              activationSprite: sourceActivationSprite,
+            });
+          }
+          if (destActivationSprite) {
+            newActivations.push({
+              x: enemy.x,
+              y: enemy.y,
+              startTime: now,
+              activationSprite: destActivationSprite,
+            });
+          }
         } else {
           // Normal movement animation
           newPositions.set(idx, {
@@ -622,6 +694,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     });
 
     setEnemyPositions(newPositions);
+    if (newActivations.length > 0) {
+      setTileActivations(prev => [...prev, ...newActivations]);
+    }
     prevEnemiesRef.current = [...gameState.puzzle.enemies];
   }, [gameState.puzzle.enemies]);
 
@@ -856,11 +931,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             const elapsed = now - anim.startTime;
 
             if (anim.teleported) {
-              // Teleport animation: walk to teleport tile, dematerialize, rematerialize at destination
-              const teleportTileX = enemy.teleportFromX ?? anim.fromX;
-              const teleportTileY = enemy.teleportFromY ?? anim.fromY;
-              // Use teleport sprite from animation state (more reliable than enemy state)
-              const teleportSprite = anim.teleportSprite || enemy.teleportSprite;
+              // Teleport animation: walk to teleport tile, then appear at destination
+              // The activation sprite is rendered on the tiles separately
+              const teleportTileX = anim.teleportSourceX ?? anim.fromX;
+              const teleportTileY = anim.teleportSourceY ?? anim.fromY;
 
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
@@ -868,26 +942,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-
-                // Start showing teleport sprite early in walk (dematerialization effect)
-                if (teleportSprite && moveProgress >= TELEPORT_DEMATERIALIZE_START) {
-                  const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
-                  const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
-                  // Calculate time since dematerialization started for sprite animation
-                  const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                  drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
-                } else {
-                  drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
-                }
-              } else if (teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
-                // Phase 2: Show teleport sprite at destination (rematerialization)
-                const pixelX = anim.toX * TILE_SIZE + TILE_SIZE / 2;
-                const pixelY = anim.toY * TILE_SIZE + TILE_SIZE / 2;
-                // Continue sprite animation from Phase 1
-                const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
               } else {
-                // Phase 3: Appear at destination with normal sprite
+                // Phase 2: Appear at destination with normal sprite
                 drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
               }
             } else {
@@ -928,12 +985,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             const elapsed = now - anim.startTime;
 
             if (anim.teleported) {
-              // Teleport animation: walk to teleport tile, dematerialize, rematerialize at destination
-              // Get the teleport source tile from character state
-              const teleportTileX = character.teleportFromX ?? anim.fromX;
-              const teleportTileY = character.teleportFromY ?? anim.fromY;
-              // Use teleport sprite from animation state (more reliable than character state)
-              const teleportSprite = anim.teleportSprite || character.teleportSprite;
+              // Teleport animation: walk to teleport tile, then appear at destination
+              // The activation sprite is rendered on the tiles separately
+              const teleportTileX = anim.teleportSourceX ?? anim.fromX;
+              const teleportTileY = anim.teleportSourceY ?? anim.fromY;
 
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
@@ -941,26 +996,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-
-                // Start showing teleport sprite early in walk (dematerialization effect)
-                if (teleportSprite && moveProgress >= TELEPORT_DEMATERIALIZE_START) {
-                  const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
-                  const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
-                  // Calculate time since dematerialization started for sprite animation
-                  const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                  drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
-                } else {
-                  drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
-                }
-              } else if (teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
-                // Phase 2: Show teleport sprite at destination (rematerialization)
-                const pixelX = anim.toX * TILE_SIZE + TILE_SIZE / 2;
-                const pixelY = anim.toY * TILE_SIZE + TILE_SIZE / 2;
-                // Continue sprite animation from Phase 1
-                const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
               } else {
-                // Phase 3: Appear at destination with normal sprite
+                // Phase 2: Appear at destination with normal sprite
                 drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
               }
             } else {
@@ -985,6 +1023,40 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         }
       });
+
+      // Draw tile activation effects (e.g., teleport activation sprites) ABOVE entities
+      // Filter out expired activations and draw active ones
+      const activeActivations: TileActivation[] = [];
+      tileActivations.forEach(activation => {
+        const durationMs = activation.activationSprite.durationMs || 800;
+        const elapsed = now - activation.startTime;
+        if (elapsed < durationMs) {
+          activeActivations.push(activation);
+          drawActivationSprite(
+            ctx,
+            activation.activationSprite,
+            activation.x,
+            activation.y,
+            TILE_SIZE,
+            activation.startTime,
+            now
+          );
+        }
+      });
+
+      // Clean up expired activations (do this outside the render loop to avoid state updates during render)
+      if (activeActivations.length !== tileActivations.length) {
+        // Schedule cleanup for next frame
+        setTimeout(() => {
+          setTileActivations(prev => {
+            const currentTime = Date.now();
+            return prev.filter(a => {
+              const durationMs = a.activationSprite.durationMs || 800;
+              return currentTime - a.startTime < durationMs;
+            });
+          });
+        }, 0);
+      }
 
       // Draw objects above entities (sorted by y for proper layering)
       if (gameState.puzzle.placedObjects) {
@@ -1013,7 +1085,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations]);
+  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onTileClick) return;

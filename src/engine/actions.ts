@@ -299,7 +299,6 @@ function processTeleportBehavior(
     justTeleported: true,
     teleportFromX: tile.x,
     teleportFromY: tile.y,
-    teleportSprite: behavior.teleportSprite,
   };
 }
 

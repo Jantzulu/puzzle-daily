@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, TeleportSpriteConfig } from '../../types/game';
+import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig } from '../../types/game';
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -111,22 +111,22 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
             </p>
           </div>
 
-          {/* Teleport Sprite (optional) */}
+          {/* Activation Sprite (optional) */}
           <div>
-            <label className="text-sm text-gray-300">Teleporting Sprite (Optional)</label>
+            <label className="text-sm text-gray-300">Activation Sprite (Optional)</label>
             <p className="text-xs text-gray-400 mb-2">
-              Custom sprite shown on entities while teleporting. Supports spritesheets.
+              Sprite shown on top of the teleport tile when activated. Displayed above entities.
             </p>
-            {behavior.teleportSprite?.imageData ? (
+            {behavior.activationSprite?.imageData ? (
               <div className="space-y-2">
                 <div className="flex items-start gap-3">
                   <img
-                    src={behavior.teleportSprite.imageData}
-                    alt="Teleport sprite"
+                    src={behavior.activationSprite.imageData}
+                    alt="Activation sprite"
                     className="w-16 h-16 object-contain bg-gray-600 rounded"
                   />
                   <button
-                    onClick={() => onChange({ ...behavior, teleportSprite: undefined })}
+                    onClick={() => onChange({ ...behavior, activationSprite: undefined })}
                     className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
                   >
                     Remove
@@ -137,11 +137,11 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                     <label className="text-xs text-gray-400">Frame Count</label>
                     <input
                       type="number"
-                      value={behavior.teleportSprite.frameCount || 1}
+                      value={behavior.activationSprite.frameCount || 1}
                       onChange={e => onChange({
                         ...behavior,
-                        teleportSprite: {
-                          ...behavior.teleportSprite!,
+                        activationSprite: {
+                          ...behavior.activationSprite!,
                           frameCount: Math.max(1, parseInt(e.target.value) || 1)
                         }
                       })}
@@ -153,11 +153,11 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                     <label className="text-xs text-gray-400">Frame Rate (fps)</label>
                     <input
                       type="number"
-                      value={behavior.teleportSprite.frameRate || 10}
+                      value={behavior.activationSprite.frameRate || 10}
                       onChange={e => onChange({
                         ...behavior,
-                        teleportSprite: {
-                          ...behavior.teleportSprite!,
+                        activationSprite: {
+                          ...behavior.activationSprite!,
                           frameRate: Math.max(1, parseInt(e.target.value) || 10)
                         }
                       })}
@@ -166,14 +166,49 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                     />
                   </div>
                 </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-400">Opacity (0-100%)</label>
+                    <input
+                      type="number"
+                      value={Math.round((behavior.activationSprite.opacity ?? 1) * 100)}
+                      onChange={e => onChange({
+                        ...behavior,
+                        activationSprite: {
+                          ...behavior.activationSprite!,
+                          opacity: Math.max(0, Math.min(100, parseInt(e.target.value) || 100)) / 100
+                        }
+                      })}
+                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      min="0"
+                      max="100"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-400">Duration (ms)</label>
+                    <input
+                      type="number"
+                      value={behavior.activationSprite.durationMs || 800}
+                      onChange={e => onChange({
+                        ...behavior,
+                        activationSprite: {
+                          ...behavior.activationSprite!,
+                          durationMs: Math.max(100, parseInt(e.target.value) || 800)
+                        }
+                      })}
+                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      min="100"
+                    />
+                  </div>
+                </div>
                 <label className="flex items-center text-xs text-gray-300">
                   <input
                     type="checkbox"
-                    checked={behavior.teleportSprite.loop !== false}
+                    checked={behavior.activationSprite.loop !== false}
                     onChange={e => onChange({
                       ...behavior,
-                      teleportSprite: {
-                        ...behavior.teleportSprite!,
+                      activationSprite: {
+                        ...behavior.activationSprite!,
                         loop: e.target.checked
                       }
                     })}
@@ -185,7 +220,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
             ) : (
               <label className="block cursor-pointer">
                 <div className="w-full h-16 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 text-sm">
-                  <span>+ Upload Teleport Sprite</span>
+                  <span>+ Upload Activation Sprite</span>
                   <span className="text-xs text-gray-500">Single image or horizontal spritesheet</span>
                 </div>
                 <input
@@ -197,11 +232,13 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                       const base64 = await fileToBase64(file);
                       onChange({
                         ...behavior,
-                        teleportSprite: {
+                        activationSprite: {
                           imageData: base64,
                           frameCount: 1,
                           frameRate: 10,
-                          loop: true
+                          loop: true,
+                          opacity: 1,
+                          durationMs: 800
                         }
                       });
                     }
