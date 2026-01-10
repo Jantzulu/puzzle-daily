@@ -126,8 +126,10 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
 
     // Push puzzles
     const puzzles = getSavedPuzzles();
+    console.log(`[CloudSync] Pushing ${puzzles.length} puzzles to cloud`);
     for (const savedPuzzle of puzzles) {
       // SavedPuzzle extends Puzzle directly, so savedPuzzle IS the puzzle
+      console.log(`[CloudSync] Uploading puzzle: ${savedPuzzle.name} (${savedPuzzle.id})`);
       const success = await savePuzzleToCloud(savedPuzzle, savedPuzzle.name);
       if (!success) errors.push(`Failed to upload puzzle: ${savedPuzzle.name}`);
     }
@@ -224,16 +226,20 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     }
 
     // Import puzzles
+    console.log(`[CloudSync] Pulling ${cloudData.puzzles.length} puzzles from cloud`);
     for (const dbPuzzle of cloudData.puzzles) {
       try {
+        console.log(`[CloudSync] Importing puzzle: ${dbPuzzle.name} (${dbPuzzle.id})`);
         const puzzle = dbPuzzle.data as unknown as Puzzle;
         // Ensure puzzle has the name from the db record
         puzzle.name = dbPuzzle.name;
         saveLocalPuzzle(puzzle);
       } catch (e) {
+        console.error(`[CloudSync] Failed to import puzzle ${dbPuzzle.name}:`, e);
         errors.push(`Failed to import puzzle: ${dbPuzzle.name}`);
       }
     }
+    console.log(`[CloudSync] After pull, local puzzles count: ${getSavedPuzzles().length}`);
 
     lastSyncTime = new Date();
     notifySyncStatus(errors.length > 0 ? 'error' : 'success');
