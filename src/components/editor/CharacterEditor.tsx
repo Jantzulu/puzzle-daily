@@ -444,6 +444,33 @@ export const CharacterEditor: React.FC = () => {
                       <div className="space-y-2">
                         {(editing.tooltipSteps || []).map((step, index) => (
                           <div key={index} className="flex gap-2 items-center">
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                onClick={() => {
+                                  if (index === 0) return;
+                                  const newSteps = [...(editing.tooltipSteps || [])];
+                                  [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
+                                  updateCharacter({ tooltipSteps: newSteps });
+                                }}
+                                disabled={index === 0}
+                                className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+                              >
+                                ↑
+                              </button>
+                              <button
+                                onClick={() => {
+                                  const steps = editing.tooltipSteps || [];
+                                  if (index === steps.length - 1) return;
+                                  const newSteps = [...steps];
+                                  [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
+                                  updateCharacter({ tooltipSteps: newSteps });
+                                }}
+                                disabled={index === (editing.tooltipSteps?.length || 0) - 1}
+                                className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+                              >
+                                ↓
+                              </button>
+                            </div>
                             <span className="text-gray-400 text-sm">•</span>
                             <input
                               type="text"
