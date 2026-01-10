@@ -506,6 +506,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const prevCharacterDeadStateRef = useRef<Map<string, boolean>>(new Map());
   const prevEnemyDeadStateRef = useRef<Map<number, boolean>>(new Map());
 
+  // Track which entities just teleported (for after-teleport effect on next move)
+  const justTeleportedCharactersRef = useRef<Map<number, TeleportSpriteConfig>>(new Map());
+  const justTeleportedEnemiesRef = useRef<Map<number, TeleportSpriteConfig>>(new Map());
+
   // Detect character movement
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
@@ -534,16 +538,22 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             teleported: true,
             teleportSprite: char.teleportSprite,
           });
+          // Remember this character just teleported for next turn's after-effect
+          if (char.teleportSprite) {
+            justTeleportedCharactersRef.current.set(idx, char.teleportSprite);
+          }
         } else {
-          // Normal movement - check if previous animation was a teleport (afterTeleport effect)
-          const wasJustTeleported = existing?.teleported === true;
+          // Normal movement - check if this character teleported on previous turn
+          const prevTeleportSprite = justTeleportedCharactersRef.current.get(idx);
+          const wasJustTeleported = !!prevTeleportSprite;
+
+          // Clear the teleport tracking for this character (we're using it now)
+          justTeleportedCharactersRef.current.delete(idx);
 
           // Check if walking TOWARD a teleport tile (lookahead)
+          // Use the destination tile (char.x, char.y) to check for teleport
           const destTile = gameState.puzzle.tiles[char.y]?.[char.x];
           const destTeleportSprite = getTeleportSpriteFromTile(destTile);
-
-          // Get teleport sprite from previous teleport if this is afterTeleport
-          const prevTeleportSprite = wasJustTeleported ? existing?.teleportSprite : undefined;
 
           newPositions.set(idx, {
             fromX: prevChar.x,
@@ -606,16 +616,21 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             teleported: true,
             teleportSprite: enemy.teleportSprite,
           });
+          // Remember this enemy just teleported for next turn's after-effect
+          if (enemy.teleportSprite) {
+            justTeleportedEnemiesRef.current.set(idx, enemy.teleportSprite);
+          }
         } else {
-          // Normal movement - check if previous animation was a teleport (afterTeleport effect)
-          const wasJustTeleported = existing?.teleported === true;
+          // Normal movement - check if this enemy teleported on previous turn
+          const prevTeleportSprite = justTeleportedEnemiesRef.current.get(idx);
+          const wasJustTeleported = !!prevTeleportSprite;
+
+          // Clear the teleport tracking for this enemy (we're using it now)
+          justTeleportedEnemiesRef.current.delete(idx);
 
           // Check if walking TOWARD a teleport tile (lookahead)
           const destTile = gameState.puzzle.tiles[enemy.y]?.[enemy.x];
           const destTeleportSprite = getTeleportSpriteFromTile(destTile);
-
-          // Get teleport sprite from previous teleport if this is afterTeleport
-          const prevTeleportSprite = wasJustTeleported ? existing?.teleportSprite : undefined;
 
           newPositions.set(idx, {
             fromX: prevEnemy.x,
