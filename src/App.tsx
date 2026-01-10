@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { Game } from './components/game/Game';
 import { MapEditor } from './components/editor/MapEditor';
 import { AssetManager } from './components/editor/AssetManager';
+import { CloudSyncButton } from './components/editor/CloudSyncButton';
 
 function Navigation() {
   const location = useLocation();
@@ -28,6 +29,8 @@ function Navigation() {
         <Link to="/assets" className={linkClass('/assets')}>
           Asset Manager
         </Link>
+        <div className="flex-1" />
+        <CloudSyncButton />
       </div>
     </nav>
   );

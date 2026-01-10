@@ -18,7 +18,6 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { createHistoryManager } from '../../utils/historyManager';
 import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
-import { CloudSyncPanel } from './CloudSyncPanel';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -1814,9 +1813,6 @@ export const MapEditor: React.FC = () => {
                   )}
                 </div>
               )}
-
-              {/* Cloud Sync Panel */}
-              <CloudSyncPanel onSyncComplete={() => setSavedPuzzles(getSavedPuzzles())} />
             </div>
           </div>
         </div>
