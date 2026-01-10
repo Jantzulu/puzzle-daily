@@ -243,7 +243,7 @@ const ObjectTooltip: React.FC<{ object: CustomObject; children: React.ReactNode 
 
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
-const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
+const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
 
 type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'object' | 'custom';
 type EditorMode = 'edit' | 'playtest';

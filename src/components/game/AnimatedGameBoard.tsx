@@ -46,7 +46,7 @@ interface AnimatedGameBoardProps {
 
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
-const SIDE_BORDER_SIZE = 24; // Thinner side borders to match pixel art style
+const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
 const MOVE_DURATION = 280; // First 70%: moving between tiles (slower movement)
 const IDLE_DURATION = 120; // Second 30%: idle on destination tile
