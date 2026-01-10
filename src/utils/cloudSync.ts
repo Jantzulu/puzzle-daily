@@ -37,8 +37,14 @@ import {
   saveEnemy,
   savePuzzleSkin,
   saveSpellAsset,
+  deleteTileType,
+  deleteObject,
+  deleteCharacter,
+  deleteEnemy,
+  deletePuzzleSkin,
+  deleteSpellAsset,
 } from './assetStorage';
-import { getSavedPuzzles, savePuzzle as saveLocalPuzzle } from './puzzleStorage';
+import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle } from './puzzleStorage';
 
 // Track sync status
 let lastSyncTime: Date | null = null;
@@ -150,6 +156,7 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
 /**
  * Pull all assets from cloud to local storage
  * This downloads everything from Supabase to localStorage
+ * Soft-deleted items (deleted_at set) are removed from local storage
  */
 export async function pullFromCloud(): Promise<{ success: boolean; errors: string[] }> {
   if (isSyncing) {
@@ -163,79 +170,115 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
   try {
     const cloudData = await syncFromCloud();
 
-    // Import tile types
+    // Import tile types (or delete if soft-deleted)
     for (const asset of cloudData.tileTypes) {
       try {
-        const tileType = asset.data as unknown as CustomTileType;
-        saveTileType(tileType);
+        if (asset.deleted_at) {
+          // Soft-deleted in cloud - remove locally
+          deleteTileType(asset.id);
+          console.log(`[CloudSync] Deleted tile type locally: ${asset.name}`);
+        } else {
+          const tileType = asset.data as unknown as CustomTileType;
+          saveTileType(tileType);
+        }
       } catch (e) {
         errors.push(`Failed to import tile type: ${asset.name}`);
       }
     }
 
-    // Import enemies
+    // Import enemies (or delete if soft-deleted)
     for (const asset of cloudData.enemies) {
       try {
-        const enemy = asset.data as unknown as CustomEnemy;
-        saveEnemy(enemy);
+        if (asset.deleted_at) {
+          deleteEnemy(asset.id);
+          console.log(`[CloudSync] Deleted enemy locally: ${asset.name}`);
+        } else {
+          const enemy = asset.data as unknown as CustomEnemy;
+          saveEnemy(enemy);
+        }
       } catch (e) {
         errors.push(`Failed to import enemy: ${asset.name}`);
       }
     }
 
-    // Import characters
+    // Import characters (or delete if soft-deleted)
     for (const asset of cloudData.characters) {
       try {
-        const character = asset.data as unknown as CustomCharacter;
-        saveCharacter(character);
+        if (asset.deleted_at) {
+          deleteCharacter(asset.id);
+          console.log(`[CloudSync] Deleted character locally: ${asset.name}`);
+        } else {
+          const character = asset.data as unknown as CustomCharacter;
+          saveCharacter(character);
+        }
       } catch (e) {
         errors.push(`Failed to import character: ${asset.name}`);
       }
     }
 
-    // Import objects
+    // Import objects (or delete if soft-deleted)
     for (const asset of cloudData.objects) {
       try {
-        const obj = asset.data as unknown as CustomObject;
-        saveObject(obj);
+        if (asset.deleted_at) {
+          deleteObject(asset.id);
+          console.log(`[CloudSync] Deleted object locally: ${asset.name}`);
+        } else {
+          const obj = asset.data as unknown as CustomObject;
+          saveObject(obj);
+        }
       } catch (e) {
         errors.push(`Failed to import object: ${asset.name}`);
       }
     }
 
-    // Import skins
+    // Import skins (or delete if soft-deleted)
     for (const asset of cloudData.skins) {
       try {
-        const skin = asset.data as unknown as PuzzleSkin;
-        if (!skin.isBuiltIn) {
-          savePuzzleSkin(skin);
+        if (asset.deleted_at) {
+          deletePuzzleSkin(asset.id);
+          console.log(`[CloudSync] Deleted skin locally: ${asset.name}`);
+        } else {
+          const skin = asset.data as unknown as PuzzleSkin;
+          if (!skin.isBuiltIn) {
+            savePuzzleSkin(skin);
+          }
         }
       } catch (e) {
         errors.push(`Failed to import skin: ${asset.name}`);
       }
     }
 
-    // Import spells
+    // Import spells (or delete if soft-deleted)
     for (const asset of cloudData.spells) {
       try {
-        const spell = asset.data as unknown as SpellAsset;
-        saveSpellAsset(spell);
+        if (asset.deleted_at) {
+          deleteSpellAsset(asset.id);
+          console.log(`[CloudSync] Deleted spell locally: ${asset.name}`);
+        } else {
+          const spell = asset.data as unknown as SpellAsset;
+          saveSpellAsset(spell);
+        }
       } catch (e) {
         errors.push(`Failed to import spell: ${asset.name}`);
       }
     }
 
-    // Import puzzles
+    // Import puzzles (or delete if soft-deleted)
     console.log(`[CloudSync] Pulling ${cloudData.puzzles.length} puzzles from cloud`);
     for (const dbPuzzle of cloudData.puzzles) {
       try {
-        console.log(`[CloudSync] Importing puzzle: ${dbPuzzle.name} (${dbPuzzle.id})`);
-        const puzzle = dbPuzzle.data as unknown as Puzzle;
-        // Ensure puzzle has the id and name from the db record
-        puzzle.id = dbPuzzle.id;
-        puzzle.name = dbPuzzle.name;
-        saveLocalPuzzle(puzzle);
-        console.log(`[CloudSync] Successfully saved puzzle to local storage: ${puzzle.id}`);
+        if (dbPuzzle.deleted_at) {
+          deleteLocalPuzzle(dbPuzzle.id);
+          console.log(`[CloudSync] Deleted puzzle locally: ${dbPuzzle.name}`);
+        } else {
+          console.log(`[CloudSync] Importing puzzle: ${dbPuzzle.name} (${dbPuzzle.id})`);
+          const puzzle = dbPuzzle.data as unknown as Puzzle;
+          // Ensure puzzle has the id and name from the db record
+          puzzle.id = dbPuzzle.id;
+          puzzle.name = dbPuzzle.name;
+          saveLocalPuzzle(puzzle);
+          console.log(`[CloudSync] Successfully saved puzzle to local storage: ${puzzle.id}`);
+        }
       } catch (e) {
         console.error(`[CloudSync] Failed to import puzzle ${dbPuzzle.name}:`, e);
         errors.push(`Failed to import puzzle: ${dbPuzzle.name}`);

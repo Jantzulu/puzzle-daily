@@ -15,6 +15,7 @@ export interface DbPuzzle {
   updated_at: string;
   created_by?: string;
   scheduled_date?: string; // For daily puzzles
+  deleted_at?: string | null; // Soft delete timestamp
 }
 
 export interface DbAsset {
@@ -26,6 +27,7 @@ export interface DbAsset {
   created_at: string;
   updated_at: string;
   created_by?: string;
+  deleted_at?: string | null; // Soft delete timestamp
 }
 
 export interface DbSpriteImage {

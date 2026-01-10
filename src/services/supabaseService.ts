@@ -9,12 +9,20 @@ import type { CharacterWithSprite } from '../data/characters';
 // PUZZLE OPERATIONS
 // ============================================
 
-export async function fetchAllPuzzles(): Promise<DbPuzzle[]> {
+export async function fetchAllPuzzles(includeDeleted: boolean = false): Promise<DbPuzzle[]> {
   console.log('[Supabase] Fetching all puzzles...');
-  const { data, error } = await supabase
+  let query = supabase
     .from('puzzles_draft')
     .select('*')
     .order('updated_at', { ascending: false });
+
+  // For sync purposes, we need all items including deleted
+  // For display purposes, we filter out deleted items
+  if (!includeDeleted) {
+    query = query.is('deleted_at', null);
+  }
+
+  const { data, error } = await query;
 
   if (error) {
     console.error('[Supabase] Error fetching puzzles:', error);
@@ -63,9 +71,10 @@ export async function savePuzzleToCloud(puzzle: Puzzle, name?: string): Promise<
 }
 
 export async function deletePuzzleFromCloud(id: string): Promise<boolean> {
+  // Soft delete: set deleted_at timestamp instead of removing row
   const { error } = await supabase
     .from('puzzles_draft')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id);
 
   if (error) {
@@ -95,7 +104,7 @@ export async function updatePuzzleStatus(id: string, status: DbPuzzle['status'])
 type AssetType = 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell';
 type AssetData = CustomTileType | EnemyWithSprite | CharacterWithSprite | CustomObject | PuzzleSkin | SpellAsset;
 
-export async function fetchAllAssets(type?: AssetType): Promise<DbAsset[]> {
+export async function fetchAllAssets(type?: AssetType, includeDeleted: boolean = false): Promise<DbAsset[]> {
   let query = supabase
     .from('assets_draft')
     .select('*')
@@ -103,6 +112,12 @@ export async function fetchAllAssets(type?: AssetType): Promise<DbAsset[]> {
 
   if (type) {
     query = query.eq('type', type);
+  }
+
+  // For sync purposes, we need all items including deleted
+  // For display purposes, we filter out deleted items
+  if (!includeDeleted) {
+    query = query.is('deleted_at', null);
   }
 
   const { data, error } = await query;
@@ -155,9 +170,10 @@ export async function saveAssetToCloud(
 }
 
 export async function deleteAssetFromCloud(id: string): Promise<boolean> {
+  // Soft delete: set deleted_at timestamp instead of removing row
   const { error } = await supabase
     .from('assets_draft')
-    .delete()
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', id);
 
   if (error) {
@@ -269,14 +285,15 @@ export async function syncFromCloud(): Promise<{
   skins: DbAsset[];
   spells: DbAsset[];
 }> {
+  // Include deleted items so pull can process deletions
   const [puzzles, tileTypes, enemies, characters, objects, skins, spells] = await Promise.all([
-    fetchAllPuzzles(),
-    fetchAllAssets('tile_type'),
-    fetchAllAssets('enemy'),
-    fetchAllAssets('character'),
-    fetchAllAssets('object'),
-    fetchAllAssets('skin'),
-    fetchAllAssets('spell'),
+    fetchAllPuzzles(true),
+    fetchAllAssets('tile_type', true),
+    fetchAllAssets('enemy', true),
+    fetchAllAssets('character', true),
+    fetchAllAssets('object', true),
+    fetchAllAssets('skin', true),
+    fetchAllAssets('spell', true),
   ]);
 
   return { puzzles, tileTypes, enemies, characters, objects, skins, spells };
