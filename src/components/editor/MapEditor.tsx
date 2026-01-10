@@ -468,9 +468,11 @@ export const MapEditor: React.FC = () => {
   const [enemyFolderId, setEnemyFolderId] = useState<string | null>(null);
   const [objectFolderId, setObjectFolderId] = useState<string | null>(null);
   const [characterFolderId, setCharacterFolderId] = useState<string | null>(null);
+  const [tileFolderId, setTileFolderId] = useState<string | null>(null);
   const filteredEnemies = useFilteredAssets(allEnemies, enemyFolderId);
   const filteredObjects = useFilteredAssets(allObjects, objectFolderId);
   const filteredCharacters = useFilteredAssets(allCharacters, characterFolderId);
+  const filteredTileTypes = useFilteredAssets(customTileTypes, tileFolderId);
 
   // Cache editor state when it changes (for persistence across tab switches)
   useEffect(() => {
@@ -1456,11 +1458,16 @@ export const MapEditor: React.FC = () => {
                     {customTileTypes.length > 0 && (
                       <div className="border-t border-gray-600 my-2 pt-2">
                         <div className="text-xs text-gray-400 mb-2">Custom Tiles</div>
+                        <FolderDropdown
+                          category="tiles"
+                          selectedFolderId={tileFolderId}
+                          onFolderSelect={setTileFolderId}
+                        />
                       </div>
                     )}
 
                     {/* Custom tiles */}
-                    {customTileTypes.map(tileType => {
+                    {filteredTileTypes.map(tileType => {
                       const isSelected = selectedCustomTileTypeId === tileType.id && state.selectedTool === 'custom';
                       const behaviorIcons = tileType.behaviors.map(b => {
                         switch (b.type) {
@@ -1505,14 +1512,16 @@ export const MapEditor: React.FC = () => {
                       );
                     })}
 
-                    {/* Link to create custom tiles */}
-                    {customTileTypes.length === 0 && (
+                    {/* Message when no tiles in folder or no tiles at all */}
+                    {customTileTypes.length === 0 ? (
                       <p className="text-xs text-gray-400 mt-2">
                         Create custom tiles in{' '}
                         <a href="/assets" className="text-blue-400 hover:underline">
                           Asset Manager → Tiles
                         </a>
                       </p>
+                    ) : filteredTileTypes.length === 0 && (
+                      <p className="text-xs text-gray-400 mt-2">No tiles in this folder.</p>
                     )}
                   </div>
                 </div>
