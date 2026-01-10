@@ -2048,12 +2048,9 @@ function drawEnemy(
       drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing || Direction.SOUTH);
     }
 
-    // Draw health below the enemy
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 10px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`HP:${enemy.currentHealth}`, px + TILE_SIZE / 2, py + TILE_SIZE - 12);
+    // Draw health bar above the enemy
+    const maxHealth = enemyData?.health || enemy.currentHealth;
+    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth);
   }
 }
 
@@ -2067,6 +2064,57 @@ function drawDeadX(ctx: CanvasRenderingContext2D, px: number, py: number) {
   ctx.moveTo(px + (2 * TILE_SIZE) / 3, py + TILE_SIZE / 3);
   ctx.lineTo(px + TILE_SIZE / 3, py + (2 * TILE_SIZE) / 3);
   ctx.stroke();
+}
+
+// Helper to draw health bar above entity
+function drawHealthBar(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  currentHealth: number,
+  maxHealth: number
+) {
+  const barWidth = 32; // Fixed total width of the health bar
+  const barHeight = 4; // Height of the health bar
+
+  // Position: centered above the sprite, near the top of the tile
+  const startX = px + (TILE_SIZE - barWidth) / 2;
+  const startY = py + 2; // 2px from top of tile
+
+  // Draw background (dark gray)
+  ctx.fillStyle = '#333';
+  ctx.fillRect(startX, startY, barWidth, barHeight);
+
+  // Calculate segment width based on max health
+  const segmentWidth = barWidth / maxHealth;
+
+  // Draw health segments
+  for (let i = 0; i < maxHealth; i++) {
+    const segX = startX + i * segmentWidth;
+
+    if (i < currentHealth) {
+      // Green for remaining health
+      ctx.fillStyle = '#4ade80';
+    } else {
+      // Red for lost health
+      ctx.fillStyle = '#ef4444';
+    }
+    ctx.fillRect(segX + 0.5, startY + 0.5, segmentWidth - 1, barHeight - 1);
+  }
+
+  // Draw segment dividers (only if more than 1 HP)
+  if (maxHealth > 1) {
+    ctx.fillStyle = '#333';
+    for (let i = 1; i < maxHealth; i++) {
+      const dividerX = startX + i * segmentWidth;
+      ctx.fillRect(dividerX - 0.5, startY, 1, barHeight);
+    }
+  }
+
+  // Draw border around the whole bar
+  ctx.strokeStyle = '#222';
+  ctx.lineWidth = 0.5;
+  ctx.strokeRect(startX, startY, barWidth, barHeight);
 }
 
 function drawCharacter(
@@ -2164,12 +2212,9 @@ function drawCharacter(
       drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing);
     }
 
-    // Draw health
-    ctx.fillStyle = 'white';
-    ctx.font = 'bold 10px monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(`HP:${character.currentHealth}`, px + TILE_SIZE / 2, py + TILE_SIZE - 12);
+    // Draw health bar above the character
+    const maxHealth = charData?.health || character.currentHealth;
+    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth);
   }
 }
 

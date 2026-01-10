@@ -568,11 +568,16 @@ export function initializeGameState(puzzle: any): GameState {
   return {
     puzzle: {
       ...puzzle,
-      enemies: puzzle.enemies.map((e: any) => ({
-        ...e,
-        dead: false, // Always reset dead status
-        currentHealth: e.health || e.currentHealth // Reset to full health
-      })),
+      enemies: puzzle.enemies.map((e: any) => {
+        // Look up the enemy definition to get the current max health
+        const enemyData = getEnemy(e.enemyId);
+        const maxHealth = enemyData?.health || e.health || e.currentHealth || 1;
+        return {
+          ...e,
+          dead: false, // Always reset dead status
+          currentHealth: maxHealth // Reset to full health from enemy definition
+        };
+      }),
       collectibles: puzzle.collectibles.map((c: any) => ({ ...c, collected: false })),
     },
     placedCharacters: [],

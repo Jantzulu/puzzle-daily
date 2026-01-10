@@ -8,6 +8,7 @@ import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { Controls } from './Controls';
 import { CharacterSelector } from './CharacterSelector';
+import { EnemyDisplay } from './EnemyDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 
 export const Game: React.FC = () => {
@@ -306,6 +307,9 @@ export const Game: React.FC = () => {
                 {gameState.puzzle.winConditions.map((wc) => wc.type).join(', ')}
               </p>
             </div>
+
+            {/* Enemies Display */}
+            <EnemyDisplay enemies={gameState.puzzle.enemies} />
           </div>
         </div>
       </div>

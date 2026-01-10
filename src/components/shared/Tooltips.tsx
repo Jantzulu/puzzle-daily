@@ -19,24 +19,140 @@ export const formatActionSequence = (behavior: CharacterAction[] | undefined): s
         return `${num}. ${action.customAttack?.name || 'Attack'}`;
       case ActionType.ATTACK_RANGE:
         return `${num}. Ranged Attack`;
+      case ActionType.ATTACK_FORWARD:
+        return `${num}. Attack Forward`;
+      case ActionType.ATTACK_AOE:
+        return `${num}. Area Attack`;
       case ActionType.MOVE_FORWARD:
         return `${num}. Move Forward`;
       case ActionType.MOVE_BACKWARD:
         return `${num}. Move Backward`;
+      case ActionType.MOVE_LEFT:
+        return `${num}. Strafe Left`;
+      case ActionType.MOVE_RIGHT:
+        return `${num}. Strafe Right`;
+      case ActionType.MOVE_DIAGONAL_NE:
+        return `${num}. Move Diagonal (NE)`;
+      case ActionType.MOVE_DIAGONAL_NW:
+        return `${num}. Move Diagonal (NW)`;
+      case ActionType.MOVE_DIAGONAL_SE:
+        return `${num}. Move Diagonal (SE)`;
+      case ActionType.MOVE_DIAGONAL_SW:
+        return `${num}. Move Diagonal (SW)`;
       case ActionType.TURN_LEFT:
-        return `${num}. Turn Left`;
+        return `${num}. Turn Left (90°)`;
       case ActionType.TURN_RIGHT:
-        return `${num}. Turn Right`;
+        return `${num}. Turn Right (90°)`;
       case ActionType.TURN_AROUND:
-        return `${num}. Turn Around`;
+        return `${num}. Turn Around (180°)`;
       case ActionType.WAIT:
-        return `${num}. Wait`;
+        return `${num}. Wait (skip turn)`;
       case ActionType.REPEAT:
-        return `${num}. Repeat`;
+        return `${num}. Repeat from start`;
+      case ActionType.TELEPORT:
+        return `${num}. Teleport`;
+      case ActionType.IF_WALL:
+        return `${num}. If facing wall...`;
+      case ActionType.IF_ENEMY:
+        return `${num}. If enemy ahead...`;
       default:
         return `${num}. ${action.type}`;
     }
   });
+};
+
+// Helper to generate a natural language summary of behavior
+export const summarizeBehavior = (behavior: CharacterAction[] | undefined): string => {
+  if (!behavior || behavior.length === 0) return 'No behavior defined';
+
+  const movements: string[] = [];
+  const attacks: string[] = [];
+  const turns: string[] = [];
+  let hasRepeat = false;
+  let hasWait = false;
+
+  for (const action of behavior) {
+    switch (action.type) {
+      case ActionType.MOVE_FORWARD:
+        movements.push('forward');
+        break;
+      case ActionType.MOVE_BACKWARD:
+        movements.push('backward');
+        break;
+      case ActionType.MOVE_LEFT:
+        movements.push('left');
+        break;
+      case ActionType.MOVE_RIGHT:
+        movements.push('right');
+        break;
+      case ActionType.MOVE_DIAGONAL_NE:
+      case ActionType.MOVE_DIAGONAL_NW:
+      case ActionType.MOVE_DIAGONAL_SE:
+      case ActionType.MOVE_DIAGONAL_SW:
+        movements.push('diagonally');
+        break;
+      case ActionType.TURN_LEFT:
+        turns.push('turns left');
+        break;
+      case ActionType.TURN_RIGHT:
+        turns.push('turns right');
+        break;
+      case ActionType.TURN_AROUND:
+        turns.push('turns around');
+        break;
+      case ActionType.SPELL:
+        if (action.spellId) {
+          const spell = loadSpellAsset(action.spellId);
+          if (spell) attacks.push(spell.name);
+        } else {
+          attacks.push('casts a spell');
+        }
+        break;
+      case ActionType.CUSTOM_ATTACK:
+        attacks.push(action.customAttack?.name || 'attacks');
+        break;
+      case ActionType.ATTACK_FORWARD:
+      case ActionType.ATTACK_RANGE:
+      case ActionType.ATTACK_AOE:
+        attacks.push('attacks');
+        break;
+      case ActionType.WAIT:
+        hasWait = true;
+        break;
+      case ActionType.REPEAT:
+        hasRepeat = true;
+        break;
+    }
+  }
+
+  const parts: string[] = [];
+
+  if (movements.length > 0) {
+    const uniqueMovements = [...new Set(movements)];
+    parts.push(`Moves ${uniqueMovements.join(', ')}`);
+  }
+
+  if (turns.length > 0) {
+    const uniqueTurns = [...new Set(turns)];
+    parts.push(uniqueTurns.join(', '));
+  }
+
+  if (attacks.length > 0) {
+    const uniqueAttacks = [...new Set(attacks)];
+    parts.push(uniqueAttacks.join(', '));
+  }
+
+  if (hasWait) {
+    parts.push('waits');
+  }
+
+  let summary = parts.join(', then ');
+
+  if (hasRepeat && summary) {
+    summary += ' (repeating)';
+  }
+
+  return summary || 'Static';
 };
 
 // Helper to get all spells from character/enemy behavior

@@ -9,6 +9,7 @@ import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { AnimatedGameBoard, ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
+import { EnemyDisplay } from '../game/EnemyDisplay';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, type CustomObject } from '../../utils/assetStorage';
@@ -1296,6 +1297,9 @@ export const MapEditor: React.FC = () => {
                   {gameState.puzzle.winConditions.map((wc) => wc.type).join(', ')}
                 </p>
               </div>
+
+              {/* Enemies Display */}
+              <EnemyDisplay enemies={gameState.puzzle.enemies} />
             </div>
           </div>
         </div>
