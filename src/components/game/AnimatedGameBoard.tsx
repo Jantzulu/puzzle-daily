@@ -52,6 +52,7 @@ const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
 const TELEPORT_APPEAR_DURATION = 500; // ms to show teleport sprite at destination (rematerialization)
 const TELEPORT_AFTER_EFFECT_DURATION = 350; // ms to continue teleport effect into next movement after teleporting
+const TELEPORT_DEMATERIALIZE_START = 0.4; // Start showing teleport sprite at 40% of walk during actual teleport
 
 const COLORS = {
   empty: '#2a2a2a',
