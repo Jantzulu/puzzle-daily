@@ -15,83 +15,85 @@ export const AssetManager: React.FC = () => {
     <div className="min-h-screen bg-gray-900 text-white">
       {/* Header with tabs */}
       <div className="bg-gray-800 border-b border-gray-700">
-        <div className="max-w-7xl mx-auto px-8 py-4">
-          <div className="mb-4">
-            <h1 className="text-3xl font-bold">Asset Manager</h1>
+        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4">
+          <div className="mb-3 md:mb-4">
+            <h1 className="text-2xl md:text-3xl font-bold">Asset Manager</h1>
           </div>
 
-          {/* Tabs */}
-          <div className="flex gap-2">
-            <button
-              onClick={() => setActiveTab('characters')}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'characters'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-              }`}
-            >
-              🎮 Characters
-            </button>
-            <button
-              onClick={() => setActiveTab('enemies')}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'enemies'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-              }`}
-            >
-              👾 Enemies
-            </button>
-            <button
-              onClick={() => setActiveTab('spells')}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'spells'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-              }`}
-            >
-              ✨ Spells
-            </button>
-            <button
-              onClick={() => setActiveTab('tiles')}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'tiles'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-              }`}
-            >
-              🧱 Tiles
-            </button>
-            <button
-              onClick={() => setActiveTab('skins')}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'skins'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-              }`}
-            >
-              🎨 Skins
-            </button>
-            <button
-              onClick={() => setActiveTab('objects')}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'objects'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-              }`}
-            >
-              🏺 Objects
-            </button>
-            <button
-              onClick={() => setActiveTab('collectibles')}
-              className={`px-4 py-2 rounded-t ${
-                activeTab === 'collectibles'
-                  ? 'bg-gray-900 text-white'
-                  : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
-              }`}
-            >
-              💎 Collectibles
-            </button>
+          {/* Tabs - horizontally scrollable on mobile */}
+          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0">
+            <div className="flex gap-1 md:gap-2 min-w-max">
+              <button
+                onClick={() => setActiveTab('characters')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'characters'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                🎮 <span className="hidden sm:inline">Characters</span><span className="sm:hidden">Chars</span>
+              </button>
+              <button
+                onClick={() => setActiveTab('enemies')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'enemies'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                👾 Enemies
+              </button>
+              <button
+                onClick={() => setActiveTab('spells')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'spells'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                ✨ Spells
+              </button>
+              <button
+                onClick={() => setActiveTab('tiles')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'tiles'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                🧱 Tiles
+              </button>
+              <button
+                onClick={() => setActiveTab('skins')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'skins'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                🎨 Skins
+              </button>
+              <button
+                onClick={() => setActiveTab('objects')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'objects'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                🏺 Objects
+              </button>
+              <button
+                onClick={() => setActiveTab('collectibles')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'collectibles'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                💎 <span className="hidden sm:inline">Collectibles</span><span className="sm:hidden">Items</span>
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -112,11 +114,11 @@ export const AssetManager: React.FC = () => {
 
 // Placeholder component for collectibles (can be implemented later)
 const CollectibleEditorPlaceholder: React.FC = () => (
-  <div className="p-8">
+  <div className="p-4 md:p-8">
     <div className="max-w-7xl mx-auto">
-      <div className="flex gap-8">
+      <div className="flex flex-col md:flex-row gap-4 md:gap-8">
         {/* Collectible List - Left Sidebar */}
-        <div className="w-72 space-y-4">
+        <div className="w-full md:w-72 space-y-4">
           <div className="flex justify-between items-center">
             <h2 className="text-xl font-bold">Collectibles</h2>
             <button

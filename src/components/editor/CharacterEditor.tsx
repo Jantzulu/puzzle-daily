@@ -193,11 +193,11 @@ export const CharacterEditor: React.FC = () => {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="flex gap-8">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
           {/* Character List - Left Sidebar */}
-          <div className="w-72 space-y-4">
+          <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold">Characters</h2>
               <button

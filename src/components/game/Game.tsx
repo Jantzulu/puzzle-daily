@@ -179,21 +179,23 @@ export const Game: React.FC = () => {
   const isDev = import.meta.env.DEV;
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-8 flex justify-between items-center">
-          <h1 className="text-4xl font-bold">Puzzle Game</h1>
+        <div className="mb-4 md:mb-8 flex justify-between items-center">
+          <h1 className="text-2xl md:text-4xl font-bold">Puzzle Game</h1>
           {isDev && (
-            <Link to="/editor" className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700">
-              🛠️ Map Editor →
+            <Link to="/editor" className="px-3 py-1.5 md:px-4 md:py-2 bg-purple-600 rounded hover:bg-purple-700 text-sm md:text-base">
+              🛠️ Editor
             </Link>
           )}
         </div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board */}
-          <div className="flex-1">
-            <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} />
+          <div className="flex-1 overflow-x-auto">
+            <div className="min-w-fit">
+              <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} />
+            </div>
 
             {/* Game Status */}
             <div className="mt-4 p-4 bg-gray-800 rounded">
@@ -222,21 +224,21 @@ export const Game: React.FC = () => {
             {/* Victory/Defeat Message */}
             {gameState.gameStatus === 'victory' && (
               <div className="mt-4 p-4 bg-green-700 rounded text-center">
-                <h2 className="text-2xl font-bold">Victory!</h2>
-                <p className="mt-2">Characters used: {gameState.placedCharacters.length}</p>
+                <h2 className="text-xl md:text-2xl font-bold">Victory!</h2>
+                <p className="mt-2 text-sm md:text-base">Characters used: {gameState.placedCharacters.length}</p>
               </div>
             )}
 
             {gameState.gameStatus === 'defeat' && (
               <div className="mt-4 p-4 bg-red-700 rounded text-center">
-                <h2 className="text-2xl font-bold">Defeat</h2>
-                <p className="mt-2">Try again!</p>
+                <h2 className="text-xl md:text-2xl font-bold">Defeat</h2>
+                <p className="mt-2 text-sm md:text-base">Try again!</p>
               </div>
             )}
           </div>
 
           {/* Sidebar */}
-          <div className="w-full lg:w-80 space-y-6">
+          <div className="w-full lg:w-80 space-y-4 md:space-y-6">
             {/* Puzzle Selector */}
             {allPuzzles.length > 0 && (
               <div className="p-4 bg-gray-800 rounded">

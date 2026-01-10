@@ -1226,84 +1226,93 @@ export const MapEditor: React.FC = () => {
 
   // Render edit mode
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-8">
+    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-6 flex items-center gap-4">
-          <h1 className="text-4xl font-bold">Map Editor</h1>
-          <button
-            onClick={handlePlaytest}
-            className="px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 font-bold"
-          >
-            ▶ Play Test
-          </button>
-          {/* Grid Size - inline in header */}
-          <div className="flex items-center gap-3 bg-gray-800 px-4 py-2 rounded">
-            <span className="text-sm font-medium text-gray-300">Grid:</span>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-400">W</label>
-              <input
-                type="number"
-                min="3"
-                max="20"
-                value={state.gridWidth}
-                onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
-                className="w-12 px-2 py-1 bg-gray-700 rounded text-sm text-center"
-              />
-            </div>
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-400">H</label>
-              <input
-                type="number"
-                min="3"
-                max="20"
-                value={state.gridHeight}
-                onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
-                className="w-12 px-2 py-1 bg-gray-700 rounded text-sm text-center"
-              />
-            </div>
+        {/* Header - stacks on mobile */}
+        <div className="mb-4 md:mb-6 space-y-3 md:space-y-0 md:flex md:items-center md:gap-4">
+          <div className="flex items-center justify-between md:justify-start gap-4">
+            <h1 className="text-2xl md:text-4xl font-bold">Map Editor</h1>
+            <button
+              onClick={handlePlaytest}
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-purple-600 rounded hover:bg-purple-700 font-bold text-sm md:text-base"
+            >
+              ▶ Play
+            </button>
           </div>
-          {/* Undo/Redo buttons */}
-          <div className="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded">
-            <button
-              onClick={handleUndo}
-              disabled={!canUndo}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                canUndo
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-              }`}
-              title="Undo (Ctrl+Z)"
-            >
-              ↩ Undo
-            </button>
-            <button
-              onClick={handleRedo}
-              disabled={!canRedo}
-              className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${
-                canRedo
-                  ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                  : 'bg-gray-800 text-gray-500 cursor-not-allowed'
-              }`}
-              title="Redo (Ctrl+Y)"
-            >
-              Redo ↪
-            </button>
+
+          {/* Grid Size and Undo/Redo - row on mobile */}
+          <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+            {/* Grid Size */}
+            <div className="flex items-center gap-2 md:gap-3 bg-gray-800 px-3 py-1.5 md:px-4 md:py-2 rounded">
+              <span className="text-xs md:text-sm font-medium text-gray-300">Grid:</span>
+              <div className="flex items-center gap-1 md:gap-2">
+                <label className="text-xs text-gray-400">W</label>
+                <input
+                  type="number"
+                  min="3"
+                  max="20"
+                  value={state.gridWidth}
+                  onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
+                  className="w-10 md:w-12 px-1 md:px-2 py-1 bg-gray-700 rounded text-sm text-center"
+                />
+              </div>
+              <div className="flex items-center gap-1 md:gap-2">
+                <label className="text-xs text-gray-400">H</label>
+                <input
+                  type="number"
+                  min="3"
+                  max="20"
+                  value={state.gridHeight}
+                  onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
+                  className="w-10 md:w-12 px-1 md:px-2 py-1 bg-gray-700 rounded text-sm text-center"
+                />
+              </div>
+            </div>
+            {/* Undo/Redo buttons */}
+            <div className="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded">
+              <button
+                onClick={handleUndo}
+                disabled={!canUndo}
+                className={`px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${
+                  canUndo
+                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                }`}
+                title="Undo (Ctrl+Z)"
+              >
+                ↩
+              </button>
+              <button
+                onClick={handleRedo}
+                disabled={!canRedo}
+                className={`px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${
+                  canRedo
+                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
+                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                }`}
+                title="Redo (Ctrl+Y)"
+              >
+                ↪
+              </button>
+            </div>
           </div>
         </div>
 
-        <div className="flex gap-6">
+        <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
           {/* Left Column - Canvas, Selected Characters */}
-          <div className="flex-shrink-0 space-y-4">
-            <canvas
-              ref={canvasRef}
-              width={canvasWidth}
-              height={canvasHeight}
-              className="border-2 border-gray-600 cursor-crosshair rounded"
-              onMouseDown={handleCanvasMouseDown}
-              onMouseMove={handleCanvasMouseMove}
-              onMouseUp={handleCanvasMouseUp}
-              onMouseLeave={handleCanvasMouseUp}
-            />
+          <div className="flex-shrink-0 space-y-4 overflow-x-auto">
+            <div className="min-w-fit">
+              <canvas
+                ref={canvasRef}
+                width={canvasWidth}
+                height={canvasHeight}
+                className="border-2 border-gray-600 cursor-crosshair rounded"
+                onMouseDown={handleCanvasMouseDown}
+                onMouseMove={handleCanvasMouseMove}
+                onMouseUp={handleCanvasMouseUp}
+                onMouseLeave={handleCanvasMouseUp}
+              />
+            </div>
 
             {/* Selected Characters - Shows selected available characters with sprites */}
             <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: canvasWidth }}>
@@ -1366,8 +1375,8 @@ export const MapEditor: React.FC = () => {
             </div>
           </div>
 
-          {/* Right Side - Two Columns */}
-          <div className="flex-1 grid grid-cols-2 gap-4 content-start">
+          {/* Right Side - Two Columns (stacks on mobile) */}
+          <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4 content-start">
             {/* Column 1 (Left) - Tools, Tile/Enemy Selectors, Available Characters */}
             <div className="space-y-4">
               {/* Tools - At top of left column */}
