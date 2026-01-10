@@ -1120,7 +1120,7 @@ export const MapEditor: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Game Board */}
             <div className="flex-1">
-              <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={true} />
+              <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={false} />
 
               {/* Game Status */}
               <div className="mt-4 p-4 bg-gray-800 rounded">
@@ -2026,6 +2026,11 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
  * Draw visual indicators for tile behaviors in the map editor
  */
 function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, py: number, tileType: CustomTileType, tile: TileOrNull) {
+  // If tile type has hideBehaviorIndicators enabled, skip all indicators
+  if (tileType.hideBehaviorIndicators) {
+    return;
+  }
+
   const centerX = px + TILE_SIZE / 2;
   const centerY = py + TILE_SIZE / 2;
 
