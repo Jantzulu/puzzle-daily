@@ -334,6 +334,10 @@ export const MapEditor: React.FC = () => {
   const [canRedo, setCanRedo] = useState(false);
   const [redrawCounter, setRedrawCounter] = useState(0);
 
+  // Local input state for grid size (allows typing without immediate validation)
+  const [widthInput, setWidthInput] = useState(String(state.gridWidth));
+  const [heightInput, setHeightInput] = useState(String(state.gridHeight));
+
   // Snapshot taken before drawing starts
   const snapshotBeforeDrawRef = useRef<{
     tiles: TileOrNull[][];
@@ -489,6 +493,12 @@ export const MapEditor: React.FC = () => {
       resizeObserver.disconnect();
     };
   }, []);
+
+  // Sync input state when grid size changes from external sources (loading puzzle, undo/redo)
+  useEffect(() => {
+    setWidthInput(String(state.gridWidth));
+    setHeightInput(String(state.gridHeight));
+  }, [state.gridWidth, state.gridHeight]);
 
   // Puzzle skins state
   const [availableSkins, setAvailableSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
@@ -1318,12 +1328,25 @@ export const MapEditor: React.FC = () => {
                     −
                   </button>
                   <input
-                    type="number"
-                    min="3"
-                    max="20"
-                    value={state.gridWidth}
-                    onChange={(e) => handleResize(Number(e.target.value), state.gridHeight)}
-                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={widthInput}
+                    onChange={(e) => setWidthInput(e.target.value)}
+                    onBlur={() => {
+                      const val = parseInt(widthInput, 10);
+                      if (!isNaN(val) && val >= 3 && val <= 20) {
+                        handleResize(val, state.gridHeight);
+                      } else {
+                        setWidthInput(String(state.gridWidth));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600"
                   />
                   <button
                     onClick={() => handleResize(state.gridWidth + 1, state.gridHeight)}
@@ -1345,12 +1368,25 @@ export const MapEditor: React.FC = () => {
                     −
                   </button>
                   <input
-                    type="number"
-                    min="3"
-                    max="20"
-                    value={state.gridHeight}
-                    onChange={(e) => handleResize(state.gridWidth, Number(e.target.value))}
-                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600 [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={heightInput}
+                    onChange={(e) => setHeightInput(e.target.value)}
+                    onBlur={() => {
+                      const val = parseInt(heightInput, 10);
+                      if (!isNaN(val) && val >= 3 && val <= 20) {
+                        handleResize(state.gridWidth, val);
+                      } else {
+                        setHeightInput(String(state.gridHeight));
+                      }
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        (e.target as HTMLInputElement).blur();
+                      }
+                    }}
+                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600"
                   />
                   <button
                     onClick={() => handleResize(state.gridWidth, state.gridHeight + 1)}
