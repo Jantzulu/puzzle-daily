@@ -967,40 +967,44 @@ export const MapEditor: React.FC = () => {
   };
 
   const handleResize = (width: number, height: number) => {
+    // Validate input - must be valid numbers within bounds
+    const validWidth = Math.max(3, Math.min(20, isNaN(width) ? 3 : Math.floor(width)));
+    const validHeight = Math.max(3, Math.min(20, isNaN(height) ? 3 : Math.floor(height)));
+
     // Push to history before resizing
     pushToHistory();
 
     setState(prev => {
       // Create new grid
-      const newTiles = createEmptyGrid(width, height);
+      const newTiles = createEmptyGrid(validWidth, validHeight);
 
       // Keep content in top-left corner (no offset)
       const offsetX = 0;
       const offsetY = 0;
 
       // Copy existing tiles to new grid (from top-left)
-      for (let y = 0; y < Math.min(prev.gridHeight, height); y++) {
-        for (let x = 0; x < Math.min(prev.gridWidth, width); x++) {
+      for (let y = 0; y < Math.min(prev.gridHeight, validHeight); y++) {
+        for (let x = 0; x < Math.min(prev.gridWidth, validWidth); x++) {
           newTiles[y][x] = prev.tiles[y][x];
         }
       }
 
       // Keep enemy positions (only if they fit in new bounds)
       const newEnemies = prev.enemies
-        .filter(enemy => enemy.x >= 0 && enemy.x < width && enemy.y >= 0 && enemy.y < height);
+        .filter(enemy => enemy.x >= 0 && enemy.x < validWidth && enemy.y >= 0 && enemy.y < validHeight);
 
       // Keep collectible positions (only if they fit in new bounds)
       const newCollectibles = prev.collectibles
-        .filter(collectible => collectible.x >= 0 && collectible.x < width && collectible.y >= 0 && collectible.y < height);
+        .filter(collectible => collectible.x >= 0 && collectible.x < validWidth && collectible.y >= 0 && collectible.y < validHeight);
 
       // Keep object positions (only if they fit in new bounds)
       const newPlacedObjects = prev.placedObjects
-        .filter(obj => obj.x >= 0 && obj.x < width && obj.y >= 0 && obj.y < height);
+        .filter(obj => obj.x >= 0 && obj.x < validWidth && obj.y >= 0 && obj.y < validHeight);
 
       return {
         ...prev,
-        gridWidth: width,
-        gridHeight: height,
+        gridWidth: validWidth,
+        gridHeight: validHeight,
         tiles: newTiles,
         enemies: newEnemies,
         collectibles: newCollectibles,
