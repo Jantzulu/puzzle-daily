@@ -127,8 +127,8 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     // Push puzzles
     const puzzles = getSavedPuzzles();
     for (const savedPuzzle of puzzles) {
-      const puzzle = savedPuzzle.puzzle;
-      const success = await savePuzzleToCloud(puzzle, savedPuzzle.name);
+      // SavedPuzzle extends Puzzle directly, so savedPuzzle IS the puzzle
+      const success = await savePuzzleToCloud(savedPuzzle, savedPuzzle.name);
       if (!success) errors.push(`Failed to upload puzzle: ${savedPuzzle.name}`);
     }
 
@@ -227,7 +227,9 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     for (const dbPuzzle of cloudData.puzzles) {
       try {
         const puzzle = dbPuzzle.data as unknown as Puzzle;
-        saveLocalPuzzle(puzzle, dbPuzzle.name);
+        // Ensure puzzle has the name from the db record
+        puzzle.name = dbPuzzle.name;
+        saveLocalPuzzle(puzzle);
       } catch (e) {
         errors.push(`Failed to import puzzle: ${dbPuzzle.name}`);
       }
