@@ -1120,7 +1120,7 @@ export const MapEditor: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Game Board */}
             <div className="flex-1">
-              <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} />
+              <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={true} />
 
               {/* Game Status */}
               <div className="mt-4 p-4 bg-gray-800 rounded">

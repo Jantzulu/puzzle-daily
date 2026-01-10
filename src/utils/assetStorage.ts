@@ -200,6 +200,7 @@ export interface CustomTileType {
   baseType: 'empty' | 'wall';
   behaviors: TileBehaviorConfig[];  // Multiple behaviors allowed (stacking)
   customSprite?: CustomSprite;
+  hideBehaviorIndicators?: boolean;  // Hide default behavior overlays (purple teleport, blue ice, etc.)
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment

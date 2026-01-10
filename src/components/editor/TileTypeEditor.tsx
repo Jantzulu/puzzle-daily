@@ -738,6 +738,22 @@ export const TileTypeEditor: React.FC = () => {
                       />
                     </label>
                   )}
+
+                  {/* Hide Behavior Indicators Option */}
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <label className="flex items-center text-sm text-gray-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editing.hideBehaviorIndicators || false}
+                        onChange={e => setEditing({ ...editing, hideBehaviorIndicators: e.target.checked })}
+                        className="mr-2"
+                      />
+                      Hide behavior indicators
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Hides the default overlays (purple for teleport, blue for ice, etc.) when the tile has a custom sprite.
+                    </p>
+                  </div>
                 </div>
               </div>
             ) : (

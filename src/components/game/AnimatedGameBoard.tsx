@@ -40,6 +40,7 @@ function enemyHasMovementActions(behavior: EnemyBehavior | undefined): boolean {
 interface AnimatedGameBoardProps {
   gameState: GameState;
   onTileClick?: (x: number, y: number) => void;
+  isEditor?: boolean;  // When true, shows editor-only indicators like teleport letters
 }
 
 const TILE_SIZE = 48;
@@ -496,7 +497,7 @@ interface DeathAnimationState {
   facing: Direction;
 }
 
-export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick }) => {
+export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
@@ -823,7 +824,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         for (let x = 0; x < gameState.puzzle.width; x++) {
           const tile = gameState.puzzle.tiles[y][x];
           if (tile) {
-            drawTile(ctx, x, y, tile.type, tileSprites, tile, customTileSprites);
+            drawTile(ctx, x, y, tile.type, tileSprites, tile, customTileSprites, isEditor);
           } else {
             // Draw void/null tile
             drawVoidTile(ctx, x, y);
@@ -1752,7 +1753,7 @@ function drawVoidTile(_ctx: CanvasRenderingContext2D, _x: number, _y: number) {
   // This allows the page background or parent element to show through.
 }
 
-function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null, customTileSprites?: { [customTileTypeId: string]: string }) {
+function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null, customTileSprites?: { [customTileTypeId: string]: string }, isEditor: boolean = false) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
@@ -1774,7 +1775,7 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
       ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
       // Draw behavior indicators on top
       if (customTileType) {
-        drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+        drawTileBehaviorIndicators(ctx, px, py, customTileType, tile, isEditor);
       }
       return;
     }
@@ -1790,7 +1791,7 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
       ctx.lineWidth = 1;
       ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
       // Draw behavior indicators on top
-      drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+      drawTileBehaviorIndicators(ctx, px, py, customTileType, tile, isEditor);
       return;
     }
   }
@@ -1811,7 +1812,7 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
       ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
       // Draw behavior indicators if this is a custom tile
       if (customTileType) {
-        drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+        drawTileBehaviorIndicators(ctx, px, py, customTileType, tile, isEditor);
       }
       return;
     }
@@ -1827,14 +1828,19 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
 
   // Draw behavior indicators if this is a custom tile without custom sprite
   if (customTileType) {
-    drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+    drawTileBehaviorIndicators(ctx, px, py, customTileType, tile, isEditor);
   }
 }
 
 /**
  * Draw visual indicators for tile behaviors
  */
-function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, py: number, tileType: CustomTileType, tile?: Tile | null) {
+function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, py: number, tileType: CustomTileType, tile?: Tile | null, isEditor: boolean = false) {
+  // If tile type has hideBehaviorIndicators enabled, skip all indicators
+  if (tileType.hideBehaviorIndicators) {
+    return;
+  }
+
   const centerX = px + TILE_SIZE / 2;
   const centerY = py + TILE_SIZE / 2;
 
@@ -1853,16 +1859,18 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
         break;
 
       case 'teleport':
-        // Purple glow
+        // Purple glow (always shown)
         ctx.fillStyle = 'rgba(128, 0, 255, 0.2)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-        // Show teleport group letter
-        const groupId = tile?.teleportGroupId || behavior.teleportGroupId || 'A';
-        ctx.font = 'bold 20px Arial';
-        ctx.fillStyle = 'rgba(200, 100, 255, 0.9)';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(groupId, centerX, centerY);
+        // Show teleport group letter only in editor mode
+        if (isEditor) {
+          const groupId = tile?.teleportGroupId || behavior.teleportGroupId || 'A';
+          ctx.font = 'bold 20px Arial';
+          ctx.fillStyle = 'rgba(200, 100, 255, 0.9)';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(groupId, centerX, centerY);
+        }
         break;
 
       case 'direction_change':
