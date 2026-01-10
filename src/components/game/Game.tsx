@@ -5,7 +5,7 @@ import { Direction } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
-import { AnimatedGameBoard } from './AnimatedGameBoard';
+import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { Controls } from './Controls';
 import { CharacterSelector } from './CharacterSelector';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
@@ -192,10 +192,8 @@ export const Game: React.FC = () => {
 
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board */}
-          <div className="flex-1 overflow-x-auto">
-            <div className="min-w-fit">
-              <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} />
-            </div>
+          <div className="flex-1">
+            <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
 
             {/* Game Status */}
             <div className="mt-4 p-4 bg-gray-800 rounded">

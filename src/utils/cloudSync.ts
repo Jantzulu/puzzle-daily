@@ -231,9 +231,11 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
       try {
         console.log(`[CloudSync] Importing puzzle: ${dbPuzzle.name} (${dbPuzzle.id})`);
         const puzzle = dbPuzzle.data as unknown as Puzzle;
-        // Ensure puzzle has the name from the db record
+        // Ensure puzzle has the id and name from the db record
+        puzzle.id = dbPuzzle.id;
         puzzle.name = dbPuzzle.name;
         saveLocalPuzzle(puzzle);
+        console.log(`[CloudSync] Successfully saved puzzle to local storage: ${puzzle.id}`);
       } catch (e) {
         console.error(`[CloudSync] Failed to import puzzle ${dbPuzzle.name}:`, e);
         errors.push(`Failed to import puzzle: ${dbPuzzle.name}`);

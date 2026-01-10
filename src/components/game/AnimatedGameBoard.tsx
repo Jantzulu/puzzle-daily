@@ -42,6 +42,8 @@ interface AnimatedGameBoardProps {
   gameState: GameState;
   onTileClick?: (x: number, y: number) => void;
   isEditor?: boolean;  // When true, shows editor-only indicators like teleport letters
+  maxWidth?: number;   // Maximum width in pixels for responsive scaling
+  maxHeight?: number;  // Maximum height in pixels for responsive scaling
 }
 
 const TILE_SIZE = 48;
@@ -480,7 +482,7 @@ interface DeathAnimationState {
   facing: Direction;
 }
 
-export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false }) => {
+export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
@@ -1108,9 +1110,23 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
     const offsetY = hasBorder ? BORDER_SIZE : 0;
 
+    // Calculate current scale factor
+    const gridWidthPx = gameState.puzzle.width * TILE_SIZE;
+    const gridHeightPx = gameState.puzzle.height * TILE_SIZE;
+    const canvasWidthPx = hasBorder ? gridWidthPx + (SIDE_BORDER_SIZE * 2) : gridWidthPx;
+    const canvasHeightPx = hasBorder ? gridHeightPx + (BORDER_SIZE * 2) : gridHeightPx;
+
+    let currentScale = 1;
+    if (maxWidth || maxHeight) {
+      const scaleX = maxWidth ? maxWidth / canvasWidthPx : 1;
+      const scaleY = maxHeight ? maxHeight / canvasHeightPx : 1;
+      currentScale = Math.min(scaleX, scaleY, 1);
+    }
+
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left - offsetX;
-    const clickY = e.clientY - rect.top - offsetY;
+    // Account for scale when converting click coordinates
+    const clickX = (e.clientX - rect.left) / currentScale - offsetX;
+    const clickY = (e.clientY - rect.top) / currentScale - offsetY;
 
     const x = Math.floor(clickX / TILE_SIZE);
     const y = Math.floor(clickY / TILE_SIZE);
@@ -1129,15 +1145,38 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
+  // Calculate scale factor for responsive sizing
+  let scale = 1;
+  if (maxWidth || maxHeight) {
+    const scaleX = maxWidth ? maxWidth / canvasWidth : 1;
+    const scaleY = maxHeight ? maxHeight / canvasHeight : 1;
+    scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
+  }
+
+  const scaledWidth = canvasWidth * scale;
+  const scaledHeight = canvasHeight * scale;
+
   return (
-    <canvas
-      ref={canvasRef}
-      width={canvasWidth}
-      height={canvasHeight}
-      onClick={handleCanvasClick}
-      className="cursor-pointer"
-      style={{ imageRendering: 'auto' }}
-    />
+    <div
+      style={{
+        width: scaledWidth,
+        height: scaledHeight,
+        overflow: 'hidden'
+      }}
+    >
+      <canvas
+        ref={canvasRef}
+        width={canvasWidth}
+        height={canvasHeight}
+        onClick={handleCanvasClick}
+        className="cursor-pointer"
+        style={{
+          imageRendering: 'auto',
+          transform: `scale(${scale})`,
+          transformOrigin: 'top left'
+        }}
+      />
+    </div>
   );
 };
 
@@ -2616,3 +2655,59 @@ function drawDefaultParticle(ctx: CanvasRenderingContext2D, px: number, py: numb
     ctx.fill();
   }
 }
+
+// ==========================================
+// RESPONSIVE WRAPPER COMPONENT
+// ==========================================
+
+interface ResponsiveGameBoardProps {
+  gameState: GameState;
+  onTileClick?: (x: number, y: number) => void;
+  isEditor?: boolean;
+}
+
+/**
+ * A wrapper component that automatically measures the container and scales the puzzle
+ * to fit within the available space on mobile devices.
+ * On desktop (>= 1024px), uses full size. On mobile, constrains to viewport width.
+ */
+export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [maxWidth, setMaxWidth] = useState<number | undefined>(undefined);
+
+  useEffect(() => {
+    const updateSize = () => {
+      // Only apply responsive sizing on screens smaller than lg breakpoint (1024px)
+      if (window.innerWidth < 1024 && containerRef.current) {
+        // Get the container width minus some padding
+        const containerWidth = containerRef.current.offsetWidth;
+        setMaxWidth(containerWidth > 0 ? containerWidth : undefined);
+      } else {
+        setMaxWidth(undefined);
+      }
+    };
+
+    // Initial measurement
+    updateSize();
+
+    // Update on window resize
+    window.addEventListener('resize', updateSize);
+
+    // Also use ResizeObserver for container-specific changes
+    const resizeObserver = new ResizeObserver(updateSize);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateSize);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  return (
+    <div ref={containerRef} className="w-full">
+      <AnimatedGameBoard {...props} maxWidth={maxWidth} />
+    </div>
+  );
+};

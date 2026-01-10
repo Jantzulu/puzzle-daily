@@ -7,6 +7,12 @@ export interface SavedPuzzle extends Puzzle {
 }
 
 export const savePuzzle = (puzzle: Puzzle): void => {
+  // Validate puzzle has required fields
+  if (!puzzle.id) {
+    console.error('[PuzzleStorage] Cannot save puzzle without ID:', puzzle.name);
+    return;
+  }
+
   const puzzles = getSavedPuzzles();
   const savedPuzzle: SavedPuzzle = {
     ...puzzle,
@@ -21,7 +27,12 @@ export const savePuzzle = (puzzle: Puzzle): void => {
     puzzles.push(savedPuzzle);
   }
 
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(puzzles));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(puzzles));
+    console.log(`[PuzzleStorage] Saved puzzle: ${puzzle.id} (${puzzle.name})`);
+  } catch (e) {
+    console.error('[PuzzleStorage] Failed to save to localStorage:', e);
+  }
 };
 
 export const getSavedPuzzles = (): SavedPuzzle[] => {

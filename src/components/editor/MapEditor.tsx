@@ -6,7 +6,7 @@ import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../
 import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { drawSprite } from './SpriteEditor';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
-import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
+import { AnimatedGameBoard, ResponsiveGameBoard } from '../game/AnimatedGameBoard';
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
@@ -297,6 +297,8 @@ const createDefaultEditorState = (): EditorState => ({
 
 export const MapEditor: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const editorContainerRef = useRef<HTMLDivElement>(null);
+  const [editorMaxWidth, setEditorMaxWidth] = useState<number | undefined>(undefined);
   const [state, setState] = useState<EditorState>(() => {
     // Check for cached state from previous tab visit
     const cached = getCachedEditorState();
@@ -459,6 +461,32 @@ export const MapEditor: React.FC = () => {
     return () => {
       unsubscribe1();
       unsubscribe2();
+    };
+  }, []);
+
+  // Responsive canvas sizing for mobile
+  useEffect(() => {
+    const updateEditorSize = () => {
+      // Only apply responsive sizing on screens smaller than lg breakpoint (1024px)
+      if (window.innerWidth < 1024 && editorContainerRef.current) {
+        const containerWidth = editorContainerRef.current.offsetWidth;
+        setEditorMaxWidth(containerWidth > 0 ? containerWidth : undefined);
+      } else {
+        setEditorMaxWidth(undefined);
+      }
+    };
+
+    updateEditorSize();
+    window.addEventListener('resize', updateEditorSize);
+
+    const resizeObserver = new ResizeObserver(updateEditorSize);
+    if (editorContainerRef.current) {
+      resizeObserver.observe(editorContainerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', updateEditorSize);
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -636,9 +664,19 @@ export const MapEditor: React.FC = () => {
     const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
     const offsetY = hasBorder ? BORDER_SIZE : 0;
 
+    // Calculate current scale factor for responsive canvas
+    const gridWidthPx = state.gridWidth * TILE_SIZE;
+    const canvasWidthPx = hasBorder ? gridWidthPx + (SIDE_BORDER_SIZE * 2) : gridWidthPx;
+
+    let currentScale = 1;
+    if (editorMaxWidth && editorMaxWidth < canvasWidthPx) {
+      currentScale = editorMaxWidth / canvasWidthPx;
+    }
+
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left - offsetX;
-    const clickY = e.clientY - rect.top - offsetY;
+    // Account for scale when converting click coordinates
+    const clickX = (e.clientX - rect.left) / currentScale - offsetX;
+    const clickY = (e.clientY - rect.top) / currentScale - offsetY;
     const x = Math.floor(clickX / TILE_SIZE);
     const y = Math.floor(clickY / TILE_SIZE);
 
@@ -1144,6 +1182,14 @@ export const MapEditor: React.FC = () => {
   const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
+  // Calculate scale factor for responsive editor canvas
+  let editorScale = 1;
+  if (editorMaxWidth && editorMaxWidth < canvasWidth) {
+    editorScale = editorMaxWidth / canvasWidth;
+  }
+  const scaledCanvasWidth = canvasWidth * editorScale;
+  const scaledCanvasHeight = canvasHeight * editorScale;
+
   // Render playtest mode
   if (state.mode === 'playtest' && gameState) {
     return (
@@ -1162,7 +1208,7 @@ export const MapEditor: React.FC = () => {
           <div className="flex flex-col lg:flex-row gap-8">
             {/* Game Board */}
             <div className="flex-1">
-              <AnimatedGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={true} />
+              <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={true} />
 
               {/* Game Status */}
               <div className="mt-4 p-4 bg-gray-800 rounded">
@@ -1316,13 +1362,23 @@ export const MapEditor: React.FC = () => {
 
         <div className="flex flex-col lg:flex-row gap-4 md:gap-6">
           {/* Left Column - Canvas, Selected Characters */}
-          <div className="flex-shrink-0 space-y-4 overflow-x-auto">
-            <div className="min-w-fit">
+          <div ref={editorContainerRef} className="flex-shrink-0 space-y-4 w-full lg:w-auto">
+            <div
+              style={{
+                width: scaledCanvasWidth,
+                height: scaledCanvasHeight,
+                overflow: 'hidden'
+              }}
+            >
               <canvas
                 ref={canvasRef}
                 width={canvasWidth}
                 height={canvasHeight}
                 className="border-2 border-gray-600 cursor-crosshair rounded"
+                style={{
+                  transform: `scale(${editorScale})`,
+                  transformOrigin: 'top left'
+                }}
                 onMouseDown={handleCanvasMouseDown}
                 onMouseMove={handleCanvasMouseMove}
                 onMouseUp={handleCanvasMouseUp}
@@ -1331,7 +1387,7 @@ export const MapEditor: React.FC = () => {
             </div>
 
             {/* Selected Characters - Shows selected available characters with sprites */}
-            <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: canvasWidth }}>
+            <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: scaledCanvasWidth }}>
               <h2 className="text-lg font-bold mb-3">Selected Characters</h2>
               {state.availableCharacters.length === 0 ? (
                 <p className="text-sm text-gray-400">No characters selected</p>
