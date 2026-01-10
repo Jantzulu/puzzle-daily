@@ -52,7 +52,7 @@ const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
 const TELEPORT_APPEAR_DURATION = 500; // ms to show teleport sprite at destination (rematerialization)
 const TELEPORT_AFTER_EFFECT_DURATION = 350; // ms to continue teleport effect into next movement after teleporting
-const TELEPORT_DEMATERIALIZE_START = 0.4; // Start showing teleport sprite at 40% of walk during actual teleport
+const TELEPORT_DEMATERIALIZE_START = 0.15; // Start showing teleport sprite early in walk (15%) for dematerialization
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -896,6 +896,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               // Teleport animation: walk to teleport tile, dematerialize, rematerialize at destination
               const teleportTileX = enemy.teleportFromX ?? anim.fromX;
               const teleportTileY = enemy.teleportFromY ?? anim.fromY;
+              // Use teleport sprite from animation state (more reliable than enemy state)
+              const teleportSprite = anim.teleportSprite || enemy.teleportSprite;
 
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
@@ -904,23 +906,23 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
 
-                // Start showing teleport sprite partway through walk (dematerialization effect)
-                if (enemy.teleportSprite && moveProgress >= TELEPORT_DEMATERIALIZE_START) {
+                // Start showing teleport sprite early in walk (dematerialization effect)
+                if (teleportSprite && moveProgress >= TELEPORT_DEMATERIALIZE_START) {
                   const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
                   const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
                   // Calculate time since dematerialization started for sprite animation
                   const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                  drawTeleportSprite(ctx, enemy.teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
+                  drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
                 } else {
                   drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
                 }
-              } else if (enemy.teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
+              } else if (teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
                 // Phase 2: Show teleport sprite at destination (rematerialization)
                 const pixelX = anim.toX * TILE_SIZE + TILE_SIZE / 2;
                 const pixelY = anim.toY * TILE_SIZE + TILE_SIZE / 2;
                 // Continue sprite animation from Phase 1
                 const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                drawTeleportSprite(ctx, enemy.teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
+                drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
               } else {
                 // Phase 3: Appear at destination with normal sprite
                 drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
@@ -981,6 +983,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               // Get the teleport source tile from character state
               const teleportTileX = character.teleportFromX ?? anim.fromX;
               const teleportTileY = character.teleportFromY ?? anim.fromY;
+              // Use teleport sprite from animation state (more reliable than character state)
+              const teleportSprite = anim.teleportSprite || character.teleportSprite;
 
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
@@ -989,23 +993,23 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
 
-                // Start showing teleport sprite partway through walk (dematerialization effect)
-                if (character.teleportSprite && moveProgress >= TELEPORT_DEMATERIALIZE_START) {
+                // Start showing teleport sprite early in walk (dematerialization effect)
+                if (teleportSprite && moveProgress >= TELEPORT_DEMATERIALIZE_START) {
                   const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
                   const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
                   // Calculate time since dematerialization started for sprite animation
                   const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                  drawTeleportSprite(ctx, character.teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
+                  drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
                 } else {
                   drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
                 }
-              } else if (character.teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
+              } else if (teleportSprite && elapsed < MOVE_DURATION + TELEPORT_APPEAR_DURATION) {
                 // Phase 2: Show teleport sprite at destination (rematerialization)
                 const pixelX = anim.toX * TILE_SIZE + TILE_SIZE / 2;
                 const pixelY = anim.toY * TILE_SIZE + TILE_SIZE / 2;
                 // Continue sprite animation from Phase 1
                 const dematerializeStartTime = anim.startTime + MOVE_DURATION * TELEPORT_DEMATERIALIZE_START;
-                drawTeleportSprite(ctx, character.teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
+                drawTeleportSprite(ctx, teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
               } else {
                 // Phase 3: Appear at destination with normal sprite
                 drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
