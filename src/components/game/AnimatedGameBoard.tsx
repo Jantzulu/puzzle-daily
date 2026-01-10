@@ -843,10 +843,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const anim = enemyPositions.get(index);
           const deathAnim = enemyDeathAnimations.get(index);
 
-          // Calculate effective animation duration for ice slides
-          const effectiveAnimDuration = anim?.iceSlideDistance
-            ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION
-            : ANIMATION_DURATION;
+          // Calculate effective animation duration based on animation type
+          let effectiveAnimDuration = ANIMATION_DURATION;
+          if (anim?.teleported) {
+            // Teleport needs extra time for rematerialization at destination
+            effectiveAnimDuration = MOVE_DURATION + TELEPORT_APPEAR_DURATION;
+          } else if (anim?.iceSlideDistance) {
+            effectiveAnimDuration = anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION;
+          }
 
           if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted) {
             const elapsed = now - anim.startTime;
@@ -911,10 +915,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const anim = characterPositions.get(index);
           const deathAnim = characterDeathAnimations.get(character.characterId);
 
-          // Calculate effective animation duration for ice slides
-          const effectiveAnimDuration = anim?.iceSlideDistance
-            ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION
-            : ANIMATION_DURATION;
+          // Calculate effective animation duration based on animation type
+          let effectiveAnimDuration = ANIMATION_DURATION;
+          if (anim?.teleported) {
+            // Teleport needs extra time for rematerialization at destination
+            effectiveAnimDuration = MOVE_DURATION + TELEPORT_APPEAR_DURATION;
+          } else if (anim?.iceSlideDistance) {
+            effectiveAnimDuration = anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION;
+          }
 
           if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted) {
             const elapsed = now - anim.startTime;
