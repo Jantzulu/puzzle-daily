@@ -79,6 +79,12 @@ export const Game: React.FC = () => {
         return; // Can't place on occupied tile
       }
 
+      // Check if this character type is already placed (only one of each allowed)
+      const alreadyPlaced = gameState.placedCharacters.some((c) => c.characterId === selectedCharacterId);
+      if (alreadyPlaced) {
+        return; // Can't place duplicate character types
+      }
+
       const charData = getCharacter(selectedCharacterId);
       if (!charData) return;
 
@@ -195,30 +201,6 @@ export const Game: React.FC = () => {
           <div className="flex-1">
             <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
 
-            {/* Game Status */}
-            <div className="mt-4 p-4 bg-gray-800 rounded">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-gray-400">Status:</span>
-                  <span className="ml-2 font-bold capitalize">{gameState.gameStatus}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Turn:</span>
-                  <span className="ml-2 font-bold">{gameState.currentTurn}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Characters:</span>
-                  <span className="ml-2 font-bold">
-                    {gameState.placedCharacters.length} / {gameState.puzzle.maxCharacters}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Score:</span>
-                  <span className="ml-2 font-bold">{gameState.score}</span>
-                </div>
-              </div>
-            </div>
-
             {/* Victory/Defeat Message */}
             {gameState.gameStatus === 'victory' && (
               <div className="mt-4 p-4 bg-green-700 rounded text-center">
@@ -231,6 +213,18 @@ export const Game: React.FC = () => {
               <div className="mt-4 p-4 bg-red-700 rounded text-center">
                 <h2 className="text-xl md:text-2xl font-bold">Defeat</h2>
                 <p className="mt-2 text-sm md:text-base">Try again!</p>
+              </div>
+            )}
+
+            {/* Character Selector - below puzzle */}
+            {gameState.gameStatus === 'setup' && (
+              <div className="mt-4">
+                <CharacterSelector
+                  availableCharacterIds={gameState.puzzle.availableCharacters}
+                  selectedCharacterId={selectedCharacterId}
+                  onSelectCharacter={setSelectedCharacterId}
+                  placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                />
               </div>
             )}
           </div>
@@ -281,14 +275,29 @@ export const Game: React.FC = () => {
               onStep={handleStep}
             />
 
-            {/* Character Selector */}
-            {gameState.gameStatus === 'setup' && (
-              <CharacterSelector
-                availableCharacterIds={gameState.puzzle.availableCharacters}
-                selectedCharacterId={selectedCharacterId}
-                onSelectCharacter={setSelectedCharacterId}
-              />
-            )}
+            {/* Game Status */}
+            <div className="p-4 bg-gray-800 rounded">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <span className="text-gray-400">Status:</span>
+                  <span className="ml-2 font-bold capitalize">{gameState.gameStatus}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Turn:</span>
+                  <span className="ml-2 font-bold">{gameState.currentTurn}</span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Characters:</span>
+                  <span className="ml-2 font-bold">
+                    {gameState.placedCharacters.length} / {gameState.puzzle.maxCharacters}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-400">Score:</span>
+                  <span className="ml-2 font-bold">{gameState.score}</span>
+                </div>
+              </div>
+            </div>
 
             {/* Puzzle Info */}
             <div className="p-4 bg-gray-800 rounded">

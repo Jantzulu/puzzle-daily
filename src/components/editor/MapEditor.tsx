@@ -1130,6 +1130,10 @@ export const MapEditor: React.FC = () => {
 
     if (tileHasEnemy || tileHasCharacter) return;
 
+    // Check if this character type is already placed (only one of each allowed)
+    const alreadyPlaced = gameState.placedCharacters.some((c) => c.characterId === selectedCharacterId);
+    if (alreadyPlaced) return;
+
     const charData = getCharacter(selectedCharacterId);
     if (!charData) return;
 
@@ -1220,8 +1224,49 @@ export const MapEditor: React.FC = () => {
             <div className="flex-1">
               <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={true} />
 
+              {/* Victory/Defeat Message */}
+              {gameState.gameStatus === 'victory' && (
+                <div className="mt-4 p-4 bg-green-700 rounded text-center">
+                  <h2 className="text-2xl font-bold">Victory!</h2>
+                  <p className="mt-2">Characters used: {gameState.placedCharacters.length}</p>
+                </div>
+              )}
+
+              {gameState.gameStatus === 'defeat' && (
+                <div className="mt-4 p-4 bg-red-700 rounded text-center">
+                  <h2 className="text-2xl font-bold">Defeat</h2>
+                  <p className="mt-2">Try again!</p>
+                </div>
+              )}
+
+              {/* Character Selector - below puzzle */}
+              {gameState.gameStatus === 'setup' && (
+                <div className="mt-4">
+                  <CharacterSelector
+                    availableCharacterIds={gameState.puzzle.availableCharacters}
+                    selectedCharacterId={selectedCharacterId}
+                    onSelectCharacter={setSelectedCharacterId}
+                    placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* Sidebar */}
+            <div className="w-full lg:w-80 space-y-6">
+              {/* Controls */}
+              <Controls
+                gameStatus={gameState.gameStatus}
+                isSimulating={isSimulating}
+                onPlay={handlePlay}
+                onPause={handlePause}
+                onReset={handleReset}
+                onWipe={() => {}}
+                onStep={handleStep}
+              />
+
               {/* Game Status */}
-              <div className="mt-4 p-4 bg-gray-800 rounded">
+              <div className="p-4 bg-gray-800 rounded">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <span className="text-gray-400">Status:</span>
@@ -1243,44 +1288,6 @@ export const MapEditor: React.FC = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Victory/Defeat Message */}
-              {gameState.gameStatus === 'victory' && (
-                <div className="mt-4 p-4 bg-green-700 rounded text-center">
-                  <h2 className="text-2xl font-bold">Victory!</h2>
-                  <p className="mt-2">Characters used: {gameState.placedCharacters.length}</p>
-                </div>
-              )}
-
-              {gameState.gameStatus === 'defeat' && (
-                <div className="mt-4 p-4 bg-red-700 rounded text-center">
-                  <h2 className="text-2xl font-bold">Defeat</h2>
-                  <p className="mt-2">Try again!</p>
-                </div>
-              )}
-            </div>
-
-            {/* Sidebar */}
-            <div className="w-full lg:w-80 space-y-6">
-              {/* Controls */}
-              <Controls
-                gameStatus={gameState.gameStatus}
-                isSimulating={isSimulating}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onReset={handleReset}
-                onWipe={() => {}}
-                onStep={handleStep}
-              />
-
-              {/* Character Selector */}
-              {gameState.gameStatus === 'setup' && (
-                <CharacterSelector
-                  availableCharacterIds={gameState.puzzle.availableCharacters}
-                  selectedCharacterId={selectedCharacterId}
-                  onSelectCharacter={setSelectedCharacterId}
-                />
-              )}
 
               {/* Puzzle Info */}
               <div className="p-4 bg-gray-800 rounded">
