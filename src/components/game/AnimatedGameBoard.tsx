@@ -792,6 +792,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Load skin for tile sprites
       const skin = gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null;
       const tileSprites = skin?.tileSprites;
+      const customTileSprites = skin?.customTileSprites;
 
       // Calculate grid offset (for borders)
       const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
@@ -822,7 +823,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         for (let x = 0; x < gameState.puzzle.width; x++) {
           const tile = gameState.puzzle.tiles[y][x];
           if (tile) {
-            drawTile(ctx, x, y, tile.type, tileSprites, tile);
+            drawTile(ctx, x, y, tile.type, tileSprites, tile, customTileSprites);
           } else {
             // Draw void/null tile
             drawVoidTile(ctx, x, y);
@@ -1751,7 +1752,7 @@ function drawVoidTile(_ctx: CanvasRenderingContext2D, _x: number, _y: number) {
   // This allows the page background or parent element to show through.
 }
 
-function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null) {
+function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null, customTileSprites?: { [customTileTypeId: string]: string }) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
@@ -1761,7 +1762,25 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     customTileType = loadTileType(tile.customTileTypeId);
   }
 
-  // First: Draw custom tile sprite if available
+  // Priority 1: Check for skin-specific custom tile sprite
+  if (tile?.customTileTypeId && customTileSprites?.[tile.customTileTypeId]) {
+    const skinCustomSprite = customTileSprites[tile.customTileTypeId];
+    const customImg = loadTileImage(skinCustomSprite);
+    if (customImg?.complete) {
+      ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
+      // Draw grid lines
+      ctx.strokeStyle = COLORS.grid;
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+      // Draw behavior indicators on top
+      if (customTileType) {
+        drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+      }
+      return;
+    }
+  }
+
+  // Priority 2: Draw tile type's default custom sprite if available
   if (customTileType?.customSprite?.idleImageData) {
     const customImg = loadTileImage(customTileType.customSprite.idleImageData);
     if (customImg?.complete) {
@@ -1776,7 +1795,7 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     }
   }
 
-  // Second: Use skin tile sprites if available
+  // Priority 3: Use skin tile sprites if available
   const isWall = type === TileType.WALL;
   const isGoal = type === TileType.GOAL;
   const spriteKey = isGoal ? 'goal' : (isWall ? 'wall' : 'empty');
@@ -1798,7 +1817,7 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     }
   }
 
-  // Fallback to default colors
+  // Priority 4: Fallback to default colors
   ctx.fillStyle = type === TileType.WALL ? COLORS.wall : COLORS.empty;
   ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
 

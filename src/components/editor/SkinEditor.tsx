@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import type { PuzzleSkin, CustomBorderSprites, TileSprites } from '../../types/game';
-import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
+import type { CustomTileType } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 
 // Helper to convert file to base64
@@ -53,6 +54,12 @@ export const SkinEditor: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
+
+  // Refresh custom tile types when component mounts or skin changes
+  useEffect(() => {
+    setCustomTileTypes(getCustomTileTypes());
+  }, [editingSkin?.id]);
 
   // Filter skins based on folder and search term
   const folderFilteredSkins = useFilteredAssets(skins, selectedFolderId);
@@ -155,6 +162,28 @@ export const SkinEditor: React.FC = () => {
     setEditingSkin({
       ...editingSkin,
       tileSprites: newTileSprites,
+    });
+  };
+
+  const handleCustomTileSpriteUpload = async (tileTypeId: string, file: File) => {
+    if (!editingSkin) return;
+    const base64 = await fileToBase64(file);
+    setEditingSkin({
+      ...editingSkin,
+      customTileSprites: {
+        ...editingSkin.customTileSprites,
+        [tileTypeId]: base64,
+      },
+    });
+  };
+
+  const handleCustomTileSpriteRemove = (tileTypeId: string) => {
+    if (!editingSkin) return;
+    const newCustomTileSprites = { ...editingSkin.customTileSprites };
+    delete newCustomTileSprites[tileTypeId];
+    setEditingSkin({
+      ...editingSkin,
+      customTileSprites: newCustomTileSprites,
     });
   };
 
@@ -431,6 +460,81 @@ export const SkinEditor: React.FC = () => {
                       </div>
                     ))}
                   </div>
+                </div>
+
+                {/* Custom Tile Types */}
+                <div className="bg-gray-800 p-4 rounded">
+                  <h3 className="text-lg font-bold mb-4">Custom Tile Types</h3>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Upload custom sprites for your custom tile types within this skin.
+                    If no sprite is set, the tile type's default sprite will be used.
+                  </p>
+                  {customTileTypes.length === 0 ? (
+                    <div className="text-sm text-gray-500 text-center py-4">
+                      No custom tile types created yet. Create custom tile types in the Tiles tab.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-3 gap-3">
+                      {customTileTypes.map((tileType) => (
+                        <div key={tileType.id} className="bg-gray-700 p-2 rounded">
+                          <div className="text-xs font-bold mb-1">{tileType.name}</div>
+                          <div className="text-xs text-gray-400 mb-2 truncate" title={tileType.description}>
+                            {tileType.description || `${tileType.baseType} tile`}
+                          </div>
+
+                          {editingSkin.customTileSprites?.[tileType.id] ? (
+                            <div className="relative">
+                              <img
+                                src={editingSkin.customTileSprites[tileType.id]}
+                                alt={tileType.name}
+                                className="w-full h-12 object-contain bg-gray-600 rounded"
+                              />
+                              {!isBuiltIn && (
+                                <button
+                                  onClick={() => handleCustomTileSpriteRemove(tileType.id)}
+                                  className="absolute top-0 right-0 px-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="relative">
+                              {/* Show default sprite preview if available */}
+                              {tileType.customSprite?.idleImageData && (
+                                <img
+                                  src={tileType.customSprite.idleImageData}
+                                  alt={`${tileType.name} default`}
+                                  className="w-full h-12 object-contain bg-gray-600 rounded opacity-50"
+                                  title="Default sprite (from tile type)"
+                                />
+                              )}
+                              <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${tileType.customSprite?.idleImageData ? 'absolute inset-0' : ''}`}>
+                                <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
+                                  isBuiltIn
+                                    ? 'border-gray-600 text-gray-600'
+                                    : 'border-gray-500 text-gray-400 hover:border-gray-400'
+                                } ${tileType.customSprite?.idleImageData ? 'bg-black/50' : ''}`}>
+                                  {isBuiltIn ? 'Default' : (tileType.customSprite?.idleImageData ? 'Override' : '+ Upload')}
+                                </div>
+                                {!isBuiltIn && (
+                                  <input
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleCustomTileSpriteUpload(tileType.id, file);
+                                    }}
+                                  />
+                                )}
+                              </label>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             ) : (

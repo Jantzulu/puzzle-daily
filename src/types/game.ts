@@ -315,6 +315,10 @@ export interface PuzzleSkin {
   // Tile sprites (the actual floor/wall tiles)
   tileSprites?: TileSprites;
 
+  // Custom tile type sprites (keyed by customTileTypeId)
+  // Allows each skin to have different sprites for custom tile types
+  customTileSprites?: { [customTileTypeId: string]: string };
+
   // Metadata
   createdAt: string;
   isBuiltIn?: boolean;       // True for default/built-in skins
