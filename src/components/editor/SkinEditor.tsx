@@ -198,6 +198,23 @@ export const SkinEditor: React.FC = () => {
     }
   };
 
+  const handleDuplicate = (skin: PuzzleSkin, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const duplicated: PuzzleSkin = {
+      ...skin,
+      id: 'skin_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name: skin.name + ' (Copy)',
+      borderSprites: { ...skin.borderSprites },
+      tileSprites: { ...skin.tileSprites },
+      customTileSprites: skin.customTileSprites ? { ...skin.customTileSprites } : undefined,
+      isBuiltIn: false,
+      createdAt: new Date().toISOString(),
+    };
+    setEditingSkin(duplicated);
+    setSelectedSkinId(null);
+    setIsCreating(true);
+  };
+
   const isBuiltIn = editingSkin?.isBuiltIn || false;
 
   return (
@@ -262,13 +279,22 @@ export const SkinEditor: React.FC = () => {
                         <p className="text-xs text-gray-400 mt-1">{skin.description}</p>
                       )}
                     </div>
-                    {!skin.isBuiltIn && (
-                      <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1">
+                      {!skin.isBuiltIn && (
                         <InlineFolderPicker
                           category="skins"
                           currentFolderId={skin.folderId}
                           onFolderChange={(folderId) => handleFolderChange(skin.id, folderId)}
                         />
+                      )}
+                      <button
+                        onClick={(e) => handleDuplicate(skin, e)}
+                        className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                        title="Duplicate"
+                      >
+                        ⎘
+                      </button>
+                      {!skin.isBuiltIn && (
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -278,8 +304,8 @@ export const SkinEditor: React.FC = () => {
                         >
                           ✕
                         </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               ))

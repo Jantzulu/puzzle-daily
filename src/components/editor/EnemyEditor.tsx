@@ -100,6 +100,21 @@ export const EnemyEditor: React.FC = () => {
     }
   };
 
+  const handleDuplicate = (enemy: CustomEnemy, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const duplicated: CustomEnemy = {
+      ...enemy,
+      id: 'enemy_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name: enemy.name + ' (Copy)',
+      behavior: enemy.behavior ? { ...enemy.behavior, pattern: [...(enemy.behavior.pattern || [])] } : undefined,
+      customSprite: enemy.customSprite ? { ...enemy.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      createdAt: new Date().toISOString(),
+    };
+    setEditing(duplicated);
+    setSelectedId(null);
+    setIsCreating(true);
+  };
+
   const updateEnemy = (updates: Partial<CustomEnemy>) => {
     if (!editing) return;
     setEditing({ ...editing, ...updates });
@@ -207,6 +222,13 @@ export const EnemyEditor: React.FC = () => {
                           currentFolderId={enemy.folderId}
                           onFolderChange={(folderId) => handleFolderChange(enemy.id, folderId)}
                         />
+                        <button
+                          onClick={(e) => handleDuplicate(enemy, e)}
+                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
                           className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"

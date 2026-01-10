@@ -501,6 +501,21 @@ export const TileTypeEditor: React.FC = () => {
     }
   };
 
+  const handleDuplicate = (tileType: CustomTileType, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const duplicated: CustomTileType = {
+      ...tileType,
+      id: 'tiletype_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name: tileType.name + ' (Copy)',
+      behaviors: [...tileType.behaviors],
+      customSprite: tileType.customSprite ? { ...tileType.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      createdAt: new Date().toISOString(),
+    };
+    setEditing(duplicated);
+    setSelectedId(null);
+    setIsCreating(true);
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
@@ -580,6 +595,13 @@ export const TileTypeEditor: React.FC = () => {
                           currentFolderId={tileType.folderId}
                           onFolderChange={(folderId) => handleFolderChange(tileType.id, folderId)}
                         />
+                        <button
+                          onClick={(e) => handleDuplicate(tileType, e)}
+                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

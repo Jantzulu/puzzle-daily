@@ -18,6 +18,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { createHistoryManager } from '../../utils/historyManager';
 import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
+import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -462,6 +463,14 @@ export const MapEditor: React.FC = () => {
   const allEnemies = getAllEnemies();
   const allCharacters = getAllCharacters();
   const allObjects = getAllObjects();
+
+  // Folder filtering for asset selectors
+  const [enemyFolderId, setEnemyFolderId] = useState<string | null>(null);
+  const [objectFolderId, setObjectFolderId] = useState<string | null>(null);
+  const [characterFolderId, setCharacterFolderId] = useState<string | null>(null);
+  const filteredEnemies = useFilteredAssets(allEnemies, enemyFolderId);
+  const filteredObjects = useFilteredAssets(allObjects, objectFolderId);
+  const filteredCharacters = useFilteredAssets(allCharacters, characterFolderId);
 
   // Cache editor state when it changes (for persistence across tab switches)
   useEffect(() => {
@@ -1513,11 +1522,18 @@ export const MapEditor: React.FC = () => {
               {state.selectedTool === 'enemy' && (
                 <div className="bg-gray-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Select Enemy</h2>
-                  {allEnemies.length === 0 ? (
-                    <p className="text-sm text-gray-400">No enemies available. Create enemies in Asset Manager!</p>
+                  <FolderDropdown
+                    category="enemies"
+                    selectedFolderId={enemyFolderId}
+                    onFolderSelect={setEnemyFolderId}
+                  />
+                  {filteredEnemies.length === 0 ? (
+                    <p className="text-sm text-gray-400 mt-2">
+                      {allEnemies.length === 0 ? 'No enemies available. Create enemies in Asset Manager!' : 'No enemies in this folder.'}
+                    </p>
                   ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {allEnemies.map(enemy => {
+                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
+                      {filteredEnemies.map(enemy => {
                         const spells = getAllSpells(enemy.behavior?.pattern);
                         return (
                           <ActionTooltip key={enemy.id} actions={enemy.behavior?.pattern}>
@@ -1560,16 +1576,25 @@ export const MapEditor: React.FC = () => {
               {state.selectedTool === 'object' && (
                 <div className="bg-gray-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Select Object</h2>
-                  {allObjects.length === 0 ? (
+                  <FolderDropdown
+                    category="objects"
+                    selectedFolderId={objectFolderId}
+                    onFolderSelect={setObjectFolderId}
+                  />
+                  {filteredObjects.length === 0 ? (
                     <div className="text-center py-4">
-                      <p className="text-sm text-gray-400 mb-2">No objects available.</p>
-                      <a href="/assets" className="text-blue-400 hover:underline text-sm">
-                        Create objects in Asset Manager
-                      </a>
+                      <p className="text-sm text-gray-400 mb-2">
+                        {allObjects.length === 0 ? 'No objects available.' : 'No objects in this folder.'}
+                      </p>
+                      {allObjects.length === 0 && (
+                        <a href="/assets" className="text-blue-400 hover:underline text-sm">
+                          Create objects in Asset Manager
+                        </a>
+                      )}
                     </div>
                   ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {allObjects.map(obj => (
+                    <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
+                      {filteredObjects.map(obj => (
                         <ObjectTooltip key={obj.id} object={obj}>
                           <button
                             onClick={() => setSelectedObjectId(obj.id)}
@@ -1613,11 +1638,18 @@ export const MapEditor: React.FC = () => {
               <div className="bg-gray-800 p-4 rounded">
                 <h2 className="text-lg font-bold mb-3">Available Characters</h2>
                 <p className="text-xs text-gray-400 mb-3">Select which characters players can use</p>
-                {allCharacters.length === 0 ? (
-                  <p className="text-sm text-gray-400">No characters available</p>
+                <FolderDropdown
+                  category="characters"
+                  selectedFolderId={characterFolderId}
+                  onFolderSelect={setCharacterFolderId}
+                />
+                {filteredCharacters.length === 0 ? (
+                  <p className="text-sm text-gray-400 mt-2">
+                    {allCharacters.length === 0 ? 'No characters available' : 'No characters in this folder.'}
+                  </p>
                 ) : (
-                  <div className="space-y-2 max-h-80 overflow-y-auto">
-                    {allCharacters.map(char => {
+                  <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
+                    {filteredCharacters.map(char => {
                       const spells = getAllSpells(char.behavior);
                       return (
                         <ActionTooltip key={char.id} actions={char.behavior}>

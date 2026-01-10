@@ -150,6 +150,21 @@ export const ObjectEditor: React.FC = () => {
     }
   };
 
+  const handleDuplicate = (obj: CustomObject, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const duplicated: CustomObject = {
+      ...obj,
+      id: 'obj_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name: obj.name + ' (Copy)',
+      effects: [...obj.effects],
+      customSprite: obj.customSprite ? { ...obj.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      createdAt: new Date().toISOString(),
+    };
+    setEditing(duplicated);
+    setSelectedId(null);
+    setIsCreating(true);
+  };
+
   return (
     <div className="p-8">
       <div className="max-w-7xl mx-auto">
@@ -219,6 +234,13 @@ export const ObjectEditor: React.FC = () => {
                           currentFolderId={obj.folderId}
                           onFolderChange={(folderId) => handleFolderChange(obj.id, folderId)}
                         />
+                        <button
+                          onClick={(e) => handleDuplicate(obj, e)}
+                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();

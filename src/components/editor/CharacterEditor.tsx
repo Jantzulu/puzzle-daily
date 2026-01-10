@@ -128,6 +128,21 @@ export const CharacterEditor: React.FC = () => {
     }
   };
 
+  const handleDuplicate = (char: CustomCharacter, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const duplicated: CustomCharacter = {
+      ...char,
+      id: 'char_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+      name: char.name + ' (Copy)',
+      behavior: [...char.behavior],
+      customSprite: char.customSprite ? { ...char.customSprite, id: 'sprite_' + Date.now() } : undefined,
+      createdAt: new Date().toISOString(),
+    };
+    setEditing(duplicated);
+    setSelectedId(null);
+    setIsCreating(true);
+  };
+
   const updateCharacter = (updates: Partial<CustomCharacter>) => {
     if (!editing) return;
     setEditing({ ...editing, ...updates });
@@ -245,6 +260,13 @@ export const CharacterEditor: React.FC = () => {
                           currentFolderId={char.folderId}
                           onFolderChange={(folderId) => handleFolderChange(char.id, folderId)}
                         />
+                        <button
+                          onClick={(e) => handleDuplicate(char, e)}
+                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          title="Duplicate"
+                        >
+                          ⎘
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
