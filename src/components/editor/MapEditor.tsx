@@ -16,6 +16,8 @@ import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { createHistoryManager } from '../../utils/historyManager';
+import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
+import { subscribeToSpriteImageLoads } from './SpriteEditor';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -433,6 +435,19 @@ export const MapEditor: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [state.mode, handleUndo, handleRedo]);
+
+  // Subscribe to image load events to trigger canvas redraws when images finish loading
+  useEffect(() => {
+    const handleImageLoaded = () => {
+      setRedrawCounter(c => c + 1);
+    };
+    const unsubscribe1 = subscribeToImageLoads(handleImageLoaded);
+    const unsubscribe2 = subscribeToSpriteImageLoads(handleImageLoaded);
+    return () => {
+      unsubscribe1();
+      unsubscribe2();
+    };
+  }, []);
 
   // Puzzle skins state
   const [availableSkins, setAvailableSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
@@ -1819,19 +1834,9 @@ function createEmptyGrid(width: number, height: number): TileOrNull[][] {
   return grid;
 }
 
-// Image cache for skin sprites
-const skinImageCache = new Map<string, HTMLImageElement>();
-
-function loadSkinImage(src: string): HTMLImageElement | null {
-  if (!src) return null;
-  let img = skinImageCache.get(src);
-  if (!img) {
-    img = new Image();
-    img.src = src;
-    skinImageCache.set(src, img);
-  }
-  return img;
-}
+// Use centralized image loader with load notifications
+// Alias for backward compatibility with existing code
+const loadSkinImage = loadImage;
 
 function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, skin?: PuzzleSkin | null) {
   const gridPixelWidth = gridWidth * TILE_SIZE;
