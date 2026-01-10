@@ -2,7 +2,7 @@ import React from 'react';
 import type { PlacedEnemy } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
-import { ActionTooltip, SpellTooltip, getAllSpells, summarizeBehavior } from '../shared/Tooltips';
+import { SpellTooltip, getAllSpells } from '../shared/Tooltips';
 
 interface EnemyDisplayProps {
   enemies: PlacedEnemy[];
@@ -45,48 +45,37 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
         </span>
       </div>
 
-      <div className="space-y-2">
+      <div className="space-y-3">
         {uniqueEnemies.map(({ enemy, count }) => {
           const enemyData = getEnemy(enemy.enemyId);
           if (!enemyData) return null;
 
           const behavior = enemyData.behavior?.pattern || [];
           const spells = getAllSpells(behavior);
-          const behaviorSummary = summarizeBehavior(behavior);
-          const isStatic = !enemyData.behavior || enemyData.behavior.type === 'static';
+          const hasTooltipSteps = enemyData.tooltipSteps && enemyData.tooltipSteps.length > 0;
 
           return (
-            <ActionTooltip key={enemy.enemyId} actions={behavior}>
-              <div className="p-2 bg-gray-700 rounded">
-                <div className="flex items-center gap-3">
-                  <SpriteThumbnail sprite={enemyData.customSprite} size={40} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="font-semibold text-red-400 truncate">
-                        {enemyData.name}
+            <div key={enemy.enemyId} className="p-3 bg-gray-700 rounded">
+              <div className="flex items-start gap-3">
+                <SpriteThumbnail sprite={enemyData.customSprite} size={40} />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-red-400 truncate">
+                      {enemyData.name}
+                    </span>
+                    {count > 1 && (
+                      <span className="text-xs bg-red-900 text-red-300 px-1.5 py-0.5 rounded">
+                        x{count}
                       </span>
-                      {count > 1 && (
-                        <span className="text-xs bg-red-900 text-red-300 px-1.5 py-0.5 rounded">
-                          x{count}
-                        </span>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-400 mt-0.5">
-                      HP: {enemyData.health} | DMG: {enemyData.attackDamage}
-                    </div>
-                    <div className="text-xs text-gray-300 mt-1">
-                      {isStatic ? (
-                        <span className="text-yellow-500">Static (does not move)</span>
-                      ) : (
-                        behaviorSummary
-                      )}
-                    </div>
+                    )}
                   </div>
+
+                  {/* Spell icons */}
                   {spells.length > 0 && (
-                    <div className="flex gap-1 flex-shrink-0">
+                    <div className="mt-1 flex gap-1">
                       {spells.map(spell => (
                         <SpellTooltip key={spell.id} spell={spell}>
-                          <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                          <div className="w-5 h-5 rounded overflow-hidden cursor-help">
                             {spell.thumbnailIcon ? (
                               <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
                             ) : (
@@ -99,9 +88,21 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
                       ))}
                     </div>
                   )}
+
+                  {/* Custom tooltip steps */}
+                  {hasTooltipSteps && (
+                    <div className="mt-2 text-xs text-gray-300 space-y-0.5">
+                      {enemyData.tooltipSteps!.map((step, idx) => (
+                        <div key={idx} className="flex items-start gap-1">
+                          <span className="text-gray-500">•</span>
+                          <span>{step}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
-            </ActionTooltip>
+            </div>
           );
         })}
       </div>

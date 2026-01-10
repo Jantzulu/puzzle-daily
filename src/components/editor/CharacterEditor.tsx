@@ -420,6 +420,61 @@ export const CharacterEditor: React.FC = () => {
                       </label>
                     </div>
 
+                    {/* Tooltip Steps */}
+                    <div className="bg-gray-800 p-4 rounded">
+                      <div className="flex justify-between items-center mb-3">
+                        <h3 className="text-lg font-bold">Tooltip Steps</h3>
+                        <button
+                          onClick={() => {
+                            const steps = editing.tooltipSteps || [];
+                            if (steps.length === 0) {
+                              updateCharacter({ tooltipSteps: ['This Character:'] });
+                            } else {
+                              updateCharacter({ tooltipSteps: [...steps, ''] });
+                            }
+                          }}
+                          className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
+                        >
+                          + Add Step
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-400 mb-3">
+                        Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
+                      </p>
+                      <div className="space-y-2">
+                        {(editing.tooltipSteps || []).map((step, index) => (
+                          <div key={index} className="flex gap-2 items-center">
+                            <span className="text-gray-400 text-sm">•</span>
+                            <input
+                              type="text"
+                              value={step}
+                              onChange={(e) => {
+                                const newSteps = [...(editing.tooltipSteps || [])];
+                                newSteps[index] = e.target.value;
+                                updateCharacter({ tooltipSteps: newSteps });
+                              }}
+                              placeholder="Enter tooltip step..."
+                              className="flex-1 px-3 py-1.5 bg-gray-700 rounded text-sm"
+                            />
+                            <button
+                              onClick={() => {
+                                const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
+                                updateCharacter({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
+                              }}
+                              className="px-2 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        ))}
+                        {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
+                          <div className="text-gray-500 text-sm italic">
+                            No tooltip steps. Click "+ Add Step" to create one.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
                     {/* Behavior */}
                     <div className="bg-gray-800 p-4 rounded">
                       <div className="flex justify-between items-center mb-3">

@@ -189,6 +189,7 @@ export interface Character {
   attackDamage: number;
   defaultFacing: Direction;
   behavior: CharacterAction[];
+  tooltipSteps?: string[]; // Custom tooltip steps for display on play/playtest pages
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
@@ -204,6 +205,7 @@ export interface Enemy {
   health: number;
   attackDamage: number;
   behavior?: EnemyBehavior;
+  tooltipSteps?: string[]; // Custom tooltip steps for display on play/playtest pages
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
