@@ -386,6 +386,18 @@ export const MapEditor: React.FC = () => {
     setCanRedo(historyRef.current.canRedo);
   }, []);
 
+  // Push current state to history (for immediate state changes like resize/clear)
+  const pushToHistory = useCallback(() => {
+    const currentState = {
+      tiles: state.tiles,
+      enemies: state.enemies,
+      collectibles: state.collectibles,
+      placedObjects: state.placedObjects,
+    };
+    historyRef.current.push(currentState);
+    syncHistoryState();
+  }, [state.tiles, state.enemies, state.collectibles, state.placedObjects, syncHistoryState]);
+
   // Undo handler
   const handleUndo = useCallback(() => {
     const previous = historyRef.current.undo();
