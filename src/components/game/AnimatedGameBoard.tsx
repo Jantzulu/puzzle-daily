@@ -50,8 +50,7 @@ const MOVE_DURATION = 280; // First 70%: moving between tiles (slower movement)
 const IDLE_DURATION = 120; // Second 30%: idle on destination tile
 const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
-const TELEPORT_APPEAR_DURATION = 500; // ms to show teleport sprite at destination (rematerialization)
-const TELEPORT_AFTER_EFFECT_DURATION = 350; // ms to continue teleport effect into next movement after teleporting
+const TELEPORT_APPEAR_DURATION = 600; // ms to show teleport sprite at destination (rematerialization)
 const TELEPORT_DEMATERIALIZE_START = 0.15; // Start showing teleport sprite early in walk (15%) for dematerialization
 
 const COLORS = {
@@ -472,8 +471,6 @@ interface CharacterPosition {
   facingDuringMove: Direction; // Direction character is moving (before wall lookahead changes it)
   teleported?: boolean; // If true, this is a teleport - animate to fromX/fromY then appear at toX/toY
   iceSlideDistance?: number; // If set, slow down animation proportionally
-  approachingTeleport?: boolean; // Walking toward a tile with teleport behavior
-  afterTeleport?: boolean; // Just finished teleporting on previous turn
   teleportSprite?: TeleportSpriteConfig; // Sprite to use for teleport effect
 }
 
@@ -506,9 +503,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const prevCharacterDeadStateRef = useRef<Map<string, boolean>>(new Map());
   const prevEnemyDeadStateRef = useRef<Map<number, boolean>>(new Map());
 
-  // Track which entities just teleported (for after-teleport effect on next move)
-  const justTeleportedCharactersRef = useRef<Map<number, TeleportSpriteConfig>>(new Map());
-  const justTeleportedEnemiesRef = useRef<Map<number, TeleportSpriteConfig>>(new Map());
 
   // Detect character movement
   useEffect(() => {
@@ -538,23 +532,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             teleported: true,
             teleportSprite: char.teleportSprite,
           });
-          // Remember this character just teleported for next turn's after-effect
-          if (char.teleportSprite) {
-            justTeleportedCharactersRef.current.set(idx, char.teleportSprite);
-          }
         } else {
-          // Normal movement - check if this character teleported on previous turn
-          const prevTeleportSprite = justTeleportedCharactersRef.current.get(idx);
-          const wasJustTeleported = !!prevTeleportSprite;
-
-          // Clear the teleport tracking for this character (we're using it now)
-          justTeleportedCharactersRef.current.delete(idx);
-
-          // Check if walking TOWARD a teleport tile (lookahead)
-          // Use the destination tile (char.x, char.y) to check for teleport
-          const destTile = gameState.puzzle.tiles[char.y]?.[char.x];
-          const destTeleportSprite = getTeleportSpriteFromTile(destTile);
-
+          // Normal movement animation
           newPositions.set(idx, {
             fromX: prevChar.x,
             fromY: prevChar.y,
@@ -563,9 +542,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             startTime: now,
             facingDuringMove: facingChanged ? char.facing : prevChar.facing,
             iceSlideDistance: char.iceSlideDistance,
-            approachingTeleport: !!destTeleportSprite,
-            afterTeleport: wasJustTeleported,
-            teleportSprite: destTeleportSprite || prevTeleportSprite,
           });
         }
       } else if (prevChar && prevChar.facing !== char.facing) {
@@ -616,22 +592,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             teleported: true,
             teleportSprite: enemy.teleportSprite,
           });
-          // Remember this enemy just teleported for next turn's after-effect
-          if (enemy.teleportSprite) {
-            justTeleportedEnemiesRef.current.set(idx, enemy.teleportSprite);
-          }
         } else {
-          // Normal movement - check if this enemy teleported on previous turn
-          const prevTeleportSprite = justTeleportedEnemiesRef.current.get(idx);
-          const wasJustTeleported = !!prevTeleportSprite;
-
-          // Clear the teleport tracking for this enemy (we're using it now)
-          justTeleportedEnemiesRef.current.delete(idx);
-
-          // Check if walking TOWARD a teleport tile (lookahead)
-          const destTile = gameState.puzzle.tiles[enemy.y]?.[enemy.x];
-          const destTeleportSprite = getTeleportSpriteFromTile(destTile);
-
+          // Normal movement animation
           newPositions.set(idx, {
             fromX: prevEnemy.x,
             fromY: prevEnemy.y,
@@ -640,9 +602,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             startTime: now,
             facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
             iceSlideDistance: enemy.iceSlideDistance,
-            approachingTeleport: !!destTeleportSprite,
-            afterTeleport: wasJustTeleported,
-            teleportSprite: destTeleportSprite || prevTeleportSprite,
           });
         }
       } else if (prevEnemy && prevEnemy.facing !== enemy.facing) {
@@ -939,25 +898,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-
-                // Check for teleport effects: approaching teleport OR just teleported
-                if (anim.teleportSprite) {
-                  const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
-                  const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
-
-                  if (anim.afterTeleport && elapsed < TELEPORT_AFTER_EFFECT_DURATION) {
-                    // Just teleported: show effect at start of movement (rematerializing while walking away)
-                    drawTeleportSprite(ctx, anim.teleportSprite, pixelX, pixelY, TILE_SIZE, anim.startTime, now);
-                  } else if (anim.approachingTeleport && moveProgress >= 0.5) {
-                    // Approaching teleport: show effect in second half of walk (dematerializing)
-                    const dematerializeStartTime = anim.startTime + effectiveMoveDuration * 0.5;
-                    drawTeleportSprite(ctx, anim.teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
-                  } else {
-                    drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
-                  }
-                } else {
-                  drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
-                }
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
               } else {
                 drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
               }
@@ -1026,25 +967,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-
-                // Check for teleport effects: approaching teleport OR just teleported
-                if (anim.teleportSprite) {
-                  const pixelX = renderX * TILE_SIZE + TILE_SIZE / 2;
-                  const pixelY = renderY * TILE_SIZE + TILE_SIZE / 2;
-
-                  if (anim.afterTeleport && elapsed < TELEPORT_AFTER_EFFECT_DURATION) {
-                    // Just teleported: show effect at start of movement (rematerializing while walking away)
-                    drawTeleportSprite(ctx, anim.teleportSprite, pixelX, pixelY, TILE_SIZE, anim.startTime, now);
-                  } else if (anim.approachingTeleport && moveProgress >= 0.5) {
-                    // Approaching teleport: show effect in second half of walk (dematerializing)
-                    const dematerializeStartTime = anim.startTime + effectiveMoveDuration * 0.5;
-                    drawTeleportSprite(ctx, anim.teleportSprite, pixelX, pixelY, TILE_SIZE, dematerializeStartTime, now);
-                  } else {
-                    drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
-                  }
-                } else {
-                  drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
-                }
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
               } else {
                 drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
               }
