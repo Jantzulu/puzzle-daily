@@ -320,6 +320,16 @@ export const MapEditor: React.FC = () => {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
+  // Test mode state
+  type TestMode = 'none' | 'enemies' | 'characters';
+  const [testMode, setTestMode] = useState<TestMode>('none');
+  const [testTurnsRemaining, setTestTurnsRemaining] = useState(0);
+  const testSnapshotRef = useRef<{
+    characters: PlacedCharacter[];
+    enemies: PlacedEnemy[];
+    puzzle: Puzzle;
+  } | null>(null);
+
   // Library state
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
   const [showLibrary, setShowLibrary] = useState(false);
@@ -556,12 +566,42 @@ export const MapEditor: React.FC = () => {
     }
 
     const interval = setInterval(() => {
+      // Check if we're in test mode and count turns
+      if (testMode !== 'none') {
+        if (testTurnsRemaining <= 1) {
+          // Test mode finished - restore snapshot
+          if (testSnapshotRef.current) {
+            const snapshot = testSnapshotRef.current;
+            const restoredPuzzle = JSON.parse(JSON.stringify(snapshot.puzzle));
+            const restoredState = initializeGameState(restoredPuzzle);
+            restoredState.placedCharacters = JSON.parse(JSON.stringify(snapshot.characters)).map((char: PlacedCharacter) => {
+              const charData = getCharacter(char.characterId);
+              return {
+                ...char,
+                actionIndex: 0,
+                currentHealth: charData ? charData.health : char.currentHealth,
+                dead: false,
+                active: true,
+              };
+            });
+            restoredState.gameStatus = 'setup';
+            setGameState(restoredState);
+          }
+          setIsSimulating(false);
+          setTestMode('none');
+          setTestTurnsRemaining(0);
+          testSnapshotRef.current = null;
+          return;
+        }
+        setTestTurnsRemaining(prev => prev - 1);
+      }
+
       setGameState((prevState) => {
         if (!prevState) return prevState;
         const newState = executeTurn({ ...prevState });
 
-        // Stop simulation if game ended
-        if (newState.gameStatus !== 'running') {
+        // Stop simulation if game ended (only in normal mode)
+        if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
         }
 
@@ -570,7 +610,7 @@ export const MapEditor: React.FC = () => {
     }, 800);
 
     return () => clearInterval(interval);
-  }, [isSimulating, gameState?.gameStatus]);
+  }, [isSimulating, gameState?.gameStatus, testMode, testTurnsRemaining]);
 
   // Draw grid
   useEffect(() => {
@@ -1190,6 +1230,68 @@ export const MapEditor: React.FC = () => {
     }
   };
 
+  const handleTestEnemies = () => {
+    if (!gameState || !originalPlaytestPuzzle) return;
+
+    // Save current state snapshot
+    testSnapshotRef.current = {
+      characters: JSON.parse(JSON.stringify(gameState.placedCharacters)),
+      enemies: JSON.parse(JSON.stringify(originalPlaytestPuzzle.enemies)),
+      puzzle: JSON.parse(JSON.stringify(originalPlaytestPuzzle)),
+    };
+
+    // Create test state with no characters
+    const testPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
+    const testState = initializeGameState(testPuzzle);
+    testState.placedCharacters = []; // Remove all characters
+    testState.gameStatus = 'running';
+
+    setGameState(testState);
+    setTestMode('enemies');
+    setTestTurnsRemaining(5);
+    setIsSimulating(true);
+    setSelectedCharacterId(null);
+  };
+
+  const handleTestCharacters = () => {
+    if (!gameState || !originalPlaytestPuzzle) return;
+
+    if (gameState.placedCharacters.length === 0) {
+      alert('Place at least one character to test!');
+      return;
+    }
+
+    // Save current state snapshot
+    testSnapshotRef.current = {
+      characters: JSON.parse(JSON.stringify(gameState.placedCharacters)),
+      enemies: JSON.parse(JSON.stringify(originalPlaytestPuzzle.enemies)),
+      puzzle: JSON.parse(JSON.stringify(originalPlaytestPuzzle)),
+    };
+
+    // Create test state with no enemies
+    const testPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
+    testPuzzle.enemies = []; // Remove all enemies from puzzle
+    const testState = initializeGameState(testPuzzle);
+    // Restore placed characters
+    testState.placedCharacters = JSON.parse(JSON.stringify(gameState.placedCharacters)).map((char: PlacedCharacter) => {
+      const charData = getCharacter(char.characterId);
+      return {
+        ...char,
+        actionIndex: 0,
+        currentHealth: charData ? charData.health : char.currentHealth,
+        dead: false,
+        active: true,
+      };
+    });
+    testState.gameStatus = 'running';
+
+    setGameState(testState);
+    setTestMode('characters');
+    setTestTurnsRemaining(5);
+    setIsSimulating(true);
+    setSelectedCharacterId(null);
+  };
+
   // Calculate canvas size with borders
   const hasBorder = state.skinId !== undefined && state.skinId !== '';
   const gridWidth = state.gridWidth * TILE_SIZE;
@@ -1264,6 +1366,10 @@ export const MapEditor: React.FC = () => {
                 onReset={handleReset}
                 onWipe={() => {}}
                 onStep={handleStep}
+                onTestEnemies={handleTestEnemies}
+                onTestCharacters={handleTestCharacters}
+                testMode={testMode}
+                testTurnsRemaining={testTurnsRemaining}
               />
 
               {/* Game Status */}

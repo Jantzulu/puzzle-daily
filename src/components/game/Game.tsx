@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import type { GameState, PlacedCharacter, Puzzle } from '../../types/game';
+import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy } from '../../types/game';
 import { Direction } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
@@ -10,6 +10,9 @@ import { Controls } from './Controls';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
+
+// Test mode types
+type TestMode = 'none' | 'enemies' | 'characters';
 
 export const Game: React.FC = () => {
   const officialPuzzles = getAllPuzzles();
@@ -30,6 +33,15 @@ export const Game: React.FC = () => {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
+  // Test mode state
+  const [testMode, setTestMode] = useState<TestMode>('none');
+  const [testTurnsRemaining, setTestTurnsRemaining] = useState(0);
+  const testSnapshotRef = useRef<{
+    characters: PlacedCharacter[];
+    enemies: PlacedEnemy[];
+    puzzle: Puzzle;
+  } | null>(null);
+
   // Reload saved puzzles when component mounts or when returning from editor
   useEffect(() => {
     const handleFocus = () => {
@@ -46,11 +58,42 @@ export const Game: React.FC = () => {
     }
 
     const interval = setInterval(() => {
+      // Check if we're in test mode and count turns
+      if (testMode !== 'none') {
+        if (testTurnsRemaining <= 1) {
+          // Test mode finished - restore snapshot
+          if (testSnapshotRef.current) {
+            const snapshot = testSnapshotRef.current;
+            const restoredPuzzle = JSON.parse(JSON.stringify(snapshot.puzzle));
+            const restoredState = initializeGameState(restoredPuzzle);
+            restoredState.placedCharacters = JSON.parse(JSON.stringify(snapshot.characters)).map((char: PlacedCharacter) => {
+              const charData = getCharacter(char.characterId);
+              return {
+                ...char,
+                actionIndex: 0,
+                currentHealth: charData ? charData.health : char.currentHealth,
+                dead: false,
+                active: true,
+              };
+            });
+            restoredState.gameStatus = 'setup';
+            setGameState(restoredState);
+            setCurrentPuzzle(restoredPuzzle);
+          }
+          setIsSimulating(false);
+          setTestMode('none');
+          setTestTurnsRemaining(0);
+          testSnapshotRef.current = null;
+          return;
+        }
+        setTestTurnsRemaining(prev => prev - 1);
+      }
+
       setGameState((prevState) => {
         const newState = executeTurn({ ...prevState });
 
-        // Stop simulation if game ended
-        if (newState.gameStatus !== 'running') {
+        // Stop simulation if game ended (only in normal mode)
+        if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
         }
 
@@ -59,7 +102,7 @@ export const Game: React.FC = () => {
     }, 800); // 800ms per turn (slower for better visibility)
 
     return () => clearInterval(interval);
-  }, [isSimulating, gameState.gameStatus]);
+  }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining]);
 
   const handleTileClick = useCallback(
     (x: number, y: number) => {
@@ -182,6 +225,66 @@ export const Game: React.FC = () => {
     }
   };
 
+  const handleTestEnemies = () => {
+    // Save current state snapshot
+    testSnapshotRef.current = {
+      characters: JSON.parse(JSON.stringify(gameState.placedCharacters)),
+      enemies: JSON.parse(JSON.stringify(gameState.puzzle.enemies)),
+      puzzle: JSON.parse(JSON.stringify(originalPuzzle)),
+    };
+
+    // Create test state with no characters
+    const testPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
+    const testState = initializeGameState(testPuzzle);
+    testState.placedCharacters = []; // Remove all characters
+    testState.gameStatus = 'running';
+
+    setGameState(testState);
+    setCurrentPuzzle(testPuzzle);
+    setTestMode('enemies');
+    setTestTurnsRemaining(5);
+    setIsSimulating(true);
+    setSelectedCharacterId(null);
+  };
+
+  const handleTestCharacters = () => {
+    if (gameState.placedCharacters.length === 0) {
+      alert('Place at least one character to test!');
+      return;
+    }
+
+    // Save current state snapshot
+    testSnapshotRef.current = {
+      characters: JSON.parse(JSON.stringify(gameState.placedCharacters)),
+      enemies: JSON.parse(JSON.stringify(gameState.puzzle.enemies)),
+      puzzle: JSON.parse(JSON.stringify(originalPuzzle)),
+    };
+
+    // Create test state with no enemies
+    const testPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
+    testPuzzle.enemies = []; // Remove all enemies from puzzle
+    const testState = initializeGameState(testPuzzle);
+    // Restore placed characters
+    testState.placedCharacters = JSON.parse(JSON.stringify(gameState.placedCharacters)).map((char: PlacedCharacter) => {
+      const charData = getCharacter(char.characterId);
+      return {
+        ...char,
+        actionIndex: 0,
+        currentHealth: charData ? charData.health : char.currentHealth,
+        dead: false,
+        active: true,
+      };
+    });
+    testState.gameStatus = 'running';
+
+    setGameState(testState);
+    setCurrentPuzzle(testPuzzle);
+    setTestMode('characters');
+    setTestTurnsRemaining(5);
+    setIsSimulating(true);
+    setSelectedCharacterId(null);
+  };
+
   // Show editor link in development mode
   const isDev = import.meta.env.DEV;
 
@@ -274,6 +377,10 @@ export const Game: React.FC = () => {
               onReset={handleReset}
               onWipe={handleWipe}
               onStep={handleStep}
+              onTestEnemies={handleTestEnemies}
+              onTestCharacters={handleTestCharacters}
+              testMode={testMode}
+              testTurnsRemaining={testTurnsRemaining}
             />
 
             {/* Game Status */}

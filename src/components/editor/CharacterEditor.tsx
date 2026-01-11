@@ -427,11 +427,7 @@ export const CharacterEditor: React.FC = () => {
                         <button
                           onClick={() => {
                             const steps = editing.tooltipSteps || [];
-                            if (steps.length === 0) {
-                              updateCharacter({ tooltipSteps: ['This Character:'] });
-                            } else {
-                              updateCharacter({ tooltipSteps: [...steps, ''] });
-                            }
+                            updateCharacter({ tooltipSteps: [...steps, ''] });
                           }}
                           className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
                         >

@@ -339,11 +339,7 @@ export const EnemyEditor: React.FC = () => {
                         <button
                           onClick={() => {
                             const steps = editing.tooltipSteps || [];
-                            if (steps.length === 0) {
-                              updateEnemy({ tooltipSteps: ['This Enemy:'] });
-                            } else {
-                              updateEnemy({ tooltipSteps: [...steps, ''] });
-                            }
+                            updateEnemy({ tooltipSteps: [...steps, ''] });
                           }}
                           className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
                         >
