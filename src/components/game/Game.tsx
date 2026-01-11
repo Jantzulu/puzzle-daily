@@ -238,6 +238,7 @@ export const Game: React.FC = () => {
     const testState = initializeGameState(testPuzzle);
     testState.placedCharacters = []; // Remove all characters
     testState.gameStatus = 'running';
+    testState.testMode = true; // Skip win/lose condition checks
 
     setGameState(testState);
     setCurrentPuzzle(testPuzzle);
@@ -276,6 +277,7 @@ export const Game: React.FC = () => {
       };
     });
     testState.gameStatus = 'running';
+    testState.testMode = true; // Skip win/lose condition checks
 
     setGameState(testState);
     setCurrentPuzzle(testPuzzle);

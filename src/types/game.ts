@@ -394,6 +394,9 @@ export interface GameState {
 
   // Custom tile behavior runtime state
   tileStates?: Map<string, TileRuntimeState>;  // Key: "x,y"
+
+  // Test mode - when true, skip win/lose condition checks
+  testMode?: boolean;
 }
 
 export interface PlayerProgress {

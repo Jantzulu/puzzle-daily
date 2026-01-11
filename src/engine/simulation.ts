@@ -497,24 +497,26 @@ export function executeTurn(gameState: GameState): GameState {
   // Process persistent area effects
   processPersistentAreaEffects(gameState);
 
-  // Check win/lose conditions
-  checkGameConditions(gameState);
+  // Check win/lose conditions (skip in test mode)
+  if (!gameState.testMode) {
+    checkGameConditions(gameState);
 
-  // Check if we've exceeded the turn limit
-  const maxTurns = gameState.puzzle.maxTurns || 1000; // Default to 1000 if not specified
-  if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running') {
-    gameState.gameStatus = 'defeat';
-    return gameState;
-  }
-
-  // Check if all characters are inactive
-  const hasActiveCharacters = gameState.placedCharacters.some((c) => c.active && !c.dead);
-  if (!hasActiveCharacters && gameState.gameStatus === 'running') {
-    // All characters done, check if we won
-    if (checkVictoryConditions(gameState)) {
-      gameState.gameStatus = 'victory';
-    } else {
+    // Check if we've exceeded the turn limit
+    const maxTurns = gameState.puzzle.maxTurns || 1000; // Default to 1000 if not specified
+    if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running') {
       gameState.gameStatus = 'defeat';
+      return gameState;
+    }
+
+    // Check if all characters are inactive
+    const hasActiveCharacters = gameState.placedCharacters.some((c) => c.active && !c.dead);
+    if (!hasActiveCharacters && gameState.gameStatus === 'running') {
+      // All characters done, check if we won
+      if (checkVictoryConditions(gameState)) {
+        gameState.gameStatus = 'victory';
+      } else {
+        gameState.gameStatus = 'defeat';
+      }
     }
   }
 

@@ -1245,6 +1245,7 @@ export const MapEditor: React.FC = () => {
     const testState = initializeGameState(testPuzzle);
     testState.placedCharacters = []; // Remove all characters
     testState.gameStatus = 'running';
+    testState.testMode = true; // Skip win/lose condition checks
 
     setGameState(testState);
     setTestMode('enemies');
@@ -1284,6 +1285,7 @@ export const MapEditor: React.FC = () => {
       };
     });
     testState.gameStatus = 'running';
+    testState.testMode = true; // Skip win/lose condition checks
 
     setGameState(testState);
     setTestMode('characters');
