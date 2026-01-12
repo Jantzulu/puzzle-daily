@@ -60,10 +60,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 )}
               </div>
 
-              {/* Name */}
-              <span className="text-xs font-medium text-gray-200 mt-1 text-center max-w-[80px]">
-                {character.name}
-              </span>
+              {/* Name and Title */}
+              <div className="mt-1 text-center max-w-[100px]">
+                <span className="text-xs font-medium text-gray-200">
+                  {character.name}
+                </span>
+                {character.title && (
+                  <span className="text-xs text-gray-400 italic block">
+                    {character.title}
+                  </span>
+                )}
+              </div>
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (

@@ -183,6 +183,7 @@ export interface CharacterAction {
 export interface Character {
   id: string;
   name: string;
+  title?: string; // Optional title displayed after name in italics (e.g., "the Brave")
   spriteId: string;
   description: string;
   health: number;
@@ -201,6 +202,7 @@ export interface Character {
 export interface Enemy {
   id: string;
   name: string;
+  title?: string; // Optional title displayed after name in italics (e.g., "the Terrible")
   spriteId: string;
   health: number;
   attackDamage: number;

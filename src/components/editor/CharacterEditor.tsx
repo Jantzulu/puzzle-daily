@@ -317,6 +317,17 @@ export const CharacterEditor: React.FC = () => {
                         />
                       </div>
                       <div>
+                        <label className="block text-sm mb-1">Title <span className="text-gray-400 font-normal">(optional)</span></label>
+                        <input
+                          type="text"
+                          value={editing.title || ''}
+                          onChange={(e) => updateCharacter({ title: e.target.value || undefined })}
+                          placeholder="e.g., the Brave"
+                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                        />
+                        <p className="text-xs text-gray-400 mt-1">Displayed after name in italics</p>
+                      </div>
+                      <div>
                         <label className="block text-sm mb-1">Description</label>
                         <textarea
                           value={editing.description}

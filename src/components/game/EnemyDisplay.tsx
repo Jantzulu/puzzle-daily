@@ -70,9 +70,17 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
                   </span>
                 )}
               </div>
-              <span className="text-xs font-medium text-red-400 mt-1 text-center max-w-[80px]">
-                {enemyData.name}
-              </span>
+              {/* Name and Title */}
+              <div className="mt-1 text-center max-w-[100px]">
+                <span className="text-xs font-medium text-red-400">
+                  {enemyData.name}
+                </span>
+                {enemyData.title && (
+                  <span className="text-xs text-gray-400 italic block">
+                    {enemyData.title}
+                  </span>
+                )}
+              </div>
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
