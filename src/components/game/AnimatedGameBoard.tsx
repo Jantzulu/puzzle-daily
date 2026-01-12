@@ -1992,6 +1992,9 @@ function drawEnemy(
   // Use undefined direction before game starts to force 'default' directional sprite
   const directionToUse = gameStarted ? facing : undefined;
 
+  // Determine if enemy is casting (only if not moving, since moving takes priority)
+  const isCasting = !isMoving && !!enemy.isCasting && !!enemy.castingEndTime && enemy.castingEndTime > now;
+
   // Check if this enemy has a custom sprite
   const enemyData = getEnemy(enemy.enemyId) as CustomEnemy | undefined;
   const hasCustomSprite = enemyData && 'customSprite' in enemyData && enemyData.customSprite;
@@ -1999,7 +2002,7 @@ function drawEnemy(
   if (hasCustomSprite && enemyData.customSprite) {
     if (!enemy.dead) {
       // Living enemy - draw normal sprite
-      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now);
+      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
     } else {
       // Dead enemy - use death sprite (animates then stays on final frame as corpse)
       const hasDeathSprite = hasDeathAnimation(enemyData.customSprite);
@@ -2135,19 +2138,22 @@ function drawCharacter(
   // Use undefined direction before game starts to force 'default' directional sprite
   const directionToUse = gameStarted ? facing : undefined;
 
+  // Determine if character is casting (only if not moving, since moving takes priority)
+  const isCasting = !isMoving && !!character.isCasting && !!character.castingEndTime && character.castingEndTime > now;
+
   // Check if this character has a custom sprite
   const charData = getCharacter(character.characterId) as CustomCharacter | undefined;
   const hasCustomSprite = charData && 'customSprite' in charData && charData.customSprite;
 
   if (hasCustomSprite && charData.customSprite) {
     if (!character.dead) {
-      // Living character - draw custom sprite with directional support and idle/moving state
+      // Living character - draw custom sprite with directional support and idle/moving/casting state
       ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
       ctx.shadowBlur = 4;
       ctx.shadowOffsetX = 2;
       ctx.shadowOffsetY = 2;
 
-      drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now);
+      drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
 
       ctx.shadowColor = 'transparent';
       ctx.shadowBlur = 0;

@@ -2077,10 +2077,18 @@ function drawSpriteConfig(
   centerY: number,
   tileSize: number,
   isMoving: boolean = false,
-  now: number = Date.now()
+  now: number = Date.now(),
+  isCasting: boolean = false
 ) {
+  // Priority: moving > casting > idle
   // Check for sprite sheet first (highest priority for animation)
-  const spriteSheet = isMoving ? config.movingSpriteSheet : config.idleSpriteSheet;
+  let spriteSheet = isMoving ? config.movingSpriteSheet : null;
+  if (!spriteSheet && isCasting && !isMoving) {
+    spriteSheet = config.castingSpriteSheet;
+  }
+  if (!spriteSheet) {
+    spriteSheet = config.idleSpriteSheet;
+  }
   if (spriteSheet) {
     const maxSize = (config.size || 0.6) * tileSize;
     drawSpriteSheet(ctx, spriteSheet, centerX, centerY, maxSize, maxSize, now);
@@ -2088,10 +2096,15 @@ function drawSpriteConfig(
   }
 
   // Check for uploaded image (PNG/GIF)
-  // Use moving sprite if moving and available, otherwise fall back to idle
-  const imageToUse = isMoving && config.movingImageData
-    ? config.movingImageData
-    : (config.idleImageData || config.imageData);
+  // Priority: moving > casting > idle
+  let imageToUse: string | undefined;
+  if (isMoving && config.movingImageData) {
+    imageToUse = config.movingImageData;
+  } else if (isCasting && !isMoving && config.castingImageData) {
+    imageToUse = config.castingImageData;
+  } else {
+    imageToUse = config.idleImageData || config.imageData;
+  }
 
   if (imageToUse) {
     // Use cached image with load notification for GIF animation support
@@ -2184,7 +2197,8 @@ export function drawSprite(
   tileSize: number,
   direction?: Direction,
   isMoving: boolean = false,
-  now: number = Date.now()
+  now: number = Date.now(),
+  isCasting: boolean = false
 ) {
   // Check if we should use directional sprites
   if (sprite.useDirectional && sprite.directionalSprites) {
@@ -2193,13 +2207,20 @@ export function drawSprite(
     const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
 
     if (dirConfig) {
-      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now);
+      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now, isCasting);
       return;
     }
   }
 
+  // Priority: moving > casting > idle
   // Check for sprite sheet first (simple mode)
-  const simpleSpriteSheet = isMoving ? sprite.movingSpriteSheet : sprite.idleSpriteSheet;
+  let simpleSpriteSheet = isMoving ? sprite.movingSpriteSheet : null;
+  if (!simpleSpriteSheet && isCasting && !isMoving) {
+    simpleSpriteSheet = sprite.castingSpriteSheet;
+  }
+  if (!simpleSpriteSheet) {
+    simpleSpriteSheet = sprite.idleSpriteSheet;
+  }
   if (simpleSpriteSheet) {
     const maxSize = (sprite.size || 0.6) * tileSize;
     drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, maxSize, maxSize, now);
@@ -2207,10 +2228,15 @@ export function drawSprite(
   }
 
   // Check for simple image sprite (PNG/GIF)
-  // Use moving sprite if moving and available, otherwise fall back to idle
-  const spriteImageToUse = isMoving && sprite.movingImageData
-    ? sprite.movingImageData
-    : (sprite.idleImageData || sprite.imageData);
+  // Priority: moving > casting > idle
+  let spriteImageToUse: string | undefined;
+  if (isMoving && sprite.movingImageData) {
+    spriteImageToUse = sprite.movingImageData;
+  } else if (isCasting && !isMoving && sprite.castingImageData) {
+    spriteImageToUse = sprite.castingImageData;
+  } else {
+    spriteImageToUse = sprite.idleImageData || sprite.imageData;
+  }
 
   if (spriteImageToUse) {
     // Use cached image with load notification for GIF animation support

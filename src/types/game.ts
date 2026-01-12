@@ -240,6 +240,8 @@ export interface PlacedEnemy {
   teleportFromY?: number;
   teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
+  isCasting?: boolean; // True when casting a spell (for casting sprite state)
+  castingEndTime?: number; // Timestamp when casting state should end
 }
 
 export interface PlacedObject {
@@ -362,6 +364,8 @@ export interface PlacedCharacter {
   teleportFromY?: number;
   teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
+  isCasting?: boolean; // True when casting a spell (for casting sprite state)
+  castingEndTime?: number; // Timestamp when casting state should end
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
