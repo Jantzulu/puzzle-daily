@@ -1007,7 +1007,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         imageData,
         frameCount: 4,
         frameRate: 10,
-        loop: true, // Casting animation can loop
+        loop: false, // Casting animation plays once by default
       };
 
       if (spriteMode === 'directional') {

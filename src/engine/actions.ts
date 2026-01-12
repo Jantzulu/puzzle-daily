@@ -128,7 +128,7 @@ export function executeAction(
     case ActionType.SPELL:
       // Set casting state for visual feedback
       updatedCharacter.isCasting = true;
-      updatedCharacter.castingEndTime = Date.now() + 400; // 400ms casting duration
+      updatedCharacter.castingEndTime = Date.now() + 800; // 800ms casting duration
       executeSpell(updatedCharacter, action, gameState);
       return updatedCharacter;
 
