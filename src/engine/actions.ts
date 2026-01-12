@@ -79,9 +79,6 @@ export function executeAction(
 ): PlacedCharacter {
   const updatedCharacter = { ...character };
 
-  // Debug: Log action details
-  console.log('[executeAction] Action:', action.type, 'turnDegrees:', action.turnDegrees, 'onWallCollision:', action.onWallCollision);
-
   // Normalize action type - handle both enum keys and values
   const normalizedType = normalizeActionType(action.type);
 
@@ -239,7 +236,6 @@ function processDamageBehavior(
 
   const updatedChar = { ...character };
   updatedChar.currentHealth -= damage;
-  console.log(`[TILE DAMAGE] ${character.characterId} took ${damage} damage from tile at (${tile.x},${tile.y}). HP: ${updatedChar.currentHealth}`);
 
   if (updatedChar.currentHealth <= 0) {
     updatedChar.dead = true;
@@ -293,11 +289,8 @@ function processTeleportBehavior(
   }
 
   if (!destinationTile) {
-    console.log(`[TELEPORT] No destination found for group ${groupId}`);
     return character;
   }
-
-  console.log(`[TELEPORT] ${character.characterId} teleported from (${tile.x},${tile.y}) to (${destinationTile.x},${destinationTile.y})`);
 
   return {
     ...character,
@@ -373,8 +366,6 @@ function processIceBehavior(
     updatedChar.y = nextY;
     slideCount++;
 
-    console.log(`[ICE] ${character.characterId} sliding to (${nextX},${nextY}) (slide ${slideCount})`);
-
     // Check if the new tile is NOT ice - stop sliding
     const newTile = gameState.puzzle.tiles[nextY][nextX];
     if (newTile?.customTileTypeId) {
@@ -424,7 +415,6 @@ function processPressurePlateBehavior(
           if (targetTile) {
             // Toggle between wall and empty
             targetTile.type = targetTile.type === TileType.WALL ? TileType.EMPTY : TileType.WALL;
-            console.log(`[PRESSURE PLATE] Toggled wall at (${effect.targetX},${effect.targetY}) to ${targetTile.type}`);
           }
         }
         break;
@@ -441,7 +431,6 @@ function processPressurePlateBehavior(
             if (enemyData) {
               enemy.currentHealth = enemyData.health;
             }
-            console.log(`[PRESSURE PLATE] Spawned enemy at (${effect.targetX},${effect.targetY})`);
           }
         }
         break;
@@ -453,15 +442,12 @@ function processPressurePlateBehavior(
           );
           if (enemy) {
             enemy.dead = true;
-            console.log(`[PRESSURE PLATE] Despawned enemy at (${effect.targetX},${effect.targetY})`);
           }
         }
         break;
 
       case 'trigger_teleport':
         // Could trigger a teleport effect at target location
-        // For now, just log
-        console.log(`[PRESSURE PLATE] Trigger teleport at (${effect.targetX},${effect.targetY})`);
         break;
     }
   }
@@ -750,8 +736,6 @@ function moveCharacter(
       if (charData && enemyDataForCombat) {
         // Determine who attacks first based on priority
         const enemyHasPriority = enemyDataForCombat.hasMeleePriority === true;
-
-        console.log(`[COMBAT] ${updatedChar.characterId} vs ${enemyAtTarget.enemyId} | Enemy priority: ${enemyHasPriority} | Char HP: ${updatedChar.currentHealth}, ATK: ${charData.attackDamage} | Enemy HP: ${enemyAtTarget.currentHealth}, ATK: ${enemyDataForCombat.attackDamage}`);
 
         if (enemyHasPriority) {
           // Enemy attacks first (enemy has priority)
@@ -1103,9 +1087,7 @@ function executeSpell(
 
     if (nearestCharacters.length > 0) {
       castDirections = nearestCharacters.map(target => target.direction);
-      console.log('[executeSpell] Enemy auto-targeting', nearestCharacters.length, 'characters in', targetMode, 'mode');
     } else {
-      console.log('[executeSpell] Enemy auto-targeting enabled but no characters found in', targetMode, 'mode');
       return;
     }
   } else if (action.autoTargetNearestEnemy) {
@@ -1116,9 +1098,7 @@ function executeSpell(
 
     if (nearestEnemies.length > 0) {
       castDirections = nearestEnemies.map(target => target.direction);
-      console.log('[executeSpell] Auto-targeting', nearestEnemies.length, 'enemies in', targetMode, 'mode');
     } else {
-      console.log('[executeSpell] Auto-targeting enabled but no enemies found in', targetMode, 'mode');
       return;
     }
   } else if (action.useRelativeOverride && action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0) {
@@ -1331,7 +1311,6 @@ function executeMeleeAttack(
 
   // Handle range 0 as self-target
   if (meleeRange === 0) {
-    console.log('[executeMeleeAttack] Range 0 attack from', character.characterId, 'at', character.x, character.y, 'damage:', damage, 'isEnemyCaster:', isEnemyCaster);
     // Show attack sprite on caster's tile if not skipped
     if (attackSprite && !skipCasterTile) {
       spawnParticle(character.x, character.y, attackSprite, attackData.effectDuration || 300, gameState, character.facing);
@@ -1344,12 +1323,7 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        console.log('[executeMeleeAttack] HIT character', targetChar.characterId, 'HP before:', targetChar.currentHealth, '-> after:', targetChar.currentHealth - damage);
         applyDamageToEntity(targetChar, damage);
-
-        if (targetChar.dead) {
-          console.log('[executeMeleeAttack] Character', targetChar.characterId, 'KILLED');
-        }
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
@@ -1359,8 +1333,6 @@ function executeMeleeAttack(
         if (attackData.hitEffectSprite) {
           spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
-      } else {
-        console.log('[executeMeleeAttack] No character found at caster tile');
       }
     } else {
       // Character attacking enemies on same tile
@@ -1369,12 +1341,7 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        console.log('[executeMeleeAttack] HIT enemy', enemy.enemyId, 'HP before:', enemy.currentHealth, '-> after:', enemy.currentHealth - damage);
         applyDamageToEntity(enemy, damage);
-
-        if (enemy.dead) {
-          console.log('[executeMeleeAttack] Enemy', enemy.enemyId, 'KILLED');
-        }
 
         // Apply status effect if spell has one configured
         if (spell && !enemy.dead) {
@@ -1384,8 +1351,6 @@ function executeMeleeAttack(
         if (attackData.hitEffectSprite) {
           spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
-      } else {
-        console.log('[executeMeleeAttack] No enemy found at caster tile');
       }
     }
     return;
@@ -1413,12 +1378,7 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        console.log('[executeMeleeAttack] Enemy HIT character', targetChar.characterId, 'HP:', targetChar.currentHealth, '->', targetChar.currentHealth - damage);
         applyDamageToEntity(targetChar, damage);
-
-        if (targetChar.dead) {
-          console.log('[executeMeleeAttack] Character', targetChar.characterId, 'KILLED by enemy');
-        }
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
@@ -1537,11 +1497,7 @@ export function executeAOEAttack(
           );
 
           if (distance <= radius) {
-            console.log('[executeAOEAttack] Enemy AOE HIT character', target.characterId, 'HP:', target.currentHealth, '->', target.currentHealth - damage);
             applyDamageToEntity(target, damage);
-            if (target.dead) {
-              console.log('[executeAOEAttack] Character', target.characterId, 'KILLED by enemy AOE');
-            }
 
             // Apply status effect if spell has one configured
             if (spell && !target.dead) {
@@ -1680,7 +1636,6 @@ function applyStatusEffectFromSpell(
   // Check apply chance
   const applyChance = effectConfig.applyChance ?? 1;
   if (Math.random() > applyChance) {
-    console.log(`[STATUS] Effect ${effectAsset.name} failed to apply (chance roll: ${(applyChance * 100).toFixed(0)}%)`);
     return;
   }
 
@@ -1702,7 +1657,6 @@ function applyStatusEffectFromSpell(
       case 'refresh':
         // Just refresh duration
         existingEffect.duration = duration;
-        console.log(`[STATUS] Refreshed ${effectAsset.name} duration to ${duration}`);
         return;
 
       case 'stack':
@@ -1713,7 +1667,6 @@ function applyStatusEffectFromSpell(
           maxStacks
         );
         existingEffect.duration = duration;
-        console.log(`[STATUS] Stacked ${effectAsset.name} to ${existingEffect.currentStacks}/${maxStacks}`);
         return;
 
       case 'highest':
@@ -1721,7 +1674,6 @@ function applyStatusEffectFromSpell(
         if (value !== undefined && value > (existingEffect.value ?? 0)) {
           existingEffect.value = value;
           existingEffect.duration = duration;
-          console.log(`[STATUS] Upgraded ${effectAsset.name} value to ${value}`);
         }
         return;
 
@@ -1747,7 +1699,6 @@ function applyStatusEffectFromSpell(
   };
 
   target.statusEffects.push(newEffect);
-  console.log(`[STATUS] Applied ${effectAsset.name} (${duration} turns) to target`);
 }
 
 /**
@@ -1979,11 +1930,7 @@ export function evaluateTriggers(
         gameState
       );
 
-      console.log(`[TRIGGER-CHECK] ${entityType} ${character.characterId} | event: ${action.trigger.event} | triggered: ${triggered}`);
-
       if (triggered) {
-        console.log(`[TRIGGER-FIRE] ${entityType} ${character.characterId} executing ${action.type} (spellId: ${action.spellId || 'none'})`);
-
         // For proximity-based triggers, automatically enable targeting toward the trigger source
         // This ensures spells fire at the adjacent/nearby entity that triggered the event
         let actionToExecute = action;
@@ -1993,13 +1940,11 @@ export function evaluateTriggers(
           // Enemy triggered by character proximity - auto-target nearest character
           if (!action.autoTargetNearestCharacter && !action.autoTargetNearestEnemy) {
             actionToExecute = { ...action, autoTargetNearestCharacter: true };
-            console.log(`[TRIGGER-FIRE] Auto-targeting nearest character for ${event} trigger`);
           }
         } else if (event === 'enemy_adjacent' || event === 'enemy_in_range' || event === 'contact_with_enemy') {
           // Character triggered by enemy proximity - auto-target nearest enemy
           if (!action.autoTargetNearestEnemy && !action.autoTargetNearestCharacter) {
             actionToExecute = { ...action, autoTargetNearestEnemy: true };
-            console.log(`[TRIGGER-FIRE] Auto-targeting nearest enemy for ${event} trigger`);
           }
         }
 

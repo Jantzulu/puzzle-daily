@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import type { StatusEffectAsset, SpriteReference } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
-import { saveStatusEffectAsset, type CustomSprite } from '../../utils/assetStorage';
+import { saveStatusEffectAsset } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
-import { SpriteEditor } from './SpriteEditor';
+import { SimpleIconEditor } from './SimpleIconEditor';
 
 interface StatusEffectEditorProps {
   effect?: StatusEffectAsset;
@@ -11,36 +11,16 @@ interface StatusEffectEditorProps {
   onCancel: () => void;
 }
 
-// Create a default CustomSprite for new status effects
-const createDefaultSprite = (): CustomSprite => ({
-  id: `icon_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-  name: 'Status Icon',
-  type: 'simple',
-  shape: 'circle',
-  primaryColor: '#ffffff',
-  createdAt: new Date().toISOString(),
-});
-
 const defaultIconSprite: SpriteReference = {
   type: 'inline',
-  spriteData: createDefaultSprite(),
-};
-
-// Helper to get CustomSprite from SpriteReference
-const getSpriteData = (ref: SpriteReference): CustomSprite => {
-  if (ref.spriteData && typeof ref.spriteData === 'object') {
-    // Ensure it has required fields
-    return {
-      id: ref.spriteData.id || `icon_${Date.now()}`,
-      name: ref.spriteData.name || 'Status Icon',
-      type: ref.spriteData.type || 'simple',
-      shape: ref.spriteData.shape || 'circle',
-      primaryColor: ref.spriteData.primaryColor || '#ffffff',
-      createdAt: ref.spriteData.createdAt || new Date().toISOString(),
-      ...ref.spriteData,
-    };
-  }
-  return createDefaultSprite();
+  spriteData: {
+    id: `icon_${Date.now()}`,
+    name: 'Status Icon',
+    type: 'simple',
+    shape: 'circle',
+    primaryColor: '#ffffff',
+    createdAt: new Date().toISOString(),
+  },
 };
 
 export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
@@ -445,15 +425,12 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       {/* Icon Editor Modal */}
       {editingIcon && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-2xl max-h-[90vh] overflow-auto">
-            <h3 className="text-lg font-bold mb-4">Edit Icon Sprite</h3>
-            <SpriteEditor
-              sprite={getSpriteData(iconSprite)}
-              onChange={(sprite: CustomSprite) => setIconSprite({
-                type: 'inline',
-                spriteData: sprite,
-              })}
-              size={32}
+          <div className="bg-gray-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
+            <h3 className="text-lg font-bold mb-4">Edit Status Effect Icon</h3>
+            <SimpleIconEditor
+              sprite={iconSprite}
+              onChange={setIconSprite}
+              size={96}
             />
             <div className="flex justify-end mt-4">
               <button

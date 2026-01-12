@@ -142,7 +142,6 @@ function processEntityStatusEffects(
         const damage = effect.value ?? effectAsset?.defaultValue ?? 1;
         const stacks = effect.currentStacks ?? 1;
         updatedEntity.currentHealth -= damage * stacks;
-        console.log(`[STATUS] ${effect.type} dealt ${damage * stacks} damage to entity`);
 
         if (updatedEntity.currentHealth <= 0) {
           updatedEntity.dead = true;
@@ -157,7 +156,6 @@ function processEntityStatusEffects(
           updatedEntity.currentHealth + heal,
           maxHealth
         );
-        console.log(`[STATUS] Regen healed ${heal} HP`);
         break;
 
       // Action-preventing effects are checked in canEntityAct()
@@ -167,12 +165,10 @@ function processEntityStatusEffects(
     // Decrement duration at end of turn only
     if (timing === 'end') {
       effect.duration--;
-      console.log(`[STATUS] ${effect.type} duration now ${effect.duration}`);
 
       // Mark for removal if expired
       if (effect.duration <= 0) {
         effectsToRemove.push(effect.id);
-        console.log(`[STATUS] ${effect.type} expired`);
       }
     }
   }
@@ -252,7 +248,6 @@ export function canEntityMove(entity: PlacedCharacter | PlacedEnemy): boolean {
 
       // Skip odd-numbered movement actions (1, 3, 5, ...)
       if (counter % 2 === 1) {
-        console.log(`[STATUS] Slow effect: skipping movement (counter: ${counter})`);
         return false;
       }
     }
@@ -272,12 +267,10 @@ export function wakeFromSleep(entity: PlacedCharacter | PlacedEnemy): void {
   if (sleepEffects.length > 0) {
     entity.statusEffects = entity.statusEffects.filter(e => {
       if (e.type === StatusEffectType.SLEEP) {
-        console.log('[STATUS] Entity woke from sleep due to damage');
         return false;
       }
       const effectAsset = loadStatusEffectAsset(e.statusAssetId);
       if (effectAsset?.removedOnDamage) {
-        console.log(`[STATUS] Effect ${e.type} removed due to damage`);
         return false;
       }
       return true;
@@ -310,7 +303,6 @@ function applyStatusEffectFromProjectile(
   // Check apply chance
   const applyChance = effectConfig.applyChance ?? 1;
   if (Math.random() > applyChance) {
-    console.log(`[STATUS] Effect ${effectAsset.name} failed to apply (chance roll: ${(applyChance * 100).toFixed(0)}%)`);
     return;
   }
 
@@ -331,7 +323,6 @@ function applyStatusEffectFromProjectile(
     switch (effectAsset.stackingBehavior) {
       case 'refresh':
         existingEffect.duration = duration;
-        console.log(`[STATUS] Refreshed ${effectAsset.name} duration to ${duration}`);
         return;
 
       case 'stack':
@@ -341,14 +332,12 @@ function applyStatusEffectFromProjectile(
           maxStacks
         );
         existingEffect.duration = duration;
-        console.log(`[STATUS] Stacked ${effectAsset.name} to ${existingEffect.currentStacks}/${maxStacks}`);
         return;
 
       case 'highest':
         if (value !== undefined && value > (existingEffect.value ?? 0)) {
           existingEffect.value = value;
           existingEffect.duration = duration;
-          console.log(`[STATUS] Upgraded ${effectAsset.name} value to ${value}`);
         }
         return;
 
@@ -373,7 +362,6 @@ function applyStatusEffectFromProjectile(
   };
 
   target.statusEffects.push(newEffect);
-  console.log(`[STATUS] Applied ${effectAsset.name} (${duration} turns) to target from projectile`);
 }
 
 /**
@@ -769,12 +757,6 @@ export function executeTurn(gameState: GameState): GameState {
   // 2. Characters (normal priority)
   // 3. Enemies without hasMeleePriority
 
-  const priorityEnemyCount = pendingEnemyTriggers.filter(e => getEnemy(e.enemyId)?.hasMeleePriority).length;
-  const nonPriorityEnemyCount = pendingEnemyTriggers.length - priorityEnemyCount;
-
-  // Single condensed log per turn
-  console.log(`[TURN ${gameState.currentTurn}] Triggers: ${priorityEnemyCount} priority enemies → ${pendingCharacterTriggers.length} chars → ${nonPriorityEnemyCount} normal enemies`);
-
   // Execute priority enemies first
   for (const enemy of pendingEnemyTriggers) {
     const enemyData = getEnemy(enemy.enemyId);
@@ -800,22 +782,12 @@ export function executeTurn(gameState: GameState): GameState {
     }
   }
 
-  // Log state after priority enemies
-  const charHPAfterPriority = pendingCharacterTriggers.map(c => `${c.characterId}:${c.currentHealth}HP${c.dead ? '(dead)' : ''}`).join(', ');
-  const enemyHPAfterPriority = pendingEnemyTriggers.map(e => `${e.enemyId}:${e.currentHealth}HP${e.dead ? '(dead)' : ''}`).join(', ');
-  console.log(`[AFTER PRIORITY] Chars: ${charHPAfterPriority} | Enemies: ${enemyHPAfterPriority}`);
-
   // Execute character triggers (normal priority)
   for (const character of pendingCharacterTriggers) {
     if (!character.dead) {
       evaluateTriggers(character, gameState);
     }
   }
-
-  // Log state after character triggers
-  const charHPAfterChars = pendingCharacterTriggers.map(c => `${c.characterId}:${c.currentHealth}HP${c.dead ? '(dead)' : ''}`).join(', ');
-  const enemyHPAfterChars = pendingEnemyTriggers.map(e => `${e.enemyId}:${e.currentHealth}HP${e.dead ? '(dead)' : ''}`).join(', ');
-  console.log(`[AFTER CHARS] Chars: ${charHPAfterChars} | Enemies: ${enemyHPAfterChars}`);
 
   // Execute non-priority enemy triggers
   for (const enemy of pendingEnemyTriggers) {
