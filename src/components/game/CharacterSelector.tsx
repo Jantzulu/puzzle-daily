@@ -17,10 +17,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 }) => {
   return (
     <div className="bg-gray-800 p-4 rounded">
-      <div className="flex items-center justify-between mb-3">
+      <div className="flex items-center justify-center gap-2 mb-3">
         <h3 className="text-lg font-bold">Available Characters</h3>
         <span className="text-sm text-gray-400">
-          {placedCharacterIds.length} / {availableCharacterIds.length} placed
+          ({placedCharacterIds.length} Placed)
         </span>
       </div>
 
@@ -66,9 +66,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className="text-xs text-gray-400 italic block">
-                    {character.title}
-                  </span>
+                  <span className="text-xs text-gray-400 italic"> {character.title}</span>
                 )}
               </div>
 
