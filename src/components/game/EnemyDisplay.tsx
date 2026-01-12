@@ -30,7 +30,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
     return (
       <div className="bg-gray-800 p-4 rounded">
         <h3 className="text-lg font-bold mb-2">Enemies</h3>
-        <p className="text-sm text-gray-400">No enemies remaining</p>
+        <p className="text-sm text-gray-400 text-center">No enemies remaining</p>
       </div>
     );
   }
@@ -44,7 +44,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 justify-center">
         {uniqueEnemies.map(({ enemy, count }) => {
           const enemyData = getEnemy(enemy.enemyId);
           if (!enemyData) return null;
@@ -55,7 +55,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
             <div
               key={enemy.enemyId}
               className="p-2 bg-gray-700 rounded flex flex-col items-center"
-              title={hasTooltipSteps ? enemyData.tooltipSteps!.join('\n') : enemyData.name}
             >
               <div className="relative">
                 <SpriteThumbnail sprite={enemyData.customSprite} size={40} />
@@ -65,9 +64,18 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
                   </span>
                 )}
               </div>
-              <span className="text-xs font-medium text-red-400 mt-1 text-center max-w-[50px] truncate">
+              <span className="text-xs font-medium text-red-400 mt-1 text-center max-w-[80px]">
                 {enemyData.name}
               </span>
+
+              {/* Tooltip steps - always visible */}
+              {hasTooltipSteps && (
+                <div className="mt-1 text-xs text-gray-400 text-center max-w-[100px]">
+                  {enemyData.tooltipSteps!.map((step, idx) => (
+                    <div key={idx}>{step}</div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}

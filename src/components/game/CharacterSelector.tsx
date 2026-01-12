@@ -24,7 +24,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2 justify-center">
         {availableCharacterIds.map((charId) => {
           const character = getCharacter(charId);
           if (!character) return null;
@@ -44,7 +44,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   ? 'bg-green-600 ring-2 ring-green-400'
                   : 'bg-gray-700 hover:bg-gray-600'
               }`}
-              title={hasTooltipSteps ? character.tooltipSteps!.join('\n') : character.name}
             >
               {/* Sprite */}
               <div className="relative flex-shrink-0">
@@ -57,9 +56,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* Name */}
-              <span className="text-xs font-medium text-gray-200 mt-1 text-center max-w-[60px] truncate">
+              <span className="text-xs font-medium text-gray-200 mt-1 text-center max-w-[80px]">
                 {character.name}
               </span>
+
+              {/* Tooltip steps - always visible */}
+              {hasTooltipSteps && (
+                <div className="mt-1 text-xs text-gray-400 text-center max-w-[100px]">
+                  {character.tooltipSteps!.map((step, idx) => (
+                    <div key={idx}>{step}</div>
+                  ))}
+                </div>
+              )}
             </div>
           );
         })}
