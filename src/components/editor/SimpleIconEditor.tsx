@@ -200,14 +200,46 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
       return;
     }
 
+    // Load image and resize to max 64x64 for status effect icons
+    const img = new Image();
+    img.onload = () => {
+      // Max size for status effect icons (they display at 8-16px anyway)
+      const maxSize = 64;
+      let width = img.width;
+      let height = img.height;
+
+      // Scale down if larger than maxSize
+      if (width > maxSize || height > maxSize) {
+        if (width > height) {
+          height = Math.round((height / width) * maxSize);
+          width = maxSize;
+        } else {
+          width = Math.round((width / height) * maxSize);
+          height = maxSize;
+        }
+      }
+
+      // Create canvas and draw resized image
+      const canvas = document.createElement('canvas');
+      canvas.width = width;
+      canvas.height = height;
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.drawImage(img, 0, 0, width, height);
+        // Convert to PNG data URL (compressed)
+        const imageData = canvas.toDataURL('image/png', 0.8);
+        updateSpriteData({
+          type: 'image',
+          imageData,
+          idleImageData: imageData,
+        });
+      }
+    };
+
+    // Read the file and set as image source
     const reader = new FileReader();
     reader.onload = (event) => {
-      const imageData = event.target?.result as string;
-      updateSpriteData({
-        type: 'image',
-        imageData,
-        idleImageData: imageData,
-      });
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
