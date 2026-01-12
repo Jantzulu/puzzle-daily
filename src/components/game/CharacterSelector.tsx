@@ -45,9 +45,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : 'bg-gray-700 hover:bg-gray-600'
               }`}
             >
-              {/* Sprite */}
+              {/* Sprite with HP overlay */}
               <div className="relative flex-shrink-0">
                 <SpriteThumbnail sprite={character.customSprite} size={48} />
+                {/* HP display */}
+                <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-xs text-center text-green-400 font-medium px-1">
+                  HP: {character.health}
+                </div>
                 {isPlaced && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">
                     <span className="text-green-400 text-lg">✓</span>

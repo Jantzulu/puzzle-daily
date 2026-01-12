@@ -58,6 +58,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
             >
               <div className="relative">
                 <SpriteThumbnail sprite={enemyData.customSprite} size={40} />
+                {/* HP display */}
+                <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-xs text-center text-red-400 font-medium px-1">
+                  HP: {enemyData.health}
+                </div>
                 {count > 1 && (
                   <span className="absolute -top-1 -right-1 text-xs bg-red-900 text-red-300 px-1 py-0.5 rounded min-w-[18px] text-center">
                     {count}
