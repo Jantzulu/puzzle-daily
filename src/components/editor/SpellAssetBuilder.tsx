@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection } from '../../types/game';
+import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
-import { saveSpellAsset, getFolders } from '../../utils/assetStorage';
+import { saveSpellAsset, getFolders, getStatusEffectAssets } from '../../utils/assetStorage';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -1205,7 +1205,200 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               />
             )}
           </div>
+
+          {/* Status Effect Configuration */}
+          <StatusEffectConfig
+            editedSpell={editedSpell}
+            setEditedSpell={setEditedSpell}
+          />
         </div>
       </div>
+  );
+};
+
+// Status Effect Configuration Component
+interface StatusEffectConfigProps {
+  editedSpell: SpellAsset;
+  setEditedSpell: (spell: SpellAsset) => void;
+}
+
+const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, setEditedSpell }) => {
+  const [statusEffects, setStatusEffects] = useState<StatusEffectAsset[]>([]);
+  const [enableEffect, setEnableEffect] = useState(!!editedSpell.appliesStatusEffect);
+
+  useEffect(() => {
+    setStatusEffects(getStatusEffectAssets());
+  }, []);
+
+  const handleToggleEffect = (enabled: boolean) => {
+    setEnableEffect(enabled);
+    if (!enabled) {
+      // Remove the status effect config
+      const { appliesStatusEffect, ...rest } = editedSpell;
+      setEditedSpell(rest as SpellAsset);
+    } else {
+      // Initialize with first effect if available
+      if (statusEffects.length > 0) {
+        setEditedSpell({
+          ...editedSpell,
+          appliesStatusEffect: {
+            statusAssetId: statusEffects[0].id,
+          },
+        });
+      }
+    }
+  };
+
+  const handleEffectChange = (statusAssetId: string) => {
+    setEditedSpell({
+      ...editedSpell,
+      appliesStatusEffect: {
+        ...editedSpell.appliesStatusEffect,
+        statusAssetId,
+      },
+    });
+  };
+
+  const handleDurationOverride = (value: string) => {
+    const numValue = parseInt(value);
+    setEditedSpell({
+      ...editedSpell,
+      appliesStatusEffect: {
+        ...editedSpell.appliesStatusEffect!,
+        durationOverride: numValue > 0 ? numValue : undefined,
+      },
+    });
+  };
+
+  const handleValueOverride = (value: string) => {
+    const numValue = parseInt(value);
+    setEditedSpell({
+      ...editedSpell,
+      appliesStatusEffect: {
+        ...editedSpell.appliesStatusEffect!,
+        valueOverride: numValue > 0 ? numValue : undefined,
+      },
+    });
+  };
+
+  const handleChanceChange = (value: string) => {
+    const numValue = parseFloat(value) / 100;
+    setEditedSpell({
+      ...editedSpell,
+      appliesStatusEffect: {
+        ...editedSpell.appliesStatusEffect!,
+        applyChance: numValue >= 0 && numValue <= 1 ? numValue : undefined,
+      },
+    });
+  };
+
+  const selectedEffect = statusEffects.find(e => e.id === editedSpell.appliesStatusEffect?.statusAssetId);
+
+  return (
+    <div className="space-y-4">
+      <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Status Effect</h3>
+
+      <div>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input
+            type="checkbox"
+            checked={enableEffect}
+            onChange={(e) => handleToggleEffect(e.target.checked)}
+            className="w-4 h-4"
+          />
+          <span className="text-sm">Apply Status Effect on Hit</span>
+        </label>
+        <p className="text-xs text-gray-400 ml-6">When this spell hits a target, apply a status effect</p>
+      </div>
+
+      {enableEffect && (
+        <div className="space-y-4 pl-4 border-l-2 border-gray-700">
+          {statusEffects.length === 0 ? (
+            <div className="bg-gray-900 p-3 rounded text-sm text-gray-400">
+              No status effects defined. Create one in the Status Effect Library first.
+            </div>
+          ) : (
+            <>
+              {/* Effect Selection */}
+              <div>
+                <label className="block text-sm font-medium mb-1">Status Effect</label>
+                <select
+                  value={editedSpell.appliesStatusEffect?.statusAssetId || ''}
+                  onChange={(e) => handleEffectChange(e.target.value)}
+                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                >
+                  <option value="">Select an effect...</option>
+                  {statusEffects.map(effect => (
+                    <option key={effect.id} value={effect.id}>
+                      {effect.name} ({effect.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {selectedEffect && (
+                <>
+                  {/* Effect Preview */}
+                  <div className="bg-gray-900 p-3 rounded text-sm">
+                    <div className="font-medium">{selectedEffect.name}</div>
+                    <div className="text-gray-400 text-xs mt-1">{selectedEffect.description}</div>
+                    <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                      <span>Duration: {selectedEffect.defaultDuration} turns</span>
+                      {selectedEffect.defaultValue && <span>Value: {selectedEffect.defaultValue}/turn</span>}
+                      <span className="capitalize">{selectedEffect.stackingBehavior}</span>
+                    </div>
+                  </div>
+
+                  {/* Override Settings */}
+                  <div className="grid grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Duration Override</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editedSpell.appliesStatusEffect?.durationOverride || ''}
+                        onChange={(e) => handleDurationOverride(e.target.value)}
+                        placeholder={String(selectedEffect.defaultDuration)}
+                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Leave blank for default</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Value Override</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={editedSpell.appliesStatusEffect?.valueOverride || ''}
+                        onChange={(e) => handleValueOverride(e.target.value)}
+                        placeholder={String(selectedEffect.defaultValue || 0)}
+                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">Damage/heal per turn</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Apply Chance %</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        value={editedSpell.appliesStatusEffect?.applyChance !== undefined
+                          ? Math.round(editedSpell.appliesStatusEffect.applyChance * 100)
+                          : ''}
+                        onChange={(e) => handleChanceChange(e.target.value)}
+                        placeholder="100"
+                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      />
+                      <p className="text-xs text-gray-400 mt-1">100% = always applies</p>
+                    </div>
+                  </div>
+                </>
+              )}
+            </>
+          )}
+        </div>
+      )}
+    </div>
   );
 };

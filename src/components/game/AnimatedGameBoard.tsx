@@ -1,11 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig } from '../../types/game';
-import { TileType, Direction, ActionType } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance } from '../../types/game';
+import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject } from '../../utils/assetStorage';
-import { loadPuzzleSkin, loadTileType, loadObject } from '../../utils/assetStorage';
+import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset } from '../../utils/assetStorage';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
@@ -2054,6 +2054,9 @@ function drawEnemy(
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
     drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth);
+
+    // Draw status effect icons above health bar
+    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects);
   }
 }
 
@@ -2118,6 +2121,157 @@ function drawHealthBar(
   ctx.strokeStyle = '#222';
   ctx.lineWidth = 0.5;
   ctx.strokeRect(startX, startY, barWidth, barHeight);
+}
+
+// Helper to draw status effect icons above health bar
+function drawStatusEffectIcons(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  statusEffects: StatusEffectInstance[] | undefined
+) {
+  if (!statusEffects || statusEffects.length === 0) return;
+
+  const iconSize = 8;
+  const iconSpacing = 1;
+  const maxIconsVisible = 4;
+
+  // Position: left-aligned, immediately above health bar
+  // Health bar is at py+2, so icons go at py-8 (8px icon height, touching the bar)
+  const startX = px + (TILE_SIZE - 32) / 2; // Same as health bar start
+  const startY = py - 6; // Position above the health bar
+
+  const visibleEffects = statusEffects.slice(0, maxIconsVisible);
+  const hasOverflow = statusEffects.length > maxIconsVisible;
+
+  visibleEffects.forEach((effect, index) => {
+    const iconX = startX + index * (iconSize + iconSpacing);
+    const iconY = startY;
+
+    // Load the status effect asset to get the icon
+    const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
+
+    // Try to draw the icon sprite if available
+    if (effectAsset?.iconSprite?.spriteData) {
+      const spriteData = effectAsset.iconSprite.spriteData;
+
+      // Draw the sprite at icon size
+      ctx.save();
+
+      if (spriteData.idleImageData || spriteData.spriteSheet) {
+        // For image-based sprites, use drawSprite
+        drawSprite(ctx, effectAsset.iconSprite, iconX, iconY, iconSize, iconSize);
+      } else if (spriteData.shape) {
+        // For simple shape sprites, draw a colored shape
+        ctx.fillStyle = spriteData.primaryColor || getDefaultEffectColor(effect.type);
+        drawEffectShape(ctx, iconX, iconY, iconSize, spriteData.shape);
+      }
+
+      ctx.restore();
+    } else {
+      // Fallback: draw a colored shape based on effect type
+      ctx.fillStyle = getDefaultEffectColor(effect.type);
+      drawEffectShape(ctx, iconX, iconY, iconSize, 'circle');
+    }
+
+    // Draw stack count if > 1
+    if (effect.currentStacks && effect.currentStacks > 1) {
+      ctx.fillStyle = '#fff';
+      ctx.font = 'bold 6px Arial';
+      ctx.textAlign = 'right';
+      ctx.fillText(effect.currentStacks.toString(), iconX + iconSize, iconY + iconSize);
+    }
+  });
+
+  // Draw overflow indicator if there are more effects
+  if (hasOverflow) {
+    const overflowX = startX + maxIconsVisible * (iconSize + iconSpacing);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 6px Arial';
+    ctx.textAlign = 'left';
+    ctx.fillText(`+${statusEffects.length - maxIconsVisible}`, overflowX, startY + iconSize - 1);
+  }
+}
+
+// Get default color for status effect type
+function getDefaultEffectColor(type: StatusEffectType): string {
+  switch (type) {
+    case StatusEffectType.POISON:
+      return '#22c55e'; // green
+    case StatusEffectType.BURN:
+      return '#f97316'; // orange
+    case StatusEffectType.BLEED:
+      return '#dc2626'; // red
+    case StatusEffectType.REGEN:
+      return '#10b981'; // emerald
+    case StatusEffectType.STUN:
+      return '#eab308'; // yellow
+    case StatusEffectType.SLEEP:
+      return '#6366f1'; // indigo
+    case StatusEffectType.SLOW:
+      return '#3b82f6'; // blue
+    case StatusEffectType.SILENCED:
+      return '#8b5cf6'; // purple
+    case StatusEffectType.DISARMED:
+      return '#9ca3af'; // gray
+    default:
+      return '#ffffff'; // white
+  }
+}
+
+// Draw a simple shape for status effect icon
+function drawEffectShape(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  size: number,
+  shape: string
+) {
+  const centerX = x + size / 2;
+  const centerY = y + size / 2;
+  const radius = size / 2 - 1;
+
+  ctx.beginPath();
+  switch (shape) {
+    case 'circle':
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fill();
+      break;
+    case 'square':
+      ctx.fillRect(x + 1, y + 1, size - 2, size - 2);
+      break;
+    case 'diamond':
+      ctx.moveTo(centerX, y + 1);
+      ctx.lineTo(x + size - 1, centerY);
+      ctx.lineTo(centerX, y + size - 1);
+      ctx.lineTo(x + 1, centerY);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'triangle':
+      ctx.moveTo(centerX, y + 1);
+      ctx.lineTo(x + size - 1, y + size - 1);
+      ctx.lineTo(x + 1, y + size - 1);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    case 'star':
+      // Simple 4-point star
+      ctx.moveTo(centerX, y);
+      ctx.lineTo(centerX + 2, centerY - 2);
+      ctx.lineTo(x + size, centerY);
+      ctx.lineTo(centerX + 2, centerY + 2);
+      ctx.lineTo(centerX, y + size);
+      ctx.lineTo(centerX - 2, centerY + 2);
+      ctx.lineTo(x, centerY);
+      ctx.lineTo(centerX - 2, centerY - 2);
+      ctx.closePath();
+      ctx.fill();
+      break;
+    default:
+      ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      ctx.fill();
+  }
 }
 
 function drawCharacter(
@@ -2221,6 +2375,9 @@ function drawCharacter(
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
     drawHealthBar(ctx, px, py, character.currentHealth, maxHealth);
+
+    // Draw status effect icons above health bar
+    drawStatusEffectIcons(ctx, px, py, character.statusEffects);
   }
 }
 

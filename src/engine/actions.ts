@@ -1,6 +1,7 @@
 import type {
   CharacterAction,
   PlacedCharacter,
+  PlacedEnemy,
   GameState,
   WallCollisionBehavior,
   CustomAttack,
@@ -13,6 +14,7 @@ import type {
   Tile,
   TileBehaviorConfig,
   TileRuntimeState,
+  StatusEffectInstance,
 } from '../types/game';
 import {
   ActionType,
@@ -20,11 +22,13 @@ import {
   TileType,
   AttackPattern,
   SpellTemplate,
+  StatusEffectType,
 } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo } from './utils';
-import { loadCustomAttack, loadSpellAsset, loadTileType } from '../utils/assetStorage';
+import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset } from '../utils/assetStorage';
+import { wakeFromSleep } from './simulation';
 
 /**
  * Normalize action type - handles both enum keys (e.g., "ATTACK_FORWARD")
@@ -1206,7 +1210,7 @@ function executeSpellInDirection(
       // Temporarily set character facing for projectile direction
       const origFacing = character.facing;
       character.facing = direction;
-      spawnProjectile(character, attackData, gameState);
+      spawnProjectile(character, attackData, gameState, spell);
       character.facing = origFacing;
       break;
 
@@ -1216,13 +1220,13 @@ function executeSpellInDirection(
       // Check if this should be a projectile that explodes into AOE
       if (attackData.projectileBeforeAOE) {
         // Temporarily set character facing for projectile direction
-        const origFacing = character.facing;
+        const origFacing2 = character.facing;
         character.facing = direction;
-        spawnProjectile(character, attackData, gameState);
-        character.facing = origFacing;
+        spawnProjectile(character, attackData, gameState, spell);
+        character.facing = origFacing2;
       } else {
         // Instant AOE attack
-        executeAOEAttack(character, attackData, direction, gameState);
+        executeAOEAttack(character, attackData, direction, gameState, spell);
       }
       break;
 
@@ -1237,7 +1241,8 @@ function executeSpellInDirection(
 function spawnProjectile(
   character: PlacedCharacter,
   attackData: CustomAttack,
-  gameState: GameState
+  gameState: GameState,
+  spell?: SpellAsset
 ): void {
   if (!gameState.activeProjectiles) {
     gameState.activeProjectiles = [];
@@ -1270,6 +1275,7 @@ function spawnProjectile(
     startTime: Date.now(),
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
+    spellAssetId: spell?.id,
   };
 
   gameState.activeProjectiles.push(projectile);
@@ -1339,11 +1345,15 @@ function executeMeleeAttack(
 
       if (targetChar) {
         console.log('[executeMeleeAttack] HIT character', targetChar.characterId, 'HP before:', targetChar.currentHealth, '-> after:', targetChar.currentHealth - damage);
-        targetChar.currentHealth -= damage;
+        applyDamageToEntity(targetChar, damage);
 
-        if (targetChar.currentHealth <= 0) {
-          targetChar.dead = true;
+        if (targetChar.dead) {
           console.log('[executeMeleeAttack] Character', targetChar.characterId, 'KILLED');
+        }
+
+        // Apply status effect if spell has one configured
+        if (spell && !targetChar.dead) {
+          applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
         }
 
         if (attackData.hitEffectSprite) {
@@ -1360,11 +1370,15 @@ function executeMeleeAttack(
 
       if (enemy) {
         console.log('[executeMeleeAttack] HIT enemy', enemy.enemyId, 'HP before:', enemy.currentHealth, '-> after:', enemy.currentHealth - damage);
-        enemy.currentHealth -= damage;
+        applyDamageToEntity(enemy, damage);
 
-        if (enemy.currentHealth <= 0) {
-          enemy.dead = true;
+        if (enemy.dead) {
           console.log('[executeMeleeAttack] Enemy', enemy.enemyId, 'KILLED');
+        }
+
+        // Apply status effect if spell has one configured
+        if (spell && !enemy.dead) {
+          applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
         }
 
         if (attackData.hitEffectSprite) {
@@ -1400,11 +1414,15 @@ function executeMeleeAttack(
 
       if (targetChar) {
         console.log('[executeMeleeAttack] Enemy HIT character', targetChar.characterId, 'HP:', targetChar.currentHealth, '->', targetChar.currentHealth - damage);
-        targetChar.currentHealth -= damage;
+        applyDamageToEntity(targetChar, damage);
 
-        if (targetChar.currentHealth <= 0) {
-          targetChar.dead = true;
+        if (targetChar.dead) {
           console.log('[executeMeleeAttack] Character', targetChar.characterId, 'KILLED by enemy');
+        }
+
+        // Apply status effect if spell has one configured
+        if (spell && !targetChar.dead) {
+          applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
         }
 
         if (attackData.hitEffectSprite) {
@@ -1418,10 +1436,11 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        enemy.currentHealth -= damage;
+        applyDamageToEntity(enemy, damage);
 
-        if (enemy.currentHealth <= 0) {
-          enemy.dead = true;
+        // Apply status effect if spell has one configured
+        if (spell && !enemy.dead) {
+          applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
         }
 
         if (attackData.hitEffectSprite) {
@@ -1439,7 +1458,8 @@ export function executeAOEAttack(
   character: PlacedCharacter,
   attackData: CustomAttack,
   direction: Direction,
-  gameState: GameState
+  gameState: GameState,
+  spell?: SpellAsset
 ): void {
   const radius = attackData.aoeRadius || 2;
   const damage = attackData.damage ?? 0;
@@ -1518,10 +1538,14 @@ export function executeAOEAttack(
 
           if (distance <= radius) {
             console.log('[executeAOEAttack] Enemy AOE HIT character', target.characterId, 'HP:', target.currentHealth, '->', target.currentHealth - damage);
-            target.currentHealth -= damage;
-            if (target.currentHealth <= 0) {
-              target.dead = true;
+            applyDamageToEntity(target, damage);
+            if (target.dead) {
               console.log('[executeAOEAttack] Character', target.characterId, 'KILLED by enemy AOE');
+            }
+
+            // Apply status effect if spell has one configured
+            if (spell && !target.dead) {
+              applyStatusEffectFromSpell(target, spell, character.characterId, true, gameState.currentTurn);
             }
 
             if (attackData.hitEffectSprite) {
@@ -1539,9 +1563,11 @@ export function executeAOEAttack(
           );
 
           if (distance <= radius) {
-            enemy.currentHealth -= damage;
-            if (enemy.currentHealth <= 0) {
-              enemy.dead = true;
+            applyDamageToEntity(enemy, damage);
+
+            // Apply status effect if spell has one configured
+            if (spell && !enemy.dead) {
+              applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
             }
 
             if (attackData.hitEffectSprite) {
@@ -1626,6 +1652,119 @@ function spawnParticle(
   };
 
   gameState.activeParticles.push(particle);
+}
+
+// ==========================================
+// STATUS EFFECT APPLICATION
+// ==========================================
+
+/**
+ * Apply a status effect to an entity from a spell
+ */
+function applyStatusEffectFromSpell(
+  target: PlacedCharacter | PlacedEnemy,
+  spell: SpellAsset,
+  sourceId: string,
+  sourceIsEnemy: boolean,
+  currentTurn: number
+): void {
+  const effectConfig = spell.appliesStatusEffect;
+  if (!effectConfig || !effectConfig.statusAssetId) return;
+
+  const effectAsset = loadStatusEffectAsset(effectConfig.statusAssetId);
+  if (!effectAsset) {
+    console.warn(`Status effect asset not found: ${effectConfig.statusAssetId}`);
+    return;
+  }
+
+  // Check apply chance
+  const applyChance = effectConfig.applyChance ?? 1;
+  if (Math.random() > applyChance) {
+    console.log(`[STATUS] Effect ${effectAsset.name} failed to apply (chance roll: ${(applyChance * 100).toFixed(0)}%)`);
+    return;
+  }
+
+  // Initialize status effects array if needed
+  if (!target.statusEffects) {
+    target.statusEffects = [];
+  }
+
+  // Check for existing effect of same type for stacking
+  const existingEffect = target.statusEffects.find(
+    e => e.type === effectAsset.type || e.statusAssetId === effectConfig.statusAssetId
+  );
+
+  const duration = effectConfig.durationOverride ?? effectAsset.defaultDuration ?? 3;
+  const value = effectConfig.valueOverride ?? effectAsset.defaultValue;
+
+  if (existingEffect) {
+    switch (effectAsset.stackingBehavior) {
+      case 'refresh':
+        // Just refresh duration
+        existingEffect.duration = duration;
+        console.log(`[STATUS] Refreshed ${effectAsset.name} duration to ${duration}`);
+        return;
+
+      case 'stack':
+        // Increase stack count up to max
+        const maxStacks = effectAsset.maxStacks ?? 5;
+        existingEffect.currentStacks = Math.min(
+          (existingEffect.currentStacks ?? 1) + 1,
+          maxStacks
+        );
+        existingEffect.duration = duration;
+        console.log(`[STATUS] Stacked ${effectAsset.name} to ${existingEffect.currentStacks}/${maxStacks}`);
+        return;
+
+      case 'highest':
+        // Keep the stronger effect
+        if (value !== undefined && value > (existingEffect.value ?? 0)) {
+          existingEffect.value = value;
+          existingEffect.duration = duration;
+          console.log(`[STATUS] Upgraded ${effectAsset.name} value to ${value}`);
+        }
+        return;
+
+      case 'replace':
+        // Remove old, add new
+        target.statusEffects = target.statusEffects.filter(e => e !== existingEffect);
+        break;
+    }
+  }
+
+  // Create new status effect instance
+  const newEffect: StatusEffectInstance = {
+    id: `status_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type: effectAsset.type,
+    statusAssetId: effectConfig.statusAssetId,
+    duration,
+    value,
+    currentStacks: 1,
+    appliedOnTurn: currentTurn,
+    sourceEntityId: sourceId,
+    sourceIsEnemy,
+    movementSkipCounter: 0,
+  };
+
+  target.statusEffects.push(newEffect);
+  console.log(`[STATUS] Applied ${effectAsset.name} (${duration} turns) to target`);
+}
+
+/**
+ * Helper to apply damage and handle sleep wake-up
+ */
+function applyDamageToEntity(
+  target: PlacedCharacter | PlacedEnemy,
+  damage: number
+): void {
+  target.currentHealth -= damage;
+
+  // Wake from sleep if sleeping
+  wakeFromSleep(target);
+
+  if (target.currentHealth <= 0) {
+    target.dead = true;
+  }
 }
 
 // ==========================================

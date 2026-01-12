@@ -242,6 +242,7 @@ export interface PlacedEnemy {
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
   isCasting?: boolean; // True when casting a spell (for casting sprite state)
   castingEndTime?: number; // Timestamp when casting state should end
+  statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
 }
 
 export interface PlacedObject {
@@ -366,6 +367,7 @@ export interface PlacedCharacter {
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
   isCasting?: boolean; // True when casting a spell (for casting sprite state)
   castingEndTime?: number; // Timestamp when casting state should end
+  statusEffects?: StatusEffectInstance[]; // Active status effects on this character
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
@@ -446,13 +448,34 @@ export enum StatusEffectType {
   POISON = 'poison',      // Damage over time
   REGEN = 'regen',        // Heal over time
   SHIELD = 'shield',      // Absorb damage
-  STUN = 'stun',          // Skip turns
-  SLOW = 'slow',          // Reduced movement
+  STUN = 'stun',          // Skip turns (not broken by damage)
+  SLOW = 'slow',          // Skips every other movement action
   HASTE = 'haste',        // Increased movement
+  SLEEP = 'sleep',        // Can't act (broken by damage)
+  SILENCED = 'silenced',  // Can't cast ranged/AOE spells
+  DISARMED = 'disarmed',  // Can't cast melee spells
+  BURN = 'burn',          // Damage over time (fire variant)
+  BLEED = 'bleed',        // Damage over time (physical variant)
 }
 
 /**
- * Status effect instance
+ * Status effect instance - active effect on an entity
+ */
+export interface StatusEffectInstance {
+  id: string;                     // Unique instance ID
+  type: StatusEffectType;         // Effect type
+  statusAssetId: string;          // Reference to StatusEffectAsset
+  duration: number;               // Turns remaining
+  value?: number;                 // Damage/heal amount per turn
+  currentStacks?: number;         // Current stack count (for stackable effects)
+  appliedOnTurn: number;          // Turn when effect was applied
+  sourceEntityId?: string;        // Who applied this effect
+  sourceIsEnemy?: boolean;        // Was source an enemy or character?
+  movementSkipCounter?: number;   // For Slow - tracks movement actions
+}
+
+/**
+ * @deprecated Use StatusEffectInstance instead
  */
 export interface StatusEffect {
   type: StatusEffectType;
@@ -538,6 +561,7 @@ export interface Projectile {
   // Metadata
   sourceCharacterId?: string;   // Who fired this
   sourceEnemyId?: string;       // If fired by enemy
+  spellAssetId?: string;        // For status effect application on hit
 }
 
 /**
@@ -654,10 +678,59 @@ export interface SpellAsset {
     persistentArea?: SpriteReference;  // Visual for persistent ground effects
   };
 
+  // Status Effect Configuration (optional)
+  appliesStatusEffect?: {
+    statusAssetId: string;        // Reference to StatusEffectAsset
+    durationOverride?: number;    // Override default duration
+    valueOverride?: number;       // Override default damage/heal value
+    applyChance?: number;         // 0-1, default 1 (100%)
+  };
+
   // Metadata
   createdAt: string;
   isCustom: boolean;            // User-created vs built-in
   folderId?: string;            // Optional folder assignment
+}
+
+// ==========================================
+// STATUS EFFECT ASSET SYSTEM
+// ==========================================
+
+/**
+ * Status Effect Asset - Global definition for status effects
+ * Universal icons and behaviors (not affected by skins)
+ */
+export interface StatusEffectAsset {
+  id: string;
+  name: string;
+  description: string;
+  type: StatusEffectType;
+
+  // Visual (universal, not skin-dependent)
+  iconSprite: SpriteReference;    // 16x16 or 24x24 icon for display above entities
+
+  // Default behavior (can be overridden per-spell)
+  defaultDuration: number;        // Turns the effect lasts
+  defaultValue?: number;          // Damage/heal per turn (for Poison, Regen, etc.)
+
+  // Processing
+  processAtTurnStart: boolean;    // When to apply effect (start or end of turn)
+
+  // Special behaviors
+  removedOnDamage?: boolean;      // For Sleep - wake up when damaged
+  preventsMelee?: boolean;        // For Disarmed
+  preventsRanged?: boolean;       // For Silenced
+  preventsMovement?: boolean;     // For effects that root/freeze
+  preventsAllActions?: boolean;   // For Stun/Sleep
+
+  // Stacking rules
+  stackingBehavior: 'refresh' | 'stack' | 'replace' | 'highest';
+  maxStacks?: number;             // Maximum stack count (for 'stack' behavior)
+
+  // Metadata
+  createdAt: string;
+  isBuiltIn?: boolean;            // Built-in vs custom
+  folderId?: string;              // Optional folder assignment
 }
 
 /**

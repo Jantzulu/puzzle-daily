@@ -499,6 +499,169 @@ export const loadSpellAsset = (spellId: string): SpellAsset | null => {
 };
 
 // ==========================================
+// STATUS EFFECT ASSETS
+// ==========================================
+
+import type { StatusEffectAsset, StatusEffectType } from '../types/game';
+
+const STATUS_EFFECT_STORAGE_KEY = 'status_effect_assets';
+
+/**
+ * Get built-in status effects that are always available
+ */
+export const getBuiltInStatusEffects = (): StatusEffectAsset[] => {
+  return [
+    {
+      id: 'builtin_poison',
+      name: 'Poison',
+      description: 'Take damage each turn',
+      type: 'poison' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'circle', primaryColor: '#22cc22', type: 'simple' } },
+      defaultDuration: 3,
+      defaultValue: 1,
+      processAtTurnStart: false,
+      stackingBehavior: 'stack',
+      maxStacks: 5,
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_sleep',
+      name: 'Sleep',
+      description: 'Cannot act (broken by damage)',
+      type: 'sleep' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'circle', primaryColor: '#8888ff', type: 'simple' } },
+      defaultDuration: 2,
+      processAtTurnStart: true,
+      preventsAllActions: true,
+      removedOnDamage: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_slow',
+      name: 'Slow',
+      description: 'Skips every other movement action',
+      type: 'slow' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'diamond', primaryColor: '#6666ff', type: 'simple' } },
+      defaultDuration: 3,
+      processAtTurnStart: true,
+      preventsMovement: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_silenced',
+      name: 'Silenced',
+      description: 'Cannot cast ranged/AOE spells',
+      type: 'silenced' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'square', primaryColor: '#cc44cc', type: 'simple' } },
+      defaultDuration: 2,
+      processAtTurnStart: true,
+      preventsRanged: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_disarmed',
+      name: 'Disarmed',
+      description: 'Cannot use melee attacks',
+      type: 'disarmed' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'triangle', primaryColor: '#cc8844', type: 'simple' } },
+      defaultDuration: 2,
+      processAtTurnStart: true,
+      preventsMelee: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_stun',
+      name: 'Stun',
+      description: 'Cannot act (not broken by damage)',
+      type: 'stun' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'star', primaryColor: '#ffff00', type: 'simple' } },
+      defaultDuration: 1,
+      processAtTurnStart: true,
+      preventsAllActions: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_regen',
+      name: 'Regeneration',
+      description: 'Heal each turn',
+      type: 'regen' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'circle', primaryColor: '#44ff44', type: 'simple' } },
+      defaultDuration: 3,
+      defaultValue: 1,
+      processAtTurnStart: false,
+      stackingBehavior: 'stack',
+      maxStacks: 3,
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+  ];
+};
+
+export const saveStatusEffectAsset = (effect: StatusEffectAsset): void => {
+  // Don't allow saving/overwriting built-in effects
+  if (effect.isBuiltIn) return;
+
+  const effects = getCustomStatusEffects();
+
+  const existingIndex = effects.findIndex(e => e.id === effect.id);
+  if (existingIndex >= 0) {
+    effects[existingIndex] = effect;
+  } else {
+    effects.push(effect);
+  }
+
+  localStorage.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(effects));
+};
+
+/**
+ * Get only custom (user-created) status effects
+ */
+const getCustomStatusEffects = (): StatusEffectAsset[] => {
+  try {
+    const stored = localStorage.getItem(STATUS_EFFECT_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load custom status effects:', e);
+    return [];
+  }
+};
+
+/**
+ * Get all status effects (built-in + custom)
+ */
+export const getStatusEffectAssets = (): StatusEffectAsset[] => {
+  const builtIn = getBuiltInStatusEffects();
+  const custom = getCustomStatusEffects();
+  return [...builtIn, ...custom];
+};
+
+export const deleteStatusEffectAsset = (effectId: string): void => {
+  // Don't allow deleting built-in effects
+  if (effectId.startsWith('builtin_')) return;
+
+  const effects = getCustomStatusEffects();
+  const filtered = effects.filter(e => e.id !== effectId);
+  localStorage.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(filtered));
+};
+
+export const loadStatusEffectAsset = (effectId: string): StatusEffectAsset | null => {
+  const effects = getStatusEffectAssets();
+  return effects.find(e => e.id === effectId) || null;
+};
+
+// ==========================================
 // CUSTOM BORDER SPRITES
 // ==========================================
 

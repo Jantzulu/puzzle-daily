@@ -1,8 +1,9 @@
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker } from '../types/game';
-import { ActionType, Direction } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset } from '../types/game';
+import { ActionType, Direction, StatusEffectType } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
+import { loadStatusEffectAsset, loadSpellAsset } from '../utils/assetStorage';
 
 /**
  * Initialize parallel action trackers for a character
@@ -79,6 +80,356 @@ export function executeParallelActions(gameState: GameState): void {
   }
 }
 
+// ==========================================
+// STATUS EFFECT PROCESSING
+// ==========================================
+
+/**
+ * Get max health for an entity (character or enemy)
+ */
+function getEntityMaxHealth(entity: PlacedCharacter | PlacedEnemy): number {
+  // Try character first
+  const charData = getCharacter((entity as PlacedCharacter).characterId);
+  if (charData) return charData.health;
+
+  // Try enemy
+  const enemyData = getEnemy((entity as PlacedEnemy).enemyId);
+  if (enemyData) return enemyData.health;
+
+  return entity.currentHealth;
+}
+
+/**
+ * Process status effects for an entity at the specified timing
+ * @param entity - PlacedCharacter or PlacedEnemy
+ * @param timing - 'start' or 'end' of turn
+ * @param currentTurn - Current turn number
+ * @returns Updated entity with effects processed
+ */
+function processEntityStatusEffects(
+  entity: PlacedCharacter | PlacedEnemy,
+  timing: 'start' | 'end',
+  currentTurn: number
+): PlacedCharacter | PlacedEnemy {
+  if (!entity.statusEffects || entity.statusEffects.length === 0) {
+    return entity;
+  }
+
+  const updatedEntity = { ...entity };
+  const effectsToRemove: string[] = [];
+
+  for (const effect of updatedEntity.statusEffects || []) {
+    const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
+
+    // Check if this effect should process at this timing
+    const shouldProcessAtStart = effect.type === StatusEffectType.STUN ||
+                                  effect.type === StatusEffectType.SLEEP ||
+                                  effect.type === StatusEffectType.SLOW ||
+                                  effect.type === StatusEffectType.SILENCED ||
+                                  effect.type === StatusEffectType.DISARMED ||
+                                  effectAsset?.processAtTurnStart;
+
+    const processNow = timing === 'start' ? shouldProcessAtStart : !shouldProcessAtStart;
+
+    if (!processNow) continue;
+
+    // Apply effect based on type
+    switch (effect.type) {
+      case StatusEffectType.POISON:
+      case StatusEffectType.BURN:
+      case StatusEffectType.BLEED:
+        // Damage over time
+        const damage = effect.value ?? effectAsset?.defaultValue ?? 1;
+        const stacks = effect.currentStacks ?? 1;
+        updatedEntity.currentHealth -= damage * stacks;
+        console.log(`[STATUS] ${effect.type} dealt ${damage * stacks} damage to entity`);
+
+        if (updatedEntity.currentHealth <= 0) {
+          updatedEntity.dead = true;
+        }
+        break;
+
+      case StatusEffectType.REGEN:
+        // Healing over time
+        const heal = effect.value ?? effectAsset?.defaultValue ?? 1;
+        const maxHealth = getEntityMaxHealth(updatedEntity);
+        updatedEntity.currentHealth = Math.min(
+          updatedEntity.currentHealth + heal,
+          maxHealth
+        );
+        console.log(`[STATUS] Regen healed ${heal} HP`);
+        break;
+
+      // Action-preventing effects are checked in canEntityAct()
+      // Duration handling is done at the end of processing
+    }
+
+    // Decrement duration at end of turn only
+    if (timing === 'end') {
+      effect.duration--;
+      console.log(`[STATUS] ${effect.type} duration now ${effect.duration}`);
+
+      // Mark for removal if expired
+      if (effect.duration <= 0) {
+        effectsToRemove.push(effect.id);
+        console.log(`[STATUS] ${effect.type} expired`);
+      }
+    }
+  }
+
+  // Remove expired effects
+  if (effectsToRemove.length > 0) {
+    updatedEntity.statusEffects = (updatedEntity.statusEffects || [])
+      .filter(e => !effectsToRemove.includes(e.id));
+  }
+
+  return updatedEntity;
+}
+
+/**
+ * Check if an entity can perform actions based on status effects
+ */
+export function canEntityAct(entity: PlacedCharacter | PlacedEnemy): { allowed: boolean; reason?: string } {
+  if (!entity.statusEffects) return { allowed: true };
+
+  for (const effect of entity.statusEffects) {
+    const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
+
+    // Check for action-preventing effects
+    if (effectAsset?.preventsAllActions ||
+        effect.type === StatusEffectType.STUN ||
+        effect.type === StatusEffectType.SLEEP) {
+      return { allowed: false, reason: effect.type === StatusEffectType.SLEEP ? 'Asleep' : 'Stunned' };
+    }
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Check if an entity can perform a specific spell type based on status effects
+ */
+export function canEntityCastSpell(
+  entity: PlacedCharacter | PlacedEnemy,
+  spellTemplate?: SpellTemplate
+): { allowed: boolean; reason?: string } {
+  if (!entity.statusEffects) return { allowed: true };
+
+  // First check if entity can act at all
+  const actCheck = canEntityAct(entity);
+  if (!actCheck.allowed) return actCheck;
+
+  for (const effect of entity.statusEffects) {
+    const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
+
+    // Check melee prevention (Disarmed)
+    if (spellTemplate === 'melee' && (effectAsset?.preventsMelee || effect.type === StatusEffectType.DISARMED)) {
+      return { allowed: false, reason: 'Disarmed' };
+    }
+
+    // Check ranged/AOE prevention (Silenced)
+    if ((spellTemplate === 'range_linear' || spellTemplate === 'magic_linear' || spellTemplate === 'aoe') &&
+        (effectAsset?.preventsRanged || effect.type === StatusEffectType.SILENCED)) {
+      return { allowed: false, reason: 'Silenced' };
+    }
+  }
+
+  return { allowed: true };
+}
+
+/**
+ * Check if an entity can move based on status effects (for Slow effect)
+ * Returns true if entity can move, false if this movement should be skipped
+ */
+export function canEntityMove(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return true;
+
+  for (const effect of entity.statusEffects) {
+    if (effect.type === StatusEffectType.SLOW) {
+      // Slow effect: skip every other movement action
+      const counter = effect.movementSkipCounter ?? 0;
+      effect.movementSkipCounter = counter + 1;
+
+      // Skip odd-numbered movement actions (1, 3, 5, ...)
+      if (counter % 2 === 1) {
+        console.log(`[STATUS] Slow effect: skipping movement (counter: ${counter})`);
+        return false;
+      }
+    }
+  }
+
+  return true;
+}
+
+/**
+ * Remove sleep effects from an entity (called when entity takes damage)
+ */
+export function wakeFromSleep(entity: PlacedCharacter | PlacedEnemy): void {
+  if (!entity.statusEffects) return;
+
+  const sleepEffects = entity.statusEffects.filter(e => e.type === StatusEffectType.SLEEP);
+
+  if (sleepEffects.length > 0) {
+    entity.statusEffects = entity.statusEffects.filter(e => {
+      if (e.type === StatusEffectType.SLEEP) {
+        console.log('[STATUS] Entity woke from sleep due to damage');
+        return false;
+      }
+      const effectAsset = loadStatusEffectAsset(e.statusAssetId);
+      if (effectAsset?.removedOnDamage) {
+        console.log(`[STATUS] Effect ${e.type} removed due to damage`);
+        return false;
+      }
+      return true;
+    });
+  }
+}
+
+/**
+ * Apply status effect from a projectile hit
+ */
+function applyStatusEffectFromProjectile(
+  target: PlacedCharacter | PlacedEnemy,
+  spellAssetId: string,
+  sourceId: string,
+  sourceIsEnemy: boolean,
+  currentTurn: number
+): void {
+  const spell = loadSpellAsset(spellAssetId);
+  if (!spell?.appliesStatusEffect) return;
+
+  const effectConfig = spell.appliesStatusEffect;
+  if (!effectConfig.statusAssetId) return;
+
+  const effectAsset = loadStatusEffectAsset(effectConfig.statusAssetId);
+  if (!effectAsset) {
+    console.warn(`Status effect asset not found: ${effectConfig.statusAssetId}`);
+    return;
+  }
+
+  // Check apply chance
+  const applyChance = effectConfig.applyChance ?? 1;
+  if (Math.random() > applyChance) {
+    console.log(`[STATUS] Effect ${effectAsset.name} failed to apply (chance roll: ${(applyChance * 100).toFixed(0)}%)`);
+    return;
+  }
+
+  // Initialize status effects array if needed
+  if (!target.statusEffects) {
+    target.statusEffects = [];
+  }
+
+  // Check for existing effect of same type for stacking
+  const existingEffect = target.statusEffects.find(
+    e => e.type === effectAsset.type || e.statusAssetId === effectConfig.statusAssetId
+  );
+
+  const duration = effectConfig.durationOverride ?? effectAsset.defaultDuration ?? 3;
+  const value = effectConfig.valueOverride ?? effectAsset.defaultValue;
+
+  if (existingEffect) {
+    switch (effectAsset.stackingBehavior) {
+      case 'refresh':
+        existingEffect.duration = duration;
+        console.log(`[STATUS] Refreshed ${effectAsset.name} duration to ${duration}`);
+        return;
+
+      case 'stack':
+        const maxStacks = effectAsset.maxStacks ?? 5;
+        existingEffect.currentStacks = Math.min(
+          (existingEffect.currentStacks ?? 1) + 1,
+          maxStacks
+        );
+        existingEffect.duration = duration;
+        console.log(`[STATUS] Stacked ${effectAsset.name} to ${existingEffect.currentStacks}/${maxStacks}`);
+        return;
+
+      case 'highest':
+        if (value !== undefined && value > (existingEffect.value ?? 0)) {
+          existingEffect.value = value;
+          existingEffect.duration = duration;
+          console.log(`[STATUS] Upgraded ${effectAsset.name} value to ${value}`);
+        }
+        return;
+
+      case 'replace':
+        target.statusEffects = target.statusEffects.filter(e => e !== existingEffect);
+        break;
+    }
+  }
+
+  // Create new status effect instance
+  const newEffect: StatusEffectInstance = {
+    id: `status_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type: effectAsset.type,
+    statusAssetId: effectConfig.statusAssetId,
+    duration,
+    value,
+    currentStacks: 1,
+    appliedOnTurn: currentTurn,
+    sourceEntityId: sourceId,
+    sourceIsEnemy,
+    movementSkipCounter: 0,
+  };
+
+  target.statusEffects.push(newEffect);
+  console.log(`[STATUS] Applied ${effectAsset.name} (${duration} turns) to target from projectile`);
+}
+
+/**
+ * Process status effects for all entities at turn start
+ */
+function processAllStatusEffectsTurnStart(gameState: GameState): void {
+  // Process characters
+  for (let i = 0; i < gameState.placedCharacters.length; i++) {
+    if (!gameState.placedCharacters[i].dead) {
+      gameState.placedCharacters[i] = processEntityStatusEffects(
+        gameState.placedCharacters[i],
+        'start',
+        gameState.currentTurn
+      ) as PlacedCharacter;
+    }
+  }
+
+  // Process enemies
+  for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
+    if (!gameState.puzzle.enemies[i].dead) {
+      gameState.puzzle.enemies[i] = processEntityStatusEffects(
+        gameState.puzzle.enemies[i],
+        'start',
+        gameState.currentTurn
+      ) as PlacedEnemy;
+    }
+  }
+}
+
+/**
+ * Process status effects for all entities at turn end
+ */
+function processAllStatusEffectsTurnEnd(gameState: GameState): void {
+  // Process characters
+  for (let i = 0; i < gameState.placedCharacters.length; i++) {
+    if (!gameState.placedCharacters[i].dead) {
+      gameState.placedCharacters[i] = processEntityStatusEffects(
+        gameState.placedCharacters[i],
+        'end',
+        gameState.currentTurn
+      ) as PlacedCharacter;
+    }
+  }
+
+  // Process enemies
+  for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
+    if (!gameState.puzzle.enemies[i].dead) {
+      gameState.puzzle.enemies[i] = processEntityStatusEffects(
+        gameState.puzzle.enemies[i],
+        'end',
+        gameState.currentTurn
+      ) as PlacedEnemy;
+    }
+  }
+}
+
 /**
  * Execute one turn of the simulation
  * Modifies gameState in place and returns it
@@ -89,6 +440,9 @@ export function executeTurn(gameState: GameState): GameState {
   }
 
   gameState.currentTurn++;
+
+  // Process turn-start status effects for all entities
+  processAllStatusEffectsTurnStart(gameState);
 
   // Create new array with new character objects to trigger React re-render
   // Process sequentially to ensure collision detection works correctly
@@ -497,6 +851,9 @@ export function executeTurn(gameState: GameState): GameState {
   // Process persistent area effects
   processPersistentAreaEffects(gameState);
 
+  // Process turn-end status effects for all entities
+  processAllStatusEffectsTurnEnd(gameState);
+
   // Check win/lose conditions (skip in test mode)
   if (!gameState.testMode) {
     checkGameConditions(gameState);
@@ -644,7 +1001,8 @@ export function updateProjectiles(gameState: GameState): void {
           proj.attackData,
           proj.sourceCharacterId,
           proj.sourceEnemyId,
-          gameState
+          gameState,
+          proj.spellAssetId
         );
       }
 
@@ -695,7 +1053,8 @@ export function updateProjectiles(gameState: GameState): void {
               proj.attackData,
               proj.sourceCharacterId,
               proj.sourceEnemyId,
-              gameState
+              gameState,
+              proj.spellAssetId
             );
           } else {
             // Apply single-target healing
@@ -741,15 +1100,30 @@ export function updateProjectiles(gameState: GameState): void {
               proj.attackData,
               proj.sourceCharacterId,
               proj.sourceEnemyId,
-              gameState
+              gameState,
+              proj.spellAssetId
             );
           } else {
             // Apply single-target damage
             const damage = proj.attackData.damage ?? 1;
             hitEnemy.currentHealth -= damage;
 
+            // Wake from sleep if sleeping
+            wakeFromSleep(hitEnemy);
+
             if (hitEnemy.currentHealth <= 0) {
               hitEnemy.dead = true;
+            }
+
+            // Apply status effect if projectile has a spell with one configured
+            if (proj.spellAssetId && !hitEnemy.dead) {
+              applyStatusEffectFromProjectile(
+                hitEnemy,
+                proj.spellAssetId,
+                proj.sourceCharacterId || 'unknown',
+                false,
+                gameState.currentTurn
+              );
             }
 
             // Spawn hit effect
@@ -794,7 +1168,8 @@ export function updateProjectiles(gameState: GameState): void {
               proj.attackData,
               proj.sourceCharacterId,
               proj.sourceEnemyId,
-              gameState
+              gameState,
+              proj.spellAssetId
             );
           } else {
             // Apply single-target healing
@@ -840,15 +1215,30 @@ export function updateProjectiles(gameState: GameState): void {
               proj.attackData,
               proj.sourceCharacterId,
               proj.sourceEnemyId,
-              gameState
+              gameState,
+              proj.spellAssetId
             );
           } else {
             // Apply single-target damage
             const damage = proj.attackData.damage ?? 1;
             hitCharacter.currentHealth -= damage;
 
+            // Wake from sleep if sleeping
+            wakeFromSleep(hitCharacter);
+
             if (hitCharacter.currentHealth <= 0) {
               hitCharacter.dead = true;
+            }
+
+            // Apply status effect if projectile has a spell with one configured
+            if (proj.spellAssetId && !hitCharacter.dead) {
+              applyStatusEffectFromProjectile(
+                hitCharacter,
+                proj.spellAssetId,
+                proj.sourceEnemyId || 'unknown',
+                true,
+                gameState.currentTurn
+              );
             }
 
             // Spawn hit effect
@@ -893,7 +1283,8 @@ function triggerAOEExplosion(
   attackData: any,
   sourceCharacterId: string | undefined,
   sourceEnemyId: string | undefined,
-  gameState: GameState
+  gameState: GameState,
+  spellAssetId?: string
 ): void {
   // Create a temporary character at the explosion point
   const tempChar: PlacedCharacter = {
@@ -913,7 +1304,10 @@ function triggerAOEExplosion(
     aoeCenteredOnCaster: true, // Force AOE to center on explosion point
   };
 
-  executeAOEAttack(tempChar, modifiedAttackData, Direction.SOUTH, gameState);
+  // Load spell for status effect application
+  const spell = spellAssetId ? loadSpellAsset(spellAssetId) : undefined;
+
+  executeAOEAttack(tempChar, modifiedAttackData, Direction.SOUTH, gameState, spell || undefined);
 }
 
 /**
