@@ -45,13 +45,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : 'bg-gray-700 hover:bg-gray-600'
               }`}
             >
-              {/* Sprite with HP overlay */}
+              {/* HP display - above sprite */}
+              <div className="text-xs text-center text-green-400 font-medium mb-1">
+                HP: {character.health}
+              </div>
+
+              {/* Sprite */}
               <div className="relative flex-shrink-0">
                 <SpriteThumbnail sprite={character.customSprite} size={48} />
-                {/* HP display */}
-                <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-xs text-center text-green-400 font-medium px-1">
-                  HP: {character.health}
-                </div>
                 {isPlaced && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">
                     <span className="text-green-400 text-lg">✓</span>
@@ -66,11 +67,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <div className="mt-1 text-xs text-gray-400 text-center max-w-[100px]">
+                <ul className="mt-1 text-xs text-gray-400 text-left max-w-[100px] list-disc list-inside">
                   {character.tooltipSteps!.map((step, idx) => (
-                    <div key={idx}>{step}</div>
+                    <li key={idx}>{step}</li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
           );

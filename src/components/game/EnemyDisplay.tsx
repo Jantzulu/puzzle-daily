@@ -56,12 +56,14 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
               key={enemy.enemyId}
               className="p-2 bg-gray-700 rounded flex flex-col items-center"
             >
-              <div className="relative">
+              {/* HP display - above sprite */}
+              <div className="text-xs text-center text-red-400 font-medium mb-1">
+                HP: {enemyData.health}
+              </div>
+
+              {/* Sprite */}
+              <div className="relative flex-shrink-0">
                 <SpriteThumbnail sprite={enemyData.customSprite} size={40} />
-                {/* HP display */}
-                <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-xs text-center text-red-400 font-medium px-1">
-                  HP: {enemyData.health}
-                </div>
                 {count > 1 && (
                   <span className="absolute -top-1 -right-1 text-xs bg-red-900 text-red-300 px-1 py-0.5 rounded min-w-[18px] text-center">
                     {count}
@@ -74,11 +76,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <div className="mt-1 text-xs text-gray-400 text-center max-w-[100px]">
+                <ul className="mt-1 text-xs text-gray-400 text-left max-w-[100px] list-disc list-inside">
                   {enemyData.tooltipSteps!.map((step, idx) => (
-                    <div key={idx}>{step}</div>
+                    <li key={idx}>{step}</li>
                   ))}
-                </div>
+                </ul>
               )}
             </div>
           );
