@@ -45,6 +45,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [maxStacks, setMaxStacks] = useState(effect?.maxStacks ?? 5);
   const [iconSprite, setIconSprite] = useState<SpriteReference>(effect?.iconSprite || defaultIconSprite);
   const [editingIcon, setEditingIcon] = useState(false);
+  const [healthBarColor, setHealthBarColor] = useState(effect?.healthBarColor || '#22d3ee');
 
   const isBuiltIn = effect?.isBuiltIn ?? false;
 
@@ -70,6 +71,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       preventsAllActions,
       stackingBehavior,
       maxStacks: stackingBehavior === 'stack' ? maxStacks : undefined,
+      healthBarColor: type === StatusEffectType.SHIELD ? healthBarColor : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       isBuiltIn: false, // Never save as built-in when editing
       folderId: effect?.folderId,
@@ -297,6 +299,30 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               </p>
             </div>
           </div>
+
+          {/* Health Bar Color - only for Shield type */}
+          {type === StatusEffectType.SHIELD && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Health Bar Color</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="color"
+                  value={healthBarColor}
+                  onChange={(e) => setHealthBarColor(e.target.value)}
+                  disabled={isBuiltIn}
+                  className="w-12 h-8 rounded cursor-pointer border border-gray-600"
+                />
+                <div
+                  className="flex-1 h-4 rounded"
+                  style={{ backgroundColor: healthBarColor }}
+                />
+                <span className="text-xs text-gray-400 font-mono">{healthBarColor}</span>
+              </div>
+              <p className="text-xs text-gray-400 mt-1">
+                Color applied to health bar when shielded (fill and border)
+              </p>
+            </div>
+          )}
 
           <div>
             <label className="block text-sm font-medium mb-1">Stacking Behavior</label>

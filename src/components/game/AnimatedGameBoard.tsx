@@ -2088,8 +2088,18 @@ function drawHealthBar(
   const startX = px + (TILE_SIZE - barWidth) / 2;
   const startY = py + 2; // 2px from top of tile
 
-  // Check if entity has a shield effect
-  const hasShield = statusEffects?.some(e => e.type === StatusEffectType.SHIELD) ?? false;
+  // Check if entity has a shield effect and get custom color
+  const shieldEffect = statusEffects?.find(e => e.type === StatusEffectType.SHIELD);
+  const hasShield = !!shieldEffect;
+
+  // Get custom shield color from the status effect asset, or use default cyan
+  let shieldColor = '#22d3ee'; // Default cyan
+  if (shieldEffect?.statusAssetId) {
+    const effectAsset = loadStatusEffectAsset(shieldEffect.statusAssetId);
+    if (effectAsset?.healthBarColor) {
+      shieldColor = effectAsset.healthBarColor;
+    }
+  }
 
   // Draw background (dark gray)
   ctx.fillStyle = '#333';
@@ -2103,8 +2113,8 @@ function drawHealthBar(
     const segX = startX + i * segmentWidth;
 
     if (i < currentHealth) {
-      // Cyan/blue for shielded, green for normal health
-      ctx.fillStyle = hasShield ? '#22d3ee' : '#4ade80';
+      // Custom shield color or green for normal health
+      ctx.fillStyle = hasShield ? shieldColor : '#4ade80';
     } else {
       // Red for lost health
       ctx.fillStyle = '#ef4444';
@@ -2121,8 +2131,8 @@ function drawHealthBar(
     }
   }
 
-  // Draw border around the whole bar - cyan border when shielded
-  ctx.strokeStyle = hasShield ? '#06b6d4' : '#222';
+  // Draw border around the whole bar - shield color border when shielded
+  ctx.strokeStyle = hasShield ? shieldColor : '#222';
   ctx.lineWidth = hasShield ? 1 : 0.5;
   ctx.strokeRect(startX, startY, barWidth, barHeight);
 }

@@ -727,6 +727,9 @@ export interface StatusEffectAsset {
   stackingBehavior: 'refresh' | 'stack' | 'replace' | 'highest';
   maxStacks?: number;             // Maximum stack count (for 'stack' behavior)
 
+  // Visual overrides (for Shield type)
+  healthBarColor?: string;        // Color to use for health bar when this effect is active
+
   // Metadata
   createdAt: string;
   isBuiltIn?: boolean;            // Built-in vs custom
