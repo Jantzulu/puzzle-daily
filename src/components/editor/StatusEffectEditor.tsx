@@ -150,6 +150,24 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         setPreventsMovement(false);
         setPreventsAllActions(false);
         break;
+      case StatusEffectType.SHIELD:
+        setDefaultValue(5); // Default shield absorbs 5 damage (0 = infinite)
+        setProcessAtTurnStart(false);
+        setRemovedOnDamage(false);
+        setPreventsMelee(false);
+        setPreventsRanged(false);
+        setPreventsMovement(false);
+        setPreventsAllActions(false);
+        break;
+      case StatusEffectType.HASTE:
+        setDefaultValue(0);
+        setProcessAtTurnStart(true);
+        setRemovedOnDamage(false);
+        setPreventsMelee(false);
+        setPreventsRanged(false);
+        setPreventsMovement(false);
+        setPreventsAllActions(false);
+        break;
     }
   };
 
@@ -165,6 +183,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       case StatusEffectType.SLOW: return '#3b82f6';
       case StatusEffectType.SILENCED: return '#8b5cf6';
       case StatusEffectType.DISARMED: return '#9ca3af';
+      case StatusEffectType.SHIELD: return '#22d3ee'; // Cyan for shield
+      case StatusEffectType.HASTE: return '#fbbf24'; // Amber/gold for haste
       default: return '#ffffff';
     }
   };
@@ -259,7 +279,9 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-1">Default Value (dmg/heal)</label>
+              <label className="block text-sm font-medium mb-1">
+                {type === StatusEffectType.SHIELD ? 'Shield Amount (0 = infinite)' : 'Default Value (dmg/heal)'}
+              </label>
               <input
                 type="number"
                 value={defaultValue}
@@ -269,7 +291,9 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 min="0"
               />
               <p className="text-xs text-gray-400 mt-1">
-                Damage per turn (poison/burn) or heal per turn (regen)
+                {type === StatusEffectType.SHIELD
+                  ? 'Total damage absorbed before shield breaks (0 = blocks all damage)'
+                  : 'Damage per turn (poison/burn) or heal per turn (regen)'}
               </p>
             </div>
           </div>
@@ -415,7 +439,12 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 <p className="font-bold">{name || 'Unnamed'}</p>
                 <p className="text-xs text-gray-400">
                   {defaultDuration} turns
-                  {defaultValue > 0 && ` | ${defaultValue} ${type === StatusEffectType.REGEN ? 'heal' : 'dmg'}/turn`}
+                  {defaultValue > 0 && ` | ${defaultValue} ${
+                    type === StatusEffectType.REGEN ? 'heal/turn' :
+                    type === StatusEffectType.SHIELD ? 'dmg absorbed' :
+                    'dmg/turn'
+                  }`}
+                  {type === StatusEffectType.SHIELD && defaultValue === 0 && ' | blocks all dmg'}
                 </p>
               </div>
             </div>
