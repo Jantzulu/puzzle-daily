@@ -2158,9 +2158,15 @@ function drawStatusEffectIcons(
       // Draw the sprite at icon size
       ctx.save();
 
-      if (spriteData.idleImageData || spriteData.spriteSheet) {
-        // For image-based sprites, use drawSprite
-        drawSprite(ctx, effectAsset.iconSprite, iconX, iconY, iconSize, iconSize);
+      if (spriteData.imageData || spriteData.idleImageData || spriteData.spriteSheet) {
+        // For image-based sprites, draw the image directly
+        const imgData = spriteData.imageData || spriteData.idleImageData;
+        if (imgData) {
+          const img = loadImage(imgData);
+          if (img.complete) {
+            ctx.drawImage(img, iconX, iconY, iconSize, iconSize);
+          }
+        }
       } else if (spriteData.shape) {
         // For simple shape sprites, draw a colored shape
         ctx.fillStyle = spriteData.primaryColor || getDefaultEffectColor(effect.type);
