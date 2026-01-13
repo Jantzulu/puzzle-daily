@@ -313,7 +313,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center cursor-pointer hover:border-blue-500"
                 onClick={() => !isBuiltIn && setEditingIcon(true)}
               >
-                <SpriteThumbnail sprite={iconSprite} size={48} />
+                <SpriteThumbnail sprite={iconSprite.spriteData} size={48} />
               </div>
               {!isBuiltIn && (
                 <button
@@ -408,7 +408,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 className="w-8 h-8 rounded flex items-center justify-center"
                 style={{ backgroundColor: getTypeColor(type) }}
               >
-                <SpriteThumbnail sprite={iconSprite} size={24} />
+                <SpriteThumbnail sprite={iconSprite.spriteData} size={24} />
               </div>
               <div>
                 <p className="font-bold">{name || 'Unnamed'}</p>
