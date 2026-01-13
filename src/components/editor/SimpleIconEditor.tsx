@@ -153,15 +153,14 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
   // Update sprite data helper
   const updateSpriteData = (updates: Partial<CustomSprite>) => {
     const newSpriteData: CustomSprite = {
+      // Start with existing sprite data
+      ...spriteData,
+      // Ensure required fields have defaults
       id: spriteData?.id || `icon_${Date.now()}`,
       name: spriteData?.name || 'Status Icon',
       type: 'simple',
       createdAt: spriteData?.createdAt || new Date().toISOString(),
-      shape: currentShape,
-      primaryColor: currentColor,
-      secondaryColor: currentSecondaryColor,
-      size: currentScale,
-      ...spriteData,
+      // Apply the updates last so they take effect
       ...updates,
     };
 
