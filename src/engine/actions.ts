@@ -1113,6 +1113,12 @@ function executeSpell(
     return;
   }
 
+  // Check if spell is on cooldown
+  if (character.spellCooldowns && character.spellCooldowns[action.spellId] > 0) {
+    // Spell is on cooldown - skip this action
+    return;
+  }
+
   // Check if entity can cast this type of spell (Silenced/Disarmed check)
   const castCheck = canEntityCastSpell(character, spell.template);
   if (!castCheck.allowed) {
@@ -1182,6 +1188,14 @@ function executeSpell(
   // Execute spell for each direction based on template type
   for (const direction of castDirections) {
     executeSpellInDirection(character, spell, direction, gameState);
+  }
+
+  // Set cooldown if spell has one
+  if (spell.cooldown && spell.cooldown > 0 && action.spellId) {
+    if (!character.spellCooldowns) {
+      character.spellCooldowns = {};
+    }
+    character.spellCooldowns[action.spellId] = spell.cooldown;
   }
 }
 

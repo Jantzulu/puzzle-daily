@@ -243,6 +243,7 @@ export interface PlacedEnemy {
   isCasting?: boolean; // True when casting a spell (for casting sprite state)
   castingEndTime?: number; // Timestamp when casting state should end
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
+  spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
 }
 
 export interface PlacedObject {
@@ -368,6 +369,7 @@ export interface PlacedCharacter {
   isCasting?: boolean; // True when casting a spell (for casting sprite state)
   castingEndTime?: number; // Timestamp when casting state should end
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
+  spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
@@ -685,6 +687,9 @@ export interface SpellAsset {
     valueOverride?: number;       // Override default damage/heal value
     applyChance?: number;         // 0-1, default 1 (100%)
   };
+
+  // Cooldown
+  cooldown?: number;              // Turns before spell can be used again (0 = no cooldown)
 
   // Metadata
   createdAt: string;

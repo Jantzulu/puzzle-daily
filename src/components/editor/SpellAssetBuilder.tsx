@@ -919,6 +919,22 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </p>
             </div>
 
+            {/* Cooldown */}
+            <div>
+              <label className="block text-sm font-medium mb-1">Cooldown (turns)</label>
+              <input
+                type="number"
+                min="0"
+                max="99"
+                value={editedSpell.cooldown || 0}
+                onChange={(e) => setEditedSpell({ ...editedSpell, cooldown: parseInt(e.target.value) || 0 })}
+                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Turns before spell can be used again (0 = no cooldown)
+              </p>
+            </div>
+
             {/* Range (for linear spells and non-centered AOE) */}
             {(templateNeedsRange || (templateNeedsRadius && !editedSpell.aoeCenteredOnCaster)) && (
               <div>

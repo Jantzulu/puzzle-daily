@@ -443,6 +443,33 @@ function processAllStatusEffectsTurnEnd(gameState: GameState): void {
 }
 
 /**
+ * Decrement spell cooldowns for all entities at turn end
+ */
+function decrementSpellCooldowns(gameState: GameState): void {
+  // Decrement character cooldowns
+  for (const character of gameState.placedCharacters) {
+    if (character.spellCooldowns) {
+      for (const spellId of Object.keys(character.spellCooldowns)) {
+        if (character.spellCooldowns[spellId] > 0) {
+          character.spellCooldowns[spellId]--;
+        }
+      }
+    }
+  }
+
+  // Decrement enemy cooldowns
+  for (const enemy of gameState.puzzle.enemies) {
+    if (enemy.spellCooldowns) {
+      for (const spellId of Object.keys(enemy.spellCooldowns)) {
+        if (enemy.spellCooldowns[spellId] > 0) {
+          enemy.spellCooldowns[spellId]--;
+        }
+      }
+    }
+  }
+}
+
+/**
  * Execute one turn of the simulation
  * Modifies gameState in place and returns it
  */
@@ -849,6 +876,9 @@ export function executeTurn(gameState: GameState): GameState {
 
   // Process turn-end status effects for all entities
   processAllStatusEffectsTurnEnd(gameState);
+
+  // Decrement spell cooldowns at end of turn
+  decrementSpellCooldowns(gameState);
 
   // Check win/lose conditions (skip in test mode)
   if (!gameState.testMode) {
