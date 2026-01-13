@@ -28,6 +28,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo } from './utils';
 import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset } from '../utils/assetStorage';
+import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus } from './simulation';
 import { wakeFromSleep } from './simulation';
 
 /**
@@ -79,16 +80,53 @@ export function executeAction(
 ): PlacedCharacter {
   const updatedCharacter = { ...character };
 
+  // Check if entity can act at all (Stun/Sleep prevention)
+  const actCheck = canEntityAct(character);
+  if (!actCheck.allowed) {
+    // Entity is stunned/asleep - skip this action entirely
+    return updatedCharacter;
+  }
+
   // Normalize action type - handle both enum keys and values
   const normalizedType = normalizeActionType(action.type);
 
-  switch (normalizedType) {
-    case ActionType.MOVE_FORWARD:
-      return moveCharacter(updatedCharacter, character.facing, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+  // Check movement restriction (Slow effect)
+  const isMovementAction = [
+    ActionType.MOVE_FORWARD,
+    ActionType.MOVE_BACKWARD,
+    ActionType.MOVE_LEFT,
+    ActionType.MOVE_RIGHT,
+    ActionType.MOVE_DIAGONAL_NE,
+    ActionType.MOVE_DIAGONAL_NW,
+    ActionType.MOVE_DIAGONAL_SE,
+    ActionType.MOVE_DIAGONAL_SW,
+  ].includes(normalizedType);
 
-    case ActionType.MOVE_BACKWARD:
+  if (isMovementAction && !canEntityMove(character)) {
+    // Slow effect - skip this movement
+    return updatedCharacter;
+  }
+
+  switch (normalizedType) {
+    case ActionType.MOVE_FORWARD: {
+      let movedCharacter = moveCharacter(updatedCharacter, character.facing, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      // Check for Haste bonus movement
+      if (hasHasteBonus(movedCharacter)) {
+        movedCharacter = moveCharacter(movedCharacter, movedCharacter.facing, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      }
+      return movedCharacter;
+    }
+
+    case ActionType.MOVE_BACKWARD: {
       const backwardDir = turnAround(character.facing);
-      return moveCharacter(updatedCharacter, backwardDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      let movedCharacter = moveCharacter(updatedCharacter, backwardDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      // Check for Haste bonus movement
+      if (hasHasteBonus(movedCharacter)) {
+        const newBackwardDir = turnAround(movedCharacter.facing);
+        movedCharacter = moveCharacter(movedCharacter, newBackwardDir, gameState, action.tilesPerMove || 1, action.onWallCollision ?? 'stop', action.turnDegrees ?? 90);
+      }
+      return movedCharacter;
+    }
 
     case ActionType.TURN_LEFT:
       updatedCharacter.facing = turnLeft(character.facing, action.turnDegrees ?? 90);
@@ -1075,6 +1113,13 @@ function executeSpell(
     return;
   }
 
+  // Check if entity can cast this type of spell (Silenced/Disarmed check)
+  const castCheck = canEntityCastSpell(character, spell.template);
+  if (!castCheck.allowed) {
+    // Entity is silenced or disarmed - cannot cast this spell
+    return;
+  }
+
   // Determine which directions to cast the spell
   let castDirections: Direction[] = [];
 
@@ -1702,16 +1747,50 @@ function applyStatusEffectFromSpell(
 }
 
 /**
- * Helper to apply damage and handle sleep wake-up
+ * Helper to apply damage and handle sleep wake-up and shield absorption
  */
 function applyDamageToEntity(
   target: PlacedCharacter | PlacedEnemy,
   damage: number
 ): void {
-  target.currentHealth -= damage;
+  let remainingDamage = damage;
 
-  // Wake from sleep if sleeping
-  wakeFromSleep(target);
+  // Check for shield effects and absorb damage
+  if (target.statusEffects) {
+    for (const effect of target.statusEffects) {
+      if (effect.type === StatusEffectType.SHIELD && remainingDamage > 0) {
+        const shieldAmount = effect.value ?? 0;
+
+        if (shieldAmount <= 0) {
+          // Shield absorbs ALL damage (infinite shield)
+          remainingDamage = 0;
+        } else if (shieldAmount >= remainingDamage) {
+          // Shield absorbs all remaining damage
+          effect.value = shieldAmount - remainingDamage;
+          remainingDamage = 0;
+        } else {
+          // Shield is depleted, remaining damage goes through
+          remainingDamage -= shieldAmount;
+          effect.value = 0;
+          // Mark shield for removal when depleted
+          effect.duration = 0;
+        }
+      }
+    }
+
+    // Remove depleted shields
+    target.statusEffects = target.statusEffects.filter(
+      e => !(e.type === StatusEffectType.SHIELD && e.duration <= 0 && (e.value ?? 0) <= 0)
+    );
+  }
+
+  // Apply remaining damage after shield absorption
+  if (remainingDamage > 0) {
+    target.currentHealth -= remainingDamage;
+
+    // Wake from sleep if sleeping (only if actually took damage)
+    wakeFromSleep(target);
+  }
 
   if (target.currentHealth <= 0) {
     target.dead = true;

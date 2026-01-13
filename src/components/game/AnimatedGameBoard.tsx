@@ -2053,7 +2053,7 @@ function drawEnemy(
 
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
-    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth);
+    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.statusEffects);
 
     // Draw status effect icons above health bar
     drawStatusEffectIcons(ctx, px, py, enemy.statusEffects);
@@ -2078,7 +2078,8 @@ function drawHealthBar(
   px: number,
   py: number,
   currentHealth: number,
-  maxHealth: number
+  maxHealth: number,
+  statusEffects?: StatusEffectInstance[]
 ) {
   const barWidth = 32; // Fixed total width of the health bar
   const barHeight = 4; // Height of the health bar
@@ -2086,6 +2087,9 @@ function drawHealthBar(
   // Position: centered above the sprite, near the top of the tile
   const startX = px + (TILE_SIZE - barWidth) / 2;
   const startY = py + 2; // 2px from top of tile
+
+  // Check if entity has a shield effect
+  const hasShield = statusEffects?.some(e => e.type === StatusEffectType.SHIELD) ?? false;
 
   // Draw background (dark gray)
   ctx.fillStyle = '#333';
@@ -2099,8 +2103,8 @@ function drawHealthBar(
     const segX = startX + i * segmentWidth;
 
     if (i < currentHealth) {
-      // Green for remaining health
-      ctx.fillStyle = '#4ade80';
+      // Cyan/blue for shielded, green for normal health
+      ctx.fillStyle = hasShield ? '#22d3ee' : '#4ade80';
     } else {
       // Red for lost health
       ctx.fillStyle = '#ef4444';
@@ -2117,9 +2121,9 @@ function drawHealthBar(
     }
   }
 
-  // Draw border around the whole bar
-  ctx.strokeStyle = '#222';
-  ctx.lineWidth = 0.5;
+  // Draw border around the whole bar - cyan border when shielded
+  ctx.strokeStyle = hasShield ? '#06b6d4' : '#222';
+  ctx.lineWidth = hasShield ? 1 : 0.5;
   ctx.strokeRect(startX, startY, barWidth, barHeight);
 }
 
@@ -2380,7 +2384,7 @@ function drawCharacter(
 
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
-    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth);
+    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.statusEffects);
 
     // Draw status effect icons above health bar
     drawStatusEffectIcons(ctx, px, py, character.statusEffects);

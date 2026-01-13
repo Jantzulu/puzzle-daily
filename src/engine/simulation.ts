@@ -257,6 +257,30 @@ export function canEntityMove(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
+ * Check if an entity has Haste and should get a bonus movement
+ * Returns true if entity should get an extra movement this turn
+ * Uses a counter similar to Slow to track alternate turns
+ */
+export function hasHasteBonus(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+
+  for (const effect of entity.statusEffects) {
+    if (effect.type === StatusEffectType.HASTE) {
+      // Haste effect: grants bonus movement on even-numbered checks (0, 2, 4...)
+      const counter = effect.movementSkipCounter ?? 0;
+      effect.movementSkipCounter = counter + 1;
+
+      // Grant bonus on even counts (every other movement gets doubled)
+      if (counter % 2 === 0) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+}
+
+/**
  * Remove sleep effects from an entity (called when entity takes damage)
  */
 export function wakeFromSleep(entity: PlacedCharacter | PlacedEnemy): void {
