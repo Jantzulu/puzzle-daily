@@ -76,6 +76,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
     };
 
     saveStatusEffectAsset(effectData);
+    alert(`Saved "${name.trim()}"!`);
     onSave();
   };
 
