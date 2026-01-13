@@ -916,7 +916,13 @@ function checkGameConditions(gameState: GameState): void {
     return;
   }
 
-  // Check defeat conditions
+  // Check defeat conditions (early failure detection)
+  if (checkDefeatConditions(gameState)) {
+    gameState.gameStatus = 'defeat';
+    return;
+  }
+
+  // Check if all characters are dead
   const allCharactersDead = gameState.placedCharacters.every((c) => c.dead);
   if (allCharactersDead && gameState.placedCharacters.length > 0) {
     gameState.gameStatus = 'defeat';
@@ -925,6 +931,7 @@ function checkGameConditions(gameState: GameState): void {
 
 /**
  * Check if victory conditions are met
+ * Returns { met: boolean, reason?: string } for detailed feedback
  */
 function checkVictoryConditions(gameState: GameState): boolean {
   for (const condition of gameState.puzzle.winConditions) {
@@ -939,11 +946,74 @@ function checkVictoryConditions(gameState: GameState): boolean {
         if (!allCollected) return false;
         break;
 
-      // Add more condition types as needed
+      case 'reach_goal':
+        // Check if any character is on a goal tile
+        const hasReachedGoal = gameState.placedCharacters.some((char) => {
+          if (char.dead) return false;
+          const tile = gameState.puzzle.tiles[char.y]?.[char.x];
+          return tile?.type === TileType.GOAL;
+        });
+        if (!hasReachedGoal) return false;
+        break;
+
+      case 'survive_turns':
+        // Must survive for at least X turns - check at turn end
+        const surviveTurns = condition.params?.turns ?? 10;
+        if (gameState.currentTurn < surviveTurns) return false;
+        // Also need at least one character alive
+        const hasAliveCharacter = gameState.placedCharacters.some((c) => !c.dead);
+        if (!hasAliveCharacter) return false;
+        break;
+
+      case 'win_in_turns':
+        // Must complete within X turns (checked elsewhere as a constraint)
+        // This condition passes if we're still within the turn limit
+        const maxTurns = condition.params?.turns ?? 10;
+        if (gameState.currentTurn > maxTurns) return false;
+        break;
+
+      case 'max_characters':
+        // Must use at most X characters (already enforced by placement, but verify)
+        const maxChars = condition.params?.characterCount ?? 1;
+        const usedChars = gameState.placedCharacters.length;
+        if (usedChars > maxChars) return false;
+        break;
+
+      case 'characters_alive':
+        // Must have at least X characters alive at the end
+        const minAlive = condition.params?.characterCount ?? 1;
+        const aliveCount = gameState.placedCharacters.filter((c) => !c.dead).length;
+        if (aliveCount < minAlive) return false;
+        break;
     }
   }
 
   return true;
+}
+
+/**
+ * Check if the player has violated any win conditions (early defeat detection)
+ * Returns true if any condition is impossible to satisfy
+ */
+function checkDefeatConditions(gameState: GameState): boolean {
+  for (const condition of gameState.puzzle.winConditions) {
+    switch (condition.type) {
+      case 'win_in_turns':
+        // Exceeded turn limit
+        const maxTurns = condition.params?.turns ?? 10;
+        if (gameState.currentTurn > maxTurns) return true;
+        break;
+
+      case 'characters_alive':
+        // Can't possibly have enough characters alive anymore
+        const minAlive = condition.params?.characterCount ?? 1;
+        const aliveCount = gameState.placedCharacters.filter((c) => !c.dead).length;
+        if (aliveCount < minAlive) return true;
+        break;
+    }
+  }
+
+  return false;
 }
 
 /**

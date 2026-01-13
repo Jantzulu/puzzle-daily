@@ -260,9 +260,32 @@ export interface PlacedCollectible {
   collected: boolean;
 }
 
+/**
+ * Win condition types for puzzles
+ */
+export type WinConditionType =
+  | 'defeat_all_enemies'    // All enemies must be defeated
+  | 'collect_all'           // All collectibles must be collected
+  | 'reach_goal'            // A character must reach the goal tile
+  | 'survive_turns'         // Survive for X turns
+  | 'win_in_turns'          // Complete all other conditions within X turns
+  | 'max_characters'        // Complete using only X or fewer characters
+  | 'characters_alive';     // Keep at least X characters alive at the end
+
+/**
+ * Parameters for different win condition types
+ */
+export interface WinConditionParams {
+  // For survive_turns and win_in_turns
+  turns?: number;
+
+  // For max_characters and characters_alive
+  characterCount?: number;
+}
+
 export interface WinCondition {
-  type: 'defeat_all_enemies' | 'collect_all' | 'reach_goal' | 'survive_turns';
-  params?: any;
+  type: WinConditionType;
+  params?: WinConditionParams;
 }
 
 export type BorderStyle = 'none' | 'dungeon' | 'castle' | 'forest' | 'custom';
@@ -347,6 +370,7 @@ export interface Puzzle {
   winConditions: WinCondition[];
   maxCharacters: number;
   maxTurns?: number; // Optional turn limit to prevent infinite loops
+  lives?: number; // Number of attempts allowed (default: 3, 0 = unlimited)
   borderConfig?: BorderConfig; // Optional border decoration (legacy, use skinId instead)
   skinId?: string; // Reference to PuzzleSkin for visual theming
 }

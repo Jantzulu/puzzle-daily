@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
@@ -263,6 +263,7 @@ interface EditorState {
   puzzleId: string;
   maxCharacters: number;
   maxTurns?: number;
+  lives?: number; // Number of attempts (0 = unlimited, default: 3)
   availableCharacters: string[];
   winConditions: WinCondition[];
   borderConfig?: BorderConfig; // Legacy - kept for backwards compatibility
@@ -287,6 +288,7 @@ const createDefaultEditorState = (): EditorState => ({
   puzzleId: 'puzzle_' + Date.now(),
   maxCharacters: 3,
   maxTurns: 100,
+  lives: 3,
   availableCharacters: ['knight_01'],
   winConditions: [{ type: 'defeat_all_enemies' }],
   skinId: 'builtin_dungeon', // Default skin
@@ -550,6 +552,7 @@ export const MapEditor: React.FC = () => {
         puzzleId: state.puzzleId,
         maxCharacters: state.maxCharacters,
         maxTurns: state.maxTurns,
+        lives: state.lives,
         availableCharacters: state.availableCharacters,
         winConditions: state.winConditions,
         borderConfig: state.borderConfig,
@@ -916,6 +919,7 @@ export const MapEditor: React.FC = () => {
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
       maxTurns: state.maxTurns,
+      lives: state.lives,
       borderConfig,
       skinId: state.skinId,
     };
@@ -985,6 +989,7 @@ export const MapEditor: React.FC = () => {
       puzzleId: puzzle.id,
       maxCharacters: puzzle.maxCharacters,
       maxTurns: puzzle.maxTurns,
+      lives: puzzle.lives ?? 3,
       availableCharacters: puzzle.availableCharacters,
       winConditions: puzzle.winConditions,
       skinId: puzzle.skinId || 'builtin_dungeon',
@@ -1008,10 +1013,12 @@ export const MapEditor: React.FC = () => {
       tiles: createEmptyGrid(8, 8),
       enemies: [],
       collectibles: [],
+      placedObjects: [],
       puzzleName: 'New Puzzle',
       puzzleId: 'puzzle_' + Date.now(),
       maxCharacters: 3,
       maxTurns: 100,
+      lives: 3,
       availableCharacters: ['knight_01'],
       winConditions: [{ type: 'defeat_all_enemies' }],
       selectedTool: 'wall',
@@ -1038,6 +1045,7 @@ export const MapEditor: React.FC = () => {
         puzzleId: puzzle.id,
         maxCharacters: puzzle.maxCharacters,
         maxTurns: puzzle.maxTurns,
+        lives: puzzle.lives ?? 3,
         availableCharacters: puzzle.availableCharacters,
         winConditions: puzzle.winConditions,
         skinId: puzzle.skinId || 'builtin_dungeon',
@@ -1137,6 +1145,7 @@ export const MapEditor: React.FC = () => {
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
       maxTurns: state.maxTurns,
+      lives: state.lives,
       borderConfig,
       skinId: state.skinId,
     };
@@ -2056,7 +2065,7 @@ export const MapEditor: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-3 gap-2">
                     <div>
                       <label className="block text-sm mb-1">Max Chars</label>
                       <input
@@ -2079,7 +2088,131 @@ export const MapEditor: React.FC = () => {
                         className="w-full px-3 py-2 bg-gray-700 rounded"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm mb-1">Lives</label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="99"
+                        value={state.lives ?? 3}
+                        onChange={(e) => setState(prev => ({ ...prev, lives: Number(e.target.value) }))}
+                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                        title="Number of attempts (0 = unlimited)"
+                      />
+                    </div>
                   </div>
+                  <p className="text-xs text-gray-400 mt-1">Lives: 0 = unlimited attempts</p>
+                </div>
+              </div>
+
+              {/* Win Conditions */}
+              <div className="bg-gray-800 p-4 rounded">
+                <h2 className="text-lg font-bold mb-3">Win Conditions</h2>
+                <p className="text-xs text-gray-400 mb-3">Conditions that must be met to win the puzzle</p>
+                <div className="space-y-2">
+                  {state.winConditions.map((condition, index) => (
+                    <div key={index} className="bg-gray-700 p-3 rounded">
+                      <div className="flex justify-between items-start gap-2">
+                        <div className="flex-1 min-w-0">
+                          <select
+                            value={condition.type}
+                            onChange={(e) => {
+                              const newType = e.target.value as WinConditionType;
+                              setState(prev => {
+                                const newConditions = [...prev.winConditions];
+                                newConditions[index] = { type: newType, params: {} };
+                                return { ...prev, winConditions: newConditions };
+                              });
+                            }}
+                            className="w-full px-2 py-1 bg-gray-600 rounded text-sm mb-2"
+                          >
+                            <option value="defeat_all_enemies">Defeat All Enemies</option>
+                            <option value="collect_all">Collect All Items</option>
+                            <option value="reach_goal">Reach Goal Tile</option>
+                            <option value="survive_turns">Survive X Turns</option>
+                            <option value="win_in_turns">Win Within X Turns</option>
+                            <option value="max_characters">Use Max X Characters</option>
+                            <option value="characters_alive">Keep X Characters Alive</option>
+                          </select>
+
+                          {/* Params for conditions that need them */}
+                          {(condition.type === 'survive_turns' || condition.type === 'win_in_turns') && (
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-gray-400">Turns:</label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="999"
+                                value={condition.params?.turns ?? 10}
+                                onChange={(e) => {
+                                  setState(prev => {
+                                    const newConditions = [...prev.winConditions];
+                                    newConditions[index] = {
+                                      ...newConditions[index],
+                                      params: { ...newConditions[index].params, turns: parseInt(e.target.value) || 10 }
+                                    };
+                                    return { ...prev, winConditions: newConditions };
+                                  });
+                                }}
+                                className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                              />
+                            </div>
+                          )}
+
+                          {(condition.type === 'max_characters' || condition.type === 'characters_alive') && (
+                            <div className="flex items-center gap-2">
+                              <label className="text-xs text-gray-400">Characters:</label>
+                              <input
+                                type="number"
+                                min="1"
+                                max="10"
+                                value={condition.params?.characterCount ?? 1}
+                                onChange={(e) => {
+                                  setState(prev => {
+                                    const newConditions = [...prev.winConditions];
+                                    newConditions[index] = {
+                                      ...newConditions[index],
+                                      params: { ...newConditions[index].params, characterCount: parseInt(e.target.value) || 1 }
+                                    };
+                                    return { ...prev, winConditions: newConditions };
+                                  });
+                                }}
+                                className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Remove button (only if more than 1 condition) */}
+                        {state.winConditions.length > 1 && (
+                          <button
+                            onClick={() => {
+                              setState(prev => ({
+                                ...prev,
+                                winConditions: prev.winConditions.filter((_, i) => i !== index)
+                              }));
+                            }}
+                            className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                          >
+                            ✕
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Add condition button */}
+                  <button
+                    onClick={() => {
+                      setState(prev => ({
+                        ...prev,
+                        winConditions: [...prev.winConditions, { type: 'defeat_all_enemies' }]
+                      }));
+                    }}
+                    className="w-full px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-500"
+                  >
+                    + Add Condition
+                  </button>
                 </div>
               </div>
 

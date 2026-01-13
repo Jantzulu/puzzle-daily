@@ -33,6 +33,10 @@ export const Game: React.FC = () => {
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
 
+  // Lives system
+  const [livesRemaining, setLivesRemaining] = useState<number>(() => currentPuzzle.lives ?? 3);
+  const [showGameOver, setShowGameOver] = useState(false);
+
   // Test mode state
   const [testMode, setTestMode] = useState<TestMode>('none');
   const [testTurnsRemaining, setTestTurnsRemaining] = useState(0);
@@ -95,6 +99,27 @@ export const Game: React.FC = () => {
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
+
+          // Handle defeat - deduct a life and auto-reset (or show game over)
+          if (newState.gameStatus === 'defeat') {
+            const puzzleLives = currentPuzzle.lives ?? 3;
+            const isUnlimitedLives = puzzleLives === 0;
+
+            if (!isUnlimitedLives) {
+              const newLives = livesRemaining - 1;
+              setLivesRemaining(newLives);
+
+              if (newLives <= 0) {
+                // No lives left - show game over
+                setShowGameOver(true);
+              } else {
+                // Auto-reset after a short delay to show defeat message
+                setTimeout(() => {
+                  handleAutoReset();
+                }, 1500);
+              }
+            }
+          }
         }
 
         return newState;
@@ -102,7 +127,7 @@ export const Game: React.FC = () => {
     }, 800); // 800ms per turn (slower for better visibility)
 
     return () => clearInterval(interval);
-  }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining]);
+  }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining, livesRemaining, currentPuzzle.lives]);
 
   const handleTileClick = useCallback(
     (x: number, y: number) => {
@@ -202,6 +227,40 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
   };
 
+  // Auto-reset after defeat (keeps characters, starts running again)
+  const handleAutoReset = useCallback(() => {
+    const resetPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
+    const resetState = initializeGameState(resetPuzzle);
+    // Restore the placed characters from when Play was pressed, resetting their state
+    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
+      const charData = getCharacter(char.characterId);
+      return {
+        ...char,
+        actionIndex: 0,
+        currentHealth: charData ? charData.health : char.currentHealth,
+        dead: false,
+        active: true,
+      };
+    });
+    resetState.gameStatus = 'running';
+    setGameState(resetState);
+    setCurrentPuzzle(resetPuzzle);
+    setIsSimulating(true);
+  }, [originalPuzzle, playStartCharacters]);
+
+  // Restart puzzle from game over (reset lives and go to setup)
+  const handleRestartPuzzle = () => {
+    const resetPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
+    const resetState = initializeGameState(resetPuzzle);
+    setGameState(resetState);
+    setCurrentPuzzle(resetPuzzle);
+    setLivesRemaining(currentPuzzle.lives ?? 3);
+    setShowGameOver(false);
+    setIsSimulating(false);
+    setSelectedCharacterId(null);
+    setPlayStartCharacters([]);
+  };
+
   const handlePuzzleChange = (puzzleId: string) => {
     const puzzle = allPuzzles.find(p => p.id === puzzleId);
     if (puzzle) {
@@ -212,6 +271,10 @@ export const Game: React.FC = () => {
       setGameState(initializeGameState(puzzle));
       setIsSimulating(false);
       setSelectedCharacterId(null);
+      // Reset lives for new puzzle
+      setLivesRemaining(puzzle.lives ?? 3);
+      setShowGameOver(false);
+      setPlayStartCharacters([]);
     }
   };
 
@@ -315,10 +378,31 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {gameState.gameStatus === 'defeat' && (
+            {gameState.gameStatus === 'defeat' && !showGameOver && (
               <div className="mt-4 p-4 bg-red-700 rounded text-center w-full max-w-md">
                 <h2 className="text-xl md:text-2xl font-bold">Defeat</h2>
-                <p className="mt-2 text-sm md:text-base">Try again!</p>
+                {(currentPuzzle.lives ?? 3) > 0 && (
+                  <p className="mt-2 text-sm md:text-base">
+                    Lives remaining: {livesRemaining} - Retrying...
+                  </p>
+                )}
+                {(currentPuzzle.lives ?? 3) === 0 && (
+                  <p className="mt-2 text-sm md:text-base">Try again!</p>
+                )}
+              </div>
+            )}
+
+            {/* Game Over Overlay */}
+            {showGameOver && (
+              <div className="mt-4 p-6 bg-red-900 rounded text-center w-full max-w-md border-2 border-red-500">
+                <h2 className="text-2xl md:text-3xl font-bold text-red-300">Game Over</h2>
+                <p className="mt-2 text-lg">No lives remaining!</p>
+                <button
+                  onClick={handleRestartPuzzle}
+                  className="mt-4 px-6 py-3 bg-red-600 hover:bg-red-500 rounded font-bold text-lg"
+                >
+                  Try Again
+                </button>
               </div>
             )}
 
@@ -403,8 +487,10 @@ export const Game: React.FC = () => {
                   </span>
                 </div>
                 <div>
-                  <span className="text-gray-400">Score:</span>
-                  <span className="ml-2 font-bold">{gameState.score}</span>
+                  <span className="text-gray-400">Lives:</span>
+                  <span className={`ml-2 font-bold ${livesRemaining <= 1 && (currentPuzzle.lives ?? 3) > 0 ? 'text-red-400' : ''}`}>
+                    {(currentPuzzle.lives ?? 3) === 0 ? '∞' : `${livesRemaining} / ${currentPuzzle.lives ?? 3}`}
+                  </span>
                 </div>
               </div>
             </div>
