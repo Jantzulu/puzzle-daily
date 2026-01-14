@@ -82,6 +82,40 @@ export const Controls: React.FC<ControlsProps> = ({
         )}
       </div>
 
+      {/* Play and Test buttons - show in setup mode */}
+      {gameStatus === 'setup' && !isTestMode && (
+        <div className="space-y-2 pt-2 border-t border-gray-700">
+          <button
+            onClick={onPlay}
+            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition"
+          >
+            Play
+          </button>
+
+          <div className="grid grid-cols-2 gap-2">
+            {onTestCharacters && (
+              <button
+                onClick={onTestCharacters}
+                className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
+                title="Test your characters without enemies for 5 turns"
+              >
+                Test Characters
+              </button>
+            )}
+
+            {onTestEnemies && (
+              <button
+                onClick={onTestEnemies}
+                className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition text-sm"
+                title="Watch enemies move without characters for 5 turns"
+              >
+                Test Enemies
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       {gameStatus === 'setup' && !isTestMode && (
         <p className="text-sm text-gray-400 mt-4">
           Select a character and click on the board to place it.

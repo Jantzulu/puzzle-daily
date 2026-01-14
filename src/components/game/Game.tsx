@@ -410,49 +410,52 @@ export const Game: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board */}
           <div className="flex-1 flex flex-col items-center">
-            {/* Lives display - above controls */}
-            <div className="flex items-center justify-center gap-1 mb-2">
-              {renderLivesHearts()}
+            {/* Wrapper to center controls with puzzle */}
+            <div className="flex flex-col items-center">
+              {/* Lives display - centered above play button */}
+              <div className="flex items-center justify-center gap-1 mb-2">
+                {renderLivesHearts()}
+              </div>
+
+              {/* Play controls bar - above puzzle, centered with puzzle */}
+              {gameState.gameStatus === 'setup' && testMode === 'none' && (
+                <div className="flex items-center justify-center gap-3 mb-4">
+                  <button
+                    onClick={handleTestCharacters}
+                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
+                    title="Test your characters without enemies for 5 turns"
+                  >
+                    Test Characters
+                  </button>
+
+                  <button
+                    onClick={handlePlay}
+                    className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition text-lg"
+                  >
+                    Play
+                  </button>
+
+                  <button
+                    onClick={handleTestEnemies}
+                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition text-sm"
+                    title="Watch enemies move without characters for 5 turns"
+                  >
+                    Test Enemies
+                  </button>
+                </div>
+              )}
+
+              {/* Test mode indicator - above puzzle */}
+              {testMode !== 'none' && (
+                <div className="p-2 bg-purple-900 rounded text-center mb-4">
+                  <span className="text-purple-300 text-sm font-medium">
+                    Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'} - {testTurnsRemaining} turns left
+                  </span>
+                </div>
+              )}
+
+              <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
             </div>
-
-            {/* Play controls bar - above puzzle */}
-            {gameState.gameStatus === 'setup' && testMode === 'none' && (
-              <div className="flex items-center justify-center gap-3 mb-4 w-full max-w-md">
-                <button
-                  onClick={handleTestCharacters}
-                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
-                  title="Test your characters without enemies for 5 turns"
-                >
-                  Test Characters
-                </button>
-
-                <button
-                  onClick={handlePlay}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition text-lg"
-                >
-                  Play
-                </button>
-
-                <button
-                  onClick={handleTestEnemies}
-                  className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition text-sm"
-                  title="Watch enemies move without characters for 5 turns"
-                >
-                  Test Enemies
-                </button>
-              </div>
-            )}
-
-            {/* Test mode indicator - above puzzle */}
-            {testMode !== 'none' && (
-              <div className="p-2 bg-purple-900 rounded text-center mb-4 w-full max-w-md">
-                <span className="text-purple-300 text-sm font-medium">
-                  Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'} - {testTurnsRemaining} turns left
-                </span>
-              </div>
-            )}
-
-            <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
 
             {/* Victory/Defeat Message */}
             {gameState.gameStatus === 'victory' && (
