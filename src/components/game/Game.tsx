@@ -413,12 +413,12 @@ export const Game: React.FC = () => {
             {gameState.gameStatus === 'setup' && testMode === 'none' && (
               <div className="mb-4">
                 {/* Grid layout: 3 columns with Play button centered */}
-                <div className="grid grid-cols-3 gap-3 items-end">
+                <div className="grid grid-cols-3 gap-2 md:gap-3 items-end">
                   {/* Left column - Test Characters */}
                   <div className="flex justify-end">
                     <button
                       onClick={handleTestCharacters}
-                      className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
+                      className="px-2 py-1 md:px-3 md:py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-medium transition text-xs md:text-sm"
                       title="Test your characters without enemies for 5 turns"
                     >
                       Test Characters
@@ -433,7 +433,7 @@ export const Game: React.FC = () => {
                     </div>
                     <button
                       onClick={handlePlay}
-                      className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition text-lg"
+                      className="px-8 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition text-lg md:text-xl shadow-lg"
                     >
                       Play
                     </button>
@@ -443,7 +443,7 @@ export const Game: React.FC = () => {
                   <div className="flex justify-start">
                     <button
                       onClick={handleTestEnemies}
-                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition text-sm"
+                      className="px-2 py-1 md:px-3 md:py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium transition text-xs md:text-sm"
                       title="Watch enemies move without characters for 5 turns"
                     >
                       Test Enemies

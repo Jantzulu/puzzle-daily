@@ -18,6 +18,21 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // Account for device pixel ratio for sharp rendering on high-DPI displays
+    const dpr = window.devicePixelRatio || 1;
+    const scaledSize = size * dpr;
+
+    // Set canvas internal size to scaled size
+    canvas.width = scaledSize;
+    canvas.height = scaledSize;
+
+    // Scale context to match
+    ctx.scale(dpr, dpr);
+
+    // Enable image smoothing for better quality
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     let animationFrameId: number | null = null;
 
     const renderThumbnail = async () => {
@@ -155,9 +170,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   return (
     <canvas
       ref={canvasRef}
-      width={size}
-      height={size}
       className={`rounded ${className}`}
+      style={{ width: size, height: size }}
     />
   );
 };
