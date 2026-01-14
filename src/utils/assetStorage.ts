@@ -184,6 +184,7 @@ export interface CustomCharacter extends Character {
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment
+  allowOversizedSprite?: boolean; // Allow sprite to exceed tile bounds (like objects)
 }
 
 export interface CustomEnemy extends Enemy {
@@ -191,6 +192,7 @@ export interface CustomEnemy extends Enemy {
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment
+  allowOversizedSprite?: boolean; // Allow sprite to exceed tile bounds (like objects)
 }
 
 export interface CustomTileType {

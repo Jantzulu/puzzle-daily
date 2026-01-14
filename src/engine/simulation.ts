@@ -4,6 +4,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset } from '../utils/assetStorage';
+import { turnLeft, turnRight, getDirectionOffset } from './utils';
 
 /**
  * Initialize parallel action trackers for a character
@@ -1116,13 +1117,122 @@ export function updateProjectiles(gameState: GameState): void {
     const tileX = Math.floor(newX);
     const tileY = Math.floor(newY);
 
-    if (!isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
+    const hitWall = !isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
         gameState.puzzle.tiles[tileY]?.[tileX]?.type === TileType.WALL ||
-        gameState.puzzle.tiles[tileY]?.[tileX] === null) {
-      // Hit wall - deactivate projectile
-      proj.active = false;
-      projectilesToRemove.push(proj.id);
-      continue;
+        gameState.puzzle.tiles[tileY]?.[tileX] === null;
+
+    if (hitWall) {
+      // Check if projectile should bounce off walls
+      const canBounce = proj.bounceOffWalls &&
+                        (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);
+
+      if (canBounce) {
+        // Perform bounce based on configured behavior
+        proj.bounceCount = (proj.bounceCount ?? 0) + 1;
+
+        // Calculate current direction vector
+        const dirX = proj.targetX - proj.startX;
+        const dirY = proj.targetY - proj.startY;
+        const dirLength = Math.sqrt(dirX * dirX + dirY * dirY);
+        const normalizedDirX = dirX / dirLength;
+        const normalizedDirY = dirY / dirLength;
+
+        let newDirX = normalizedDirX;
+        let newDirY = normalizedDirY;
+
+        const bounceBehavior = proj.bounceBehavior || 'reflect';
+
+        switch (bounceBehavior) {
+          case 'reflect': {
+            // Determine which axis to reflect based on wall position
+            const prevTileX = Math.floor(proj.x);
+            const prevTileY = Math.floor(proj.y);
+            const testTileX = Math.floor(proj.x + normalizedDirX * 0.5);
+            const testTileY = Math.floor(proj.y + normalizedDirY * 0.5);
+
+            const hitHorizontalWall = testTileY !== prevTileY &&
+              (!isInBounds(testTileX, testTileY, gameState.puzzle.width, gameState.puzzle.height) ||
+               gameState.puzzle.tiles[testTileY]?.[prevTileX]?.type === TileType.WALL ||
+               gameState.puzzle.tiles[testTileY]?.[prevTileX] === null);
+
+            const hitVerticalWall = testTileX !== prevTileX &&
+              (!isInBounds(testTileX, testTileY, gameState.puzzle.width, gameState.puzzle.height) ||
+               gameState.puzzle.tiles[prevTileY]?.[testTileX]?.type === TileType.WALL ||
+               gameState.puzzle.tiles[prevTileY]?.[testTileX] === null);
+
+            if (hitHorizontalWall) newDirY = -newDirY;
+            if (hitVerticalWall) newDirX = -newDirX;
+            break;
+          }
+
+          case 'turn_around': {
+            // 180 degree turn - go back the way it came
+            newDirX = -normalizedDirX;
+            newDirY = -normalizedDirY;
+            break;
+          }
+
+          case 'turn_right': {
+            // Turn clockwise by configured degrees (45, 90, or 135)
+            const currentDirRight = getDirectionFromVector(normalizedDirX, normalizedDirY);
+            const turnDegreesRight = proj.bounceTurnDegrees ?? 90;
+            const newDirRight = turnRight(currentDirRight, turnDegreesRight);
+            const offsetRight = getDirectionOffset(newDirRight);
+            newDirX = offsetRight.dx;
+            newDirY = offsetRight.dy;
+            break;
+          }
+
+          case 'turn_left': {
+            // Turn counter-clockwise by configured degrees (45, 90, or 135)
+            const currentDirLeft = getDirectionFromVector(normalizedDirX, normalizedDirY);
+            const turnDegreesLeft = proj.bounceTurnDegrees ?? 90;
+            const newDirLeft = turnLeft(currentDirLeft, turnDegreesLeft);
+            const offsetLeft = getDirectionOffset(newDirLeft);
+            newDirX = offsetLeft.dx;
+            newDirY = offsetLeft.dy;
+            break;
+          }
+
+          case 'random': {
+            // Pick a random direction (one of 8 cardinal/diagonal)
+            const directions = [
+              { dx: 0, dy: -1 },  // N
+              { dx: 1, dy: -1 },  // NE
+              { dx: 1, dy: 0 },   // E
+              { dx: 1, dy: 1 },   // SE
+              { dx: 0, dy: 1 },   // S
+              { dx: -1, dy: 1 },  // SW
+              { dx: -1, dy: 0 },  // W
+              { dx: -1, dy: -1 }, // NW
+            ];
+            // Filter out the direction we came from
+            const validDirs = directions.filter(d =>
+              !(Math.abs(d.dx - normalizedDirX) < 0.5 && Math.abs(d.dy - normalizedDirY) < 0.5)
+            );
+            const randomDir = validDirs[Math.floor(Math.random() * validDirs.length)];
+            newDirX = randomDir.dx;
+            newDirY = randomDir.dy;
+            break;
+          }
+        }
+
+        // Update projectile for new bounced path
+        const remainingRange = proj.attackData.range ?? 5;
+        proj.startX = proj.x;
+        proj.startY = proj.y;
+        proj.targetX = proj.x + newDirX * remainingRange;
+        proj.targetY = proj.y + newDirY * remainingRange;
+        proj.startTime = now; // Reset timing for smooth continuation
+
+        // Update direction for sprite rendering
+        proj.direction = getDirectionFromVector(newDirX, newDirY);
+      } else {
+        // Hit wall - deactivate projectile (no bounce or max bounces reached)
+        proj.active = false;
+        projectilesToRemove.push(proj.id);
+        continue;
+      }
     }
 
     // Check collision based on who fired the projectile
@@ -1452,6 +1562,31 @@ function spawnParticleEffect(
 
 function isInBounds(x: number, y: number, width: number, height: number): boolean {
   return x >= 0 && x < width && y >= 0 && y < height;
+}
+
+/**
+ * Convert a direction vector to a Direction enum
+ */
+function getDirectionFromVector(dx: number, dy: number): Direction {
+  // Normalize to determine primary direction
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+
+  // Check for diagonal movement
+  if (absDx > 0.1 && absDy > 0.1) {
+    // Diagonal
+    if (dx > 0 && dy < 0) return Direction.NORTHEAST;
+    if (dx > 0 && dy > 0) return Direction.SOUTHEAST;
+    if (dx < 0 && dy > 0) return Direction.SOUTHWEST;
+    if (dx < 0 && dy < 0) return Direction.NORTHWEST;
+  }
+
+  // Cardinal directions
+  if (absDx > absDy) {
+    return dx > 0 ? Direction.EAST : Direction.WEST;
+  } else {
+    return dy > 0 ? Direction.SOUTH : Direction.NORTH;
+  }
 }
 
 /**

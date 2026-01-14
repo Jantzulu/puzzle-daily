@@ -131,7 +131,23 @@ export const Game: React.FC = () => {
 
   const handleTileClick = useCallback(
     (x: number, y: number) => {
-      if (!selectedCharacterId || gameState.gameStatus !== 'setup') {
+      if (gameState.gameStatus !== 'setup') {
+        return;
+      }
+
+      // Check if clicking on an already placed character to remove them
+      const clickedCharacter = gameState.placedCharacters.find((c) => c.x === x && c.y === y);
+      if (clickedCharacter) {
+        // Remove the clicked character
+        setGameState((prev) => ({
+          ...prev,
+          placedCharacters: prev.placedCharacters.filter((c) => c.x !== x || c.y !== y),
+        }));
+        return;
+      }
+
+      // Need a selected character to place
+      if (!selectedCharacterId) {
         return;
       }
 
@@ -142,9 +158,8 @@ export const Game: React.FC = () => {
       }
 
       const tileHasEnemy = gameState.puzzle.enemies.some((e) => e.x === x && e.y === y && !e.dead);
-      const tileHasCharacter = gameState.placedCharacters.some((c) => c.x === x && c.y === y);
 
-      if (tileHasEnemy || tileHasCharacter) {
+      if (tileHasEnemy) {
         return; // Can't place on occupied tile
       }
 
@@ -227,7 +242,7 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
   };
 
-  // Auto-reset after defeat (keeps characters, starts running again)
+  // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
   const handleAutoReset = useCallback(() => {
     const resetPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const resetState = initializeGameState(resetPuzzle);
@@ -242,10 +257,12 @@ export const Game: React.FC = () => {
         active: true,
       };
     });
-    resetState.gameStatus = 'running';
+    // Return to setup phase so player can adjust character placement
+    resetState.gameStatus = 'setup';
     setGameState(resetState);
     setCurrentPuzzle(resetPuzzle);
-    setIsSimulating(true);
+    setIsSimulating(false);
+    setSelectedCharacterId(null);
   }, [originalPuzzle, playStartCharacters]);
 
   // Restart puzzle from game over (reset lives and go to setup)
@@ -383,7 +400,7 @@ export const Game: React.FC = () => {
                 <h2 className="text-xl md:text-2xl font-bold">Defeat</h2>
                 {(currentPuzzle.lives ?? 3) > 0 && (
                   <p className="mt-2 text-sm md:text-base">
-                    Lives remaining: {livesRemaining} - Retrying...
+                    Lives remaining: {livesRemaining - 1} - Returning to setup...
                   </p>
                 )}
                 {(currentPuzzle.lives ?? 3) === 0 && (

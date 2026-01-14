@@ -545,10 +545,26 @@ export const CharacterEditor: React.FC = () => {
                   {/* Right Column - Sprite */}
                   <div className="bg-gray-800 p-4 rounded">
                     <h3 className="text-lg font-bold mb-4">Sprite</h3>
+                    {/* Allow oversized sprites checkbox */}
+                    <div className="mb-4">
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editing.allowOversizedSprite || false}
+                          onChange={(e) => updateCharacter({ allowOversizedSprite: e.target.checked })}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">Allow sprite to exceed tile size</span>
+                      </label>
+                      <p className="text-xs text-gray-400 mt-1 ml-6">
+                        Enable to allow sprites larger than 100%
+                      </p>
+                    </div>
                     {editing.customSprite && (
                       <SpriteEditor
                         sprite={editing.customSprite}
                         onChange={updateSprite}
+                        allowOversized={editing.allowOversizedSprite}
                       />
                     )}
                   </div>

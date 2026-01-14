@@ -584,6 +584,13 @@ export interface Projectile {
   active: boolean;
   startTime: number;            // Date.now() when spawned
 
+  // Bounce behavior
+  bounceOffWalls?: boolean;     // Enable wall bouncing
+  maxBounces?: number;          // Maximum allowed bounces
+  bounceCount?: number;         // Current bounce count
+  bounceBehavior?: BounceBehavior; // How projectile bounces
+  bounceTurnDegrees?: 45 | 90 | 135; // Turn amount for turn_left/turn_right
+
   // Metadata
   sourceCharacterId?: string;   // Who fired this
   sourceEnemyId?: string;       // If fired by enemy
@@ -654,6 +661,17 @@ export type DirectionMode = 'current_facing' | 'fixed' | 'all_directions' | 'rel
 export type RelativeDirection = 'forward' | 'backward' | 'left' | 'right' | 'forward_left' | 'forward_right' | 'backward_left' | 'backward_right';
 
 /**
+ * Bounce behavior for projectiles hitting walls
+ * Uses similar language to WallCollisionBehavior for consistency
+ */
+export type BounceBehavior =
+  | 'reflect'          // Physically realistic reflection (mirror angle)
+  | 'turn_around'      // Go back the direction it came from (180°)
+  | 'turn_left'        // Turn 90° counter-clockwise
+  | 'turn_right'       // Turn 90° clockwise
+  | 'random';          // Pick a random valid direction
+
+/**
  * Spell asset definition - reusable attack configuration
  */
 export interface SpellAsset {
@@ -682,6 +700,10 @@ export interface SpellAsset {
   // Projectile settings (for linear templates)
   projectileSpeed?: number;     // Tiles per second
   pierceEnemies?: boolean;      // Continue through enemies
+  bounceOffWalls?: boolean;     // Bounce/reflect off walls instead of stopping
+  maxBounces?: number;          // Maximum bounces (default: 3 if bounceOffWalls enabled)
+  bounceBehavior?: BounceBehavior; // How projectile bounces (default: reflect)
+  bounceTurnDegrees?: 45 | 90 | 135; // Turn amount for turn_left/turn_right (default: 90)
 
   // AOE settings
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile

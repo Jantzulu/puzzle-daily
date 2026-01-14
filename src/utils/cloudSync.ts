@@ -23,7 +23,7 @@ import type {
   CustomEnemy,
   CustomSprite,
 } from './assetStorage';
-import type { PuzzleSkin, SpellAsset } from '../types/game';
+import type { PuzzleSkin, SpellAsset, StatusEffectAsset } from '../types/game';
 import {
   getCustomTileTypes,
   getCustomObjects,
@@ -31,18 +31,21 @@ import {
   getCustomEnemies,
   getPuzzleSkins,
   getSpellAssets,
+  getStatusEffectAssets,
   saveTileType,
   saveObject,
   saveCharacter,
   saveEnemy,
   savePuzzleSkin,
   saveSpellAsset,
+  saveStatusEffectAsset,
   deleteTileType,
   deleteObject,
   deleteCharacter,
   deleteEnemy,
   deletePuzzleSkin,
   deleteSpellAsset,
+  deleteStatusEffectAsset,
 } from './assetStorage';
 import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle } from './puzzleStorage';
 
@@ -128,6 +131,15 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     for (const spell of spells) {
       const success = await saveAssetToCloud(spell.id, 'spell', spell.name, spell);
       if (!success) errors.push(`Failed to upload spell: ${spell.name}`);
+    }
+
+    // Push status effects
+    const statusEffects = getStatusEffectAssets();
+    for (const effect of statusEffects) {
+      if (!effect.isBuiltIn) {
+        const success = await saveAssetToCloud(effect.id, 'status_effect', effect.name, effect);
+        if (!success) errors.push(`Failed to upload status effect: ${effect.name}`);
+      }
     }
 
     // Push puzzles
@@ -260,6 +272,25 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
         }
       } catch (e) {
         errors.push(`Failed to import spell: ${asset.name}`);
+      }
+    }
+
+    // Import status effects (or delete if soft-deleted)
+    if (cloudData.statusEffects) {
+      for (const asset of cloudData.statusEffects) {
+        try {
+          if (asset.deleted_at) {
+            deleteStatusEffectAsset(asset.id);
+            console.log(`[CloudSync] Deleted status effect locally: ${asset.name}`);
+          } else {
+            const effect = asset.data as unknown as StatusEffectAsset;
+            if (!effect.isBuiltIn) {
+              saveStatusEffectAsset(effect);
+            }
+          }
+        } catch (e) {
+          errors.push(`Failed to import status effect: ${asset.name}`);
+        }
       }
     }
 

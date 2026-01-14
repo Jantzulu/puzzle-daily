@@ -1315,6 +1315,12 @@ function spawnProjectile(
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
     spellAssetId: spell?.id,
+    // Bounce settings from spell
+    bounceOffWalls: spell?.bounceOffWalls,
+    maxBounces: spell?.maxBounces ?? (spell?.bounceOffWalls ? 3 : undefined),
+    bounceCount: 0,
+    bounceBehavior: spell?.bounceBehavior || 'reflect',
+    bounceTurnDegrees: spell?.bounceTurnDegrees ?? 90,
   };
 
   gameState.activeProjectiles.push(projectile);

@@ -221,6 +221,7 @@ interface SpriteEditorProps {
   sprite: CustomSprite;
   onChange: (sprite: CustomSprite) => void;
   size?: number; // Preview size in pixels
+  allowOversized?: boolean; // Allow size > 100% (for enemies/objects that can exceed tile bounds)
 }
 
 const PREVIEW_SIZE = 96;
@@ -237,7 +238,7 @@ const DIRECTIONS: { key: SpriteDirection; label: string; arrow: string }[] = [
   { key: 'default', label: 'Default/Static', arrow: '⊙' },
 ];
 
-export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE }) => {
+export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE, allowOversized = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
   // Always use directional mode - 'default' direction serves as universal fallback
@@ -2058,12 +2059,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         <input
           type="range"
           min="0.2"
-          max="1.0"
+          max={allowOversized ? "2.0" : "1.0"}
           step="0.05"
           value={currentConfig.size}
           onChange={(e) => handleSizeChange(parseFloat(e.target.value))}
           className="w-full"
         />
+        {allowOversized && (
+          <p className="text-xs text-gray-400 mt-1">
+            Values &gt;100% extend beyond tile bounds
+          </p>
+        )}
       </div>
     </div>
   );

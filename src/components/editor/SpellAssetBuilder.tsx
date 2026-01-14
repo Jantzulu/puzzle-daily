@@ -1154,6 +1154,71 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 </label>
                 <p className="text-xs text-gray-400 ml-6">If enabled, projectile continues through enemies</p>
               </div>
+
+              {/* Bounce off walls */}
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editedSpell.bounceOffWalls || false}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, bounceOffWalls: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">Bounce Off Walls</span>
+                </label>
+                <p className="text-xs text-gray-400 ml-6">If enabled, projectile reflects off walls instead of stopping</p>
+              </div>
+
+              {/* Bounce settings (only shown if bounce enabled) */}
+              {editedSpell.bounceOffWalls && (
+                <>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Bounce Behavior</label>
+                    <select
+                      value={editedSpell.bounceBehavior || 'reflect'}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, bounceBehavior: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                    >
+                      <option value="reflect">Reflect (mirror angle)</option>
+                      <option value="turn_around">Turn Around (180°)</option>
+                      <option value="turn_left">Turn Left (90°)</option>
+                      <option value="turn_right">Turn Right (90°)</option>
+                      <option value="random">Random direction</option>
+                    </select>
+                    <p className="text-xs text-gray-400 mt-1">How the projectile changes direction when hitting a wall</p>
+                  </div>
+
+                  {/* Turn Degrees - only shown for turn_left and turn_right */}
+                  {(editedSpell.bounceBehavior === 'turn_left' || editedSpell.bounceBehavior === 'turn_right') && (
+                    <div>
+                      <label className="block text-sm font-medium mb-1">Turn Degrees</label>
+                      <select
+                        value={editedSpell.bounceTurnDegrees || 90}
+                        onChange={(e) => setEditedSpell({ ...editedSpell, bounceTurnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
+                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      >
+                        <option value={45}>45° (diagonal step)</option>
+                        <option value={90}>90° (quarter turn)</option>
+                        <option value={135}>135° (wide turn)</option>
+                      </select>
+                      <p className="text-xs text-gray-400 mt-1">How sharply the projectile turns when bouncing</p>
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Max Bounces</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="10"
+                      value={editedSpell.maxBounces || 3}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, maxBounces: parseInt(e.target.value) || 3 })}
+                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">Maximum number of wall bounces before projectile stops</p>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
