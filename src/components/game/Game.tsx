@@ -370,21 +370,88 @@ export const Game: React.FC = () => {
   // Show editor link in development mode
   const isDev = import.meta.env.DEV;
 
+  // Render heart icons for lives
+  const renderLivesHearts = () => {
+    const puzzleLives = currentPuzzle.lives ?? 3;
+    const isUnlimitedLives = puzzleLives === 0;
+
+    if (isUnlimitedLives) {
+      return <span className="text-2xl" title="Unlimited lives">&#x221E;</span>;
+    }
+
+    const hearts = [];
+    for (let i = 0; i < puzzleLives; i++) {
+      const isFilled = i < livesRemaining;
+      hearts.push(
+        <span
+          key={i}
+          className={`text-xl ${isFilled ? 'text-red-500' : 'text-gray-600'}`}
+          title={isFilled ? 'Life remaining' : 'Life lost'}
+        >
+          &#x2665;
+        </span>
+      );
+    }
+    return hearts;
+  };
+
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        <div className="mb-4 md:mb-8 flex justify-between items-center">
-          <h1 className="text-2xl md:text-4xl font-bold">Puzzle Game</h1>
-          {isDev && (
+        {/* Editor link - top right corner */}
+        {isDev && (
+          <div className="flex justify-end mb-2">
             <Link to="/editor" className="px-3 py-1.5 md:px-4 md:py-2 bg-purple-600 rounded hover:bg-purple-700 text-sm md:text-base">
-              🛠️ Editor
+              Editor
             </Link>
-          )}
-        </div>
+          </div>
+        )}
 
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board */}
           <div className="flex-1 flex flex-col items-center">
+            {/* Lives display - above controls */}
+            <div className="flex items-center justify-center gap-1 mb-2">
+              {renderLivesHearts()}
+            </div>
+
+            {/* Play controls bar - above puzzle */}
+            {gameState.gameStatus === 'setup' && testMode === 'none' && (
+              <div className="flex items-center justify-center gap-3 mb-4 w-full max-w-md">
+                <button
+                  onClick={handleTestCharacters}
+                  className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
+                  title="Test your characters without enemies for 5 turns"
+                >
+                  Test Characters
+                </button>
+
+                <button
+                  onClick={handlePlay}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition text-lg"
+                >
+                  Play
+                </button>
+
+                <button
+                  onClick={handleTestEnemies}
+                  className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition text-sm"
+                  title="Watch enemies move without characters for 5 turns"
+                >
+                  Test Enemies
+                </button>
+              </div>
+            )}
+
+            {/* Test mode indicator - above puzzle */}
+            {testMode !== 'none' && (
+              <div className="p-2 bg-purple-900 rounded text-center mb-4 w-full max-w-md">
+                <span className="text-purple-300 text-sm font-medium">
+                  Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'} - {testTurnsRemaining} turns left
+                </span>
+              </div>
+            )}
+
             <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
 
             {/* Victory/Defeat Message */}
@@ -497,16 +564,10 @@ export const Game: React.FC = () => {
                   <span className="text-gray-400">Turn:</span>
                   <span className="ml-2 font-bold">{gameState.currentTurn}</span>
                 </div>
-                <div>
+                <div className="col-span-2">
                   <span className="text-gray-400">Characters:</span>
                   <span className="ml-2 font-bold">
                     {gameState.placedCharacters.length} / {gameState.puzzle.maxCharacters}
-                  </span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Lives:</span>
-                  <span className={`ml-2 font-bold ${livesRemaining <= 1 && (currentPuzzle.lives ?? 3) > 0 ? 'text-red-400' : ''}`}>
-                    {(currentPuzzle.lives ?? 3) === 0 ? '∞' : `${livesRemaining} / ${currentPuzzle.lives ?? 3}`}
                   </span>
                 </div>
               </div>
