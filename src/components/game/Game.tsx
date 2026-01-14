@@ -412,8 +412,12 @@ export const Game: React.FC = () => {
             {/* Play controls bar - above puzzle */}
             {gameState.gameStatus === 'setup' && testMode === 'none' && (
               <div className="mb-4">
-                {/* Grid layout: 3 columns with Play button centered */}
-                <div className="grid grid-cols-3 gap-2 md:gap-3 items-end">
+                {/* Lives display - centered above the button row */}
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {renderLivesHearts()}
+                </div>
+                {/* Grid layout: 3 columns with Play button centered, test buttons vertically centered */}
+                <div className="grid grid-cols-3 gap-2 md:gap-3 items-center">
                   {/* Left column - Test Characters */}
                   <div className="flex justify-end">
                     <button
@@ -425,12 +429,8 @@ export const Game: React.FC = () => {
                     </button>
                   </div>
 
-                  {/* Center column - Hearts + Play button */}
-                  <div className="flex flex-col items-center">
-                    {/* Lives display - centered above play button */}
-                    <div className="flex items-center justify-center gap-1 mb-2">
-                      {renderLivesHearts()}
-                    </div>
+                  {/* Center column - Play button */}
+                  <div className="flex justify-center">
                     <button
                       onClick={handlePlay}
                       className="px-8 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition text-lg md:text-xl shadow-lg"
@@ -528,9 +528,40 @@ export const Game: React.FC = () => {
               </div>
             )}
 
+            {/* Win Condition Display - below puzzle, above characters */}
+            {gameState.gameStatus === 'setup' && (
+              <div className="mt-4 w-full max-w-md px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                <div className="flex items-center justify-center gap-2 text-sm">
+                  <span className="text-gray-400">Goal:</span>
+                  <span className="text-yellow-300 font-medium">
+                    {gameState.puzzle.winConditions.map((wc) => {
+                      switch (wc.type) {
+                        case 'defeat_all_enemies':
+                          return 'Defeat all enemies';
+                        case 'collect_all':
+                          return 'Collect all items';
+                        case 'reach_goal':
+                          return 'Reach the goal';
+                        case 'survive_turns':
+                          return `Survive ${wc.params?.turns ?? 10} turns`;
+                        case 'win_in_turns':
+                          return `Win within ${wc.params?.turns ?? 10} turns`;
+                        case 'max_characters':
+                          return `Use at most ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''}`;
+                        case 'characters_alive':
+                          return `Keep ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''} alive`;
+                        default:
+                          return wc.type;
+                      }
+                    }).join(' & ')}
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* Character Selector - below puzzle */}
             {gameState.gameStatus === 'setup' && (
-              <div className="mt-4 w-full max-w-md">
+              <div className="mt-3 w-full max-w-md">
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
                   selectedCharacterId={selectedCharacterId}
@@ -577,14 +608,6 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-
-            {/* Puzzle Info */}
-            <div className="p-4 bg-gray-800 rounded">
-              <h3 className="text-lg font-bold mb-2">Puzzle: {gameState.puzzle.name}</h3>
-              <p className="text-sm text-gray-400">
-                {gameState.puzzle.winConditions.map((wc) => wc.type).join(', ')}
-              </p>
-            </div>
 
             {/* Enemies Display */}
             <EnemyDisplay enemies={gameState.puzzle.enemies} />
