@@ -2,7 +2,8 @@ import React, { useMemo } from 'react';
 import type { Puzzle, CharacterAction, StatusEffectAsset } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage';
+import { loadSpellAsset, loadStatusEffectAsset, type CustomSprite } from '../../utils/assetStorage';
+import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
@@ -59,74 +60,30 @@ function getPuzzleStatusEffects(puzzle: Puzzle): StatusEffectAsset[] {
 
 /**
  * Renders a status effect icon based on its sprite data
+ * Uses SpriteThumbnail for full sprite support including images and animations
  */
 const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> = ({ effect, size = 24 }) => {
   const iconSprite = effect.iconSprite;
 
-  // Handle inline sprite (simple shapes)
+  // Handle inline sprite - use SpriteThumbnail for full rendering support
   if (iconSprite.type === 'inline' && iconSprite.spriteData) {
-    const { shape, primaryColor } = iconSprite.spriteData;
-
-    // Render simple shape
-    switch (shape) {
-      case 'circle':
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" fill={primaryColor} />
-          </svg>
-        );
-      case 'square':
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24">
-            <rect x="2" y="2" width="20" height="20" rx="2" fill={primaryColor} />
-          </svg>
-        );
-      case 'diamond':
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24">
-            <polygon points="12,2 22,12 12,22 2,12" fill={primaryColor} />
-          </svg>
-        );
-      case 'triangle':
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24">
-            <polygon points="12,2 22,22 2,22" fill={primaryColor} />
-          </svg>
-        );
-      case 'star':
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24">
-            <polygon
-              points="12,2 15,9 22,9 16,14 18,22 12,17 6,22 8,14 2,9 9,9"
-              fill={primaryColor}
-            />
-          </svg>
-        );
-      default:
-        // Default circle
-        return (
-          <svg width={size} height={size} viewBox="0 0 24 24">
-            <circle cx="12" cy="12" r="10" fill={primaryColor || '#888'} />
-          </svg>
-        );
-    }
+    const spriteData = iconSprite.spriteData as CustomSprite;
+    return <SpriteThumbnail sprite={spriteData} size={size} />;
   }
 
-  // Handle stored sprite (image data)
+  // Handle stored sprite (would need to load from storage)
   if (iconSprite.type === 'stored' && iconSprite.spriteId) {
-    // For stored sprites, we'd need to load the sprite data
-    // For now, show a placeholder
     return (
       <div
         className="rounded bg-gray-600 flex items-center justify-center"
         style={{ width: size, height: size }}
       >
-        <span className="text-xs">?</span>
+        <span className="text-xs text-gray-400">?</span>
       </div>
     );
   }
 
-  // Fallback
+  // Fallback - gray placeholder
   return (
     <div
       className="rounded bg-gray-600"
