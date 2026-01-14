@@ -7,6 +7,7 @@ interface CharacterSelectorProps {
   selectedCharacterId: string | null;
   onSelectCharacter: (id: string | null) => void;
   placedCharacterIds?: string[];
+  onClearAll?: () => void;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -14,6 +15,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   selectedCharacterId,
   onSelectCharacter,
   placedCharacterIds = [],
+  onClearAll,
 }) => {
   return (
     <div className="bg-gray-800 p-4 rounded">
@@ -22,6 +24,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         <span className="text-sm text-gray-400">
           ({placedCharacterIds.length} Placed)
         </span>
+        {onClearAll && placedCharacterIds.length > 0 && (
+          <button
+            onClick={onClearAll}
+            className="p-1 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
+            title="Remove all placed characters"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+            </svg>
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-2 justify-center">

@@ -6,7 +6,6 @@ import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
-import { Controls } from './Controls';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
@@ -454,19 +453,40 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Lives display when not in setup (during running/victory/defeat) */}
-            {gameState.gameStatus !== 'setup' && (
-              <div className="flex items-center justify-center gap-1 mb-4">
-                {renderLivesHearts()}
+            {/* Fancy turn counter and lives display - shows during gameplay (not setup, not test mode) */}
+            {gameState.gameStatus !== 'setup' && testMode === 'none' && (
+              <div className="mb-4 flex flex-col items-center">
+                {/* Lives display */}
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {renderLivesHearts()}
+                </div>
+                {/* Turn counter */}
+                <div className="flex items-center gap-3 px-4 py-2 bg-gray-800 rounded-lg border border-gray-600">
+                  <span className="text-gray-400 text-sm font-medium">Turn</span>
+                  <span className="text-2xl font-bold text-yellow-400 min-w-[2ch] text-center">
+                    {gameState.currentTurn}
+                  </span>
+                </div>
               </div>
             )}
 
             {/* Test mode indicator - above puzzle */}
             {testMode !== 'none' && (
-              <div className="p-2 bg-purple-900 rounded text-center mb-4">
-                <span className="text-purple-300 text-sm font-medium">
-                  Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'} - {testTurnsRemaining} turns left
-                </span>
+              <div className="mb-4 flex flex-col items-center">
+                {/* Lives display during test mode */}
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {renderLivesHearts()}
+                </div>
+                {/* Test mode turn counter */}
+                <div className="flex items-center gap-3 px-4 py-2 bg-purple-900 rounded-lg border border-purple-600">
+                  <span className="text-purple-300 text-sm font-medium">
+                    Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'}
+                  </span>
+                  <span className="text-2xl font-bold text-purple-300 min-w-[2ch] text-center">
+                    {testTurnsRemaining}
+                  </span>
+                  <span className="text-purple-400 text-sm">left</span>
+                </div>
               </div>
             )}
 
@@ -516,6 +536,7 @@ export const Game: React.FC = () => {
                   selectedCharacterId={selectedCharacterId}
                   onSelectCharacter={setSelectedCharacterId}
                   placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                  onClearAll={handleWipe}
                 />
               </div>
             )}
@@ -556,41 +577,6 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Controls - hide dev controls on player-facing page */}
-            <Controls
-              gameStatus={gameState.gameStatus}
-              isSimulating={isSimulating}
-              onPlay={handlePlay}
-              onPause={handlePause}
-              onReset={handleReset}
-              onWipe={handleWipe}
-              onStep={handleStep}
-              onTestEnemies={handleTestEnemies}
-              onTestCharacters={handleTestCharacters}
-              testMode={testMode}
-              testTurnsRemaining={testTurnsRemaining}
-              hideDevControls={true}
-            />
-
-            {/* Game Status */}
-            <div className="p-4 bg-gray-800 rounded">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <span className="text-gray-400">Status:</span>
-                  <span className="ml-2 font-bold capitalize">{gameState.gameStatus}</span>
-                </div>
-                <div>
-                  <span className="text-gray-400">Turn:</span>
-                  <span className="ml-2 font-bold">{gameState.currentTurn}</span>
-                </div>
-                <div className="col-span-2">
-                  <span className="text-gray-400">Characters:</span>
-                  <span className="ml-2 font-bold">
-                    {gameState.placedCharacters.length} / {gameState.puzzle.maxCharacters}
-                  </span>
-                </div>
-              </div>
-            </div>
 
             {/* Puzzle Info */}
             <div className="p-4 bg-gray-800 rounded">
