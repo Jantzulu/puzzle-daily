@@ -8,6 +8,7 @@ import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
+import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 
 // Test mode types
@@ -611,6 +612,9 @@ export const Game: React.FC = () => {
 
             {/* Enemies Display */}
             <EnemyDisplay enemies={gameState.puzzle.enemies} />
+
+            {/* Status Effects Display - only shown if puzzle has status effects */}
+            <StatusEffectsDisplay puzzle={gameState.puzzle} />
           </div>
         </div>
       </div>
