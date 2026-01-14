@@ -32,6 +32,9 @@ import {
   getPuzzleSkins,
   getSpellAssets,
   getStatusEffectAssets,
+  getCustomCollectibleTypes,
+  getFolders,
+  getHiddenAssets,
   saveTileType,
   saveObject,
   saveCharacter,
@@ -39,6 +42,8 @@ import {
   savePuzzleSkin,
   saveSpellAsset,
   saveStatusEffectAsset,
+  saveCollectibleType,
+  saveFolder,
   deleteTileType,
   deleteObject,
   deleteCharacter,
@@ -46,6 +51,10 @@ import {
   deletePuzzleSkin,
   deleteSpellAsset,
   deleteStatusEffectAsset,
+  deleteCollectibleType,
+  deleteFolder,
+  type AssetFolder,
+  type CustomCollectibleType,
 } from './assetStorage';
 import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle } from './puzzleStorage';
 
@@ -140,6 +149,28 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
         const success = await saveAssetToCloud(effect.id, 'status_effect', effect.name, effect);
         if (!success) errors.push(`Failed to upload status effect: ${effect.name}`);
       }
+    }
+
+    // Push folders
+    const folders = getFolders();
+    for (const folder of folders) {
+      const success = await saveAssetToCloud(folder.id, 'folder', folder.name, folder);
+      if (!success) errors.push(`Failed to upload folder: ${folder.name}`);
+    }
+
+    // Push collectible types
+    const collectibleTypes = getCustomCollectibleTypes();
+    for (const collectible of collectibleTypes) {
+      const success = await saveAssetToCloud(collectible.id, 'collectible_type', collectible.name, collectible);
+      if (!success) errors.push(`Failed to upload collectible type: ${collectible.name}`);
+    }
+
+    // Push hidden assets (as a single record containing all hidden IDs)
+    const hiddenAssets = getHiddenAssets();
+    if (hiddenAssets.size > 0) {
+      const hiddenData = { hiddenIds: Array.from(hiddenAssets) };
+      const success = await saveAssetToCloud('hidden_assets_list', 'hidden_assets', 'Hidden Assets', hiddenData);
+      if (!success) errors.push('Failed to upload hidden assets list');
     }
 
     // Push puzzles
@@ -290,6 +321,59 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           }
         } catch (e) {
           errors.push(`Failed to import status effect: ${asset.name}`);
+        }
+      }
+    }
+
+    // Import folders (or delete if soft-deleted)
+    if (cloudData.folders) {
+      for (const asset of cloudData.folders) {
+        try {
+          if (asset.deleted_at) {
+            deleteFolder(asset.id);
+            console.log(`[CloudSync] Deleted folder locally: ${asset.name}`);
+          } else {
+            const folder = asset.data as unknown as AssetFolder;
+            saveFolder(folder);
+          }
+        } catch (e) {
+          errors.push(`Failed to import folder: ${asset.name}`);
+        }
+      }
+    }
+
+    // Import collectible types (or delete if soft-deleted)
+    if (cloudData.collectibleTypes) {
+      for (const asset of cloudData.collectibleTypes) {
+        try {
+          if (asset.deleted_at) {
+            deleteCollectibleType(asset.id);
+            console.log(`[CloudSync] Deleted collectible type locally: ${asset.name}`);
+          } else {
+            const collectible = asset.data as unknown as CustomCollectibleType;
+            saveCollectibleType(collectible);
+          }
+        } catch (e) {
+          errors.push(`Failed to import collectible type: ${asset.name}`);
+        }
+      }
+    }
+
+    // Import hidden assets
+    if (cloudData.hiddenAssets) {
+      for (const asset of cloudData.hiddenAssets) {
+        try {
+          if (!asset.deleted_at && asset.id === 'hidden_assets_list') {
+            const hiddenData = asset.data as { hiddenIds: string[] };
+            if (hiddenData.hiddenIds) {
+              // Replace local hidden assets with cloud version
+              const HIDDEN_ASSETS_KEY = 'hidden_official_assets';
+              localStorage.setItem(HIDDEN_ASSETS_KEY, JSON.stringify(hiddenData.hiddenIds));
+              console.log(`[CloudSync] Imported ${hiddenData.hiddenIds.length} hidden assets`);
+            }
+          }
+        } catch (e) {
+          errors.push(`Failed to import hidden assets`);
         }
       }
     }

@@ -46,7 +46,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               }`}
             >
               {/* HP display - above sprite */}
-              <div className="text-xs text-center text-green-400 font-medium mb-1">
+              <div className={`text-xs text-center font-medium mb-1 ${
+                isSelected ? 'text-white' : 'text-green-400'
+              }`}>
                 HP: {character.health}
               </div>
 
@@ -62,17 +64,23 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
               {/* Name and Title */}
               <div className="mt-1 text-center max-w-[100px]">
-                <span className="text-xs font-medium text-gray-200">
+                <span className={`text-xs font-medium ${
+                  isSelected ? 'text-white' : 'text-gray-200'
+                }`}>
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className="text-xs text-gray-400 italic"> {character.title}</span>
+                  <span className={`text-xs italic ${
+                    isSelected ? 'text-green-100' : 'text-gray-400'
+                  }`}> {character.title}</span>
                 )}
               </div>
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <ul className="mt-1 text-xs text-gray-400 text-left max-w-[100px] list-disc list-inside">
+                <ul className={`mt-1 text-xs text-left max-w-[100px] list-disc list-inside ${
+                  isSelected ? 'text-green-100' : 'text-gray-400'
+                }`}>
                   {character.tooltipSteps!.map((step, idx) => (
                     <li key={idx}>{step}</li>
                   ))}
