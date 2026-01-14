@@ -14,6 +14,7 @@ interface ControlsProps {
   testMode?: 'none' | 'enemies' | 'characters';
   testTurnsRemaining?: number;
   showPlayControls?: boolean; // Show Play/Test/Step buttons in setup mode (for playtest page)
+  hideDevControls?: boolean; // Hide developer controls (Resume/Pause/Step/Reset/Wipe) for player-facing page
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -29,6 +30,7 @@ export const Controls: React.FC<ControlsProps> = ({
   testMode = 'none',
   testTurnsRemaining = 0,
   showPlayControls = false,
+  hideDevControls = false,
 }) => {
   const isTestMode = testMode !== 'none';
 
@@ -36,53 +38,56 @@ export const Controls: React.FC<ControlsProps> = ({
     <div className="p-4 bg-gray-800 rounded space-y-3">
       <h3 className="text-lg font-bold mb-4">Controls</h3>
 
-      <div className="grid grid-cols-2 gap-2">
-        {/* Play button - shows when game is running but paused */}
-        {!isTestMode && gameStatus === 'running' && !isSimulating ? (
-          <button
-            onClick={onPlay}
-            className="col-span-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
-          >
-            Resume
-          </button>
-        ) : null}
-
-        {isSimulating && gameStatus === 'running' && !isTestMode ? (
-          <button
-            onClick={onPause}
-            className="col-span-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded font-semibold transition"
-          >
-            Pause
-          </button>
-        ) : null}
-
-        {gameStatus === 'running' && !isSimulating && !isTestMode ? (
-          <button
-            onClick={onStep}
-            className="col-span-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition"
-          >
-            Step
-          </button>
-        ) : null}
-
-        {!isTestMode && (
-          <>
+      {/* Developer controls - hidden on player-facing page */}
+      {!hideDevControls && (
+        <div className="grid grid-cols-2 gap-2">
+          {/* Resume button - shows when game is running but paused */}
+          {!isTestMode && gameStatus === 'running' && !isSimulating ? (
             <button
-              onClick={onReset}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+              onClick={onPlay}
+              className="col-span-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
             >
-              Reset
+              Resume
             </button>
+          ) : null}
 
+          {isSimulating && gameStatus === 'running' && !isTestMode ? (
             <button
-              onClick={onWipe}
-              className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition"
+              onClick={onPause}
+              className="col-span-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded font-semibold transition"
             >
-              Wipe
+              Pause
             </button>
-          </>
-        )}
-      </div>
+          ) : null}
+
+          {gameStatus === 'running' && !isSimulating && !isTestMode ? (
+            <button
+              onClick={onStep}
+              className="col-span-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition"
+            >
+              Step
+            </button>
+          ) : null}
+
+          {!isTestMode && (
+            <>
+              <button
+                onClick={onReset}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+              >
+                Reset
+              </button>
+
+              <button
+                onClick={onWipe}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition"
+              >
+                Wipe
+              </button>
+            </>
+          )}
+        </div>
+      )}
 
       {/* Play and Test buttons - show in setup mode (only for playtest page) */}
       {showPlayControls && gameStatus === 'setup' && !isTestMode && (

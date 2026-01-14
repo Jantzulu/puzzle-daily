@@ -556,7 +556,7 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Controls */}
+            {/* Controls - hide dev controls on player-facing page */}
             <Controls
               gameStatus={gameState.gameStatus}
               isSimulating={isSimulating}
@@ -569,6 +569,7 @@ export const Game: React.FC = () => {
               onTestCharacters={handleTestCharacters}
               testMode={testMode}
               testTurnsRemaining={testTurnsRemaining}
+              hideDevControls={true}
             />
 
             {/* Game Status */}
