@@ -1381,6 +1381,7 @@ export const MapEditor: React.FC = () => {
                 onTestCharacters={handleTestCharacters}
                 testMode={testMode}
                 testTurnsRemaining={testTurnsRemaining}
+                showPlayControls={true}
               />
 
               {/* Game Status */}

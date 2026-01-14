@@ -410,16 +410,16 @@ export const Game: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board */}
           <div className="flex-1 flex flex-col items-center">
-            {/* Wrapper to center controls with puzzle */}
-            <div className="flex flex-col items-center">
-              {/* Lives display - centered above play button */}
-              <div className="flex items-center justify-center gap-1 mb-2">
-                {renderLivesHearts()}
-              </div>
+            {/* Play controls bar - above puzzle */}
+            {gameState.gameStatus === 'setup' && testMode === 'none' && (
+              <div className="flex flex-col items-center mb-4">
+                {/* Lives display - centered above play button */}
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {renderLivesHearts()}
+                </div>
 
-              {/* Play controls bar - above puzzle, centered with puzzle */}
-              {gameState.gameStatus === 'setup' && testMode === 'none' && (
-                <div className="flex items-center justify-center gap-3 mb-4">
+                {/* Buttons row */}
+                <div className="flex items-center justify-center gap-3">
                   <button
                     onClick={handleTestCharacters}
                     className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
@@ -443,19 +443,26 @@ export const Game: React.FC = () => {
                     Test Enemies
                   </button>
                 </div>
-              )}
+              </div>
+            )}
 
-              {/* Test mode indicator - above puzzle */}
-              {testMode !== 'none' && (
-                <div className="p-2 bg-purple-900 rounded text-center mb-4">
-                  <span className="text-purple-300 text-sm font-medium">
-                    Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'} - {testTurnsRemaining} turns left
-                  </span>
-                </div>
-              )}
+            {/* Lives display when not in setup (during running/victory/defeat) */}
+            {gameState.gameStatus !== 'setup' && (
+              <div className="flex items-center justify-center gap-1 mb-4">
+                {renderLivesHearts()}
+              </div>
+            )}
 
-              <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
-            </div>
+            {/* Test mode indicator - above puzzle */}
+            {testMode !== 'none' && (
+              <div className="p-2 bg-purple-900 rounded text-center mb-4">
+                <span className="text-purple-300 text-sm font-medium">
+                  Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'} - {testTurnsRemaining} turns left
+                </span>
+              </div>
+            )}
+
+            <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
 
             {/* Victory/Defeat Message */}
             {gameState.gameStatus === 'victory' && (

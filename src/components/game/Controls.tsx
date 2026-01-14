@@ -13,6 +13,7 @@ interface ControlsProps {
   onTestCharacters?: () => void;
   testMode?: 'none' | 'enemies' | 'characters';
   testTurnsRemaining?: number;
+  showPlayControls?: boolean; // Show Play/Test/Step buttons in setup mode (for playtest page)
 }
 
 export const Controls: React.FC<ControlsProps> = ({
@@ -27,6 +28,7 @@ export const Controls: React.FC<ControlsProps> = ({
   onTestCharacters,
   testMode = 'none',
   testTurnsRemaining = 0,
+  showPlayControls = false,
 }) => {
   const isTestMode = testMode !== 'none';
 
@@ -82,17 +84,24 @@ export const Controls: React.FC<ControlsProps> = ({
         )}
       </div>
 
-      {/* Play and Test buttons - show in setup mode */}
-      {gameStatus === 'setup' && !isTestMode && (
+      {/* Play and Test buttons - show in setup mode (only for playtest page) */}
+      {showPlayControls && gameStatus === 'setup' && !isTestMode && (
         <div className="space-y-2 pt-2 border-t border-gray-700">
-          <button
-            onClick={onPlay}
-            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition"
-          >
-            Play
-          </button>
-
           <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={onPlay}
+              className="col-span-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition"
+            >
+              Play
+            </button>
+
+            <button
+              onClick={onStep}
+              className="col-span-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition"
+            >
+              Step
+            </button>
+
             {onTestCharacters && (
               <button
                 onClick={onTestCharacters}
@@ -116,7 +125,7 @@ export const Controls: React.FC<ControlsProps> = ({
         </div>
       )}
 
-      {gameStatus === 'setup' && !isTestMode && (
+      {showPlayControls && gameStatus === 'setup' && !isTestMode && (
         <p className="text-sm text-gray-400 mt-4">
           Select a character and click on the board to place it.
         </p>
