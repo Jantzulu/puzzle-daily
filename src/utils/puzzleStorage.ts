@@ -1,6 +1,43 @@
 import type { Puzzle } from '../types/game';
 
 const STORAGE_KEY = 'saved_puzzles';
+const PENDING_PUZZLE_DELETIONS_KEY = 'pending_puzzle_deletions';
+
+// ============ PENDING DELETIONS TRACKING ============
+// Tracks puzzles deleted locally so they can be synced to cloud on next push
+
+export interface PendingPuzzleDeletion {
+  id: string;
+  deletedAt: string;
+}
+
+export const getPendingPuzzleDeletions = (): PendingPuzzleDeletion[] => {
+  const stored = localStorage.getItem(PENDING_PUZZLE_DELETIONS_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    return [];
+  }
+};
+
+export const addPendingPuzzleDeletion = (id: string): void => {
+  const deletions = getPendingPuzzleDeletions();
+  // Don't add duplicates
+  if (!deletions.some(d => d.id === id)) {
+    deletions.push({ id, deletedAt: new Date().toISOString() });
+    localStorage.setItem(PENDING_PUZZLE_DELETIONS_KEY, JSON.stringify(deletions));
+  }
+};
+
+export const clearPendingPuzzleDeletions = (): void => {
+  localStorage.removeItem(PENDING_PUZZLE_DELETIONS_KEY);
+};
+
+export const removePendingPuzzleDeletion = (id: string): void => {
+  const deletions = getPendingPuzzleDeletions().filter(d => d.id !== id);
+  localStorage.setItem(PENDING_PUZZLE_DELETIONS_KEY, JSON.stringify(deletions));
+};
 
 export interface SavedPuzzle extends Puzzle {
   savedAt: string;
@@ -51,6 +88,9 @@ export const deletePuzzle = (puzzleId: string): void => {
   const puzzles = getSavedPuzzles();
   const filtered = puzzles.filter(p => p.id !== puzzleId);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingPuzzleDeletion(puzzleId);
 };
 
 export const loadPuzzle = (puzzleId: string): SavedPuzzle | null => {

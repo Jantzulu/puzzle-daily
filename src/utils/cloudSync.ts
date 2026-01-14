@@ -53,10 +53,12 @@ import {
   deleteStatusEffectAsset,
   deleteCollectibleType,
   deleteFolder,
+  getPendingAssetDeletions,
+  clearPendingAssetDeletions,
   type AssetFolder,
   type CustomCollectibleType,
 } from './assetStorage';
-import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle } from './puzzleStorage';
+import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle, getPendingPuzzleDeletions, clearPendingPuzzleDeletions } from './puzzleStorage';
 
 // Track sync status
 let lastSyncTime: Date | null = null;
@@ -181,6 +183,36 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
       console.log(`[CloudSync] Uploading puzzle: ${savedPuzzle.name} (${savedPuzzle.id})`);
       const success = await savePuzzleToCloud(savedPuzzle, savedPuzzle.name);
       if (!success) errors.push(`Failed to upload puzzle: ${savedPuzzle.name}`);
+    }
+
+    // Process pending asset deletions (soft-delete in cloud)
+    const pendingAssetDeletions = getPendingAssetDeletions();
+    console.log(`[CloudSync] Processing ${pendingAssetDeletions.length} pending asset deletions`);
+    for (const deletion of pendingAssetDeletions) {
+      console.log(`[CloudSync] Soft-deleting asset in cloud: ${deletion.id} (${deletion.type})`);
+      const success = await deleteAssetFromCloud(deletion.id);
+      if (!success) {
+        errors.push(`Failed to delete asset from cloud: ${deletion.id}`);
+      }
+    }
+    // Clear pending deletions after processing (even if some failed, to prevent infinite retries)
+    if (pendingAssetDeletions.length > 0) {
+      clearPendingAssetDeletions();
+    }
+
+    // Process pending puzzle deletions (soft-delete in cloud)
+    const pendingPuzzleDeletions = getPendingPuzzleDeletions();
+    console.log(`[CloudSync] Processing ${pendingPuzzleDeletions.length} pending puzzle deletions`);
+    for (const deletion of pendingPuzzleDeletions) {
+      console.log(`[CloudSync] Soft-deleting puzzle in cloud: ${deletion.id}`);
+      const success = await deletePuzzleFromCloud(deletion.id);
+      if (!success) {
+        errors.push(`Failed to delete puzzle from cloud: ${deletion.id}`);
+      }
+    }
+    // Clear pending deletions after processing
+    if (pendingPuzzleDeletions.length > 0) {
+      clearPendingPuzzleDeletions();
     }
 
     lastSyncTime = new Date();

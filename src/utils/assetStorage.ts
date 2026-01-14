@@ -6,6 +6,44 @@ const TILE_STORAGE_KEY = 'custom_tiles';
 const COLLECTIBLE_STORAGE_KEY = 'custom_collectibles';
 const OBJECT_STORAGE_KEY = 'custom_objects';
 const HIDDEN_ASSETS_KEY = 'hidden_official_assets';
+const PENDING_ASSET_DELETIONS_KEY = 'pending_asset_deletions';
+
+// ============ PENDING DELETIONS TRACKING ============
+// Tracks assets deleted locally so they can be synced to cloud on next push
+
+export interface PendingDeletion {
+  id: string;
+  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type';
+  deletedAt: string;
+}
+
+export const getPendingAssetDeletions = (): PendingDeletion[] => {
+  const stored = localStorage.getItem(PENDING_ASSET_DELETIONS_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    return [];
+  }
+};
+
+export const addPendingAssetDeletion = (id: string, type: PendingDeletion['type']): void => {
+  const deletions = getPendingAssetDeletions();
+  // Don't add duplicates
+  if (!deletions.some(d => d.id === id)) {
+    deletions.push({ id, type, deletedAt: new Date().toISOString() });
+    localStorage.setItem(PENDING_ASSET_DELETIONS_KEY, JSON.stringify(deletions));
+  }
+};
+
+export const clearPendingAssetDeletions = (): void => {
+  localStorage.removeItem(PENDING_ASSET_DELETIONS_KEY);
+};
+
+export const removePendingAssetDeletion = (id: string): void => {
+  const deletions = getPendingAssetDeletions().filter(d => d.id !== id);
+  localStorage.setItem(PENDING_ASSET_DELETIONS_KEY, JSON.stringify(deletions));
+};
 
 // ============ HIDDEN ASSETS MANAGEMENT ============
 
@@ -80,6 +118,9 @@ export const saveFolder = (folder: AssetFolder): void => {
 export const deleteFolder = (folderId: string): void => {
   const folders = getFolders().filter(f => f.id !== folderId);
   localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(folderId, 'folder');
 };
 
 export const createFolder = (name: string, category: AssetCategory): AssetFolder => {
@@ -292,6 +333,9 @@ export const deleteCharacter = (characterId: string): void => {
   const filtered = characters.filter(c => c.id !== characterId);
   localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(filtered));
 
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(characterId, 'character');
+
   // Also hide official asset if it's not in custom storage
   hideAsset(characterId);
 };
@@ -334,6 +378,9 @@ export const deleteEnemy = (enemyId: string): void => {
   const filtered = enemies.filter(e => e.id !== enemyId);
   localStorage.setItem(ENEMY_STORAGE_KEY, JSON.stringify(filtered));
 
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(enemyId, 'enemy');
+
   // Also hide official asset if it's not in custom storage
   hideAsset(enemyId);
 };
@@ -374,6 +421,9 @@ export const deleteTileType = (tileId: string): void => {
   const tiles = getCustomTileTypes();
   const filtered = tiles.filter(t => t.id !== tileId);
   localStorage.setItem(TILE_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(tileId, 'tile_type');
 };
 
 export const loadTileType = (tileId: string): CustomTileType | null => {
@@ -412,6 +462,9 @@ export const deleteCollectibleType = (collectibleId: string): void => {
   const collectibles = getCustomCollectibleTypes();
   const filtered = collectibles.filter(c => c.id !== collectibleId);
   localStorage.setItem(COLLECTIBLE_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(collectibleId, 'collectible_type');
 };
 
 // ==========================================
@@ -493,6 +546,9 @@ export const deleteSpellAsset = (spellId: string): void => {
   const spells = getSpellAssets();
   const filtered = spells.filter(s => s.id !== spellId);
   localStorage.setItem(SPELL_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(spellId, 'spell');
 };
 
 export const loadSpellAsset = (spellId: string): SpellAsset | null => {
@@ -656,6 +712,9 @@ export const deleteStatusEffectAsset = (effectId: string): void => {
   const effects = getCustomStatusEffects();
   const filtered = effects.filter(e => e.id !== effectId);
   localStorage.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(effectId, 'status_effect');
 };
 
 export const loadStatusEffectAsset = (effectId: string): StatusEffectAsset | null => {
@@ -767,6 +826,9 @@ export const deletePuzzleSkin = (skinId: string): void => {
   const skins = getPuzzleSkins();
   const filtered = skins.filter(s => s.id !== skinId);
   localStorage.setItem(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(skinId, 'skin');
 };
 
 export const loadPuzzleSkin = (skinId: string): PuzzleSkin | null => {
@@ -808,6 +870,9 @@ export const deleteObject = (objectId: string): void => {
   const objects = getCustomObjects();
   const filtered = objects.filter(o => o.id !== objectId);
   localStorage.setItem(OBJECT_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(objectId, 'object');
 };
 
 export const loadObject = (objectId: string): CustomObject | null => {
