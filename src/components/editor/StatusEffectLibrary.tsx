@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import type { StatusEffectAsset } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
-import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, getFolders } from '../../utils/assetStorage';
+import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, getFolders, type CustomSprite } from '../../utils/assetStorage';
 import { StatusEffectEditor } from './StatusEffectEditor';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { SpriteThumbnail } from './SpriteThumbnail';
 
 // Get display color for status effect type
 function getEffectTypeColor(type: StatusEffectType): string {
@@ -163,11 +164,16 @@ export const StatusEffectLibrary: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
-                        <div className={`w-8 h-8 ${getEffectTypeColor(effect.type)} rounded flex items-center justify-center`}>
-                          <span className="text-white text-xs font-bold">
-                            {effect.type.charAt(0).toUpperCase()}
-                          </span>
-                        </div>
+                        {/* Icon - use SpriteThumbnail if iconSprite has sprite data */}
+                        {effect.iconSprite?.type === 'inline' && effect.iconSprite.spriteData ? (
+                          <SpriteThumbnail sprite={effect.iconSprite.spriteData as CustomSprite} size={32} />
+                        ) : (
+                          <div className={`w-8 h-8 ${getEffectTypeColor(effect.type)} rounded flex items-center justify-center`}>
+                            <span className="text-white text-xs font-bold">
+                              {effect.type.charAt(0).toUpperCase()}
+                            </span>
+                          </div>
+                        )}
                         <div>
                           <h3 className="font-bold flex items-center gap-1">
                             {effect.name || 'Unnamed'}
