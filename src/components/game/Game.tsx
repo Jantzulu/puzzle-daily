@@ -412,36 +412,44 @@ export const Game: React.FC = () => {
           <div className="flex-1 flex flex-col items-center">
             {/* Play controls bar - above puzzle */}
             {gameState.gameStatus === 'setup' && testMode === 'none' && (
-              <div className="flex flex-col items-center mb-4">
-                {/* Lives display - centered above play button */}
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  {renderLivesHearts()}
-                </div>
+              <div className="mb-4">
+                {/* Grid layout: 3 columns with Play button centered */}
+                <div className="grid grid-cols-3 gap-3 items-end">
+                  {/* Left column - Test Characters */}
+                  <div className="flex justify-end">
+                    <button
+                      onClick={handleTestCharacters}
+                      className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
+                      title="Test your characters without enemies for 5 turns"
+                    >
+                      Test Characters
+                    </button>
+                  </div>
 
-                {/* Buttons row */}
-                <div className="flex items-center justify-center gap-3">
-                  <button
-                    onClick={handleTestCharacters}
-                    className="px-3 py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-semibold transition text-sm"
-                    title="Test your characters without enemies for 5 turns"
-                  >
-                    Test Characters
-                  </button>
+                  {/* Center column - Hearts + Play button */}
+                  <div className="flex flex-col items-center">
+                    {/* Lives display - centered above play button */}
+                    <div className="flex items-center justify-center gap-1 mb-2">
+                      {renderLivesHearts()}
+                    </div>
+                    <button
+                      onClick={handlePlay}
+                      className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition text-lg"
+                    >
+                      Play
+                    </button>
+                  </div>
 
-                  <button
-                    onClick={handlePlay}
-                    className="px-6 py-2 bg-green-600 hover:bg-green-700 rounded font-bold transition text-lg"
-                  >
-                    Play
-                  </button>
-
-                  <button
-                    onClick={handleTestEnemies}
-                    className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition text-sm"
-                    title="Watch enemies move without characters for 5 turns"
-                  >
-                    Test Enemies
-                  </button>
+                  {/* Right column - Test Enemies */}
+                  <div className="flex justify-start">
+                    <button
+                      onClick={handleTestEnemies}
+                      className="px-3 py-2 bg-purple-600 hover:bg-purple-700 rounded font-semibold transition text-sm"
+                      title="Watch enemies move without characters for 5 turns"
+                    >
+                      Test Enemies
+                    </button>
+                  </div>
                 </div>
               </div>
             )}
