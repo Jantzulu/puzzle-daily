@@ -1087,6 +1087,32 @@ export function updateProjectiles(gameState: GameState): void {
       continue;
     }
 
+    // Handle homing projectiles - update target to track moving entity
+    if (proj.isHoming && proj.targetEntityId) {
+      let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
+
+      if (proj.targetIsEnemy) {
+        // Find enemy by ID
+        targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId);
+      } else {
+        // Find character by ID
+        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId);
+      }
+
+      if (targetEntity && !targetEntity.dead) {
+        // Update target position to track the entity
+        // Update from current projectile position for smooth homing
+        proj.startX = proj.x;
+        proj.startY = proj.y;
+        proj.targetX = targetEntity.x;
+        proj.targetY = targetEntity.y;
+        proj.startTime = now; // Reset time for new trajectory
+      } else {
+        // Target died or not found - disable homing, continue on current trajectory
+        proj.isHoming = false;
+      }
+    }
+
     // Calculate how far projectile should have moved (time-based, not turn-based)
     const elapsed = (now - proj.startTime) / 1000; // seconds
     const distanceTraveled = proj.speed * elapsed;
@@ -1121,6 +1147,11 @@ export function updateProjectiles(gameState: GameState): void {
     const newX = proj.startX + dx * progress;
     const newY = proj.startY + dy * progress;
 
+    // Update direction for sprite rotation (especially important for homing projectiles)
+    if (dx !== 0 || dy !== 0) {
+      proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+    }
+
     // Check collision with walls
     const tileX = Math.floor(newX);
     const tileY = Math.floor(newY);
@@ -1130,6 +1161,13 @@ export function updateProjectiles(gameState: GameState): void {
         gameState.puzzle.tiles[tileY]?.[tileX] === null;
 
     if (hitWall) {
+      // Homing projectiles don't bounce - they just deactivate if they hit a wall
+      if (proj.isHoming) {
+        proj.active = false;
+        projectilesToRemove.push(proj.id);
+        continue;
+      }
+
       // Check if projectile should bounce off walls
       const canBounce = proj.bounceOffWalls &&
                         (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);

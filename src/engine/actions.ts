@@ -1132,6 +1132,14 @@ function executeSpell(
   // Determine which directions to cast the spell
   let castDirections: Direction[] = [];
 
+  // Track targets for homing projectiles
+  interface HomingTarget {
+    direction: Direction;
+    targetEntityId: string;
+    targetIsEnemy: boolean;
+  }
+  let homingTargets: HomingTarget[] | undefined;
+
   // Check for auto-targeting (enemies targeting characters OR characters targeting enemies)
   if (action.autoTargetNearestCharacter) {
     // Used by enemies to target characters
@@ -1141,6 +1149,14 @@ function executeSpell(
 
     if (nearestCharacters.length > 0) {
       castDirections = nearestCharacters.map(target => target.direction);
+      // Store target info for homing
+      if (action.homing) {
+        homingTargets = nearestCharacters.map(target => ({
+          direction: target.direction,
+          targetEntityId: target.character.characterId,
+          targetIsEnemy: false,
+        }));
+      }
     } else {
       return;
     }
@@ -1152,6 +1168,14 @@ function executeSpell(
 
     if (nearestEnemies.length > 0) {
       castDirections = nearestEnemies.map(target => target.direction);
+      // Store target info for homing
+      if (action.homing) {
+        homingTargets = nearestEnemies.map(target => ({
+          direction: target.direction,
+          targetEntityId: target.enemy.enemyId,
+          targetIsEnemy: true,
+        }));
+      }
     } else {
       return;
     }
@@ -1189,8 +1213,10 @@ function executeSpell(
   }
 
   // Execute spell for each direction based on template type
-  for (const direction of castDirections) {
-    executeSpellInDirection(character, spell, direction, gameState);
+  for (let i = 0; i < castDirections.length; i++) {
+    const direction = castDirections[i];
+    const homingTarget = homingTargets?.[i];
+    executeSpellInDirection(character, spell, direction, gameState, homingTarget);
   }
 
   // Set cooldown if spell has one
@@ -1212,7 +1238,8 @@ function executeSpellInDirection(
   character: PlacedCharacter,
   spell: SpellAsset,
   direction: Direction,
-  gameState: GameState
+  gameState: GameState,
+  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean }
 ): void {
   // Convert SpellAsset to CustomAttack format for execution
   const attackData: CustomAttack = {
@@ -1257,7 +1284,7 @@ function executeSpellInDirection(
       // Temporarily set character facing for projectile direction
       const origFacing = character.facing;
       character.facing = direction;
-      spawnProjectile(character, attackData, gameState, spell);
+      spawnProjectile(character, attackData, gameState, spell, homingTarget);
       character.facing = origFacing;
       break;
 
@@ -1269,7 +1296,7 @@ function executeSpellInDirection(
         // Temporarily set character facing for projectile direction
         const origFacing2 = character.facing;
         character.facing = direction;
-        spawnProjectile(character, attackData, gameState, spell);
+        spawnProjectile(character, attackData, gameState, spell, homingTarget);
         character.facing = origFacing2;
       } else {
         // Instant AOE attack
@@ -1289,7 +1316,8 @@ function spawnProjectile(
   character: PlacedCharacter,
   attackData: CustomAttack,
   gameState: GameState,
-  spell?: SpellAsset
+  spell?: SpellAsset,
+  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean }
 ): void {
   if (!gameState.activeProjectiles) {
     gameState.activeProjectiles = [];
@@ -1320,6 +1348,10 @@ function spawnProjectile(
     speed,
     active: true,
     startTime: Date.now(),
+    // Homing behavior
+    isHoming: !!homingTarget,
+    targetEntityId: homingTarget?.targetEntityId,
+    targetIsEnemy: homingTarget?.targetIsEnemy,
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
     spellAssetId: spell?.id,

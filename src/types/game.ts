@@ -178,6 +178,7 @@ export interface CharacterAction {
   autoTargetNearestCharacter?: boolean; // Override spell direction to aim at closest character (for enemies or healing)
   autoTargetMode?: 'omnidirectional' | 'cardinal' | 'diagonal'; // Directional constraints for auto-targeting (default: omnidirectional)
   maxTargets?: number;              // Maximum number of targets to attack/heal (for multi-target spells)
+  homing?: boolean;                 // If true with auto-targeting, projectile tracks target and guarantees hit
 }
 
 export interface Character {
@@ -601,6 +602,11 @@ export interface Projectile {
   sourceCharacterId?: string;   // Who fired this
   sourceEnemyId?: string;       // If fired by enemy
   spellAssetId?: string;        // For status effect application on hit
+
+  // Homing behavior - projectile tracks a moving target
+  isHoming?: boolean;           // If true, projectile chases target entity
+  targetEntityId?: string;      // ID of entity being tracked
+  targetIsEnemy?: boolean;      // true = target is enemy, false = target is character
 }
 
 /**
