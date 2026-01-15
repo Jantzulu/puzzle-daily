@@ -829,6 +829,7 @@ export function executeTurn(gameState: GameState): GameState {
         actionIndex: enemy.actionIndex || 0,
         active: enemy.active || true,
         dead: enemy.dead,
+        spellCooldowns: enemy.spellCooldowns,
       };
       evaluateTriggers(tempCharForTrigger, gameState);
 
@@ -838,6 +839,7 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.facing = tempCharForTrigger.facing;
       enemy.currentHealth = tempCharForTrigger.currentHealth;
       enemy.dead = tempCharForTrigger.dead;
+      enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
     }
   }
 
@@ -861,6 +863,7 @@ export function executeTurn(gameState: GameState): GameState {
         actionIndex: enemy.actionIndex || 0,
         active: enemy.active || true,
         dead: enemy.dead,
+        spellCooldowns: enemy.spellCooldowns,
       };
       evaluateTriggers(tempCharForTrigger, gameState);
 
@@ -870,6 +873,7 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.facing = tempCharForTrigger.facing;
       enemy.currentHealth = tempCharForTrigger.currentHealth;
       enemy.dead = tempCharForTrigger.dead;
+      enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
     }
   }
 
