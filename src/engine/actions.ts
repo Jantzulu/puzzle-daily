@@ -1326,10 +1326,33 @@ function spawnProjectile(
   const range = attackData.range || 10; // Default max range
   const speed = attackData.projectileSpeed || 5; // Tiles per second
 
-  // Calculate target position (max range in facing direction)
-  const { dx, dy } = getDirectionOffset(character.facing);
-  const targetX = character.x + dx * range;
-  const targetY = character.y + dy * range;
+  // Calculate target position
+  let targetX: number;
+  let targetY: number;
+
+  // For homing projectiles, set initial target to the actual target entity's position
+  if (homingTarget) {
+    let targetEntity: { x: number; y: number } | undefined;
+    if (homingTarget.targetIsEnemy) {
+      targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === homingTarget.targetEntityId);
+    } else {
+      targetEntity = gameState.placedCharacters.find(c => c.characterId === homingTarget.targetEntityId);
+    }
+    if (targetEntity) {
+      targetX = targetEntity.x;
+      targetY = targetEntity.y;
+    } else {
+      // Fallback to max range in facing direction if target not found
+      const { dx, dy } = getDirectionOffset(character.facing);
+      targetX = character.x + dx * range;
+      targetY = character.y + dy * range;
+    }
+  } else {
+    // Non-homing: use max range in facing direction
+    const { dx, dy } = getDirectionOffset(character.facing);
+    targetX = character.x + dx * range;
+    targetY = character.y + dy * range;
+  }
 
   // Determine if source is an enemy or character
   const isEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);

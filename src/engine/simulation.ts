@@ -1101,29 +1101,75 @@ export function updateProjectiles(gameState: GameState): void {
 
       if (targetEntity && !targetEntity.dead) {
         // Update target position to track the entity
-        // Update from current projectile position for smooth homing
-        proj.startX = proj.x;
-        proj.startY = proj.y;
+        // Just update the target coordinates - don't reset start position or time
         proj.targetX = targetEntity.x;
         proj.targetY = targetEntity.y;
-        proj.startTime = now; // Reset time for new trajectory
       } else {
         // Target died or not found - disable homing, continue on current trajectory
         proj.isHoming = false;
       }
     }
 
-    // Calculate how far projectile should have moved (time-based, not turn-based)
-    const elapsed = (now - proj.startTime) / 1000; // seconds
-    const distanceTraveled = proj.speed * elapsed;
+    // Calculate position based on whether this is a homing projectile or not
+    let newX: number;
+    let newY: number;
+    let reachedTarget = false;
 
-    // Calculate direction vector from START to TARGET (not from current position!)
-    const dx = proj.targetX - proj.startX;
-    const dy = proj.targetY - proj.startY;
-    const totalDistance = Math.sqrt(dx * dx + dy * dy);
+    if (proj.isHoming) {
+      // Homing projectiles: move towards current target from current position
+      // Calculate direction to target from CURRENT position
+      const dx = proj.targetX - proj.x;
+      const dy = proj.targetY - proj.y;
+      const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
 
-    if (distanceTraveled >= totalDistance) {
-      // Projectile reached max range
+      // Move a fixed amount based on speed and frame time (assume ~16ms per frame)
+      const frameTime = 0.016; // 16ms in seconds
+      const moveDistance = proj.speed * frameTime;
+
+      if (distanceToTarget <= moveDistance || distanceToTarget < 0.1) {
+        // Close enough to target - snap to target
+        newX = proj.targetX;
+        newY = proj.targetY;
+        reachedTarget = true;
+      } else {
+        // Move towards target
+        const normalizedDx = dx / distanceToTarget;
+        const normalizedDy = dy / distanceToTarget;
+        newX = proj.x + normalizedDx * moveDistance;
+        newY = proj.y + normalizedDy * moveDistance;
+      }
+
+      // Update direction for sprite rotation
+      if (dx !== 0 || dy !== 0) {
+        proj.direction = calculateDirectionTo(proj.x, proj.y, proj.targetX, proj.targetY);
+      }
+    } else {
+      // Non-homing projectiles: linear interpolation from start to target
+      const elapsed = (now - proj.startTime) / 1000; // seconds
+      const distanceTraveled = proj.speed * elapsed;
+
+      const dx = proj.targetX - proj.startX;
+      const dy = proj.targetY - proj.startY;
+      const totalDistance = Math.sqrt(dx * dx + dy * dy);
+
+      if (distanceTraveled >= totalDistance) {
+        reachedTarget = true;
+        newX = proj.targetX;
+        newY = proj.targetY;
+      } else {
+        const progress = distanceTraveled / totalDistance;
+        newX = proj.startX + dx * progress;
+        newY = proj.startY + dy * progress;
+      }
+
+      // Update direction for sprite rotation
+      if (dx !== 0 || dy !== 0) {
+        proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+      }
+    }
+
+    if (reachedTarget) {
+      // Projectile reached target/max range
       // Check if this should explode into AOE
       if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
         triggerAOEExplosion(
@@ -1140,16 +1186,6 @@ export function updateProjectiles(gameState: GameState): void {
       proj.active = false;
       projectilesToRemove.push(proj.id);
       continue;
-    }
-
-    // Update position from STARTING point
-    const progress = distanceTraveled / totalDistance;
-    const newX = proj.startX + dx * progress;
-    const newY = proj.startY + dy * progress;
-
-    // Update direction for sprite rotation (especially important for homing projectiles)
-    if (dx !== 0 || dy !== 0) {
-      proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
     }
 
     // Check collision with walls
