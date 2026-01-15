@@ -686,16 +686,35 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
               <div className="bg-gray-800 p-2 rounded space-y-1">
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={action.autoTargetNearestCharacter || false}
-                    onChange={(e) => onUpdate({ ...action, autoTargetNearestCharacter: e.target.checked, autoTargetNearestEnemy: false })}
+                    onChange={(e) => onUpdate({
+                      ...action,
+                      autoTargetNearestCharacter: e.target.checked,
+                      autoTargetNearestEnemy: false,
+                      homing: e.target.checked ? action.homing : false
+                    })}
                     className="w-3 h-3" />
                   Auto-Target Character
                 </label>
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={action.autoTargetNearestEnemy || false}
-                    onChange={(e) => onUpdate({ ...action, autoTargetNearestEnemy: e.target.checked, autoTargetNearestCharacter: false })}
+                    onChange={(e) => onUpdate({
+                      ...action,
+                      autoTargetNearestEnemy: e.target.checked,
+                      autoTargetNearestCharacter: false,
+                      homing: e.target.checked ? action.homing : false
+                    })}
                     className="w-3 h-3" />
                   Auto-Target Enemy
                 </label>
+                {/* Homing option - only available when auto-targeting is enabled */}
+                {(action.autoTargetNearestCharacter || action.autoTargetNearestEnemy) && (
+                  <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
+                    <input type="checkbox" checked={action.homing || false}
+                      onChange={(e) => onUpdate({ ...action, homing: e.target.checked })}
+                      className="w-3 h-3" />
+                    Homing (guaranteed hit)
+                  </label>
+                )}
               </div>
             </>
           )}

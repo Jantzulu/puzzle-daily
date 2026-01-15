@@ -851,7 +851,8 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                     onChange={(e) => onUpdate({
                       ...action,
                       autoTargetNearestEnemy: e.target.checked,
-                      autoTargetNearestCharacter: false
+                      autoTargetNearestCharacter: false,
+                      homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3"
                   />
@@ -864,12 +865,28 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                     onChange={(e) => onUpdate({
                       ...action,
                       autoTargetNearestCharacter: e.target.checked,
-                      autoTargetNearestEnemy: false
+                      autoTargetNearestEnemy: false,
+                      homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3"
                   />
                   Auto-Target Character
                 </label>
+                {/* Homing option - only available when auto-targeting is enabled */}
+                {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
+                  <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
+                    <input
+                      type="checkbox"
+                      checked={action.homing || false}
+                      onChange={(e) => onUpdate({
+                        ...action,
+                        homing: e.target.checked
+                      })}
+                      className="w-3 h-3"
+                    />
+                    Homing (guaranteed hit)
+                  </label>
+                )}
               </div>
             </>
           )}
