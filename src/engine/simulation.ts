@@ -1171,7 +1171,9 @@ export function updateProjectiles(gameState: GameState): void {
       }
     }
 
-    if (reachedTarget) {
+    // For non-homing projectiles that reached max range, deactivate
+    // (Homing projectiles should continue to collision check even when "at target")
+    if (reachedTarget && !proj.isHoming) {
       // Projectile reached target/max range
       // Check if this should explode into AOE
       if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -1190,6 +1192,10 @@ export function updateProjectiles(gameState: GameState): void {
       projectilesToRemove.push(proj.id);
       continue;
     }
+
+    // Update position before collision check
+    proj.x = newX;
+    proj.y = newY;
 
     // Check collision with walls
     const tileX = Math.floor(newX);
@@ -1580,9 +1586,11 @@ export function updateProjectiles(gameState: GameState): void {
       }
     }
 
-    // Update projectile position
-    proj.x = newX;
-    proj.y = newY;
+    // For homing projectiles that reached target but didn't hit anything, deactivate
+    if (reachedTarget && proj.isHoming) {
+      proj.active = false;
+      projectilesToRemove.push(proj.id);
+    }
   }
 
   // Remove inactive projectiles
