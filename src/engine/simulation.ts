@@ -452,7 +452,6 @@ function decrementSpellCooldowns(gameState: GameState): void {
     if (character.spellCooldowns) {
       for (const spellId of Object.keys(character.spellCooldowns)) {
         if (character.spellCooldowns[spellId] > 0) {
-          console.log(`[Spell Cooldown] Decrementing ${spellId} from ${character.spellCooldowns[spellId]} to ${character.spellCooldowns[spellId] - 1}`);
           character.spellCooldowns[spellId]--;
         }
       }
@@ -1333,10 +1332,15 @@ export function updateProjectiles(gameState: GameState): void {
           c => !c.dead &&
                Math.floor(c.x) === tileX &&
                Math.floor(c.y) === tileY &&
-               c.characterId !== proj.sourceCharacterId // Don't heal self
+               c.characterId !== proj.sourceCharacterId && // Don't heal self
+               !(proj.hitEntityIds?.includes(c.characterId)) // Skip already hit entities (for piercing)
         );
 
         if (hitAlly) {
+          // Track that we hit this entity (for piercing projectiles)
+          if (!proj.hitEntityIds) proj.hitEntityIds = [];
+          proj.hitEntityIds.push(hitAlly.characterId);
+
           // Check if this should explode into AOE healing on impact
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(
@@ -1380,10 +1384,21 @@ export function updateProjectiles(gameState: GameState): void {
         const hitEnemy = gameState.puzzle.enemies.find(
           e => !e.dead &&
                Math.floor(e.x) === tileX &&
-               Math.floor(e.y) === tileY
+               Math.floor(e.y) === tileY &&
+               !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
         );
 
+        // Debug: log collision check for homing projectiles
+        if (proj.isHoming) {
+          const targetEnemy = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId);
+          console.log(`[Homing Debug] Proj at (${proj.x.toFixed(2)}, ${proj.y.toFixed(2)}) -> tile (${tileX}, ${tileY}), target enemy at (${targetEnemy?.x}, ${targetEnemy?.y}) -> tile (${targetEnemy ? Math.floor(targetEnemy.x) : 'N/A'}, ${targetEnemy ? Math.floor(targetEnemy.y) : 'N/A'}), hitEnemy: ${hitEnemy?.enemyId || 'none'}`);
+        }
+
         if (hitEnemy) {
+          // Track that we hit this entity (for piercing projectiles)
+          if (!proj.hitEntityIds) proj.hitEntityIds = [];
+          proj.hitEntityIds.push(hitEnemy.enemyId);
+
           // Check if this should explode into AOE on impact
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(
@@ -1448,10 +1463,15 @@ export function updateProjectiles(gameState: GameState): void {
           e => !e.dead &&
                Math.floor(e.x) === tileX &&
                Math.floor(e.y) === tileY &&
-               e.enemyId !== proj.sourceEnemyId // Don't heal self
+               e.enemyId !== proj.sourceEnemyId && // Don't heal self
+               !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
         );
 
         if (hitAllyEnemy) {
+          // Track that we hit this entity (for piercing projectiles)
+          if (!proj.hitEntityIds) proj.hitEntityIds = [];
+          proj.hitEntityIds.push(hitAllyEnemy.enemyId);
+
           // Check if this should explode into AOE healing on impact
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(
@@ -1495,10 +1515,15 @@ export function updateProjectiles(gameState: GameState): void {
         const hitCharacter = gameState.placedCharacters.find(
           c => !c.dead &&
                Math.floor(c.x) === tileX &&
-               Math.floor(c.y) === tileY
+               Math.floor(c.y) === tileY &&
+               !(proj.hitEntityIds?.includes(c.characterId)) // Skip already hit entities (for piercing)
         );
 
         if (hitCharacter) {
+          // Track that we hit this entity (for piercing projectiles)
+          if (!proj.hitEntityIds) proj.hitEntityIds = [];
+          proj.hitEntityIds.push(hitCharacter.characterId);
+
           // Check if this should explode into AOE on impact
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(

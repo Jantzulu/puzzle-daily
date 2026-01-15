@@ -1118,7 +1118,6 @@ function executeSpell(
   // Check if spell is on cooldown
   if (character.spellCooldowns && character.spellCooldowns[action.spellId] > 0) {
     // Spell is on cooldown - skip this action
-    console.log(`[Spell Cooldown] Spell ${action.spellId} is on cooldown: ${character.spellCooldowns[action.spellId]} turns remaining`);
     return;
   }
 
@@ -1227,7 +1226,6 @@ function executeSpell(
       character.spellCooldowns = {};
     }
     character.spellCooldowns[action.spellId] = spell.cooldown + 1;
-    console.log(`[Spell Cooldown] Set cooldown for ${action.spellId} to skip ${spell.cooldown} turns`);
   }
 }
 

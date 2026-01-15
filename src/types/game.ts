@@ -607,6 +607,9 @@ export interface Projectile {
   isHoming?: boolean;           // If true, projectile chases target entity
   targetEntityId?: string;      // ID of entity being tracked
   targetIsEnemy?: boolean;      // true = target is enemy, false = target is character
+
+  // Piercing tracking - prevents hitting same entity multiple times
+  hitEntityIds?: string[];      // IDs of entities already hit by this projectile
 }
 
 /**
