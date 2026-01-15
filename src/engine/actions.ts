@@ -1194,12 +1194,14 @@ function executeSpell(
   }
 
   // Set cooldown if spell has one
+  // We add 1 because the cooldown is decremented at end of turn, so:
+  // cooldown 3 = set to 4 -> end of turn becomes 3 -> skip 3 turns -> becomes 0 -> can cast
   if (spell.cooldown && spell.cooldown > 0 && action.spellId) {
     if (!character.spellCooldowns) {
       character.spellCooldowns = {};
     }
-    character.spellCooldowns[action.spellId] = spell.cooldown;
-    console.log(`[Spell Cooldown] Set cooldown for ${action.spellId} to ${spell.cooldown} turns`);
+    character.spellCooldowns[action.spellId] = spell.cooldown + 1;
+    console.log(`[Spell Cooldown] Set cooldown for ${action.spellId} to skip ${spell.cooldown} turns`);
   }
 }
 
