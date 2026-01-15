@@ -1,4 +1,5 @@
 import type { Puzzle } from '../types/game';
+import { safeLocalStorageSet } from './assetStorage';
 
 const STORAGE_KEY = 'saved_puzzles';
 const PENDING_PUZZLE_DELETIONS_KEY = 'pending_puzzle_deletions';
@@ -43,11 +44,12 @@ export interface SavedPuzzle extends Puzzle {
   savedAt: string;
 }
 
-export const savePuzzle = (puzzle: Puzzle): void => {
+export const savePuzzle = (puzzle: Puzzle): boolean => {
   // Validate puzzle has required fields
   if (!puzzle.id) {
     console.error('[PuzzleStorage] Cannot save puzzle without ID:', puzzle.name);
-    return;
+    alert('Cannot save puzzle: Missing ID');
+    return false;
   }
 
   const puzzles = getSavedPuzzles();
@@ -64,12 +66,11 @@ export const savePuzzle = (puzzle: Puzzle): void => {
     puzzles.push(savedPuzzle);
   }
 
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(puzzles));
+  const success = safeLocalStorageSet(STORAGE_KEY, JSON.stringify(puzzles));
+  if (success) {
     console.log(`[PuzzleStorage] Saved puzzle: ${puzzle.id} (${puzzle.name})`);
-  } catch (e) {
-    console.error('[PuzzleStorage] Failed to save to localStorage:', e);
   }
+  return success;
 };
 
 export const getSavedPuzzles = (): SavedPuzzle[] => {

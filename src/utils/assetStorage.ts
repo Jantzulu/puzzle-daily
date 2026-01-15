@@ -1,5 +1,54 @@
 import type { Character, Enemy, TileBehaviorConfig } from '../types/game';
 
+// ============ SAFE LOCALSTORAGE UTILITIES ============
+// Handles mobile browser restrictions (Private mode, quota limits, Safari quirks)
+
+/**
+ * Safely saves data to localStorage with error handling
+ * Returns true if save succeeded, false otherwise
+ */
+export const safeLocalStorageSet = (key: string, value: string): boolean => {
+  try {
+    localStorage.setItem(key, value);
+    // Verify the save worked (some mobile browsers fail silently)
+    const verification = localStorage.getItem(key);
+    if (verification !== value) {
+      console.error(`[Storage] Verification failed for key: ${key}`);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    // Handle quota exceeded, private mode, or other errors
+    const error = e as Error;
+    console.error(`[Storage] Failed to save ${key}:`, error.name, error.message);
+
+    // Check for specific error types
+    if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
+      alert('Storage is full. Please delete some saved items to free up space.');
+    } else if (error.name === 'SecurityError') {
+      alert('Storage is not available. You may be in private/incognito mode.');
+    } else {
+      alert('Failed to save. Storage may be unavailable on this device.');
+    }
+    return false;
+  }
+};
+
+/**
+ * Check if localStorage is available and working
+ */
+export const isLocalStorageAvailable = (): boolean => {
+  try {
+    const testKey = '__storage_test__';
+    localStorage.setItem(testKey, 'test');
+    const result = localStorage.getItem(testKey);
+    localStorage.removeItem(testKey);
+    return result === 'test';
+  } catch (e) {
+    return false;
+  }
+};
+
 const CHARACTER_STORAGE_KEY = 'custom_characters';
 const ENEMY_STORAGE_KEY = 'custom_enemies';
 const TILE_STORAGE_KEY = 'custom_tiles';
@@ -302,7 +351,7 @@ export interface CustomObject {
 
 // ============ CHARACTER STORAGE ============
 
-export const saveCharacter = (character: CustomCharacter): void => {
+export const saveCharacter = (character: CustomCharacter): boolean => {
   const characters = getCustomCharacters();
   const existingIndex = characters.findIndex(c => c.id === character.id);
 
@@ -312,7 +361,7 @@ export const saveCharacter = (character: CustomCharacter): void => {
     characters.push({ ...character, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(characters));
+  return safeLocalStorageSet(CHARACTER_STORAGE_KEY, JSON.stringify(characters));
 };
 
 export const getCustomCharacters = (): CustomCharacter[] => {
@@ -347,7 +396,7 @@ export const loadCharacter = (characterId: string): CustomCharacter | null => {
 
 // ============ ENEMY STORAGE ============
 
-export const saveEnemy = (enemy: CustomEnemy): void => {
+export const saveEnemy = (enemy: CustomEnemy): boolean => {
   const enemies = getCustomEnemies();
   const existingIndex = enemies.findIndex(e => e.id === enemy.id);
 
@@ -357,7 +406,7 @@ export const saveEnemy = (enemy: CustomEnemy): void => {
     enemies.push({ ...enemy, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  localStorage.setItem(ENEMY_STORAGE_KEY, JSON.stringify(enemies));
+  return safeLocalStorageSet(ENEMY_STORAGE_KEY, JSON.stringify(enemies));
 };
 
 export const getCustomEnemies = (): CustomEnemy[] => {
@@ -392,7 +441,7 @@ export const loadEnemy = (enemyId: string): CustomEnemy | null => {
 
 // ============ TILE STORAGE ============
 
-export const saveTileType = (tile: CustomTileType): void => {
+export const saveTileType = (tile: CustomTileType): boolean => {
   const tiles = getCustomTileTypes();
   const existingIndex = tiles.findIndex(t => t.id === tile.id);
 
@@ -402,7 +451,7 @@ export const saveTileType = (tile: CustomTileType): void => {
     tiles.push({ ...tile, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  localStorage.setItem(TILE_STORAGE_KEY, JSON.stringify(tiles));
+  return safeLocalStorageSet(TILE_STORAGE_KEY, JSON.stringify(tiles));
 };
 
 export const getCustomTileTypes = (): CustomTileType[] => {
@@ -518,7 +567,7 @@ import type { SpellAsset } from '../types/game';
 
 const SPELL_STORAGE_KEY = 'spell_assets';
 
-export const saveSpellAsset = (spell: SpellAsset): void => {
+export const saveSpellAsset = (spell: SpellAsset): boolean => {
   const spells = getSpellAssets();
 
   const existingIndex = spells.findIndex(s => s.id === spell.id);
@@ -528,7 +577,7 @@ export const saveSpellAsset = (spell: SpellAsset): void => {
     spells.push(spell);
   }
 
-  localStorage.setItem(SPELL_STORAGE_KEY, JSON.stringify(spells));
+  return safeLocalStorageSet(SPELL_STORAGE_KEY, JSON.stringify(spells));
 };
 
 export const getSpellAssets = (): SpellAsset[] => {
@@ -720,9 +769,9 @@ export const getBuiltInStatusEffects = (): StatusEffectAsset[] => {
   ];
 };
 
-export const saveStatusEffectAsset = (effect: StatusEffectAsset): void => {
+export const saveStatusEffectAsset = (effect: StatusEffectAsset): boolean => {
   // Don't allow saving/overwriting built-in effects
-  if (effect.isBuiltIn) return;
+  if (effect.isBuiltIn) return false;
 
   const effects = getCustomStatusEffects();
 
@@ -733,7 +782,7 @@ export const saveStatusEffectAsset = (effect: StatusEffectAsset): void => {
     effects.push(effect);
   }
 
-  localStorage.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(effects));
+  return safeLocalStorageSet(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(effects));
 };
 
 /**
@@ -895,7 +944,7 @@ export const loadPuzzleSkin = (skinId: string): PuzzleSkin | null => {
 
 // ============ OBJECT STORAGE ============
 
-export const saveObject = (object: CustomObject): void => {
+export const saveObject = (object: CustomObject): boolean => {
   const objects = getCustomObjects();
   const existingIndex = objects.findIndex(o => o.id === object.id);
 
@@ -905,7 +954,7 @@ export const saveObject = (object: CustomObject): void => {
     objects.push({ ...object, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  localStorage.setItem(OBJECT_STORAGE_KEY, JSON.stringify(objects));
+  return safeLocalStorageSet(OBJECT_STORAGE_KEY, JSON.stringify(objects));
 };
 
 export const getCustomObjects = (): CustomObject[] => {

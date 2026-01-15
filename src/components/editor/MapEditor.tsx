@@ -936,9 +936,12 @@ export const MapEditor: React.FC = () => {
     }
 
     const puzzle = getCurrentPuzzle();
-    savePuzzle(puzzle);
-    setSavedPuzzles(getSavedPuzzles());
-    alert(`Saved "${state.puzzleName}"!`);
+    const success = savePuzzle(puzzle);
+    if (success) {
+      setSavedPuzzles(getSavedPuzzles());
+      alert(`Saved "${state.puzzleName}"!`);
+    }
+    // If save failed, safeLocalStorageSet already showed an error alert
   };
 
   const handleSaveAs = () => {
@@ -952,15 +955,17 @@ export const MapEditor: React.FC = () => {
       name: newName,
     };
 
-    setState(prev => ({
-      ...prev,
-      puzzleId: newId,
-      puzzleName: newName,
-    }));
-
-    savePuzzle(puzzle);
-    setSavedPuzzles(getSavedPuzzles());
-    alert(`Saved as "${newName}"!`);
+    const success = savePuzzle(puzzle);
+    if (success) {
+      setState(prev => ({
+        ...prev,
+        puzzleId: newId,
+        puzzleName: newName,
+      }));
+      setSavedPuzzles(getSavedPuzzles());
+      alert(`Saved as "${newName}"!`);
+    }
+    // If save failed, safeLocalStorageSet already showed an error alert
   };
 
   const handleExport = () => {
