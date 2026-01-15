@@ -4,7 +4,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset } from '../utils/assetStorage';
-import { turnLeft, turnRight, getDirectionOffset } from './utils';
+import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
  * Initialize parallel action trackers for a character
