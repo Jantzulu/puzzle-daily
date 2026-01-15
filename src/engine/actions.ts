@@ -775,11 +775,9 @@ function moveCharacter(
         // Determine who attacks first based on priority
         const enemyHasPriority = enemyDataForCombat.hasMeleePriority === true;
 
-        // Calculate contact damage - check noContactDamage flag first, then retaliationDamage override
-        const enemyContactDamage = enemyDataForCombat.noContactDamage ? 0 :
-          (enemyDataForCombat.retaliationDamage !== undefined ? enemyDataForCombat.retaliationDamage : enemyDataForCombat.attackDamage);
-        const charContactDamage = charData.noContactDamage ? 0 :
-          (charData.retaliationDamage !== undefined ? charData.retaliationDamage : charData.attackDamage);
+        // Contact damage is now explicit - 0 or undefined means no contact damage
+        const enemyContactDamage = enemyDataForCombat.contactDamage ?? 0;
+        const charContactDamage = charData.contactDamage ?? 0;
 
         if (enemyHasPriority) {
           // Enemy attacks first (enemy has priority)
@@ -812,8 +810,7 @@ function moveCharacter(
         }
       } else if (charData) {
         // Fallback: just character data available (shouldn't normally happen)
-        const charContactDamage = charData.noContactDamage ? 0 :
-          (charData.retaliationDamage !== undefined ? charData.retaliationDamage : charData.attackDamage);
+        const charContactDamage = charData.contactDamage ?? 0;
         enemyAtTarget.currentHealth -= charContactDamage;
         if (enemyAtTarget.currentHealth <= 0) {
           enemyAtTarget.dead = true;

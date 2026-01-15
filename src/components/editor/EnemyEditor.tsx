@@ -300,9 +300,20 @@ export const EnemyEditor: React.FC = () => {
                         <input
                           type="number"
                           min="1"
-                          max="20"
+                          max="99"
                           value={editing.health}
                           onChange={(e) => updateEnemy({ health: parseInt(e.target.value) })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm mb-1">Contact Damage</label>
+                        <input
+                          type="number"
+                          min="0"
+                          max="99"
+                          value={editing.contactDamage ?? 0}
+                          onChange={(e) => updateEnemy({ contactDamage: parseInt(e.target.value) || 0 })}
                           className="w-full px-3 py-2 bg-gray-700 rounded"
                         />
                       </div>

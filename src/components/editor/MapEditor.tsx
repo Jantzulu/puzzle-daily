@@ -248,7 +248,7 @@ const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
 
-type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'object' | 'custom';
+type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'object' | 'custom' | 'characters';
 type EditorMode = 'edit' | 'playtest';
 
 interface EditorState {
@@ -1657,7 +1657,7 @@ export const MapEditor: React.FC = () => {
               {/* Tools - At top of left column */}
               <div className="bg-gray-800 p-4 rounded">
                 <h2 className="text-lg font-bold mb-3">Tools</h2>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-4 gap-2">
                   <button
                     onClick={() => {
                       setCustomTileTypes(getCustomTileTypes()); // Refresh list
@@ -1685,6 +1685,14 @@ export const MapEditor: React.FC = () => {
                     }`}
                   >
                     Object
+                  </button>
+                  <button
+                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'characters' }))}
+                    className={`p-3 rounded text-sm ${
+                      state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    Chars
                   </button>
                 </div>
               </div>
@@ -1927,66 +1935,68 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
-              {/* Available Characters - At bottom of left column */}
-              <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-lg font-bold mb-3">Available Characters</h2>
-                <p className="text-xs text-gray-400 mb-3">Select which characters players can use</p>
-                <FolderDropdown
-                  category="characters"
-                  selectedFolderId={characterFolderId}
-                  onFolderSelect={setCharacterFolderId}
-                />
-                {filteredCharacters.length === 0 ? (
-                  <p className="text-sm text-gray-400 mt-2">
-                    {allCharacters.length === 0 ? 'No characters available' : 'No characters in this folder.'}
-                  </p>
-                ) : (
-                  <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
-                    {filteredCharacters.map(char => {
-                      const spells = getAllSpells(char.behavior);
-                      return (
-                        <ActionTooltip key={char.id} actions={char.behavior}>
-                          <label className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
-                            <input
-                              type="checkbox"
-                              checked={state.availableCharacters.includes(char.id)}
-                              onChange={(e) => {
-                                setState(prev => ({
-                                  ...prev,
-                                  availableCharacters: e.target.checked
-                                    ? [...prev.availableCharacters, char.id]
-                                    : prev.availableCharacters.filter(id => id !== char.id)
-                                }));
-                              }}
-                              className="w-4 h-4"
-                            />
-                            <SpriteThumbnail sprite={char.customSprite} size={32} />
-                            <div className="flex-1 min-w-0">
-                              <div className="text-sm font-medium truncate">{char.name}</div>
-                              <div className="text-xs text-gray-400">HP: {char.health}</div>
-                            </div>
-                            {spells.length > 0 && (
-                              <div className="flex gap-1 flex-shrink-0">
-                                {spells.map(spell => (
-                                  <SpellTooltip key={spell.id} spell={spell}>
-                                    <div className="w-6 h-6 rounded overflow-hidden cursor-help">
-                                      {spell.thumbnailIcon ? (
-                                        <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
-                                      ) : (
-                                        <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
-                                      )}
-                                    </div>
-                                  </SpellTooltip>
-                                ))}
+              {/* Available Characters - Shows when Characters tool is selected */}
+              {state.selectedTool === 'characters' && (
+                <div className="bg-gray-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">Available Characters</h2>
+                  <p className="text-xs text-gray-400 mb-3">Select which characters players can use</p>
+                  <FolderDropdown
+                    category="characters"
+                    selectedFolderId={characterFolderId}
+                    onFolderSelect={setCharacterFolderId}
+                  />
+                  {filteredCharacters.length === 0 ? (
+                    <p className="text-sm text-gray-400 mt-2">
+                      {allCharacters.length === 0 ? 'No characters available' : 'No characters in this folder.'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
+                      {filteredCharacters.map(char => {
+                        const spells = getAllSpells(char.behavior);
+                        return (
+                          <ActionTooltip key={char.id} actions={char.behavior}>
+                            <label className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                checked={state.availableCharacters.includes(char.id)}
+                                onChange={(e) => {
+                                  setState(prev => ({
+                                    ...prev,
+                                    availableCharacters: e.target.checked
+                                      ? [...prev.availableCharacters, char.id]
+                                      : prev.availableCharacters.filter(id => id !== char.id)
+                                  }));
+                                }}
+                                className="w-4 h-4"
+                              />
+                              <SpriteThumbnail sprite={char.customSprite} size={32} />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">{char.name}</div>
+                                <div className="text-xs text-gray-400">HP: {char.health}</div>
                               </div>
-                            )}
-                          </label>
-                        </ActionTooltip>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
+                              {spells.length > 0 && (
+                                <div className="flex gap-1 flex-shrink-0">
+                                  {spells.map(spell => (
+                                    <SpellTooltip key={spell.id} spell={spell}>
+                                      <div className="w-6 h-6 rounded overflow-hidden cursor-help">
+                                        {spell.thumbnailIcon ? (
+                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                        ) : (
+                                          <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                        )}
+                                      </div>
+                                    </SpellTooltip>
+                                  ))}
+                                </div>
+                              )}
+                            </label>
+                          </ActionTooltip>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Column 2 (Right) - Actions, Puzzle Info, Library */}
