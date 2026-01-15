@@ -9,6 +9,7 @@ import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
+import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 
 // Test mode types
@@ -615,6 +616,9 @@ export const Game: React.FC = () => {
 
             {/* Status Effects Display - only shown if puzzle has status effects */}
             <StatusEffectsDisplay puzzle={gameState.puzzle} />
+
+            {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
+            <SpecialTilesDisplay puzzle={gameState.puzzle} />
           </div>
         </div>
       </div>
