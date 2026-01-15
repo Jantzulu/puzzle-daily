@@ -867,9 +867,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Draw projectiles (Phase 2 - between tiles and entities)
       if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
-        console.log('[AnimatedGameBoard] Drawing', gameState.activeProjectiles.length, 'projectiles');
         gameState.activeProjectiles.forEach(projectile => {
-          console.log('[AnimatedGameBoard] Projectile at', projectile.x, projectile.y, 'active:', projectile.active);
           drawProjectile(ctx, projectile, imageCache.current, now);
         });
       }
