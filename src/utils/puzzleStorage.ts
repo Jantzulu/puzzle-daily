@@ -42,7 +42,76 @@ export const removePendingPuzzleDeletion = (id: string): void => {
 
 export interface SavedPuzzle extends Puzzle {
   savedAt: string;
+  folder?: string; // Optional folder for organization
 }
+
+// ============ PUZZLE FOLDERS ============
+
+const PUZZLE_FOLDERS_KEY = 'puzzle_folders';
+
+export const getPuzzleFolders = (): string[] => {
+  const stored = localStorage.getItem(PUZZLE_FOLDERS_KEY);
+  if (!stored) return [];
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    return [];
+  }
+};
+
+export const addPuzzleFolder = (folderName: string): boolean => {
+  const folders = getPuzzleFolders();
+  const normalizedName = folderName.trim();
+  if (!normalizedName || folders.includes(normalizedName)) {
+    return false;
+  }
+  folders.push(normalizedName);
+  folders.sort((a, b) => a.localeCompare(b));
+  localStorage.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
+  return true;
+};
+
+export const deletePuzzleFolder = (folderName: string): void => {
+  const folders = getPuzzleFolders().filter(f => f !== folderName);
+  localStorage.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
+
+  // Also remove folder from all puzzles that were in it
+  const puzzles = getSavedPuzzles();
+  const updated = puzzles.map(p =>
+    p.folder === folderName ? { ...p, folder: undefined } : p
+  );
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+};
+
+export const renamePuzzleFolder = (oldName: string, newName: string): boolean => {
+  const normalizedNew = newName.trim();
+  if (!normalizedNew) return false;
+
+  const folders = getPuzzleFolders();
+  const index = folders.indexOf(oldName);
+  if (index === -1 || folders.includes(normalizedNew)) return false;
+
+  folders[index] = normalizedNew;
+  folders.sort((a, b) => a.localeCompare(b));
+  localStorage.setItem(PUZZLE_FOLDERS_KEY, JSON.stringify(folders));
+
+  // Update all puzzles that were in the old folder
+  const puzzles = getSavedPuzzles();
+  const updated = puzzles.map(p =>
+    p.folder === oldName ? { ...p, folder: normalizedNew } : p
+  );
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+  return true;
+};
+
+export const setPuzzleFolder = (puzzleId: string, folder: string | undefined): boolean => {
+  const puzzles = getSavedPuzzles();
+  const index = puzzles.findIndex(p => p.id === puzzleId);
+  if (index === -1) return false;
+
+  puzzles[index] = { ...puzzles[index], folder };
+  return safeLocalStorageSet(STORAGE_KEY, JSON.stringify(puzzles));
+};
 
 export const savePuzzle = (puzzle: Puzzle): boolean => {
   // Validate puzzle has required fields

@@ -196,7 +196,8 @@ export interface Character {
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
   blocksMovement?: boolean; // If true, stops entities trying to walk through (no wall reaction, just stops them)
   blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
-  retaliationDamage?: number; // Damage dealt when enemy attempts to move onto this character's tile
+  retaliationDamage?: number; // Override contact damage when enemy walks into this character (defaults to attackDamage)
+  noContactDamage?: boolean; // If true, deals 0 contact damage when walking into enemies
 }
 
 export interface Enemy {
@@ -213,7 +214,8 @@ export interface Enemy {
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead
   blocksMovement?: boolean; // If true, stops entities trying to walk through (no wall reaction, just stops them)
   blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
-  retaliationDamage?: number; // Damage dealt when character attempts to move onto this enemy's tile
+  retaliationDamage?: number; // Override contact damage when character walks into this enemy (defaults to attackDamage)
+  noContactDamage?: boolean; // If true, deals 0 contact damage when walking into characters
 
   // Melee priority
   hasMeleePriority?: boolean; // If true, this enemy attacks before characters in melee exchanges (default: false)

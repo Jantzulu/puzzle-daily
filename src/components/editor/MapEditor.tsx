@@ -20,6 +20,7 @@ import { createHistoryManager } from '../../utils/historyManager';
 import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
+import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -2014,7 +2015,7 @@ export const MapEditor: React.FC = () => {
                   </button>
                 </div>
                 <button
-                  onClick={() => setShowLibrary(!showLibrary)}
+                  onClick={() => setShowLibrary(true)}
                   className="w-full px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
                 >
                   Library ({savedPuzzles.length})
@@ -2108,163 +2109,134 @@ export const MapEditor: React.FC = () => {
                     </div>
                   </div>
                   <p className="text-xs text-gray-400 mt-1">Lives: 0 = unlimited attempts</p>
-                </div>
-              </div>
 
-              {/* Win Conditions */}
-              <div className="bg-gray-800 p-4 rounded">
-                <h2 className="text-lg font-bold mb-3">Win Conditions</h2>
-                <p className="text-xs text-gray-400 mb-3">Conditions that must be met to win the puzzle</p>
-                <div className="space-y-2">
-                  {state.winConditions.map((condition, index) => (
-                    <div key={index} className="bg-gray-700 p-3 rounded">
-                      <div className="flex justify-between items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <select
-                            value={condition.type}
-                            onChange={(e) => {
-                              const newType = e.target.value as WinConditionType;
-                              setState(prev => {
-                                const newConditions = [...prev.winConditions];
-                                newConditions[index] = { type: newType, params: {} };
-                                return { ...prev, winConditions: newConditions };
-                              });
-                            }}
-                            className="w-full px-2 py-1 bg-gray-600 rounded text-sm mb-2"
-                          >
-                            <option value="defeat_all_enemies">Defeat All Enemies</option>
-                            <option value="collect_all">Collect All Items</option>
-                            <option value="reach_goal">Reach Goal Tile</option>
-                            <option value="survive_turns">Survive X Turns</option>
-                            <option value="win_in_turns">Win Within X Turns</option>
-                            <option value="max_characters">Use Max X Characters</option>
-                            <option value="characters_alive">Keep X Characters Alive</option>
-                          </select>
-
-                          {/* Params for conditions that need them */}
-                          {(condition.type === 'survive_turns' || condition.type === 'win_in_turns') && (
-                            <div className="flex items-center gap-2">
-                              <label className="text-xs text-gray-400">Turns:</label>
-                              <input
-                                type="number"
-                                min="1"
-                                max="999"
-                                value={condition.params?.turns ?? 10}
+                  {/* Win Conditions - moved into Puzzle Info */}
+                  <div className="pt-3 border-t border-gray-700">
+                    <h3 className="text-sm font-semibold mb-2">Win Conditions</h3>
+                    <div className="space-y-2">
+                      {state.winConditions.map((condition, index) => (
+                        <div key={index} className="bg-gray-700 p-2 rounded">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0">
+                              <select
+                                value={condition.type}
                                 onChange={(e) => {
+                                  const newType = e.target.value as WinConditionType;
                                   setState(prev => {
                                     const newConditions = [...prev.winConditions];
-                                    newConditions[index] = {
-                                      ...newConditions[index],
-                                      params: { ...newConditions[index].params, turns: parseInt(e.target.value) || 10 }
-                                    };
+                                    newConditions[index] = { type: newType, params: {} };
                                     return { ...prev, winConditions: newConditions };
                                   });
                                 }}
-                                className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
-                              />
-                            </div>
-                          )}
+                                className="w-full px-2 py-1 bg-gray-600 rounded text-sm mb-1"
+                              >
+                                <option value="defeat_all_enemies">Defeat All Enemies</option>
+                                <option value="collect_all">Collect All Items</option>
+                                <option value="reach_goal">Reach Goal Tile</option>
+                                <option value="survive_turns">Survive X Turns</option>
+                                <option value="win_in_turns">Win Within X Turns</option>
+                                <option value="max_characters">Use Max X Characters</option>
+                                <option value="characters_alive">Keep X Characters Alive</option>
+                              </select>
 
-                          {(condition.type === 'max_characters' || condition.type === 'characters_alive') && (
-                            <div className="flex items-center gap-2">
-                              <label className="text-xs text-gray-400">Characters:</label>
-                              <input
-                                type="number"
-                                min="1"
-                                max="10"
-                                value={condition.params?.characterCount ?? 1}
-                                onChange={(e) => {
-                                  setState(prev => {
-                                    const newConditions = [...prev.winConditions];
-                                    newConditions[index] = {
-                                      ...newConditions[index],
-                                      params: { ...newConditions[index].params, characterCount: parseInt(e.target.value) || 1 }
-                                    };
-                                    return { ...prev, winConditions: newConditions };
-                                  });
+                              {/* Params for conditions that need them */}
+                              {(condition.type === 'survive_turns' || condition.type === 'win_in_turns') && (
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-gray-400">Turns:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="999"
+                                    value={condition.params?.turns ?? 10}
+                                    onChange={(e) => {
+                                      setState(prev => {
+                                        const newConditions = [...prev.winConditions];
+                                        newConditions[index] = {
+                                          ...newConditions[index],
+                                          params: { ...newConditions[index].params, turns: parseInt(e.target.value) || 10 }
+                                        };
+                                        return { ...prev, winConditions: newConditions };
+                                      });
+                                    }}
+                                    className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                                  />
+                                </div>
+                              )}
+
+                              {(condition.type === 'max_characters' || condition.type === 'characters_alive') && (
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-gray-400">Characters:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={condition.params?.characterCount ?? 1}
+                                    onChange={(e) => {
+                                      setState(prev => {
+                                        const newConditions = [...prev.winConditions];
+                                        newConditions[index] = {
+                                          ...newConditions[index],
+                                          params: { ...newConditions[index].params, characterCount: parseInt(e.target.value) || 1 }
+                                        };
+                                        return { ...prev, winConditions: newConditions };
+                                      });
+                                    }}
+                                    className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                                  />
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Remove button (only if more than 1 condition) */}
+                            {state.winConditions.length > 1 && (
+                              <button
+                                onClick={() => {
+                                  setState(prev => ({
+                                    ...prev,
+                                    winConditions: prev.winConditions.filter((_, i) => i !== index)
+                                  }));
                                 }}
-                                className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {/* Remove button (only if more than 1 condition) */}
-                        {state.winConditions.length > 1 && (
-                          <button
-                            onClick={() => {
-                              setState(prev => ({
-                                ...prev,
-                                winConditions: prev.winConditions.filter((_, i) => i !== index)
-                              }));
-                            }}
-                            className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
-                          >
-                            ✕
-                          </button>
-                        )}
-                      </div>
-                    </div>
-                  ))}
-
-                  {/* Add condition button */}
-                  <button
-                    onClick={() => {
-                      setState(prev => ({
-                        ...prev,
-                        winConditions: [...prev.winConditions, { type: 'defeat_all_enemies' }]
-                      }));
-                    }}
-                    className="w-full px-3 py-2 bg-gray-600 rounded text-sm hover:bg-gray-500"
-                  >
-                    + Add Condition
-                  </button>
-                </div>
-              </div>
-
-              {/* Library Panel */}
-              {showLibrary && (
-                <div className="bg-gray-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Saved Puzzles</h2>
-                  {savedPuzzles.length === 0 ? (
-                    <p className="text-gray-400 text-sm">No saved puzzles yet</p>
-                  ) : (
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
-                      {savedPuzzles.map((puzzle) => (
-                        <div
-                          key={puzzle.id}
-                          className="bg-gray-700 p-3 rounded flex justify-between items-start"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <h3 className="font-bold text-sm truncate">{puzzle.name}</h3>
-                            <p className="text-xs text-gray-400">
-                              {puzzle.width}×{puzzle.height} • {puzzle.enemies.length} enemies
-                            </p>
-                          </div>
-                          <div className="flex gap-1 ml-2">
-                            <button
-                              onClick={() => handleLoadFromLibrary(puzzle.id)}
-                              className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
-                            >
-                              Load
-                            </button>
-                            <button
-                              onClick={() => handleDeleteFromLibrary(puzzle.id)}
-                              className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                            >
-                              ✕
-                            </button>
+                                className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                              >
+                                ✕
+                              </button>
+                            )}
                           </div>
                         </div>
                       ))}
+
+                      {/* Add condition button */}
+                      <button
+                        onClick={() => {
+                          setState(prev => ({
+                            ...prev,
+                            winConditions: [...prev.winConditions, { type: 'defeat_all_enemies' }]
+                          }));
+                        }}
+                        className="w-full px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500"
+                      >
+                        + Add Condition
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
-              )}
+              </div>
+
             </div>
           </div>
         </div>
       </div>
+
+      {/* Puzzle Library Modal */}
+      <PuzzleLibraryModal
+        isOpen={showLibrary}
+        onClose={() => setShowLibrary(false)}
+        puzzles={savedPuzzles}
+        onLoad={handleLoadFromLibrary}
+        onDelete={handleDeleteFromLibrary}
+        onPuzzlesChanged={() => setSavedPuzzles(getSavedPuzzles())}
+        currentPuzzleId={state.puzzleId}
+      />
     </div>
   );
 };

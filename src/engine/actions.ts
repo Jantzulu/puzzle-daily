@@ -775,36 +775,36 @@ function moveCharacter(
         // Determine who attacks first based on priority
         const enemyHasPriority = enemyDataForCombat.hasMeleePriority === true;
 
+        // Calculate contact damage - check noContactDamage flag first, then retaliationDamage override
+        const enemyContactDamage = enemyDataForCombat.noContactDamage ? 0 :
+          (enemyDataForCombat.retaliationDamage !== undefined ? enemyDataForCombat.retaliationDamage : enemyDataForCombat.attackDamage);
+        const charContactDamage = charData.noContactDamage ? 0 :
+          (charData.retaliationDamage !== undefined ? charData.retaliationDamage : charData.attackDamage);
+
         if (enemyHasPriority) {
           // Enemy attacks first (enemy has priority)
-          const damageToCharacter = enemyDataForCombat.retaliationDamage !== undefined
-            ? enemyDataForCombat.retaliationDamage
-            : enemyDataForCombat.attackDamage;
-          updatedChar.currentHealth -= damageToCharacter;
+          updatedChar.currentHealth -= enemyContactDamage;
           if (updatedChar.currentHealth <= 0) {
             updatedChar.dead = true;
           }
 
           // Character counterattacks ONLY if still alive
           if (!updatedChar.dead) {
-            enemyAtTarget.currentHealth -= charData.attackDamage;
+            enemyAtTarget.currentHealth -= charContactDamage;
             if (enemyAtTarget.currentHealth <= 0) {
               enemyAtTarget.dead = true;
             }
           }
         } else {
           // Character attacks first (default - player initiative)
-          enemyAtTarget.currentHealth -= charData.attackDamage;
+          enemyAtTarget.currentHealth -= charContactDamage;
           if (enemyAtTarget.currentHealth <= 0) {
             enemyAtTarget.dead = true;
           }
 
           // Enemy counterattacks ONLY if still alive
           if (!enemyAtTarget.dead) {
-            const damageToCharacter = enemyDataForCombat.retaliationDamage !== undefined
-              ? enemyDataForCombat.retaliationDamage
-              : enemyDataForCombat.attackDamage;
-            updatedChar.currentHealth -= damageToCharacter;
+            updatedChar.currentHealth -= enemyContactDamage;
             if (updatedChar.currentHealth <= 0) {
               updatedChar.dead = true;
             }
@@ -812,7 +812,9 @@ function moveCharacter(
         }
       } else if (charData) {
         // Fallback: just character data available (shouldn't normally happen)
-        enemyAtTarget.currentHealth -= charData.attackDamage;
+        const charContactDamage = charData.noContactDamage ? 0 :
+          (charData.retaliationDamage !== undefined ? charData.retaliationDamage : charData.attackDamage);
+        enemyAtTarget.currentHealth -= charContactDamage;
         if (enemyAtTarget.currentHealth <= 0) {
           enemyAtTarget.dead = true;
         }
@@ -1116,6 +1118,7 @@ function executeSpell(
   // Check if spell is on cooldown
   if (character.spellCooldowns && character.spellCooldowns[action.spellId] > 0) {
     // Spell is on cooldown - skip this action
+    console.log(`[Spell Cooldown] Spell ${action.spellId} is on cooldown: ${character.spellCooldowns[action.spellId]} turns remaining`);
     return;
   }
 
@@ -1196,6 +1199,7 @@ function executeSpell(
       character.spellCooldowns = {};
     }
     character.spellCooldowns[action.spellId] = spell.cooldown;
+    console.log(`[Spell Cooldown] Set cooldown for ${action.spellId} to ${spell.cooldown} turns`);
   }
 }
 

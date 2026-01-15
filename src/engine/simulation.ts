@@ -452,6 +452,7 @@ function decrementSpellCooldowns(gameState: GameState): void {
     if (character.spellCooldowns) {
       for (const spellId of Object.keys(character.spellCooldowns)) {
         if (character.spellCooldowns[spellId] > 0) {
+          console.log(`[Spell Cooldown] Decrementing ${spellId} from ${character.spellCooldowns[spellId]} to ${character.spellCooldowns[spellId] - 1}`);
           character.spellCooldowns[spellId]--;
         }
       }
@@ -701,6 +702,7 @@ export function executeTurn(gameState: GameState): GameState {
             actionIndex: firstSequentialIndex,
             active: newEnemy.active || true,
             dead: newEnemy.dead,
+            spellCooldowns: newEnemy.spellCooldowns,
           };
 
           const updatedChar = executeAction(tempChar, firstAction, gameState);
@@ -710,6 +712,7 @@ export function executeTurn(gameState: GameState): GameState {
           newEnemy.facing = updatedChar.facing;
           newEnemy.currentHealth = updatedChar.currentHealth;
           newEnemy.dead = updatedChar.dead;
+          newEnemy.spellCooldowns = updatedChar.spellCooldowns;
           // Copy teleport animation state
           newEnemy.justTeleported = updatedChar.justTeleported;
           newEnemy.teleportFromX = updatedChar.teleportFromX;
@@ -728,6 +731,7 @@ export function executeTurn(gameState: GameState): GameState {
         actionIndex: newEnemy.actionIndex || 0,
         active: newEnemy.active || true,
         dead: newEnemy.dead,
+        spellCooldowns: newEnemy.spellCooldowns,
       };
 
       // Execute the current action
@@ -739,6 +743,7 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.facing = updatedChar.facing;
       newEnemy.currentHealth = updatedChar.currentHealth;
       newEnemy.dead = updatedChar.dead;
+      newEnemy.spellCooldowns = updatedChar.spellCooldowns;
       // Copy teleport animation state
       newEnemy.justTeleported = updatedChar.justTeleported;
       newEnemy.teleportFromX = updatedChar.teleportFromX;
@@ -760,6 +765,7 @@ export function executeTurn(gameState: GameState): GameState {
             actionIndex: checkIndex,
             active: newEnemy.active || true,
             dead: newEnemy.dead,
+            spellCooldowns: newEnemy.spellCooldowns,
           };
 
           const parallelResult = executeAction(parallelTempChar, nextAction, gameState);
@@ -769,6 +775,7 @@ export function executeTurn(gameState: GameState): GameState {
           newEnemy.facing = parallelResult.facing;
           newEnemy.currentHealth = parallelResult.currentHealth;
           newEnemy.dead = parallelResult.dead;
+          newEnemy.spellCooldowns = parallelResult.spellCooldowns;
           // Copy teleport animation state
           newEnemy.justTeleported = parallelResult.justTeleported;
           newEnemy.teleportFromX = parallelResult.teleportFromX;
@@ -879,6 +886,7 @@ export function executeTurn(gameState: GameState): GameState {
   processAllStatusEffectsTurnEnd(gameState);
 
   // Decrement spell cooldowns at end of turn
+  // This happens AFTER actions, so cooldown of N means "skip N turns"
   decrementSpellCooldowns(gameState);
 
   // Check win/lose conditions (skip in test mode)

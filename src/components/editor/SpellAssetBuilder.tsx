@@ -963,12 +963,15 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 <label className="block text-sm font-medium mb-1">Radius (tiles)</label>
                 <input
                   type="number"
-                  min="1"
+                  min="0"
                   max="10"
-                  value={editedSpell.radius || 2}
-                  onChange={(e) => setEditedSpell({ ...editedSpell, radius: parseInt(e.target.value) || 1 })}
+                  value={editedSpell.radius ?? 2}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, radius: parseInt(e.target.value) || 0 })}
                   className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                 />
+                <p className="text-xs text-gray-400 mt-1">
+                  0 = single tile only, 1+ = affects surrounding tiles
+                </p>
               </div>
             )}
 
@@ -1274,36 +1277,6 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               />
             )}
 
-            {/* Damage Effect Visual - only show for damage spells */}
-            {!editedSpell.healing && (
-              <SpellSpriteEditor
-                label="Damage Effect (on hit)"
-                spriteRef={editedSpell.sprites?.damageEffect}
-                onChange={(sprite) => setEditedSpell({
-                  ...editedSpell,
-                  sprites: { ...editedSpell.sprites, damageEffect: sprite }
-                })}
-                accentColor="red"
-                showDirectionalPreview={false}
-                helpText="Visual effect shown only when target actually takes damage"
-              />
-            )}
-
-            {/* Healing Effect Visual - only show for healing spells */}
-            {editedSpell.healing && (
-              <SpellSpriteEditor
-                label="Healing Effect (on heal)"
-                spriteRef={editedSpell.sprites?.healingEffect}
-                onChange={(sprite) => setEditedSpell({
-                  ...editedSpell,
-                  sprites: { ...editedSpell.sprites, healingEffect: sprite }
-                })}
-                accentColor="green"
-                showDirectionalPreview={false}
-                helpText="Visual effect shown when target is healed"
-              />
-            )}
-
             {/* AOE Effect Visual - only for AOE spells */}
             {templateNeedsRadius && (
               <SpellSpriteEditor
@@ -1331,6 +1304,36 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 accentColor="purple"
                 showDirectionalPreview={false}
                 helpText="Sprite shown on each tile while the effect persists (loops continuously)"
+              />
+            )}
+
+            {/* Healing Effect Visual - only show for healing spells */}
+            {editedSpell.healing && (
+              <SpellSpriteEditor
+                label="Healing Effect (on heal)"
+                spriteRef={editedSpell.sprites?.healingEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, healingEffect: sprite }
+                })}
+                accentColor="green"
+                showDirectionalPreview={false}
+                helpText="Visual effect shown when target is healed"
+              />
+            )}
+
+            {/* Damage Effect Visual - only show for damage spells (last in order) */}
+            {!editedSpell.healing && (
+              <SpellSpriteEditor
+                label="Damage Effect (on hit)"
+                spriteRef={editedSpell.sprites?.damageEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, damageEffect: sprite }
+                })}
+                accentColor="red"
+                showDirectionalPreview={false}
+                helpText="Visual effect shown only when target actually takes damage"
               />
             )}
           </div>
