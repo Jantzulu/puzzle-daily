@@ -408,7 +408,9 @@ export interface PersistentAreaEffect {
   radius: number;               // Radius of effect
   damagePerTurn: number;        // Damage dealt each turn
   turnsRemaining: number;       // How many more turns it lasts
-  visualSprite?: SpriteReference; // Visual indicator
+  visualSprite?: SpriteReference; // Visual indicator for each tile in the area
+  loopAnimation?: boolean;      // Whether to loop the sprite animation (default: true)
+  excludeCenter?: boolean;      // Don't show effect on center tile
   sourceCharacterId?: string;   // Who created this (for friendly fire rules)
   sourceEnemyId?: string;       // If created by enemy
 }
@@ -542,6 +544,7 @@ export interface CustomAttack {
   // AOE targeting (for AOE patterns)
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
   projectileBeforeAOE?: boolean; // True: Fire projectile that explodes into AOE
+  aoeExcludeCenter?: boolean;    // True: Don't show/apply AOE effect on center tile
 
   // Persistent AOE effects
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
@@ -550,6 +553,7 @@ export interface CustomAttack {
 
   // Visuals
   projectileSprite?: SpriteReference;  // Visual for projectile
+  aoeEffectSprite?: SpriteReference;   // Visual for AOE tiles when spell cast
   hitEffectSprite?: SpriteReference;   // Particle on damage impact
   healingEffectSprite?: SpriteReference; // Particle on healing
   castEffectSprite?: SpriteReference;  // Effect on caster
@@ -708,6 +712,7 @@ export interface SpellAsset {
   // AOE settings
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
   projectileBeforeAOE?: boolean; // True: Fire projectile that explodes into AOE
+  aoeExcludeCenter?: boolean;    // True: Don't show AOE effect on center tile (usually caster)
 
   // Persistent AOE effects
   persistDuration?: number;      // Turns the AOE effect persists (0 = instant)
@@ -720,10 +725,11 @@ export interface SpellAsset {
   sprites: {
     projectile?: SpriteReference;      // For linear spells (per direction)
     meleeAttack?: SpriteReference;     // For melee spells - sprite shown on attack tiles
+    aoeEffect?: SpriteReference;       // For AOE spells - sprite shown on each affected tile when cast
     damageEffect: SpriteReference;     // On successful damage hit
     healingEffect?: SpriteReference;   // On successful heal (falls back to damageEffect if not set)
     castEffect?: SpriteReference;      // On caster when spell fires
-    persistentArea?: SpriteReference;  // Visual for persistent ground effects
+    persistentArea?: SpriteReference;  // Visual for persistent ground effects (looping animation)
   };
 
   // Status Effect Configuration (optional)

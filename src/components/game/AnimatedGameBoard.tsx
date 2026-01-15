@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -878,6 +878,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       if (gameState.activeParticles && gameState.activeParticles.length > 0) {
         gameState.activeParticles.forEach(particle => {
           drawParticle(ctx, particle, now, imageCache.current);
+        });
+      }
+
+      // Draw persistent area effects (Phase 2 - ground effects layer)
+      if (gameState.persistentAreaEffects && gameState.persistentAreaEffects.length > 0) {
+        gameState.persistentAreaEffects.forEach(effect => {
+          drawPersistentAreaEffect(ctx, effect, now, imageCache.current, gameState.puzzle);
         });
       }
 
@@ -2881,6 +2888,132 @@ function drawDefaultParticle(ctx: CanvasRenderingContext2D, px: number, py: numb
     ctx.beginPath();
     ctx.arc(px, py, 8 * (1 - progress / 0.3), 0, Math.PI * 2);
     ctx.fill();
+  }
+}
+
+/**
+ * Draw a persistent area effect (ground effect that lasts multiple turns)
+ * The effect is drawn on each tile within the radius
+ * Supports looping animated sprite sheets
+ */
+function drawPersistentAreaEffect(
+  ctx: CanvasRenderingContext2D,
+  effect: PersistentAreaEffect,
+  now: number,
+  imageCache: Map<string, HTMLImageElement>,
+  puzzle: Puzzle
+) {
+  // If no visual sprite, draw a simple ground overlay
+  if (!effect.visualSprite?.spriteData) {
+    // Draw a subtle ground effect on each tile
+    for (let dx = -effect.radius; dx <= effect.radius; dx++) {
+      for (let dy = -effect.radius; dy <= effect.radius; dy++) {
+        // Check circular distance
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > effect.radius) continue;
+
+        // Skip center if excludeCenter is true
+        if (effect.excludeCenter && dx === 0 && dy === 0) continue;
+
+        const tileX = effect.x + dx;
+        const tileY = effect.y + dy;
+
+        // Check bounds
+        if (tileY < 0 || tileY >= puzzle.tiles.length) continue;
+        if (tileX < 0 || tileX >= puzzle.tiles[tileY].length) continue;
+
+        // Check if tile exists (non-null) and is walkable
+        const tile = puzzle.tiles[tileY][tileX];
+        if (!tile || tile.type === TileType.WALL) continue;
+
+        // Draw default pulsing ground effect
+        const px = tileX * TILE_SIZE + TILE_SIZE / 2;
+        const py = tileY * TILE_SIZE + TILE_SIZE / 2;
+
+        ctx.save();
+        // Pulsing alpha effect
+        const pulsePhase = (now % 1500) / 1500;
+        const alpha = 0.2 + 0.15 * Math.sin(pulsePhase * Math.PI * 2);
+        ctx.globalAlpha = alpha;
+
+        // Draw colored circle indicating damage zone
+        ctx.fillStyle = '#ff4444';
+        ctx.beginPath();
+        ctx.arc(px, py, TILE_SIZE * 0.4, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.restore();
+      }
+    }
+    return;
+  }
+
+  // Draw custom visual sprite on each tile
+  const spriteData = effect.visualSprite.spriteData;
+  const shouldLoop = effect.loopAnimation !== false; // Default true
+
+  for (let dx = -effect.radius; dx <= effect.radius; dx++) {
+    for (let dy = -effect.radius; dy <= effect.radius; dy++) {
+      // Check circular distance
+      const distance = Math.sqrt(dx * dx + dy * dy);
+      if (distance > effect.radius) continue;
+
+      // Skip center if excludeCenter is true
+      if (effect.excludeCenter && dx === 0 && dy === 0) continue;
+
+      const tileX = effect.x + dx;
+      const tileY = effect.y + dy;
+
+      // Check bounds
+      if (tileY < 0 || tileY >= puzzle.tiles.length) continue;
+      if (tileX < 0 || tileX >= puzzle.tiles[tileY].length) continue;
+
+      // Check if tile exists (non-null) and is walkable
+      const tile = puzzle.tiles[tileY][tileX];
+      if (!tile || tile.type === TileType.WALL) continue;
+
+      // Calculate pixel position (center of tile)
+      const px = tileX * TILE_SIZE + TILE_SIZE / 2;
+      const py = tileY * TILE_SIZE + TILE_SIZE / 2;
+
+      ctx.save();
+
+      // Check for sprite sheet
+      if (spriteData.spriteSheet) {
+        const spriteSheet = spriteData.spriteSheet;
+
+        // Create a modified spritesheet config with loop override
+        const effectiveSpriteSheet = shouldLoop
+          ? { ...spriteSheet, loop: true }
+          : spriteSheet;
+
+        // Use a consistent start time based on effect creation
+        // We use now as start time since we don't track creation time
+        // This means all tiles animate in sync
+        const spriteSize = TILE_SIZE * 0.9;
+        drawSpellSpriteSheetFromStartTime(
+          ctx,
+          effectiveSpriteSheet,
+          px,
+          py,
+          spriteSize,
+          imageCache,
+          0, // Start from time 0 for consistent looping
+          now,
+          undefined
+        );
+      } else {
+        // Fall back to static image or shape
+        const shape = spriteData.shape || 'circle';
+        const color = spriteData.primaryColor || '#ff4444';
+        const imageData = spriteData.idleImageData || spriteData.imageData;
+        const size = TILE_SIZE * 0.4;
+
+        drawShape(ctx, px, py, shape, color, size, imageData, imageCache);
+      }
+
+      ctx.restore();
+    }
   }
 }
 

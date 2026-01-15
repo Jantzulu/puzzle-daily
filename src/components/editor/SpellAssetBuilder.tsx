@@ -1119,6 +1119,24 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   </p>
                 </div>
               )}
+
+              {/* Exclude Center Tile */}
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editedSpell.aoeExcludeCenter || false}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, aoeExcludeCenter: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm font-medium">Exclude Center Tile</span>
+                </label>
+                <p className="text-xs text-gray-400 ml-6">
+                  {editedSpell.aoeCenteredOnCaster
+                    ? "Don't show effect on caster's tile"
+                    : "Don't show effect on the center of the AOE"}
+                </p>
+              </div>
             </div>
           )}
 
@@ -1283,6 +1301,36 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 accentColor="green"
                 showDirectionalPreview={false}
                 helpText="Visual effect shown when target is healed"
+              />
+            )}
+
+            {/* AOE Effect Visual - only for AOE spells */}
+            {templateNeedsRadius && (
+              <SpellSpriteEditor
+                label="AOE Effect (on cast)"
+                spriteRef={editedSpell.sprites?.aoeEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, aoeEffect: sprite }
+                })}
+                accentColor="purple"
+                showDirectionalPreview={false}
+                helpText="Sprite shown on each tile affected by the AOE when cast (use spritesheet for animated effects)"
+              />
+            )}
+
+            {/* Persistent Effect Visual - only for spells with persist duration */}
+            {editedSpell.persistDuration && editedSpell.persistDuration > 0 && (
+              <SpellSpriteEditor
+                label="Persistent Ground Effect"
+                spriteRef={editedSpell.sprites?.persistentArea}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, persistentArea: sprite }
+                })}
+                accentColor="purple"
+                showDirectionalPreview={false}
+                helpText="Sprite shown on each tile while the effect persists (loops continuously)"
               />
             )}
           </div>

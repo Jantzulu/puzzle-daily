@@ -1220,10 +1220,12 @@ function executeSpellInDirection(
     aoeRadius: spell.radius,
     aoeCenteredOnCaster: spell.aoeCenteredOnCaster,
     projectileBeforeAOE: spell.projectileBeforeAOE,
+    aoeExcludeCenter: spell.aoeExcludeCenter,
     persistDuration: spell.persistDuration,
     persistDamagePerTurn: spell.persistDamagePerTurn,
     persistVisualSprite: spell.sprites.persistentArea,
     projectileSprite: spell.sprites.projectile,
+    aoeEffectSprite: spell.sprites.aoeEffect,
     hitEffectSprite: spell.sprites.damageEffect,
     healingEffectSprite: spell.sprites.healingEffect,
     castEffectSprite: spell.sprites.castEffect,
@@ -1614,10 +1616,40 @@ export function executeAOEAttack(
       damagePerTurn: attackData.persistDamagePerTurn || damage,
       turnsRemaining: attackData.persistDuration,
       visualSprite: attackData.persistVisualSprite,
+      loopAnimation: true, // Persistent effects should loop by default
+      excludeCenter: attackData.aoeExcludeCenter,
       sourceCharacterId: character.characterId,
     };
 
     gameState.persistentAreaEffects.push(persistentEffect);
+  }
+
+  // Spawn AOE effect particles on all affected tiles (instant visual effect when cast)
+  if (attackData.aoeEffectSprite) {
+    for (let dx = -radius; dx <= radius; dx++) {
+      for (let dy = -radius; dy <= radius; dy++) {
+        const tileX = centerX + dx;
+        const tileY = centerY + dy;
+
+        // Check if within radius (circular)
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        if (distance > radius) continue;
+
+        // Skip center tile if excludeCenter is set
+        if (attackData.aoeExcludeCenter && dx === 0 && dy === 0) continue;
+
+        // Check if tile is within puzzle bounds
+        if (tileX < 0 || tileX >= gameState.puzzle.width ||
+            tileY < 0 || tileY >= gameState.puzzle.height) continue;
+
+        // Check if tile is not a wall or void
+        const tile = gameState.puzzle.tiles[tileY]?.[tileX];
+        if (!tile || tile.type === 'wall') continue;
+
+        // Spawn effect particle on this tile
+        spawnParticle(tileX, tileY, attackData.aoeEffectSprite, attackData.effectDuration || 500, gameState);
+      }
+    }
   }
 }
 
