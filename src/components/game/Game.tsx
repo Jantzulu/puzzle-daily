@@ -183,6 +183,7 @@ export const Game: React.FC = () => {
       // Check if tile exists and is empty
       const tile = gameState.puzzle.tiles[y]?.[x];
       if (!tile) {
+        playGameSound('error');
         return; // Can't place on null/void tiles
       }
 
@@ -190,6 +191,7 @@ export const Game: React.FC = () => {
       if (tile.customTileTypeId) {
         const customTileType = loadTileType(tile.customTileTypeId);
         if (customTileType?.preventPlacement) {
+          playGameSound('error');
           return; // Can't place on tiles that prevent placement
         }
       }
@@ -197,12 +199,14 @@ export const Game: React.FC = () => {
       const tileHasEnemy = gameState.puzzle.enemies.some((e) => e.x === x && e.y === y && !e.dead);
 
       if (tileHasEnemy) {
+        playGameSound('error');
         return; // Can't place on occupied tile
       }
 
       // Check if this character type is already placed (only one of each allowed)
       const alreadyPlaced = gameState.placedCharacters.some((c) => c.characterId === selectedCharacterId);
       if (alreadyPlaced) {
+        playGameSound('error');
         return; // Can't place duplicate character types
       }
 
