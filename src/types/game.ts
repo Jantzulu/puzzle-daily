@@ -550,15 +550,6 @@ export interface GameState {
 
   // Headless mode - when true, projectiles resolve instantly (for solver/validator)
   headlessMode?: boolean;
-
-  // Headless mode only: Enemy positions at the start of the turn (before they moved)
-  // Used for projectile collision to match visual game behavior where projectiles
-  // can hit enemies at their pre-move positions during the turn animation
-  enemyPositionsAtTurnStart?: Array<{ enemyId: string; x: number; y: number; dead: boolean }>;
-
-  // Headless mode only: Character positions at the start of the turn (before they moved)
-  // Used for enemy projectile collision to match visual game behavior
-  characterPositionsAtTurnStart?: Array<{ characterId: string; x: number; y: number; dead: boolean }>;
 }
 
 export interface PlayerProgress {
