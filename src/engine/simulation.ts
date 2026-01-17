@@ -1715,8 +1715,13 @@ function updateProjectilesHeadless(gameState: GameState): void {
     } else {
       // Non-homing projectile: trace path from start toward target
       const { dx, dy } = getDirectionOffset(proj.direction);
+      const canPierce = proj.attackData.projectilePierces === true;
+      const hitEntityIds: string[] = []; // Track already-hit entities for piercing
 
-      for (let dist = 1; dist <= range && !hitSomething; dist++) {
+      for (let dist = 1; dist <= range; dist++) {
+        // Stop if we hit something and can't pierce
+        if (hitSomething && !canPierce) break;
+
         const checkX = Math.floor(proj.startX + dx * dist);
         const checkY = Math.floor(proj.startY + dy * dist);
 
@@ -1742,9 +1747,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
           if (isHealingProjectile) {
             const hitAlly = gameState.placedCharacters.find(
               c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
-                   c.characterId !== proj.sourceCharacterId
+                   c.characterId !== proj.sourceCharacterId &&
+                   !hitEntityIds.includes(c.characterId)
             );
             if (hitAlly) {
+              hitEntityIds.push(hitAlly.characterId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitAlly.x, hitAlly.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
@@ -1758,9 +1765,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
             }
           } else {
             const hitEnemy = gameState.puzzle.enemies.find(
-              e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY
+              e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+                   !hitEntityIds.includes(e.enemyId)
             );
             if (hitEnemy) {
+              hitEntityIds.push(hitEnemy.enemyId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
@@ -1784,9 +1793,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
           if (isHealingProjectile) {
             const hitAllyEnemy = gameState.puzzle.enemies.find(
               e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
-                   e.enemyId !== proj.sourceEnemyId
+                   e.enemyId !== proj.sourceEnemyId &&
+                   !hitEntityIds.includes(e.enemyId)
             );
             if (hitAllyEnemy) {
+              hitEntityIds.push(hitAllyEnemy.enemyId);
               const healing = proj.attackData.healing ?? 0;
               const enemyData = getEnemy(hitAllyEnemy.enemyId);
               const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
@@ -1795,9 +1806,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
             }
           } else {
             const hitChar = gameState.placedCharacters.find(
-              c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY
+              c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
+                   !hitEntityIds.includes(c.characterId)
             );
             if (hitChar) {
+              hitEntityIds.push(hitChar.characterId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitChar.x, hitChar.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);

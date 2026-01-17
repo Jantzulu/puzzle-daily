@@ -2392,14 +2392,22 @@ export const MapEditor: React.FC = () => {
                           <span className="text-white font-bold">{validationResult.minCharactersNeeded}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400">Turns to win: </span>
-                          <span className="text-white">{validationResult.solutionFound.turnsToWin}</span>
+                          <span className="text-gray-400">Fastest solution: </span>
+                          <span className="text-white font-bold">{validationResult.solutionFound.turnsToWin} turns</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Combinations tested: </span>
+                          <span className="text-white">{validationResult.totalCombinationsTested.toLocaleString()}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Search time: </span>
+                          <span className="text-white">{(validationResult.searchTimeMs / 1000).toFixed(2)}s</span>
                         </div>
                       </div>
                     </div>
 
                     <div className="bg-gray-700/50 rounded p-3">
-                      <div className="font-semibold text-gray-300 mb-2 text-sm">Example Solution:</div>
+                      <div className="font-semibold text-gray-300 mb-2 text-sm">Optimal Placement:</div>
 
                       {/* Visual Mini-Map */}
                       <div className="flex justify-center mb-3">

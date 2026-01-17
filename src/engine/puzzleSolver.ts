@@ -209,12 +209,14 @@ export function solvePuzzle(
   options: {
     maxSimulationTurns?: number;
     maxCombinations?: number;
+    findFastest?: boolean; // If true, find fastest solution among minimum chars (slower but better)
     progressCallback?: (progress: { tested: number; found: boolean }) => void;
   } = {}
 ): SolverResult {
   const startTime = performance.now();
   const maxTurns = options.maxSimulationTurns ?? 200;
   const maxCombinations = options.maxCombinations ?? 100000;
+  const findFastest = options.findFastest ?? true; // Default to finding fastest solution
 
   // Find valid placement tiles
   const validTiles = findValidPlacementTiles(puzzle);
@@ -245,11 +247,17 @@ export function solvePuzzle(
 
   let totalTested = 0;
   let bestSolution: PlacementSolution | null = null;
+  let foundMinChars: number | null = null;
 
   // Try with increasing number of characters (to find minimum)
   const maxChars = Math.min(puzzle.maxCharacters, availableCharacters.length);
 
   for (let numChars = 1; numChars <= maxChars; numChars++) {
+    // If we already found a solution with fewer characters, stop
+    if (foundMinChars !== null && numChars > foundMinChars) {
+      break;
+    }
+
     // Get all combinations of numChars characters from available
     for (const charCombo of combinations(availableCharacters, numChars)) {
       // Generate all placements for this character combination
@@ -260,7 +268,7 @@ export function solvePuzzle(
         if (totalTested > maxCombinations) {
           return {
             solvable: bestSolution !== null,
-            minCharactersNeeded: bestSolution?.placements.length ?? null,
+            minCharactersNeeded: foundMinChars,
             solutionFound: bestSolution,
             totalCombinationsTested: totalTested,
             searchTimeMs: performance.now() - startTime,
@@ -276,22 +284,44 @@ export function solvePuzzle(
         const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
 
         if (result === 'victory') {
-          // Found a solution! Since we're iterating by character count,
-          // this is the minimum needed
-          bestSolution = {
-            placements,
-            turnsToWin: turns,
-          };
+          // Found a solution!
+          if (foundMinChars === null) {
+            // First solution found - this is the minimum character count
+            foundMinChars = numChars;
+          }
 
-          return {
-            solvable: true,
-            minCharactersNeeded: numChars,
-            solutionFound: bestSolution,
-            totalCombinationsTested: totalTested,
-            searchTimeMs: performance.now() - startTime,
-          };
+          // Check if this is the fastest solution so far
+          if (!bestSolution || turns < bestSolution.turnsToWin) {
+            bestSolution = {
+              placements,
+              turnsToWin: turns,
+            };
+          }
+
+          // If not finding fastest, return immediately
+          if (!findFastest) {
+            return {
+              solvable: true,
+              minCharactersNeeded: numChars,
+              solutionFound: bestSolution,
+              totalCombinationsTested: totalTested,
+              searchTimeMs: performance.now() - startTime,
+            };
+          }
         }
       }
+    }
+
+    // If we found a solution at this character count and we're finding fastest,
+    // we've now tested all placements with min chars, so return the best
+    if (foundMinChars !== null && foundMinChars === numChars) {
+      return {
+        solvable: true,
+        minCharactersNeeded: foundMinChars,
+        solutionFound: bestSolution,
+        totalCombinationsTested: totalTested,
+        searchTimeMs: performance.now() - startTime,
+      };
     }
   }
 
