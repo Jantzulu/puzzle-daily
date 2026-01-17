@@ -6,8 +6,9 @@ import { StatusEffectLibrary } from './StatusEffectLibrary';
 import { SkinEditor } from './SkinEditor';
 import { TileTypeEditor } from './TileTypeEditor';
 import { ObjectEditor } from './ObjectEditor';
+import { SoundEditor } from './SoundEditor';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds';
 
 export const AssetManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AssetTab>('characters');
@@ -104,6 +105,16 @@ export const AssetManager: React.FC = () => {
               >
                 💎 <span className="hidden sm:inline">Collectibles</span><span className="sm:hidden">Items</span>
               </button>
+              <button
+                onClick={() => setActiveTab('sounds')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'sounds'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                🔊 Sounds
+              </button>
             </div>
           </div>
         </div>
@@ -119,6 +130,7 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'tiles' && <TileTypeEditor />}
         {activeTab === 'objects' && <ObjectEditor />}
         {activeTab === 'collectibles' && <CollectibleEditorPlaceholder />}
+        {activeTab === 'sounds' && <SoundEditor />}
       </div>
     </div>
   );

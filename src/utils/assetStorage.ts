@@ -1,4 +1,4 @@
-import type { Character, Enemy, TileBehaviorConfig, CadenceConfig } from '../types/game';
+import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig } from '../types/game';
 
 // ============ SAFE LOCALSTORAGE UTILITIES ============
 // Handles mobile browser restrictions (Private mode, quota limits, Safari quirks)
@@ -62,7 +62,7 @@ const PENDING_ASSET_DELETIONS_KEY = 'pending_asset_deletions';
 
 export interface PendingDeletion {
   id: string;
-  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type';
+  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'sound';
   deletedAt: string;
 }
 
@@ -987,4 +987,68 @@ export const loadObject = (objectId: string): CustomObject | null => {
 
 export const getAllObjects = (): CustomObject[] => {
   return getCustomObjects();
+};
+
+// ==========================================
+// SOUND ASSETS
+// ==========================================
+
+const SOUND_STORAGE_KEY = 'sound_assets';
+const GLOBAL_SOUNDS_KEY = 'global_sound_config';
+
+export const saveSoundAsset = (sound: SoundAsset): boolean => {
+  const sounds = getSoundAssets();
+
+  const existingIndex = sounds.findIndex(s => s.id === sound.id);
+  if (existingIndex >= 0) {
+    sounds[existingIndex] = sound;
+  } else {
+    sounds.push(sound);
+  }
+
+  return safeLocalStorageSet(SOUND_STORAGE_KEY, JSON.stringify(sounds));
+};
+
+export const getSoundAssets = (): SoundAsset[] => {
+  try {
+    const stored = localStorage.getItem(SOUND_STORAGE_KEY);
+    if (!stored) return [];
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load sound assets:', e);
+    return [];
+  }
+};
+
+export const deleteSoundAsset = (soundId: string): void => {
+  // Don't allow deleting built-in sounds
+  if (soundId.startsWith('builtin_')) return;
+
+  const sounds = getSoundAssets();
+  const filtered = sounds.filter(s => s.id !== soundId);
+  localStorage.setItem(SOUND_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(soundId, 'sound');
+};
+
+export const loadSoundAsset = (soundId: string): SoundAsset | null => {
+  const sounds = getSoundAssets();
+  return sounds.find(s => s.id === soundId) || null;
+};
+
+// Global sound configuration
+export const saveGlobalSoundConfig = (config: GlobalSoundConfig): boolean => {
+  return safeLocalStorageSet(GLOBAL_SOUNDS_KEY, JSON.stringify(config));
+};
+
+export const getGlobalSoundConfig = (): GlobalSoundConfig => {
+  try {
+    const stored = localStorage.getItem(GLOBAL_SOUNDS_KEY);
+    if (!stored) return {};
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load global sound config:', e);
+    return {};
+  }
 };

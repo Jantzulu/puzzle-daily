@@ -101,7 +101,7 @@ export async function updatePuzzleStatus(id: string, status: DbPuzzle['status'])
 // ASSET OPERATIONS
 // ============================================
 
-type AssetType = 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'hidden_assets';
+type AssetType = 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'hidden_assets' | 'sound' | 'global_sound_config';
 type AssetData = CustomTileType | EnemyWithSprite | CharacterWithSprite | CustomObject | PuzzleSkin | SpellAsset | object;
 
 export async function fetchAllAssets(type?: AssetType, includeDeleted: boolean = false): Promise<DbAsset[]> {
@@ -288,9 +288,11 @@ export async function syncFromCloud(): Promise<{
   folders: DbAsset[];
   collectibleTypes: DbAsset[];
   hiddenAssets: DbAsset[];
+  sounds: DbAsset[];
+  globalSoundConfig: DbAsset[];
 }> {
   // Include deleted items so pull can process deletions
-  const [puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets] = await Promise.all([
+  const [puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets, sounds, globalSoundConfig] = await Promise.all([
     fetchAllPuzzles(true),
     fetchAllAssets('tile_type', true),
     fetchAllAssets('enemy', true),
@@ -302,9 +304,11 @@ export async function syncFromCloud(): Promise<{
     fetchAllAssets('folder', true),
     fetchAllAssets('collectible_type', true),
     fetchAllAssets('hidden_assets', true),
+    fetchAllAssets('sound', true),
+    fetchAllAssets('global_sound_config', true),
   ]);
 
-  return { puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets };
+  return { puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets, sounds, globalSoundConfig };
 }
 
 // ============================================

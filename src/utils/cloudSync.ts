@@ -35,6 +35,8 @@ import {
   getCustomCollectibleTypes,
   getFolders,
   getHiddenAssets,
+  getSoundAssets,
+  getGlobalSoundConfig,
   saveTileType,
   saveObject,
   saveCharacter,
@@ -44,6 +46,8 @@ import {
   saveStatusEffectAsset,
   saveCollectibleType,
   saveFolder,
+  saveSoundAsset,
+  saveGlobalSoundConfig,
   deleteTileType,
   deleteObject,
   deleteCharacter,
@@ -53,11 +57,13 @@ import {
   deleteStatusEffectAsset,
   deleteCollectibleType,
   deleteFolder,
+  deleteSoundAsset,
   getPendingAssetDeletions,
   clearPendingAssetDeletions,
   type AssetFolder,
   type CustomCollectibleType,
 } from './assetStorage';
+import type { SoundAsset, GlobalSoundConfig } from '../types/game';
 import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle, getPendingPuzzleDeletions, clearPendingPuzzleDeletions } from './puzzleStorage';
 
 // Track sync status
@@ -173,6 +179,22 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
       const hiddenData = { hiddenIds: Array.from(hiddenAssets) };
       const success = await saveAssetToCloud('hidden_assets_list', 'hidden_assets', 'Hidden Assets', hiddenData);
       if (!success) errors.push('Failed to upload hidden assets list');
+    }
+
+    // Push sound assets
+    const soundAssets = getSoundAssets();
+    for (const sound of soundAssets) {
+      if (!sound.isBuiltIn) {
+        const success = await saveAssetToCloud(sound.id, 'sound', sound.name, sound);
+        if (!success) errors.push(`Failed to upload sound: ${sound.name}`);
+      }
+    }
+
+    // Push global sound configuration
+    const globalSoundConfig = getGlobalSoundConfig();
+    if (Object.keys(globalSoundConfig).length > 0) {
+      const success = await saveAssetToCloud('global_sound_config', 'global_sound_config', 'Global Sound Config', globalSoundConfig);
+      if (!success) errors.push('Failed to upload global sound config');
     }
 
     // Push puzzles
@@ -406,6 +428,40 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           }
         } catch (e) {
           errors.push(`Failed to import hidden assets`);
+        }
+      }
+    }
+
+    // Import sound assets (or delete if soft-deleted)
+    if (cloudData.sounds) {
+      for (const asset of cloudData.sounds) {
+        try {
+          if (asset.deleted_at) {
+            deleteSoundAsset(asset.id);
+            console.log(`[CloudSync] Deleted sound locally: ${asset.name}`);
+          } else {
+            const sound = asset.data as unknown as SoundAsset;
+            if (!sound.isBuiltIn) {
+              saveSoundAsset(sound);
+            }
+          }
+        } catch (e) {
+          errors.push(`Failed to import sound: ${asset.name}`);
+        }
+      }
+    }
+
+    // Import global sound configuration
+    if (cloudData.globalSoundConfig) {
+      for (const asset of cloudData.globalSoundConfig) {
+        try {
+          if (!asset.deleted_at && asset.id === 'global_sound_config') {
+            const config = asset.data as unknown as GlobalSoundConfig;
+            saveGlobalSoundConfig(config);
+            console.log(`[CloudSync] Imported global sound config`);
+          }
+        } catch (e) {
+          errors.push(`Failed to import global sound config`);
         }
       }
     }

@@ -10,6 +10,7 @@ import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
+import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -115,10 +116,18 @@ export const Game: React.FC = () => {
         if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
 
+          // Handle victory
+          if (newState.gameStatus === 'victory') {
+            playGameSound('victory');
+            playVictoryMusic();
+          }
+
           // Handle defeat - deduct a life and auto-reset (or show game over)
           if (newState.gameStatus === 'defeat') {
             const puzzleLives = currentPuzzle.lives ?? 3;
             const isUnlimitedLives = puzzleLives === 0;
+
+            playGameSound('defeat');
 
             if (!isUnlimitedLives) {
               const newLives = livesRemaining - 1;
@@ -127,7 +136,10 @@ export const Game: React.FC = () => {
               if (newLives <= 0) {
                 // No lives left - show game over
                 setShowGameOver(true);
+                playDefeatMusic();
               } else {
+                // Life lost - play sound
+                playGameSound('life_lost');
                 // Auto-reset after a short delay to show defeat message
                 setTimeout(() => {
                   handleAutoReset();
@@ -158,6 +170,7 @@ export const Game: React.FC = () => {
           ...prev,
           placedCharacters: prev.placedCharacters.filter((c) => c.x !== x || c.y !== y),
         }));
+        playGameSound('character_removed');
         return;
       }
 
@@ -203,6 +216,7 @@ export const Game: React.FC = () => {
         ...prev,
         placedCharacters: [...prev.placedCharacters, newCharacter],
       }));
+      playGameSound('character_placed');
     },
     [selectedCharacterId, gameState]
   );
@@ -217,10 +231,12 @@ export const Game: React.FC = () => {
     setPlayStartCharacters(JSON.parse(JSON.stringify(gameState.placedCharacters)));
     setGameState((prev) => ({ ...prev, gameStatus: 'running' }));
     setIsSimulating(true);
+    playGameSound('simulation_start');
   };
 
   const handlePause = () => {
     setIsSimulating(false);
+    playGameSound('simulation_stop');
   };
 
   const handleReset = () => {

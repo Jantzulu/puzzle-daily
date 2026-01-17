@@ -215,6 +215,8 @@ export interface Character {
   blocksMovement?: boolean; // If true, stops entities trying to walk through (no wall reaction, just stops them)
   blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
   contactDamage?: number; // Damage dealt when walking into enemies (0 or undefined = no contact damage)
+  // Sound configuration
+  sounds?: EntitySoundSet; // Character-specific sounds (death, damage, etc.)
 }
 
 export interface Enemy {
@@ -235,6 +237,9 @@ export interface Enemy {
 
   // Melee priority
   hasMeleePriority?: boolean; // If true, this enemy attacks before characters in melee exchanges (default: false)
+
+  // Sound configuration
+  sounds?: EntitySoundSet; // Enemy-specific sounds (death, damage, etc.)
 }
 
 export interface EnemyBehavior {
@@ -775,6 +780,10 @@ export interface SpellAsset {
   // Cooldown
   cooldown?: number;              // Turns before spell can be used again (0 = no cooldown)
 
+  // Sound configuration
+  castSound?: string;             // Sound asset ID to play when spell is cast
+  hitSound?: string;              // Sound asset ID to play on hit/impact
+
   // Metadata
   createdAt: string;
   isCustom: boolean;            // User-created vs built-in
@@ -832,4 +841,94 @@ export interface ParallelActionTracker {
   actionIndex: number;          // Which action in behavior array
   lastTriggerTime: number;      // Date.now() of last execution
   active: boolean;
+}
+
+// ==========================================
+// SOUND SYSTEM
+// ==========================================
+
+/**
+ * Sound triggers - events that can play sounds
+ */
+export type SoundTrigger =
+  // Character/Enemy actions
+  | 'death'
+  | 'damage_taken'
+  // Tile interactions
+  | 'teleport'
+  | 'ice_slide'
+  | 'tile_damage'
+  | 'pressure_plate'
+  // Game state
+  | 'victory'
+  | 'defeat'
+  | 'life_lost'
+  // UI sounds
+  | 'button_click'
+  | 'character_placed'
+  | 'character_removed'
+  | 'simulation_start'
+  | 'simulation_stop'
+  | 'error';
+
+/**
+ * Sound settings for volume control
+ */
+export interface SoundSettings {
+  masterVolume: number;    // 0-1
+  musicVolume: number;     // 0-1
+  sfxVolume: number;       // 0-1
+  enabled: boolean;        // Global on/off toggle
+}
+
+/**
+ * Sound asset - stored audio data
+ */
+export interface SoundAsset {
+  id: string;
+  name: string;
+  description?: string;
+  audioData: string;       // Base64 encoded audio data
+  duration?: number;       // Duration in seconds (for display)
+  createdAt: string;
+  isBuiltIn?: boolean;     // True for default sounds
+  folderId?: string;       // Optional folder assignment
+}
+
+/**
+ * Sound configuration for an entity (character/enemy)
+ */
+export interface EntitySoundSet {
+  death?: string;          // Sound asset ID
+  damageTaken?: string;    // Sound asset ID
+  // Additional entity-specific sounds can be added here
+}
+
+/**
+ * Global sound configuration for the game
+ */
+export interface GlobalSoundConfig {
+  // Tile interactions
+  teleport?: string;       // Sound asset ID
+  iceSlide?: string;
+  tileDamage?: string;
+  pressurePlate?: string;
+
+  // Game state
+  victory?: string;
+  defeat?: string;
+  lifeLost?: string;
+
+  // UI sounds
+  buttonClick?: string;
+  characterPlaced?: string;
+  characterRemoved?: string;
+  simulationStart?: string;
+  simulationStop?: string;
+  error?: string;
+
+  // Background music
+  backgroundMusic?: string;
+  victoryMusic?: string;
+  defeatMusic?: string;
 }

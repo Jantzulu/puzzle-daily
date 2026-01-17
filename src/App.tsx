@@ -4,6 +4,7 @@ import { Game } from './components/game/Game';
 import { MapEditor } from './components/editor/MapEditor';
 import { AssetManager } from './components/editor/AssetManager';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
+import { SoundSettings } from './components/shared/SoundSettings';
 
 function Navigation() {
   const location = useLocation();
@@ -38,7 +39,8 @@ function Navigation() {
 
         <div className="flex-1" />
 
-        <div className="hidden md:block">
+        <div className="hidden md:flex items-center gap-2">
+          <SoundSettings />
           <CloudSyncButton />
         </div>
 
@@ -81,7 +83,8 @@ function Navigation() {
           >
             Asset Manager
           </Link>
-          <div className="pt-2">
+          <div className="pt-2 flex items-center gap-2">
+            <SoundSettings />
             <CloudSyncButton />
           </div>
         </div>
