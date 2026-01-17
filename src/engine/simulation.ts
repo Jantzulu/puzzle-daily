@@ -2169,8 +2169,6 @@ function updateProjectilesHeadless(gameState: GameState): void {
     const speed = proj.speed || 5; // tiles per second
     const tilesPerTurn = Math.ceil(speed * TURN_DURATION); // How far projectile moves this turn
 
-    // Debug logging for headless projectile movement
-    console.log(`[updateProjectilesHeadless] Projectile ${proj.id.substring(0, 20)}... speed: ${speed} tiles/sec, tilesPerTurn: ${tilesPerTurn}, turn: ${gameState.currentTurn}`);
     let hitSomething = false;
     let shouldRemove = false;
 
@@ -2420,6 +2418,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
     if (shouldRemove) {
       proj.active = false;
       projectilesToRemove.push(proj.id);
+      // Log projectile outcome in headless mode
+      if (gameState.headlessMode) {
+        const traveledDist = Math.sqrt(Math.pow(proj.x - proj.startX, 2) + Math.pow(proj.y - proj.startY, 2));
+        console.log(`[VALIDATOR] Projectile END: hit=${hitSomething} | traveled=${traveledDist.toFixed(1)} tiles | final=(${proj.x.toFixed(1)},${proj.y.toFixed(1)}) | turn=${gameState.currentTurn}`);
+      }
     }
   }
 

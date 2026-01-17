@@ -1409,8 +1409,10 @@ function spawnProjectile(
   const range = attackData.range || 10; // Default max range
   const speed = attackData.projectileSpeed || 5; // Tiles per second
 
-  // Debug logging for projectile spawn
-  console.log(`[spawnProjectile] Spawning projectile from ${spell?.name || attackData.name}, speed: ${speed} tiles/sec (${Math.ceil(speed * 0.8)} tiles/turn), attackData.projectileSpeed: ${attackData.projectileSpeed}`);
+  // Debug logging for projectile spawn (only in headless/validator mode)
+  if (gameState.headlessMode) {
+    console.log(`[VALIDATOR] Projectile: "${spell?.name || attackData.name}" | speed=${speed} tiles/sec (${Math.ceil(speed * 0.8)} tiles/turn) | range=${range} | from=(${character.x},${character.y}) facing=${character.facing} | turn=${gameState.currentTurn}`);
+  }
 
   // Calculate target position
   let targetX: number;

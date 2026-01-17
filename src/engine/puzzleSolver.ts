@@ -308,6 +308,9 @@ export function solvePuzzle(
 
         if (result === 'victory') {
           // Found a solution!
+          console.log(`[VALIDATOR] === SOLUTION FOUND === turns=${turns} chars=${numChars} placements:`,
+            placements.map(p => `${p.characterId}@(${p.x},${p.y})`).join(', '));
+
           if (foundMinChars === null) {
             // First solution found - this is the minimum character count
             foundMinChars = numChars;
