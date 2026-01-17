@@ -10,6 +10,7 @@ import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
+import { loadTileType } from '../../utils/assetStorage';
 import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
 
 // Test mode types
@@ -183,6 +184,14 @@ export const Game: React.FC = () => {
       const tile = gameState.puzzle.tiles[y]?.[x];
       if (!tile) {
         return; // Can't place on null/void tiles
+      }
+
+      // Check if custom tile prevents placement
+      if (tile.customTileTypeId) {
+        const customTileType = loadTileType(tile.customTileTypeId);
+        if (customTileType?.preventPlacement) {
+          return; // Can't place on tiles that prevent placement
+        }
       }
 
       const tileHasEnemy = gameState.puzzle.enemies.some((e) => e.x === x && e.y === y && !e.dead);

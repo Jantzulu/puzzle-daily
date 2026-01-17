@@ -295,6 +295,7 @@ export interface CustomTileType {
   offStateSprite?: CustomSprite;    // Sprite when tile is in "off" state (for cadence)
   cadence?: CadenceConfig;          // Optional cadence configuration (on/off toggle)
   hideBehaviorIndicators?: boolean;  // Hide default behavior overlays (purple teleport, blue ice, etc.)
+  preventPlacement?: boolean;        // Prevent characters from being placed here during setup (but allow walking)
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment

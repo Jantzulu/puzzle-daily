@@ -17,6 +17,8 @@ interface SpecialTileInfo {
   cadence?: CadenceConfig;
   offStateSprite: CustomSprite | null;
   skinOffSpriteUrl: string | null;
+  // Placement restriction
+  preventPlacement: boolean;
 }
 
 /**
@@ -67,7 +69,7 @@ function getBehaviorDescription(behaviors: TileBehaviorConfig[]): string {
 }
 
 /**
- * Extracts all special tiles (custom tiles with behaviors) from a puzzle
+ * Extracts all special tiles (custom tiles with behaviors or special properties) from a puzzle
  */
 function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
   const seenTileIds = new Set<string>();
@@ -86,8 +88,11 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
       const tileType = loadTileType(tile.customTileTypeId);
       if (!tileType) continue;
 
-      // Only include tiles that have behaviors
-      if (!tileType.behaviors || tileType.behaviors.length === 0) continue;
+      // Include tiles that have behaviors OR prevent placement
+      const hasBehaviors = tileType.behaviors && tileType.behaviors.length > 0;
+      const preventPlacement = tileType.preventPlacement || false;
+
+      if (!hasBehaviors && !preventPlacement) continue;
 
       seenTileIds.add(tile.customTileTypeId);
 
@@ -117,6 +122,7 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
         cadence: tileType.cadence,
         offStateSprite,
         skinOffSpriteUrl,
+        preventPlacement,
       });
     }
   }
@@ -244,11 +250,20 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                   {info.hasCadence && (
                     <span className="text-yellow-400 text-xs" title="Has on/off cadence">⟳</span>
                   )}
+                  {info.preventPlacement && (
+                    <span className="text-red-400 text-xs" title="Cannot place characters here">🚫</span>
+                  )}
                 </div>
                 {/* Use tile's description if available, otherwise generate from behaviors */}
                 <div className="text-xs text-gray-400">
                   {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}
                 </div>
+                {/* Show placement restriction info */}
+                {info.preventPlacement && (
+                  <div className="text-xs text-red-400/70 mt-0.5">
+                    Cannot place characters on this tile
+                  </div>
+                )}
                 {/* Show cadence info if applicable */}
                 {info.hasCadence && info.cadence && (
                   <div className="text-xs text-yellow-400/70 mt-0.5">

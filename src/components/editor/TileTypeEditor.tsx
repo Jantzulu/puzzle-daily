@@ -982,6 +982,23 @@ export const TileTypeEditor: React.FC = () => {
                       Hides the default overlays (purple for teleport, blue for ice, etc.) when the tile has a custom sprite.
                     </p>
                   </div>
+
+                  {/* Prevent Placement Option */}
+                  <div className="mt-4 pt-4 border-t border-gray-700">
+                    <label className="flex items-center text-sm text-gray-300 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={editing.preventPlacement || false}
+                        onChange={e => setEditing({ ...editing, preventPlacement: e.target.checked })}
+                        className="mr-2"
+                      />
+                      Prevent character placement
+                    </label>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Characters cannot be placed on this tile during setup, but can still walk on it during gameplay.
+                      Useful for portal destinations, trap areas, or tiles that should only be reached through gameplay.
+                    </p>
+                  </div>
                 </div>
 
                 {/* Off State Sprite (only shown when cadence is enabled) */}

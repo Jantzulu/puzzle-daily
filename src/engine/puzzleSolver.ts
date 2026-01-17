@@ -3,6 +3,7 @@
 
 import { initializeGameState, executeTurn } from './simulation';
 import { getCharacter } from '../data/characters';
+import { loadTileType } from '../utils/assetStorage';
 import type { Puzzle, PlacedCharacter, GameState, Direction, TileType } from '../types/game';
 
 export interface SolverResult {
@@ -48,6 +49,12 @@ function findValidPlacementTiles(puzzle: Puzzle): ValidTile[] {
       // Can't place on tiles with enemies
       const hasEnemy = puzzle.enemies.some(e => e.x === x && e.y === y && !e.dead);
       if (hasEnemy) continue;
+
+      // Can't place on custom tiles that have preventPlacement enabled
+      if (tile.customTileTypeId) {
+        const customTileType = loadTileType(tile.customTileTypeId);
+        if (customTileType?.preventPlacement) continue;
+      }
 
       validTiles.push({ x, y });
     }
