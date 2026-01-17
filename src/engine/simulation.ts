@@ -7,6 +7,56 @@ import { loadStatusEffectAsset, loadSpellAsset, loadCollectible } from '../utils
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
+ * Get all integer tile coordinates along a line using Bresenham's line algorithm
+ * This ensures we check every tile the projectile passes through
+ */
+function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Array<{x: number, y: number}> {
+  const tiles: Array<{x: number, y: number}> = [];
+
+  // Convert to tile coordinates
+  const startTileX = Math.floor(x0);
+  const startTileY = Math.floor(y0);
+  const endTileX = Math.floor(x1);
+  const endTileY = Math.floor(y1);
+
+  // If same tile, just return that tile
+  if (startTileX === endTileX && startTileY === endTileY) {
+    tiles.push({ x: endTileX, y: endTileY });
+    return tiles;
+  }
+
+  // Bresenham's line algorithm
+  let x = startTileX;
+  let y = startTileY;
+  const dx = Math.abs(endTileX - startTileX);
+  const dy = Math.abs(endTileY - startTileY);
+  const sx = startTileX < endTileX ? 1 : -1;
+  const sy = startTileY < endTileY ? 1 : -1;
+  let err = dx - dy;
+
+  while (true) {
+    // Don't include the starting tile (we've already checked it)
+    if (x !== startTileX || y !== startTileY) {
+      tiles.push({ x, y });
+    }
+
+    if (x === endTileX && y === endTileY) break;
+
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y += sy;
+    }
+  }
+
+  return tiles;
+}
+
+/**
  * Initialize parallel action trackers for a character
  */
 function initializeParallelTrackers(character: PlacedCharacter, charData: any): void {
@@ -1375,19 +1425,47 @@ export function updateProjectiles(gameState: GameState): void {
       continue;
     }
 
+    // Save previous position before updating
+    const prevX = proj.x;
+    const prevY = proj.y;
+
     // Update position before collision check
     proj.x = newX;
     proj.y = newY;
 
-    // Check collision with walls
-    const tileX = Math.floor(newX);
-    const tileY = Math.floor(newY);
+    // Get all tiles along the path from previous to new position
+    // This ensures we don't skip over entities when moving diagonally or fast
+    const tilesAlongPath = getTilesAlongLine(prevX, prevY, newX, newY);
 
-    const hitWall = !isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
-        gameState.puzzle.tiles[tileY]?.[tileX]?.type === TileType.WALL ||
-        gameState.puzzle.tiles[tileY]?.[tileX] === null;
+    // Check collision with walls - check all tiles along path
+    let hitWallTile: { x: number; y: number } | null = null;
+    for (const tile of tilesAlongPath) {
+      const tileX = tile.x;
+      const tileY = tile.y;
+      const isWall = !isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
+          gameState.puzzle.tiles[tileY]?.[tileX]?.type === TileType.WALL ||
+          gameState.puzzle.tiles[tileY]?.[tileX] === null;
+      if (isWall) {
+        hitWallTile = tile;
+        break;
+      }
+    }
 
-    if (hitWall) {
+    // Fall back to final tile check if no tiles along path (same tile)
+    const finalTileX = Math.floor(newX);
+    const finalTileY = Math.floor(newY);
+    if (!hitWallTile && tilesAlongPath.length === 0) {
+      const isWall = !isInBounds(finalTileX, finalTileY, gameState.puzzle.width, gameState.puzzle.height) ||
+          gameState.puzzle.tiles[finalTileY]?.[finalTileX]?.type === TileType.WALL ||
+          gameState.puzzle.tiles[finalTileY]?.[finalTileX] === null;
+      if (isWall) {
+        hitWallTile = { x: finalTileX, y: finalTileY };
+      }
+    }
+
+    if (hitWallTile) {
+      const tileX = hitWallTile.x;
+      const tileY = hitWallTile.y;
       // Homing projectiles don't bounce - they just deactivate if they hit a wall
       if (proj.isHoming) {
         proj.active = false;
@@ -1512,261 +1590,290 @@ export function updateProjectiles(gameState: GameState): void {
     // Healing projectiles hit allies, damage projectiles hit enemies
     const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
 
+    // Collect all tiles to check for entity collision (include final position)
+    const tilesToCheck = [...tilesAlongPath];
+    if (tilesToCheck.length === 0 ||
+        (tilesToCheck[tilesToCheck.length - 1].x !== finalTileX ||
+         tilesToCheck[tilesToCheck.length - 1].y !== finalTileY)) {
+      tilesToCheck.push({ x: finalTileX, y: finalTileY });
+    }
+
     // If fired by a character
-    if (proj.sourceCharacterId) {
+    let entityHitAndStopped = false;
+    if (proj.sourceCharacterId && !entityHitAndStopped) {
       if (isHealingProjectile) {
-        // Healing projectile - check for ally character hits
-        const hitAlly = gameState.placedCharacters.find(
-          c => !c.dead &&
-               Math.floor(c.x) === tileX &&
-               Math.floor(c.y) === tileY &&
-               c.characterId !== proj.sourceCharacterId && // Don't heal self
-               !(proj.hitEntityIds?.includes(c.characterId)) // Skip already hit entities (for piercing)
-        );
+        // Healing projectile - check for ally character hits along entire path
+        for (const checkTile of tilesToCheck) {
+          const tileX = checkTile.x;
+          const tileY = checkTile.y;
 
-        if (hitAlly) {
-          // Track that we hit this entity (for piercing projectiles)
-          if (!proj.hitEntityIds) proj.hitEntityIds = [];
-          proj.hitEntityIds.push(hitAlly.characterId);
+          const hitAlly = gameState.placedCharacters.find(
+            c => !c.dead &&
+                 Math.floor(c.x) === tileX &&
+                 Math.floor(c.y) === tileY &&
+                 c.characterId !== proj.sourceCharacterId && // Don't heal self
+                 !(proj.hitEntityIds?.includes(c.characterId)) // Skip already hit entities (for piercing)
+          );
 
-          // Check if this should explode into AOE healing on impact
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(
-              hitAlly.x,
-              hitAlly.y,
-              proj.attackData,
-              proj.sourceCharacterId,
-              proj.sourceEnemyId,
-              gameState,
-              proj.spellAssetId
-            );
-          } else {
-            // Apply single-target healing
-            const healing = proj.attackData.healing ?? 0;
-            const charData = getCharacter(hitAlly.characterId);
-            const maxHealth = charData?.health ?? hitAlly.currentHealth;
-            hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
+          if (hitAlly) {
+            // Track that we hit this entity (for piercing projectiles)
+            if (!proj.hitEntityIds) proj.hitEntityIds = [];
+            proj.hitEntityIds.push(hitAlly.characterId);
 
-            // Spawn healing effect (prefer healing sprite, fallback to hit effect)
-            const healSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
-            if (healSprite) {
-              spawnParticleEffect(
+            // Check if this should explode into AOE healing on impact
+            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+              triggerAOEExplosion(
                 hitAlly.x,
                 hitAlly.y,
-                healSprite,
-                proj.attackData.effectDuration || 300,
-                gameState
+                proj.attackData,
+                proj.sourceCharacterId,
+                proj.sourceEnemyId,
+                gameState,
+                proj.spellAssetId
               );
-            }
-          }
+            } else {
+              // Apply single-target healing
+              const healing = proj.attackData.healing ?? 0;
+              const charData = getCharacter(hitAlly.characterId);
+              const maxHealth = charData?.health ?? hitAlly.currentHealth;
+              hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
 
-          // Check if projectile should pierce
-          if (!proj.attackData.projectilePierces) {
-            proj.active = false;
-            projectilesToRemove.push(proj.id);
-            continue;
+              // Spawn healing effect (prefer healing sprite, fallback to hit effect)
+              const healSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
+              if (healSprite) {
+                spawnParticleEffect(
+                  hitAlly.x,
+                  hitAlly.y,
+                  healSprite,
+                  proj.attackData.effectDuration || 300,
+                  gameState
+                );
+              }
+            }
+
+            // Check if projectile should pierce
+            if (!proj.attackData.projectilePierces) {
+              proj.active = false;
+              projectilesToRemove.push(proj.id);
+              entityHitAndStopped = true;
+              break;
+            }
           }
         }
       } else {
-        // Damage projectile - check for enemy hits
-        const hitEnemy = gameState.puzzle.enemies.find(
-          e => !e.dead &&
-               Math.floor(e.x) === tileX &&
-               Math.floor(e.y) === tileY &&
-               !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
-        );
+        // Damage projectile - check for enemy hits along entire path
+        for (const checkTile of tilesToCheck) {
+          const tileX = checkTile.x;
+          const tileY = checkTile.y;
 
-        // Debug: log collision check for homing projectiles
-        if (proj.isHoming) {
-          const targetEnemy = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId);
-          console.log(`[Homing Debug] Proj at (${proj.x.toFixed(2)}, ${proj.y.toFixed(2)}) -> tile (${tileX}, ${tileY}), target enemy at (${targetEnemy?.x}, ${targetEnemy?.y}) -> tile (${targetEnemy ? Math.floor(targetEnemy.x) : 'N/A'}, ${targetEnemy ? Math.floor(targetEnemy.y) : 'N/A'}), hitEnemy: ${hitEnemy?.enemyId || 'none'}`);
-        }
+          const hitEnemy = gameState.puzzle.enemies.find(
+            e => !e.dead &&
+                 Math.floor(e.x) === tileX &&
+                 Math.floor(e.y) === tileY &&
+                 !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
+          );
 
-        if (hitEnemy) {
-          // Track that we hit this entity (for piercing projectiles)
-          if (!proj.hitEntityIds) proj.hitEntityIds = [];
-          proj.hitEntityIds.push(hitEnemy.enemyId);
+          if (hitEnemy) {
+            // Track that we hit this entity (for piercing projectiles)
+            if (!proj.hitEntityIds) proj.hitEntityIds = [];
+            proj.hitEntityIds.push(hitEnemy.enemyId);
 
-          // Check if this should explode into AOE on impact
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(
-              hitEnemy.x,
-              hitEnemy.y,
-              proj.attackData,
-              proj.sourceCharacterId,
-              proj.sourceEnemyId,
-              gameState,
-              proj.spellAssetId
-            );
-          } else {
-            // Apply single-target damage
-            const damage = proj.attackData.damage ?? 1;
-            hitEnemy.currentHealth -= damage;
-
-            // Wake from sleep if sleeping
-            wakeFromSleep(hitEnemy);
-
-            if (hitEnemy.currentHealth <= 0) {
-              hitEnemy.dead = true;
-              // Handle death drop
-              handleEntityDeathDrop(hitEnemy, true, gameState);
-            }
-
-            // Apply status effect if projectile has a spell with one configured
-            if (proj.spellAssetId && !hitEnemy.dead) {
-              applyStatusEffectFromProjectile(
-                hitEnemy,
-                proj.spellAssetId,
-                proj.sourceCharacterId || 'unknown',
-                false,
-                gameState.currentTurn
-              );
-            }
-
-            // Spawn hit effect
-            if (proj.attackData.hitEffectSprite) {
-              spawnParticleEffect(
+            // Check if this should explode into AOE on impact
+            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+              triggerAOEExplosion(
                 hitEnemy.x,
                 hitEnemy.y,
-                proj.attackData.hitEffectSprite,
-                proj.attackData.effectDuration || 300,
-                gameState
+                proj.attackData,
+                proj.sourceCharacterId,
+                proj.sourceEnemyId,
+                gameState,
+                proj.spellAssetId
               );
-            }
-          }
+            } else {
+              // Apply single-target damage
+              const damage = proj.attackData.damage ?? 1;
+              hitEnemy.currentHealth -= damage;
 
-          // Check if projectile should pierce
-          if (!proj.attackData.projectilePierces) {
-            proj.active = false;
-            projectilesToRemove.push(proj.id);
-            continue;
+              // Wake from sleep if sleeping
+              wakeFromSleep(hitEnemy);
+
+              if (hitEnemy.currentHealth <= 0) {
+                hitEnemy.dead = true;
+                // Handle death drop
+                handleEntityDeathDrop(hitEnemy, true, gameState);
+              }
+
+              // Apply status effect if projectile has a spell with one configured
+              if (proj.spellAssetId && !hitEnemy.dead) {
+                applyStatusEffectFromProjectile(
+                  hitEnemy,
+                  proj.spellAssetId,
+                  proj.sourceCharacterId || 'unknown',
+                  false,
+                  gameState.currentTurn
+                );
+              }
+
+              // Spawn hit effect
+              if (proj.attackData.hitEffectSprite) {
+                spawnParticleEffect(
+                  hitEnemy.x,
+                  hitEnemy.y,
+                  proj.attackData.hitEffectSprite,
+                  proj.attackData.effectDuration || 300,
+                  gameState
+                );
+              }
+            }
+
+            // Check if projectile should pierce
+            if (!proj.attackData.projectilePierces) {
+              proj.active = false;
+              projectilesToRemove.push(proj.id);
+              entityHitAndStopped = true;
+              break;
+            }
           }
         }
       }
     }
 
+    if (entityHitAndStopped) continue;
+
     // If fired by an enemy
-    if (proj.sourceEnemyId) {
+    if (proj.sourceEnemyId && !entityHitAndStopped) {
       if (isHealingProjectile) {
-        // Healing projectile - check for ally enemy hits
-        const hitAllyEnemy = gameState.puzzle.enemies.find(
-          e => !e.dead &&
-               Math.floor(e.x) === tileX &&
-               Math.floor(e.y) === tileY &&
-               e.enemyId !== proj.sourceEnemyId && // Don't heal self
-               !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
-        );
+        // Healing projectile - check for ally enemy hits along entire path
+        for (const checkTile of tilesToCheck) {
+          const tileX = checkTile.x;
+          const tileY = checkTile.y;
 
-        if (hitAllyEnemy) {
-          // Track that we hit this entity (for piercing projectiles)
-          if (!proj.hitEntityIds) proj.hitEntityIds = [];
-          proj.hitEntityIds.push(hitAllyEnemy.enemyId);
+          const hitAllyEnemy = gameState.puzzle.enemies.find(
+            e => !e.dead &&
+                 Math.floor(e.x) === tileX &&
+                 Math.floor(e.y) === tileY &&
+                 e.enemyId !== proj.sourceEnemyId && // Don't heal self
+                 !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
+          );
 
-          // Check if this should explode into AOE healing on impact
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(
-              hitAllyEnemy.x,
-              hitAllyEnemy.y,
-              proj.attackData,
-              proj.sourceCharacterId,
-              proj.sourceEnemyId,
-              gameState,
-              proj.spellAssetId
-            );
-          } else {
-            // Apply single-target healing
-            const healing = proj.attackData.healing ?? 0;
-            const enemyData = getEnemy(hitAllyEnemy.enemyId);
-            const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
-            hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
+          if (hitAllyEnemy) {
+            // Track that we hit this entity (for piercing projectiles)
+            if (!proj.hitEntityIds) proj.hitEntityIds = [];
+            proj.hitEntityIds.push(hitAllyEnemy.enemyId);
 
-            // Spawn healing effect (prefer healing sprite, fallback to hit effect)
-            const healSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
-            if (healSprite) {
-              spawnParticleEffect(
+            // Check if this should explode into AOE healing on impact
+            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+              triggerAOEExplosion(
                 hitAllyEnemy.x,
                 hitAllyEnemy.y,
-                healSprite,
-                proj.attackData.effectDuration || 300,
-                gameState
+                proj.attackData,
+                proj.sourceCharacterId,
+                proj.sourceEnemyId,
+                gameState,
+                proj.spellAssetId
               );
-            }
-          }
+            } else {
+              // Apply single-target healing
+              const healing = proj.attackData.healing ?? 0;
+              const enemyData = getEnemy(hitAllyEnemy.enemyId);
+              const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
+              hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
 
-          // Check if projectile should pierce
-          if (!proj.attackData.projectilePierces) {
-            proj.active = false;
-            projectilesToRemove.push(proj.id);
-            continue;
+              // Spawn healing effect (prefer healing sprite, fallback to hit effect)
+              const healSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
+              if (healSprite) {
+                spawnParticleEffect(
+                  hitAllyEnemy.x,
+                  hitAllyEnemy.y,
+                  healSprite,
+                  proj.attackData.effectDuration || 300,
+                  gameState
+                );
+              }
+            }
+
+            // Check if projectile should pierce
+            if (!proj.attackData.projectilePierces) {
+              proj.active = false;
+              projectilesToRemove.push(proj.id);
+              entityHitAndStopped = true;
+              break;
+            }
           }
         }
       } else {
-        // Damage projectile - check for character hits
-        const hitCharacter = gameState.placedCharacters.find(
-          c => !c.dead &&
-               Math.floor(c.x) === tileX &&
-               Math.floor(c.y) === tileY &&
-               !(proj.hitEntityIds?.includes(c.characterId)) // Skip already hit entities (for piercing)
-        );
+        // Damage projectile - check for character hits along entire path
+        for (const checkTile of tilesToCheck) {
+          const tileX = checkTile.x;
+          const tileY = checkTile.y;
 
-        if (hitCharacter) {
-          // Track that we hit this entity (for piercing projectiles)
-          if (!proj.hitEntityIds) proj.hitEntityIds = [];
-          proj.hitEntityIds.push(hitCharacter.characterId);
+          const hitCharacter = gameState.placedCharacters.find(
+            c => !c.dead &&
+                 Math.floor(c.x) === tileX &&
+                 Math.floor(c.y) === tileY &&
+                 !(proj.hitEntityIds?.includes(c.characterId)) // Skip already hit entities (for piercing)
+          );
 
-          // Check if this should explode into AOE on impact
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(
-              hitCharacter.x,
-              hitCharacter.y,
-              proj.attackData,
-              proj.sourceCharacterId,
-              proj.sourceEnemyId,
-              gameState,
-              proj.spellAssetId
-            );
-          } else {
-            // Apply single-target damage
-            const damage = proj.attackData.damage ?? 1;
-            hitCharacter.currentHealth -= damage;
+          if (hitCharacter) {
+            // Track that we hit this entity (for piercing projectiles)
+            if (!proj.hitEntityIds) proj.hitEntityIds = [];
+            proj.hitEntityIds.push(hitCharacter.characterId);
 
-            // Wake from sleep if sleeping
-            wakeFromSleep(hitCharacter);
-
-            if (hitCharacter.currentHealth <= 0) {
-              hitCharacter.dead = true;
-              // Handle death drop
-              handleEntityDeathDrop(hitCharacter, false, gameState);
-            }
-
-            // Apply status effect if projectile has a spell with one configured
-            if (proj.spellAssetId && !hitCharacter.dead) {
-              applyStatusEffectFromProjectile(
-                hitCharacter,
-                proj.spellAssetId,
-                proj.sourceEnemyId || 'unknown',
-                true,
-                gameState.currentTurn
-              );
-            }
-
-            // Spawn hit effect
-            if (proj.attackData.hitEffectSprite) {
-              spawnParticleEffect(
+            // Check if this should explode into AOE on impact
+            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+              triggerAOEExplosion(
                 hitCharacter.x,
                 hitCharacter.y,
-                proj.attackData.hitEffectSprite,
-                proj.attackData.effectDuration || 300,
-                gameState
+                proj.attackData,
+                proj.sourceCharacterId,
+                proj.sourceEnemyId,
+                gameState,
+                proj.spellAssetId
               );
-            }
-          }
+            } else {
+              // Apply single-target damage
+              const damage = proj.attackData.damage ?? 1;
+              hitCharacter.currentHealth -= damage;
 
-          // Check if projectile should pierce
-          if (!proj.attackData.projectilePierces) {
-            proj.active = false;
-            projectilesToRemove.push(proj.id);
-            continue;
+              // Wake from sleep if sleeping
+              wakeFromSleep(hitCharacter);
+
+              if (hitCharacter.currentHealth <= 0) {
+                hitCharacter.dead = true;
+                // Handle death drop
+                handleEntityDeathDrop(hitCharacter, false, gameState);
+              }
+
+              // Apply status effect if projectile has a spell with one configured
+              if (proj.spellAssetId && !hitCharacter.dead) {
+                applyStatusEffectFromProjectile(
+                  hitCharacter,
+                  proj.spellAssetId,
+                  proj.sourceEnemyId || 'unknown',
+                  true,
+                  gameState.currentTurn
+                );
+              }
+
+              // Spawn hit effect
+              if (proj.attackData.hitEffectSprite) {
+                spawnParticleEffect(
+                  hitCharacter.x,
+                  hitCharacter.y,
+                  proj.attackData.hitEffectSprite,
+                  proj.attackData.effectDuration || 300,
+                  gameState
+                );
+              }
+            }
+
+            // Check if projectile should pierce
+            if (!proj.attackData.projectilePierces) {
+              proj.active = false;
+              projectilesToRemove.push(proj.id);
+              entityHitAndStopped = true;
+              break;
+            }
           }
         }
       }
