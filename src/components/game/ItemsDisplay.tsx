@@ -172,12 +172,6 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
                       On Map
                     </span>
                   )}
-                  {/* Prevent placement indicator */}
-                  {collectible.preventPlacement && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-orange-900/50 text-orange-300" title="Characters cannot be placed on this tile">
-                      No Placement
-                    </span>
-                  )}
                 </div>
 
                 {/* Description if available */}
@@ -186,6 +180,12 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
                     className="text-xs text-gray-400 mt-0.5"
                     dangerouslySetInnerHTML={{ __html: collectible.description }}
                   />
+                )}
+                {/* Show placement restriction info - separate line like SpecialTilesDisplay */}
+                {collectible.preventPlacement && (
+                  <div className="text-xs text-red-400/70 mt-0.5">
+                    Cannot place characters on this tile
+                  </div>
                 )}
               </div>
             </div>

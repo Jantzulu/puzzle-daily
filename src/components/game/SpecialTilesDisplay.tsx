@@ -20,6 +20,8 @@ interface SpecialTileInfo {
   skinOffSpriteUrl: string | null;
   // Placement restriction
   preventPlacement: boolean;
+  // Wall behavior
+  behavesLikeWall: boolean;
 }
 
 /**
@@ -89,11 +91,12 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
       const tileType = loadTileType(tile.customTileTypeId);
       if (!tileType) continue;
 
-      // Include tiles that have behaviors OR prevent placement
+      // Include tiles that have behaviors OR prevent placement OR behave like wall
       const hasBehaviors = tileType.behaviors && tileType.behaviors.length > 0;
       const preventPlacement = tileType.preventPlacement || false;
+      const behavesLikeWall = tileType.baseType === 'wall';
 
-      if (!hasBehaviors && !preventPlacement) continue;
+      if (!hasBehaviors && !preventPlacement && !behavesLikeWall) continue;
 
       seenTileIds.add(tile.customTileTypeId);
 
@@ -124,6 +127,7 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
         offStateSprite,
         skinOffSpriteUrl,
         preventPlacement,
+        behavesLikeWall,
       });
     }
   }
@@ -254,14 +258,17 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                   {info.hasCadence && (
                     <span className="text-yellow-400 text-xs" title="Has on/off cadence">⟳</span>
                   )}
-                  {info.preventPlacement && (
-                    <span className="text-red-400 text-xs" title="Cannot place characters here">🚫</span>
-                  )}
                 </div>
                 {/* Use tile's description if available, otherwise generate from behaviors */}
                 <div className="text-xs text-gray-400">
                   {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}
                 </div>
+                {/* Show wall behavior info */}
+                {info.behavesLikeWall && (
+                  <div className="text-xs text-orange-400/70 mt-0.5">
+                    Blocks movement (behaves like wall)
+                  </div>
+                )}
                 {/* Show placement restriction info */}
                 {info.preventPlacement && (
                   <div className="text-xs text-red-400/70 mt-0.5">

@@ -1596,8 +1596,21 @@ export function updateProjectiles(gameState: GameState): void {
     }
 
     if (hitWallTile) {
-      const tileX = hitWallTile.x;
-      const tileY = hitWallTile.y;
+      // Find the last valid tile before the wall (for bounce positioning)
+      let lastValidTile: { x: number; y: number } | null = null;
+      for (const tile of tilesAlongPath) {
+        if (tile.x === hitWallTile.x && tile.y === hitWallTile.y) {
+          break;
+        }
+        // Check if this tile is valid (not a wall)
+        const tileIsWall = !isInBounds(tile.x, tile.y, gameState.puzzle.width, gameState.puzzle.height) ||
+            gameState.puzzle.tiles[tile.y]?.[tile.x]?.type === TileType.WALL ||
+            gameState.puzzle.tiles[tile.y]?.[tile.x] === null;
+        if (!tileIsWall) {
+          lastValidTile = tile;
+        }
+      }
+
       // Homing projectiles don't bounce - they just deactivate if they hit a wall
       if (proj.isHoming) {
         proj.active = false;
@@ -1701,15 +1714,35 @@ export function updateProjectiles(gameState: GameState): void {
         }
 
         // Update projectile for new bounced path
+        // Position the projectile at the last valid tile before the wall
+        const bounceX = lastValidTile ? lastValidTile.x : proj.x;
+        const bounceY = lastValidTile ? lastValidTile.y : proj.y;
+
+        // Check if the new direction immediately hits a wall (adjacent tile is wall)
+        const nextTileX = Math.round(bounceX + newDirX);
+        const nextTileY = Math.round(bounceY + newDirY);
+        const nextTileIsWall = !isInBounds(nextTileX, nextTileY, gameState.puzzle.width, gameState.puzzle.height) ||
+            gameState.puzzle.tiles[nextTileY]?.[nextTileX]?.type === TileType.WALL ||
+            gameState.puzzle.tiles[nextTileY]?.[nextTileX] === null;
+
+        if (nextTileIsWall) {
+          // New direction also hits a wall - deactivate projectile
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
+        }
+
         const remainingRange = proj.attackData.range ?? 5;
-        proj.startX = proj.x;
-        proj.startY = proj.y;
-        proj.targetX = proj.x + newDirX * remainingRange;
-        proj.targetY = proj.y + newDirY * remainingRange;
+        proj.x = bounceX;
+        proj.y = bounceY;
+        proj.startX = bounceX;
+        proj.startY = bounceY;
+        proj.targetX = bounceX + newDirX * remainingRange;
+        proj.targetY = bounceY + newDirY * remainingRange;
         proj.startTime = now; // Reset timing for smooth continuation
 
         // Recompute tile path for the new bounced trajectory
-        proj.tilePath = computeTilePathForBounce(proj.x, proj.y, proj.targetX, proj.targetY);
+        proj.tilePath = computeTilePathForBounce(bounceX, bounceY, proj.targetX, proj.targetY);
         proj.currentTileIndex = 0;
         proj.tileEntryTime = now;
 

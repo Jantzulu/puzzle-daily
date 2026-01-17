@@ -4,7 +4,9 @@ import type { GameState, PuzzleScore, SideQuest, RankTier } from '../types/game'
 // Scoring constants
 const BASE_POINTS = 1000;
 const CHAR_BONUS_PER_UNDER_PAR = 200;
+const CHAR_PENALTY_PER_OVER_PAR = 100;  // Penalty for each character over par
 const TURN_BONUS_PER_UNDER_PAR = 25;
+const TURN_PENALTY_PER_OVER_PAR = 15;   // Penalty for each turn over par
 const LIVES_BONUS_PER_LIFE = 100;
 
 /**
@@ -22,23 +24,45 @@ export function calculateScore(
   // Check par - if no par set, consider it met
   const metCharPar = puzzle.parCharacters ? charsUsed <= puzzle.parCharacters : true;
   const metTurnPar = puzzle.parTurns ? turnsUsed <= puzzle.parTurns : true;
+  const noLivesLost = livesRemaining === livesTotal;
 
   // Calculate rank (bronze/silver/gold)
-  // Gold = meet both pars, Silver = meet one par, Bronze = win but no pars met
+  // Gold = meet both pars AND no lives lost
+  // Silver = meet at least one par OR meet both pars but lost lives
+  // Bronze = win but no pars met, or only met one par with lives lost
   let rank: RankTier = 'bronze';
-  if (metCharPar && metTurnPar) {
+  if (metCharPar && metTurnPar && noLivesLost) {
     rank = 'gold';
+  } else if (metCharPar && metTurnPar) {
+    // Met both pars but lost lives = silver
+    rank = 'silver';
   } else if (metCharPar || metTurnPar) {
     rank = 'silver';
   }
 
-  // Calculate bonuses for beating par
-  const charBonus = metCharPar && puzzle.parCharacters
-    ? Math.max(0, puzzle.parCharacters - charsUsed) * CHAR_BONUS_PER_UNDER_PAR
-    : 0;
-  const turnBonus = metTurnPar && puzzle.parTurns
-    ? Math.max(0, puzzle.parTurns - turnsUsed) * TURN_BONUS_PER_UNDER_PAR
-    : 0;
+  // Calculate character bonus/penalty
+  // Bonus for under par, penalty for over par
+  let charBonus = 0;
+  if (puzzle.parCharacters) {
+    const charDiff = puzzle.parCharacters - charsUsed;
+    if (charDiff >= 0) {
+      charBonus = charDiff * CHAR_BONUS_PER_UNDER_PAR;
+    } else {
+      charBonus = charDiff * CHAR_PENALTY_PER_OVER_PAR; // charDiff is negative, so this subtracts
+    }
+  }
+
+  // Calculate turn bonus/penalty
+  let turnBonus = 0;
+  if (puzzle.parTurns) {
+    const turnDiff = puzzle.parTurns - turnsUsed;
+    if (turnDiff >= 0) {
+      turnBonus = turnDiff * TURN_BONUS_PER_UNDER_PAR;
+    } else {
+      turnBonus = turnDiff * TURN_PENALTY_PER_OVER_PAR; // turnDiff is negative, so this subtracts
+    }
+  }
+
   const livesBonus = livesRemaining * LIVES_BONUS_PER_LIFE;
 
   // Check side quests
