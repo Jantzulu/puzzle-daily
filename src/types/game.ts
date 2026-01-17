@@ -223,6 +223,7 @@ export interface Enemy {
   id: string;
   name: string;
   title?: string; // Optional title displayed after name in italics (e.g., "the Terrible")
+  description?: string; // Description of the enemy
   spriteId: string;
   health: number;
   attackDamage: number;

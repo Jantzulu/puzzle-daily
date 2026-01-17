@@ -3,6 +3,7 @@ import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Directi
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { RichTextEditor } from './RichTextEditor';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -677,12 +678,11 @@ export const TileTypeEditor: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Description</label>
-                    <textarea
+                    <RichTextEditor
                       value={editing.description || ''}
-                      onChange={e => setEditing({ ...editing, description: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
-                      rows={2}
+                      onChange={(value) => setEditing({ ...editing, description: value })}
                       placeholder="Optional description..."
+                      multiline
                     />
                   </div>
                   <div>

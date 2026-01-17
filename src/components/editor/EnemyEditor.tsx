@@ -8,6 +8,7 @@ import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { RichTextEditor } from './RichTextEditor';
 
 const ACTION_TYPES = Object.values(ActionType).filter(
   type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
@@ -283,6 +284,15 @@ export const EnemyEditor: React.FC = () => {
                         <p className="text-xs text-gray-400 mt-1">Displayed after name in italics</p>
                       </div>
                       <div>
+                        <label className="block text-sm mb-1">Description</label>
+                        <RichTextEditor
+                          value={editing.description || ''}
+                          onChange={(value) => updateEnemy({ description: value || undefined })}
+                          placeholder="Enter enemy description..."
+                          multiline
+                        />
+                      </div>
+                      <div>
                         <label className="block text-sm mb-1">Folder</label>
                         <select
                           value={editing.folderId || ''}
@@ -449,17 +459,17 @@ export const EnemyEditor: React.FC = () => {
                               </button>
                             </div>
                             <span className="text-gray-400 text-sm">•</span>
-                            <input
-                              type="text"
-                              value={step}
-                              onChange={(e) => {
-                                const newSteps = [...(editing.tooltipSteps || [])];
-                                newSteps[index] = e.target.value;
-                                updateEnemy({ tooltipSteps: newSteps });
-                              }}
-                              placeholder="Enter tooltip step..."
-                              className="flex-1 px-3 py-1.5 bg-gray-700 rounded text-sm"
-                            />
+                            <div className="flex-1">
+                              <RichTextEditor
+                                value={step}
+                                onChange={(value) => {
+                                  const newSteps = [...(editing.tooltipSteps || [])];
+                                  newSteps[index] = value;
+                                  updateEnemy({ tooltipSteps: newSteps });
+                                }}
+                                placeholder="Enter tooltip step..."
+                              />
+                            </div>
                             <button
                               onClick={() => {
                                 const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);

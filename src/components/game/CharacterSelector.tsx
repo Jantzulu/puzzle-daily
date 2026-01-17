@@ -1,6 +1,7 @@
 import React from 'react';
 import { getCharacter } from '../../data/characters';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
+import { RichTextRenderer } from '../editor/RichTextEditor';
 
 interface CharacterSelectorProps {
   availableCharacterIds: string[];
@@ -95,7 +96,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   isSelected ? 'text-green-100' : 'text-gray-400'
                 }`}>
                   {character.tooltipSteps!.map((step, idx) => (
-                    <li key={idx}>{step}</li>
+                    <li key={idx}><RichTextRenderer html={step} /></li>
                   ))}
                 </ul>
               )}

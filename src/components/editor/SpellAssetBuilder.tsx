@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset, SoundAsset } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
+import { RichTextEditor } from './RichTextEditor';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -634,12 +635,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             {/* Description */}
             <div>
               <label className="block text-sm font-medium mb-1">Description</label>
-              <textarea
+              <RichTextEditor
                 value={editedSpell.description}
-                onChange={(e) => setEditedSpell({ ...editedSpell, description: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                onChange={(value) => setEditedSpell({ ...editedSpell, description: value })}
                 placeholder="Describe what this spell does..."
-                rows={2}
+                multiline
               />
             </div>
 

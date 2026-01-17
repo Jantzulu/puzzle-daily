@@ -9,6 +9,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { AttackEditor } from './AttackEditor';
 import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { RichTextEditor } from './RichTextEditor';
 
 // Filter out legacy attack actions - use SPELL instead
 const ACTION_TYPES = Object.values(ActionType).filter(
@@ -329,11 +330,11 @@ export const CharacterEditor: React.FC = () => {
                       </div>
                       <div>
                         <label className="block text-sm mb-1">Description</label>
-                        <textarea
+                        <RichTextEditor
                           value={editing.description}
-                          onChange={(e) => updateCharacter({ description: e.target.value })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
-                          rows={2}
+                          onChange={(value) => updateCharacter({ description: value })}
+                          placeholder="Enter character description..."
+                          multiline
                         />
                       </div>
                       <div>
@@ -539,17 +540,17 @@ export const CharacterEditor: React.FC = () => {
                               </button>
                             </div>
                             <span className="text-gray-400 text-sm">•</span>
-                            <input
-                              type="text"
-                              value={step}
-                              onChange={(e) => {
-                                const newSteps = [...(editing.tooltipSteps || [])];
-                                newSteps[index] = e.target.value;
-                                updateCharacter({ tooltipSteps: newSteps });
-                              }}
-                              placeholder="Enter tooltip step..."
-                              className="flex-1 px-3 py-1.5 bg-gray-700 rounded text-sm"
-                            />
+                            <div className="flex-1">
+                              <RichTextEditor
+                                value={step}
+                                onChange={(value) => {
+                                  const newSteps = [...(editing.tooltipSteps || [])];
+                                  newSteps[index] = value;
+                                  updateCharacter({ tooltipSteps: newSteps });
+                                }}
+                                placeholder="Enter tooltip step..."
+                              />
+                            </div>
                             <button
                               onClick={() => {
                                 const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);

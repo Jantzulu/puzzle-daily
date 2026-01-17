@@ -4,6 +4,7 @@ import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../ut
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { RichTextEditor } from './RichTextEditor';
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
   { value: 'center', label: 'Center', description: 'Sprite center aligned to tile center' },
@@ -289,12 +290,11 @@ export const ObjectEditor: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Description</label>
-                    <textarea
+                    <RichTextEditor
                       value={editing.description || ''}
-                      onChange={e => setEditing({ ...editing, description: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
-                      rows={2}
+                      onChange={(value) => setEditing({ ...editing, description: value })}
                       placeholder="Optional description..."
+                      multiline
                     />
                   </div>
                   <div>

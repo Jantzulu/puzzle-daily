@@ -2,6 +2,7 @@ import React from 'react';
 import type { PlacedEnemy } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
+import { RichTextRenderer } from '../editor/RichTextEditor';
 
 interface EnemyDisplayProps {
   enemies: PlacedEnemy[];
@@ -84,7 +85,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
               {hasTooltipSteps && (
                 <ul className="mt-1 text-xs text-gray-400 text-left max-w-[100px] list-disc list-inside">
                   {enemyData.tooltipSteps!.map((step, idx) => (
-                    <li key={idx}>{step}</li>
+                    <li key={idx}><RichTextRenderer html={step} /></li>
                   ))}
                 </ul>
               )}

@@ -3,6 +3,7 @@ import type { PuzzleSkin, CustomBorderSprites, TileSprites } from '../../types/g
 import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { RichTextEditor } from './RichTextEditor';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -406,13 +407,18 @@ export const SkinEditor: React.FC = () => {
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Description</label>
-                    <textarea
-                      value={editingSkin.description || ''}
-                      onChange={(e) => setEditingSkin({ ...editingSkin, description: e.target.value })}
-                      disabled={isBuiltIn}
-                      className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
-                      rows={2}
-                    />
+                    {isBuiltIn ? (
+                      <div className="w-full px-3 py-2 bg-gray-700 rounded opacity-50 text-gray-400">
+                        {editingSkin.description || 'No description'}
+                      </div>
+                    ) : (
+                      <RichTextEditor
+                        value={editingSkin.description || ''}
+                        onChange={(value) => setEditingSkin({ ...editingSkin, description: value })}
+                        placeholder="Optional description..."
+                        multiline
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm mb-1">Folder</label>

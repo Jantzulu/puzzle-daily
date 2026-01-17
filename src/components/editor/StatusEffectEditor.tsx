@@ -4,6 +4,7 @@ import { StatusEffectType } from '../../types/game';
 import { saveStatusEffectAsset } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SimpleIconEditor } from './SimpleIconEditor';
+import { RichTextEditor } from './RichTextEditor';
 
 interface StatusEffectEditorProps {
   effect?: StatusEffectAsset;
@@ -238,13 +239,18 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
 
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              disabled={isBuiltIn}
-              className="w-full px-3 py-2 bg-gray-700 rounded h-20 disabled:opacity-50"
-              placeholder="Describe what this effect does..."
-            />
+            {isBuiltIn ? (
+              <div className="w-full px-3 py-2 bg-gray-700 rounded opacity-50 text-gray-400">
+                {description || 'No description'}
+              </div>
+            ) : (
+              <RichTextEditor
+                value={description}
+                onChange={setDescription}
+                placeholder="Describe what this effect does..."
+                multiline
+              />
+            )}
           </div>
 
           <div>
