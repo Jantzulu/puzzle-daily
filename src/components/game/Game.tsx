@@ -3,7 +3,7 @@ import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore } fro
 import { Direction } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
-import { initializeGameState, executeTurn } from '../../engine/simulation';
+import { initializeGameState, executeTurn, checkVictoryConditions } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
@@ -256,6 +256,24 @@ export const Game: React.FC = () => {
     },
     [selectedCharacterId, gameState]
   );
+
+  // Called from AnimatedGameBoard when a projectile kills an enemy
+  // This allows victory detection during the animation loop, not just at turn boundaries
+  const handleProjectileKill = useCallback(() => {
+    if (gameState.gameStatus !== 'running') return;
+
+    // Check if victory conditions are now met
+    if (checkVictoryConditions(gameState)) {
+      // Victory! Stop simulation and trigger victory handling
+      setIsSimulating(false);
+      setGameState(prev => ({ ...prev, gameStatus: 'victory' }));
+      playGameSound('victory');
+      playVictoryMusic();
+      // Calculate and store score
+      const score = calculateScore(gameState, livesRemaining, currentPuzzle.lives ?? 3);
+      setPuzzleScore(score);
+    }
+  }, [gameState, livesRemaining, currentPuzzle.lives]);
 
   const handlePlay = () => {
     if (gameState.placedCharacters.length === 0) {
@@ -572,7 +590,7 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
+            <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
 
             {/* Victory/Defeat Message */}
             {gameState.gameStatus === 'victory' && puzzleScore && (

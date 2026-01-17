@@ -45,6 +45,7 @@ interface AnimatedGameBoardProps {
   isEditor?: boolean;  // When true, shows editor-only indicators like teleport letters
   maxWidth?: number;   // Maximum width in pixels for responsive scaling
   maxHeight?: number;  // Maximum height in pixels for responsive scaling
+  onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
 }
 
 const TILE_SIZE = 48;
@@ -483,7 +484,7 @@ interface DeathAnimationState {
   facing: Direction;
 }
 
-export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight }) => {
+export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
@@ -827,8 +828,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
 
       // Update projectiles and particles (time-based, needs to run every frame)
+      // Track enemy kills for victory check callback
+      const deadCountBefore = gameState.puzzle.enemies.filter(e => e.dead).length;
       updateProjectiles(gameState);
       updateParticles(gameState);
+      const deadCountAfter = gameState.puzzle.enemies.filter(e => e.dead).length;
+
+      // If any enemies were killed, notify parent to check victory conditions
+      if (deadCountAfter > deadCountBefore && onProjectileKill) {
+        onProjectileKill();
+      }
 
       // Draw tiles
       for (let y = 0; y < gameState.puzzle.height; y++) {
@@ -3113,6 +3122,7 @@ interface ResponsiveGameBoardProps {
   gameState: GameState;
   onTileClick?: (x: number, y: number) => void;
   isEditor?: boolean;
+  onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
 }
 
 /**

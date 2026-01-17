@@ -1241,7 +1241,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               {editedSpell.bounceOffWalls && (
                 <>
                   <div>
-                    <label className="block text-sm font-medium mb-1">Bounce Behavior</label>
+                    <label className="block text-sm font-medium mb-1">Bounce Direction</label>
                     <select
                       value={editedSpell.bounceBehavior || 'reflect'}
                       onChange={(e) => setEditedSpell({ ...editedSpell, bounceBehavior: e.target.value as any })}
@@ -1249,27 +1249,27 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     >
                       <option value="reflect">Reflect (mirror angle)</option>
                       <option value="turn_around">Turn Around (180°)</option>
-                      <option value="turn_left">Turn Left (90°)</option>
-                      <option value="turn_right">Turn Right (90°)</option>
+                      <option value="turn_left">Turn Left</option>
+                      <option value="turn_right">Turn Right</option>
                       <option value="random">Random direction</option>
                     </select>
                     <p className="text-xs text-gray-400 mt-1">How the projectile changes direction when hitting a wall</p>
                   </div>
 
-                  {/* Turn Degrees - only shown for turn_left and turn_right */}
+                  {/* Turn Amount - only shown for turn_left and turn_right */}
                   {(editedSpell.bounceBehavior === 'turn_left' || editedSpell.bounceBehavior === 'turn_right') && (
                     <div>
-                      <label className="block text-sm font-medium mb-1">Turn Degrees</label>
+                      <label className="block text-sm font-medium mb-1">Turn Amount</label>
                       <select
                         value={editedSpell.bounceTurnDegrees || 90}
                         onChange={(e) => setEditedSpell({ ...editedSpell, bounceTurnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
                         className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                       >
-                        <option value={45}>45° (diagonal step)</option>
-                        <option value={90}>90° (quarter turn)</option>
-                        <option value={135}>135° (wide turn)</option>
+                        <option value={45}>45° (slight turn)</option>
+                        <option value={90}>90° (right angle)</option>
+                        <option value={135}>135° (sharp turn)</option>
                       </select>
-                      <p className="text-xs text-gray-400 mt-1">How sharply the projectile turns when bouncing</p>
+                      <p className="text-xs text-gray-400 mt-1">How many degrees to turn when bouncing</p>
                     </div>
                   )}
 

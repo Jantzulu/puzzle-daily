@@ -116,6 +116,36 @@ function computeTilePathForBounce(startX: number, startY: number, targetX: numbe
 }
 
 /**
+ * Compute tile path for bounced projectiles with wall lookahead
+ * Stops the path at the last valid tile BEFORE any wall
+ */
+function computeTilePathWithWallLookahead(
+  startX: number,
+  startY: number,
+  targetX: number,
+  targetY: number,
+  gameState: GameState
+): Array<{ x: number; y: number }> {
+  const allTiles = computeTilePathForBounce(startX, startY, targetX, targetY);
+  const validTiles: Array<{ x: number; y: number }> = [];
+
+  for (const tile of allTiles) {
+    const isWall = !isInBounds(tile.x, tile.y, gameState.puzzle.width, gameState.puzzle.height) ||
+        gameState.puzzle.tiles[tile.y]?.[tile.x]?.type === TileTypeEnum.WALL ||
+        gameState.puzzle.tiles[tile.y]?.[tile.x] === null;
+
+    if (isWall) {
+      // Stop at the tile before the wall
+      break;
+    }
+    validTiles.push(tile);
+  }
+
+  // Always return at least the starting tile
+  return validTiles.length > 0 ? validTiles : [{ x: Math.floor(startX), y: Math.floor(startY) }];
+}
+
+/**
  * Initialize parallel action trackers for a character
  */
 function initializeParallelTrackers(character: PlacedCharacter, charData: any): void {
@@ -1213,9 +1243,9 @@ function checkGameConditions(gameState: GameState): void {
 
 /**
  * Check if victory conditions are met
- * Returns { met: boolean, reason?: string } for detailed feedback
+ * Exported so it can be called from animation loop when projectiles kill enemies
  */
-function checkVictoryConditions(gameState: GameState): boolean {
+export function checkVictoryConditions(gameState: GameState): boolean {
   for (const condition of gameState.puzzle.winConditions) {
     switch (condition.type) {
       case 'defeat_all_enemies':
@@ -1463,11 +1493,23 @@ export function updateProjectiles(gameState: GameState): void {
         const currentTile = proj.tilePath[newTileIndex];
         const nextTile = proj.tilePath[Math.min(newTileIndex + 1, proj.tilePath.length - 1)];
 
-        // Progress within current tile (0-1)
-        const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
+        // WALL LOOKAHEAD: Check if next tile is a wall before interpolating toward it
+        // This prevents the projectile from visually entering the wall
+        const nextTileIsWall = !isInBounds(nextTile.x, nextTile.y, gameState.puzzle.width, gameState.puzzle.height) ||
+            gameState.puzzle.tiles[nextTile.y]?.[nextTile.x]?.type === TileType.WALL ||
+            gameState.puzzle.tiles[nextTile.y]?.[nextTile.x] === null;
 
-        newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
-        newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
+        if (nextTileIsWall) {
+          // Stay at the current tile - don't interpolate toward wall
+          newX = currentTile.x;
+          newY = currentTile.y;
+        } else {
+          // Progress within current tile (0-1)
+          const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
+
+          newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
+          newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
+        }
       }
 
       // Update tile index and entry time if we moved to a new tile
@@ -1741,8 +1783,9 @@ export function updateProjectiles(gameState: GameState): void {
         proj.targetY = bounceY + newDirY * remainingRange;
         proj.startTime = now; // Reset timing for smooth continuation
 
-        // Recompute tile path for the new bounced trajectory
-        proj.tilePath = computeTilePathForBounce(bounceX, bounceY, proj.targetX, proj.targetY);
+        // Recompute tile path for the new bounced trajectory with wall lookahead
+        // This ensures the path stops BEFORE any wall, preventing visual clipping
+        proj.tilePath = computeTilePathWithWallLookahead(bounceX, bounceY, proj.targetX, proj.targetY, gameState);
         proj.currentTileIndex = 0;
         proj.tileEntryTime = now;
 
