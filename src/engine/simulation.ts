@@ -1643,13 +1643,15 @@ function triggerAOEExplosion(
 }
 
 /**
- * Update projectiles in headless mode (instant resolution for solver/validator)
- * Projectiles instantly travel along their path, checking for hits at each tile
+ * Update projectiles in headless mode (turn-based movement for solver/validator)
+ * Projectiles move a fixed number of tiles per turn based on their speed
+ * 1 turn = 800ms = 0.8 seconds, so tiles per turn = speed * 0.8
  */
 function updateProjectilesHeadless(gameState: GameState): void {
   if (!gameState.activeProjectiles) return;
 
   const projectilesToRemove: string[] = [];
+  const TURN_DURATION = 0.8; // 800ms per turn
 
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active) {
@@ -1659,9 +1661,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
     const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
     const range = proj.attackData.range || 10;
+    const speed = proj.speed || 5; // tiles per second
+    const tilesPerTurn = Math.ceil(speed * TURN_DURATION); // How far projectile moves this turn
     let hitSomething = false;
+    let shouldRemove = false;
 
-    // For homing projectiles, go directly to target
+    // For homing projectiles, move toward target
     if (proj.isHoming && proj.targetEntityId) {
       let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
       if (proj.targetIsEnemy) {
@@ -1671,62 +1676,96 @@ function updateProjectilesHeadless(gameState: GameState): void {
       }
 
       if (targetEntity) {
-        // Homing projectile hits its target directly
-        if (proj.sourceCharacterId && proj.targetIsEnemy) {
-          // Character's homing projectile hitting enemy
-          const enemy = targetEntity as PlacedEnemy;
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(enemy.x, enemy.y, proj.attackData,
-              proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
-          } else {
-            const damage = proj.attackData.damage ?? 0;
-            enemy.currentHealth -= damage;
-            wakeFromSleep(enemy);
-            if (enemy.currentHealth <= 0) {
-              enemy.dead = true;
+        // Calculate distance to target
+        const dx = targetEntity.x - proj.x;
+        const dy = targetEntity.y - proj.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+
+        // Check if we reach the target this turn
+        if (distance <= tilesPerTurn) {
+          // Hit the target
+          if (proj.sourceCharacterId && proj.targetIsEnemy) {
+            // Character's homing projectile hitting enemy
+            const enemy = targetEntity as PlacedEnemy;
+            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+              triggerAOEExplosion(enemy.x, enemy.y, proj.attackData,
+                proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+            } else {
+              const damage = proj.attackData.damage ?? 0;
+              enemy.currentHealth -= damage;
+              wakeFromSleep(enemy);
+              if (enemy.currentHealth <= 0) {
+                enemy.dead = true;
+              }
+              if (proj.spellAssetId && !enemy.dead) {
+                applyStatusEffectFromProjectile(enemy, proj.spellAssetId,
+                  proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+              }
             }
-            if (proj.spellAssetId && !enemy.dead) {
-              applyStatusEffectFromProjectile(enemy, proj.spellAssetId,
-                proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+          } else if (proj.sourceEnemyId && !proj.targetIsEnemy) {
+            // Enemy's homing projectile hitting character
+            const char = targetEntity as PlacedCharacter;
+            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+              triggerAOEExplosion(char.x, char.y, proj.attackData,
+                proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+            } else {
+              const damage = proj.attackData.damage ?? 0;
+              char.currentHealth -= damage;
+              wakeFromSleep(char);
+              if (char.currentHealth <= 0) {
+                char.dead = true;
+              }
+              if (proj.spellAssetId && !char.dead) {
+                applyStatusEffectFromProjectile(char, proj.spellAssetId,
+                  proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
+              }
             }
           }
-          hitSomething = true;
-        } else if (proj.sourceEnemyId && !proj.targetIsEnemy) {
-          // Enemy's homing projectile hitting character
-          const char = targetEntity as PlacedCharacter;
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(char.x, char.y, proj.attackData,
-              proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
-          } else {
-            const damage = proj.attackData.damage ?? 0;
-            char.currentHealth -= damage;
-            wakeFromSleep(char);
-            if (char.currentHealth <= 0) {
-              char.dead = true;
-            }
-            if (proj.spellAssetId && !char.dead) {
-              applyStatusEffectFromProjectile(char, proj.spellAssetId,
-                proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
-            }
-          }
-          hitSomething = true;
+          shouldRemove = true;
+        } else {
+          // Move toward target but don't reach it yet
+          const moveRatio = tilesPerTurn / distance;
+          proj.x += dx * moveRatio;
+          proj.y += dy * moveRatio;
+          // Update target position for next turn (target may have moved)
+          proj.targetX = targetEntity.x;
+          proj.targetY = targetEntity.y;
         }
+      } else {
+        // Target died or not found - remove projectile
+        shouldRemove = true;
       }
     } else {
-      // Non-homing projectile: trace path from start toward target
+      // Non-homing projectile: move along direction, check for hits
       const { dx, dy } = getDirectionOffset(proj.direction);
       const canPierce = proj.attackData.projectilePierces === true;
-      const hitEntityIds: string[] = []; // Track already-hit entities for piercing
 
-      for (let dist = 1; dist <= range; dist++) {
+      // Initialize hit tracking if not present
+      if (!proj.hitEntityIds) proj.hitEntityIds = [];
+      const hitEntityIds = proj.hitEntityIds;
+
+      // Calculate how far projectile has traveled from start
+      const currentDist = Math.sqrt(
+        Math.pow(proj.x - proj.startX, 2) + Math.pow(proj.y - proj.startY, 2)
+      );
+      const startTile = Math.floor(currentDist) + 1; // Next tile to check (1-indexed from start)
+      const endTile = Math.min(startTile + tilesPerTurn - 1, range);
+      let reachedEnd = false;
+      let hitWall = false;
+
+      for (let dist = startTile; dist <= endTile; dist++) {
         // Stop if we hit something and can't pierce
-        if (hitSomething && !canPierce) break;
+        if (hitSomething && !canPierce) {
+          shouldRemove = true;
+          break;
+        }
 
         const checkX = Math.floor(proj.startX + dx * dist);
         const checkY = Math.floor(proj.startY + dy * dist);
 
         // Check bounds
         if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
+          shouldRemove = true;
           break;
         }
 
@@ -1738,6 +1777,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
             triggerAOEExplosion(checkX, checkY, proj.attackData,
               proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
           }
+          hitWall = true;
+          shouldRemove = true;
           break;
         }
 
@@ -1762,6 +1803,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
               }
               hitSomething = true;
+              if (!canPierce) shouldRemove = true;
             }
           } else {
             const hitEnemy = gameState.puzzle.enemies.find(
@@ -1786,6 +1828,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 }
               }
               hitSomething = true;
+              if (!canPierce) shouldRemove = true;
             }
           }
         } else if (proj.sourceEnemyId) {
@@ -1803,6 +1846,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
               hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
               hitSomething = true;
+              if (!canPierce) shouldRemove = true;
             }
           } else {
             const hitChar = gameState.placedCharacters.find(
@@ -1827,24 +1871,44 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 }
               }
               hitSomething = true;
+              if (!canPierce) shouldRemove = true;
             }
           }
         }
+
+        // Track how far we've traveled this turn
+        if (dist === endTile) {
+          reachedEnd = true;
+        }
       }
 
-      // If reached max range with no hit, check for AOE at final position
-      if (!hitSomething && proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-        const finalX = Math.floor(proj.startX + dx * range);
-        const finalY = Math.floor(proj.startY + dy * range);
-        if (isInBounds(finalX, finalY, gameState.puzzle.width, gameState.puzzle.height)) {
-          triggerAOEExplosion(finalX, finalY, proj.attackData,
-            proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+      // Update projectile position if it's still active
+      if (!shouldRemove && !hitWall) {
+        // Move projectile to end of this turn's travel
+        const newDist = Math.min(endTile, range);
+        proj.x = proj.startX + dx * newDist;
+        proj.y = proj.startY + dy * newDist;
+
+        // Check if reached max range
+        if (newDist >= range) {
+          // If reached max range with no hit, check for AOE at final position
+          if (!hitSomething && proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            const finalX = Math.floor(proj.startX + dx * range);
+            const finalY = Math.floor(proj.startY + dy * range);
+            if (isInBounds(finalX, finalY, gameState.puzzle.width, gameState.puzzle.height)) {
+              triggerAOEExplosion(finalX, finalY, proj.attackData,
+                proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+            }
+          }
+          shouldRemove = true;
         }
       }
     }
 
-    proj.active = false;
-    projectilesToRemove.push(proj.id);
+    if (shouldRemove) {
+      proj.active = false;
+      projectilesToRemove.push(proj.id);
+    }
   }
 
   // Remove processed projectiles
