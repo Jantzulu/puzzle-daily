@@ -1435,6 +1435,13 @@ export function updateProjectiles(gameState: GameState): void {
     // This ensures we don't skip over entities when moving diagonally or fast
     const tilesAlongPath = getTilesAlongLine(prevX, prevY, newX, newY);
 
+    // Debug: log projectile movement
+    if (gameState.puzzle.enemies.some(e => !e.dead)) {
+      console.log(`[Projectile] dir=${proj.direction} from (${prevX.toFixed(2)}, ${prevY.toFixed(2)}) to (${newX.toFixed(2)}, ${newY.toFixed(2)})`);
+      console.log(`  Tiles along path:`, tilesAlongPath.map(t => `(${t.x},${t.y})`).join(', '));
+      console.log(`  Enemies:`, gameState.puzzle.enemies.filter(e => !e.dead).map(e => `(${e.x},${e.y})`).join(', '));
+    }
+
     // Check collision with walls - check all tiles along path
     let hitWallTile: { x: number; y: number } | null = null;
     for (const tile of tilesAlongPath) {
