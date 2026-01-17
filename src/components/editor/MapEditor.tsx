@@ -21,6 +21,7 @@ import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
+import { solvePuzzle, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -347,6 +348,11 @@ export const MapEditor: React.FC = () => {
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
   const [redrawCounter, setRedrawCounter] = useState(0);
+
+  // Validation state
+  const [isValidating, setIsValidating] = useState(false);
+  const [validationResult, setValidationResult] = useState<SolverResult | null>(null);
+  const [showValidationModal, setShowValidationModal] = useState(false);
 
   // Local input state for grid size (allows typing without immediate validation)
   const [widthInput, setWidthInput] = useState(String(state.gridWidth));
@@ -1091,6 +1097,68 @@ export const MapEditor: React.FC = () => {
       collectibles: [],
       placedObjects: [],
     }));
+  };
+
+  const handleValidate = async () => {
+    setIsValidating(true);
+    setValidationResult(null);
+    setShowValidationModal(true);
+
+    // Build a temporary puzzle object for validation
+    const puzzleForValidation: Puzzle = {
+      id: state.puzzleId,
+      date: new Date().toISOString().split('T')[0],
+      name: state.puzzleName,
+      width: state.gridWidth,
+      height: state.gridHeight,
+      tiles: state.tiles,
+      enemies: state.enemies.map(e => ({ ...e, dead: false })),
+      collectibles: state.collectibles.map(c => ({ ...c, collected: false })),
+      placedObjects: state.placedObjects,
+      availableCharacters: state.availableCharacters,
+      winConditions: state.winConditions,
+      maxCharacters: state.maxCharacters,
+      maxTurns: state.maxTurns,
+      lives: state.lives,
+      skinId: state.skinId,
+    };
+
+    // Run quick validation first
+    const quickResult = quickValidate(puzzleForValidation);
+    if (!quickResult.valid) {
+      setValidationResult({
+        solvable: false,
+        minCharactersNeeded: null,
+        solutionFound: null,
+        totalCombinationsTested: 0,
+        searchTimeMs: 0,
+        error: quickResult.issues.join('; '),
+      });
+      setIsValidating(false);
+      return;
+    }
+
+    // Run full solver (with timeout to avoid blocking UI)
+    // Use setTimeout to allow UI to update before computation
+    setTimeout(() => {
+      try {
+        const result = solvePuzzle(puzzleForValidation, {
+          maxSimulationTurns: state.maxTurns || 200,
+          maxCombinations: 50000, // Limit to prevent browser freezing
+        });
+        setValidationResult(result);
+      } catch (err) {
+        setValidationResult({
+          solvable: false,
+          minCharactersNeeded: null,
+          solutionFound: null,
+          totalCombinationsTested: 0,
+          searchTimeMs: 0,
+          error: err instanceof Error ? err.message : 'Unknown error during validation',
+        });
+      }
+      setIsValidating(false);
+    }, 50);
   };
 
   const handleResize = (width: number, height: number) => {
@@ -2075,6 +2143,13 @@ export const MapEditor: React.FC = () => {
                 >
                   Clear Grid
                 </button>
+                <button
+                  onClick={handleValidate}
+                  disabled={isValidating}
+                  className="w-full px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isValidating ? 'Validating...' : 'Validate Puzzle'}
+                </button>
               </div>
 
               {/* Puzzle Info - Below Actions */}
@@ -2272,6 +2347,92 @@ export const MapEditor: React.FC = () => {
         onPuzzlesChanged={() => setSavedPuzzles(getSavedPuzzles())}
         currentPuzzleId={state.puzzleId}
       />
+
+      {/* Validation Results Modal */}
+      {showValidationModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+            <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+              {isValidating ? (
+                <>
+                  <span className="animate-spin">⏳</span> Validating Puzzle...
+                </>
+              ) : validationResult?.solvable ? (
+                <>
+                  <span className="text-green-400">✓</span> Puzzle is Solvable!
+                </>
+              ) : (
+                <>
+                  <span className="text-red-400">✗</span> Puzzle Not Solvable
+                </>
+              )}
+            </h2>
+
+            {isValidating ? (
+              <div className="text-gray-400 text-center py-4">
+                <p>Testing character placement combinations...</p>
+                <p className="text-sm mt-2">This may take a few seconds.</p>
+              </div>
+            ) : validationResult ? (
+              <div className="space-y-3">
+                {validationResult.error && (
+                  <div className="bg-red-900/30 border border-red-700 rounded p-3 text-sm">
+                    <span className="font-semibold text-red-400">Issue: </span>
+                    {validationResult.error}
+                  </div>
+                )}
+
+                {validationResult.solvable && validationResult.solutionFound && (
+                  <>
+                    <div className="bg-green-900/30 border border-green-700 rounded p-3">
+                      <div className="font-semibold text-green-400 mb-2">Solution Found!</div>
+                      <div className="text-sm space-y-1">
+                        <div>
+                          <span className="text-gray-400">Minimum characters needed: </span>
+                          <span className="text-white font-bold">{validationResult.minCharactersNeeded}</span>
+                        </div>
+                        <div>
+                          <span className="text-gray-400">Turns to win: </span>
+                          <span className="text-white">{validationResult.solutionFound.turnsToWin}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-gray-700/50 rounded p-3">
+                      <div className="font-semibold text-gray-300 mb-2 text-sm">Example Solution:</div>
+                      <div className="space-y-1 text-sm">
+                        {validationResult.solutionFound.placements.map((p, i) => {
+                          const charData = getCharacter(p.characterId);
+                          return (
+                            <div key={i} className="flex items-center gap-2">
+                              <span className="text-gray-400">{i + 1}.</span>
+                              <span className="text-white">{charData?.name || p.characterId}</span>
+                              <span className="text-gray-500">at ({p.x}, {p.y})</span>
+                              <span className="text-gray-500 capitalize">facing {p.facing}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="text-xs text-gray-500 pt-2 border-t border-gray-700">
+                  Tested {validationResult.totalCombinationsTested.toLocaleString()} combinations in{' '}
+                  {(validationResult.searchTimeMs / 1000).toFixed(2)}s
+                </div>
+              </div>
+            ) : null}
+
+            <button
+              onClick={() => setShowValidationModal(false)}
+              className="mt-4 w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
