@@ -11,6 +11,10 @@ import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from '.
  * Math.floor(-0.0000001) would give -1, but we want 0
  */
 function safeFloor(n: number): number {
+  // Handle negative zero explicitly
+  if (Object.is(n, -0)) {
+    return 0;
+  }
   // Round to nearest integer if very close (within epsilon)
   const rounded = Math.round(n);
   if (Math.abs(n - rounded) < 0.0001) {
@@ -42,6 +46,10 @@ function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Arra
   const startTileY = safeFloor(y0);
   const endTileX = safeFloor(x1);
   const endTileY = safeFloor(y1);
+
+  // Debug: log the safeFloor results
+  console.log(`[getTilesAlongLine] raw: (${x0}, ${y0}) to (${x1}, ${y1})`);
+  console.log(`[getTilesAlongLine] floored: (${startTileX}, ${startTileY}) to (${endTileX}, ${endTileY})`);
 
   // Always add starting tile
   addTile(startTileX, startTileY);
