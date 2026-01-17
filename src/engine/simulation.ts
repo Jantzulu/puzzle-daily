@@ -1450,18 +1450,18 @@ export function updateProjectiles(gameState: GameState): void {
     // which can drift due to floating point rounding
     const tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
 
-    // Initialize checked tiles set if not present
+    // Initialize checked tiles record if not present
     if (!proj.checkedTiles) {
-      proj.checkedTiles = new Set<string>();
+      proj.checkedTiles = {};
     }
 
     // Filter to only tiles we haven't checked yet (new tiles entered this frame)
     const newTiles = tilesAlongPath.filter(t => {
       const key = `${t.x},${t.y}`;
-      if (proj.checkedTiles!.has(key)) {
+      if (proj.checkedTiles![key]) {
         return false;
       }
-      proj.checkedTiles!.add(key);
+      proj.checkedTiles![key] = true;
       return true;
     });
 
@@ -1613,7 +1613,7 @@ export function updateProjectiles(gameState: GameState): void {
         proj.startTime = now; // Reset timing for smooth continuation
 
         // Clear checked tiles since we're starting a new path from bounce point
-        proj.checkedTiles = new Set<string>();
+        proj.checkedTiles = {};
 
         // Update direction for sprite rendering
         proj.direction = getDirectionFromVector(newDirX, newDirY);
@@ -1637,7 +1637,7 @@ export function updateProjectiles(gameState: GameState): void {
          tilesToCheck[tilesToCheck.length - 1].y !== finalTileY)) {
       // Add final tile if not already included
       const finalKey = `${finalTileX},${finalTileY}`;
-      if (!proj.checkedTiles?.has(finalKey)) {
+      if (!proj.checkedTiles?.[finalKey]) {
         tilesToCheck.push({ x: finalTileX, y: finalTileY });
       }
     }
@@ -1706,6 +1706,11 @@ export function updateProjectiles(gameState: GameState): void {
         }
       } else {
         // Damage projectile - check for enemy hits along entire path
+        // Debug: Log enemy positions vs tiles being checked
+        const aliveEnemies = gameState.puzzle.enemies.filter(e => !e.dead);
+        console.log(`[Enemy Check] tilesToCheck:`, tilesToCheck.map(t => `(${t.x},${t.y})`).join(', '));
+        console.log(`[Enemy Check] enemies:`, aliveEnemies.map(e => `id=${e.enemyId} pos=(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', '));
+
         for (const checkTile of tilesToCheck) {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
@@ -1716,6 +1721,8 @@ export function updateProjectiles(gameState: GameState): void {
                  Math.floor(e.y) === tileY &&
                  !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
           );
+
+          console.log(`[Enemy Check] checking tile (${tileX},${tileY}) - hitEnemy: ${hitEnemy ? hitEnemy.enemyId : 'none'}`);
 
           if (hitEnemy) {
             // Track that we hit this entity (for piercing projectiles)

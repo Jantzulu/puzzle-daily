@@ -731,7 +731,8 @@ export interface Projectile {
 
   // Collision tracking - tracks which tiles have been checked for entity collision
   // Used to ensure proper diagonal path checking instead of frame-by-frame drift
-  checkedTiles?: Set<string>;
+  // Note: Using Record instead of Set because Sets don't survive JSON serialization in React state
+  checkedTiles?: Record<string, boolean>;
 }
 
 /**
