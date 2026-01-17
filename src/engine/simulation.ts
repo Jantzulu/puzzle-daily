@@ -7,47 +7,45 @@ import { loadStatusEffectAsset, loadSpellAsset, loadCollectible } from '../utils
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
- * Get all integer tile coordinates along a line using Bresenham's line algorithm
- * This ensures we check every tile the projectile passes through
+ * Get all integer tile coordinates along a line segment
+ * Uses parametric interpolation to ensure we catch all tiles the projectile passes through,
+ * including diagonal tiles that might be missed by simple frame-to-frame Bresenham
  */
 function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Array<{x: number, y: number}> {
   const tiles: Array<{x: number, y: number}> = [];
+  const seen = new Set<string>();
 
-  // Convert to tile coordinates
   const startTileX = Math.floor(x0);
   const startTileY = Math.floor(y0);
   const endTileX = Math.floor(x1);
   const endTileY = Math.floor(y1);
 
-  // If same tile, just return that tile (so we check it)
+  // If same tile, just return that tile
   if (startTileX === endTileX && startTileY === endTileY) {
     tiles.push({ x: endTileX, y: endTileY });
     return tiles;
   }
 
-  // Bresenham's line algorithm - include ALL tiles from start to end
-  let x = startTileX;
-  let y = startTileY;
-  const dx = Math.abs(endTileX - startTileX);
-  const dy = Math.abs(endTileY - startTileY);
-  const sx = startTileX < endTileX ? 1 : -1;
-  const sy = startTileY < endTileY ? 1 : -1;
-  let err = dx - dy;
+  // Use ray marching to find all tiles along the path
+  // Sample multiple points along the line to catch all intersected tiles
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const distance = Math.sqrt(dx * dx + dy * dy);
 
-  while (true) {
-    // Include every tile along the path (including start)
-    tiles.push({ x, y });
+  // Sample at least once per 0.1 units to catch all tile crossings
+  const numSamples = Math.max(Math.ceil(distance / 0.1), 10);
 
-    if (x === endTileX && y === endTileY) break;
+  for (let i = 0; i <= numSamples; i++) {
+    const t = i / numSamples;
+    const x = x0 + dx * t;
+    const y = y0 + dy * t;
+    const tileX = Math.floor(x);
+    const tileY = Math.floor(y);
+    const key = `${tileX},${tileY}`;
 
-    const e2 = 2 * err;
-    if (e2 > -dy) {
-      err -= dy;
-      x += sx;
-    }
-    if (e2 < dx) {
-      err += dx;
-      y += sy;
+    if (!seen.has(key)) {
+      seen.add(key);
+      tiles.push({ x: tileX, y: tileY });
     }
   }
 
@@ -1431,14 +1429,31 @@ export function updateProjectiles(gameState: GameState): void {
     proj.x = newX;
     proj.y = newY;
 
-    // Get all tiles along the path from previous to new position
-    // This ensures we don't skip over entities when moving diagonally or fast
-    const tilesAlongPath = getTilesAlongLine(prevX, prevY, newX, newY);
+    // Get all tiles along the FULL path from START to NEW position
+    // This ensures we check the correct diagonal path, not the accumulated frame-by-frame path
+    // which can drift due to floating point rounding
+    const tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
+
+    // Initialize checked tiles set if not present
+    if (!proj.checkedTiles) {
+      proj.checkedTiles = new Set<string>();
+    }
+
+    // Filter to only tiles we haven't checked yet (new tiles entered this frame)
+    const newTiles = tilesAlongPath.filter(t => {
+      const key = `${t.x},${t.y}`;
+      if (proj.checkedTiles!.has(key)) {
+        return false;
+      }
+      proj.checkedTiles!.add(key);
+      return true;
+    });
 
     // Debug: log projectile movement
     if (gameState.puzzle.enemies.some(e => !e.dead)) {
-      console.log(`[Projectile] dir=${proj.direction} from (${prevX.toFixed(2)}, ${prevY.toFixed(2)}) to (${newX.toFixed(2)}, ${newY.toFixed(2)})`);
-      console.log(`  Tiles along path:`, tilesAlongPath.map(t => `(${t.x},${t.y})`).join(', '));
+      console.log(`[Projectile] dir=${proj.direction} from start (${proj.startX.toFixed(2)}, ${proj.startY.toFixed(2)}) to (${newX.toFixed(2)}, ${newY.toFixed(2)})`);
+      console.log(`  Full path tiles:`, tilesAlongPath.map(t => `(${t.x},${t.y})`).join(', '));
+      console.log(`  New tiles this frame:`, newTiles.map(t => `(${t.x},${t.y})`).join(', '));
       console.log(`  Enemies:`, gameState.puzzle.enemies.filter(e => !e.dead).map(e => `(${e.x},${e.y})`).join(', '));
     }
 
@@ -1581,6 +1596,9 @@ export function updateProjectiles(gameState: GameState): void {
         proj.targetY = proj.y + newDirY * remainingRange;
         proj.startTime = now; // Reset timing for smooth continuation
 
+        // Clear checked tiles since we're starting a new path from bounce point
+        proj.checkedTiles = new Set<string>();
+
         // Update direction for sprite rendering
         proj.direction = getDirectionFromVector(newDirX, newDirY);
       } else {
@@ -1595,12 +1613,17 @@ export function updateProjectiles(gameState: GameState): void {
     // Healing projectiles hit allies, damage projectiles hit enemies
     const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
 
-    // Collect all tiles to check for entity collision (include final position)
-    const tilesToCheck = [...tilesAlongPath];
+    // Use newTiles for entity collision checks (only tiles we haven't checked yet)
+    // This prevents hitting the same entity multiple times per frame
+    const tilesToCheck = [...newTiles];
     if (tilesToCheck.length === 0 ||
         (tilesToCheck[tilesToCheck.length - 1].x !== finalTileX ||
          tilesToCheck[tilesToCheck.length - 1].y !== finalTileY)) {
-      tilesToCheck.push({ x: finalTileX, y: finalTileY });
+      // Add final tile if not already included
+      const finalKey = `${finalTileX},${finalTileY}`;
+      if (!proj.checkedTiles?.has(finalKey)) {
+        tilesToCheck.push({ x: finalTileX, y: finalTileY });
+      }
     }
 
     // If fired by a character

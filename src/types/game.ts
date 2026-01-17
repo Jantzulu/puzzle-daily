@@ -728,6 +728,10 @@ export interface Projectile {
 
   // Piercing tracking - prevents hitting same entity multiple times
   hitEntityIds?: string[];      // IDs of entities already hit by this projectile
+
+  // Collision tracking - tracks which tiles have been checked for entity collision
+  // Used to ensure proper diagonal path checking instead of frame-by-frame drift
+  checkedTiles?: Set<string>;
 }
 
 /**
