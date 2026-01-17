@@ -1150,16 +1150,24 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
               {/* Speed */}
               <div>
-                <label className="block text-sm font-medium mb-1">Projectile Speed (tiles/second)</label>
+                <label className="block text-sm font-medium mb-1">Projectile Speed (tiles/turn)</label>
                 <input
                   type="number"
                   min="1"
-                  max="20"
-                  value={editedSpell.projectileSpeed || 5}
-                  onChange={(e) => setEditedSpell({ ...editedSpell, projectileSpeed: parseInt(e.target.value) || 1 })}
+                  max="16"
+                  step="1"
+                  value={Math.round((editedSpell.projectileSpeed || 5) * 0.8)}
+                  onChange={(e) => {
+                    const tilesPerTurn = parseInt(e.target.value) || 1;
+                    // Convert tiles/turn to tiles/second (turn = 800ms = 0.8s)
+                    const tilesPerSecond = tilesPerTurn / 0.8;
+                    setEditedSpell({ ...editedSpell, projectileSpeed: tilesPerSecond });
+                  }}
                   className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                 />
-                <p className="text-xs text-gray-400 mt-1">Higher = faster projectile</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  How many tiles the projectile travels each turn
+                </p>
               </div>
 
               {/* Pierce */}

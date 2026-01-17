@@ -203,23 +203,33 @@ function getTileState(gameState: GameState, x: number, y: number): TileRuntimeSt
 export function isTileActiveOnTurn(cadence: CadenceConfig, turn: number): boolean {
   if (!cadence.enabled) return true;
 
+  // Game turns are 1-indexed (turn starts at 0, increments to 1 before first processing)
+  // Adjust to 0-indexed for clean modulo math
+  // Handle turn 0 (initial state before game starts) - treat as pre-turn-1
+  const adjustedTurn = Math.max(0, turn - 1);
+
+  // startOffset shifts the pattern: 'off' means we start in the off state
   const startOffset = cadence.startState === 'off' ? 1 : 0;
 
   switch (cadence.pattern) {
     case 'alternating':
-      return (turn + startOffset) % 2 === 0;
+      // Turn 1 with startState 'on': (0 + 0) % 2 = 0 → true (ON) ✓
+      // Turn 2 with startState 'on': (1 + 0) % 2 = 1 → false (OFF) ✓
+      // Turn 1 with startState 'off': (0 + 1) % 2 = 1 → false (OFF) ✓
+      // Turn 2 with startState 'off': (1 + 1) % 2 = 0 → true (ON) ✓
+      return (adjustedTurn + startOffset) % 2 === 0;
 
     case 'interval': {
       const onTurns = cadence.onTurns || 1;
       const offTurns = cadence.offTurns || 1;
       const cycleLength = onTurns + offTurns;
-      const posInCycle = (turn + startOffset) % cycleLength;
+      const posInCycle = (adjustedTurn + startOffset) % cycleLength;
       return posInCycle < onTurns;
     }
 
     case 'custom':
       if (!cadence.customPattern?.length) return true;
-      const patternIndex = (turn + startOffset) % cadence.customPattern.length;
+      const patternIndex = (adjustedTurn + startOffset) % cadence.customPattern.length;
       return cadence.customPattern[patternIndex];
 
     default:

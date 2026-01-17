@@ -87,16 +87,24 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
           {editedAttack.pattern === AttackPattern.PROJECTILE && (
             <>
               <div>
-                <label className="block text-sm font-medium mb-1">Projectile Speed (tiles/second)</label>
+                <label className="block text-sm font-medium mb-1">Projectile Speed (tiles/turn)</label>
                 <input
                   type="number"
                   min="1"
-                  max="20"
-                  value={editedAttack.projectileSpeed || 5}
-                  onChange={(e) => setEditedAttack({ ...editedAttack, projectileSpeed: parseInt(e.target.value) || 1 })}
+                  max="16"
+                  step="1"
+                  value={Math.round((editedAttack.projectileSpeed || 5) * 0.8)}
+                  onChange={(e) => {
+                    const tilesPerTurn = parseInt(e.target.value) || 1;
+                    // Convert tiles/turn to tiles/second (turn = 800ms = 0.8s)
+                    const tilesPerSecond = tilesPerTurn / 0.8;
+                    setEditedAttack({ ...editedAttack, projectileSpeed: tilesPerSecond });
+                  }}
                   className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                 />
-                <p className="text-xs text-gray-400 mt-1">Higher = faster projectile</p>
+                <p className="text-xs text-gray-400 mt-1">
+                  How many tiles the projectile travels each turn
+                </p>
               </div>
 
               <div>
