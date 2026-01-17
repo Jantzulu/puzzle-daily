@@ -324,6 +324,8 @@ export const MapEditor: React.FC = () => {
         selectedTool: cached.selectedTool as ToolType || 'wall',
         isDrawing: false,
         mode: 'edit' as EditorMode,
+        // Ensure sideQuests is always an array (for backwards compatibility with old cached state)
+        sideQuests: cached.sideQuests || [],
       };
     }
     return createDefaultEditorState();
