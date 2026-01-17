@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy } from '../../types/game';
+import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore } from '../../types/game';
 import { Direction } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
+import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
@@ -40,6 +41,9 @@ export const Game: React.FC = () => {
   // Lives system
   const [livesRemaining, setLivesRemaining] = useState<number>(() => currentPuzzle.lives ?? 3);
   const [showGameOver, setShowGameOver] = useState(false);
+
+  // Scoring system
+  const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
 
   // Test mode state
   const [testMode, setTestMode] = useState<TestMode>('none');
@@ -123,6 +127,9 @@ export const Game: React.FC = () => {
           if (newState.gameStatus === 'victory') {
             playGameSound('victory');
             playVictoryMusic();
+            // Calculate and store score
+            const score = calculateScore(newState, livesRemaining, currentPuzzle.lives ?? 3);
+            setPuzzleScore(score);
           }
 
           // Handle defeat - deduct a life and auto-reset (or show game over)
@@ -288,6 +295,7 @@ export const Game: React.FC = () => {
     setCurrentPuzzle(resetPuzzle);
     setIsSimulating(false);
     setSelectedCharacterId(null);
+    setPuzzleScore(null);
   };
 
   const handleWipe = () => {
@@ -300,6 +308,7 @@ export const Game: React.FC = () => {
     setCurrentPuzzle(wipedPuzzle);
     setIsSimulating(false);
     setSelectedCharacterId(null);
+    setPuzzleScore(null);
   };
 
   // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
@@ -336,6 +345,7 @@ export const Game: React.FC = () => {
     setIsSimulating(false);
     setSelectedCharacterId(null);
     setPlayStartCharacters([]);
+    setPuzzleScore(null);
   };
 
   const handlePuzzleChange = (puzzleId: string) => {
@@ -352,6 +362,7 @@ export const Game: React.FC = () => {
       setLivesRemaining(puzzle.lives ?? 3);
       setShowGameOver(false);
       setPlayStartCharacters([]);
+      setPuzzleScore(null);
     }
   };
 
@@ -504,7 +515,7 @@ export const Game: React.FC = () => {
                   <div className="flex justify-start">
                     <button
                       onClick={handleTestEnemies}
-                      className="px-2 py-1 md:px-3 md:py-2 bg-purple-600 hover:bg-purple-700 rounded font-medium transition text-xs md:text-sm"
+                      className="px-2 py-1 md:px-3 md:py-2 bg-red-600 hover:bg-red-700 rounded font-medium transition text-xs md:text-sm"
                       title="Watch enemies move without characters for 5 turns"
                     >
                       Test Enemies
@@ -538,15 +549,25 @@ export const Game: React.FC = () => {
                 <div className="flex items-center justify-center gap-1 mb-2">
                   {renderLivesHearts()}
                 </div>
-                {/* Test mode turn counter */}
-                <div className="flex items-center gap-3 px-4 py-2 bg-purple-900 rounded-lg border border-purple-600">
-                  <span className="text-purple-300 text-sm font-medium">
+                {/* Test mode turn counter - blue for characters, red for enemies */}
+                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${
+                  testMode === 'enemies'
+                    ? 'bg-red-900 border-red-600'
+                    : 'bg-indigo-900 border-indigo-600'
+                }`}>
+                  <span className={`text-sm font-medium ${
+                    testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                  }`}>
                     Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'}
                   </span>
-                  <span className="text-2xl font-bold text-purple-300 min-w-[2ch] text-center">
+                  <span className={`text-2xl font-bold min-w-[2ch] text-center ${
+                    testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                  }`}>
                     {testTurnsRemaining}
                   </span>
-                  <span className="text-purple-400 text-sm">left</span>
+                  <span className={`text-sm ${
+                    testMode === 'enemies' ? 'text-red-400' : 'text-indigo-400'
+                  }`}>Turns Left</span>
                 </div>
               </div>
             )}
@@ -554,10 +575,80 @@ export const Game: React.FC = () => {
             <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} />
 
             {/* Victory/Defeat Message */}
-            {gameState.gameStatus === 'victory' && (
-              <div className="mt-4 p-4 bg-green-700 rounded text-center w-full max-w-md">
-                <h2 className="text-xl md:text-2xl font-bold">Victory!</h2>
-                <p className="mt-2 text-sm md:text-base">Characters used: {gameState.placedCharacters.length}</p>
+            {gameState.gameStatus === 'victory' && puzzleScore && (
+              <div className="mt-4 p-4 bg-gradient-to-b from-green-700 to-green-800 rounded-lg text-center w-full max-w-md border border-green-500 shadow-lg">
+                {/* Trophy and Rank */}
+                <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
+                <h2 className="text-xl md:text-2xl font-bold text-green-100">
+                  {getRankName(puzzleScore.rank)}
+                </h2>
+
+                {/* Stats for Gold trophy */}
+                {puzzleScore.rank === 'gold' && (
+                  <p className="text-sm text-green-200 mt-1">
+                    ({puzzleScore.stats.charactersUsed} char{puzzleScore.stats.charactersUsed !== 1 ? 's' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
+                  </p>
+                )}
+
+                {/* Total Score */}
+                <div className="mt-3 text-2xl font-bold text-yellow-300">
+                  {puzzleScore.totalPoints.toLocaleString()} pts
+                </div>
+
+                {/* Par Status */}
+                <div className="mt-2 flex justify-center gap-4 text-xs">
+                  <span className={puzzleScore.parMet.characters ? 'text-green-300' : 'text-gray-400'}>
+                    {puzzleScore.parMet.characters ? '✓' : '✗'} Char Par ({currentPuzzle.parCharacters ?? '-'})
+                  </span>
+                  <span className={puzzleScore.parMet.turns ? 'text-green-300' : 'text-gray-400'}>
+                    {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({currentPuzzle.parTurns ?? '-'})
+                  </span>
+                </div>
+
+                {/* Point Breakdown - Collapsible */}
+                <details className="mt-3 text-left text-xs bg-green-900/50 rounded p-2">
+                  <summary className="cursor-pointer text-green-200 font-medium">Point Breakdown</summary>
+                  <div className="mt-2 space-y-1 text-green-100">
+                    <div className="flex justify-between">
+                      <span>Base:</span>
+                      <span>+{puzzleScore.breakdown.basePoints}</span>
+                    </div>
+                    {puzzleScore.breakdown.characterBonus > 0 && (
+                      <div className="flex justify-between">
+                        <span>Character Bonus:</span>
+                        <span>+{puzzleScore.breakdown.characterBonus}</span>
+                      </div>
+                    )}
+                    {puzzleScore.breakdown.turnBonus > 0 && (
+                      <div className="flex justify-between">
+                        <span>Turn Bonus:</span>
+                        <span>+{puzzleScore.breakdown.turnBonus}</span>
+                      </div>
+                    )}
+                    {puzzleScore.breakdown.livesBonus > 0 && (
+                      <div className="flex justify-between">
+                        <span>Lives Bonus:</span>
+                        <span>+{puzzleScore.breakdown.livesBonus}</span>
+                      </div>
+                    )}
+                    {puzzleScore.breakdown.sideQuestPoints > 0 && (
+                      <div className="flex justify-between">
+                        <span>Side Quest Bonus:</span>
+                        <span>+{puzzleScore.breakdown.sideQuestPoints}</span>
+                      </div>
+                    )}
+                  </div>
+                </details>
+
+                {/* Completed Side Quests */}
+                {puzzleScore.completedSideQuests.length > 0 && (
+                  <div className="mt-2 text-xs text-purple-300">
+                    Side Quests: {puzzleScore.completedSideQuests.map(qid => {
+                      const quest = currentPuzzle.sideQuests?.find(q => q.id === qid);
+                      return quest?.title || qid;
+                    }).join(', ')}
+                  </div>
+                )}
               </div>
             )}
 
@@ -625,6 +716,22 @@ export const Game: React.FC = () => {
                     </>
                   )}
                 </div>
+
+                {/* Side Quests Display */}
+                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (
+                  <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-gray-700">
+                    <HelpButton sectionId="side_quests" />
+                    <span className="text-purple-400">Side Quests:</span>
+                    <span className="text-purple-300">
+                      {gameState.puzzle.sideQuests.map((q, i) => (
+                        <span key={q.id}>
+                          {i > 0 && ', '}
+                          {q.title} <span className="text-purple-500">(+{q.bonusPoints})</span>
+                        </span>
+                      ))}
+                    </span>
+                  </div>
+                )}
               </div>
             )}
 

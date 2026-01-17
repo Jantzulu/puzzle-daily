@@ -6,7 +6,7 @@
  * Only "Clear Grid" or page refresh will clear the state.
  */
 
-import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig } from '../types/game';
+import type { TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, BorderConfig, SideQuest } from '../types/game';
 
 export interface EditorPuzzleState {
   gridWidth: number;
@@ -21,10 +21,16 @@ export interface EditorPuzzleState {
   puzzleId: string;
   maxCharacters: number;
   maxTurns?: number;
+  lives?: number;
   availableCharacters: string[];
   winConditions: WinCondition[];
   borderConfig?: BorderConfig;
   skinId?: string;
+
+  // Scoring
+  parCharacters?: number;
+  parTurns?: number;
+  sideQuests: SideQuest[];
 
   // Editor state
   selectedTool: string;

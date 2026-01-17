@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
@@ -272,6 +272,11 @@ interface EditorState {
   borderConfig?: BorderConfig; // Legacy - kept for backwards compatibility
   skinId?: string; // Reference to PuzzleSkin
 
+  // Scoring
+  parCharacters?: number;
+  parTurns?: number;
+  sideQuests: SideQuest[];
+
   // Editor state
   selectedTool: ToolType;
   isDrawing: boolean;
@@ -295,6 +300,11 @@ const createDefaultEditorState = (): EditorState => ({
   availableCharacters: ['knight_01'],
   winConditions: [{ type: 'defeat_all_enemies' }],
   skinId: 'builtin_dungeon', // Default skin
+
+  // Scoring - undefined means auto-suggest from validator
+  parCharacters: undefined,
+  parTurns: undefined,
+  sideQuests: [],
 
   selectedTool: 'wall',
   isDrawing: false,
@@ -960,6 +970,9 @@ export const MapEditor: React.FC = () => {
       lives: state.lives,
       borderConfig,
       skinId: state.skinId,
+      parCharacters: state.parCharacters,
+      parTurns: state.parTurns,
+      sideQuests: state.sideQuests.length > 0 ? state.sideQuests : undefined,
     };
   };
 
@@ -1036,6 +1049,9 @@ export const MapEditor: React.FC = () => {
       availableCharacters: puzzle.availableCharacters,
       winConditions: puzzle.winConditions,
       skinId: puzzle.skinId || 'builtin_dungeon',
+      parCharacters: puzzle.parCharacters,
+      parTurns: puzzle.parTurns,
+      sideQuests: puzzle.sideQuests || [],
     }));
 
     setShowLibrary(false);
@@ -1064,6 +1080,10 @@ export const MapEditor: React.FC = () => {
       lives: 3,
       availableCharacters: ['knight_01'],
       winConditions: [{ type: 'defeat_all_enemies' }],
+      skinId: 'builtin_dungeon',
+      parCharacters: undefined,
+      parTurns: undefined,
+      sideQuests: [],
       selectedTool: 'wall',
       isDrawing: false,
       mode: 'edit',
@@ -1092,6 +1112,9 @@ export const MapEditor: React.FC = () => {
         availableCharacters: puzzle.availableCharacters,
         winConditions: puzzle.winConditions,
         skinId: puzzle.skinId || 'builtin_dungeon',
+        parCharacters: puzzle.parCharacters,
+        parTurns: puzzle.parTurns,
+        sideQuests: puzzle.sideQuests || [],
       }));
 
       alert('Puzzle loaded successfully!');
@@ -1166,6 +1189,15 @@ export const MapEditor: React.FC = () => {
           maxCombinations: 50000, // Limit to prevent browser freezing
         });
         setValidationResult(result);
+
+        // Auto-suggest par values if not already set and solution found
+        if (result.solvable && result.solutionFound) {
+          setState(prev => ({
+            ...prev,
+            parCharacters: prev.parCharacters ?? result.minCharactersNeeded ?? undefined,
+            parTurns: prev.parTurns ?? result.solutionFound?.turnsToWin ?? undefined,
+          }));
+        }
       } catch (err) {
         setValidationResult({
           solvable: false,
@@ -2445,6 +2477,226 @@ export const MapEditor: React.FC = () => {
                         className="w-full px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500"
                       >
                         + Add Condition
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Par (for Trophy Rating) */}
+                  <div className="pt-3 border-t border-gray-700">
+                    <h3 className="text-sm font-semibold mb-2">Par (for Trophy Rating)</h3>
+                    <div className="grid grid-cols-2 gap-2">
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Character Par</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={state.maxCharacters}
+                          value={state.parCharacters ?? ''}
+                          placeholder="Auto"
+                          onChange={(e) => setState(prev => ({
+                            ...prev,
+                            parCharacters: e.target.value ? Number(e.target.value) : undefined
+                          }))}
+                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs text-gray-400 mb-1">Turn Par</label>
+                        <input
+                          type="number"
+                          min="1"
+                          max={state.maxTurns || 100}
+                          value={state.parTurns ?? ''}
+                          placeholder="Auto"
+                          onChange={(e) => setState(prev => ({
+                            ...prev,
+                            parTurns: e.target.value ? Number(e.target.value) : undefined
+                          }))}
+                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                        />
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-500 mt-1">
+                      Run validator to auto-suggest. 🏆 Gold = meet both pars.
+                    </p>
+                  </div>
+
+                  {/* Side Quests (Bonus Objectives) */}
+                  <div className="pt-3 border-t border-gray-700">
+                    <h3 className="text-sm font-semibold mb-2">Side Quests (Bonus Objectives)</h3>
+                    <div className="space-y-2">
+                      {state.sideQuests.map((quest, index) => (
+                        <div key={quest.id} className="bg-gray-700 p-2 rounded">
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1 min-w-0 space-y-1">
+                              {/* Title */}
+                              <input
+                                type="text"
+                                value={quest.title}
+                                placeholder="Quest title"
+                                onChange={(e) => {
+                                  setState(prev => {
+                                    const newQuests = [...prev.sideQuests];
+                                    newQuests[index] = { ...newQuests[index], title: e.target.value };
+                                    return { ...prev, sideQuests: newQuests };
+                                  });
+                                }}
+                                className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                              />
+
+                              {/* Type dropdown */}
+                              <select
+                                value={quest.type}
+                                onChange={(e) => {
+                                  setState(prev => {
+                                    const newQuests = [...prev.sideQuests];
+                                    newQuests[index] = { ...newQuests[index], type: e.target.value as SideQuestType, params: {} };
+                                    return { ...prev, sideQuests: newQuests };
+                                  });
+                                }}
+                                className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                              >
+                                <option value="collect_all_items">Collect All Items</option>
+                                <option value="no_damage_taken">No Damage Taken</option>
+                                <option value="no_deaths">No Deaths</option>
+                                <option value="speed_run">Speed Run (X Turns)</option>
+                                <option value="minimalist">Minimalist (X Characters)</option>
+                                <option value="use_specific_character">Use Specific Character</option>
+                                <option value="avoid_character">Avoid Character</option>
+                                <option value="custom">Custom (Manual)</option>
+                              </select>
+
+                              {/* Params for speed_run */}
+                              {quest.type === 'speed_run' && (
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-gray-400">Max Turns:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="999"
+                                    value={quest.params?.turns ?? 5}
+                                    onChange={(e) => {
+                                      setState(prev => {
+                                        const newQuests = [...prev.sideQuests];
+                                        newQuests[index] = {
+                                          ...newQuests[index],
+                                          params: { ...newQuests[index].params, turns: parseInt(e.target.value) || 5 }
+                                        };
+                                        return { ...prev, sideQuests: newQuests };
+                                      });
+                                    }}
+                                    className="w-16 px-2 py-1 bg-gray-600 rounded text-sm"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Params for minimalist */}
+                              {quest.type === 'minimalist' && (
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-gray-400">Max Characters:</label>
+                                  <input
+                                    type="number"
+                                    min="1"
+                                    max="10"
+                                    value={quest.params?.characterCount ?? 1}
+                                    onChange={(e) => {
+                                      setState(prev => {
+                                        const newQuests = [...prev.sideQuests];
+                                        newQuests[index] = {
+                                          ...newQuests[index],
+                                          params: { ...newQuests[index].params, characterCount: parseInt(e.target.value) || 1 }
+                                        };
+                                        return { ...prev, sideQuests: newQuests };
+                                      });
+                                    }}
+                                    className="w-16 px-2 py-1 bg-gray-600 rounded text-sm"
+                                  />
+                                </div>
+                              )}
+
+                              {/* Params for use_specific_character / avoid_character */}
+                              {(quest.type === 'use_specific_character' || quest.type === 'avoid_character') && (
+                                <div className="flex items-center gap-2">
+                                  <label className="text-xs text-gray-400">Character:</label>
+                                  <select
+                                    value={quest.params?.characterId ?? ''}
+                                    onChange={(e) => {
+                                      setState(prev => {
+                                        const newQuests = [...prev.sideQuests];
+                                        newQuests[index] = {
+                                          ...newQuests[index],
+                                          params: { ...newQuests[index].params, characterId: e.target.value }
+                                        };
+                                        return { ...prev, sideQuests: newQuests };
+                                      });
+                                    }}
+                                    className="flex-1 px-2 py-1 bg-gray-600 rounded text-sm"
+                                  >
+                                    <option value="">Select...</option>
+                                    {state.availableCharacters.map(charId => {
+                                      const char = getCharacter(charId);
+                                      return (
+                                        <option key={charId} value={charId}>
+                                          {char?.name || charId}
+                                        </option>
+                                      );
+                                    })}
+                                  </select>
+                                </div>
+                              )}
+
+                              {/* Bonus points */}
+                              <div className="flex items-center gap-2">
+                                <label className="text-xs text-gray-400">Bonus Pts:</label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  max="9999"
+                                  value={quest.bonusPoints}
+                                  onChange={(e) => {
+                                    setState(prev => {
+                                      const newQuests = [...prev.sideQuests];
+                                      newQuests[index] = { ...newQuests[index], bonusPoints: parseInt(e.target.value) || 0 };
+                                      return { ...prev, sideQuests: newQuests };
+                                    });
+                                  }}
+                                  className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                                />
+                              </div>
+                            </div>
+
+                            {/* Remove button */}
+                            <button
+                              onClick={() => {
+                                setState(prev => ({
+                                  ...prev,
+                                  sideQuests: prev.sideQuests.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                            >
+                              ✕
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Add side quest button */}
+                      <button
+                        onClick={() => {
+                          setState(prev => ({
+                            ...prev,
+                            sideQuests: [...prev.sideQuests, {
+                              id: 'quest_' + Date.now(),
+                              type: 'collect_all_items',
+                              title: 'New Quest',
+                              bonusPoints: 100
+                            }]
+                          }));
+                        }}
+                        className="w-full px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500"
+                      >
+                        + Add Side Quest
                       </button>
                     </div>
                   </div>

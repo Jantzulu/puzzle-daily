@@ -331,6 +331,64 @@ export interface WinCondition {
   params?: WinConditionParams;
 }
 
+// ============================================
+// SIDE QUESTS (Bonus Objectives)
+// ============================================
+
+export type SideQuestType =
+  | 'collect_all_items'      // Collect every collectible on the map
+  | 'no_damage_taken'        // Win without any character taking damage
+  | 'use_specific_character' // Must use a specific character
+  | 'avoid_character'        // Win without using a specific character
+  | 'speed_run'              // Complete in X or fewer turns
+  | 'minimalist'             // Complete with X or fewer characters
+  | 'no_deaths'              // No characters die during puzzle
+  | 'custom';                // Custom description only (manual tracking)
+
+export interface SideQuestParams {
+  characterId?: string;      // For use_specific_character / avoid_character
+  turns?: number;            // For speed_run
+  characterCount?: number;   // For minimalist
+}
+
+export interface SideQuest {
+  id: string;
+  type: SideQuestType;
+  title: string;
+  description?: string;
+  bonusPoints: number;       // Points awarded for completion
+  params?: SideQuestParams;
+}
+
+// ============================================
+// SCORING & RANKING
+// ============================================
+
+export type RankTier = 'bronze' | 'silver' | 'gold';
+
+export interface PuzzleScore {
+  rank: RankTier;
+  totalPoints: number;
+  breakdown: {
+    basePoints: number;           // 1000 base for winning
+    characterBonus: number;       // Bonus for beating char par
+    turnBonus: number;            // Bonus for beating turn par
+    livesBonus: number;           // Points per remaining life
+    sideQuestPoints: number;      // Sum of completed quest bonuses
+  };
+  completedSideQuests: string[];  // IDs of completed quests
+  parMet: {
+    characters: boolean;
+    turns: boolean;
+  };
+  // Actual performance stats (for display)
+  stats: {
+    charactersUsed: number;
+    turnsUsed: number;
+    livesRemaining: number;
+  };
+}
+
 export type BorderStyle = 'none' | 'dungeon' | 'castle' | 'forest' | 'custom';
 
 export interface CustomBorderSprites {
@@ -422,6 +480,13 @@ export interface Puzzle {
   lives?: number; // Number of attempts allowed (default: 3, 0 = unlimited)
   borderConfig?: BorderConfig; // Optional border decoration (legacy, use skinId instead)
   skinId?: string; // Reference to PuzzleSkin for visual theming
+
+  // Scoring - Par values (set by creator, suggested by validator)
+  parCharacters?: number;    // Target character count for gold trophy
+  parTurns?: number;         // Target turn count for gold trophy
+
+  // Side quests (optional bonus objectives)
+  sideQuests?: SideQuest[];
 }
 
 export interface PlacedCharacter {
@@ -499,7 +564,11 @@ export interface CompletedPuzzle {
   date: string;
   charactersUsed: number;
   characterIds: string[];
+  turnsUsed: number;
+  livesRemaining: number;
   score: number;
+  rank: RankTier;
+  completedSideQuests: string[];
   timestamp: string;
 }
 
