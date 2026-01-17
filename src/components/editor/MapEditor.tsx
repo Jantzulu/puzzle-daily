@@ -2351,7 +2351,7 @@ export const MapEditor: React.FC = () => {
       {/* Validation Results Modal */}
       {showValidationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-xl">
+          <div className="bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               {isValidating ? (
                 <>
@@ -2400,15 +2400,108 @@ export const MapEditor: React.FC = () => {
 
                     <div className="bg-gray-700/50 rounded p-3">
                       <div className="font-semibold text-gray-300 mb-2 text-sm">Example Solution:</div>
-                      <div className="space-y-1 text-sm">
+
+                      {/* Visual Mini-Map */}
+                      <div className="flex justify-center mb-3">
+                        <div
+                          className="inline-grid gap-px bg-gray-600 p-px rounded"
+                          style={{
+                            gridTemplateColumns: `repeat(${state.gridWidth}, minmax(0, 1fr))`,
+                          }}
+                        >
+                          {Array.from({ length: state.gridHeight }).map((_, y) =>
+                            Array.from({ length: state.gridWidth }).map((_, x) => {
+                              const tile = state.tiles[y]?.[x];
+                              const placement = validationResult.solutionFound?.placements.find(
+                                p => p.x === x && p.y === y
+                              );
+                              const charData = placement ? getCharacter(placement.characterId) : null;
+                              const enemy = state.enemies.find(e => e.x === x && e.y === y);
+
+                              // Determine tile background color
+                              let bgColor = 'bg-gray-800'; // empty
+                              if (!tile) bgColor = 'bg-gray-950'; // void
+                              else if (tile.type === 'wall') bgColor = 'bg-gray-600';
+                              else if (tile.type === 'goal') bgColor = 'bg-yellow-600/50';
+                              else if (tile.customTileTypeId) bgColor = 'bg-purple-900/50';
+
+                              // Calculate cell size based on grid dimensions
+                              const maxSize = 280; // max width of mini-map
+                              const cellSize = Math.min(24, Math.floor(maxSize / Math.max(state.gridWidth, state.gridHeight)));
+
+                              // Direction arrow mapping
+                              const directionArrows: Record<string, string> = {
+                                north: '↑', northeast: '↗', east: '→', southeast: '↘',
+                                south: '↓', southwest: '↙', west: '←', northwest: '↖',
+                              };
+
+                              return (
+                                <div
+                                  key={`${x}-${y}`}
+                                  className={`${bgColor} relative flex items-center justify-center`}
+                                  style={{ width: cellSize, height: cellSize }}
+                                  title={placement
+                                    ? `${charData?.name || placement.characterId} facing ${placement.facing}`
+                                    : enemy
+                                    ? 'Enemy'
+                                    : `(${x}, ${y})`
+                                  }
+                                >
+                                  {placement && (
+                                    <div className="absolute inset-0 bg-green-500 rounded-full m-0.5 flex items-center justify-center">
+                                      <span className="text-white font-bold" style={{ fontSize: Math.max(8, cellSize - 8) }}>
+                                        {directionArrows[placement.facing] || '•'}
+                                      </span>
+                                    </div>
+                                  )}
+                                  {enemy && !placement && (
+                                    <div className="absolute inset-0 bg-red-500 rounded-sm m-0.5 flex items-center justify-center">
+                                      <span className="text-white" style={{ fontSize: Math.max(6, cellSize - 10) }}>E</span>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Legend */}
+                      <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-2 justify-center">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-green-500 rounded-full"></div>
+                          <span>Character</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-red-500 rounded-sm"></div>
+                          <span>Enemy</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-gray-600"></div>
+                          <span>Wall</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 bg-yellow-600/50 border border-yellow-600"></div>
+                          <span>Goal</span>
+                        </div>
+                      </div>
+
+                      {/* Text details */}
+                      <div className="space-y-1 text-sm border-t border-gray-600 pt-2">
                         {validationResult.solutionFound.placements.map((p, i) => {
                           const charData = getCharacter(p.characterId);
+                          const directionArrows: Record<string, string> = {
+                            north: '↑', northeast: '↗', east: '→', southeast: '↘',
+                            south: '↓', southwest: '↙', west: '←', northwest: '↖',
+                          };
                           return (
                             <div key={i} className="flex items-center gap-2">
-                              <span className="text-gray-400">{i + 1}.</span>
+                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                                {directionArrows[p.facing]}
+                              </div>
                               <span className="text-white">{charData?.name || p.characterId}</span>
-                              <span className="text-gray-500">at ({p.x}, {p.y})</span>
-                              <span className="text-gray-500 capitalize">facing {p.facing}</span>
+                              <span className="text-gray-500">column {p.x + 1}, row {p.y + 1}</span>
+                              <span className="text-gray-500 capitalize">({p.facing})</span>
                             </div>
                           );
                         })}
