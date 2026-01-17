@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Direction, ActionType } from '../../types/game';
-import type { CharacterAction, EnemyBehavior, ExecutionMode, TriggerConfig } from '../../types/game';
+import type { CharacterAction, EnemyBehavior, ExecutionMode, TriggerConfig, EntitySoundSet } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, getCustomEnemies, deleteEnemy, loadSpellAsset, getFolders } from '../../utils/assetStorage';
+import { saveEnemy, getCustomEnemies, deleteEnemy, loadSpellAsset, getFolders, getSoundAssets } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -352,6 +352,53 @@ export const EnemyEditor: React.FC = () => {
                           onChange={(e) => updateEnemy({ hasMeleePriority: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Has Melee Priority</span>
                       </label>
+                    </div>
+
+                    {/* Sound Effects */}
+                    <div className="bg-gray-800 p-4 rounded">
+                      <h3 className="text-lg font-bold mb-3">Sound Effects</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm mb-1">Death Sound</label>
+                          <select
+                            value={editing.sounds?.death || ''}
+                            onChange={(e) => updateEnemy({
+                              sounds: {
+                                ...editing.sounds,
+                                death: e.target.value || undefined,
+                              }
+                            })}
+                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                          >
+                            <option value="">None</option>
+                            {getSoundAssets().map((sound) => (
+                              <option key={sound.id} value={sound.id}>
+                                {sound.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm mb-1">Damage Taken Sound</label>
+                          <select
+                            value={editing.sounds?.damageTaken || ''}
+                            onChange={(e) => updateEnemy({
+                              sounds: {
+                                ...editing.sounds,
+                                damageTaken: e.target.value || undefined,
+                              }
+                            })}
+                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                          >
+                            <option value="">None</option>
+                            {getSoundAssets().map((sound) => (
+                              <option key={sound.id} value={sound.id}>
+                                {sound.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Tooltip Steps */}

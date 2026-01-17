@@ -1,8 +1,8 @@
 import React, { useState } from 'react';
 import { Direction, ActionType } from '../../types/game';
-import type { CharacterAction, CustomAttack, SpellAsset, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
+import type { CharacterAction, CustomAttack, SpellAsset, ExecutionMode, TriggerConfig, RelativeDirection, EntitySoundSet } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
-import { saveCharacter, getCustomCharacters, deleteCharacter, loadSpellAsset, getFolders } from '../../utils/assetStorage';
+import { saveCharacter, getCustomCharacters, deleteCharacter, loadSpellAsset, getFolders, getSoundAssets } from '../../utils/assetStorage';
 import { getAllCharacters } from '../../data/characters';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -442,6 +442,53 @@ export const CharacterEditor: React.FC = () => {
                         />
                         <span className="text-sm">Blocks Movement (Dead)</span>
                       </label>
+                    </div>
+
+                    {/* Sound Effects */}
+                    <div className="bg-gray-800 p-4 rounded">
+                      <h3 className="text-lg font-bold mb-3">Sound Effects</h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm mb-1">Death Sound</label>
+                          <select
+                            value={editing.sounds?.death || ''}
+                            onChange={(e) => updateCharacter({
+                              sounds: {
+                                ...editing.sounds,
+                                death: e.target.value || undefined,
+                              }
+                            })}
+                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                          >
+                            <option value="">None</option>
+                            {getSoundAssets().map((sound) => (
+                              <option key={sound.id} value={sound.id}>
+                                {sound.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-sm mb-1">Damage Taken Sound</label>
+                          <select
+                            value={editing.sounds?.damageTaken || ''}
+                            onChange={(e) => updateCharacter({
+                              sounds: {
+                                ...editing.sounds,
+                                damageTaken: e.target.value || undefined,
+                              }
+                            })}
+                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                          >
+                            <option value="">None</option>
+                            {getSoundAssets().map((sound) => (
+                              <option key={sound.id} value={sound.id}>
+                                {sound.name}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
                     </div>
 
                     {/* Tooltip Steps */}

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
+import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset, SoundAsset } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
-import { saveSpellAsset, getFolders, getStatusEffectAssets } from '../../utils/assetStorage';
+import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -933,6 +933,45 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <p className="text-xs text-gray-400 mt-1">
                 Turns before spell can be used again (0 = no cooldown)
               </p>
+            </div>
+
+            {/* Sound Effects */}
+            <div className="border-t border-gray-600 pt-4 mt-4">
+              <h4 className="text-sm font-medium mb-3 text-purple-300">Sound Effects</h4>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Cast Sound</label>
+                  <select
+                    value={editedSpell.castSound || ''}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, castSound: e.target.value || undefined })}
+                    className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm"
+                  >
+                    <option value="">None</option>
+                    {getSoundAssets().map((sound) => (
+                      <option key={sound.id} value={sound.id}>
+                        {sound.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Plays when spell is cast</p>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1">Hit Sound</label>
+                  <select
+                    value={editedSpell.hitSound || ''}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, hitSound: e.target.value || undefined })}
+                    className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm"
+                  >
+                    <option value="">None</option>
+                    {getSoundAssets().map((sound) => (
+                      <option key={sound.id} value={sound.id}>
+                        {sound.name}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-gray-500 mt-1">Plays on hit/impact</p>
+                </div>
+              </div>
             </div>
 
             {/* Range (for linear spells and non-centered AOE) */}
