@@ -330,6 +330,9 @@ export interface CustomCollectible {
   pickupMethod: 'step_on';
   pickupPermissions: CollectiblePickupPermissions;
 
+  // Placement restrictions
+  preventPlacement?: boolean;    // Prevent characters from being placed here during setup (but allow walking)
+
   // Sound
   pickupSound?: string;          // Sound asset ID to play on collection
 
@@ -1126,4 +1129,110 @@ export const getGlobalSoundConfig = (): GlobalSoundConfig => {
     console.error('Failed to load global sound config:', e);
     return {};
   }
+};
+
+// ============ HELP CONTENT STORAGE ============
+
+const HELP_CONTENT_KEY = 'puzzle_game_help_content';
+
+// Help content section IDs
+export type HelpSectionId =
+  | 'enemies'
+  | 'items'
+  | 'status_effects'
+  | 'special_tiles'
+  | 'characters'
+  | 'game_general';
+
+// Help content for a single section
+export interface HelpContent {
+  id: HelpSectionId;
+  title: string;
+  content: string; // Rich HTML content
+  updatedAt: string;
+}
+
+// All help content
+export interface HelpContentStorage {
+  sections: HelpContent[];
+}
+
+// Default help content
+const defaultHelpContent: HelpContentStorage = {
+  sections: [
+    {
+      id: 'game_general',
+      title: 'How to Play',
+      content: '<p>Place your characters on the board, then press <strong>Play</strong> to watch them execute their actions automatically.</p><ul><li>Each character has a behavior pattern they follow</li><li>Complete the goal to win the puzzle</li><li>You have limited lives - plan carefully!</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'characters',
+      title: 'Available Characters',
+      content: '<p>These are the characters you can place on the board.</p><ul><li>Click a character to select it</li><li>Click a tile to place it there</li><li>Each character has unique abilities</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'enemies',
+      title: 'Enemies',
+      content: '<p>Enemies are obstacles that can harm your characters.</p><ul><li>Each enemy has its own behavior pattern</li><li>Some enemies can be defeated in combat</li><li>Watch out for their attacks!</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'items',
+      title: 'Items',
+      content: '<p>Items can be collected by walking onto their tile.</p><ul><li>Some items are on the map from the start</li><li>Others are dropped when enemies are defeated</li><li>Items can provide various effects</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'status_effects',
+      title: 'Status Effects',
+      content: '<p>Status effects modify how characters and enemies behave.</p><ul><li>Effects can be positive (buffs) or negative (debuffs)</li><li>They last for a limited number of turns</li><li>Some effects trigger at the start or end of turns</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'special_tiles',
+      title: 'Special Tiles',
+      content: '<p>Some tiles have special properties that affect gameplay.</p><ul><li>Tiles may damage, heal, or teleport entities</li><li>Some tiles block movement or prevent placement</li><li>Hover over tiles to see their effects</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+  ],
+};
+
+export const getHelpContent = (): HelpContentStorage => {
+  try {
+    const stored = localStorage.getItem(HELP_CONTENT_KEY);
+    if (!stored) return defaultHelpContent;
+    const parsed = JSON.parse(stored) as HelpContentStorage;
+    // Merge with defaults to ensure all sections exist
+    const merged: HelpContentStorage = { sections: [] };
+    for (const defaultSection of defaultHelpContent.sections) {
+      const existing = parsed.sections.find(s => s.id === defaultSection.id);
+      merged.sections.push(existing || defaultSection);
+    }
+    return merged;
+  } catch (e) {
+    console.error('Failed to load help content:', e);
+    return defaultHelpContent;
+  }
+};
+
+export const getHelpSection = (sectionId: HelpSectionId): HelpContent | null => {
+  const storage = getHelpContent();
+  return storage.sections.find(s => s.id === sectionId) || null;
+};
+
+export const saveHelpSection = (section: HelpContent): boolean => {
+  const storage = getHelpContent();
+  const index = storage.sections.findIndex(s => s.id === section.id);
+  if (index >= 0) {
+    storage.sections[index] = { ...section, updatedAt: new Date().toISOString() };
+  } else {
+    storage.sections.push({ ...section, updatedAt: new Date().toISOString() });
+  }
+  return safeLocalStorageSet(HELP_CONTENT_KEY, JSON.stringify(storage));
+};
+
+export const getAllHelpSections = (): HelpContent[] => {
+  return getHelpContent().sections;
 };

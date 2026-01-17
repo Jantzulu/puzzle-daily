@@ -357,6 +357,20 @@ export const CollectibleEditor: React.FC = () => {
                           <span>Enemies</span>
                         </label>
                       </div>
+                      <div className="pt-2 border-t border-gray-700">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editing.preventPlacement || false}
+                            onChange={e => setEditing({ ...editing, preventPlacement: e.target.checked })}
+                            className="rounded"
+                          />
+                          <span>Prevent Character Placement</span>
+                        </label>
+                        <p className="text-xs text-gray-400 mt-1 ml-6">
+                          If enabled, characters cannot be placed on tiles with this collectible during setup (they can still walk over it)
+                        </p>
+                      </div>
                     </div>
 
                     {/* Sound */}

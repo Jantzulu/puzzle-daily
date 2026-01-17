@@ -4,6 +4,7 @@ import { getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
+import { HelpButton } from './HelpOverlay';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
@@ -208,7 +209,10 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   return (
     <div className="bg-gray-800 p-4 rounded">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-bold">Status Effects</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg font-bold">Status Effects</h3>
+          <HelpButton sectionId="status_effects" />
+        </div>
         <span className="text-sm text-gray-400">
           {statusEffectsWithSources.length} possible
         </span>

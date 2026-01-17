@@ -8,8 +8,9 @@ import { TileTypeEditor } from './TileTypeEditor';
 import { ObjectEditor } from './ObjectEditor';
 import { CollectibleEditor } from './CollectibleEditor';
 import { SoundEditor } from './SoundEditor';
+import { HelpContentEditor } from './HelpContentEditor';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'help';
 
 export const AssetManager: React.FC = () => {
   const [activeTab, setActiveTab] = useState<AssetTab>('characters');
@@ -116,6 +117,16 @@ export const AssetManager: React.FC = () => {
               >
                 🔊 Sounds
               </button>
+              <button
+                onClick={() => setActiveTab('help')}
+                className={`px-3 md:px-4 py-2 rounded-t text-sm md:text-base whitespace-nowrap ${
+                  activeTab === 'help'
+                    ? 'bg-gray-900 text-white'
+                    : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                }`}
+              >
+                ❓ Help
+              </button>
             </div>
           </div>
         </div>
@@ -132,6 +143,11 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'objects' && <ObjectEditor />}
         {activeTab === 'collectibles' && <CollectibleEditor />}
         {activeTab === 'sounds' && <SoundEditor />}
+        {activeTab === 'help' && (
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6" style={{ height: 'calc(100vh - 130px)' }}>
+            <HelpContentEditor />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -3,6 +3,7 @@ import type { PlacedEnemy } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
+import { HelpButton } from './HelpOverlay';
 
 interface EnemyDisplayProps {
   enemies: PlacedEnemy[];
@@ -39,7 +40,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
   return (
     <div className="bg-gray-800 p-4 rounded">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-bold">Enemies</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg font-bold">Enemies</h3>
+          <HelpButton sectionId="enemies" />
+        </div>
         <span className="text-sm text-gray-400">
           {livingEnemies.length} remaining
         </span>

@@ -3,7 +3,7 @@
 
 import { initializeGameState, executeTurn } from './simulation';
 import { getCharacter } from '../data/characters';
-import { loadTileType } from '../utils/assetStorage';
+import { loadTileType, loadCollectible } from '../utils/assetStorage';
 import type { Puzzle, PlacedCharacter, GameState, Direction, TileType } from '../types/game';
 
 export interface SolverResult {
@@ -55,6 +55,22 @@ function findValidPlacementTiles(puzzle: Puzzle): ValidTile[] {
         const customTileType = loadTileType(tile.customTileTypeId);
         if (customTileType?.preventPlacement) continue;
       }
+
+      // Can't place on tiles with collectibles that have preventPlacement enabled
+      const collectiblesAtPosition = puzzle.collectibles.filter(
+        c => c.x === x && c.y === y && !c.collected
+      );
+      let hasBlockingCollectible = false;
+      for (const placed of collectiblesAtPosition) {
+        if (placed.collectibleId) {
+          const collectible = loadCollectible(placed.collectibleId);
+          if (collectible?.preventPlacement) {
+            hasBlockingCollectible = true;
+            break;
+          }
+        }
+      }
+      if (hasBlockingCollectible) continue;
 
       validTiles.push({ x, y });
     }

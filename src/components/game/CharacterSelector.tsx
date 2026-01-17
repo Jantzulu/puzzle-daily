@@ -2,6 +2,7 @@ import React from 'react';
 import { getCharacter } from '../../data/characters';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
+import { HelpButton } from './HelpOverlay';
 
 interface CharacterSelectorProps {
   availableCharacterIds: string[];
@@ -21,6 +22,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   return (
     <div className="bg-gray-800 p-4 rounded">
       <div className="flex items-center justify-center gap-2 mb-3">
+        <HelpButton sectionId="characters" />
         <h3 className="text-lg font-bold">Available Characters</h3>
         <span className="text-sm text-gray-400">
           ({placedCharacterIds.length} Placed)

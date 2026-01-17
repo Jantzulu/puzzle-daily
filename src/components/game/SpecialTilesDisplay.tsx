@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import type { Puzzle, TileBehaviorConfig, CadenceConfig } from '../../types/game';
 import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
+import { HelpButton } from './HelpOverlay';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
@@ -209,7 +210,10 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   return (
     <div className="bg-gray-800 p-4 rounded">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-bold">Special Tiles</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg font-bold">Special Tiles</h3>
+          <HelpButton sectionId="special_tiles" />
+        </div>
         <span className="text-sm text-gray-400">
           {specialTiles.length} type{specialTiles.length !== 1 ? 's' : ''}
         </span>

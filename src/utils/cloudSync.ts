@@ -37,6 +37,7 @@ import {
   getHiddenAssets,
   getSoundAssets,
   getGlobalSoundConfig,
+  getHelpContent,
   saveTileType,
   saveObject,
   saveCharacter,
@@ -48,6 +49,7 @@ import {
   saveFolder,
   saveSoundAsset,
   saveGlobalSoundConfig,
+  saveHelpSection,
   deleteTileType,
   deleteObject,
   deleteCharacter,
@@ -62,6 +64,7 @@ import {
   clearPendingAssetDeletions,
   type AssetFolder,
   type CustomCollectibleType,
+  type HelpContentStorage,
 } from './assetStorage';
 import type { SoundAsset, GlobalSoundConfig } from '../types/game';
 import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle, getPendingPuzzleDeletions, clearPendingPuzzleDeletions } from './puzzleStorage';
@@ -195,6 +198,13 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     if (Object.keys(globalSoundConfig).length > 0) {
       const success = await saveAssetToCloud('global_sound_config', 'global_sound_config', 'Global Sound Config', globalSoundConfig);
       if (!success) errors.push('Failed to upload global sound config');
+    }
+
+    // Push help content
+    const helpContent = getHelpContent();
+    if (helpContent.sections.length > 0) {
+      const success = await saveAssetToCloud('help_content', 'help_content', 'Help Content', helpContent);
+      if (!success) errors.push('Failed to upload help content');
     }
 
     // Push puzzles
@@ -462,6 +472,25 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           }
         } catch (e) {
           errors.push(`Failed to import global sound config`);
+        }
+      }
+    }
+
+    // Import help content
+    if (cloudData.helpContent) {
+      for (const asset of cloudData.helpContent) {
+        try {
+          if (!asset.deleted_at && asset.id === 'help_content') {
+            const helpData = asset.data as unknown as HelpContentStorage;
+            if (helpData.sections) {
+              for (const section of helpData.sections) {
+                saveHelpSection(section);
+              }
+              console.log(`[CloudSync] Imported ${helpData.sections.length} help sections`);
+            }
+          }
+        } catch (e) {
+          errors.push(`Failed to import help content`);
         }
       }
     }

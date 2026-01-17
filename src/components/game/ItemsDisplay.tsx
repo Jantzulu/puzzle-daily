@@ -2,8 +2,9 @@ import React, { useMemo } from 'react';
 import type { Puzzle } from '../../types/game';
 import { getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
-import { loadCollectible, loadStatusEffectAsset, type CustomSprite, type CustomCollectible } from '../../utils/assetStorage';
+import { loadCollectible, type CustomSprite, type CustomCollectible } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
+import { HelpButton } from './HelpOverlay';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
@@ -22,26 +23,6 @@ interface ItemWithSources {
   collectible: CustomCollectible;
   onMap: boolean;
   dropSources: EntitySource[];
-}
-
-/**
- * Get effect type badge color and label
- */
-function getEffectBadge(type: string): { color: string; label: string } {
-  switch (type) {
-    case 'score':
-      return { color: 'bg-yellow-900 text-yellow-300', label: 'Score' };
-    case 'heal':
-      return { color: 'bg-green-900 text-green-300', label: 'Heal' };
-    case 'damage':
-      return { color: 'bg-red-900 text-red-300', label: 'Damage' };
-    case 'status_effect':
-      return { color: 'bg-blue-900 text-blue-300', label: 'Buff' };
-    case 'win_key':
-      return { color: 'bg-purple-900 text-purple-300', label: 'Key' };
-    default:
-      return { color: 'bg-gray-700 text-gray-300', label: type };
-  }
 }
 
 /**
@@ -158,7 +139,10 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
   return (
     <div className="bg-gray-800 p-4 rounded">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-lg font-bold">Items</h3>
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg font-bold">Items</h3>
+          <HelpButton sectionId="items" />
+        </div>
         <span className="text-sm text-gray-400">
           {itemsWithSources.length} type{itemsWithSources.length !== 1 ? 's' : ''}
         </span>
@@ -188,6 +172,12 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
                       On Map
                     </span>
                   )}
+                  {/* Prevent placement indicator */}
+                  {collectible.preventPlacement && (
+                    <span className="text-xs px-1.5 py-0.5 rounded bg-orange-900/50 text-orange-300" title="Characters cannot be placed on this tile">
+                      No Placement
+                    </span>
+                  )}
                 </div>
 
                 {/* Description if available */}
@@ -196,49 +186,6 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
                     className="text-xs text-gray-400 mt-0.5"
                     dangerouslySetInnerHTML={{ __html: collectible.description }}
                   />
-                )}
-
-                {/* Effect badges */}
-                {collectible.effects.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {collectible.effects.map((effect, i) => {
-                      const badge = getEffectBadge(effect.type);
-                      let label = badge.label;
-
-                      // Add value details
-                      if (effect.type === 'score' && effect.scoreValue) {
-                        label = `+${effect.scoreValue} pts`;
-                      } else if (effect.type === 'heal' && effect.amount) {
-                        label = `Heal ${effect.amount}`;
-                      } else if (effect.type === 'damage' && effect.amount) {
-                        label = `Dmg ${effect.amount}`;
-                      } else if (effect.type === 'status_effect' && effect.statusAssetId) {
-                        const statusEffect = loadStatusEffectAsset(effect.statusAssetId);
-                        if (statusEffect) {
-                          label = statusEffect.name;
-                        }
-                      }
-
-                      return (
-                        <span
-                          key={i}
-                          className={`text-xs px-1.5 py-0.5 rounded ${badge.color}`}
-                        >
-                          {label}
-                        </span>
-                      );
-                    })}
-                  </div>
-                )}
-
-                {/* Pickup permissions */}
-                {collectible.pickupPermissions && (
-                  <div className="text-xs text-gray-500 mt-1">
-                    Pickup: {[
-                      collectible.pickupPermissions.characters && 'Characters',
-                      collectible.pickupPermissions.enemies && 'Enemies',
-                    ].filter(Boolean).join(', ') || 'None'}
-                  </div>
                 )}
               </div>
             </div>

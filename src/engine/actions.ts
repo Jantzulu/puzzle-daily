@@ -883,7 +883,9 @@ function moveCharacter(
     }
 
     // Check for collectibles
-    processCollectiblePickup(updatedChar, false, newX, newY, gameState);
+    // Detect if this is actually an enemy (enemies use characterId = enemyId when wrapped as PlacedCharacter)
+    const isEnemy = !getCharacter(updatedChar.characterId) && !!getEnemy(updatedChar.characterId);
+    processCollectiblePickup(updatedChar, isEnemy, newX, newY, gameState);
 
     // Process custom tile behaviors (damage, teleport, ice, etc.)
     const currentTile = gameState.puzzle.tiles[updatedChar.y]?.[updatedChar.x];

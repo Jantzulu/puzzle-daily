@@ -290,9 +290,10 @@ export async function syncFromCloud(): Promise<{
   hiddenAssets: DbAsset[];
   sounds: DbAsset[];
   globalSoundConfig: DbAsset[];
+  helpContent: DbAsset[];
 }> {
   // Include deleted items so pull can process deletions
-  const [puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets, sounds, globalSoundConfig] = await Promise.all([
+  const [puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets, sounds, globalSoundConfig, helpContent] = await Promise.all([
     fetchAllPuzzles(true),
     fetchAllAssets('tile_type', true),
     fetchAllAssets('enemy', true),
@@ -306,9 +307,10 @@ export async function syncFromCloud(): Promise<{
     fetchAllAssets('hidden_assets', true),
     fetchAllAssets('sound', true),
     fetchAllAssets('global_sound_config', true),
+    fetchAllAssets('help_content', true),
   ]);
 
-  return { puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets, sounds, globalSoundConfig };
+  return { puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, hiddenAssets, sounds, globalSoundConfig, helpContent };
 }
 
 // ============================================

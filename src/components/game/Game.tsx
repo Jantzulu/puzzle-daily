@@ -11,7 +11,8 @@ import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { ItemsDisplay } from './ItemsDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { loadTileType } from '../../utils/assetStorage';
+import { loadTileType, loadCollectible } from '../../utils/assetStorage';
+import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
 
 // Test mode types
@@ -194,6 +195,20 @@ export const Game: React.FC = () => {
         if (customTileType?.preventPlacement) {
           playGameSound('error');
           return; // Can't place on tiles that prevent placement
+        }
+      }
+
+      // Check if any collectible on this tile prevents placement
+      const collectiblesAtPosition = gameState.puzzle.collectibles.filter(
+        c => c.x === x && c.y === y && !c.collected
+      );
+      for (const placed of collectiblesAtPosition) {
+        if (placed.collectibleId) {
+          const collectible = loadCollectible(placed.collectibleId);
+          if (collectible?.preventPlacement) {
+            playGameSound('error');
+            return; // Can't place on tiles with collectibles that prevent placement
+          }
         }
       }
 
@@ -578,6 +593,7 @@ export const Game: React.FC = () => {
             {gameState.gameStatus === 'setup' && (
               <div className="mt-4 w-full max-w-md px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
                 <div className="flex items-center justify-center gap-2 text-sm">
+                  <HelpButton sectionId="game_general" />
                   <span className="text-gray-400">Goal:</span>
                   <span className="text-yellow-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
