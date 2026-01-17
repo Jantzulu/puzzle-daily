@@ -28,7 +28,8 @@ import {
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo } from './utils';
-import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset } from '../utils/assetStorage';
+import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
+import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus } from './simulation';
 import { wakeFromSleep } from './simulation';
 
@@ -882,13 +883,7 @@ function moveCharacter(
     }
 
     // Check for collectibles
-    const collectible = gameState.puzzle.collectibles.find(
-      (c) => c.x === newX && c.y === newY && !c.collected
-    );
-    if (collectible) {
-      collectible.collected = true;
-      gameState.score += collectible.scoreValue;
-    }
+    processCollectiblePickup(updatedChar, false, newX, newY, gameState);
 
     // Process custom tile behaviors (damage, teleport, ice, etc.)
     const currentTile = gameState.puzzle.tiles[updatedChar.y]?.[updatedChar.x];
@@ -1953,6 +1948,215 @@ function applyDamageToEntity(
   if (target.currentHealth <= 0) {
     target.dead = true;
   }
+}
+
+// ==========================================
+// COLLECTIBLE PICKUP SYSTEM
+// ==========================================
+
+/**
+ * Check for and process collectible pickup at a position
+ * Called when any entity moves to a new tile
+ */
+export function processCollectiblePickup(
+  entity: PlacedCharacter | PlacedEnemy,
+  isEnemy: boolean,
+  x: number,
+  y: number,
+  gameState: GameState
+): void {
+  const collectible = gameState.puzzle.collectibles.find(
+    (c) => c.x === x && c.y === y && !c.collected
+  );
+
+  if (!collectible) return;
+
+  // Handle legacy collectibles (backwards compatibility)
+  if (collectible.type && !collectible.collectibleId) {
+    // Legacy coin/gem behavior
+    collectible.collected = true;
+    gameState.score += collectible.scoreValue || 0;
+    return;
+  }
+
+  // New collectible system
+  if (!collectible.collectibleId) return;
+
+  const collectibleData = loadCollectible(collectible.collectibleId);
+  if (!collectibleData) return;
+
+  // Check pickup permissions
+  const permissions = collectibleData.pickupPermissions;
+  if (isEnemy && !permissions.enemies) return;
+  if (!isEnemy && !permissions.characters) return;
+
+  // Mark as collected
+  collectible.collected = true;
+  collectible.collectedBy = isEnemy
+    ? (entity as PlacedEnemy).enemyId
+    : (entity as PlacedCharacter).characterId;
+  collectible.collectedByType = isEnemy ? 'enemy' : 'character';
+
+  // Apply all effects
+  for (const effect of collectibleData.effects) {
+    applyCollectibleEffect(entity, effect, isEnemy, gameState);
+  }
+
+  // Spawn particle effect for visual feedback
+  spawnCollectiblePickupParticle(x, y, gameState);
+}
+
+/**
+ * Apply a single collectible effect to an entity
+ */
+function applyCollectibleEffect(
+  entity: PlacedCharacter | PlacedEnemy,
+  effect: CollectibleEffectConfig,
+  isEnemy: boolean,
+  gameState: GameState
+): void {
+  switch (effect.type) {
+    case 'score':
+      // Only characters contribute to score
+      if (!isEnemy) {
+        gameState.score += effect.scoreValue ?? 0;
+      }
+      break;
+
+    case 'status_effect':
+      if (effect.statusAssetId) {
+        applyStatusEffectFromCollectible(
+          entity,
+          effect.statusAssetId,
+          effect.statusDuration,
+          effect.statusValue,
+          gameState.currentTurn
+        );
+      }
+      break;
+
+    case 'win_key':
+      // Win keys are tracked via the collected state
+      // Win condition checker will scan for uncollected win_key collectibles
+      break;
+
+    case 'heal':
+      const maxHealth = isEnemy
+        ? getEnemy((entity as PlacedEnemy).enemyId)?.health ?? entity.currentHealth
+        : getCharacter((entity as PlacedCharacter).characterId)?.health ?? entity.currentHealth;
+      entity.currentHealth = Math.min(entity.currentHealth + (effect.amount ?? 0), maxHealth);
+      break;
+
+    case 'damage':
+      entity.currentHealth -= effect.amount ?? 0;
+      wakeFromSleep(entity);
+      if (entity.currentHealth <= 0) {
+        entity.dead = true;
+      }
+      break;
+  }
+}
+
+/**
+ * Apply status effect from collectible (reuses spell pattern)
+ */
+function applyStatusEffectFromCollectible(
+  target: PlacedCharacter | PlacedEnemy,
+  statusAssetId: string,
+  durationOverride?: number,
+  valueOverride?: number,
+  currentTurn: number = 0
+): void {
+  const effectAsset = loadStatusEffectAsset(statusAssetId);
+  if (!effectAsset) {
+    console.warn(`Status effect asset not found: ${statusAssetId}`);
+    return;
+  }
+
+  // Initialize status effects array if needed
+  if (!target.statusEffects) {
+    target.statusEffects = [];
+  }
+
+  // Check for existing effect (same stacking logic as spells)
+  const existingEffect = target.statusEffects.find(
+    e => e.statusAssetId === statusAssetId
+  );
+
+  const duration = durationOverride ?? effectAsset.defaultDuration ?? 3;
+  const value = valueOverride ?? effectAsset.defaultValue;
+
+  if (existingEffect) {
+    switch (effectAsset.stackingBehavior) {
+      case 'refresh':
+        existingEffect.duration = duration;
+        return;
+      case 'stack':
+        const maxStacks = effectAsset.maxStacks ?? 5;
+        existingEffect.currentStacks = Math.min(
+          (existingEffect.currentStacks ?? 1) + 1,
+          maxStacks
+        );
+        existingEffect.duration = duration;
+        return;
+      case 'highest':
+        if (value !== undefined && value > (existingEffect.value ?? 0)) {
+          existingEffect.value = value;
+          existingEffect.duration = duration;
+        }
+        return;
+      case 'replace':
+        target.statusEffects = target.statusEffects.filter(e => e !== existingEffect);
+        break;
+    }
+  }
+
+  // Create new status effect instance
+  const newEffect: StatusEffectInstance = {
+    id: `status_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type: effectAsset.type,
+    statusAssetId: statusAssetId,
+    duration,
+    value,
+    currentStacks: 1,
+    appliedOnTurn: currentTurn,
+    sourceEntityId: 'collectible',
+    sourceIsEnemy: false,
+    movementSkipCounter: 0,
+  };
+
+  target.statusEffects.push(newEffect);
+}
+
+/**
+ * Spawn visual particle for collectible pickup
+ */
+function spawnCollectiblePickupParticle(
+  x: number,
+  y: number,
+  gameState: GameState
+): void {
+  if (!gameState.activeParticles) {
+    gameState.activeParticles = [];
+  }
+
+  gameState.activeParticles.push({
+    id: `collectible_pickup_${Date.now()}`,
+    sprite: {
+      type: 'inline',
+      spriteData: {
+        shape: 'star',
+        primaryColor: '#ffd700',
+        type: 'simple'
+      }
+    },
+    x,
+    y,
+    startTime: Date.now(),
+    duration: 300,
+    scale: 1.5,
+    alpha: 1,
+  });
 }
 
 // ==========================================

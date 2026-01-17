@@ -1,4 +1,4 @@
-import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig } from '../types/game';
+import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, CollectibleEffectConfig, CollectiblePickupPermissions } from '../types/game';
 
 // ============ SAFE LOCALSTORAGE UTILITIES ============
 // Handles mobile browser restrictions (Private mode, quota limits, Safari quirks)
@@ -301,6 +301,7 @@ export interface CustomTileType {
   folderId?: string; // Optional folder assignment
 }
 
+// Legacy interface - kept for backwards compatibility
 export interface CustomCollectibleType {
   id: string;
   name: string;
@@ -309,7 +310,33 @@ export interface CustomCollectibleType {
   scoreValue: number;
   isCustom: boolean;
   createdAt: string;
-  folderId?: string; // Optional folder assignment
+  folderId?: string;
+}
+
+// New full-featured collectible interface
+export interface CustomCollectible {
+  id: string;
+  name: string;
+  description?: string;
+
+  // Visual
+  customSprite?: CustomSprite;   // Full spritesheet support
+  anchorPoint?: 'center' | 'bottom_center';
+
+  // Effects (multiple allowed)
+  effects: CollectibleEffectConfig[];
+
+  // Pickup behavior
+  pickupMethod: 'step_on';
+  pickupPermissions: CollectiblePickupPermissions;
+
+  // Sound
+  pickupSound?: string;          // Sound asset ID to play on collection
+
+  // Metadata
+  folderId?: string;
+  isCustom: boolean;
+  createdAt: string;
 }
 
 // ============ CUSTOM OBJECT TYPES ============
@@ -485,6 +512,7 @@ export const loadTileType = (tileId: string): CustomTileType | null => {
 
 // ============ COLLECTIBLE STORAGE ============
 
+// Legacy collectible type storage (kept for backwards compatibility)
 export const saveCollectibleType = (collectible: CustomCollectibleType): void => {
   const collectibles = getCustomCollectibleTypes();
   const existingIndex = collectibles.findIndex(c => c.id === collectible.id);
@@ -508,6 +536,52 @@ export const getCustomCollectibleTypes = (): CustomCollectibleType[] => {
     console.error('Failed to parse custom collectibles:', e);
     return [];
   }
+};
+
+// New CustomCollectible storage (full-featured system)
+const COLLECTIBLE_ASSET_STORAGE_KEY = 'custom_collectible_assets';
+
+export const saveCollectible = (collectible: CustomCollectible): boolean => {
+  const collectibles = getCustomCollectibles();
+  const existingIndex = collectibles.findIndex(c => c.id === collectible.id);
+
+  if (existingIndex >= 0) {
+    collectibles[existingIndex] = { ...collectible, createdAt: new Date().toISOString() };
+  } else {
+    collectibles.push({ ...collectible, createdAt: new Date().toISOString(), isCustom: true });
+  }
+
+  return safeLocalStorageSet(COLLECTIBLE_ASSET_STORAGE_KEY, JSON.stringify(collectibles));
+};
+
+export const getCustomCollectibles = (): CustomCollectible[] => {
+  const stored = localStorage.getItem(COLLECTIBLE_ASSET_STORAGE_KEY);
+  if (!stored) return [];
+
+  try {
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to parse custom collectible assets:', e);
+    return [];
+  }
+};
+
+export const deleteCollectible = (collectibleId: string): void => {
+  const collectibles = getCustomCollectibles();
+  const filtered = collectibles.filter(c => c.id !== collectibleId);
+  localStorage.setItem(COLLECTIBLE_ASSET_STORAGE_KEY, JSON.stringify(filtered));
+
+  // Track deletion for cloud sync
+  addPendingAssetDeletion(collectibleId, 'collectible');
+};
+
+export const loadCollectible = (collectibleId: string): CustomCollectible | null => {
+  const collectibles = getCustomCollectibles();
+  return collectibles.find(c => c.id === collectibleId) || null;
+};
+
+export const getAllCollectibles = (): CustomCollectible[] => {
+  return getCustomCollectibles();
 };
 
 export const deleteCollectibleType = (collectibleId: string): void => {

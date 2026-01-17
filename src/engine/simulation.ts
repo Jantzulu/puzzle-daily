@@ -1,9 +1,9 @@
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset } from '../types/game';
-import { ActionType, Direction, StatusEffectType } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible } from '../types/game';
+import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
-import { loadStatusEffectAsset, loadSpellAsset } from '../utils/assetStorage';
+import { loadStatusEffectAsset, loadSpellAsset, loadCollectible } from '../utils/assetStorage';
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
@@ -303,6 +303,143 @@ export function wakeFromSleep(entity: PlacedCharacter | PlacedEnemy): void {
   }
 }
 
+// ==========================================
+// DEATH DROP SYSTEM
+// ==========================================
+
+/**
+ * Find a valid position to drop a collectible
+ * First tries the death location, then adjacent tiles (cardinal, then diagonal)
+ */
+function findDropPosition(
+  x: number,
+  y: number,
+  gameState: GameState
+): { x: number; y: number } | null {
+  const { width, height, tiles, collectibles } = gameState.puzzle;
+
+  // Helper to check if a position is valid for dropping
+  const isValidDropPosition = (checkX: number, checkY: number): boolean => {
+    // Must be in bounds
+    if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) {
+      return false;
+    }
+
+    // Must have a valid tile (not null, not wall)
+    const tile = tiles[checkY]?.[checkX];
+    if (!tile || tile.type === TileTypeEnum.WALL) {
+      return false;
+    }
+
+    // Check if tile prevents placement
+    if (tile.preventPlacement) {
+      return false;
+    }
+
+    // Check if there's already an uncollected collectible at this position
+    const existingCollectible = collectibles.find(
+      c => !c.collected && c.x === checkX && c.y === checkY
+    );
+    if (existingCollectible) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Try death location first
+  if (isValidDropPosition(x, y)) {
+    return { x, y };
+  }
+
+  // Try cardinal directions (N, E, S, W)
+  const cardinalOffsets = [
+    { dx: 0, dy: -1 }, // North
+    { dx: 1, dy: 0 },  // East
+    { dx: 0, dy: 1 },  // South
+    { dx: -1, dy: 0 }, // West
+  ];
+
+  for (const offset of cardinalOffsets) {
+    const checkX = x + offset.dx;
+    const checkY = y + offset.dy;
+    if (isValidDropPosition(checkX, checkY)) {
+      return { x: checkX, y: checkY };
+    }
+  }
+
+  // Try diagonal directions (NE, SE, SW, NW)
+  const diagonalOffsets = [
+    { dx: 1, dy: -1 },  // Northeast
+    { dx: 1, dy: 1 },   // Southeast
+    { dx: -1, dy: 1 },  // Southwest
+    { dx: -1, dy: -1 }, // Northwest
+  ];
+
+  for (const offset of diagonalOffsets) {
+    const checkX = x + offset.dx;
+    const checkY = y + offset.dy;
+    if (isValidDropPosition(checkX, checkY)) {
+      return { x: checkX, y: checkY };
+    }
+  }
+
+  // No valid position found
+  return null;
+}
+
+/**
+ * Handle death drop for an entity
+ * Spawns a collectible if the entity has droppedCollectibleId configured
+ */
+export function handleEntityDeathDrop(
+  entity: PlacedCharacter | PlacedEnemy,
+  isEnemy: boolean,
+  gameState: GameState
+): void {
+  // Get the entity's data to check for droppedCollectibleId
+  let droppedCollectibleId: string | undefined;
+
+  if (isEnemy) {
+    const enemyData = getEnemy((entity as PlacedEnemy).enemyId);
+    droppedCollectibleId = enemyData?.droppedCollectibleId;
+  } else {
+    const charData = getCharacter((entity as PlacedCharacter).characterId);
+    droppedCollectibleId = charData?.droppedCollectibleId;
+  }
+
+  // No collectible to drop
+  if (!droppedCollectibleId) {
+    return;
+  }
+
+  // Load the collectible data to make sure it exists
+  const collectibleData = loadCollectible(droppedCollectibleId);
+  if (!collectibleData) {
+    console.warn(`Death drop collectible not found: ${droppedCollectibleId}`);
+    return;
+  }
+
+  // Find a valid drop position
+  const dropPos = findDropPosition(entity.x, entity.y, gameState);
+  if (!dropPos) {
+    console.warn(`No valid drop position found for collectible near (${entity.x}, ${entity.y})`);
+    return;
+  }
+
+  // Create the new collectible instance
+  const newCollectible: PlacedCollectible = {
+    collectibleId: droppedCollectibleId,
+    x: dropPos.x,
+    y: dropPos.y,
+    collected: false,
+    instanceId: `drop_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+  };
+
+  // Add to puzzle collectibles
+  gameState.puzzle.collectibles.push(newCollectible);
+}
+
 /**
  * Apply status effect from a projectile hit
  */
@@ -395,23 +532,35 @@ function applyStatusEffectFromProjectile(
 function processAllStatusEffectsTurnStart(gameState: GameState): void {
   // Process characters
   for (let i = 0; i < gameState.placedCharacters.length; i++) {
-    if (!gameState.placedCharacters[i].dead) {
+    const wasAlive = !gameState.placedCharacters[i].dead;
+    if (wasAlive) {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
         'start',
         gameState.currentTurn
       ) as PlacedCharacter;
+
+      // Check if entity died from DOT and handle death drop
+      if (gameState.placedCharacters[i].dead) {
+        handleEntityDeathDrop(gameState.placedCharacters[i], false, gameState);
+      }
     }
   }
 
   // Process enemies
   for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
-    if (!gameState.puzzle.enemies[i].dead) {
+    const wasAlive = !gameState.puzzle.enemies[i].dead;
+    if (wasAlive) {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
         'start',
         gameState.currentTurn
       ) as PlacedEnemy;
+
+      // Check if entity died from DOT and handle death drop
+      if (gameState.puzzle.enemies[i].dead) {
+        handleEntityDeathDrop(gameState.puzzle.enemies[i], true, gameState);
+      }
     }
   }
 }
@@ -422,23 +571,35 @@ function processAllStatusEffectsTurnStart(gameState: GameState): void {
 function processAllStatusEffectsTurnEnd(gameState: GameState): void {
   // Process characters
   for (let i = 0; i < gameState.placedCharacters.length; i++) {
-    if (!gameState.placedCharacters[i].dead) {
+    const wasAlive = !gameState.placedCharacters[i].dead;
+    if (wasAlive) {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
         'end',
         gameState.currentTurn
       ) as PlacedCharacter;
+
+      // Check if entity died from DOT and handle death drop
+      if (gameState.placedCharacters[i].dead) {
+        handleEntityDeathDrop(gameState.placedCharacters[i], false, gameState);
+      }
     }
   }
 
   // Process enemies
   for (let i = 0; i < gameState.puzzle.enemies.length; i++) {
-    if (!gameState.puzzle.enemies[i].dead) {
+    const wasAlive = !gameState.puzzle.enemies[i].dead;
+    if (wasAlive) {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
         'end',
         gameState.currentTurn
       ) as PlacedEnemy;
+
+      // Check if entity died from DOT and handle death drop
+      if (gameState.puzzle.enemies[i].dead) {
+        handleEntityDeathDrop(gameState.puzzle.enemies[i], true, gameState);
+      }
     }
   }
 }
@@ -997,6 +1158,20 @@ function checkVictoryConditions(gameState: GameState): boolean {
         const aliveCount = gameState.placedCharacters.filter((c) => !c.dead).length;
         if (aliveCount < minAlive) return false;
         break;
+
+      case 'collect_keys':
+        // Must collect all collectibles that have win_key effects
+        // Load collectible data to check which ones are keys
+        const keyCollectibles = gameState.puzzle.collectibles.filter(c => {
+          if (!c.collectibleId) return false;
+          const collectibleData = loadCollectible(c.collectibleId);
+          if (!collectibleData) return false;
+          return collectibleData.effects.some(e => e.type === 'win_key');
+        });
+        // All key collectibles must be collected
+        const allKeysCollected = keyCollectibles.every(c => c.collected);
+        if (!allKeysCollected) return false;
+        break;
     }
   }
 
@@ -1433,6 +1608,8 @@ export function updateProjectiles(gameState: GameState): void {
 
             if (hitEnemy.currentHealth <= 0) {
               hitEnemy.dead = true;
+              // Handle death drop
+              handleEntityDeathDrop(hitEnemy, true, gameState);
             }
 
             // Apply status effect if projectile has a spell with one configured
@@ -1558,6 +1735,8 @@ export function updateProjectiles(gameState: GameState): void {
 
             if (hitCharacter.currentHealth <= 0) {
               hitCharacter.dead = true;
+              // Handle death drop
+              handleEntityDeathDrop(hitCharacter, false, gameState);
             }
 
             // Apply status effect if projectile has a spell with one configured
@@ -1696,6 +1875,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               wakeFromSleep(enemy);
               if (enemy.currentHealth <= 0) {
                 enemy.dead = true;
+                handleEntityDeathDrop(enemy, true, gameState);
               }
               if (proj.spellAssetId && !enemy.dead) {
                 applyStatusEffectFromProjectile(enemy, proj.spellAssetId,
@@ -1714,6 +1894,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               wakeFromSleep(char);
               if (char.currentHealth <= 0) {
                 char.dead = true;
+                handleEntityDeathDrop(char, false, gameState);
               }
               if (proj.spellAssetId && !char.dead) {
                 applyStatusEffectFromProjectile(char, proj.spellAssetId,
@@ -1821,6 +2002,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 wakeFromSleep(hitEnemy);
                 if (hitEnemy.currentHealth <= 0) {
                   hitEnemy.dead = true;
+                  handleEntityDeathDrop(hitEnemy, true, gameState);
                 }
                 if (proj.spellAssetId && !hitEnemy.dead) {
                   applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
@@ -1864,6 +2046,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 wakeFromSleep(hitChar);
                 if (hitChar.currentHealth <= 0) {
                   hitChar.dead = true;
+                  handleEntityDeathDrop(hitChar, false, gameState);
                 }
                 if (proj.spellAssetId && !hitChar.dead) {
                   applyStatusEffectFromProjectile(hitChar, proj.spellAssetId,
@@ -2013,6 +2196,7 @@ function processPersistentAreaEffects(gameState: GameState): void {
         enemy.currentHealth -= effect.damagePerTurn;
         if (enemy.currentHealth <= 0) {
           enemy.dead = true;
+          handleEntityDeathDrop(enemy, true, gameState);
         }
       }
     });

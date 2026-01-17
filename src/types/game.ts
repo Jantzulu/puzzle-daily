@@ -217,6 +217,8 @@ export interface Character {
   contactDamage?: number; // Damage dealt when walking into enemies (0 or undefined = no contact damage)
   // Sound configuration
   sounds?: EntitySoundSet; // Character-specific sounds (death, damage, etc.)
+  // Death drop configuration
+  droppedCollectibleId?: string; // CustomCollectible ID to spawn on death
 }
 
 export interface Enemy {
@@ -241,6 +243,9 @@ export interface Enemy {
 
   // Sound configuration
   sounds?: EntitySoundSet; // Enemy-specific sounds (death, damage, etc.)
+
+  // Death drop configuration
+  droppedCollectibleId?: string; // CustomCollectible ID to spawn on death
 }
 
 export interface EnemyBehavior {
@@ -277,11 +282,24 @@ export interface PlacedObject {
 }
 
 export interface PlacedCollectible {
-  type: 'coin' | 'gem';
+  // Legacy backwards compatibility
+  type?: 'coin' | 'gem';
+  scoreValue?: number;
+
+  // New system: reference to CustomCollectible asset
+  collectibleId?: string;
+
+  // Position
   x: number;
   y: number;
-  scoreValue: number;
+
+  // Instance state
   collected: boolean;
+  collectedBy?: string;          // Entity ID that collected this
+  collectedByType?: 'character' | 'enemy';
+
+  // Runtime ID for tracking
+  instanceId?: string;           // Unique instance ID for this placed collectible
 }
 
 /**
@@ -290,6 +308,7 @@ export interface PlacedCollectible {
 export type WinConditionType =
   | 'defeat_all_enemies'    // All enemies must be defeated
   | 'collect_all'           // All collectibles must be collected
+  | 'collect_keys'          // All collectibles with win_key effect must be collected
   | 'reach_goal'            // A character must reach the goal tile
   | 'survive_turns'         // Survive for X turns
   | 'win_in_turns'          // Complete all other conditions within X turns
@@ -935,4 +954,47 @@ export interface GlobalSoundConfig {
   backgroundMusic?: string;
   victoryMusic?: string;
   defeatMusic?: string;
+}
+
+// ==========================================
+// COLLECTIBLE SYSTEM
+// ==========================================
+
+/**
+ * Collectible effect types - what happens when collected
+ */
+export type CollectibleEffectType =
+  | 'score'           // Add points to game score
+  | 'status_effect'   // Apply a status effect to collector (powerups!)
+  | 'win_key'         // Required for 'collect_keys' win condition
+  | 'heal'            // Restore health to collector
+  | 'damage';         // Harm the collector (trap collectibles)
+
+/**
+ * Configuration for a single collectible effect
+ */
+export interface CollectibleEffectConfig {
+  type: CollectibleEffectType;
+
+  // For 'score' type
+  scoreValue?: number;
+
+  // For 'status_effect' type
+  statusAssetId?: string;        // Reference to StatusEffectAsset
+  statusDuration?: number;       // Override default duration
+  statusValue?: number;          // Override default value
+
+  // For 'win_key' type
+  keyId?: string;                // Unique key identifier for win condition matching
+
+  // For 'heal' and 'damage' types
+  amount?: number;               // HP to heal or damage to deal
+}
+
+/**
+ * Who can pick up this collectible
+ */
+export interface CollectiblePickupPermissions {
+  characters: boolean;           // Player characters can collect
+  enemies: boolean;              // Enemies can collect
 }

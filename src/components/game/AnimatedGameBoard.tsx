@@ -4,8 +4,8 @@ import { TileType, Direction, ActionType, StatusEffectType } from '../../types/g
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
-import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject } from '../../utils/assetStorage';
-import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset } from '../../utils/assetStorage';
+import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible } from '../../utils/assetStorage';
+import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible } from '../../utils/assetStorage';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
@@ -857,14 +857,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         });
       }
 
+      const now = Date.now();
+
       // Draw collectibles
       gameState.puzzle.collectibles.forEach((collectible) => {
         if (!collectible.collected) {
-          drawCollectible(ctx, collectible.x, collectible.y);
+          drawCollectible(ctx, collectible, imageCache.current, now);
         }
       });
-
-      const now = Date.now();
 
       // Draw projectiles (Phase 2 - between tiles and entities)
       if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
@@ -2510,10 +2510,54 @@ function drawDirectionArrow(
   ctx.fill();
 }
 
-function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number) {
+function drawCollectible(
+  ctx: CanvasRenderingContext2D,
+  collectible: { x: number; y: number; collectibleId?: string; type?: 'coin' | 'gem' },
+  imageCache: Map<string, HTMLImageElement>,
+  now: number
+) {
+  const { x, y, collectibleId, type } = collectible;
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
+  // Try to load custom collectible data
+  const collectibleData = collectibleId ? loadCollectible(collectibleId) : null;
+
+  // If we have custom collectible data with a sprite, draw it
+  if (collectibleData?.customSprite) {
+    const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
+
+    // Calculate center position based on anchor point
+    let centerX = px + TILE_SIZE / 2;
+    let centerY = py + TILE_SIZE / 2;
+
+    if (collectibleData.anchorPoint === 'bottom_center') {
+      centerY = py + TILE_SIZE / 2 - spriteSize / 2;
+    }
+
+    // Draw the sprite
+    drawSprite(ctx, collectibleData.customSprite, centerX, centerY, TILE_SIZE, undefined, imageCache, now);
+    return;
+  }
+
+  // Legacy fallback: draw based on type
+  if (type === 'gem') {
+    // Draw a diamond shape for gems
+    ctx.fillStyle = '#9333ea'; // Purple
+    ctx.beginPath();
+    const cx = px + TILE_SIZE / 2;
+    const cy = py + TILE_SIZE / 2;
+    const size = TILE_SIZE / 3;
+    ctx.moveTo(cx, cy - size);
+    ctx.lineTo(cx + size, cy);
+    ctx.lineTo(cx, cy + size);
+    ctx.lineTo(cx - size, cy);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  // Default: draw a star shape (original behavior for coins and unknown types)
   ctx.fillStyle = COLORS.collectible;
   ctx.beginPath();
   const cx = px + TILE_SIZE / 2;
@@ -2525,13 +2569,13 @@ function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number) {
   for (let i = 0; i < spikes * 2; i++) {
     const radius = i % 2 === 0 ? outerRadius : innerRadius;
     const angle = (i * Math.PI) / spikes - Math.PI / 2;
-    const x = cx + Math.cos(angle) * radius;
-    const y = cy + Math.sin(angle) * radius;
+    const starX = cx + Math.cos(angle) * radius;
+    const starY = cy + Math.sin(angle) * radius;
 
     if (i === 0) {
-      ctx.moveTo(x, y);
+      ctx.moveTo(starX, starY);
     } else {
-      ctx.lineTo(x, y);
+      ctx.lineTo(starX, starY);
     }
   }
 

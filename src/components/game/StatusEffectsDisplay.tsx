@@ -2,19 +2,22 @@ import React, { useMemo } from 'react';
 import type { Puzzle, CharacterAction, StatusEffectAsset } from '../../types/game';
 import { getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
-import { loadSpellAsset, loadStatusEffectAsset, type CustomSprite } from '../../utils/assetStorage';
+import { loadSpellAsset, loadStatusEffectAsset, loadCollectible, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
 }
 
+// Source type for status effects
+type SourceType = 'character' | 'enemy' | 'item';
+
 // Entity source info for a status effect
 interface EntitySource {
   id: string;
   name: string;
   sprite?: CustomSprite;
-  isEnemy: boolean;
+  sourceType: SourceType;
 }
 
 // Status effect with source entities
@@ -25,11 +28,22 @@ interface StatusEffectWithSources {
 
 /**
  * Extracts all possible status effects that could appear in a puzzle
- * along with which entities can apply them
+ * along with which entities/items can apply them
  */
 function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSources[] {
   // Map from status effect ID to sources
   const effectSources = new Map<string, EntitySource[]>();
+
+  // Helper to add a source for an effect
+  const addEffectSource = (effectId: string, source: EntitySource) => {
+    if (!effectSources.has(effectId)) {
+      effectSources.set(effectId, []);
+    }
+    const sources = effectSources.get(effectId)!;
+    if (!sources.some(s => s.id === source.id && s.sourceType === source.sourceType)) {
+      sources.push(source);
+    }
+  };
 
   // Helper to extract status effects from an array of actions
   const extractFromActions = (actions: CharacterAction[] | undefined, source: EntitySource) => {
@@ -39,15 +53,7 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
       if (action.spellId) {
         const spell = loadSpellAsset(action.spellId);
         if (spell?.appliesStatusEffect?.statusAssetId) {
-          const effectId = spell.appliesStatusEffect.statusAssetId;
-          if (!effectSources.has(effectId)) {
-            effectSources.set(effectId, []);
-          }
-          // Add source if not already present
-          const sources = effectSources.get(effectId)!;
-          if (!sources.some(s => s.id === source.id)) {
-            sources.push(source);
-          }
+          addEffectSource(spell.appliesStatusEffect.statusAssetId, source);
         }
       }
     }
@@ -61,7 +67,7 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
         id: charId,
         name: character.name,
         sprite: (character as CharacterWithSprite).customSprite,
-        isEnemy: false,
+        sourceType: 'character',
       });
     }
   }
@@ -78,8 +84,70 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
         id: placedEnemy.enemyId,
         name: enemy.name,
         sprite: (enemy as EnemyWithSprite).customSprite,
-        isEnemy: true,
+        sourceType: 'enemy',
       });
+    }
+  }
+
+  // Check collectibles on the map for status effect applications
+  const seenCollectibleIds = new Set<string>();
+  for (const placed of puzzle.collectibles) {
+    if (placed.collectibleId && !seenCollectibleIds.has(placed.collectibleId)) {
+      seenCollectibleIds.add(placed.collectibleId);
+      const collectible = loadCollectible(placed.collectibleId);
+      if (collectible) {
+        for (const effect of collectible.effects) {
+          if (effect.type === 'status_effect' && effect.statusAssetId) {
+            addEffectSource(effect.statusAssetId, {
+              id: collectible.id,
+              name: collectible.name,
+              sprite: collectible.customSprite,
+              sourceType: 'item',
+            });
+          }
+        }
+      }
+    }
+  }
+
+  // Check death drops from characters and enemies for status effect applications
+  for (const charId of puzzle.availableCharacters) {
+    const character = getCharacter(charId);
+    if (character?.droppedCollectibleId && !seenCollectibleIds.has(character.droppedCollectibleId)) {
+      seenCollectibleIds.add(character.droppedCollectibleId);
+      const collectible = loadCollectible(character.droppedCollectibleId);
+      if (collectible) {
+        for (const effect of collectible.effects) {
+          if (effect.type === 'status_effect' && effect.statusAssetId) {
+            addEffectSource(effect.statusAssetId, {
+              id: collectible.id,
+              name: collectible.name,
+              sprite: collectible.customSprite,
+              sourceType: 'item',
+            });
+          }
+        }
+      }
+    }
+  }
+
+  for (const placedEnemy of puzzle.enemies) {
+    const enemy = getEnemy(placedEnemy.enemyId);
+    if (enemy?.droppedCollectibleId && !seenCollectibleIds.has(enemy.droppedCollectibleId)) {
+      seenCollectibleIds.add(enemy.droppedCollectibleId);
+      const collectible = loadCollectible(enemy.droppedCollectibleId);
+      if (collectible) {
+        for (const effect of collectible.effects) {
+          if (effect.type === 'status_effect' && effect.statusAssetId) {
+            addEffectSource(effect.statusAssetId, {
+              id: collectible.id,
+              name: collectible.name,
+              sprite: collectible.customSprite,
+              sourceType: 'item',
+            });
+          }
+        }
+      }
     }
   }
 
@@ -174,22 +242,26 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               <div className="mt-2 pt-2 border-t border-gray-600">
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="text-xs text-gray-500 mr-1">Applied by:</span>
-                  {sources.map((source) => (
-                    <div
-                      key={source.id}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${
-                        source.isEnemy
-                          ? 'bg-red-900/50 text-red-300'
-                          : 'bg-green-900/50 text-green-300'
-                      }`}
-                      title={source.name}
-                    >
-                      {source.sprite && (
-                        <SpriteThumbnail sprite={source.sprite} size={16} />
-                      )}
-                      <span className="max-w-[60px] truncate">{source.name}</span>
-                    </div>
-                  ))}
+                  {sources.map((source) => {
+                    const colorClass = source.sourceType === 'enemy'
+                      ? 'bg-red-900/50 text-red-300'
+                      : source.sourceType === 'item'
+                      ? 'bg-yellow-900/50 text-yellow-300'
+                      : 'bg-green-900/50 text-green-300';
+
+                    return (
+                      <div
+                        key={`${source.sourceType}-${source.id}`}
+                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${colorClass}`}
+                        title={source.name}
+                      >
+                        {source.sprite && (
+                          <SpriteThumbnail sprite={source.sprite} size={16} />
+                        )}
+                        <span className="max-w-[60px] truncate">{source.name}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               </div>
             )}

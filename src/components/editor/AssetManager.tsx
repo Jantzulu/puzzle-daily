@@ -6,6 +6,7 @@ import { StatusEffectLibrary } from './StatusEffectLibrary';
 import { SkinEditor } from './SkinEditor';
 import { TileTypeEditor } from './TileTypeEditor';
 import { ObjectEditor } from './ObjectEditor';
+import { CollectibleEditor } from './CollectibleEditor';
 import { SoundEditor } from './SoundEditor';
 
 type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds';
@@ -129,62 +130,9 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'skins' && <SkinEditor />}
         {activeTab === 'tiles' && <TileTypeEditor />}
         {activeTab === 'objects' && <ObjectEditor />}
-        {activeTab === 'collectibles' && <CollectibleEditorPlaceholder />}
+        {activeTab === 'collectibles' && <CollectibleEditor />}
         {activeTab === 'sounds' && <SoundEditor />}
       </div>
     </div>
   );
 };
-
-// Placeholder component for collectibles (can be implemented later)
-const CollectibleEditorPlaceholder: React.FC = () => (
-  <div className="p-4 md:p-8">
-    <div className="max-w-7xl mx-auto">
-      <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-        {/* Collectible List - Left Sidebar */}
-        <div className="w-full md:w-72 space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold">Collectibles</h2>
-            <button
-              className="px-3 py-1 bg-gray-600 rounded text-sm cursor-not-allowed opacity-50"
-              disabled
-            >
-              + New
-            </button>
-          </div>
-
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full px-3 py-2 bg-gray-700 rounded text-sm opacity-50"
-            disabled
-          />
-
-          <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
-            No collectibles yet.
-            <br />
-            Coming soon!
-          </div>
-        </div>
-
-        {/* Collectible Editor - Right Panel */}
-        <div className="flex-1">
-          <div className="bg-gray-800 p-8 rounded text-center">
-            <h2 className="text-2xl font-bold mb-4">Collectible Editor</h2>
-            <p className="text-gray-400 mb-6">
-              Create collectible assets that can be placed on maps for players to gather.
-              <br />
-              Coming soon! For now, collectibles use default appearances.
-            </p>
-            <button
-              className="px-6 py-3 bg-gray-600 rounded text-lg cursor-not-allowed opacity-50"
-              disabled
-            >
-              + Create New Collectible
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </div>
-);

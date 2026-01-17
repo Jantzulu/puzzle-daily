@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { Direction, ActionType } from '../../types/game';
 import type { CharacterAction, CustomAttack, SpellAsset, ExecutionMode, TriggerConfig, RelativeDirection, EntitySoundSet } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
-import { saveCharacter, getCustomCharacters, deleteCharacter, loadSpellAsset, getFolders, getSoundAssets } from '../../utils/assetStorage';
+import { saveCharacter, getCustomCharacters, deleteCharacter, loadSpellAsset, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
 import { getAllCharacters } from '../../data/characters';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -490,6 +490,26 @@ export const CharacterEditor: React.FC = () => {
                           </select>
                         </div>
                       </div>
+                    </div>
+
+                    {/* Death Drop */}
+                    <div className="bg-gray-800 p-4 rounded">
+                      <h3 className="text-lg font-bold mb-3">Death Drop</h3>
+                      <p className="text-xs text-gray-400 mb-3">
+                        Select a collectible to drop when this character dies.
+                      </p>
+                      <select
+                        value={editing.droppedCollectibleId || ''}
+                        onChange={(e) => updateCharacter({ droppedCollectibleId: e.target.value || undefined })}
+                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                      >
+                        <option value="">None</option>
+                        {getAllCollectibles().map((coll) => (
+                          <option key={coll.id} value={coll.id}>
+                            {coll.name}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     {/* Tooltip Steps */}

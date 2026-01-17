@@ -9,6 +9,7 @@ import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
+import { ItemsDisplay } from './ItemsDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType } from '../../utils/assetStorage';
 import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
@@ -656,6 +657,9 @@ export const Game: React.FC = () => {
 
             {/* Enemies Display */}
             <EnemyDisplay enemies={gameState.puzzle.enemies} />
+
+            {/* Items Display - only shown if puzzle has items */}
+            <ItemsDisplay puzzle={gameState.puzzle} />
 
             {/* Status Effects Display - only shown if puzzle has status effects */}
             <StatusEffectsDisplay puzzle={gameState.puzzle} />

@@ -12,7 +12,7 @@ import { CharacterSelector } from '../game/CharacterSelector';
 import { EnemyDisplay } from '../game/EnemyDisplay';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, type CustomObject } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, type CustomObject, type CustomCollectible } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -527,22 +527,26 @@ export const MapEditor: React.FC = () => {
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [selectedCustomTileTypeId, setSelectedCustomTileTypeId] = useState<string | null>(null);
 
-  // Enemy/Character/Object selection
+  // Enemy/Character/Object/Collectible selection
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
   const [selectedObjectId, setSelectedObjectId] = useState<string | null>(null);
+  const [selectedCollectibleId, setSelectedCollectibleId] = useState<string | null>(null);
   const allEnemies = getAllEnemies();
   const allCharacters = getAllCharacters();
   const allObjects = getAllObjects();
+  const allCollectibles = getAllCollectibles();
 
   // Folder filtering for asset selectors
   const [enemyFolderId, setEnemyFolderId] = useState<string | null>(null);
   const [objectFolderId, setObjectFolderId] = useState<string | null>(null);
   const [characterFolderId, setCharacterFolderId] = useState<string | null>(null);
   const [tileFolderId, setTileFolderId] = useState<string | null>(null);
+  const [collectibleFolderId, setCollectibleFolderId] = useState<string | null>(null);
   const filteredEnemies = useFilteredAssets(allEnemies, enemyFolderId);
   const filteredObjects = useFilteredAssets(allObjects, objectFolderId);
   const filteredCharacters = useFilteredAssets(allCharacters, characterFolderId);
   const filteredTileTypes = useFilteredAssets(customTileTypes, tileFolderId);
+  const filteredCollectibles = useFilteredAssets(allCollectibles, collectibleFolderId);
 
   // Cache editor state when it changes (for persistence across tab switches)
   useEffect(() => {
@@ -691,7 +695,7 @@ export const MapEditor: React.FC = () => {
     // Draw collectibles
     state.collectibles.forEach((collectible) => {
       if (!collectible.collected) {
-        drawCollectible(ctx, collectible.x, collectible.y, collectible.type);
+        drawCollectibleInEditor(ctx, collectible);
       }
     });
 
@@ -808,13 +812,22 @@ export const MapEditor: React.FC = () => {
           return { ...prev, collectibles: newCollectibles };
         } else {
           // Add new collectible
-          const newCollectible: PlacedCollectible = {
-            type: 'coin',
-            x,
-            y,
-            scoreValue: 10,
-            collected: false,
-          };
+          const newCollectible: PlacedCollectible = selectedCollectibleId
+            ? {
+                collectibleId: selectedCollectibleId,
+                x,
+                y,
+                collected: false,
+                instanceId: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              }
+            : {
+                type: 'coin',
+                x,
+                y,
+                scoreValue: 10,
+                collected: false,
+                instanceId: `coll_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              };
           return { ...prev, collectibles: [...prev.collectibles, newCollectible] };
         }
       });
@@ -1780,6 +1793,14 @@ export const MapEditor: React.FC = () => {
                     Object
                   </button>
                   <button
+                    onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
+                    className={`p-3 rounded text-sm ${
+                      state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                    }`}
+                  >
+                    Item
+                  </button>
+                  <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'characters' }))}
                     className={`p-3 rounded text-sm ${
                       state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
@@ -2028,6 +2049,85 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
+              {/* Collectible Type Selector - List style with sprites */}
+              {state.selectedTool === 'collectible' && (
+                <div className="bg-gray-800 p-4 rounded">
+                  <h2 className="text-lg font-bold mb-3">Select Collectible</h2>
+                  <FolderDropdown
+                    category="collectibles"
+                    selectedFolderId={collectibleFolderId}
+                    onFolderSelect={setCollectibleFolderId}
+                  />
+                  {/* Legacy coin option */}
+                  <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
+                    <button
+                      onClick={() => setSelectedCollectibleId(null)}
+                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                        selectedCollectibleId === null ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      }`}
+                    >
+                      <div className="w-8 h-8 rounded flex items-center justify-center bg-gray-600">
+                        <span className="text-yellow-400">⭐</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="text-sm font-medium truncate">Default Coin</div>
+                        <div className="text-xs text-gray-400">Legacy collectible (10 points)</div>
+                      </div>
+                    </button>
+                    {filteredCollectibles.length === 0 && allCollectibles.length > 0 ? (
+                      <div className="text-center py-2">
+                        <p className="text-sm text-gray-400">No collectibles in this folder.</p>
+                      </div>
+                    ) : allCollectibles.length === 0 ? (
+                      <div className="text-center py-2">
+                        <p className="text-sm text-gray-400 mb-2">No custom collectibles available.</p>
+                        <a href="/assets" className="text-blue-400 hover:underline text-sm">
+                          Create collectibles in Asset Manager
+                        </a>
+                      </div>
+                    ) : (
+                      filteredCollectibles.map(coll => (
+                        <button
+                          key={coll.id}
+                          onClick={() => setSelectedCollectibleId(coll.id)}
+                          className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                            selectedCollectibleId === coll.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                          }`}
+                        >
+                          <SpriteThumbnail sprite={coll.customSprite} size={32} />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{coll.name}</div>
+                            <div className="text-xs text-gray-400">
+                              {coll.effects.length > 0
+                                ? coll.effects.map(e => e.type).join(', ')
+                                : 'No effects'}
+                            </div>
+                          </div>
+                          {coll.effects.length > 0 && (
+                            <div className="flex gap-1 flex-shrink-0">
+                              {coll.effects.slice(0, 2).map((effect, i) => (
+                                <span
+                                  key={i}
+                                  className={`text-xs px-1.5 py-0.5 rounded ${
+                                    effect.type === 'damage' ? 'bg-red-900 text-red-300' :
+                                    effect.type === 'heal' ? 'bg-green-900 text-green-300' :
+                                    effect.type === 'score' ? 'bg-yellow-900 text-yellow-300' :
+                                    effect.type === 'win_key' ? 'bg-purple-900 text-purple-300' :
+                                    'bg-blue-900 text-blue-300'
+                                  }`}
+                                >
+                                  {effect.type === 'status_effect' ? 'Buff' : effect.type.charAt(0).toUpperCase()}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+                        </button>
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Available Characters - Shows when Characters tool is selected */}
               {state.selectedTool === 'characters' && (
                 <div className="bg-gray-800 p-4 rounded">
@@ -2242,6 +2342,7 @@ export const MapEditor: React.FC = () => {
                               >
                                 <option value="defeat_all_enemies">Defeat All Enemies</option>
                                 <option value="collect_all">Collect All Items</option>
+                                <option value="collect_keys">Collect All Keys</option>
                                 <option value="reach_goal">Reach Goal Tile</option>
                                 <option value="survive_turns">Survive X Turns</option>
                                 <option value="win_in_turns">Win Within X Turns</option>
@@ -2867,11 +2968,52 @@ function drawEnemy(ctx: CanvasRenderingContext2D, x: number, y: number, enemyId?
   ctx.fill();
 }
 
-function drawCollectible(ctx: CanvasRenderingContext2D, x: number, y: number, type: 'coin' | 'gem') {
+function drawCollectibleInEditor(
+  ctx: CanvasRenderingContext2D,
+  collectible: { x: number; y: number; collectibleId?: string; type?: 'coin' | 'gem' }
+) {
+  const { x, y, collectibleId, type } = collectible;
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
-  ctx.fillStyle = type === 'coin' ? '#ffd700' : '#9c27b0';
+  // Try to load custom collectible data
+  const collectibleData = collectibleId ? loadCollectible(collectibleId) : null;
+
+  // If we have custom collectible data with a sprite, draw it
+  if (collectibleData?.customSprite) {
+    const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
+
+    // Calculate center position based on anchor point
+    let centerX = px + TILE_SIZE / 2;
+    let centerY = py + TILE_SIZE / 2;
+
+    if (collectibleData.anchorPoint === 'bottom_center') {
+      centerY = py + TILE_SIZE / 2 - spriteSize / 2;
+    }
+
+    // Draw the sprite (without animation/imageCache for editor simplicity)
+    drawSprite(ctx, collectibleData.customSprite, centerX, centerY, TILE_SIZE);
+    return;
+  }
+
+  // Legacy fallback: draw based on type
+  if (type === 'gem') {
+    ctx.fillStyle = '#9c27b0';
+    ctx.beginPath();
+    const cx = px + TILE_SIZE / 2;
+    const cy = py + TILE_SIZE / 2;
+    const size = TILE_SIZE / 3;
+    ctx.moveTo(cx, cy - size);
+    ctx.lineTo(cx + size, cy);
+    ctx.lineTo(cx, cy + size);
+    ctx.lineTo(cx - size, cy);
+    ctx.closePath();
+    ctx.fill();
+    return;
+  }
+
+  // Default: draw a star shape (original behavior for coins and unknown types)
+  ctx.fillStyle = '#ffd700';
   ctx.beginPath();
   const cx = px + TILE_SIZE / 2;
   const cy = py + TILE_SIZE / 2;
