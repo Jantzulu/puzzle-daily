@@ -462,6 +462,9 @@ export interface GameState {
 
   // Test mode - when true, skip win/lose condition checks
   testMode?: boolean;
+
+  // Headless mode - when true, projectiles resolve instantly (for solver/validator)
+  headlessMode?: boolean;
 }
 
 export interface PlayerProgress {

@@ -1075,9 +1075,16 @@ import { TileType } from '../types/game';
 
 /**
  * Update all active projectiles (time-based movement, should be called from animation loop)
+ * In headless mode, projectiles resolve instantly to their targets
  */
 export function updateProjectiles(gameState: GameState): void {
   if (!gameState.activeProjectiles || gameState.activeProjectiles.length === 0) {
+    return;
+  }
+
+  // In headless mode (solver/validator), resolve projectiles instantly
+  if (gameState.headlessMode) {
+    updateProjectilesHeadless(gameState);
     return;
   }
 
@@ -1633,6 +1640,190 @@ function triggerAOEExplosion(
   const spell = spellAssetId ? loadSpellAsset(spellAssetId) : undefined;
 
   executeAOEAttack(tempChar, modifiedAttackData, Direction.SOUTH, gameState, spell || undefined);
+}
+
+/**
+ * Update projectiles in headless mode (instant resolution for solver/validator)
+ * Projectiles instantly travel to their target and deal damage
+ */
+function updateProjectilesHeadless(gameState: GameState): void {
+  if (!gameState.activeProjectiles) return;
+
+  const projectilesToRemove: string[] = [];
+
+  for (const proj of gameState.activeProjectiles) {
+    if (!proj.active) {
+      projectilesToRemove.push(proj.id);
+      continue;
+    }
+
+    // Determine final target position
+    let targetX = proj.targetX;
+    let targetY = proj.targetY;
+
+    // For homing projectiles, track to current target position
+    if (proj.isHoming && proj.targetEntityId) {
+      let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
+      if (proj.targetIsEnemy) {
+        targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId);
+      } else {
+        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId);
+      }
+      if (targetEntity && !targetEntity.dead) {
+        targetX = targetEntity.x;
+        targetY = targetEntity.y;
+      }
+    }
+
+    // Check if path is blocked by wall (non-homing projectiles)
+    // For simplicity in headless mode, we check direct line for walls
+    const tileX = Math.floor(targetX);
+    const tileY = Math.floor(targetY);
+
+    // Check target tile is valid
+    const hitWall = !isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
+      gameState.puzzle.tiles[tileY]?.[tileX]?.type === TileType.WALL ||
+      gameState.puzzle.tiles[tileY]?.[tileX] === null;
+
+    if (hitWall && !proj.isHoming) {
+      // Non-homing projectile hits wall - check for AOE explosion at wall
+      if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+        triggerAOEExplosion(
+          proj.startX, proj.startY, // Explode at origin if wall blocks
+          proj.attackData,
+          proj.sourceCharacterId,
+          proj.sourceEnemyId,
+          gameState,
+          proj.spellAssetId
+        );
+      }
+      proj.active = false;
+      projectilesToRemove.push(proj.id);
+      continue;
+    }
+
+    // Move projectile to target instantly
+    proj.x = targetX;
+    proj.y = targetY;
+
+    // Check for hits based on who fired
+    const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
+
+    if (proj.sourceCharacterId) {
+      // Character fired - check enemy hits (or ally hits for healing)
+      if (isHealingProjectile) {
+        const hitAlly = gameState.placedCharacters.find(
+          c => !c.dead && Math.floor(c.x) === tileX && Math.floor(c.y) === tileY &&
+               c.characterId !== proj.sourceCharacterId
+        );
+        if (hitAlly) {
+          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            triggerAOEExplosion(hitAlly.x, hitAlly.y, proj.attackData,
+              proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+          } else {
+            const healing = proj.attackData.healing ?? 0;
+            const charData = getCharacter(hitAlly.characterId);
+            const maxHealth = charData?.health ?? hitAlly.currentHealth;
+            hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
+          }
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
+        }
+      } else {
+        const hitEnemy = gameState.puzzle.enemies.find(
+          e => !e.dead && Math.floor(e.x) === tileX && Math.floor(e.y) === tileY
+        );
+        if (hitEnemy) {
+          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
+              proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+          } else {
+            const damage = proj.attackData.damage ?? 0;
+            hitEnemy.currentHealth -= damage;
+            wakeFromSleep(hitEnemy);
+            if (hitEnemy.currentHealth <= 0) {
+              hitEnemy.dead = true;
+            }
+            // Apply status effect from spell if configured
+            if (proj.spellAssetId && !hitEnemy.dead) {
+              applyStatusEffectFromProjectile(
+                hitEnemy,
+                proj.spellAssetId,
+                proj.sourceCharacterId || 'unknown',
+                false,
+                gameState.currentTurn
+              );
+            }
+          }
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
+        }
+      }
+    } else if (proj.sourceEnemyId) {
+      // Enemy fired - check character hits
+      if (isHealingProjectile) {
+        const hitAllyEnemy = gameState.puzzle.enemies.find(
+          e => !e.dead && Math.floor(e.x) === tileX && Math.floor(e.y) === tileY &&
+               e.enemyId !== proj.sourceEnemyId
+        );
+        if (hitAllyEnemy) {
+          const healing = proj.attackData.healing ?? 0;
+          const enemyData = getEnemy(hitAllyEnemy.enemyId);
+          const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
+          hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
+        }
+      } else {
+        const hitChar = gameState.placedCharacters.find(
+          c => !c.dead && Math.floor(c.x) === tileX && Math.floor(c.y) === tileY
+        );
+        if (hitChar) {
+          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+            triggerAOEExplosion(hitChar.x, hitChar.y, proj.attackData,
+              proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+          } else {
+            const damage = proj.attackData.damage ?? 0;
+            hitChar.currentHealth -= damage;
+            wakeFromSleep(hitChar);
+            if (hitChar.currentHealth <= 0) {
+              hitChar.dead = true;
+            }
+            // Apply status effect from spell if configured
+            if (proj.spellAssetId && !hitChar.dead) {
+              applyStatusEffectFromProjectile(
+                hitChar,
+                proj.spellAssetId,
+                proj.sourceEnemyId || 'unknown',
+                true,
+                gameState.currentTurn
+              );
+            }
+          }
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
+        }
+      }
+    }
+
+    // No hit - projectile reached max range, check for AOE at target
+    if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+      triggerAOEExplosion(targetX, targetY, proj.attackData,
+        proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+    }
+
+    proj.active = false;
+    projectilesToRemove.push(proj.id);
+  }
+
+  // Remove processed projectiles
+  gameState.activeProjectiles = gameState.activeProjectiles.filter(
+    p => !projectilesToRemove.includes(p.id)
+  );
 }
 
 /**

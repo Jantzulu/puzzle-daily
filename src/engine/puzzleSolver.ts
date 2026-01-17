@@ -168,6 +168,9 @@ function simulatePuzzle(
   gameState.placedCharacters = createPlacedCharacters(placements);
   gameState.gameStatus = 'running';
 
+  // Enable headless mode for instant projectile resolution
+  gameState.headlessMode = true;
+
   // Run simulation
   let turns = 0;
   while (turns < maxTurns) {
