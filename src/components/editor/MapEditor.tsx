@@ -2500,8 +2500,7 @@ export const MapEditor: React.FC = () => {
                                 {directionArrows[p.facing]}
                               </div>
                               <span className="text-white">{charData?.name || p.characterId}</span>
-                              <span className="text-gray-500">column {p.x + 1}, row {p.y + 1}</span>
-                              <span className="text-gray-500 capitalize">({p.facing})</span>
+                              <span className="text-gray-500">at column {p.x + 1}, row {p.y + 1}</span>
                             </div>
                           );
                         })}

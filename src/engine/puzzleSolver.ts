@@ -79,11 +79,11 @@ function* combinations<T>(array: T[], k: number): Generator<T[]> {
 
 /**
  * Generate all possible placements for a set of characters on valid tiles
+ * Uses each character's actual defaultFacing (not all 8 directions)
  */
 function* generatePlacements(
   characters: string[],
-  tiles: ValidTile[],
-  facings: Direction[]
+  tiles: ValidTile[]
 ): Generator<CharacterPlacement[]> {
   if (characters.length === 0) {
     yield [];
@@ -92,21 +92,23 @@ function* generatePlacements(
 
   const [charId, ...remainingChars] = characters;
 
+  // Get the character's actual default facing direction
+  const charData = getCharacter(charId);
+  const facing = charData?.defaultFacing || ('south' as Direction);
+
   for (const tile of tiles) {
-    for (const facing of facings) {
-      const placement: CharacterPlacement = {
-        characterId: charId,
-        x: tile.x,
-        y: tile.y,
-        facing,
-      };
+    const placement: CharacterPlacement = {
+      characterId: charId,
+      x: tile.x,
+      y: tile.y,
+      facing,
+    };
 
-      // Remaining tiles (exclude current to prevent overlaps)
-      const remainingTiles = tiles.filter(t => t.x !== tile.x || t.y !== tile.y);
+    // Remaining tiles (exclude current to prevent overlaps)
+    const remainingTiles = tiles.filter(t => t.x !== tile.x || t.y !== tile.y);
 
-      for (const restPlacements of generatePlacements(remainingChars, remainingTiles, facings)) {
-        yield [placement, ...restPlacements];
-      }
+    for (const restPlacements of generatePlacements(remainingChars, remainingTiles)) {
+      yield [placement, ...restPlacements];
     }
   }
 }
@@ -238,12 +240,6 @@ export function solvePuzzle(
     };
   }
 
-  // All 8 directions for facing
-  const facings: Direction[] = [
-    'north', 'northeast', 'east', 'southeast',
-    'south', 'southwest', 'west', 'northwest',
-  ] as Direction[];
-
   let totalTested = 0;
   let bestSolution: PlacementSolution | null = null;
 
@@ -254,7 +250,8 @@ export function solvePuzzle(
     // Get all combinations of numChars characters from available
     for (const charCombo of combinations(availableCharacters, numChars)) {
       // Generate all placements for this character combination
-      for (const placements of generatePlacements(charCombo, validTiles, facings)) {
+      // Each character uses its own defaultFacing (not all 8 directions)
+      for (const placements of generatePlacements(charCombo, validTiles)) {
         totalTested++;
 
         if (totalTested > maxCombinations) {
