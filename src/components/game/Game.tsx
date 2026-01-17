@@ -617,6 +617,13 @@ export const Game: React.FC = () => {
                       }
                     }).join(' & ')}
                   </span>
+                  {gameState.puzzle.maxTurns && (
+                    <>
+                      <span className="text-gray-600">|</span>
+                      <span className="text-gray-400">Max Turns:</span>
+                      <span className="text-cyan-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                    </>
+                  )}
                 </div>
               </div>
             )}

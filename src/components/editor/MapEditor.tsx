@@ -248,6 +248,7 @@ const ObjectTooltip: React.FC<{ object: CustomObject; children: React.ReactNode 
 const TILE_SIZE = 48;
 const BORDER_SIZE = 48; // Border thickness for top/bottom
 const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
+const MAX_DISPLAY_WIDTH_TILES = 15; // Max tiles before scaling down
 
 type ToolType = 'empty' | 'wall' | 'void' | 'enemy' | 'collectible' | 'object' | 'custom' | 'characters';
 type EditorMode = 'edit' | 'playtest';
@@ -744,9 +745,14 @@ export const MapEditor: React.FC = () => {
     // Calculate current scale factor for responsive canvas
     const gridWidthPx = state.gridWidth * TILE_SIZE;
     const canvasWidthPx = hasBorder ? gridWidthPx + (SIDE_BORDER_SIZE * 2) : gridWidthPx;
+    const maxDisplayGridWidth = MAX_DISPLAY_WIDTH_TILES * TILE_SIZE;
+    const maxDisplayCanvasWidth = hasBorder ? maxDisplayGridWidth + (SIDE_BORDER_SIZE * 2) : maxDisplayGridWidth;
 
     let currentScale = 1;
-    if (editorMaxWidth && editorMaxWidth < canvasWidthPx) {
+    if (state.gridWidth > MAX_DISPLAY_WIDTH_TILES) {
+      // Scale down to fit within max display width
+      currentScale = maxDisplayCanvasWidth / canvasWidthPx;
+    } else if (editorMaxWidth && editorMaxWidth < canvasWidthPx) {
       currentScale = editorMaxWidth / canvasWidthPx;
     }
 
@@ -1422,12 +1428,24 @@ export const MapEditor: React.FC = () => {
   const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
-  // Calculate scale factor for responsive editor canvas
+  // Calculate scale factor for editor canvas
+  // For puzzles wider than MAX_DISPLAY_WIDTH_TILES, scale down to fit within that width
   let editorScale = 1;
-  if (editorMaxWidth && editorMaxWidth < canvasWidth) {
+  const maxDisplayGridWidth = MAX_DISPLAY_WIDTH_TILES * TILE_SIZE;
+  const maxDisplayCanvasWidth = hasBorder ? maxDisplayGridWidth + (SIDE_BORDER_SIZE * 2) : maxDisplayGridWidth;
+
+  if (state.gridWidth > MAX_DISPLAY_WIDTH_TILES) {
+    // Scale down to fit within max display width
+    editorScale = maxDisplayCanvasWidth / canvasWidth;
+  } else if (editorMaxWidth && editorMaxWidth < canvasWidth) {
+    // For smaller puzzles, still respect container constraints
     editorScale = editorMaxWidth / canvasWidth;
   }
-  const scaledCanvasWidth = canvasWidth * editorScale;
+
+  // For puzzles > 15 tiles, use the max display width; otherwise use actual scaled width
+  const scaledCanvasWidth = state.gridWidth > MAX_DISPLAY_WIDTH_TILES
+    ? maxDisplayCanvasWidth
+    : canvasWidth * editorScale;
   const scaledCanvasHeight = canvasHeight * editorScale;
 
   // Render playtest mode
