@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import type { Puzzle, TileBehaviorConfig } from '../../types/game';
+import type { Puzzle, TileBehaviorConfig, CadenceConfig } from '../../types/game';
 import { loadTileType, loadPuzzleSkin, type CustomTileType, type CustomSprite } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 
@@ -12,6 +12,11 @@ interface SpecialTileInfo {
   tileType: CustomTileType;
   sprite: CustomSprite | null;
   skinSpriteUrl: string | null;
+  // Cadence-related fields
+  hasCadence: boolean;
+  cadence?: CadenceConfig;
+  offStateSprite: CustomSprite | null;
+  skinOffSpriteUrl: string | null;
 }
 
 /**
@@ -87,15 +92,31 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
       seenTileIds.add(tile.customTileTypeId);
 
       // Determine the sprite to use:
-      // Priority 1: Skin-specific sprite URL
+      // Priority 1: Skin-specific sprite (may be string or object with on/off)
       // Priority 2: Tile type's default sprite
-      const skinSpriteUrl = customTileSprites?.[tile.customTileTypeId] || null;
+      const skinSprite = customTileSprites?.[tile.customTileTypeId];
+      let skinSpriteUrl: string | null = null;
+      let skinOffSpriteUrl: string | null = null;
+
+      if (typeof skinSprite === 'string') {
+        skinSpriteUrl = skinSprite;
+      } else if (skinSprite && typeof skinSprite === 'object') {
+        skinSpriteUrl = skinSprite.onSprite || null;
+        skinOffSpriteUrl = skinSprite.offSprite || null;
+      }
+
       const defaultSprite = tileType.customSprite || null;
+      const offStateSprite = tileType.offStateSprite || null;
+      const hasCadence = tileType.cadence?.enabled || false;
 
       specialTiles.push({
         tileType,
         sprite: defaultSprite,
         skinSpriteUrl,
+        hasCadence,
+        cadence: tileType.cadence,
+        offStateSprite,
+        skinOffSpriteUrl,
       });
     }
   }
@@ -106,22 +127,30 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
 /**
  * Renders a tile sprite - handles both skin sprite URLs and CustomSprite
  */
-const TileSprite: React.FC<{ info: SpecialTileInfo; size?: number }> = ({ info, size = 32 }) => {
+const TileSprite: React.FC<{ info: SpecialTileInfo; size?: number; isOffState?: boolean }> = ({ info, size = 32, isOffState = false }) => {
+  // Determine which sprite to use based on state
+  const skinUrl = isOffState ? (info.skinOffSpriteUrl || info.skinSpriteUrl) : info.skinSpriteUrl;
+  const sprite = isOffState ? (info.offStateSprite || info.sprite) : info.sprite;
+
   // Priority 1: Use skin-specific sprite URL
-  if (info.skinSpriteUrl) {
+  if (skinUrl) {
     return (
       <img
-        src={info.skinSpriteUrl}
-        alt={info.tileType.name}
+        src={skinUrl}
+        alt={`${info.tileType.name}${isOffState ? ' (off)' : ''}`}
         className="rounded"
-        style={{ width: size, height: size, objectFit: 'contain' }}
+        style={{ width: size, height: size, objectFit: 'contain', opacity: isOffState ? 0.6 : 1 }}
       />
     );
   }
 
-  // Priority 2: Use tile type's default CustomSprite
-  if (info.sprite) {
-    return <SpriteThumbnail sprite={info.sprite} size={size} />;
+  // Priority 2: Use tile type's CustomSprite
+  if (sprite) {
+    return (
+      <div style={{ opacity: isOffState ? 0.6 : 1 }}>
+        <SpriteThumbnail sprite={sprite} size={size} />
+      </div>
+    );
   }
 
   // Fallback: Show colored placeholder based on base type
@@ -129,12 +158,39 @@ const TileSprite: React.FC<{ info: SpecialTileInfo; size?: number }> = ({ info, 
   return (
     <div
       className={`${bgColor} rounded flex items-center justify-center`}
-      style={{ width: size, height: size }}
+      style={{ width: size, height: size, opacity: isOffState ? 0.6 : 1 }}
     >
       <span className="text-xs text-gray-400">?</span>
     </div>
   );
 };
+
+/**
+ * Get a human-readable description of a tile's cadence pattern
+ */
+function getCadenceDescription(cadence: CadenceConfig): string {
+  if (!cadence.enabled) return '';
+
+  const startStr = cadence.startState === 'off' ? 'starts off' : 'starts on';
+
+  switch (cadence.pattern) {
+    case 'alternating':
+      return `Alternates on/off each turn (${startStr})`;
+    case 'interval': {
+      const on = cadence.onTurns || 1;
+      const off = cadence.offTurns || 1;
+      return `On for ${on} turn${on !== 1 ? 's' : ''}, off for ${off} (${startStr})`;
+    }
+    case 'custom':
+      if (cadence.customPattern?.length) {
+        const patternStr = cadence.customPattern.map(v => v ? '●' : '○').join('');
+        return `Pattern: ${patternStr} (${startStr})`;
+      }
+      return `Custom pattern (${startStr})`;
+    default:
+      return '';
+  }
+}
 
 export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle }) => {
   const specialTiles = useMemo(() => getSpecialTiles(puzzle), [puzzle]);
@@ -154,26 +210,51 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
       </div>
 
       <div className="space-y-2">
-        {specialTiles.map(({ tileType, sprite, skinSpriteUrl }) => (
+        {specialTiles.map((info) => (
           <div
-            key={tileType.id}
+            key={info.tileType.id}
             className="p-2 bg-gray-700 rounded"
           >
             <div className="flex items-start gap-3">
-              {/* Tile sprite */}
+              {/* Tile sprite(s) */}
               <div className="flex-shrink-0">
-                <TileSprite info={{ tileType, sprite, skinSpriteUrl }} size={32} />
+                {info.hasCadence ? (
+                  // Show both on and off sprites for cadenced tiles
+                  <div className="flex items-center gap-1">
+                    <div className="relative">
+                      <TileSprite info={info} size={28} isOffState={false} />
+                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-green-600 text-white px-0.5 rounded">ON</div>
+                    </div>
+                    <span className="text-gray-500 text-xs">⇄</span>
+                    <div className="relative">
+                      <TileSprite info={info} size={28} isOffState={true} />
+                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-gray-600 text-white px-0.5 rounded">OFF</div>
+                    </div>
+                  </div>
+                ) : (
+                  // Single sprite for non-cadenced tiles
+                  <TileSprite info={info} size={32} />
+                )}
               </div>
 
               {/* Name and description */}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-200">
-                  {tileType.name}
+                <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
+                  {info.tileType.name}
+                  {info.hasCadence && (
+                    <span className="text-yellow-400 text-xs" title="Has on/off cadence">⟳</span>
+                  )}
                 </div>
                 {/* Use tile's description if available, otherwise generate from behaviors */}
                 <div className="text-xs text-gray-400">
-                  {tileType.description || getBehaviorDescription(tileType.behaviors)}
+                  {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}
                 </div>
+                {/* Show cadence info if applicable */}
+                {info.hasCadence && info.cadence && (
+                  <div className="text-xs text-yellow-400/70 mt-0.5">
+                    {getCadenceDescription(info.cadence)}
+                  </div>
+                )}
               </div>
             </div>
           </div>

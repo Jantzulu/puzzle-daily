@@ -1,4 +1,4 @@
-import type { Character, Enemy, TileBehaviorConfig } from '../types/game';
+import type { Character, Enemy, TileBehaviorConfig, CadenceConfig } from '../types/game';
 
 // ============ SAFE LOCALSTORAGE UTILITIES ============
 // Handles mobile browser restrictions (Private mode, quota limits, Safari quirks)
@@ -292,6 +292,8 @@ export interface CustomTileType {
   baseType: 'empty' | 'wall';
   behaviors: TileBehaviorConfig[];  // Multiple behaviors allowed (stacking)
   customSprite?: CustomSprite;
+  offStateSprite?: CustomSprite;    // Sprite when tile is in "off" state (for cadence)
+  cadence?: CadenceConfig;          // Optional cadence configuration (on/off toggle)
   hideBehaviorIndicators?: boolean;  // Hide default behavior overlays (purple teleport, blue ice, etc.)
   isCustom: boolean;
   createdAt: string;

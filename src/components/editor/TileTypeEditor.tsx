@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig } from '../../types/game';
+import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig, CadenceConfig, CadencePattern } from '../../types/game';
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -44,6 +44,13 @@ const PRESSURE_PLATE_EFFECTS: { type: PressurePlateEffect['type']; label: string
   { type: 'spawn_enemy', label: 'Spawn Enemy', description: 'Activate a dormant enemy' },
   { type: 'despawn_enemy', label: 'Despawn Enemy', description: 'Remove an enemy' },
   { type: 'trigger_teleport', label: 'Trigger Teleport', description: 'Activate a teleport' },
+];
+
+// Cadence pattern options
+const CADENCE_PATTERNS: { value: CadencePattern; label: string; description: string }[] = [
+  { value: 'alternating', label: 'Alternating', description: 'On, off, on, off...' },
+  { value: 'interval', label: 'Interval', description: 'On for X turns, off for Y turns' },
+  { value: 'custom', label: 'Custom Pattern', description: 'Define exact on/off sequence' },
 ];
 
 interface BehaviorEditorProps {
@@ -490,6 +497,26 @@ export const TileTypeEditor: React.FC = () => {
     setEditing({ ...editing, customSprite: undefined });
   };
 
+  const handleOffStateSpriteUpload = async (file: File) => {
+    if (!editing) return;
+    const base64 = await fileToBase64(file);
+    setEditing({
+      ...editing,
+      offStateSprite: {
+        id: 'sprite_off_' + Date.now(),
+        name: editing.name + ' Off Sprite',
+        type: 'image',
+        idleImageData: base64,
+        createdAt: new Date().toISOString(),
+      },
+    });
+  };
+
+  const handleOffStateSpriteRemove = () => {
+    if (!editing) return;
+    setEditing({ ...editing, offStateSprite: undefined });
+  };
+
   const handleFolderChange = (tileTypeId: string, folderId: string | undefined) => {
     const tileType = tileTypes.find(t => t.id === tileTypeId);
     if (tileType) {
@@ -722,9 +749,188 @@ export const TileTypeEditor: React.FC = () => {
                   </select>
                 </div>
 
+                {/* Cadence Configuration */}
+                <div className="bg-gray-800 p-4 rounded">
+                  <h3 className="text-lg font-bold mb-4">On/Off Cadence</h3>
+                  <p className="text-sm text-gray-400 mb-4">
+                    Make tile behaviors toggle on and off based on turn count.
+                  </p>
+
+                  <label className="flex items-center text-sm text-gray-300 cursor-pointer mb-4">
+                    <input
+                      type="checkbox"
+                      checked={editing.cadence?.enabled || false}
+                      onChange={e => {
+                        if (e.target.checked) {
+                          setEditing({
+                            ...editing,
+                            cadence: {
+                              enabled: true,
+                              pattern: 'alternating',
+                              startState: 'on',
+                            },
+                          });
+                        } else {
+                          setEditing({ ...editing, cadence: undefined });
+                        }
+                      }}
+                      className="mr-2"
+                    />
+                    Enable on/off cadence
+                  </label>
+
+                  {editing.cadence?.enabled && (
+                    <div className="space-y-4 pl-4 border-l-2 border-blue-500">
+                      {/* Pattern Type */}
+                      <div>
+                        <label className="text-sm text-gray-300 block mb-1">Pattern</label>
+                        <select
+                          value={editing.cadence.pattern}
+                          onChange={e => setEditing({
+                            ...editing,
+                            cadence: { ...editing.cadence!, pattern: e.target.value as CadencePattern },
+                          })}
+                          className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                        >
+                          {CADENCE_PATTERNS.map(p => (
+                            <option key={p.value} value={p.value}>{p.label} - {p.description}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Interval Settings */}
+                      {editing.cadence.pattern === 'interval' && (
+                        <div className="flex gap-4">
+                          <div className="flex-1">
+                            <label className="text-sm text-gray-300 block mb-1">On Turns</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={editing.cadence.onTurns || 1}
+                              onChange={e => setEditing({
+                                ...editing,
+                                cadence: { ...editing.cadence!, onTurns: parseInt(e.target.value) || 1 },
+                              })}
+                              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                            />
+                          </div>
+                          <div className="flex-1">
+                            <label className="text-sm text-gray-300 block mb-1">Off Turns</label>
+                            <input
+                              type="number"
+                              min="1"
+                              value={editing.cadence.offTurns || 1}
+                              onChange={e => setEditing({
+                                ...editing,
+                                cadence: { ...editing.cadence!, offTurns: parseInt(e.target.value) || 1 },
+                              })}
+                              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Custom Pattern */}
+                      {editing.cadence.pattern === 'custom' && (
+                        <div>
+                          <label className="text-sm text-gray-300 block mb-2">
+                            Custom Pattern (click to toggle)
+                          </label>
+                          <div className="flex flex-wrap gap-1 mb-2">
+                            {(editing.cadence.customPattern || [true]).map((isOn, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  const newPattern = [...(editing.cadence!.customPattern || [true])];
+                                  newPattern[idx] = !newPattern[idx];
+                                  setEditing({
+                                    ...editing,
+                                    cadence: { ...editing.cadence!, customPattern: newPattern },
+                                  });
+                                }}
+                                className={`w-8 h-8 rounded text-xs font-bold ${
+                                  isOn ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-400'
+                                }`}
+                              >
+                                {idx + 1}
+                              </button>
+                            ))}
+                            <button
+                              onClick={() => {
+                                const newPattern = [...(editing.cadence!.customPattern || [true]), true];
+                                setEditing({
+                                  ...editing,
+                                  cadence: { ...editing.cadence!, customPattern: newPattern },
+                                });
+                              }}
+                              className="w-8 h-8 rounded bg-gray-700 text-gray-400 hover:bg-gray-600 text-lg"
+                              title="Add turn"
+                            >
+                              +
+                            </button>
+                            {(editing.cadence.customPattern?.length || 1) > 1 && (
+                              <button
+                                onClick={() => {
+                                  const newPattern = (editing.cadence!.customPattern || [true]).slice(0, -1);
+                                  setEditing({
+                                    ...editing,
+                                    cadence: { ...editing.cadence!, customPattern: newPattern },
+                                  });
+                                }}
+                                className="w-8 h-8 rounded bg-gray-700 text-gray-400 hover:bg-red-600 text-lg"
+                                title="Remove last turn"
+                              >
+                                -
+                              </button>
+                            )}
+                          </div>
+                          <p className="text-xs text-gray-500">
+                            Green = On, Gray = Off. Pattern repeats.
+                          </p>
+                        </div>
+                      )}
+
+                      {/* Starting State */}
+                      <div>
+                        <label className="text-sm text-gray-300 block mb-1">Starting State</label>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => setEditing({
+                              ...editing,
+                              cadence: { ...editing.cadence!, startState: 'on' },
+                            })}
+                            className={`flex-1 px-3 py-2 rounded text-sm ${
+                              editing.cadence.startState === 'on'
+                                ? 'bg-green-600 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                            }`}
+                          >
+                            On
+                          </button>
+                          <button
+                            onClick={() => setEditing({
+                              ...editing,
+                              cadence: { ...editing.cadence!, startState: 'off' },
+                            })}
+                            className={`flex-1 px-3 py-2 rounded text-sm ${
+                              editing.cadence.startState === 'off'
+                                ? 'bg-gray-500 text-white'
+                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                            }`}
+                          >
+                            Off
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* Tile Sprite */}
                 <div className="bg-gray-800 p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">Tile Sprite</h3>
+                  <h3 className="text-lg font-bold mb-4">
+                    {editing.cadence?.enabled ? 'On State Sprite' : 'Tile Sprite'}
+                  </h3>
                   <p className="text-sm text-gray-400 mb-4">
                     Upload a custom sprite for this tile type. If not set, a default visual will be used based on behaviors.
                   </p>
@@ -777,6 +983,48 @@ export const TileTypeEditor: React.FC = () => {
                     </p>
                   </div>
                 </div>
+
+                {/* Off State Sprite (only shown when cadence is enabled) */}
+                {editing.cadence?.enabled && (
+                  <div className="bg-gray-800 p-4 rounded">
+                    <h3 className="text-lg font-bold mb-4">Off State Sprite</h3>
+                    <p className="text-sm text-gray-400 mb-4">
+                      Sprite shown when tile is in "off" state. If not set, the on state sprite will be used (or greyed out).
+                    </p>
+
+                    {editing.offStateSprite?.idleImageData ? (
+                      <div className="relative inline-block">
+                        <img
+                          src={editing.offStateSprite.idleImageData}
+                          alt="Off state sprite"
+                          className="w-24 h-24 object-contain bg-gray-600 rounded"
+                        />
+                        <button
+                          onClick={handleOffStateSpriteRemove}
+                          className="absolute top-0 right-0 px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="block cursor-pointer">
+                        <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-gray-400 hover:border-gray-400">
+                          <span>+ Upload Off State Sprite</span>
+                          <span className="text-xs text-gray-500 mt-1">48x48 recommended</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleOffStateSpriteUpload(file);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="bg-gray-800 p-8 rounded text-center">

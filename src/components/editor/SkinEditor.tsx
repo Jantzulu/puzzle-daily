@@ -165,26 +165,79 @@ export const SkinEditor: React.FC = () => {
     });
   };
 
-  const handleCustomTileSpriteUpload = async (tileTypeId: string, file: File) => {
+  const handleCustomTileSpriteUpload = async (tileTypeId: string, file: File, spriteType: 'on' | 'off' = 'on') => {
     if (!editingSkin) return;
     const base64 = await fileToBase64(file);
-    setEditingSkin({
-      ...editingSkin,
-      customTileSprites: {
-        ...editingSkin.customTileSprites,
-        [tileTypeId]: base64,
-      },
-    });
+
+    // Check if this tile type has cadence enabled
+    const tileType = customTileTypes.find(t => t.id === tileTypeId);
+    const hasCadence = tileType?.cadence?.enabled;
+
+    if (hasCadence) {
+      // Use object format for cadenced tiles
+      const existing = editingSkin.customTileSprites?.[tileTypeId];
+      const existingObj = typeof existing === 'string'
+        ? { onSprite: existing }
+        : (existing || {});
+
+      setEditingSkin({
+        ...editingSkin,
+        customTileSprites: {
+          ...editingSkin.customTileSprites,
+          [tileTypeId]: {
+            ...existingObj,
+            [spriteType === 'on' ? 'onSprite' : 'offSprite']: base64,
+          },
+        },
+      });
+    } else {
+      // Use simple string format for non-cadenced tiles
+      setEditingSkin({
+        ...editingSkin,
+        customTileSprites: {
+          ...editingSkin.customTileSprites,
+          [tileTypeId]: base64,
+        },
+      });
+    }
   };
 
-  const handleCustomTileSpriteRemove = (tileTypeId: string) => {
+  const handleCustomTileSpriteRemove = (tileTypeId: string, spriteType: 'on' | 'off' = 'on') => {
     if (!editingSkin) return;
-    const newCustomTileSprites = { ...editingSkin.customTileSprites };
-    delete newCustomTileSprites[tileTypeId];
-    setEditingSkin({
-      ...editingSkin,
-      customTileSprites: newCustomTileSprites,
-    });
+
+    const existing = editingSkin.customTileSprites?.[tileTypeId];
+
+    if (typeof existing === 'object' && existing !== null) {
+      // Object format - remove specific sprite
+      const newObj = { ...existing };
+      delete newObj[spriteType === 'on' ? 'onSprite' : 'offSprite'];
+
+      // If both sprites are gone, remove the entire entry
+      if (!newObj.onSprite && !newObj.offSprite) {
+        const newCustomTileSprites = { ...editingSkin.customTileSprites };
+        delete newCustomTileSprites[tileTypeId];
+        setEditingSkin({
+          ...editingSkin,
+          customTileSprites: newCustomTileSprites,
+        });
+      } else {
+        setEditingSkin({
+          ...editingSkin,
+          customTileSprites: {
+            ...editingSkin.customTileSprites,
+            [tileTypeId]: newObj,
+          },
+        });
+      }
+    } else {
+      // Simple string format - remove entire entry
+      const newCustomTileSprites = { ...editingSkin.customTileSprites };
+      delete newCustomTileSprites[tileTypeId];
+      setEditingSkin({
+        ...editingSkin,
+        customTileSprites: newCustomTileSprites,
+      });
+    }
   };
 
   const handleFolderChange = (skinId: string, folderId: string | undefined) => {
@@ -494,71 +547,164 @@ export const SkinEditor: React.FC = () => {
                   <p className="text-sm text-gray-400 mb-4">
                     Upload custom sprites for your custom tile types within this skin.
                     If no sprite is set, the tile type's default sprite will be used.
+                    Tile types with cadence enabled show separate slots for on/off states.
                   </p>
                   {customTileTypes.length === 0 ? (
                     <div className="text-sm text-gray-500 text-center py-4">
                       No custom tile types created yet. Create custom tile types in the Tiles tab.
                     </div>
                   ) : (
-                    <div className="grid grid-cols-3 gap-3">
-                      {customTileTypes.map((tileType) => (
-                        <div key={tileType.id} className="bg-gray-700 p-2 rounded">
-                          <div className="text-xs font-bold mb-1">{tileType.name}</div>
-                          <div className="text-xs text-gray-400 mb-2 truncate" title={tileType.description}>
-                            {tileType.description || `${tileType.baseType} tile`}
-                          </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                      {customTileTypes.map((tileType) => {
+                        const hasCadence = tileType.cadence?.enabled;
+                        const skinSprite = editingSkin.customTileSprites?.[tileType.id];
+                        const spriteObj = typeof skinSprite === 'object' ? skinSprite : null;
+                        const spriteStr = typeof skinSprite === 'string' ? skinSprite : null;
 
-                          {editingSkin.customTileSprites?.[tileType.id] ? (
-                            <div className="relative">
-                              <img
-                                src={editingSkin.customTileSprites[tileType.id]}
-                                alt={tileType.name}
-                                className="w-full h-12 object-contain bg-gray-600 rounded"
-                              />
-                              {!isBuiltIn && (
-                                <button
-                                  onClick={() => handleCustomTileSpriteRemove(tileType.id)}
-                                  className="absolute top-0 right-0 px-1 bg-red-600 rounded text-xs hover:bg-red-700"
-                                >
-                                  ✕
-                                </button>
-                              )}
-                            </div>
-                          ) : (
-                            <div className="relative">
-                              {/* Show default sprite preview if available */}
-                              {tileType.customSprite?.idleImageData && (
+                        // Helper to render a sprite slot
+                        const renderSpriteSlot = (
+                          label: string,
+                          spriteType: 'on' | 'off',
+                          currentSprite: string | undefined,
+                          defaultSprite: string | undefined
+                        ) => (
+                          <div className="flex-1">
+                            <div className="text-xs text-gray-400 mb-1">{label}</div>
+                            {currentSprite ? (
+                              <div className="relative">
                                 <img
-                                  src={tileType.customSprite.idleImageData}
-                                  alt={`${tileType.name} default`}
-                                  className="w-full h-12 object-contain bg-gray-600 rounded opacity-50"
-                                  title="Default sprite (from tile type)"
+                                  src={currentSprite}
+                                  alt={`${tileType.name} ${label}`}
+                                  className="w-full h-10 object-contain bg-gray-600 rounded"
                                 />
-                              )}
-                              <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${tileType.customSprite?.idleImageData ? 'absolute inset-0' : ''}`}>
-                                <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
-                                  isBuiltIn
-                                    ? 'border-gray-600 text-gray-600'
-                                    : 'border-gray-500 text-gray-400 hover:border-gray-400'
-                                } ${tileType.customSprite?.idleImageData ? 'bg-black/50' : ''}`}>
-                                  {isBuiltIn ? 'Default' : (tileType.customSprite?.idleImageData ? 'Override' : '+ Upload')}
-                                </div>
                                 {!isBuiltIn && (
-                                  <input
-                                    type="file"
-                                    accept="image/*"
-                                    className="hidden"
-                                    onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) handleCustomTileSpriteUpload(tileType.id, file);
-                                    }}
+                                  <button
+                                    onClick={() => handleCustomTileSpriteRemove(tileType.id, spriteType)}
+                                    className="absolute top-0 right-0 px-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                                  >
+                                    ✕
+                                  </button>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="relative">
+                                {defaultSprite && (
+                                  <img
+                                    src={defaultSprite}
+                                    alt={`${tileType.name} ${label} default`}
+                                    className="w-full h-10 object-contain bg-gray-600 rounded opacity-50"
+                                    title={`Default ${label.toLowerCase()} sprite`}
                                   />
                                 )}
-                              </label>
+                                <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${defaultSprite ? 'absolute inset-0' : ''}`}>
+                                  <div className={`w-full h-10 border-2 border-dashed rounded flex items-center justify-center text-xs ${
+                                    isBuiltIn
+                                      ? 'border-gray-600 text-gray-600'
+                                      : 'border-gray-500 text-gray-400 hover:border-gray-400'
+                                  } ${defaultSprite ? 'bg-black/50' : ''}`}>
+                                    {isBuiltIn ? 'Default' : (defaultSprite ? 'Override' : '+ Upload')}
+                                  </div>
+                                  {!isBuiltIn && (
+                                    <input
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleCustomTileSpriteUpload(tileType.id, file, spriteType);
+                                      }}
+                                    />
+                                  )}
+                                </label>
+                              </div>
+                            )}
+                          </div>
+                        );
+
+                        return (
+                          <div key={tileType.id} className="bg-gray-700 p-2 rounded">
+                            <div className="text-xs font-bold mb-1 flex items-center gap-1">
+                              {tileType.name}
+                              {hasCadence && (
+                                <span className="text-yellow-400 text-[10px]" title="Has on/off cadence">⟳</span>
+                              )}
                             </div>
-                          )}
-                        </div>
-                      ))}
+                            <div className="text-xs text-gray-400 mb-2 truncate" title={tileType.description}>
+                              {tileType.description || `${tileType.baseType} tile`}
+                            </div>
+
+                            {hasCadence ? (
+                              // Cadenced tile - show two slots
+                              <div className="flex gap-2">
+                                {renderSpriteSlot(
+                                  'On State',
+                                  'on',
+                                  spriteObj?.onSprite || spriteStr || undefined,
+                                  tileType.customSprite?.idleImageData
+                                )}
+                                {renderSpriteSlot(
+                                  'Off State',
+                                  'off',
+                                  spriteObj?.offSprite,
+                                  tileType.offStateSprite?.idleImageData
+                                )}
+                              </div>
+                            ) : (
+                              // Non-cadenced tile - single slot
+                              <div>
+                                {spriteStr || spriteObj?.onSprite ? (
+                                  <div className="relative">
+                                    <img
+                                      src={spriteStr || spriteObj?.onSprite}
+                                      alt={tileType.name}
+                                      className="w-full h-12 object-contain bg-gray-600 rounded"
+                                    />
+                                    {!isBuiltIn && (
+                                      <button
+                                        onClick={() => handleCustomTileSpriteRemove(tileType.id, 'on')}
+                                        className="absolute top-0 right-0 px-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                                      >
+                                        ✕
+                                      </button>
+                                    )}
+                                  </div>
+                                ) : (
+                                  <div className="relative">
+                                    {tileType.customSprite?.idleImageData && (
+                                      <img
+                                        src={tileType.customSprite.idleImageData}
+                                        alt={`${tileType.name} default`}
+                                        className="w-full h-12 object-contain bg-gray-600 rounded opacity-50"
+                                        title="Default sprite (from tile type)"
+                                      />
+                                    )}
+                                    <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${tileType.customSprite?.idleImageData ? 'absolute inset-0' : ''}`}>
+                                      <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
+                                        isBuiltIn
+                                          ? 'border-gray-600 text-gray-600'
+                                          : 'border-gray-500 text-gray-400 hover:border-gray-400'
+                                      } ${tileType.customSprite?.idleImageData ? 'bg-black/50' : ''}`}>
+                                        {isBuiltIn ? 'Default' : (tileType.customSprite?.idleImageData ? 'Override' : '+ Upload')}
+                                      </div>
+                                      {!isBuiltIn && (
+                                        <input
+                                          type="file"
+                                          accept="image/*"
+                                          className="hidden"
+                                          onChange={(e) => {
+                                            const file = e.target.files?.[0];
+                                            if (file) handleCustomTileSpriteUpload(tileType.id, file, 'on');
+                                          }}
+                                        />
+                                      )}
+                                    </label>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                 </div>

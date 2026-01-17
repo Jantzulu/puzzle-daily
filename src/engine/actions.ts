@@ -15,6 +15,7 @@ import type {
   TileBehaviorConfig,
   TileRuntimeState,
   StatusEffectInstance,
+  CadenceConfig,
 } from '../types/game';
 import {
   ActionType,
@@ -196,6 +197,37 @@ function getTileState(gameState: GameState, x: number, y: number): TileRuntimeSt
 }
 
 /**
+ * Check if a tile with cadence is currently in the "active/on" state
+ * Exported for use in rendering (AnimatedGameBoard)
+ */
+export function isTileActiveOnTurn(cadence: CadenceConfig, turn: number): boolean {
+  if (!cadence.enabled) return true;
+
+  const startOffset = cadence.startState === 'off' ? 1 : 0;
+
+  switch (cadence.pattern) {
+    case 'alternating':
+      return (turn + startOffset) % 2 === 0;
+
+    case 'interval': {
+      const onTurns = cadence.onTurns || 1;
+      const offTurns = cadence.offTurns || 1;
+      const cycleLength = onTurns + offTurns;
+      const posInCycle = (turn + startOffset) % cycleLength;
+      return posInCycle < onTurns;
+    }
+
+    case 'custom':
+      if (!cadence.customPattern?.length) return true;
+      const patternIndex = (turn + startOffset) % cadence.customPattern.length;
+      return cadence.customPattern[patternIndex];
+
+    default:
+      return true;
+  }
+}
+
+/**
  * Process all tile behaviors when a character steps on a tile
  * Returns the updated character (may have moved due to teleport/ice)
  */
@@ -212,6 +244,14 @@ function processTileBehaviors(
   const tileType = loadTileType(tile.customTileTypeId);
   if (!tileType || !tileType.behaviors || tileType.behaviors.length === 0) {
     return character;
+  }
+
+  // Check if tile type has cadence and if currently inactive
+  if (tileType.cadence?.enabled) {
+    const isActive = isTileActiveOnTurn(tileType.cadence, gameState.currentTurn);
+    if (!isActive) {
+      return character; // Skip ALL behaviors this turn - tile is "off"
+    }
   }
 
   let updatedChar = { ...character };

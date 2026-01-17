@@ -29,6 +29,23 @@ export type TileBehaviorType =
   | 'ice'
   | 'pressure_plate';
 
+// ==========================================
+// TILE CADENCE SYSTEM
+// ==========================================
+
+export type CadencePattern = 'alternating' | 'interval' | 'custom';
+
+export interface CadenceConfig {
+  enabled: boolean;
+  pattern: CadencePattern;
+  // For 'alternating': on, off, on, off...
+  // For 'interval': on for X turns, off for Y turns
+  onTurns?: number;           // Turns active (default 1)
+  offTurns?: number;          // Turns inactive (default 1)
+  customPattern?: boolean[];  // For 'custom': true=on, false=off
+  startState: 'on' | 'off';   // Starting state (default 'on')
+}
+
 export interface PressurePlateEffect {
   type: 'toggle_wall' | 'spawn_enemy' | 'despawn_enemy' | 'trigger_teleport';
   targetX?: number;
@@ -349,7 +366,13 @@ export interface PuzzleSkin {
 
   // Custom tile type sprites (keyed by customTileTypeId)
   // Allows each skin to have different sprites for custom tile types
-  customTileSprites?: { [customTileTypeId: string]: string };
+  // Supports both legacy string format and new on/off object format
+  customTileSprites?: {
+    [customTileTypeId: string]: string | {
+      onSprite?: string;   // Base64 sprite for on state
+      offSprite?: string;  // Base64 sprite for off state
+    };
+  };
 
   // Metadata
   createdAt: string;
