@@ -729,10 +729,13 @@ export interface Projectile {
   // Piercing tracking - prevents hitting same entity multiple times
   hitEntityIds?: string[];      // IDs of entities already hit by this projectile
 
-  // Collision tracking - tracks which tiles have been checked for entity collision
-  // Used to ensure proper diagonal path checking instead of frame-by-frame drift
-  // Note: Using Record instead of Set because Sets don't survive JSON serialization in React state
-  checkedTiles?: Record<string, boolean>;
+  // Tile-based movement - deterministic collision detection
+  // Pre-computed path of tiles the projectile will traverse
+  tilePath?: Array<{ x: number; y: number }>;
+  // Current index in tilePath (which tile we're at or moving toward)
+  currentTileIndex?: number;
+  // Time when we entered the current tile (for smooth animation)
+  tileEntryTime?: number;
 }
 
 /**

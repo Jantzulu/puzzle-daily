@@ -32,8 +32,6 @@ export function getDirectionOffset(direction: Direction): { dx: number; dy: numb
  * @param degrees - 45 (one step), 90 (two steps), or 135 (three steps) (default: 90)
  */
 export function turnLeft(direction: Direction, degrees: 45 | 90 | 135 = 90): Direction {
-  console.log('[turnLeft] Direction:', direction, 'Degrees:', degrees, 'Type:', typeof degrees);
-
   if (degrees === 45) {
     // 45-degree turn (1 step in 8-direction rotation)
     switch (direction) {
@@ -86,8 +84,6 @@ export function turnLeft(direction: Direction, degrees: 45 | 90 | 135 = 90): Dir
  * @param degrees - 45 (one step), 90 (two steps), or 135 (three steps) (default: 90)
  */
 export function turnRight(direction: Direction, degrees: 45 | 90 | 135 = 90): Direction {
-  console.log('[turnRight] Direction:', direction, 'Degrees:', degrees, 'Type:', typeof degrees);
-
   if (degrees === 45) {
     // 45-degree turn (1 step in 8-direction rotation)
     switch (direction) {

@@ -34,6 +34,47 @@ import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus } from '
 import { wakeFromSleep } from './simulation';
 
 /**
+ * Compute the tile path for a projectile from start to target.
+ * Uses simple tile stepping - for a diagonal from (11,2) to (13,0), returns: [(11,2), (12,1), (13,0)]
+ */
+function computeTilePath(startX: number, startY: number, targetX: number, targetY: number): Array<{ x: number; y: number }> {
+  const tiles: Array<{ x: number; y: number }> = [];
+  const seen = new Set<string>();
+
+  const addTile = (x: number, y: number) => {
+    const key = `${x},${y}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      tiles.push({ x, y });
+    }
+  };
+
+  const startTileX = Math.floor(startX);
+  const startTileY = Math.floor(startY);
+  const endTileX = Math.round(targetX); // Use round for target to handle slight overshoot
+  const endTileY = Math.round(targetY);
+
+  addTile(startTileX, startTileY);
+
+  if (startTileX === endTileX && startTileY === endTileY) {
+    return tiles;
+  }
+
+  const dx = endTileX - startTileX;
+  const dy = endTileY - startTileY;
+  const steps = Math.max(Math.abs(dx), Math.abs(dy));
+
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const tileX = startTileX + Math.round(dx * t);
+    const tileY = startTileY + Math.round(dy * t);
+    addTile(tileX, tileY);
+  }
+
+  return tiles;
+}
+
+/**
  * Normalize action type - handles both enum keys (e.g., "ATTACK_FORWARD")
  * and enum values (e.g., "attack_forward")
  */
@@ -1399,6 +1440,10 @@ function spawnProjectile(
   // Determine if source is an enemy or character
   const isEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
 
+  // Pre-compute tile path for deterministic collision detection
+  // For non-homing projectiles, this path is fixed at creation time
+  const tilePath = homingTarget ? undefined : computeTilePath(character.x, character.y, targetX, targetY);
+
   // Create projectile
   const projectile: Projectile = {
     id: `proj_${Date.now()}_${Math.random()}`,
@@ -1426,6 +1471,10 @@ function spawnProjectile(
     bounceCount: 0,
     bounceBehavior: spell?.bounceBehavior || 'reflect',
     bounceTurnDegrees: spell?.bounceTurnDegrees ?? 90,
+    // Tile-based movement (for non-homing projectiles)
+    tilePath,
+    currentTileIndex: 0,
+    tileEntryTime: Date.now(),
   };
 
   gameState.activeProjectiles.push(projectile);

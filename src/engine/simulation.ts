@@ -49,10 +49,6 @@ function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Arra
   const endTileX = Math.round(x1);
   const endTileY = Math.round(y1);
 
-  // Debug: log the safeFloor results
-  console.log(`[getTilesAlongLine] raw: (${x0}, ${y0}) to (${x1}, ${y1})`);
-  console.log(`[getTilesAlongLine] floored: (${startTileX}, ${startTileY}) to (${endTileX}, ${endTileY})`);
-
   // Always add starting tile
   addTile(startTileX, startTileY);
 
@@ -68,6 +64,47 @@ function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Arra
 
   // Step through each tile along the path
   // For a diagonal, this will visit exactly the diagonal tiles
+  for (let i = 1; i <= steps; i++) {
+    const t = i / steps;
+    const tileX = startTileX + Math.round(dx * t);
+    const tileY = startTileY + Math.round(dy * t);
+    addTile(tileX, tileY);
+  }
+
+  return tiles;
+}
+
+/**
+ * Compute tile path for bounced projectiles (used when projectile bounces off wall)
+ * Same logic as computeTilePath in actions.ts
+ */
+function computeTilePathForBounce(startX: number, startY: number, targetX: number, targetY: number): Array<{ x: number; y: number }> {
+  const tiles: Array<{ x: number; y: number }> = [];
+  const seen = new Set<string>();
+
+  const addTile = (x: number, y: number) => {
+    const key = `${x},${y}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      tiles.push({ x, y });
+    }
+  };
+
+  const startTileX = Math.floor(startX);
+  const startTileY = Math.floor(startY);
+  const endTileX = Math.round(targetX);
+  const endTileY = Math.round(targetY);
+
+  addTile(startTileX, startTileY);
+
+  if (startTileX === endTileX && startTileY === endTileY) {
+    return tiles;
+  }
+
+  const dx = endTileX - startTileX;
+  const dy = endTileY - startTileY;
+  const steps = Math.max(Math.abs(dx), Math.abs(dy));
+
   for (let i = 1; i <= steps; i++) {
     const t = i / steps;
     const tileX = startTileX + Math.round(dx * t);
@@ -1400,8 +1437,53 @@ export function updateProjectiles(gameState: GameState): void {
       if (dx !== 0 || dy !== 0) {
         proj.direction = calculateDirectionTo(proj.x, proj.y, proj.targetX, proj.targetY);
       }
+    } else if (proj.tilePath && proj.tilePath.length > 0) {
+      // TILE-BASED MOVEMENT: Use pre-computed tile path for deterministic collision
+      // This ensures diagonal projectiles always hit the correct tiles
+
+      const tileEntryTime = proj.tileEntryTime ?? proj.startTime;
+      const timeSinceTileEntry = (now - tileEntryTime) / 1000; // seconds
+      const tileTransitTime = 1 / proj.speed; // Time to cross one tile (seconds)
+
+      // Calculate how many tiles we should advance this frame
+      const tilesAdvanced = Math.floor(timeSinceTileEntry / tileTransitTime);
+      const newTileIndex = Math.min(
+        (proj.currentTileIndex ?? 0) + tilesAdvanced,
+        proj.tilePath.length - 1
+      );
+
+      // Check if we've reached the end of the path
+      if (newTileIndex >= proj.tilePath.length - 1) {
+        reachedTarget = true;
+        const finalTile = proj.tilePath[proj.tilePath.length - 1];
+        newX = finalTile.x;
+        newY = finalTile.y;
+      } else {
+        // Interpolate visual position between current tile and next tile
+        const currentTile = proj.tilePath[newTileIndex];
+        const nextTile = proj.tilePath[Math.min(newTileIndex + 1, proj.tilePath.length - 1)];
+
+        // Progress within current tile (0-1)
+        const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
+
+        newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
+        newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
+      }
+
+      // Update tile index and entry time if we moved to a new tile
+      if (newTileIndex > (proj.currentTileIndex ?? 0)) {
+        proj.currentTileIndex = newTileIndex;
+        proj.tileEntryTime = now - ((timeSinceTileEntry % tileTransitTime) * 1000);
+      }
+
+      // Update direction for sprite rotation
+      const dx = proj.targetX - proj.startX;
+      const dy = proj.targetY - proj.startY;
+      if (dx !== 0 || dy !== 0) {
+        proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+      }
     } else {
-      // Non-homing projectiles: linear interpolation from start to target
+      // LEGACY: Non-homing projectiles without tilePath (shouldn't happen for new projectiles)
       const elapsed = (now - proj.startTime) / 1000; // seconds
       const distanceTraveled = proj.speed * elapsed;
 
@@ -1447,40 +1529,44 @@ export function updateProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Save previous position before updating
-    const prevX = proj.x;
-    const prevY = proj.y;
+    // Save previous tile index for detecting new tiles entered
+    const prevTileIndex = proj.currentTileIndex ?? 0;
 
     // Update position before collision check
     proj.x = newX;
     proj.y = newY;
 
-    // Get all tiles along the FULL path from START to NEW position
-    // This ensures we check the correct diagonal path, not the accumulated frame-by-frame path
-    // which can drift due to floating point rounding
-    const tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
+    // Determine tiles to check for collision
+    // For tile-based projectiles, use the pre-computed path
+    // For homing/legacy projectiles, calculate dynamically
+    let tilesAlongPath: Array<{ x: number; y: number }>;
+    let newTiles: Array<{ x: number; y: number }>;
 
-    // Initialize checked tiles record if not present
-    if (!proj.checkedTiles) {
-      proj.checkedTiles = {};
-    }
+    if (proj.tilePath && proj.tilePath.length > 0) {
+      // TILE-BASED: Use pre-computed path up to current tile index
+      tilesAlongPath = proj.tilePath.slice(0, (proj.currentTileIndex ?? 0) + 1);
 
-    // Filter to only tiles we haven't checked yet (new tiles entered this frame)
-    const newTiles = tilesAlongPath.filter(t => {
-      const key = `${t.x},${t.y}`;
-      if (proj.checkedTiles![key]) {
-        return false;
+      // New tiles are those from prevTileIndex to currentTileIndex (exclusive of tiles already checked)
+      newTiles = proj.tilePath.slice(prevTileIndex, (proj.currentTileIndex ?? 0) + 1);
+    } else {
+      // LEGACY/HOMING: Calculate tiles dynamically
+      tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
+
+      // Use checkedTiles record for legacy tracking
+      if (!proj.tilePath) {
+        // Initialize checked tiles for legacy projectiles
+        const checkedTiles: Record<string, boolean> = {};
+        newTiles = tilesAlongPath.filter(t => {
+          const key = `${t.x},${t.y}`;
+          if (checkedTiles[key]) {
+            return false;
+          }
+          checkedTiles[key] = true;
+          return true;
+        });
+      } else {
+        newTiles = tilesAlongPath;
       }
-      proj.checkedTiles![key] = true;
-      return true;
-    });
-
-    // Debug: log projectile movement
-    if (gameState.puzzle.enemies.some(e => !e.dead)) {
-      console.log(`[Projectile] dir=${proj.direction} from start (${proj.startX.toFixed(2)}, ${proj.startY.toFixed(2)}) to (${newX.toFixed(2)}, ${newY.toFixed(2)})`);
-      console.log(`  Full path tiles:`, tilesAlongPath.map(t => `(${t.x},${t.y})`).join(', '));
-      console.log(`  New tiles this frame:`, newTiles.map(t => `(${t.x},${t.y})`).join(', '));
-      console.log(`  Enemies:`, gameState.puzzle.enemies.filter(e => !e.dead).map(e => `(${e.x},${e.y})`).join(', '));
     }
 
     // Check collision with walls - check all tiles along path
@@ -1622,8 +1708,10 @@ export function updateProjectiles(gameState: GameState): void {
         proj.targetY = proj.y + newDirY * remainingRange;
         proj.startTime = now; // Reset timing for smooth continuation
 
-        // Clear checked tiles since we're starting a new path from bounce point
-        proj.checkedTiles = {};
+        // Recompute tile path for the new bounced trajectory
+        proj.tilePath = computeTilePathForBounce(proj.x, proj.y, proj.targetX, proj.targetY);
+        proj.currentTileIndex = 0;
+        proj.tileEntryTime = now;
 
         // Update direction for sprite rendering
         proj.direction = getDirectionFromVector(newDirX, newDirY);
@@ -1716,11 +1804,6 @@ export function updateProjectiles(gameState: GameState): void {
         }
       } else {
         // Damage projectile - check for enemy hits along entire path
-        // Debug: Log enemy positions vs tiles being checked
-        const aliveEnemies = gameState.puzzle.enemies.filter(e => !e.dead);
-        console.log(`[Enemy Check] tilesToCheck:`, tilesToCheck.map(t => `(${t.x},${t.y})`).join(', '));
-        console.log(`[Enemy Check] enemies:`, aliveEnemies.map(e => `id=${e.enemyId} pos=(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', '));
-
         for (const checkTile of tilesToCheck) {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
@@ -1731,8 +1814,6 @@ export function updateProjectiles(gameState: GameState): void {
                  Math.floor(e.y) === tileY &&
                  !(proj.hitEntityIds?.includes(e.enemyId)) // Skip already hit entities (for piercing)
           );
-
-          console.log(`[Enemy Check] checking tile (${tileX},${tileY}) - hitEnemy: ${hitEnemy ? hitEnemy.enemyId : 'none'}`);
 
           if (hitEnemy) {
             // Track that we hit this entity (for piercing projectiles)
