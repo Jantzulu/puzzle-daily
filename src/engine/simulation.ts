@@ -8,44 +8,116 @@ import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from '.
 
 /**
  * Get all integer tile coordinates along a line segment
- * Uses parametric interpolation to ensure we catch all tiles the projectile passes through,
- * including diagonal tiles that might be missed by simple frame-to-frame Bresenham
+ * Uses DDA (Digital Differential Analyzer) algorithm for accurate diagonal tracing
  */
 function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Array<{x: number, y: number}> {
   const tiles: Array<{x: number, y: number}> = [];
   const seen = new Set<string>();
 
-  const startTileX = Math.floor(x0);
-  const startTileY = Math.floor(y0);
-  const endTileX = Math.floor(x1);
-  const endTileY = Math.floor(y1);
+  // Round to handle floating point precision issues
+  const roundToTile = (n: number) => Math.floor(n + 0.0001);
 
-  // If same tile, just return that tile
+  const startTileX = roundToTile(x0);
+  const startTileY = roundToTile(y0);
+  const endTileX = roundToTile(x1);
+  const endTileY = roundToTile(y1);
+
+  // Always add starting tile
+  const startKey = `${startTileX},${startTileY}`;
+  seen.add(startKey);
+  tiles.push({ x: startTileX, y: startTileY });
+
+  // If same tile, we're done
   if (startTileX === endTileX && startTileY === endTileY) {
-    tiles.push({ x: endTileX, y: endTileY });
     return tiles;
   }
 
-  // Use ray marching to find all tiles along the path
-  // Sample multiple points along the line to catch all intersected tiles
+  // Use DDA algorithm to trace tiles
   const dx = x1 - x0;
   const dy = y1 - y0;
-  const distance = Math.sqrt(dx * dx + dy * dy);
 
-  // Sample at least once per 0.1 units to catch all tile crossings
-  const numSamples = Math.max(Math.ceil(distance / 0.1), 10);
+  // Direction of step for each axis
+  const stepX = dx > 0 ? 1 : dx < 0 ? -1 : 0;
+  const stepY = dy > 0 ? 1 : dy < 0 ? -1 : 0;
 
-  for (let i = 0; i <= numSamples; i++) {
-    const t = i / numSamples;
-    const x = x0 + dx * t;
-    const y = y0 + dy * t;
-    const tileX = Math.floor(x);
-    const tileY = Math.floor(y);
-    const key = `${tileX},${tileY}`;
+  // How far along ray we must move for each unit step in x or y
+  const tDeltaX = stepX !== 0 ? Math.abs(1 / dx) : Infinity;
+  const tDeltaY = stepY !== 0 ? Math.abs(1 / dy) : Infinity;
 
+  // Distance along ray to next x or y boundary
+  let tMaxX: number;
+  let tMaxY: number;
+
+  if (stepX > 0) {
+    tMaxX = ((startTileX + 1) - x0) * tDeltaX;
+  } else if (stepX < 0) {
+    tMaxX = (x0 - startTileX) * tDeltaX;
+  } else {
+    tMaxX = Infinity;
+  }
+
+  if (stepY > 0) {
+    tMaxY = ((startTileY + 1) - y0) * tDeltaY;
+  } else if (stepY < 0) {
+    tMaxY = (y0 - startTileY) * tDeltaY;
+  } else {
+    tMaxY = Infinity;
+  }
+
+  let currentX = startTileX;
+  let currentY = startTileY;
+
+  // Maximum iterations to prevent infinite loops
+  const maxIterations = Math.abs(endTileX - startTileX) + Math.abs(endTileY - startTileY) + 10;
+  let iterations = 0;
+
+  while (iterations < maxIterations) {
+    iterations++;
+
+    // Step in the direction with the smallest t value
+    if (tMaxX < tMaxY) {
+      currentX += stepX;
+      tMaxX += tDeltaX;
+    } else if (tMaxY < tMaxX) {
+      currentY += stepY;
+      tMaxY += tDeltaY;
+    } else {
+      // Equal - diagonal step, add both intermediate tiles for proper collision
+      // First step in X
+      const key1 = `${currentX + stepX},${currentY}`;
+      if (!seen.has(key1)) {
+        seen.add(key1);
+        tiles.push({ x: currentX + stepX, y: currentY });
+      }
+      // Then step in Y
+      const key2 = `${currentX},${currentY + stepY}`;
+      if (!seen.has(key2)) {
+        seen.add(key2);
+        tiles.push({ x: currentX, y: currentY + stepY });
+      }
+      // Move diagonally
+      currentX += stepX;
+      currentY += stepY;
+      tMaxX += tDeltaX;
+      tMaxY += tDeltaY;
+    }
+
+    // Add current tile
+    const key = `${currentX},${currentY}`;
     if (!seen.has(key)) {
       seen.add(key);
-      tiles.push({ x: tileX, y: tileY });
+      tiles.push({ x: currentX, y: currentY });
+    }
+
+    // Check if we've reached or passed the end tile
+    if (currentX === endTileX && currentY === endTileY) {
+      break;
+    }
+
+    // Safety check - if we've gone past the end
+    if ((stepX > 0 && currentX > endTileX) || (stepX < 0 && currentX < endTileX) ||
+        (stepY > 0 && currentY > endTileY) || (stepY < 0 && currentY < endTileY)) {
+      break;
     }
   }
 
