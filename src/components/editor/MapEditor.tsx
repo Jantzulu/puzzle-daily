@@ -602,7 +602,19 @@ export const MapEditor: React.FC = () => {
 
       setGameState((prevState) => {
         if (!prevState) return prevState;
-        const newState = executeTurn({ ...prevState });
+        // Deep copy to handle React StrictMode double-invoke
+        const stateCopy = JSON.parse(JSON.stringify(prevState));
+        // Restore tileStates Map with deep copied Sets
+        stateCopy.tileStates = new Map();
+        if (prevState.tileStates) {
+          prevState.tileStates.forEach((value, key) => {
+            stateCopy.tileStates.set(key, {
+              ...value,
+              damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+            });
+          });
+        }
+        const newState = executeTurn(stateCopy);
 
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
@@ -1241,7 +1253,20 @@ export const MapEditor: React.FC = () => {
     }
 
     if (gameState.gameStatus === 'running') {
-      setGameState((prevState) => prevState ? executeTurn({ ...prevState }) : null);
+      setGameState((prevState) => {
+        if (!prevState) return null;
+        const stateCopy = JSON.parse(JSON.stringify(prevState));
+        stateCopy.tileStates = new Map();
+        if (prevState.tileStates) {
+          prevState.tileStates.forEach((value, key) => {
+            stateCopy.tileStates.set(key, {
+              ...value,
+              damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+            });
+          });
+        }
+        return executeTurn(stateCopy);
+      });
     }
   };
 

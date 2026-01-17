@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
 import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy } from '../../types/game';
 import { Direction } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
@@ -95,7 +94,22 @@ export const Game: React.FC = () => {
       }
 
       setGameState((prevState) => {
-        const newState = executeTurn({ ...prevState });
+        // Deep copy all mutable state to ensure React StrictMode double-invoke works correctly.
+        // StrictMode calls the updater function twice with the same prevState to detect impure renders.
+        // We need a complete deep copy so both runs are truly independent.
+        const stateCopy = JSON.parse(JSON.stringify(prevState));
+        // Restore tileStates Map with deep copied Sets (JSON.stringify loses Map/Set)
+        stateCopy.tileStates = new Map();
+        if (prevState.tileStates) {
+          prevState.tileStates.forEach((value, key) => {
+            stateCopy.tileStates.set(key, {
+              ...value,
+              damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+            });
+          });
+        }
+
+        const newState = executeTurn(stateCopy);
 
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
@@ -302,7 +316,19 @@ export const Game: React.FC = () => {
     }
 
     if (gameState.gameStatus === 'running') {
-      setGameState((prevState) => executeTurn({ ...prevState }));
+      setGameState((prevState) => {
+        const stateCopy = JSON.parse(JSON.stringify(prevState));
+        stateCopy.tileStates = new Map();
+        if (prevState.tileStates) {
+          prevState.tileStates.forEach((value, key) => {
+            stateCopy.tileStates.set(key, {
+              ...value,
+              damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+            });
+          });
+        }
+        return executeTurn(stateCopy);
+      });
     }
   };
 
@@ -368,9 +394,6 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
   };
 
-  // Show editor link in development mode
-  const isDev = import.meta.env.DEV;
-
   // Render heart icons for lives
   const renderLivesHearts = () => {
     const puzzleLives = currentPuzzle.lives ?? 3;
@@ -399,15 +422,6 @@ export const Game: React.FC = () => {
   return (
     <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
       <div className="max-w-6xl mx-auto">
-        {/* Editor link - top right corner */}
-        {isDev && (
-          <div className="flex justify-end mb-2">
-            <Link to="/editor" className="px-3 py-1.5 md:px-4 md:py-2 bg-purple-600 rounded hover:bg-purple-700 text-sm md:text-base">
-              Editor
-            </Link>
-          </div>
-        )}
-
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board */}
           <div className="flex-1 flex flex-col items-center">
