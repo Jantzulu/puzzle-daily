@@ -2168,6 +2168,9 @@ function updateProjectilesHeadless(gameState: GameState): void {
     const range = proj.attackData.range || 10;
     const speed = proj.speed || 5; // tiles per second
     const tilesPerTurn = Math.ceil(speed * TURN_DURATION); // How far projectile moves this turn
+
+    // Debug logging for headless projectile movement
+    console.log(`[updateProjectilesHeadless] Projectile ${proj.id.substring(0, 20)}... speed: ${speed} tiles/sec, tilesPerTurn: ${tilesPerTurn}, turn: ${gameState.currentTurn}`);
     let hitSomething = false;
     let shouldRemove = false;
 
