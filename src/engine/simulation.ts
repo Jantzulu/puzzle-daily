@@ -41,11 +41,13 @@ function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Arra
     }
   };
 
-  // Get start and end tiles (using safeFloor to handle -0.00 -> 0)
+  // Get start and end tiles
+  // Use safeFloor for start position (where projectile actually is)
+  // Use Math.round for end position to handle animation overshoot (e.g., -0.015 -> 0, not -1)
   const startTileX = safeFloor(x0);
   const startTileY = safeFloor(y0);
-  const endTileX = safeFloor(x1);
-  const endTileY = safeFloor(y1);
+  const endTileX = Math.round(x1);
+  const endTileY = Math.round(y1);
 
   // Debug: log the safeFloor results
   console.log(`[getTilesAlongLine] raw: (${x0}, ${y0}) to (${x1}, ${y1})`);
