@@ -19,13 +19,13 @@ function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Arra
   const endTileX = Math.floor(x1);
   const endTileY = Math.floor(y1);
 
-  // If same tile, just return that tile
+  // If same tile, just return that tile (so we check it)
   if (startTileX === endTileX && startTileY === endTileY) {
     tiles.push({ x: endTileX, y: endTileY });
     return tiles;
   }
 
-  // Bresenham's line algorithm
+  // Bresenham's line algorithm - include ALL tiles from start to end
   let x = startTileX;
   let y = startTileY;
   const dx = Math.abs(endTileX - startTileX);
@@ -35,10 +35,8 @@ function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Arra
   let err = dx - dy;
 
   while (true) {
-    // Don't include the starting tile (we've already checked it)
-    if (x !== startTileX || y !== startTileY) {
-      tiles.push({ x, y });
-    }
+    // Include every tile along the path (including start)
+    tiles.push({ x, y });
 
     if (x === endTileX && y === endTileY) break;
 

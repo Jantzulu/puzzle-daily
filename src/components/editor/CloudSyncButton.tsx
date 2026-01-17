@@ -111,7 +111,7 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
       </button>
 
       {showDropdown && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
+        <div className="fixed left-1/2 -translate-x-1/2 top-16 sm:absolute sm:left-auto sm:translate-x-0 sm:right-0 sm:top-full sm:mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
           <div className="p-3 border-b border-gray-700">
             <div className="flex items-center justify-between">
               <span className="text-white font-medium">Cloud Sync</span>
