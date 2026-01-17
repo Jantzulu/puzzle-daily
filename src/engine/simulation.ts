@@ -7,6 +7,19 @@ import { loadStatusEffectAsset, loadSpellAsset, loadCollectible } from '../utils
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
+ * Floor a number with epsilon tolerance to handle floating point issues
+ * Math.floor(-0.0000001) would give -1, but we want 0
+ */
+function safeFloor(n: number): number {
+  // Round to nearest integer if very close (within epsilon)
+  const rounded = Math.round(n);
+  if (Math.abs(n - rounded) < 0.0001) {
+    return rounded;
+  }
+  return Math.floor(n);
+}
+
+/**
  * Get all integer tile coordinates along a line segment
  * Uses simple tile stepping based on start/end tile coordinates
  * For a diagonal from (11,2) to (13,0), we want: (11,2) -> (12,1) -> (13,0)
@@ -24,11 +37,11 @@ function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Arra
     }
   };
 
-  // Get start and end tiles
-  const startTileX = Math.floor(x0);
-  const startTileY = Math.floor(y0);
-  const endTileX = Math.floor(x1);
-  const endTileY = Math.floor(y1);
+  // Get start and end tiles (using safeFloor to handle -0.00 -> 0)
+  const startTileX = safeFloor(x0);
+  const startTileY = safeFloor(y0);
+  const endTileX = safeFloor(x1);
+  const endTileY = safeFloor(y1);
 
   // Always add starting tile
   addTile(startTileX, startTileY);
