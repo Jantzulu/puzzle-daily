@@ -781,6 +781,17 @@ export function executeTurn(gameState: GameState): GameState {
 
   gameState.currentTurn++;
 
+  // HEADLESS MODE: Store character positions at turn start BEFORE they move
+  // This allows enemy projectiles (from previous turns) to hit characters at their pre-move positions
+  if (gameState.headlessMode) {
+    gameState.characterPositionsAtTurnStart = gameState.placedCharacters.map(c => ({
+      characterId: c.characterId,
+      x: c.x,
+      y: c.y,
+      dead: c.dead
+    }));
+  }
+
   // Process turn-start status effects for all entities
   processAllStatusEffectsTurnStart(gameState);
 
@@ -894,6 +905,19 @@ export function executeTurn(gameState: GameState): GameState {
   }
 
   gameState.placedCharacters = newCharacters;
+
+  // HEADLESS MODE: Store enemy positions BEFORE they move
+  // In the visual game, projectiles move continuously during the 800ms turn animation,
+  // so they can hit enemies at their pre-move positions.
+  // We store these positions so the projectile collision check can test against them.
+  if (gameState.headlessMode) {
+    gameState.enemyPositionsAtTurnStart = gameState.puzzle.enemies.map(e => ({
+      enemyId: e.enemyId,
+      x: e.x,
+      y: e.y,
+      dead: e.dead
+    }));
+  }
 
   // Collect all pending character triggers (defer evaluation for melee priority)
   const pendingCharacterTriggers: PlacedCharacter[] = [];
@@ -2314,10 +2338,27 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            const hitEnemy = gameState.puzzle.enemies.find(
+            // Check for enemy hit at current position
+            let hitEnemy = gameState.puzzle.enemies.find(
               e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                    !hitEntityIds.includes(e.enemyId)
             );
+
+            // HEADLESS MODE: Also check against enemy pre-move positions
+            // In the visual game, projectiles can hit enemies during the turn animation
+            // before enemies take their movement action. We simulate this by also checking
+            // where enemies WERE at the start of the turn.
+            if (!hitEnemy && gameState.enemyPositionsAtTurnStart) {
+              const preMoveEnemy = gameState.enemyPositionsAtTurnStart.find(
+                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+                     !hitEntityIds.includes(e.enemyId)
+              );
+              if (preMoveEnemy) {
+                // Find the actual enemy object to apply damage
+                hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === preMoveEnemy.enemyId && !e.dead);
+              }
+            }
+
             if (hitEnemy) {
               hitEntityIds.push(hitEnemy.enemyId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -2358,10 +2399,26 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            const hitChar = gameState.placedCharacters.find(
+            // Check for character hit at current position
+            let hitChar = gameState.placedCharacters.find(
               c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
                    !hitEntityIds.includes(c.characterId)
             );
+
+            // HEADLESS MODE: Also check against character pre-move positions
+            // In the visual game, projectiles can hit characters during the turn animation
+            // before characters take their movement action.
+            if (!hitChar && gameState.characterPositionsAtTurnStart) {
+              const preMoveChar = gameState.characterPositionsAtTurnStart.find(
+                c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
+                     !hitEntityIds.includes(c.characterId)
+              );
+              if (preMoveChar) {
+                // Find the actual character object to apply damage
+                hitChar = gameState.placedCharacters.find(c => c.characterId === preMoveChar.characterId && !c.dead);
+              }
+            }
+
             if (hitChar) {
               hitEntityIds.push(hitChar.characterId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
