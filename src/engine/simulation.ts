@@ -1522,12 +1522,12 @@ export function updateProjectiles(gameState: GameState): void {
         const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
 
         if (nextTileIsWall) {
-          // For bouncing projectiles, allow them to visually move closer to the wall
-          // before bouncing (up to 90% progress). For non-bouncing projectiles,
+          // For bouncing projectiles, allow them to visually move to the edge of the
+          // current tile (50% progress toward wall center). For non-bouncing projectiles,
           // clamp at 40% to prevent visual clipping.
           const canBounce = proj.bounceOffWalls &&
                            (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);
-          const maxProgress = canBounce ? 0.9 : 0.4;
+          const maxProgress = canBounce ? 0.5 : 0.4;
           const clampedProgress = Math.min(tileProgress, maxProgress);
           newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
           newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
