@@ -1,4 +1,3 @@
-// Simulation engine - handles game turn execution and projectile updates
 import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
@@ -907,10 +906,8 @@ export function executeTurn(gameState: GameState): GameState {
   // Snapshot enemy positions BEFORE they move for projectile collision detection
   // This ensures projectiles hit enemies that are leaving a tile on the same turn
   // the projectile arrives (projectile wins ties)
-  // Include array index to uniquely identify enemies when multiple share the same ID
-  const enemyPositionsBeforeMove = gameState.puzzle.enemies.map((e, index) => ({
+  const enemyPositionsBeforeMove = gameState.puzzle.enemies.map(e => ({
     enemyId: e.enemyId,
-    index, // Unique index to identify this specific enemy instance
     x: e.x,
     y: e.y,
     dead: e.dead,
@@ -1450,8 +1447,7 @@ export function updateProjectiles(gameState: GameState): void {
 
     // Save previous tile index BEFORE movement calculation updates it
     // This is needed to determine which tiles are "new" for collision detection
-    // Note: This may be updated after a bounce to reset collision tracking
-    let prevTileIndex = proj.currentTileIndex ?? 0;
+    const prevTileIndex = proj.currentTileIndex ?? 0;
 
     // Calculate position based on whether this is a homing projectile or not
     let newX: number;
@@ -1525,9 +1521,9 @@ export function updateProjectiles(gameState: GameState): void {
         const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
 
         if (nextTileIsWall) {
-          // Clamp progress to prevent visual clipping into wall
-          // 0.48 gets close to the wall edge without clipping
-          const clampedProgress = Math.min(tileProgress, 0.48);
+          // Interpolate only up to the edge of the current tile (50% toward wall)
+          // This prevents visual clipping while still showing movement toward the wall
+          const clampedProgress = Math.min(tileProgress, 0.4);
           newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
           newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
         } else {
@@ -1546,7 +1542,11 @@ export function updateProjectiles(gameState: GameState): void {
       const dx = proj.targetX - proj.startX;
       const dy = proj.targetY - proj.startY;
       if (dx !== 0 || dy !== 0) {
+        const oldDir = proj.direction;
         proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+        if (oldDir !== proj.direction) {
+          console.log(`[DEBUG] Direction recalc: was=${oldDir}, now=${proj.direction}, start=(${proj.startX},${proj.startY}), target=(${proj.targetX},${proj.targetY}), tilePath=${JSON.stringify(proj.tilePath)}`);
+        }
       }
     } else {
       // LEGACY: Non-homing projectiles without tilePath (shouldn't happen for new projectiles)
@@ -1613,6 +1613,8 @@ export function updateProjectiles(gameState: GameState): void {
 
       // New tiles are those from prevTileIndex to currentTileIndex (exclusive of tiles already checked)
       newTiles = proj.tilePath.slice(prevTileIndex, (proj.currentTileIndex ?? 0) + 1);
+
+      console.log(`[DEBUG] Tile collision check: prevTileIndex=${prevTileIndex}, currentTileIndex=${proj.currentTileIndex}, newTiles=${JSON.stringify(newTiles)}`);
     } else {
       // LEGACY/HOMING: Calculate tiles dynamically
       tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
@@ -1634,48 +1636,24 @@ export function updateProjectiles(gameState: GameState): void {
       }
     }
 
-    // Check collision with walls based on visual position, not pre-computed path
-    // This ensures bounce triggers when visually at the wall, not before
+    // Check collision with walls - check all tiles along path
+    let hitWallTile: { x: number; y: number } | null = null;
+    for (const tile of tilesAlongPath) {
+      const tileX = tile.x;
+      const tileY = tile.y;
+      const isWall = !isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
+          gameState.puzzle.tiles[tileY]?.[tileX]?.type === TileType.WALL ||
+          gameState.puzzle.tiles[tileY]?.[tileX] === null;
+      if (isWall) {
+        hitWallTile = tile;
+        break;
+      }
+    }
+
+    // Fall back to final tile check if no tiles along path (same tile)
     const finalTileX = Math.floor(newX);
     const finalTileY = Math.floor(newY);
-    let hitWallTile: { x: number; y: number } | null = null;
-
-    // SAFETY CHECK: Always catch projectiles that are out of bounds or in a wall tile
-    // This is a fallback in case the path-based detection fails
-    const currentTileIsOutOfBounds = !isInBounds(finalTileX, finalTileY, gameState.puzzle.width, gameState.puzzle.height);
-    const currentTileIsWall = !currentTileIsOutOfBounds && (
-      gameState.puzzle.tiles[finalTileY]?.[finalTileX]?.type === TileType.WALL ||
-      gameState.puzzle.tiles[finalTileY]?.[finalTileX] === null
-    );
-
-    if (currentTileIsOutOfBounds || currentTileIsWall) {
-      // Projectile is already in an invalid position - trigger wall hit immediately
-      hitWallTile = { x: finalTileX, y: finalTileY };
-    }
-    // Check the tile the projectile is visually moving toward
-    // For tile-based projectiles, check the next tile in the path
-    else if (proj.tilePath && proj.tilePath.length > 0) {
-      const currentIdx = proj.currentTileIndex ?? 0;
-      const nextIdx = Math.min(currentIdx + 1, proj.tilePath.length - 1);
-      const nextTile = proj.tilePath[nextIdx];
-
-      const nextIsWall = !isInBounds(nextTile.x, nextTile.y, gameState.puzzle.width, gameState.puzzle.height) ||
-          gameState.puzzle.tiles[nextTile.y]?.[nextTile.x]?.type === TileType.WALL ||
-          gameState.puzzle.tiles[nextTile.y]?.[nextTile.x] === null;
-
-      if (nextIsWall) {
-        // Only trigger wall collision when we're visually close to the wall
-        // Calculate distance from current visual position to the wall tile center
-        const distToWall = Math.sqrt(
-          Math.pow(newX - nextTile.x, 2) + Math.pow(newY - nextTile.y, 2)
-        );
-        // Trigger when within 0.55 tiles of wall - tight enough to not go out of bounds
-        if (distToWall < 0.55) {
-          hitWallTile = nextTile;
-        }
-      }
-    } else {
-      // Legacy: check current tile
+    if (!hitWallTile && tilesAlongPath.length === 0) {
       const isWall = !isInBounds(finalTileX, finalTileY, gameState.puzzle.width, gameState.puzzle.height) ||
           gameState.puzzle.tiles[finalTileY]?.[finalTileX]?.type === TileType.WALL ||
           gameState.puzzle.tiles[finalTileY]?.[finalTileX] === null;
@@ -1822,28 +1800,19 @@ export function updateProjectiles(gameState: GameState): void {
         }
 
         const remainingRange = proj.attackData.range ?? 5;
+        proj.x = bounceX;
+        proj.y = bounceY;
         proj.startX = bounceX;
         proj.startY = bounceY;
         proj.targetX = bounceX + newDirX * remainingRange;
         proj.targetY = bounceY + newDirY * remainingRange;
+        proj.startTime = now; // Reset timing for smooth continuation
 
         // Recompute tile path for the new bounced trajectory with wall lookahead
         // This ensures the path stops BEFORE any wall, preventing visual clipping
         proj.tilePath = computeTilePathWithWallLookahead(bounceX, bounceY, proj.targetX, proj.targetY, gameState);
         proj.currentTileIndex = 0;
-
-        // Position at the bounce point and continue from there
-        proj.x = bounceX;
-        proj.y = bounceY;
-        proj.startTime = now;
         proj.tileEntryTime = now;
-
-        // CRITICAL: Reset prevTileIndex and recalculate collision tracking variables
-        // After bounce, we have a completely new tilePath, so we must reset collision detection
-        // to start fresh from the bounce point (tile index 0)
-        prevTileIndex = 0;
-        tilesAlongPath = proj.tilePath.slice(0, 1); // Just the bounce tile
-        newTiles = proj.tilePath.slice(0, 1); // Only check the bounce tile initially
 
         // Update direction for sprite rendering
         proj.direction = getDirectionFromVector(newDirX, newDirY);
@@ -1942,107 +1911,140 @@ export function updateProjectiles(gameState: GameState): void {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
 
-          // Check for ALL enemies at this tile using pre-move positions
-          // This ensures we hit enemies based on where they WERE at the start of the turn,
-          // not where they moved to. Multiple enemies can be on the same tile.
-          // Use filter() instead of find() to get all enemies at this tile
-          let enemiesToHit: PlacedEnemy[] = [];
-
-          if (gameState.enemyPositionsBeforeMove) {
-            // Get all pre-move enemies at this tile that haven't been hit yet
-            const preMoveEnemiesAtTile = gameState.enemyPositionsBeforeMove.filter(
-              e => Math.floor(e.x) === tileX &&
-                   Math.floor(e.y) === tileY &&
-                   !(proj.hitEnemyIndices?.includes(e.index))
-            );
-            for (const preMoveEnemy of preMoveEnemiesAtTile) {
-              const actualEnemy = gameState.puzzle.enemies[preMoveEnemy.index];
-              if (actualEnemy && !actualEnemy.dead) {
-                enemiesToHit.push(actualEnemy);
-                // Track this specific enemy instance by index
-                if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
-                proj.hitEnemyIndices.push(preMoveEnemy.index);
-              }
-            }
-          } else {
-            // Fallback if no pre-move snapshot
-            gameState.puzzle.enemies.forEach((e, idx) => {
-              if (!e.dead &&
-                  Math.floor(e.x) === tileX &&
-                  Math.floor(e.y) === tileY &&
-                  !(proj.hitEnemyIndices?.includes(idx))) {
-                enemiesToHit.push(e);
-                if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
-                proj.hitEnemyIndices.push(idx);
-              }
-            });
+          // Debug: Log enemy positions when checking tile (13,0)
+          if (tileX === 13 && tileY === 0) {
+            const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', ');
+            const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', ') || 'none';
+            console.log(`[DEBUG] Checking (13,0): enemies current=[${enemyInfo}], pre-move=[${preMoveInfo}], alreadyHit=[${proj.hitEntityIds?.join(',') || 'none'}]`);
           }
 
-          // Process all enemies hit at this tile
-          for (const hitEnemy of enemiesToHit) {
-            if (hitEnemy.dead) continue; // Skip if already dead from earlier hit this frame
+          // First check pre-move positions (enemies that WERE at this tile)
+          let hitEnemyId: string | undefined;
+          if (gameState.enemyPositionsBeforeMove) {
+            const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
+              e => !e.dead &&
+                   Math.floor(e.x) === tileX &&
+                   Math.floor(e.y) === tileY &&
+                   !(proj.hitEntityIds?.includes(e.enemyId))
+            );
+            if (preMoveEnemy) {
+              hitEnemyId = preMoveEnemy.enemyId;
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] HIT! Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
+              }
+            }
+          }
 
-            // Track that we hit this entity (for piercing projectiles)
-            if (!proj.hitEntityIds) proj.hitEntityIds = [];
-            proj.hitEntityIds.push(hitEnemy.enemyId);
+          // If no pre-move hit, check current positions
+          if (!hitEnemyId) {
+            const currentEnemy = gameState.puzzle.enemies.find(
+              e => !e.dead &&
+                   Math.floor(e.x) === tileX &&
+                   Math.floor(e.y) === tileY &&
+                   !(proj.hitEntityIds?.includes(e.enemyId))
+            );
+            if (currentEnemy) {
+              hitEnemyId = currentEnemy.enemyId;
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] HIT! Found enemy ${currentEnemy.enemyId} at current position`);
+              }
+            }
+          }
 
-            // Check if this should explode into AOE on impact
-            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-              triggerAOEExplosion(
-                hitEnemy.x,
-                hitEnemy.y,
-                proj.attackData,
-                proj.sourceCharacterId,
-                proj.sourceEnemyId,
-                gameState,
-                proj.spellAssetId
+          if (tileX === 13 && tileY === 0 && !hitEnemyId) {
+            console.log(`[DEBUG] NO HIT at (13,0) - no matching enemy found!`);
+          }
+
+          // Apply damage if we found a hit
+          if (hitEnemyId) {
+            // Find enemy by ID AND position to handle cases where multiple enemies share an ID
+            // First try to find a living enemy at this tile position with matching ID
+            let hitEnemy = gameState.puzzle.enemies.find(e =>
+              e.enemyId === hitEnemyId &&
+              !e.dead &&
+              Math.floor(e.x) === tileX &&
+              Math.floor(e.y) === tileY
+            );
+            // If not found at exact position, try finding any living enemy with this ID at tile
+            if (!hitEnemy) {
+              hitEnemy = gameState.puzzle.enemies.find(e =>
+                !e.dead &&
+                Math.floor(e.x) === tileX &&
+                Math.floor(e.y) === tileY
               );
-            } else {
-              // Apply single-target damage
-              const damage = proj.attackData.damage ?? 1;
-              hitEnemy.currentHealth -= damage;
-
-              // Wake from sleep if sleeping
-              wakeFromSleep(hitEnemy);
-
-              if (hitEnemy.currentHealth <= 0) {
-                hitEnemy.dead = true;
-                // Handle death drop
-                handleEntityDeathDrop(hitEnemy, true, gameState);
+            }
+            // Fallback to original behavior
+            if (!hitEnemy) {
+              hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+            }
+            if (tileX === 13 && tileY === 0) {
+              console.log(`[DEBUG] Applying damage: hitEnemy=${hitEnemy?.enemyId}, dead=${hitEnemy?.dead}, health=${hitEnemy?.currentHealth}, pos=(${hitEnemy?.x},${hitEnemy?.y})`);
+            }
+            if (hitEnemy && !hitEnemy.dead) {
+              // Track that we hit this entity (for piercing projectiles)
+              if (!proj.hitEntityIds) proj.hitEntityIds = [];
+              proj.hitEntityIds.push(hitEnemy.enemyId);
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] Damage applied! Enemy health now: ${hitEnemy.currentHealth}, hitEntityIds: ${proj.hitEntityIds.join(',')}`);
               }
 
-              // Apply status effect if projectile has a spell with one configured
-              if (proj.spellAssetId && !hitEnemy.dead) {
-                applyStatusEffectFromProjectile(
-                  hitEnemy,
-                  proj.spellAssetId,
-                  proj.sourceCharacterId || 'unknown',
-                  false,
-                  gameState.currentTurn
-                );
-              }
-
-              // Spawn hit effect
-              if (proj.attackData.hitEffectSprite) {
-                spawnParticleEffect(
+              // Check if this should explode into AOE on impact
+              if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+                triggerAOEExplosion(
                   hitEnemy.x,
                   hitEnemy.y,
-                  proj.attackData.hitEffectSprite,
-                  proj.attackData.effectDuration || 300,
-                  gameState
+                  proj.attackData,
+                  proj.sourceCharacterId,
+                  proj.sourceEnemyId,
+                  gameState,
+                  proj.spellAssetId
                 );
+              } else {
+                // Apply single-target damage
+                const damage = proj.attackData.damage ?? 1;
+                hitEnemy.currentHealth -= damage;
+
+                // Wake from sleep if sleeping
+                wakeFromSleep(hitEnemy);
+
+                if (hitEnemy.currentHealth <= 0) {
+                  hitEnemy.dead = true;
+                  // Handle death drop
+                  handleEntityDeathDrop(hitEnemy, true, gameState);
+                }
+
+                // Apply status effect if projectile has a spell with one configured
+                if (proj.spellAssetId && !hitEnemy.dead) {
+                  applyStatusEffectFromProjectile(
+                    hitEnemy,
+                    proj.spellAssetId,
+                    proj.sourceCharacterId || 'unknown',
+                    false,
+                    gameState.currentTurn
+                  );
+                }
+
+                // Spawn hit effect
+                if (proj.attackData.hitEffectSprite) {
+                  spawnParticleEffect(
+                    hitEnemy.x,
+                    hitEnemy.y,
+                    proj.attackData.hitEffectSprite,
+                    proj.attackData.effectDuration || 300,
+                    gameState
+                  );
+                }
+              }
+
+              // Check if projectile should pierce
+              if (!proj.attackData.projectilePierces) {
+                proj.active = false;
+                projectilesToRemove.push(proj.id);
+                entityHitAndStopped = true;
+                break;
               }
             }
-
-            // Check if projectile should pierce
-            if (!proj.attackData.projectilePierces) {
-              proj.active = false;
-              projectilesToRemove.push(proj.id);
-              entityHitAndStopped = true;
-              break; // Break inner loop (enemies at this tile)
-            }
           }
-          if (entityHitAndStopped) break; // Break outer loop (tiles to check)
         }
       }
     }
@@ -2402,65 +2404,56 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            // Check for ALL enemy hits using pre-move positions ONLY
-            // This ensures we hit enemies based on where they WERE at the start of the turn,
-            // not where they moved to. Multiple enemies can be on the same tile.
-            let enemiesToHit: typeof gameState.puzzle.enemies = [];
+            // Check for enemy hits using pre-move positions first (projectile wins ties)
+            // This ensures that if an enemy is leaving a tile on the same turn the
+            // projectile arrives, the projectile still hits them
+            let hitEnemyId: string | undefined;
 
-            // Use pre-move positions to determine hits
-            // Use index to track which specific enemy instances have been hit (handles duplicate IDs)
+            // First check pre-move positions (enemies that WERE at this tile)
             if (gameState.enemyPositionsBeforeMove) {
-              const preMoveEnemiesAtTile = gameState.enemyPositionsBeforeMove.filter(
-                e => Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
-                     !(proj.hitEnemyIndices?.includes(e.index))
+              const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
+                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+                     !hitEntityIds.includes(e.enemyId)
               );
-              for (const preMoveEnemy of preMoveEnemiesAtTile) {
-                const actualEnemy = gameState.puzzle.enemies[preMoveEnemy.index];
-                if (actualEnemy && !actualEnemy.dead) {
-                  enemiesToHit.push(actualEnemy);
-                  if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
-                  proj.hitEnemyIndices.push(preMoveEnemy.index);
-                }
+              if (preMoveEnemy) {
+                hitEnemyId = preMoveEnemy.enemyId;
               }
-            } else {
-              // Fallback if no pre-move snapshot
-              gameState.puzzle.enemies.forEach((e, idx) => {
-                if (!e.dead &&
-                    Math.floor(e.x) === checkX &&
-                    Math.floor(e.y) === checkY &&
-                    !(proj.hitEnemyIndices?.includes(idx))) {
-                  enemiesToHit.push(e);
-                  if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
-                  proj.hitEnemyIndices.push(idx);
-                }
-              });
             }
 
-            // Process all enemies hit at this tile
-            for (const hitEnemy of enemiesToHit) {
-              if (hitEnemy.dead) continue; // Skip if already dead from earlier hit
-
-              hitEntityIds.push(hitEnemy.enemyId);
-              if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-                triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
-                  proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
-              } else {
-                const damage = proj.attackData.damage ?? 0;
-                hitEnemy.currentHealth -= damage;
-                wakeFromSleep(hitEnemy);
-                if (hitEnemy.currentHealth <= 0) {
-                  hitEnemy.dead = true;
-                  handleEntityDeathDrop(hitEnemy, true, gameState);
-                }
-                if (proj.spellAssetId && !hitEnemy.dead) {
-                  applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
-                    proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
-                }
+            // If no pre-move hit, check current positions (enemies that moved INTO this tile)
+            if (!hitEnemyId) {
+              const currentEnemy = gameState.puzzle.enemies.find(
+                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+                     !hitEntityIds.includes(e.enemyId)
+              );
+              if (currentEnemy) {
+                hitEnemyId = currentEnemy.enemyId;
               }
-              hitSomething = true;
-              if (!canPierce) {
-                shouldRemove = true;
-                break; // Stop processing more enemies if non-piercing
+            }
+
+            // Apply damage if we found a hit
+            if (hitEnemyId) {
+              const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+              if (hitEnemy && !hitEnemy.dead) {
+                hitEntityIds.push(hitEnemy.enemyId);
+                if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+                  triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
+                    proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+                } else {
+                  const damage = proj.attackData.damage ?? 0;
+                  hitEnemy.currentHealth -= damage;
+                  wakeFromSleep(hitEnemy);
+                  if (hitEnemy.currentHealth <= 0) {
+                    hitEnemy.dead = true;
+                    handleEntityDeathDrop(hitEnemy, true, gameState);
+                  }
+                  if (proj.spellAssetId && !hitEnemy.dead) {
+                    applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
+                      proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+                  }
+                }
+                hitSomething = true;
+                if (!canPierce) shouldRemove = true;
               }
             }
           }
