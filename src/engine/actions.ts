@@ -1409,10 +1409,6 @@ function spawnProjectile(
   const range = attackData.range || 10; // Default max range
   const speed = attackData.projectileSpeed || 4; // Tiles per turn
 
-  // Debug logging for projectile spawn (only in headless/validator mode)
-  if (gameState.headlessMode) {
-    console.log(`[VALIDATOR] Projectile: "${spell?.name || attackData.name}" | speed=${speed} tiles/turn | range=${range} | from=(${character.x},${character.y}) facing=${character.facing} | turn=${gameState.currentTurn}`);
-  }
 
   // Calculate target position
   let targetX: number;

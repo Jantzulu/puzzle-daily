@@ -2301,6 +2301,15 @@ function updateProjectilesHeadless(gameState: GameState): void {
       let reachedEnd = false;
       let hitWall = false;
 
+      // Debug logging
+      if (gameState.headlessMode) {
+        const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ');
+        const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ') || 'none';
+        console.log(`[DEBUG] Turn ${gameState.currentTurn}: Projectile from (${proj.startX},${proj.startY}) dir=${proj.direction} dx=${dx} dy=${dy} | checking tiles ${startTile}-${endTile} | speed=${tilesPerTurn} range=${range}`);
+        console.log(`[DEBUG]   Enemies current: ${enemyInfo}`);
+        console.log(`[DEBUG]   Enemies pre-move: ${preMoveInfo}`);
+      }
+
       for (let dist = startTile; dist <= endTile; dist++) {
         // Stop if we hit something and can't pierce
         if (hitSomething && !canPierce) {
@@ -2311,8 +2320,13 @@ function updateProjectilesHeadless(gameState: GameState): void {
         const checkX = Math.floor(proj.startX + dx * dist);
         const checkY = Math.floor(proj.startY + dy * dist);
 
+        if (gameState.headlessMode) {
+          console.log(`[DEBUG]   Checking tile dist=${dist}: (${checkX},${checkY})`);
+        }
+
         // Check bounds
         if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
+          if (gameState.headlessMode) console.log(`[DEBUG]   -> Out of bounds, removing`);
           shouldRemove = true;
           break;
         }
@@ -2320,6 +2334,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
         // Check wall
         const tile = gameState.puzzle.tiles[checkY]?.[checkX];
         if (!tile || tile.type === TileType.WALL) {
+          if (gameState.headlessMode) console.log(`[DEBUG]   -> Hit wall at (${checkX},${checkY}), removing`);
           // Hit wall - trigger AOE if configured, then stop
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(checkX, checkY, proj.attackData,
@@ -2367,6 +2382,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               );
               if (preMoveEnemy) {
                 hitEnemyId = preMoveEnemy.enemyId;
+                if (gameState.headlessMode) console.log(`[DEBUG]   -> Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
               }
             }
 
@@ -2378,12 +2394,20 @@ function updateProjectilesHeadless(gameState: GameState): void {
               );
               if (currentEnemy) {
                 hitEnemyId = currentEnemy.enemyId;
+                if (gameState.headlessMode) console.log(`[DEBUG]   -> Found enemy ${currentEnemy.enemyId} at current position`);
               }
+            }
+
+            if (gameState.headlessMode && !hitEnemyId) {
+              console.log(`[DEBUG]   -> No enemy found at (${checkX},${checkY})`);
             }
 
             // Apply damage if we found a hit
             if (hitEnemyId) {
               const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+              if (gameState.headlessMode) {
+                console.log(`[DEBUG]   -> Applying damage to ${hitEnemyId}, enemy found=${!!hitEnemy}, dead=${hitEnemy?.dead}`);
+              }
               if (hitEnemy && !hitEnemy.dead) {
                 hitEntityIds.push(hitEnemy.enemyId);
                 if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -2485,11 +2509,6 @@ function updateProjectilesHeadless(gameState: GameState): void {
     if (shouldRemove) {
       proj.active = false;
       projectilesToRemove.push(proj.id);
-      // Log projectile outcome in headless mode
-      if (gameState.headlessMode) {
-        const traveledDist = Math.sqrt(Math.pow(proj.x - proj.startX, 2) + Math.pow(proj.y - proj.startY, 2));
-        console.log(`[VALIDATOR] Projectile END: hit=${hitSomething} | traveled=${traveledDist.toFixed(1)} tiles | final=(${proj.x.toFixed(1)},${proj.y.toFixed(1)}) | turn=${gameState.currentTurn}`);
-      }
     }
   }
 
