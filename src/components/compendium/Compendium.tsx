@@ -40,9 +40,6 @@ interface CharacterCardProps {
 }
 
 const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick, isSelected }) => {
-  // Get first tooltip step as description preview
-  const descriptionPreview = character.tooltipSteps?.[0];
-
   return (
     <div
       onClick={onClick}
@@ -67,10 +64,8 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick, isSel
           {character.title && (
             <div className="text-xs text-gray-500 italic truncate">{character.title}</div>
           )}
-          {descriptionPreview ? (
-            <div className="text-xs text-gray-400 truncate">
-              <RichTextRenderer html={descriptionPreview} />
-            </div>
+          {character.description ? (
+            <div className="text-xs text-gray-400 truncate">{character.description}</div>
           ) : (
             <div className="text-xs text-gray-400">HP: {character.health}</div>
           )}
@@ -87,9 +82,6 @@ interface EnemyCardProps {
 }
 
 const EnemyCard: React.FC<EnemyCardProps> = ({ enemy, onClick, isSelected }) => {
-  // Get first tooltip step as description preview
-  const descriptionPreview = enemy.tooltipSteps?.[0];
-
   return (
     <div
       onClick={onClick}
@@ -114,10 +106,8 @@ const EnemyCard: React.FC<EnemyCardProps> = ({ enemy, onClick, isSelected }) => 
           {enemy.title && (
             <div className="text-xs text-gray-500 italic truncate">{enemy.title}</div>
           )}
-          {descriptionPreview ? (
-            <div className="text-xs text-gray-400 truncate">
-              <RichTextRenderer html={descriptionPreview} />
-            </div>
+          {enemy.description ? (
+            <div className="text-xs text-gray-400 truncate">{enemy.description}</div>
           ) : (
             <div className="text-xs text-gray-400">HP: {enemy.health}</div>
           )}
@@ -296,10 +286,18 @@ const CharacterDetail: React.FC<CharacterDetailProps> = ({ character }) => {
         </div>
       </div>
 
-      {/* Description (Tooltip Steps) */}
-      {character.tooltipSteps && character.tooltipSteps.length > 0 && (
+      {/* Description */}
+      {character.description && (
         <div className="bg-gray-700 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-gray-300 mb-2">Description</h3>
+          <p className="text-sm text-gray-400">{character.description}</p>
+        </div>
+      )}
+
+      {/* Behavior (Tooltip Steps) */}
+      {character.tooltipSteps && character.tooltipSteps.length > 0 && (
+        <div className="bg-gray-700 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-300 mb-2">Behavior</h3>
           <ul className="list-disc list-inside space-y-1 text-sm text-gray-400">
             {character.tooltipSteps.map((step, idx) => (
               <li key={idx}><RichTextRenderer html={step} /></li>
@@ -344,10 +342,18 @@ const EnemyDetail: React.FC<EnemyDetailProps> = ({ enemy }) => {
         </div>
       </div>
 
-      {/* Description (Tooltip Steps) */}
-      {enemy.tooltipSteps && enemy.tooltipSteps.length > 0 && (
+      {/* Description */}
+      {enemy.description && (
         <div className="bg-gray-700 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-gray-300 mb-2">Description</h3>
+          <p className="text-sm text-gray-400">{enemy.description}</p>
+        </div>
+      )}
+
+      {/* Behavior (Tooltip Steps) */}
+      {enemy.tooltipSteps && enemy.tooltipSteps.length > 0 && (
+        <div className="bg-gray-700 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-300 mb-2">Behavior</h3>
           <ul className="list-disc list-inside space-y-1 text-sm text-gray-400">
             {enemy.tooltipSteps.map((step, idx) => (
               <li key={idx}><RichTextRenderer html={step} /></li>
