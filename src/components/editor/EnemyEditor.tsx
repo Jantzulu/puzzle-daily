@@ -168,7 +168,7 @@ export const EnemyEditor: React.FC = () => {
           {/* Enemy List - Left Sidebar */}
           <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Foes</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Enemies</h2>
               <button onClick={handleNew} className="dungeon-btn-success text-sm">
                 + New
               </button>
@@ -250,10 +250,10 @@ export const EnemyEditor: React.FC = () => {
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold font-medieval text-copper-400">
-                    {isCreating ? 'Create New Foe' : `Edit: ${editing.name}`}
+                    {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
                   </h2>
                   <button onClick={handleSave} className="dungeon-btn-success">
-                    Save Foe
+                    Save Enemy
                   </button>
                 </div>
 
@@ -603,12 +603,12 @@ export const EnemyEditor: React.FC = () => {
               </div>
             ) : (
               <div className="dungeon-panel p-8 text-center">
-                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Foe Editor</h2>
+                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Enemy Editor</h2>
                 <p className="text-stone-400 mb-6">
-                  Create and customize foes with unique sprites and behaviors.
+                  Create and customize enemies with unique sprites and behaviors.
                 </p>
                 <button onClick={handleNew} className="dungeon-btn-success text-lg">
-                  + Create New Foe
+                  + Create New Enemy
                 </button>
               </div>
             )}

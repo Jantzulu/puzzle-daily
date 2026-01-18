@@ -19,6 +19,12 @@ export interface ThemeAssets {
   logoAlt?: string; // Alt text for logo
   siteTitle?: string; // Site title (default: "Puzzle Daily")
 
+  // Navigation labels (customizable button text)
+  navLabelPlay?: string;       // "Play" button label
+  navLabelCompendium?: string; // "Compendium" button label
+  navLabelEditor?: string;     // "Map Editor" button label
+  navLabelAssets?: string;     // "Assets" button label
+
   // Backgrounds
   bgMain?: string; // Main page background
   bgPanel?: string; // Panel/card background
@@ -93,6 +99,10 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   logo: { label: 'Logo', description: 'Logo image shown in navbar (recommended: PNG with transparency, ~32-48px height)', category: 'branding', inputType: 'image' },
   logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding', inputType: 'text' },
   siteTitle: { label: 'Site Title', description: 'Title shown in navbar (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
+  navLabelPlay: { label: 'Play Button Label', description: 'Text for Play navigation button (default: "Play")', category: 'branding', inputType: 'text' },
+  navLabelCompendium: { label: 'Compendium Button Label', description: 'Text for Compendium navigation button (default: "Compendium")', category: 'branding', inputType: 'text' },
+  navLabelEditor: { label: 'Editor Button Label', description: 'Text for Map Editor navigation button (default: "Map Editor")', category: 'branding', inputType: 'text' },
+  navLabelAssets: { label: 'Assets Button Label', description: 'Text for Assets navigation button (default: "Assets")', category: 'branding', inputType: 'text' },
   // Images
   bgMain: { label: 'Main Background', description: 'Background for the entire page', category: 'backgrounds', inputType: 'image' },
   bgPanel: { label: 'Panel Background', description: 'Background texture for panels and cards', category: 'backgrounds', inputType: 'image' },

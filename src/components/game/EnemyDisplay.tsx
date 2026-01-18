@@ -31,8 +31,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
   if (uniqueEnemies.length === 0) {
     return (
       <div className="dungeon-panel p-4">
-        <h3 className="text-lg font-bold mb-2 text-blood-400">Foes</h3>
-        <p className="text-sm text-stone-500 text-center">No foes remaining</p>
+        <h3 className="text-lg font-bold mb-2 text-blood-400">Enemies</h3>
+        <p className="text-sm text-stone-500 text-center">No enemies remaining</p>
       </div>
     );
   }
@@ -41,7 +41,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
     <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold text-blood-400">Foes</h3>
+          <h3 className="text-lg font-bold text-blood-400">Enemies</h3>
           <HelpButton sectionId="enemies" />
         </div>
         <span className="text-sm text-stone-400">

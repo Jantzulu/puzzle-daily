@@ -25,7 +25,7 @@ interface TabConfig {
 
 const TABS: TabConfig[] = [
   { id: 'characters', label: 'Heroes', icon: '⚔️' },
-  { id: 'enemies', label: 'Foes', icon: '👹' },
+  { id: 'enemies', label: 'Enemies', icon: '👹' },
   { id: 'status_effects', label: 'Enchantments', icon: '✨' },
   { id: 'special_tiles', label: 'Dungeon Tiles', icon: '🧱' },
   { id: 'items', label: 'Items', icon: '💎' },
@@ -588,7 +588,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item }) => {
         <ul className="space-y-1 text-sm text-stone-400">
           <li>• Method: {item.pickupMethod === 'step_on' ? 'Step on tile' : item.pickupMethod}</li>
           {item.pickupPermissions.characters && <li>• Can be picked up by heroes</li>}
-          {item.pickupPermissions.enemies && <li>• Can be picked up by foes</li>}
+          {item.pickupPermissions.enemies && <li>• Can be picked up by enemies</li>}
         </ul>
       </div>
     </div>
@@ -729,7 +729,7 @@ export const Compendium: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">Compendium</h1>
-          <p className="text-stone-400">Browse all dungeon elements - heroes, foes, enchantments, tiles, and treasure.</p>
+          <p className="text-stone-400">Browse all dungeon elements - heroes, enemies, enchantments, tiles, and treasure.</p>
         </div>
 
         {/* Search */}
@@ -821,7 +821,7 @@ export const Compendium: React.FC = () => {
             )}
             {activeTab === 'enemies' && filteredEnemies.length === 0 && (
               <div className="text-center py-12 text-stone-500">
-                {searchQuery ? 'No foes match your search' : 'No foes yet'}
+                {searchQuery ? 'No enemies match your search' : 'No enemies yet'}
               </div>
             )}
             {activeTab === 'status_effects' && filteredStatusEffects.length === 0 && (

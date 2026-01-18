@@ -204,7 +204,7 @@ export const SpellLibrary: React.FC = () => {
               <div className="dungeon-panel p-8 text-center">
                 <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Spell Editor</h2>
                 <p className="text-stone-400 mb-6">
-                  Create spell assets that can be equipped to heroes and foes.
+                  Create spell assets that can be equipped to heroes and enemies.
                   <br />
                   Select a spell from the list or create a new one.
                 </p>

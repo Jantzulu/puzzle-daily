@@ -544,7 +544,7 @@ export const Game: React.FC = () => {
                       className="dungeon-btn-danger text-xs md:text-sm px-2 py-1 md:px-3 md:py-2"
                       title="Watch enemies move without characters for 5 turns"
                     >
-                      Test Foes
+                      Test Enemies
                     </button>
                   </div>
                 </div>
@@ -584,7 +584,7 @@ export const Game: React.FC = () => {
                   <span className={`text-sm font-medium ${
                     testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
                   }`}>
-                    Testing {testMode === 'enemies' ? 'Foes' : 'Heroes'}
+                    Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
                   </span>
                   <span className={`text-2xl font-bold min-w-[2ch] text-center ${
                     testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
@@ -716,7 +716,7 @@ export const Game: React.FC = () => {
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
                         case 'defeat_all_enemies':
-                          return 'Defeat all foes';
+                          return 'Defeat all enemies';
                         case 'collect_all':
                           return 'Collect all treasure';
                         case 'reach_goal':

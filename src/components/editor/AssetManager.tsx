@@ -37,7 +37,7 @@ export const AssetManager: React.FC = () => {
                 ⚔️ <span className="hidden sm:inline">Heroes</span><span className="sm:hidden">Chars</span>
               </button>
               <button onClick={() => setActiveTab('enemies')} className={tabClass('enemies')}>
-                👹 Foes
+                👹 Enemies
               </button>
               <button onClick={() => setActiveTab('spells')} className={tabClass('spells')}>
                 ✨ Spells
