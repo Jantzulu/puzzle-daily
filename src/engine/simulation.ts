@@ -1913,8 +1913,8 @@ export function updateProjectiles(gameState: GameState): void {
 
           // Debug: Log enemy positions when checking tile (13,0)
           if (tileX === 13 && tileY === 0) {
-            const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ');
-            const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ') || 'none';
+            const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', ');
+            const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', ') || 'none';
             console.log(`[DEBUG] Checking (13,0): enemies current=[${enemyInfo}], pre-move=[${preMoveInfo}], alreadyHit=[${proj.hitEntityIds?.join(',') || 'none'}]`);
           }
 
@@ -1929,6 +1929,9 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (preMoveEnemy) {
               hitEnemyId = preMoveEnemy.enemyId;
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] HIT! Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
+              }
             }
           }
 
@@ -1942,7 +1945,14 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (currentEnemy) {
               hitEnemyId = currentEnemy.enemyId;
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] HIT! Found enemy ${currentEnemy.enemyId} at current position`);
+              }
             }
+          }
+
+          if (tileX === 13 && tileY === 0 && !hitEnemyId) {
+            console.log(`[DEBUG] NO HIT at (13,0) - no matching enemy found!`);
           }
 
           // Apply damage if we found a hit
