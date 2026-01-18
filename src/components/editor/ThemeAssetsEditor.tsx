@@ -16,10 +16,10 @@ import {
 
 // Default dungeon theme colors for reset functionality
 const DEFAULT_COLORS: Partial<ThemeAssets> = {
-  colorBgPrimary: '#15100a',
-  colorBgSecondary: '#2a2118',
-  colorBgNavbar: '#5a4a35',
-  colorBgInput: '#15100a',
+  colorBgPrimary: '#0a0805',      // Page background (darkest)
+  colorBgSecondary: '#2a2118',    // Panel background
+  colorBgNavbar: '#3d3224',       // Navbar background
+  colorBgInput: '#15100a',        // Input/dark panel background
   colorTextPrimary: '#f2e0b5',
   colorTextSecondary: '#7d6c52',
   colorTextHeading: '#d4a574',
