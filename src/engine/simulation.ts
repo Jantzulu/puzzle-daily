@@ -907,8 +907,10 @@ export function executeTurn(gameState: GameState): GameState {
   // Snapshot enemy positions BEFORE they move for projectile collision detection
   // This ensures projectiles hit enemies that are leaving a tile on the same turn
   // the projectile arrives (projectile wins ties)
-  const enemyPositionsBeforeMove = gameState.puzzle.enemies.map(e => ({
+  // Include array index to uniquely identify enemies when multiple share the same ID
+  const enemyPositionsBeforeMove = gameState.puzzle.enemies.map((e, index) => ({
     enemyId: e.enemyId,
+    index, // Unique index to identify this specific enemy instance
     x: e.x,
     y: e.y,
     dead: e.dead,
@@ -1949,27 +1951,36 @@ export function updateProjectiles(gameState: GameState): void {
 
           // Use pre-move positions to determine hits - this is where enemies actually were
           // when the turn started (before movement phase)
+          // Use index to track which specific enemy instances have been hit (handles duplicate IDs)
           if (gameState.enemyPositionsBeforeMove) {
             const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
-              e => !e.dead &&
-                   Math.floor(e.x) === tileX &&
+              e => Math.floor(e.x) === tileX &&
                    Math.floor(e.y) === tileY &&
-                   !(proj.hitEntityIds?.includes(e.enemyId))
+                   !(proj.hitEnemyIndices?.includes(e.index))
             );
             if (preMoveEnemy) {
-              // Found an enemy that WAS at this tile - get the actual enemy object to damage
-              hitEnemy = gameState.puzzle.enemies.find(e =>
-                e.enemyId === preMoveEnemy.enemyId && !e.dead
-              );
+              // Found an enemy that WAS at this tile - get the actual enemy by index
+              const actualEnemy = gameState.puzzle.enemies[preMoveEnemy.index];
+              if (actualEnemy && !actualEnemy.dead) {
+                hitEnemy = actualEnemy;
+                // Track this specific enemy instance by index
+                if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
+                proj.hitEnemyIndices.push(preMoveEnemy.index);
+              }
             }
           } else {
             // Fallback if no pre-move snapshot (shouldn't happen in normal gameplay)
-            hitEnemy = gameState.puzzle.enemies.find(
+            const enemyIndex = gameState.puzzle.enemies.findIndex(
               e => !e.dead &&
                    Math.floor(e.x) === tileX &&
                    Math.floor(e.y) === tileY &&
-                   !(proj.hitEntityIds?.includes(e.enemyId))
+                   !(proj.hitEnemyIndices?.includes(gameState.puzzle.enemies.indexOf(e)))
             );
+            if (enemyIndex >= 0) {
+              hitEnemy = gameState.puzzle.enemies[enemyIndex];
+              if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
+              proj.hitEnemyIndices.push(enemyIndex);
+            }
           }
 
           if (hitEnemy && !hitEnemy.dead) {
@@ -2400,23 +2411,33 @@ function updateProjectilesHeadless(gameState: GameState): void {
             let hitEnemy: typeof gameState.puzzle.enemies[0] | undefined;
 
             // Use pre-move positions to determine hits
+            // Use index to track which specific enemy instances have been hit (handles duplicate IDs)
             if (gameState.enemyPositionsBeforeMove) {
               const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
-                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
-                     !hitEntityIds.includes(e.enemyId)
+                e => Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+                     !(proj.hitEnemyIndices?.includes(e.index))
               );
               if (preMoveEnemy) {
-                // Found an enemy that WAS at this tile - get the actual enemy object to damage
-                hitEnemy = gameState.puzzle.enemies.find(e =>
-                  e.enemyId === preMoveEnemy.enemyId && !e.dead
-                );
+                // Found an enemy that WAS at this tile - get the actual enemy by index
+                const actualEnemy = gameState.puzzle.enemies[preMoveEnemy.index];
+                if (actualEnemy && !actualEnemy.dead) {
+                  hitEnemy = actualEnemy;
+                  // Track this specific enemy instance by index
+                  if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
+                  proj.hitEnemyIndices.push(preMoveEnemy.index);
+                }
               }
             } else {
               // Fallback if no pre-move snapshot
-              hitEnemy = gameState.puzzle.enemies.find(
+              const enemyIndex = gameState.puzzle.enemies.findIndex(
                 e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
-                     !hitEntityIds.includes(e.enemyId)
+                     !(proj.hitEnemyIndices?.includes(gameState.puzzle.enemies.indexOf(e)))
               );
+              if (enemyIndex >= 0) {
+                hitEnemy = gameState.puzzle.enemies[enemyIndex];
+                if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
+                proj.hitEnemyIndices.push(enemyIndex);
+              }
             }
 
             if (hitEnemy && !hitEnemy.dead) {

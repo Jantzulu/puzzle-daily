@@ -733,6 +733,7 @@ export interface Projectile {
 
   // Piercing tracking - prevents hitting same entity multiple times
   hitEntityIds?: string[];      // IDs of entities already hit by this projectile
+  hitEnemyIndices?: number[];   // Array indices of enemies hit (for duplicate ID handling)
 
   // Tile-based movement - deterministic collision detection
   // Pre-computed path of tiles the projectile will traverse
