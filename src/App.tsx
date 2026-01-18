@@ -125,7 +125,7 @@ function App() {
 
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-stone-950 theme-root">
+      <div className="min-h-screen theme-root">
         <Navigation />
         <Routes>
           <Route path="/" element={<Game />} />

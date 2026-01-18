@@ -22,7 +22,7 @@ export const AssetManager: React.FC = () => {
   `;
 
   return (
-    <div className="min-h-screen bg-stone-950 text-parchment-200">
+    <div className="min-h-screen theme-root text-parchment-200">
       {/* Header with tabs */}
       <div className="bg-stone-900 border-b-2 border-stone-700">
         <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4">

@@ -1570,7 +1570,7 @@ export const MapEditor: React.FC = () => {
   // Render playtest mode
   if (state.mode === 'playtest' && gameState) {
     return (
-      <div className="min-h-screen bg-stone-900 text-parchment-100 p-4 md:p-8">
+      <div className="min-h-screen theme-root text-parchment-100 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
             {/* Game Board */}
@@ -1906,7 +1906,7 @@ export const MapEditor: React.FC = () => {
 
   // Render edit mode
   return (
-    <div className="min-h-screen bg-stone-900 text-parchment-100 p-4 md:p-8">
+    <div className="min-h-screen theme-root text-parchment-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header - stacks on mobile */}
         <div className="mb-4 md:mb-6 space-y-3 md:space-y-0 md:flex md:items-center md:gap-4">
