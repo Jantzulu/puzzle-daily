@@ -1939,8 +1939,15 @@ export function updateProjectiles(gameState: GameState): void {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
 
-          // First check pre-move positions (enemies that WERE at this tile)
-          let hitEnemyId: string | undefined;
+          // Check for enemy at this tile using pre-move positions
+          // This ensures we hit enemies based on where they WERE at the start of the turn,
+          // not where they moved to. This way:
+          // - Projectile through enemy's START position → Hit (catches them leaving)
+          // - Projectile through enemy's END position → Miss (they haven't arrived yet)
+          let hitEnemy: PlacedEnemy | undefined;
+
+          // Use pre-move positions to determine hits - this is where enemies actually were
+          // when the turn started (before movement phase)
           if (gameState.enemyPositionsBeforeMove) {
             const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
               e => !e.dead &&
@@ -1949,46 +1956,22 @@ export function updateProjectiles(gameState: GameState): void {
                    !(proj.hitEntityIds?.includes(e.enemyId))
             );
             if (preMoveEnemy) {
-              hitEnemyId = preMoveEnemy.enemyId;
+              // Found an enemy that WAS at this tile - get the actual enemy object to damage
+              hitEnemy = gameState.puzzle.enemies.find(e =>
+                e.enemyId === preMoveEnemy.enemyId && !e.dead
+              );
             }
-          }
-
-          // If no pre-move hit, check current positions
-          if (!hitEnemyId) {
-            const currentEnemy = gameState.puzzle.enemies.find(
+          } else {
+            // Fallback if no pre-move snapshot (shouldn't happen in normal gameplay)
+            hitEnemy = gameState.puzzle.enemies.find(
               e => !e.dead &&
                    Math.floor(e.x) === tileX &&
                    Math.floor(e.y) === tileY &&
                    !(proj.hitEntityIds?.includes(e.enemyId))
             );
-            if (currentEnemy) {
-              hitEnemyId = currentEnemy.enemyId;
-            }
           }
 
-          // Apply damage if we found a hit
-          if (hitEnemyId) {
-            // Find enemy by ID AND position to handle cases where multiple enemies share an ID
-            // First try to find a living enemy at this tile position with matching ID
-            let hitEnemy = gameState.puzzle.enemies.find(e =>
-              e.enemyId === hitEnemyId &&
-              !e.dead &&
-              Math.floor(e.x) === tileX &&
-              Math.floor(e.y) === tileY
-            );
-            // If not found at exact position, try finding any living enemy with this ID at tile
-            if (!hitEnemy) {
-              hitEnemy = gameState.puzzle.enemies.find(e =>
-                !e.dead &&
-                Math.floor(e.x) === tileX &&
-                Math.floor(e.y) === tileY
-              );
-            }
-            // Fallback to original behavior
-            if (!hitEnemy) {
-              hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
-            }
-            if (hitEnemy && !hitEnemy.dead) {
+          if (hitEnemy && !hitEnemy.dead) {
               // Track that we hit this entity (for piercing projectiles)
               if (!proj.hitEntityIds) proj.hitEntityIds = [];
               proj.hitEntityIds.push(hitEnemy.enemyId);
@@ -2409,56 +2392,34 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            // Check for enemy hits using pre-move positions first (projectile wins ties)
-            // This ensures that if an enemy is leaving a tile on the same turn the
-            // projectile arrives, the projectile still hits them
-            let hitEnemyId: string | undefined;
+            // Check for enemy hits using pre-move positions ONLY
+            // This ensures we hit enemies based on where they WERE at the start of the turn,
+            // not where they moved to. This way:
+            // - Projectile through enemy's START position → Hit (catches them leaving)
+            // - Projectile through enemy's END position → Miss (they haven't arrived yet)
+            let hitEnemy: typeof gameState.puzzle.enemies[0] | undefined;
 
-            // First check pre-move positions (enemies that WERE at this tile)
+            // Use pre-move positions to determine hits
             if (gameState.enemyPositionsBeforeMove) {
               const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
                 e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                      !hitEntityIds.includes(e.enemyId)
               );
               if (preMoveEnemy) {
-                hitEnemyId = preMoveEnemy.enemyId;
+                // Found an enemy that WAS at this tile - get the actual enemy object to damage
+                hitEnemy = gameState.puzzle.enemies.find(e =>
+                  e.enemyId === preMoveEnemy.enemyId && !e.dead
+                );
               }
-            }
-
-            // If no pre-move hit, check current positions (enemies that moved INTO this tile)
-            if (!hitEnemyId) {
-              const currentEnemy = gameState.puzzle.enemies.find(
+            } else {
+              // Fallback if no pre-move snapshot
+              hitEnemy = gameState.puzzle.enemies.find(
                 e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                      !hitEntityIds.includes(e.enemyId)
               );
-              if (currentEnemy) {
-                hitEnemyId = currentEnemy.enemyId;
-              }
             }
 
-            // Apply damage if we found a hit
-            if (hitEnemyId) {
-              // Find enemy by ID AND position to handle cases where multiple enemies share an ID
-              // First try to find a living enemy at this tile position with matching ID
-              let hitEnemy = gameState.puzzle.enemies.find(e =>
-                e.enemyId === hitEnemyId &&
-                !e.dead &&
-                Math.floor(e.x) === checkX &&
-                Math.floor(e.y) === checkY
-              );
-              // If not found at exact position, try finding any living enemy with this ID at tile
-              if (!hitEnemy) {
-                hitEnemy = gameState.puzzle.enemies.find(e =>
-                  !e.dead &&
-                  Math.floor(e.x) === checkX &&
-                  Math.floor(e.y) === checkY
-                );
-              }
-              // Fallback to original behavior (find by ID only)
-              if (!hitEnemy) {
-                hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId && !e.dead);
-              }
-              if (hitEnemy && !hitEnemy.dead) {
+            if (hitEnemy && !hitEnemy.dead) {
                 hitEntityIds.push(hitEnemy.enemyId);
                 if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                   triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
