@@ -489,6 +489,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
   const [enemyPositions, setEnemyPositions] = useState<Map<number, CharacterPosition>>(new Map());
+  // Refs for synchronous access during rendering (prevents flash at new position)
+  const characterPositionsRef = useRef<Map<number, CharacterPosition>>(new Map());
+  const enemyPositionsRef = useRef<Map<number, CharacterPosition>>(new Map());
   const prevCharactersRef = useRef<PlacedCharacter[]>([]);
   const prevEnemiesRef = useRef<PlacedEnemy[]>([]);
   const animationRef = useRef<number>();
@@ -536,7 +539,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     gameState.placedCharacters.forEach((char, idx) => {
       const prevChar = prevCharactersRef.current[idx];
-      const existing = characterPositions.get(idx);
+      const existing = characterPositionsRef.current.get(idx);
 
       if (prevChar && (prevChar.x !== char.x || prevChar.y !== char.y)) {
         // Character moved!
@@ -614,6 +617,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
     });
 
+    // Update ref synchronously (prevents flash at new position during render)
+    characterPositionsRef.current = newPositions;
     setCharacterPositions(newPositions);
     if (newActivations.length > 0) {
       setTileActivations(prev => [...prev, ...newActivations]);
@@ -629,7 +634,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     gameState.puzzle.enemies.forEach((enemy, idx) => {
       const prevEnemy = prevEnemiesRef.current[idx];
-      const existing = enemyPositions.get(idx);
+      const existing = enemyPositionsRef.current.get(idx);
 
       if (prevEnemy && (prevEnemy.x !== enemy.x || prevEnemy.y !== enemy.y)) {
         // Enemy moved!
@@ -706,6 +711,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
     });
 
+    // Update ref synchronously (prevents flash at new position during render)
+    enemyPositionsRef.current = newPositions;
     setEnemyPositions(newPositions);
     if (newActivations.length > 0) {
       setTileActivations(prev => [...prev, ...newActivations]);
@@ -942,7 +949,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       renderQueue.forEach(({ type, index, entity }) => {
         if (type === 'enemy') {
           const enemy = entity as PlacedEnemy;
-          const anim = enemyPositions.get(index);
+          // Use ref for synchronous access (prevents flash at new position)
+          const anim = enemyPositionsRef.current.get(index);
           const deathAnim = enemyDeathAnimations.get(index);
 
           // Calculate effective animation duration based on animation type
@@ -996,7 +1004,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         } else {
           const character = entity as PlacedCharacter;
-          const anim = characterPositions.get(index);
+          // Use ref for synchronous access (prevents flash at new position)
+          const anim = characterPositionsRef.current.get(index);
           const deathAnim = characterDeathAnimations.get(character.characterId);
 
           // Calculate effective animation duration based on animation type
