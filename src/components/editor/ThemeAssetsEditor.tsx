@@ -77,6 +77,14 @@ const FONT_OPTIONS = [
   { value: 'faculty', label: 'Faculty Glyphic' },
 ];
 
+const FONT_SIZE_OPTIONS = [
+  { value: 'x-small', label: 'Extra Small (0.75x)' },
+  { value: 'small', label: 'Small (0.875x)' },
+  { value: 'medium', label: 'Medium (1x)' },
+  { value: 'large', label: 'Large (1.125x)' },
+  { value: 'x-large', label: 'Extra Large (1.25x)' },
+];
+
 interface AssetUploadProps {
   assetKey: ThemeAssetKey;
   value?: string;
@@ -280,6 +288,11 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       options = FONT_OPTIONS;
       defaultValue = 'default';
       break;
+    case 'fontSizeBody':
+    case 'fontSizeHeading':
+      options = FONT_SIZE_OPTIONS;
+      defaultValue = 'medium';
+      break;
   }
 
   return (
@@ -355,6 +368,30 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
             <p className="text-sm text-parchment-400">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
             <p className="text-sm text-parchment-400">abcdefghijklmnopqrstuvwxyz</p>
             <p className="text-sm text-parchment-400">0123456789</p>
+          </div>
+        </div>
+      )}
+
+      {/* Preview for font size */}
+      {(assetKey === 'fontSizeBody' || assetKey === 'fontSizeHeading') && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-stone-500">Preview:</p>
+          <div
+            className="p-3 bg-stone-800 rounded-pixel border border-stone-600"
+            style={{
+              fontSize: (() => {
+                const sizeMap: Record<string, string> = {
+                  'x-small': '12px',
+                  'small': '14px',
+                  'medium': '16px',
+                  'large': '18px',
+                  'x-large': '20px',
+                };
+                return sizeMap[value || defaultValue] || sizeMap['medium'];
+              })()
+            }}
+          >
+            <p className="text-parchment-200">The quick brown fox jumps over the lazy dog</p>
           </div>
         </div>
       )}

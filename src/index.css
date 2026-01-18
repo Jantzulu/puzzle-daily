@@ -439,6 +439,18 @@ html body.theme-font-active,
   font-family: var(--theme-font-family, 'Inter', system-ui, sans-serif) !important;
 }
 
+/* Theme font sizes - using CSS custom property for font-size */
+.theme-root {
+  font-size: var(--theme-font-size-body-px, 16px);
+}
+
+/* Apply heading font size scaling to headings and medieval font */
+.theme-root h1 { font-size: calc(var(--theme-font-size-heading-px, 16px) * 2); }
+.theme-root h2 { font-size: calc(var(--theme-font-size-heading-px, 16px) * 1.5); }
+.theme-root h3 { font-size: calc(var(--theme-font-size-heading-px, 16px) * 1.25); }
+.theme-root h4 { font-size: calc(var(--theme-font-size-heading-px, 16px) * 1.125); }
+.theme-root .font-medieval { font-size: var(--theme-font-size-heading-px, inherit); }
+
 /* Theme-aware dungeon panels */
 .dungeon-panel {
   background-color: var(--theme-bg-secondary, #2a2118);

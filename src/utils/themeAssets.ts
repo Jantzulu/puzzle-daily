@@ -81,6 +81,8 @@ export interface ThemeAssets {
   shadowIntensity?: string;     // Shadow intensity ("none", "light", "medium", "heavy")
   fontFamily?: string;          // Font family override (applies to body text)
   fontFamilyHeading?: string;   // Font family for headings/titles
+  fontSizeBody?: string;        // Body text size multiplier
+  fontSizeHeading?: string;     // Heading text size multiplier
 }
 
 export type ThemeAssetKey = keyof ThemeAssets;
@@ -136,6 +138,8 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   shadowIntensity: { label: 'Shadow Intensity', description: 'Strength of drop shadows', category: 'styles', inputType: 'select' },
   fontFamily: { label: 'Body Font', description: 'Font for body text and UI elements', category: 'styles', inputType: 'select' },
   fontFamilyHeading: { label: 'Heading Font', description: 'Font for titles and headings', category: 'styles', inputType: 'select' },
+  fontSizeBody: { label: 'Body Text Size', description: 'Size of body text', category: 'styles', inputType: 'select' },
+  fontSizeHeading: { label: 'Heading Size', description: 'Size of headings and titles', category: 'styles', inputType: 'select' },
 };
 
 export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'styles'] as const;
@@ -300,6 +304,22 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
     properties['--theme-font-family-heading'] = fontMap[assets.fontFamilyHeading];
   }
 
+  // Font sizes - convert size names to pixel values
+  const fontSizeMap: Record<string, string> = {
+    'x-small': '12px',
+    'small': '14px',
+    'medium': '16px',
+    'large': '18px',
+    'x-large': '20px',
+  };
+
+  if (assets.fontSizeBody && assets.fontSizeBody !== 'medium' && fontSizeMap[assets.fontSizeBody]) {
+    properties['--theme-font-size-body-px'] = fontSizeMap[assets.fontSizeBody];
+  }
+  if (assets.fontSizeHeading && assets.fontSizeHeading !== 'medium' && fontSizeMap[assets.fontSizeHeading]) {
+    properties['--theme-font-size-heading-px'] = fontSizeMap[assets.fontSizeHeading];
+  }
+
   return properties;
 }
 
@@ -334,6 +354,8 @@ const ALL_THEME_CSS_VARS = [
   '--theme-border-width',
   '--theme-font-family',
   '--theme-font-family-heading',
+  '--theme-font-size-body-px',
+  '--theme-font-size-heading-px',
 ];
 
 /**
