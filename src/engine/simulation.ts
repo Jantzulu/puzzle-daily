@@ -1,3 +1,4 @@
+// Simulation engine - handles game turn execution and projectile updates
 import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
@@ -1972,65 +1973,64 @@ export function updateProjectiles(gameState: GameState): void {
           }
 
           if (hitEnemy && !hitEnemy.dead) {
-              // Track that we hit this entity (for piercing projectiles)
-              if (!proj.hitEntityIds) proj.hitEntityIds = [];
-              proj.hitEntityIds.push(hitEnemy.enemyId);
+            // Track that we hit this entity (for piercing projectiles)
+            if (!proj.hitEntityIds) proj.hitEntityIds = [];
+            proj.hitEntityIds.push(hitEnemy.enemyId);
 
-              // Check if this should explode into AOE on impact
-              if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-                triggerAOEExplosion(
+            // Check if this should explode into AOE on impact
+            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+              triggerAOEExplosion(
+                hitEnemy.x,
+                hitEnemy.y,
+                proj.attackData,
+                proj.sourceCharacterId,
+                proj.sourceEnemyId,
+                gameState,
+                proj.spellAssetId
+              );
+            } else {
+              // Apply single-target damage
+              const damage = proj.attackData.damage ?? 1;
+              hitEnemy.currentHealth -= damage;
+
+              // Wake from sleep if sleeping
+              wakeFromSleep(hitEnemy);
+
+              if (hitEnemy.currentHealth <= 0) {
+                hitEnemy.dead = true;
+                // Handle death drop
+                handleEntityDeathDrop(hitEnemy, true, gameState);
+              }
+
+              // Apply status effect if projectile has a spell with one configured
+              if (proj.spellAssetId && !hitEnemy.dead) {
+                applyStatusEffectFromProjectile(
+                  hitEnemy,
+                  proj.spellAssetId,
+                  proj.sourceCharacterId || 'unknown',
+                  false,
+                  gameState.currentTurn
+                );
+              }
+
+              // Spawn hit effect
+              if (proj.attackData.hitEffectSprite) {
+                spawnParticleEffect(
                   hitEnemy.x,
                   hitEnemy.y,
-                  proj.attackData,
-                  proj.sourceCharacterId,
-                  proj.sourceEnemyId,
-                  gameState,
-                  proj.spellAssetId
+                  proj.attackData.hitEffectSprite,
+                  proj.attackData.effectDuration || 300,
+                  gameState
                 );
-              } else {
-                // Apply single-target damage
-                const damage = proj.attackData.damage ?? 1;
-                hitEnemy.currentHealth -= damage;
-
-                // Wake from sleep if sleeping
-                wakeFromSleep(hitEnemy);
-
-                if (hitEnemy.currentHealth <= 0) {
-                  hitEnemy.dead = true;
-                  // Handle death drop
-                  handleEntityDeathDrop(hitEnemy, true, gameState);
-                }
-
-                // Apply status effect if projectile has a spell with one configured
-                if (proj.spellAssetId && !hitEnemy.dead) {
-                  applyStatusEffectFromProjectile(
-                    hitEnemy,
-                    proj.spellAssetId,
-                    proj.sourceCharacterId || 'unknown',
-                    false,
-                    gameState.currentTurn
-                  );
-                }
-
-                // Spawn hit effect
-                if (proj.attackData.hitEffectSprite) {
-                  spawnParticleEffect(
-                    hitEnemy.x,
-                    hitEnemy.y,
-                    proj.attackData.hitEffectSprite,
-                    proj.attackData.effectDuration || 300,
-                    gameState
-                  );
-                }
               }
+            }
 
-              // Check if projectile should pierce
-              if (!proj.attackData.projectilePierces) {
-                proj.active = false;
-                projectilesToRemove.push(proj.id);
-                entityHitAndStopped = true;
-                break;
-              }
+            // Check if projectile should pierce
+            if (!proj.attackData.projectilePierces) {
+              proj.active = false;
+              projectilesToRemove.push(proj.id);
+              entityHitAndStopped = true;
+              break;
             }
           }
         }
@@ -2420,26 +2420,25 @@ function updateProjectilesHeadless(gameState: GameState): void {
             }
 
             if (hitEnemy && !hitEnemy.dead) {
-                hitEntityIds.push(hitEnemy.enemyId);
-                if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-                  triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
-                    proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
-                } else {
-                  const damage = proj.attackData.damage ?? 0;
-                  hitEnemy.currentHealth -= damage;
-                  wakeFromSleep(hitEnemy);
-                  if (hitEnemy.currentHealth <= 0) {
-                    hitEnemy.dead = true;
-                    handleEntityDeathDrop(hitEnemy, true, gameState);
-                  }
-                  if (proj.spellAssetId && !hitEnemy.dead) {
-                    applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
-                      proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
-                  }
+              hitEntityIds.push(hitEnemy.enemyId);
+              if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+                triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
+                  proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+              } else {
+                const damage = proj.attackData.damage ?? 0;
+                hitEnemy.currentHealth -= damage;
+                wakeFromSleep(hitEnemy);
+                if (hitEnemy.currentHealth <= 0) {
+                  hitEnemy.dead = true;
+                  handleEntityDeathDrop(hitEnemy, true, gameState);
                 }
-                hitSomething = true;
-                if (!canPierce) shouldRemove = true;
+                if (proj.spellAssetId && !hitEnemy.dead) {
+                  applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
+                    proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+                }
               }
+              hitSomething = true;
+              if (!canPierce) shouldRemove = true;
             }
           }
         } else if (proj.sourceEnemyId) {
