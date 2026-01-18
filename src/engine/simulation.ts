@@ -1613,6 +1613,8 @@ export function updateProjectiles(gameState: GameState): void {
 
       // New tiles are those from prevTileIndex to currentTileIndex (exclusive of tiles already checked)
       newTiles = proj.tilePath.slice(prevTileIndex, (proj.currentTileIndex ?? 0) + 1);
+
+      console.log(`[DEBUG] Tile collision check: prevTileIndex=${prevTileIndex}, currentTileIndex=${proj.currentTileIndex}, newTiles=${JSON.stringify(newTiles)}`);
     } else {
       // LEGACY/HOMING: Calculate tiles dynamically
       tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
