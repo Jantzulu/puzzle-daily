@@ -101,7 +101,7 @@ export async function updatePuzzleStatus(id: string, status: DbPuzzle['status'])
 // ASSET OPERATIONS
 // ============================================
 
-type AssetType = 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'hidden_assets' | 'sound' | 'global_sound_config';
+type AssetType = 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'hidden_assets' | 'sound' | 'global_sound_config' | 'help_content' | 'theme_settings';
 type AssetData = CustomTileType | EnemyWithSprite | CharacterWithSprite | CustomObject | PuzzleSkin | SpellAsset | object;
 
 export async function fetchAllAssets(type?: AssetType, includeDeleted: boolean = false): Promise<DbAsset[]> {
@@ -292,9 +292,10 @@ export async function syncFromCloud(): Promise<{
   sounds: DbAsset[];
   globalSoundConfig: DbAsset[];
   helpContent: DbAsset[];
+  themeSettings: DbAsset[];
 }> {
   // Include deleted items so pull can process deletions
-  const [puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, helpContent] = await Promise.all([
+  const [puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, helpContent, themeSettings] = await Promise.all([
     fetchAllPuzzles(true),
     fetchAllAssets('tile_type', true),
     fetchAllAssets('enemy', true),
@@ -310,9 +311,10 @@ export async function syncFromCloud(): Promise<{
     fetchAllAssets('sound', true),
     fetchAllAssets('global_sound_config', true),
     fetchAllAssets('help_content', true),
+    fetchAllAssets('theme_settings', true),
   ]);
 
-  return { puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, helpContent };
+  return { puzzles, tileTypes, enemies, characters, objects, skins, spells, statusEffects, folders, collectibleTypes, collectibles, hiddenAssets, sounds, globalSoundConfig, helpContent, themeSettings };
 }
 
 // ============================================

@@ -511,3 +511,8 @@ body {
 .text-stone-400, .text-stone-500 {
   color: var(--theme-text-secondary, #7d6c52);
 }
+
+/* Override font-medieval to use theme font when set */
+.font-medieval {
+  font-family: var(--theme-font-family, 'Almendra', serif);
+}

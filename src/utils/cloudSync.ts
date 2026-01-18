@@ -72,6 +72,7 @@ import {
 } from './assetStorage';
 import type { SoundAsset, GlobalSoundConfig } from '../types/game';
 import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle, getPendingPuzzleDeletions, clearPendingPuzzleDeletions } from './puzzleStorage';
+import { loadThemeAssets, saveThemeAssets, notifyThemeAssetsChanged, type ThemeAssets } from './themeAssets';
 
 // Track sync status
 let lastSyncTime: Date | null = null;
@@ -216,6 +217,13 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     if (helpContent.sections.length > 0) {
       const success = await saveAssetToCloud('help_content', 'help_content', 'Help Content', helpContent);
       if (!success) errors.push('Failed to upload help content');
+    }
+
+    // Push theme settings
+    const themeAssets = loadThemeAssets();
+    if (Object.keys(themeAssets).length > 0) {
+      const success = await saveAssetToCloud('theme_settings', 'theme_settings', 'Theme Settings', themeAssets);
+      if (!success) errors.push('Failed to upload theme settings');
     }
 
     // Push puzzles
@@ -519,6 +527,22 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           }
         } catch (e) {
           errors.push(`Failed to import help content`);
+        }
+      }
+    }
+
+    // Import theme settings
+    if (cloudData.themeSettings) {
+      for (const asset of cloudData.themeSettings) {
+        try {
+          if (!asset.deleted_at && asset.id === 'theme_settings') {
+            const themeData = asset.data as unknown as ThemeAssets;
+            saveThemeAssets(themeData);
+            notifyThemeAssetsChanged();
+            console.log(`[CloudSync] Imported theme settings`);
+          }
+        } catch (e) {
+          errors.push(`Failed to import theme settings`);
         }
       }
     }
