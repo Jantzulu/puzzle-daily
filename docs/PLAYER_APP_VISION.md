@@ -125,14 +125,24 @@ Developer App                          Player App
 
 ## Progress & Attempts
 
-### Lives System
+### Lives System (Already Implemented in Game Engine)
 
-Each puzzle has a configured number of lives (set by puzzle creator). Players can:
-- **Keep trying** until they win OR run out of lives
-- **Win** = Puzzle complete, score recorded, streak continues
-- **Lose all lives** = Puzzle failed for the day, streak broken
+The lives system already exists in the game. Each puzzle has a configured number of lives.
 
-### Local Storage (Player Device)
+**What's needed for Player App:** Persist state to localStorage so players can't refresh to bypass:
+- Lives remaining must be saved after each attempt
+- Failed state (0 lives) must block further play for that day
+- Progress must survive browser refresh/close
+
+### Persistence Triggers
+
+Save to localStorage when:
+1. **Lose a life** → Decrement `livesRemaining`, save immediately
+2. **Win** → Mark `completed: true`, save score/rank
+3. **Lose all lives** → Mark `failed: true`, block further attempts
+4. **Close/refresh mid-puzzle** → Optionally save `gameState` for resume (nice-to-have)
+
+### Local Storage Schema (Player Device)
 
 ```typescript
 interface PuzzleProgress {
@@ -141,14 +151,14 @@ interface PuzzleProgress {
   livesRemaining: number;    // Lives left for this puzzle
   maxLives: number;          // Starting lives for this puzzle
   completed: boolean;
-  failed: boolean;           // True if lost all lives
+  failed: boolean;           // True if lost all lives - blocks further play
   score?: number;
   rank?: 'gold' | 'silver' | 'bronze';
   turnsUsed?: number;
   charactersUsed?: number;
   completedAt?: string;
 
-  // For resuming mid-puzzle
+  // For resuming mid-puzzle (nice-to-have)
   gameState?: GameState;     // Serialized state
 }
 
@@ -160,6 +170,21 @@ interface PlayerStats {
   averageScore: number;
   history: PuzzleProgress[];
 }
+```
+
+### On App Load (Daily Puzzle)
+
+```typescript
+1. Get today's date
+2. Check localStorage for PuzzleProgress with today's date
+3. If exists and failed === true:
+   → Show "Out of lives" screen, no play allowed
+4. If exists and completed === true:
+   → Show results/analysis, allow replay only if paid
+5. If exists with livesRemaining > 0:
+   → Resume with remaining lives (optionally restore gameState)
+6. If not exists:
+   → Fresh start with full lives
 ```
 
 ### Daily vs Archive Rules
