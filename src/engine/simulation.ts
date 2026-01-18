@@ -1918,11 +1918,8 @@ export function updateProjectiles(gameState: GameState): void {
             console.log(`[DEBUG] Checking (13,0): enemies current=[${enemyInfo}], pre-move=[${preMoveInfo}], alreadyHit=[${proj.hitEntityIds?.join(',') || 'none'}]`);
           }
 
-          // Only check pre-move positions (enemies that WERE at this tile at turn start)
-          // This ensures projectiles only hit enemies based on where they WERE,
-          // not where they moved to. Prevents hitting enemies at their destination
-          // before they visually arrive.
-          let hitEnemy: PlacedEnemy | undefined;
+          // First check pre-move positions (enemies that WERE at this tile)
+          let hitEnemyId: string | undefined;
           if (gameState.enemyPositionsBeforeMove) {
             const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
               e => !e.dead &&
@@ -1931,71 +1928,121 @@ export function updateProjectiles(gameState: GameState): void {
                    !(proj.hitEntityIds?.includes(e.enemyId))
             );
             if (preMoveEnemy) {
-              // Find the actual enemy object to apply damage
-              hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === preMoveEnemy.enemyId);
+              hitEnemyId = preMoveEnemy.enemyId;
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] HIT! Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
+              }
             }
           }
 
-          // Apply damage if we found a hit
-          if (hitEnemy && !hitEnemy.dead) {
-            // Track that we hit this entity (for piercing projectiles)
-            if (!proj.hitEntityIds) proj.hitEntityIds = [];
-            proj.hitEntityIds.push(hitEnemy.enemyId);
-
-            // Check if this should explode into AOE on impact
-            if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-              triggerAOEExplosion(
-                hitEnemy.x,
-                hitEnemy.y,
-                proj.attackData,
-                proj.sourceCharacterId,
-                proj.sourceEnemyId,
-                gameState,
-                proj.spellAssetId
-              );
-            } else {
-              // Apply single-target damage
-              const damage = proj.attackData.damage ?? 1;
-              hitEnemy.currentHealth -= damage;
-
-              // Wake from sleep if sleeping
-              wakeFromSleep(hitEnemy);
-
-              if (hitEnemy.currentHealth <= 0) {
-                hitEnemy.dead = true;
-                // Handle death drop
-                handleEntityDeathDrop(hitEnemy, true, gameState);
-              }
-
-              // Apply status effect if projectile has a spell with one configured
-              if (proj.spellAssetId && !hitEnemy.dead) {
-                applyStatusEffectFromProjectile(
-                  hitEnemy,
-                  proj.spellAssetId,
-                  proj.sourceCharacterId || 'unknown',
-                  false,
-                  gameState.currentTurn
-                );
-              }
-
-              // Spawn hit effect
-              if (proj.attackData.hitEffectSprite) {
-                spawnParticleEffect(
-                  hitEnemy.x,
-                  hitEnemy.y,
-                  proj.attackData.hitEffectSprite,
-                  proj.attackData.effectDuration || 300,
-                  gameState
-                );
+          // If no pre-move hit, check current positions
+          if (!hitEnemyId) {
+            const currentEnemy = gameState.puzzle.enemies.find(
+              e => !e.dead &&
+                   Math.floor(e.x) === tileX &&
+                   Math.floor(e.y) === tileY &&
+                   !(proj.hitEntityIds?.includes(e.enemyId))
+            );
+            if (currentEnemy) {
+              hitEnemyId = currentEnemy.enemyId;
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] HIT! Found enemy ${currentEnemy.enemyId} at current position`);
               }
             }
+          }
 
-            // Check if projectile should pierce
-            if (!proj.attackData.projectilePierces) {
-              proj.active = false;
-              projectilesToRemove.push(proj.id);
-              entityHitAndStopped = true;
-              break;
+          if (tileX === 13 && tileY === 0 && !hitEnemyId) {
+            console.log(`[DEBUG] NO HIT at (13,0) - no matching enemy found!`);
+          }
+
+          // Apply damage if we found a hit
+          if (hitEnemyId) {
+            // Find enemy by ID AND position to handle cases where multiple enemies share an ID
+            // First try to find a living enemy at this tile position with matching ID
+            let hitEnemy = gameState.puzzle.enemies.find(e =>
+              e.enemyId === hitEnemyId &&
+              !e.dead &&
+              Math.floor(e.x) === tileX &&
+              Math.floor(e.y) === tileY
+            );
+            // If not found at exact position, try finding any living enemy with this ID at tile
+            if (!hitEnemy) {
+              hitEnemy = gameState.puzzle.enemies.find(e =>
+                !e.dead &&
+                Math.floor(e.x) === tileX &&
+                Math.floor(e.y) === tileY
+              );
+            }
+            // Fallback to original behavior
+            if (!hitEnemy) {
+              hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+            }
+            if (tileX === 13 && tileY === 0) {
+              console.log(`[DEBUG] Applying damage: hitEnemy=${hitEnemy?.enemyId}, dead=${hitEnemy?.dead}, health=${hitEnemy?.currentHealth}, pos=(${hitEnemy?.x},${hitEnemy?.y})`);
+            }
+            if (hitEnemy && !hitEnemy.dead) {
+              // Track that we hit this entity (for piercing projectiles)
+              if (!proj.hitEntityIds) proj.hitEntityIds = [];
+              proj.hitEntityIds.push(hitEnemy.enemyId);
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] Damage applied! Enemy health now: ${hitEnemy.currentHealth}, hitEntityIds: ${proj.hitEntityIds.join(',')}`);
+              }
+
+              // Check if this should explode into AOE on impact
+              if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+                triggerAOEExplosion(
+                  hitEnemy.x,
+                  hitEnemy.y,
+                  proj.attackData,
+                  proj.sourceCharacterId,
+                  proj.sourceEnemyId,
+                  gameState,
+                  proj.spellAssetId
+                );
+              } else {
+                // Apply single-target damage
+                const damage = proj.attackData.damage ?? 1;
+                hitEnemy.currentHealth -= damage;
+
+                // Wake from sleep if sleeping
+                wakeFromSleep(hitEnemy);
+
+                if (hitEnemy.currentHealth <= 0) {
+                  hitEnemy.dead = true;
+                  // Handle death drop
+                  handleEntityDeathDrop(hitEnemy, true, gameState);
+                }
+
+                // Apply status effect if projectile has a spell with one configured
+                if (proj.spellAssetId && !hitEnemy.dead) {
+                  applyStatusEffectFromProjectile(
+                    hitEnemy,
+                    proj.spellAssetId,
+                    proj.sourceCharacterId || 'unknown',
+                    false,
+                    gameState.currentTurn
+                  );
+                }
+
+                // Spawn hit effect
+                if (proj.attackData.hitEffectSprite) {
+                  spawnParticleEffect(
+                    hitEnemy.x,
+                    hitEnemy.y,
+                    proj.attackData.hitEffectSprite,
+                    proj.attackData.effectDuration || 300,
+                    gameState
+                  );
+                }
+              }
+
+              // Check if projectile should pierce
+              if (!proj.attackData.projectilePierces) {
+                proj.active = false;
+                projectilesToRemove.push(proj.id);
+                entityHitAndStopped = true;
+                break;
+              }
             }
           }
         }
@@ -2357,44 +2404,57 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            // Only check pre-move positions (enemies that WERE at this tile at turn start)
-            // This ensures projectiles only hit enemies based on where they WERE,
-            // not where they moved to. Prevents hitting enemies at their destination
-            // before they visually arrive.
-            let hitEnemy: typeof gameState.puzzle.enemies[0] | undefined;
+            // Check for enemy hits using pre-move positions first (projectile wins ties)
+            // This ensures that if an enemy is leaving a tile on the same turn the
+            // projectile arrives, the projectile still hits them
+            let hitEnemyId: string | undefined;
 
+            // First check pre-move positions (enemies that WERE at this tile)
             if (gameState.enemyPositionsBeforeMove) {
               const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
                 e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                      !hitEntityIds.includes(e.enemyId)
               );
               if (preMoveEnemy) {
-                // Find the actual enemy object to apply damage
-                hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === preMoveEnemy.enemyId);
+                hitEnemyId = preMoveEnemy.enemyId;
+              }
+            }
+
+            // If no pre-move hit, check current positions (enemies that moved INTO this tile)
+            if (!hitEnemyId) {
+              const currentEnemy = gameState.puzzle.enemies.find(
+                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+                     !hitEntityIds.includes(e.enemyId)
+              );
+              if (currentEnemy) {
+                hitEnemyId = currentEnemy.enemyId;
               }
             }
 
             // Apply damage if we found a hit
-            if (hitEnemy && !hitEnemy.dead) {
-              hitEntityIds.push(hitEnemy.enemyId);
-              if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-                triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
-                  proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
-              } else {
-                const damage = proj.attackData.damage ?? 0;
-                hitEnemy.currentHealth -= damage;
-                wakeFromSleep(hitEnemy);
-                if (hitEnemy.currentHealth <= 0) {
-                  hitEnemy.dead = true;
-                  handleEntityDeathDrop(hitEnemy, true, gameState);
+            if (hitEnemyId) {
+              const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+              if (hitEnemy && !hitEnemy.dead) {
+                hitEntityIds.push(hitEnemy.enemyId);
+                if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+                  triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
+                    proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+                } else {
+                  const damage = proj.attackData.damage ?? 0;
+                  hitEnemy.currentHealth -= damage;
+                  wakeFromSleep(hitEnemy);
+                  if (hitEnemy.currentHealth <= 0) {
+                    hitEnemy.dead = true;
+                    handleEntityDeathDrop(hitEnemy, true, gameState);
+                  }
+                  if (proj.spellAssetId && !hitEnemy.dead) {
+                    applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
+                      proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+                  }
                 }
-                if (proj.spellAssetId && !hitEnemy.dead) {
-                  applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
-                    proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
-                }
+                hitSomething = true;
+                if (!canPierce) shouldRemove = true;
               }
-              hitSomething = true;
-              if (!canPierce) shouldRemove = true;
             }
           }
         } else if (proj.sourceEnemyId) {
