@@ -1707,8 +1707,10 @@ export function updateProjectiles(gameState: GameState): void {
       // (i.e., when we've reached 50% progress toward the wall)
       const readyToBounce = (proj as any)._readyToBounce === true;
       if (canBounce && !readyToBounce) {
-        // Not yet at wall edge - skip bounce processing this frame
-        // The projectile will continue approaching the wall
+        // Not yet at wall edge - skip ALL wall collision processing this frame
+        // The visual position was already clamped in the movement calculation
+        // Just continue to entity collision checks
+        hitWallTile = null;
       } else if (canBounce) {
         // Perform bounce based on configured behavior
         proj.bounceCount = (proj.bounceCount ?? 0) + 1;
