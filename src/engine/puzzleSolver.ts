@@ -330,14 +330,10 @@ export function solvePuzzle(
           options.progressCallback({ tested: totalTested, found: bestSolution !== null });
         }
 
-        // Enable debug for first few simulations to diagnose issues
-        const enableDebug = totalTested <= 3;
-        const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns, enableDebug);
+        const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
 
         if (result === 'victory') {
           // Found a solution!
-          console.log(`[VALIDATOR] === SOLUTION FOUND === turns=${turns} chars=${numChars} placements:`,
-            placements.map(p => `${p.characterId}@(${p.x},${p.y})`).join(', '));
 
           if (foundMinChars === null) {
             // First solution found - this is the minimum character count
