@@ -166,10 +166,19 @@ interface ColorPickerProps {
 const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) => {
   const config = THEME_ASSET_CONFIG[assetKey];
   const defaultColor = DEFAULT_COLORS[assetKey as keyof typeof DEFAULT_COLORS] || '#000000';
+  const isCustom = value !== undefined && value !== defaultColor;
+
+  const handleReset = () => {
+    // Set to undefined to use the CSS default, then notify
+    onChange(undefined);
+  };
 
   return (
     <div className="dungeon-panel-dark p-3">
-      <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
+      <label className="block text-sm font-medium text-copper-400 mb-1">
+        {config.label}
+        {isCustom && <span className="ml-2 text-xs text-copper-600">(custom)</span>}
+      </label>
       <p className="text-xs text-stone-500 mb-2">{config.description}</p>
 
       <div className="flex items-center gap-3">
@@ -197,24 +206,28 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
           className="dungeon-input flex-1 text-sm font-mono"
         />
 
-        {/* Reset button */}
-        {value && (
-          <button
-            onClick={() => onChange(undefined)}
-            className="dungeon-btn text-xs px-2"
-            title="Reset to default"
-          >
-            Reset
-          </button>
-        )}
+        {/* Reset button - always visible */}
+        <button
+          onClick={handleReset}
+          className={`text-xs px-2 py-1 rounded transition-colors ${
+            isCustom
+              ? 'bg-copper-700 hover:bg-copper-600 text-parchment-100'
+              : 'bg-stone-700 text-stone-500 cursor-default'
+          }`}
+          title={isCustom ? 'Reset to default' : 'Using default'}
+          disabled={!isCustom}
+        >
+          {isCustom ? 'Reset' : 'Default'}
+        </button>
       </div>
 
-      {/* Preview swatch */}
+      {/* Preview swatch with label */}
       <div className="mt-2 flex items-center gap-2">
         <div
-          className="w-full h-6 rounded-pixel border border-stone-600"
+          className="flex-1 h-6 rounded-pixel border border-stone-600"
           style={{ backgroundColor: value || defaultColor }}
         />
+        <span className="text-xs text-stone-500 font-mono">{value || defaultColor}</span>
       </div>
     </div>
   );

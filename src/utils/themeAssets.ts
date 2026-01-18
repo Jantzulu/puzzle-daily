@@ -251,13 +251,45 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   return properties;
 }
 
+// All possible CSS variable names that can be set by theme assets
+const ALL_THEME_CSS_VARS = [
+  '--asset-logo',
+  '--asset-bg-main',
+  '--asset-bg-panel',
+  '--asset-bg-game-area',
+  '--asset-button-primary',
+  '--asset-border-frame',
+  '--theme-bg-primary',
+  '--theme-bg-secondary',
+  '--theme-bg-navbar',
+  '--theme-bg-input',
+  '--theme-text-primary',
+  '--theme-text-secondary',
+  '--theme-text-heading',
+  '--theme-border-primary',
+  '--theme-border-accent',
+  '--theme-accent-primary',
+  '--theme-accent-success',
+  '--theme-accent-danger',
+  '--theme-accent-magic',
+  '--theme-border-radius',
+  '--theme-border-width',
+];
+
 /**
  * Apply theme assets as CSS custom properties to the document
+ * Also removes any CSS variables that are no longer in use
  */
 export function applyThemeAssets(): void {
   const properties = getThemeAssetsCSSProperties();
   const root = document.documentElement;
 
+  // First, remove all theme CSS variables (so defaults can take over)
+  for (const varName of ALL_THEME_CSS_VARS) {
+    root.style.removeProperty(varName);
+  }
+
+  // Then set only the ones that have values
   for (const [key, value] of Object.entries(properties)) {
     root.style.setProperty(key, value);
   }
