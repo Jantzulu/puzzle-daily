@@ -341,10 +341,11 @@ export function solvePuzzle(
           }
 
           // Check if this is the fastest solution so far
-          if (!bestSolution || turns < bestSolution.turnsToWin) {
+          // Add 1 to turns because the game shows victory on the turn AFTER the win condition is met
+          if (!bestSolution || (turns + 1) < bestSolution.turnsToWin) {
             bestSolution = {
               placements,
-              turnsToWin: turns,
+              turnsToWin: turns + 1,
             };
           }
 
