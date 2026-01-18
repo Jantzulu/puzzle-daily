@@ -1538,7 +1538,11 @@ export function updateProjectiles(gameState: GameState): void {
       const dx = proj.targetX - proj.startX;
       const dy = proj.targetY - proj.startY;
       if (dx !== 0 || dy !== 0) {
+        const oldDir = proj.direction;
         proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+        if (oldDir !== proj.direction) {
+          console.log(`[DEBUG] Direction recalc: was=${oldDir}, now=${proj.direction}, start=(${proj.startX},${proj.startY}), target=(${proj.targetX},${proj.targetY}), tilePath=${JSON.stringify(proj.tilePath)}`);
+        }
       }
     } else {
       // LEGACY: Non-homing projectiles without tilePath (shouldn't happen for new projectiles)
@@ -1900,18 +1904,9 @@ export function updateProjectiles(gameState: GameState): void {
         // Damage projectile - check for enemy hits along entire path
         // Use pre-move positions first (projectile wins ties), then current positions
 
-        // Debug log once per projectile update
-        const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ');
-        const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ') || 'none';
-        console.log(`[DEBUG] Projectile checking tiles: ${tilesToCheck.map(t => `(${t.x},${t.y})`).join(', ')} | dir=${proj.direction}`);
-        console.log(`[DEBUG]   Enemies current: ${enemyInfo}`);
-        console.log(`[DEBUG]   Enemies pre-move: ${preMoveInfo}`);
-
         for (const checkTile of tilesToCheck) {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
-
-          console.log(`[DEBUG]   Checking tile (${tileX},${tileY})`);
 
           // First check pre-move positions (enemies that WERE at this tile)
           let hitEnemyId: string | undefined;
@@ -1924,7 +1919,6 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (preMoveEnemy) {
               hitEnemyId = preMoveEnemy.enemyId;
-              console.log(`[DEBUG]   -> Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
             }
           }
 
@@ -1938,18 +1932,12 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (currentEnemy) {
               hitEnemyId = currentEnemy.enemyId;
-              console.log(`[DEBUG]   -> Found enemy ${currentEnemy.enemyId} at current position`);
             }
-          }
-
-          if (!hitEnemyId) {
-            console.log(`[DEBUG]   -> No enemy found at (${tileX},${tileY})`);
           }
 
           // Apply damage if we found a hit
           if (hitEnemyId) {
             const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
-            console.log(`[DEBUG]   -> Applying damage to ${hitEnemyId}, enemy found=${!!hitEnemy}, dead=${hitEnemy?.dead}`);
             if (hitEnemy && !hitEnemy.dead) {
               // Track that we hit this entity (for piercing projectiles)
               if (!proj.hitEntityIds) proj.hitEntityIds = [];
@@ -2318,15 +2306,6 @@ function updateProjectilesHeadless(gameState: GameState): void {
       let reachedEnd = false;
       let hitWall = false;
 
-      // Debug logging
-      if (gameState.headlessMode) {
-        const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ');
-        const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ') || 'none';
-        console.log(`[DEBUG] Turn ${gameState.currentTurn}: Projectile from (${proj.startX},${proj.startY}) dir=${proj.direction} dx=${dx} dy=${dy} | checking tiles ${startTile}-${endTile} | speed=${tilesPerTurn} range=${range}`);
-        console.log(`[DEBUG]   Enemies current: ${enemyInfo}`);
-        console.log(`[DEBUG]   Enemies pre-move: ${preMoveInfo}`);
-      }
-
       for (let dist = startTile; dist <= endTile; dist++) {
         // Stop if we hit something and can't pierce
         if (hitSomething && !canPierce) {
@@ -2337,13 +2316,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
         const checkX = Math.floor(proj.startX + dx * dist);
         const checkY = Math.floor(proj.startY + dy * dist);
 
-        if (gameState.headlessMode) {
-          console.log(`[DEBUG]   Checking tile dist=${dist}: (${checkX},${checkY})`);
-        }
-
         // Check bounds
         if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
-          if (gameState.headlessMode) console.log(`[DEBUG]   -> Out of bounds, removing`);
           shouldRemove = true;
           break;
         }
@@ -2351,7 +2325,6 @@ function updateProjectilesHeadless(gameState: GameState): void {
         // Check wall
         const tile = gameState.puzzle.tiles[checkY]?.[checkX];
         if (!tile || tile.type === TileType.WALL) {
-          if (gameState.headlessMode) console.log(`[DEBUG]   -> Hit wall at (${checkX},${checkY}), removing`);
           // Hit wall - trigger AOE if configured, then stop
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(checkX, checkY, proj.attackData,
@@ -2399,7 +2372,6 @@ function updateProjectilesHeadless(gameState: GameState): void {
               );
               if (preMoveEnemy) {
                 hitEnemyId = preMoveEnemy.enemyId;
-                if (gameState.headlessMode) console.log(`[DEBUG]   -> Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
               }
             }
 
@@ -2411,20 +2383,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
               );
               if (currentEnemy) {
                 hitEnemyId = currentEnemy.enemyId;
-                if (gameState.headlessMode) console.log(`[DEBUG]   -> Found enemy ${currentEnemy.enemyId} at current position`);
               }
-            }
-
-            if (gameState.headlessMode && !hitEnemyId) {
-              console.log(`[DEBUG]   -> No enemy found at (${checkX},${checkY})`);
             }
 
             // Apply damage if we found a hit
             if (hitEnemyId) {
               const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
-              if (gameState.headlessMode) {
-                console.log(`[DEBUG]   -> Applying damage to ${hitEnemyId}, enemy found=${!!hitEnemy}, dead=${hitEnemy?.dead}`);
-              }
               if (hitEnemy && !hitEnemy.dead) {
                 hitEntityIds.push(hitEnemy.enemyId);
                 if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
