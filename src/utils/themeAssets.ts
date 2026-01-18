@@ -248,6 +248,23 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.borderRadius) properties['--theme-border-radius'] = assets.borderRadius;
   if (assets.borderWidth) properties['--theme-border-width'] = assets.borderWidth;
 
+  // Font family - map option values to actual CSS font-family strings
+  if (assets.fontFamily && assets.fontFamily !== 'default') {
+    const fontMap: Record<string, string> = {
+      'medieval': "'Almendra', serif",
+      'pixel': "'Press Start 2P', monospace",
+      'fantasy': "'MedievalSharp', cursive",
+      'handwritten': "'Caveat', cursive",
+      'serif': "'Crimson Text', Georgia, serif",
+      'gothic': "'UnifrakturCook', cursive",
+      'runic': "'Noto Sans Runic', sans-serif",
+      'elegant': "'Cinzel', serif",
+    };
+    if (fontMap[assets.fontFamily]) {
+      properties['--theme-font-family'] = fontMap[assets.fontFamily];
+    }
+  }
+
   return properties;
 }
 
@@ -274,6 +291,7 @@ const ALL_THEME_CSS_VARS = [
   '--theme-accent-magic',
   '--theme-border-radius',
   '--theme-border-width',
+  '--theme-font-family',
 ];
 
 /**

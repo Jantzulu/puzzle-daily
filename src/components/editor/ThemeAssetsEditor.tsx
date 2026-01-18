@@ -58,6 +58,11 @@ const FONT_OPTIONS = [
   { value: 'default', label: 'Default (Inter)' },
   { value: 'medieval', label: 'Medieval (Almendra)' },
   { value: 'pixel', label: 'Pixel (Press Start 2P)' },
+  { value: 'fantasy', label: 'Fantasy (MedievalSharp)' },
+  { value: 'handwritten', label: 'Handwritten (Caveat)' },
+  { value: 'serif', label: 'Classic Serif (Crimson)' },
+  { value: 'gothic', label: 'Gothic (UnifrakturCook)' },
+  { value: 'elegant', label: 'Elegant (Cinzel)' },
 ];
 
 interface AssetUploadProps {
@@ -302,6 +307,36 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
             className="w-full h-12 bg-stone-800 border-copper-500"
             style={{ borderWidth: value || defaultValue, borderStyle: 'solid' }}
           />
+        </div>
+      )}
+
+      {/* Preview for font family */}
+      {assetKey === 'fontFamily' && (
+        <div className="mt-3 space-y-2">
+          <p className="text-xs text-stone-500">Preview:</p>
+          <div
+            className="p-3 bg-stone-800 rounded-pixel border border-stone-600"
+            style={{
+              fontFamily: (() => {
+                const fontMap: Record<string, string> = {
+                  'default': "'Inter', system-ui, sans-serif",
+                  'medieval': "'Almendra', serif",
+                  'pixel': "'Press Start 2P', monospace",
+                  'fantasy': "'MedievalSharp', cursive",
+                  'handwritten': "'Caveat', cursive",
+                  'serif': "'Crimson Text', Georgia, serif",
+                  'gothic': "'UnifrakturCook', cursive",
+                  'elegant': "'Cinzel', serif",
+                };
+                return fontMap[value || defaultValue] || fontMap['default'];
+              })()
+            }}
+          >
+            <p className="text-lg text-parchment-200">The quick brown fox</p>
+            <p className="text-sm text-parchment-400">ABCDEFGHIJKLMNOPQRSTUVWXYZ</p>
+            <p className="text-sm text-parchment-400">abcdefghijklmnopqrstuvwxyz</p>
+            <p className="text-sm text-parchment-400">0123456789</p>
+          </div>
         </div>
       )}
     </div>

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Import Google Fonts for dungeon theme */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Almendra:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Almendra:wght@400;700&family=Inter:wght@400;500;600;700&family=MedievalSharp&family=Caveat:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&family=UnifrakturCook:wght@700&family=Cinzel:wght@400;500;600;700&display=swap');
 
 :root {
   /* Base font settings */
@@ -427,11 +427,13 @@ html {
 /* Apply theme background color when set */
 .theme-root {
   background-color: var(--theme-bg-primary, #0a0805);
+  font-family: var(--theme-font-family, 'Inter', system-ui, sans-serif);
 }
 
-/* Apply theme text colors when set */
+/* Apply theme text colors and font when set */
 body {
   color: var(--theme-text-primary, var(--color-text-primary));
+  font-family: var(--theme-font-family, 'Inter', system-ui, sans-serif);
 }
 
 /* Theme-aware dungeon panels */
