@@ -40,6 +40,9 @@ interface CharacterCardProps {
 }
 
 const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick, isSelected }) => {
+  // Get first tooltip step as description preview
+  const descriptionPreview = character.tooltipSteps?.[0];
+
   return (
     <div
       onClick={onClick}
@@ -61,9 +64,16 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick, isSel
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-green-400 truncate">{character.name}</div>
-          <div className="text-xs text-gray-400">
-            HP: {character.health} | Behavior: {character.behavior?.length || 0} actions
-          </div>
+          {character.title && (
+            <div className="text-xs text-gray-500 italic truncate">{character.title}</div>
+          )}
+          {descriptionPreview ? (
+            <div className="text-xs text-gray-400 truncate">
+              <RichTextRenderer html={descriptionPreview} />
+            </div>
+          ) : (
+            <div className="text-xs text-gray-400">HP: {character.health}</div>
+          )}
         </div>
       </div>
     </div>
@@ -77,6 +87,9 @@ interface EnemyCardProps {
 }
 
 const EnemyCard: React.FC<EnemyCardProps> = ({ enemy, onClick, isSelected }) => {
+  // Get first tooltip step as description preview
+  const descriptionPreview = enemy.tooltipSteps?.[0];
+
   return (
     <div
       onClick={onClick}
@@ -101,7 +114,13 @@ const EnemyCard: React.FC<EnemyCardProps> = ({ enemy, onClick, isSelected }) => 
           {enemy.title && (
             <div className="text-xs text-gray-500 italic truncate">{enemy.title}</div>
           )}
-          <div className="text-xs text-gray-400">HP: {enemy.health}</div>
+          {descriptionPreview ? (
+            <div className="text-xs text-gray-400 truncate">
+              <RichTextRenderer html={descriptionPreview} />
+            </div>
+          ) : (
+            <div className="text-xs text-gray-400">HP: {enemy.health}</div>
+          )}
         </div>
       </div>
     </div>
@@ -147,14 +166,7 @@ const StatusEffectCard: React.FC<StatusEffectCardProps> = ({ effect, onClick, is
           <StatusEffectIcon effect={effect} size={40} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-purple-400 truncate">
-            {effect.name}
-            {effect.isBuiltIn && (
-              <span className="ml-2 text-xs bg-gray-600 text-gray-300 px-1.5 py-0.5 rounded">
-                Built-in
-              </span>
-            )}
-          </div>
+          <div className="font-medium text-purple-400 truncate">{effect.name}</div>
           <div className="text-xs text-gray-400 truncate">{effect.description}</div>
         </div>
       </div>
@@ -192,9 +204,13 @@ const TileCard: React.FC<TileCardProps> = ({ tile, onClick, isSelected }) => {
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-blue-400 truncate">{tile.name}</div>
-          <div className="text-xs text-gray-400">
-            {tile.baseType === 'wall' ? 'Wall' : 'Floor'} | {tile.behaviors.length} behavior{tile.behaviors.length !== 1 ? 's' : ''}
-          </div>
+          {tile.description ? (
+            <div className="text-xs text-gray-400 truncate">{tile.description}</div>
+          ) : (
+            <div className="text-xs text-gray-400">
+              {tile.baseType === 'wall' ? 'Wall' : 'Floor'} | {tile.behaviors.length} behavior{tile.behaviors.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -229,9 +245,16 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClick, isSelected }) => {
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medium text-yellow-400 truncate">{item.name}</div>
-          <div className="text-xs text-gray-400">
-            {item.effects.length} effect{item.effects.length !== 1 ? 's' : ''}
-          </div>
+          {item.description ? (
+            <div
+              className="text-xs text-gray-400 truncate"
+              dangerouslySetInnerHTML={{ __html: item.description }}
+            />
+          ) : (
+            <div className="text-xs text-gray-400">
+              {item.effects.length} effect{item.effects.length !== 1 ? 's' : ''}
+            </div>
+          )}
         </div>
       </div>
     </div>
@@ -260,38 +283,20 @@ const CharacterDetail: React.FC<CharacterDetailProps> = ({ character }) => {
         </div>
         <div className="flex-1">
           <h2 className="text-2xl font-bold text-green-400">{character.name}</h2>
+          {character.title && (
+            <p className="text-gray-400 italic">{character.title}</p>
+          )}
           <div className="mt-2 space-y-1">
             <div className="text-sm">
               <span className="text-gray-400">Health:</span>{' '}
-              <span className="text-red-400">{'❤️'.repeat(character.health)}</span>{' '}
+              <span className="text-red-400">{'❤️'.repeat(Math.min(character.health, 10))}</span>{' '}
               <span className="text-gray-500">({character.health})</span>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Behavior Pattern */}
-      {character.behavior && character.behavior.length > 0 && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Behavior Pattern</h3>
-          <div className="space-y-2">
-            {character.behavior.map((action, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500">{idx + 1}.</span>
-                <span className="text-gray-300">
-                  {action.type === 'move' && `Move ${action.direction || 'forward'}`}
-                  {action.type === 'attack' && 'Attack'}
-                  {action.type === 'spell' && `Cast ${action.spellId || 'spell'}`}
-                  {action.type === 'wait' && 'Wait'}
-                  {action.type === 'turn' && `Turn ${action.turnDirection || ''}`}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tooltip Steps (if any) */}
+      {/* Description (Tooltip Steps) */}
       {character.tooltipSteps && character.tooltipSteps.length > 0 && (
         <div className="bg-gray-700 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-gray-300 mb-2">Description</h3>
@@ -339,28 +344,7 @@ const EnemyDetail: React.FC<EnemyDetailProps> = ({ enemy }) => {
         </div>
       </div>
 
-      {/* Behavior Pattern */}
-      {enemy.behavior?.pattern && enemy.behavior.pattern.length > 0 && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Behavior Pattern</h3>
-          <div className="space-y-2">
-            {enemy.behavior.pattern.map((action, idx) => (
-              <div key={idx} className="flex items-center gap-2 text-sm">
-                <span className="text-gray-500">{idx + 1}.</span>
-                <span className="text-gray-300">
-                  {action.type === 'move' && `Move ${action.direction || 'forward'}`}
-                  {action.type === 'attack' && 'Attack'}
-                  {action.type === 'spell' && `Cast ${action.spellId || 'spell'}`}
-                  {action.type === 'wait' && 'Wait'}
-                  {action.type === 'turn' && `Turn ${action.turnDirection || ''}`}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {/* Tooltip Steps (if any) */}
+      {/* Description (Tooltip Steps) */}
       {enemy.tooltipSteps && enemy.tooltipSteps.length > 0 && (
         <div className="bg-gray-700 rounded-lg p-4">
           <h3 className="text-sm font-semibold text-gray-300 mb-2">Description</h3>
@@ -380,6 +364,11 @@ interface StatusEffectDetailProps {
 }
 
 const StatusEffectDetail: React.FC<StatusEffectDetailProps> = ({ effect }) => {
+  // Check if there are any effects to show
+  const hasEffects = effect.preventsAllActions || effect.preventsMovement ||
+                     effect.preventsRanged || effect.preventsMelee ||
+                     effect.removedOnDamage || effect.processAtTurnStart;
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -388,14 +377,7 @@ const StatusEffectDetail: React.FC<StatusEffectDetailProps> = ({ effect }) => {
           <StatusEffectIcon effect={effect} size={64} />
         </div>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-purple-400">
-            {effect.name}
-            {effect.isBuiltIn && (
-              <span className="ml-2 text-sm bg-gray-600 text-gray-300 px-2 py-1 rounded">
-                Built-in
-              </span>
-            )}
-          </h2>
+          <h2 className="text-2xl font-bold text-purple-400">{effect.name}</h2>
           <p className="text-gray-300 mt-1">{effect.description}</p>
         </div>
       </div>
@@ -425,21 +407,20 @@ const StatusEffectDetail: React.FC<StatusEffectDetailProps> = ({ effect }) => {
         </div>
       </div>
 
-      {/* Effects */}
-      <div className="bg-gray-700 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-2">Effects</h3>
-        <ul className="space-y-1 text-sm text-gray-400">
-          {effect.preventsAllActions && <li>• Prevents all actions</li>}
-          {effect.preventsMovement && <li>• Prevents movement</li>}
-          {effect.preventsRanged && <li>• Prevents ranged attacks</li>}
-          {effect.preventsMelee && <li>• Prevents melee attacks</li>}
-          {effect.removedOnDamage && <li>• Removed when damaged</li>}
-          {effect.processAtTurnStart && <li>• Processes at turn start</li>}
-          {!effect.preventsAllActions && !effect.preventsMovement && !effect.preventsRanged && !effect.preventsMelee && (
-            <li className="text-gray-500">No action restrictions</li>
-          )}
-        </ul>
-      </div>
+      {/* Effects - only show if there are effects */}
+      {hasEffects && (
+        <div className="bg-gray-700 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-300 mb-2">Effects</h3>
+          <ul className="space-y-1 text-sm text-gray-400">
+            {effect.preventsAllActions && <li>• Prevents all actions</li>}
+            {effect.preventsMovement && <li>• Prevents movement</li>}
+            {effect.preventsRanged && <li>• Prevents ranged attacks</li>}
+            {effect.preventsMelee && <li>• Prevents melee attacks</li>}
+            {effect.removedOnDamage && <li>• Removed when damaged</li>}
+            {effect.processAtTurnStart && <li>• Processes at turn start</li>}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
@@ -465,6 +446,9 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
         return behavior.type;
     }
   };
+
+  // Check if there are any properties to show
+  const hasProperties = tile.cadence?.enabled || tile.hideBehaviorIndicators;
 
   return (
     <div className="space-y-4">
@@ -493,6 +477,12 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
               {tile.baseType === 'wall' ? 'Wall (blocks movement)' : 'Floor'}
             </span>
           </div>
+          {/* Placement restriction - styled like game page */}
+          {tile.preventPlacement && (
+            <div className="text-xs text-red-400/70 mt-2">
+              Cannot place characters on this tile
+            </div>
+          )}
         </div>
       </div>
 
@@ -508,18 +498,16 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
         </div>
       )}
 
-      {/* Properties */}
-      <div className="bg-gray-700 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-2">Properties</h3>
-        <ul className="space-y-1 text-sm text-gray-400">
-          {tile.preventPlacement && <li>• Cannot place characters here during setup</li>}
-          {tile.cadence?.enabled && <li>• Toggles on/off over time</li>}
-          {tile.hideBehaviorIndicators && <li>• Behavior indicators hidden</li>}
-          {!tile.preventPlacement && !tile.cadence?.enabled && (
-            <li className="text-gray-500">No special properties</li>
-          )}
-        </ul>
-      </div>
+      {/* Properties - only show if there are properties */}
+      {hasProperties && (
+        <div className="bg-gray-700 rounded-lg p-4">
+          <h3 className="text-sm font-semibold text-gray-300 mb-2">Properties</h3>
+          <ul className="space-y-1 text-sm text-gray-400">
+            {tile.cadence?.enabled && <li>• Toggles on/off over time</li>}
+            {tile.hideBehaviorIndicators && <li>• Behavior indicators hidden</li>}
+          </ul>
+        </div>
+      )}
     </div>
   );
 };
@@ -567,6 +555,12 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item }) => {
               dangerouslySetInnerHTML={{ __html: item.description }}
             />
           )}
+          {/* Placement restriction - styled like game page */}
+          {item.preventPlacement && (
+            <div className="text-xs text-red-400/70 mt-2">
+              Cannot place characters on this tile
+            </div>
+          )}
         </div>
       </div>
 
@@ -582,15 +576,56 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item }) => {
         </div>
       )}
 
-      {/* Pickup Info */}
+      {/* Interact Info */}
       <div className="bg-gray-700 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-2">Pickup</h3>
+        <h3 className="text-sm font-semibold text-gray-300 mb-2">Interact</h3>
         <ul className="space-y-1 text-sm text-gray-400">
           <li>• Method: {item.pickupMethod === 'step_on' ? 'Step on tile' : item.pickupMethod}</li>
           {item.pickupPermissions.characters && <li>• Can be picked up by characters</li>}
           {item.pickupPermissions.enemies && <li>• Can be picked up by enemies</li>}
-          {item.preventPlacement && <li>• Cannot place characters here during setup</li>}
         </ul>
+      </div>
+    </div>
+  );
+};
+
+// ============ MOBILE DETAIL MODAL ============
+
+interface DetailModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  children: React.ReactNode;
+}
+
+const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, children }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 lg:hidden">
+      {/* Backdrop */}
+      <div
+        className="absolute inset-0 bg-black/60"
+        onClick={onClose}
+      />
+      {/* Modal content - slides up from bottom */}
+      <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-gray-800 rounded-t-2xl overflow-hidden flex flex-col">
+        {/* Handle bar */}
+        <div className="flex justify-center py-2 flex-shrink-0">
+          <div className="w-12 h-1 bg-gray-600 rounded-full" />
+        </div>
+        {/* Close button */}
+        <button
+          onClick={onClose}
+          className="absolute top-2 right-3 p-2 text-gray-400 hover:text-white"
+        >
+          <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+        {/* Scrollable content */}
+        <div className="flex-1 overflow-y-auto p-4 pb-8">
+          {children}
+        </div>
       </div>
     </div>
   );
@@ -603,10 +638,10 @@ export const Compendium: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
-  // Load all assets
+  // Load all assets - filter out built-in status effects
   const characters = useMemo(() => getCustomCharacters(), []);
   const enemies = useMemo(() => getCustomEnemies(), []);
-  const statusEffects = useMemo(() => getStatusEffectAssets(), []);
+  const statusEffects = useMemo(() => getStatusEffectAssets().filter(e => !e.isBuiltIn), []);
   const tiles = useMemo(() => getCustomTileTypes().filter(t => t.behaviors.length > 0 || t.preventPlacement || t.baseType === 'wall'), []);
   const items = useMemo(() => getCustomCollectibles(), []);
 
@@ -655,6 +690,33 @@ export const Compendium: React.FC = () => {
     setSelectedId(null);
   };
 
+  // Close modal (for mobile)
+  const handleCloseDetail = () => {
+    setSelectedId(null);
+  };
+
+  // Get detail content based on active tab
+  const getDetailContent = () => {
+    if (activeTab === 'characters' && selectedCharacter) {
+      return <CharacterDetail character={selectedCharacter} />;
+    }
+    if (activeTab === 'enemies' && selectedEnemy) {
+      return <EnemyDetail enemy={selectedEnemy} />;
+    }
+    if (activeTab === 'status_effects' && selectedEffect) {
+      return <StatusEffectDetail effect={selectedEffect} />;
+    }
+    if (activeTab === 'special_tiles' && selectedTile) {
+      return <TileDetail tile={selectedTile} />;
+    }
+    if (activeTab === 'items' && selectedItem) {
+      return <ItemDetail item={selectedItem} />;
+    }
+    return null;
+  };
+
+  const detailContent = getDetailContent();
+
   return (
     <div className="min-h-screen bg-gray-900 text-white">
       <div className="max-w-7xl mx-auto p-4 md:p-6">
@@ -688,7 +750,7 @@ export const Compendium: React.FC = () => {
               }`}
             >
               <span>{tab.icon}</span>
-              <span>{tab.label}</span>
+              <span className="hidden sm:inline">{tab.label}</span>
               <span className={`text-xs px-1.5 py-0.5 rounded ${
                 activeTab === tab.id ? 'bg-blue-500' : 'bg-gray-700'
               }`}>
@@ -700,9 +762,9 @@ export const Compendium: React.FC = () => {
 
         {/* Content */}
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* List */}
-          <div className="lg:w-1/2">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          {/* List - full width on mobile, half on desktop */}
+          <div className="w-full lg:w-1/2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {activeTab === 'characters' && filteredCharacters.map((char) => (
                 <CharacterCard
                   key={char.id}
@@ -758,7 +820,7 @@ export const Compendium: React.FC = () => {
             )}
             {activeTab === 'status_effects' && filteredStatusEffects.length === 0 && (
               <div className="text-center py-12 text-gray-500">
-                {searchQuery ? 'No status effects match your search' : 'No status effects yet'}
+                {searchQuery ? 'No status effects match your search' : 'No custom status effects yet'}
               </div>
             )}
             {activeTab === 'special_tiles' && filteredTiles.length === 0 && (
@@ -773,33 +835,24 @@ export const Compendium: React.FC = () => {
             )}
           </div>
 
-          {/* Detail Panel */}
-          <div className="lg:w-1/2">
+          {/* Detail Panel - hidden on mobile, shown on desktop */}
+          <div className="hidden lg:block lg:w-1/2">
             <div className="bg-gray-800 rounded-lg p-6 min-h-[400px] sticky top-4">
               {!selectedId && (
                 <div className="flex items-center justify-center h-full text-gray-500">
                   <p>Select an entry to view details</p>
                 </div>
               )}
-              {activeTab === 'characters' && selectedCharacter && (
-                <CharacterDetail character={selectedCharacter} />
-              )}
-              {activeTab === 'enemies' && selectedEnemy && (
-                <EnemyDetail enemy={selectedEnemy} />
-              )}
-              {activeTab === 'status_effects' && selectedEffect && (
-                <StatusEffectDetail effect={selectedEffect} />
-              )}
-              {activeTab === 'special_tiles' && selectedTile && (
-                <TileDetail tile={selectedTile} />
-              )}
-              {activeTab === 'items' && selectedItem && (
-                <ItemDetail item={selectedItem} />
-              )}
+              {detailContent}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Mobile Detail Modal */}
+      <DetailModal isOpen={!!selectedId} onClose={handleCloseDetail}>
+        {detailContent}
+      </DetailModal>
     </div>
   );
 };
