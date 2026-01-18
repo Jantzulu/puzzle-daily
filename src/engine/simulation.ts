@@ -1809,13 +1809,7 @@ export function updateProjectiles(gameState: GameState): void {
         proj.x = bounceX;
         proj.y = bounceY;
         proj.startTime = now;
-
-        // The projectile bounced at ~50% progress toward the wall (the tile edge).
-        // In the new direction, it should start at ~50% progress AWAY from the wall.
-        // Set tileEntryTime in the past so it starts halfway through the first tile.
-        const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-        const tileTransitTime = 1 / speedTilesPerSecond;
-        proj.tileEntryTime = now - (0.5 * tileTransitTime * 1000);
+        proj.tileEntryTime = now;
 
         // CRITICAL: Reset prevTileIndex and recalculate collision tracking variables
         // After bounce, we have a completely new tilePath, so we must reset collision detection
