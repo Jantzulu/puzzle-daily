@@ -550,6 +550,11 @@ export interface GameState {
 
   // Headless mode - when true, projectiles resolve instantly (for solver/validator)
   headlessMode?: boolean;
+
+  // Snapshot of enemy positions before they move each turn
+  // Used for projectile collision - projectiles hit enemies that are leaving
+  // a tile on the same turn the projectile arrives (projectile wins ties)
+  enemyPositionsBeforeMove?: Array<{ enemyId: string; x: number; y: number; dead: boolean }>;
 }
 
 export interface PlayerProgress {
