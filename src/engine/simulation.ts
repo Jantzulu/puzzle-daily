@@ -1522,30 +1522,11 @@ export function updateProjectiles(gameState: GameState): void {
         const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
 
         if (nextTileIsWall) {
-          // For bouncing projectiles, don't clamp - let them reach the wall edge naturally
-          // The bounce will be triggered when wall collision is detected
-          const canBounce = proj.bounceOffWalls &&
-                           (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);
-
-          if (canBounce) {
-            // Allow movement up to 50% (tile edge) then the bounce will handle the rest
-            const clampedProgress = Math.min(tileProgress, 0.5);
-            newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
-            newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
-            // Mark whether we've reached the bounce point (50% toward wall)
-            // This tells the wall collision check whether to trigger the bounce
-            if (tileProgress >= 0.5) {
-              (proj as any)._readyToBounce = true;
-              (proj as any)._bounceExtraProgress = tileProgress - 0.5;
-            } else {
-              (proj as any)._readyToBounce = false;
-            }
-          } else {
-            // Non-bouncing projectile, clamp at 40%
-            const clampedProgress = Math.min(tileProgress, 0.4);
-            newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
-            newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
-          }
+          // Clamp progress to prevent visual clipping into wall
+          // 0.48 gets close to the wall edge without clipping
+          const clampedProgress = Math.min(tileProgress, 0.48);
+          newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
+          newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
         } else {
           newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
           newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
@@ -1703,15 +1684,7 @@ export function updateProjectiles(gameState: GameState): void {
       const canBounce = proj.bounceOffWalls &&
                         (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);
 
-      // For bouncing projectiles, only trigger the bounce when visually ready
-      // (i.e., when we've reached 50% progress toward the wall)
-      const readyToBounce = (proj as any)._readyToBounce === true;
-      if (canBounce && !readyToBounce) {
-        // Not yet at wall edge - skip ALL wall collision processing this frame
-        // The visual position was already clamped in the movement calculation
-        // Just continue to entity collision checks
-        hitWallTile = null;
-      } else if (canBounce) {
+      if (canBounce) {
         // Perform bounce based on configured behavior
         proj.bounceCount = (proj.bounceCount ?? 0) + 1;
 
@@ -1835,22 +1808,8 @@ export function updateProjectiles(gameState: GameState): void {
         // Position at the bounce point and continue from there
         proj.x = bounceX;
         proj.y = bounceY;
-
-        // Apply any extra progress beyond the 50% threshold
-        const extraProgress = (proj as any)._bounceExtraProgress ?? 0;
-
-        // Calculate speed for timing adjustment
-        const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-        const tileTransitTime = 1 / speedTilesPerSecond;
-
-        // Set tile entry time slightly in the past to account for extra progress
-        // This makes the projectile continue smoothly without pausing
-        proj.tileEntryTime = now - (extraProgress * tileTransitTime * 1000);
+        proj.tileEntryTime = now;
         proj.startTime = now;
-
-        // Clear bounce flags
-        delete (proj as any)._bounceExtraProgress;
-        delete (proj as any)._readyToBounce;
 
         // CRITICAL: Reset prevTileIndex and recalculate collision tracking variables
         // After bounce, we have a completely new tilePath, so we must reset collision detection
