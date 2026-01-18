@@ -426,6 +426,69 @@ Puzzle Daily #42 🧙
 
 ---
 
+## Security (Pre-Launch TODO)
+
+### Current State (Development Phase)
+
+- Dev app deployed on Netlify for easy multi-device testing
+- Supabase credentials in client-side code
+- No authentication on dev app
+- **Acceptable for now** - project is not public, URL is not shared
+
+### Required Before Launch
+
+#### 1. Secure the Developer App
+
+Options (pick one):
+- **Run locally only** - Dev app never deployed, access via `localhost` or local network IP
+- **Password protection** - Add auth gate (Supabase Auth with email allowlist)
+- **Netlify access control** - Use Netlify's paid private site features
+
+#### 2. Separate API Keys
+
+Create two Supabase API keys:
+- **Dev key**: Full read/write on draft tables (used locally only, never in deployed code)
+- **Player key**: Read-only on live tables + write to player progress (safe for public deployment)
+
+#### 3. Row-Level Security (RLS) in Supabase
+
+```sql
+-- Player app can only READ from live tables
+CREATE POLICY "Public read live assets" ON assets_live
+  FOR SELECT USING (true);
+
+-- Player app can only READ scheduled puzzles
+CREATE POLICY "Public read scheduled puzzles" ON daily_schedule
+  FOR SELECT USING (scheduled_date <= CURRENT_DATE);
+
+-- Block all writes from anon/public role on draft tables
+CREATE POLICY "No public writes to draft" ON assets_draft
+  FOR ALL USING (false);
+```
+
+#### 4. Environment-Based Builds
+
+```typescript
+// Player app build
+VITE_APP_MODE=player
+VITE_SUPABASE_KEY=player_readonly_key
+
+// Dev app (local only)
+VITE_APP_MODE=developer
+VITE_SUPABASE_KEY=dev_full_access_key
+```
+
+### Security Checklist (Pre-Launch)
+
+- [ ] Remove dev app from Netlify (or add auth)
+- [ ] Create read-only Supabase key for player app
+- [ ] Enable RLS policies on all tables
+- [ ] Verify player app cannot write to draft tables
+- [ ] Verify player app cannot access unpublished puzzles
+- [ ] Remove any hardcoded dev credentials from codebase
+
+---
+
 ## Summary
 
 ### Two-App Architecture
