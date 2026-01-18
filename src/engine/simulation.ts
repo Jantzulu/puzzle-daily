@@ -1631,24 +1631,36 @@ export function updateProjectiles(gameState: GameState): void {
       }
     }
 
-    // Check collision with walls - check all tiles along path
-    let hitWallTile: { x: number; y: number } | null = null;
-    for (const tile of tilesAlongPath) {
-      const tileX = tile.x;
-      const tileY = tile.y;
-      const isWall = !isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height) ||
-          gameState.puzzle.tiles[tileY]?.[tileX]?.type === TileType.WALL ||
-          gameState.puzzle.tiles[tileY]?.[tileX] === null;
-      if (isWall) {
-        hitWallTile = tile;
-        break;
-      }
-    }
-
-    // Fall back to final tile check if no tiles along path (same tile)
+    // Check collision with walls based on visual position, not pre-computed path
+    // This ensures bounce triggers when visually at the wall, not before
     const finalTileX = Math.floor(newX);
     const finalTileY = Math.floor(newY);
-    if (!hitWallTile && tilesAlongPath.length === 0) {
+    let hitWallTile: { x: number; y: number } | null = null;
+
+    // Check the tile the projectile is visually moving toward
+    // For tile-based projectiles, check the next tile in the path
+    if (proj.tilePath && proj.tilePath.length > 0) {
+      const currentIdx = proj.currentTileIndex ?? 0;
+      const nextIdx = Math.min(currentIdx + 1, proj.tilePath.length - 1);
+      const nextTile = proj.tilePath[nextIdx];
+
+      const nextIsWall = !isInBounds(nextTile.x, nextTile.y, gameState.puzzle.width, gameState.puzzle.height) ||
+          gameState.puzzle.tiles[nextTile.y]?.[nextTile.x]?.type === TileType.WALL ||
+          gameState.puzzle.tiles[nextTile.y]?.[nextTile.x] === null;
+
+      if (nextIsWall) {
+        // Only trigger wall collision when we're visually close to the wall
+        // Calculate distance from current visual position to the wall tile center
+        const distToWall = Math.sqrt(
+          Math.pow(newX - nextTile.x, 2) + Math.pow(newY - nextTile.y, 2)
+        );
+        // Trigger when within 0.6 tiles of wall (slightly past the 0.48 clamp point)
+        if (distToWall < 0.6) {
+          hitWallTile = nextTile;
+        }
+      }
+    } else {
+      // Legacy: check current tile
       const isWall = !isInBounds(finalTileX, finalTileY, gameState.puzzle.width, gameState.puzzle.height) ||
           gameState.puzzle.tiles[finalTileY]?.[finalTileX]?.type === TileType.WALL ||
           gameState.puzzle.tiles[finalTileY]?.[finalTileX] === null;
