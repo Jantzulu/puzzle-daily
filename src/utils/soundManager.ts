@@ -1,7 +1,7 @@
 // Sound Manager - Web Audio API based sound system
 // Handles sound effects, music, and volume controls
 
-import { SoundSettings, SoundTrigger } from '../types/game';
+import type { SoundSettings, SoundTrigger } from '../types/game';
 
 // Default settings
 const DEFAULT_SETTINGS: SoundSettings = {
