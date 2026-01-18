@@ -14,9 +14,10 @@
 const STORAGE_KEY = 'theme_assets';
 
 export interface ThemeAssets {
-  // Logo
+  // Branding
   logo?: string; // data URL or external URL
   logoAlt?: string; // Alt text for logo
+  siteTitle?: string; // Site title (default: "Puzzle Daily")
 
   // Backgrounds
   bgMain?: string; // Main page background
@@ -77,9 +78,11 @@ export type ThemeAssetKey = keyof ThemeAssets;
 
 // Asset metadata for the editor UI
 export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; description: string; category: string; inputType?: 'image' | 'text' | 'color' | 'select' }> = {
-  // Images
-  logo: { label: 'Logo', description: 'Main game logo (recommended: PNG with transparency)', category: 'branding', inputType: 'image' },
+  // Branding
+  logo: { label: 'Logo', description: 'Logo image shown in navbar (recommended: PNG with transparency, ~32-48px height)', category: 'branding', inputType: 'image' },
   logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding', inputType: 'text' },
+  siteTitle: { label: 'Site Title', description: 'Title shown in navbar (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
+  // Images
   bgMain: { label: 'Main Background', description: 'Background for the entire page', category: 'backgrounds', inputType: 'image' },
   bgPanel: { label: 'Panel Background', description: 'Background texture for panels and cards', category: 'backgrounds', inputType: 'image' },
   bgGameArea: { label: 'Game Area Background', description: 'Underground/cave background surrounding the dungeon', category: 'backgrounds', inputType: 'image' },

@@ -6,11 +6,21 @@ import { AssetManager } from './components/editor/AssetManager';
 import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
-import { applyThemeAssets, subscribeToThemeAssets } from './utils/themeAssets';
+import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets } from './utils/themeAssets';
 
 function Navigation() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
+
+  // Load theme assets and subscribe to changes
+  useEffect(() => {
+    setThemeAssets(loadThemeAssets());
+    const unsubscribe = subscribeToThemeAssets((assets) => {
+      setThemeAssets(assets);
+    });
+    return unsubscribe;
+  }, []);
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -22,15 +32,37 @@ function Navigation() {
       : 'bg-stone-700 text-parchment-300 border-stone-500 hover:bg-stone-600 hover:text-parchment-100 hover:border-copper-600'}
   `;
 
+  // Get navbar background style
+  const navbarStyle: React.CSSProperties = {};
+  if (themeAssets.colorBgNavbar) {
+    navbarStyle.backgroundColor = themeAssets.colorBgNavbar;
+  }
+  if (themeAssets.bgNavbar) {
+    navbarStyle.backgroundImage = `url(${themeAssets.bgNavbar})`;
+    navbarStyle.backgroundSize = 'cover';
+    navbarStyle.backgroundPosition = 'center';
+  }
+
   return (
-    <nav className="bg-stone-600 border-b-2 border-copper-700 px-4 md:px-6 py-3 shadow-dungeon">
+    <nav
+      className="bg-stone-600 border-b-2 border-copper-700 px-4 md:px-6 py-3 shadow-dungeon"
+      style={navbarStyle}
+    >
       <div className="flex items-center gap-3 md:gap-4">
-        {/* Logo/Title - placeholder for custom logo */}
+        {/* Logo/Title */}
         <div className="flex items-center gap-2 md:mr-4">
-          {/* Torch icon placeholder */}
-          <span className="text-copper-400 text-xl md:text-2xl animate-flicker">&#128293;</span>
+          {/* Custom logo or default torch icon */}
+          {themeAssets.logo ? (
+            <img
+              src={themeAssets.logo}
+              alt={themeAssets.logoAlt || 'Logo'}
+              className="h-8 md:h-10 w-auto object-contain"
+            />
+          ) : (
+            <span className="text-copper-400 text-xl md:text-2xl animate-flicker">&#128293;</span>
+          )}
           <h1 className="text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide">
-            Puzzle Daily
+            {themeAssets.siteTitle || 'Puzzle Daily'}
           </h1>
         </div>
 
