@@ -683,10 +683,6 @@ export const deleteSpellAsset = (spellId: string): void => {
 export const loadSpellAsset = (spellId: string): SpellAsset | null => {
   const spells = getSpellAssets();
   const spell = spells.find(s => s.id === spellId) || null;
-  // Debug logging for spell loading
-  if (spell) {
-    console.log(`[loadSpellAsset] Loaded spell "${spell.name}" (${spellId}), projectileSpeed: ${spell.projectileSpeed}`);
-  }
   return spell;
 };
 
