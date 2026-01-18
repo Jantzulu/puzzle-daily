@@ -555,6 +555,10 @@ export interface GameState {
   // Projectiles spawned this turn can hit entities at their pre-move positions
   enemyPositionsAtTurnStart?: Array<{ enemyId: string; x: number; y: number; dead: boolean }>;
   characterPositionsAtTurnStart?: Array<{ characterId: string; x: number; y: number; dead: boolean }>;
+
+  // Tiles being vacated this turn (for train-like movement)
+  // If an entity tries to move into a tile that's being vacated by an ally, allow it
+  tilesBeingVacated?: Set<string>;  // Set of "x,y" strings
 }
 
 export interface PlayerProgress {

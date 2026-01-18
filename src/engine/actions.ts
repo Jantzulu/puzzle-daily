@@ -754,6 +754,15 @@ function moveCharacter(
         return updatedChar; // Just stop, no wall collision behavior
       }
 
+      // Check if the target tile is being vacated (train-like movement)
+      const targetKey = `${Math.floor(newX)},${Math.floor(newY)}`;
+      if (gameState.tilesBeingVacated?.has(targetKey)) {
+        // The character at this tile is moving away - allow the move (train behavior)
+        updatedChar.x = newX;
+        updatedChar.y = newY;
+        continue;
+      }
+
       // Otherwise, just wait (doesn't trigger IF_WALL, character will try again next turn)
       return updatedChar;
     }
@@ -855,6 +864,14 @@ function moveCharacter(
       const isEnemyMoving = getEnemy(updatedChar.characterId) !== undefined;
 
       if (isEnemyMoving) {
+        // Check if the target tile is being vacated (train-like movement)
+        const targetKey = `${Math.floor(newX)},${Math.floor(newY)}`;
+        if (gameState.tilesBeingVacated?.has(targetKey)) {
+          // The enemy at this tile is moving away - allow the move (train behavior)
+          updatedChar.x = newX;
+          updatedChar.y = newY;
+          continue;
+        }
         // Enemy-to-enemy collision: just wait, don't move, don't fight
         return updatedChar;
       }

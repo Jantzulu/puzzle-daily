@@ -799,6 +799,34 @@ export function executeTurn(gameState: GameState): GameState {
   // Process turn-start status effects for all entities
   processAllStatusEffectsTurnStart(gameState);
 
+  // Pre-compute which tiles are being vacated by characters this turn (for train-like movement)
+  gameState.tilesBeingVacated = new Set<string>();
+  for (const character of gameState.placedCharacters) {
+    if (character.dead || !character.active) continue;
+    const charData = getCharacter(character.characterId);
+    if (!charData) continue;
+
+    // Find the current action (accounting for parallel actions)
+    let actionIndex = character.actionIndex || 0;
+    let currentAction = charData.behavior[actionIndex];
+    while (currentAction && (currentAction.executionMode === 'parallel' || currentAction.executionMode === 'parallel_with_previous')) {
+      actionIndex++;
+      currentAction = charData.behavior[actionIndex];
+    }
+
+    if (!currentAction) continue;
+
+    // Check if this is a movement action
+    const actionType = currentAction.type;
+    if (actionType === ActionType.MOVE_FORWARD || actionType === 'MOVE_FORWARD' ||
+        actionType === ActionType.MOVE_BACKWARD || actionType === 'MOVE_BACKWARD' ||
+        actionType === ActionType.MOVE_LEFT || actionType === 'MOVE_LEFT' ||
+        actionType === ActionType.MOVE_RIGHT || actionType === 'MOVE_RIGHT') {
+      // This character intends to move, so its current tile will be vacated
+      gameState.tilesBeingVacated.add(`${Math.floor(character.x)},${Math.floor(character.y)}`);
+    }
+  }
+
   // Create new array with new character objects to trigger React re-render
   // Process sequentially to ensure collision detection works correctly
   const newCharacters: PlacedCharacter[] = [];
@@ -915,6 +943,39 @@ export function executeTurn(gameState: GameState): GameState {
   for (const character of gameState.placedCharacters) {
     if (!character.dead && character.active) {
       pendingCharacterTriggers.push(character);
+    }
+  }
+
+  // Pre-compute which tiles are being vacated by enemies this turn (for train-like movement)
+  // This allows enemies following each other to move together without blocking
+  gameState.tilesBeingVacated = new Set<string>();
+  for (const enemy of gameState.puzzle.enemies) {
+    if (enemy.dead) continue;
+    const enemyData = getEnemy(enemy.enemyId);
+    if (!enemyData || !enemyData.behavior || enemyData.behavior.type !== 'active') continue;
+    if (!enemy.active) continue;
+
+    const pattern = enemyData.behavior.pattern;
+    if (!pattern || pattern.length === 0) continue;
+
+    // Find the current action (accounting for parallel actions)
+    let actionIndex = enemy.actionIndex || 0;
+    let currentAction = pattern[actionIndex];
+    while (currentAction && (currentAction.executionMode === 'parallel' || currentAction.executionMode === 'parallel_with_previous')) {
+      actionIndex++;
+      currentAction = pattern[actionIndex];
+    }
+
+    if (!currentAction) continue;
+
+    // Check if this is a movement action
+    const actionType = currentAction.type;
+    if (actionType === ActionType.MOVE_FORWARD || actionType === 'MOVE_FORWARD' ||
+        actionType === ActionType.MOVE_BACKWARD || actionType === 'MOVE_BACKWARD' ||
+        actionType === ActionType.MOVE_LEFT || actionType === 'MOVE_LEFT' ||
+        actionType === ActionType.MOVE_RIGHT || actionType === 'MOVE_RIGHT') {
+      // This enemy intends to move, so its current tile will be vacated
+      gameState.tilesBeingVacated.add(`${Math.floor(enemy.x)},${Math.floor(enemy.y)}`);
     }
   }
 
