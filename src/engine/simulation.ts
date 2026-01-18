@@ -1957,9 +1957,28 @@ export function updateProjectiles(gameState: GameState): void {
 
           // Apply damage if we found a hit
           if (hitEnemyId) {
-            const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+            // Find enemy by ID AND position to handle cases where multiple enemies share an ID
+            // First try to find a living enemy at this tile position with matching ID
+            let hitEnemy = gameState.puzzle.enemies.find(e =>
+              e.enemyId === hitEnemyId &&
+              !e.dead &&
+              Math.floor(e.x) === tileX &&
+              Math.floor(e.y) === tileY
+            );
+            // If not found at exact position, try finding any living enemy with this ID at tile
+            if (!hitEnemy) {
+              hitEnemy = gameState.puzzle.enemies.find(e =>
+                !e.dead &&
+                Math.floor(e.x) === tileX &&
+                Math.floor(e.y) === tileY
+              );
+            }
+            // Fallback to original behavior
+            if (!hitEnemy) {
+              hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+            }
             if (tileX === 13 && tileY === 0) {
-              console.log(`[DEBUG] Applying damage: hitEnemy=${hitEnemy?.enemyId}, dead=${hitEnemy?.dead}, health=${hitEnemy?.currentHealth}`);
+              console.log(`[DEBUG] Applying damage: hitEnemy=${hitEnemy?.enemyId}, dead=${hitEnemy?.dead}, health=${hitEnemy?.currentHealth}, pos=(${hitEnemy?.x},${hitEnemy?.y})`);
             }
             if (hitEnemy && !hitEnemy.dead) {
               // Track that we hit this entity (for piercing projectiles)
