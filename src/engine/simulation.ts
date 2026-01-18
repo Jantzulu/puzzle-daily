@@ -1942,48 +1942,46 @@ export function updateProjectiles(gameState: GameState): void {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
 
-          // Check for enemy at this tile using pre-move positions
+          // Check for ALL enemies at this tile using pre-move positions
           // This ensures we hit enemies based on where they WERE at the start of the turn,
-          // not where they moved to. This way:
-          // - Projectile through enemy's START position → Hit (catches them leaving)
-          // - Projectile through enemy's END position → Miss (they haven't arrived yet)
-          let hitEnemy: PlacedEnemy | undefined;
+          // not where they moved to. Multiple enemies can be on the same tile.
+          // Use filter() instead of find() to get all enemies at this tile
+          let enemiesToHit: PlacedEnemy[] = [];
 
-          // Use pre-move positions to determine hits - this is where enemies actually were
-          // when the turn started (before movement phase)
-          // Use index to track which specific enemy instances have been hit (handles duplicate IDs)
           if (gameState.enemyPositionsBeforeMove) {
-            const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
+            // Get all pre-move enemies at this tile that haven't been hit yet
+            const preMoveEnemiesAtTile = gameState.enemyPositionsBeforeMove.filter(
               e => Math.floor(e.x) === tileX &&
                    Math.floor(e.y) === tileY &&
                    !(proj.hitEnemyIndices?.includes(e.index))
             );
-            if (preMoveEnemy) {
-              // Found an enemy that WAS at this tile - get the actual enemy by index
+            for (const preMoveEnemy of preMoveEnemiesAtTile) {
               const actualEnemy = gameState.puzzle.enemies[preMoveEnemy.index];
               if (actualEnemy && !actualEnemy.dead) {
-                hitEnemy = actualEnemy;
+                enemiesToHit.push(actualEnemy);
                 // Track this specific enemy instance by index
                 if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
                 proj.hitEnemyIndices.push(preMoveEnemy.index);
               }
             }
           } else {
-            // Fallback if no pre-move snapshot (shouldn't happen in normal gameplay)
-            const enemyIndex = gameState.puzzle.enemies.findIndex(
-              e => !e.dead &&
-                   Math.floor(e.x) === tileX &&
-                   Math.floor(e.y) === tileY &&
-                   !(proj.hitEnemyIndices?.includes(gameState.puzzle.enemies.indexOf(e)))
-            );
-            if (enemyIndex >= 0) {
-              hitEnemy = gameState.puzzle.enemies[enemyIndex];
-              if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
-              proj.hitEnemyIndices.push(enemyIndex);
-            }
+            // Fallback if no pre-move snapshot
+            gameState.puzzle.enemies.forEach((e, idx) => {
+              if (!e.dead &&
+                  Math.floor(e.x) === tileX &&
+                  Math.floor(e.y) === tileY &&
+                  !(proj.hitEnemyIndices?.includes(idx))) {
+                enemiesToHit.push(e);
+                if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
+                proj.hitEnemyIndices.push(idx);
+              }
+            });
           }
 
-          if (hitEnemy && !hitEnemy.dead) {
+          // Process all enemies hit at this tile
+          for (const hitEnemy of enemiesToHit) {
+            if (hitEnemy.dead) continue; // Skip if already dead from earlier hit this frame
+
             // Track that we hit this entity (for piercing projectiles)
             if (!proj.hitEntityIds) proj.hitEntityIds = [];
             proj.hitEntityIds.push(hitEnemy.enemyId);
@@ -2041,9 +2039,10 @@ export function updateProjectiles(gameState: GameState): void {
               proj.active = false;
               projectilesToRemove.push(proj.id);
               entityHitAndStopped = true;
-              break;
+              break; // Break inner loop (enemies at this tile)
             }
           }
+          if (entityHitAndStopped) break; // Break outer loop (tiles to check)
         }
       }
     }
@@ -2403,44 +2402,44 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            // Check for enemy hits using pre-move positions ONLY
+            // Check for ALL enemy hits using pre-move positions ONLY
             // This ensures we hit enemies based on where they WERE at the start of the turn,
-            // not where they moved to. This way:
-            // - Projectile through enemy's START position → Hit (catches them leaving)
-            // - Projectile through enemy's END position → Miss (they haven't arrived yet)
-            let hitEnemy: typeof gameState.puzzle.enemies[0] | undefined;
+            // not where they moved to. Multiple enemies can be on the same tile.
+            let enemiesToHit: typeof gameState.puzzle.enemies = [];
 
             // Use pre-move positions to determine hits
             // Use index to track which specific enemy instances have been hit (handles duplicate IDs)
             if (gameState.enemyPositionsBeforeMove) {
-              const preMoveEnemy = gameState.enemyPositionsBeforeMove.find(
+              const preMoveEnemiesAtTile = gameState.enemyPositionsBeforeMove.filter(
                 e => Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                      !(proj.hitEnemyIndices?.includes(e.index))
               );
-              if (preMoveEnemy) {
-                // Found an enemy that WAS at this tile - get the actual enemy by index
+              for (const preMoveEnemy of preMoveEnemiesAtTile) {
                 const actualEnemy = gameState.puzzle.enemies[preMoveEnemy.index];
                 if (actualEnemy && !actualEnemy.dead) {
-                  hitEnemy = actualEnemy;
-                  // Track this specific enemy instance by index
+                  enemiesToHit.push(actualEnemy);
                   if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
                   proj.hitEnemyIndices.push(preMoveEnemy.index);
                 }
               }
             } else {
               // Fallback if no pre-move snapshot
-              const enemyIndex = gameState.puzzle.enemies.findIndex(
-                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
-                     !(proj.hitEnemyIndices?.includes(gameState.puzzle.enemies.indexOf(e)))
-              );
-              if (enemyIndex >= 0) {
-                hitEnemy = gameState.puzzle.enemies[enemyIndex];
-                if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
-                proj.hitEnemyIndices.push(enemyIndex);
-              }
+              gameState.puzzle.enemies.forEach((e, idx) => {
+                if (!e.dead &&
+                    Math.floor(e.x) === checkX &&
+                    Math.floor(e.y) === checkY &&
+                    !(proj.hitEnemyIndices?.includes(idx))) {
+                  enemiesToHit.push(e);
+                  if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
+                  proj.hitEnemyIndices.push(idx);
+                }
+              });
             }
 
-            if (hitEnemy && !hitEnemy.dead) {
+            // Process all enemies hit at this tile
+            for (const hitEnemy of enemiesToHit) {
+              if (hitEnemy.dead) continue; // Skip if already dead from earlier hit
+
               hitEntityIds.push(hitEnemy.enemyId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
@@ -2459,7 +2458,10 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 }
               }
               hitSomething = true;
-              if (!canPierce) shouldRemove = true;
+              if (!canPierce) {
+                shouldRemove = true;
+                break; // Stop processing more enemies if non-piercing
+              }
             }
           }
         } else if (proj.sourceEnemyId) {
