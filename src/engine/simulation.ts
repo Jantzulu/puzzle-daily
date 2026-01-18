@@ -1637,9 +1637,21 @@ export function updateProjectiles(gameState: GameState): void {
     const finalTileY = Math.floor(newY);
     let hitWallTile: { x: number; y: number } | null = null;
 
+    // SAFETY CHECK: Always catch projectiles that are out of bounds or in a wall tile
+    // This is a fallback in case the path-based detection fails
+    const currentTileIsOutOfBounds = !isInBounds(finalTileX, finalTileY, gameState.puzzle.width, gameState.puzzle.height);
+    const currentTileIsWall = !currentTileIsOutOfBounds && (
+      gameState.puzzle.tiles[finalTileY]?.[finalTileX]?.type === TileType.WALL ||
+      gameState.puzzle.tiles[finalTileY]?.[finalTileX] === null
+    );
+
+    if (currentTileIsOutOfBounds || currentTileIsWall) {
+      // Projectile is already in an invalid position - trigger wall hit immediately
+      hitWallTile = { x: finalTileX, y: finalTileY };
+    }
     // Check the tile the projectile is visually moving toward
     // For tile-based projectiles, check the next tile in the path
-    if (proj.tilePath && proj.tilePath.length > 0) {
+    else if (proj.tilePath && proj.tilePath.length > 0) {
       const currentIdx = proj.currentTileIndex ?? 0;
       const nextIdx = Math.min(currentIdx + 1, proj.tilePath.length - 1);
       const nextTile = proj.tilePath[nextIdx];
@@ -1654,8 +1666,8 @@ export function updateProjectiles(gameState: GameState): void {
         const distToWall = Math.sqrt(
           Math.pow(newX - nextTile.x, 2) + Math.pow(newY - nextTile.y, 2)
         );
-        // Trigger when within 0.6 tiles of wall (slightly past the 0.48 clamp point)
-        if (distToWall < 0.6) {
+        // Trigger when within 0.55 tiles of wall - tight enough to not go out of bounds
+        if (distToWall < 0.55) {
           hitWallTile = nextTile;
         }
       }
