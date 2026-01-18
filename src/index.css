@@ -552,4 +552,26 @@ html body.theme-font-active,
 /* Theme-aware navigation link buttons (header nav) */
 .nav-link-btn {
   border-radius: var(--theme-border-radius, 3px) !important;
+  border-width: var(--theme-border-width, 2px) !important;
+  border-style: solid !important;
+}
+
+/* Inactive nav button - uses secondary button styling */
+.nav-link-btn:not(.nav-link-active) {
+  background-color: var(--theme-button-bg, #44403c) !important;
+  border-color: var(--theme-button-border, #57534e) !important;
+  color: var(--theme-text-secondary, #d4c4a8) !important;
+}
+
+.nav-link-btn:not(.nav-link-active):hover {
+  background-color: var(--theme-button-bg, #57534e) !important;
+  border-color: var(--theme-border-accent, #c4915c) !important;
+  color: var(--theme-text-primary, #f5f0e6) !important;
+}
+
+/* Active nav button - uses primary button styling */
+.nav-link-btn.nav-link-active {
+  background-color: var(--theme-button-primary-bg, #8c5c37) !important;
+  border-color: var(--theme-button-primary-border, #c4915c) !important;
+  color: var(--theme-text-primary, #f5f0e6) !important;
 }
