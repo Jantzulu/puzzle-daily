@@ -1522,15 +1522,29 @@ export function updateProjectiles(gameState: GameState): void {
         const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
 
         if (nextTileIsWall) {
-          // For bouncing projectiles, allow them to visually move to the edge of the
-          // current tile (50% progress toward wall center). For non-bouncing projectiles,
-          // clamp at 40% to prevent visual clipping.
+          // For bouncing projectiles, check if we've reached the wall edge (50% progress)
+          // If so, mark for immediate bounce processing rather than clamping
           const canBounce = proj.bounceOffWalls &&
                            (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);
-          const maxProgress = canBounce ? 0.5 : 0.4;
-          const clampedProgress = Math.min(tileProgress, maxProgress);
-          newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
-          newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
+
+          if (canBounce && tileProgress >= 0.5) {
+            // Mark that we need to process bounce this frame
+            // Position at the edge of the tile (50% toward wall)
+            newX = currentTile.x + (nextTile.x - currentTile.x) * 0.5;
+            newY = currentTile.y + (nextTile.y - currentTile.y) * 0.5;
+            // Store remaining progress to continue after bounce
+            (proj as any)._pendingBounce = true;
+            (proj as any)._bounceRemainingProgress = tileProgress - 0.5;
+          } else if (canBounce) {
+            // Not yet at wall edge, continue moving toward it
+            newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
+            newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
+          } else {
+            // Non-bouncing projectile, clamp at 40%
+            const clampedProgress = Math.min(tileProgress, 0.4);
+            newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
+            newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
+          }
         } else {
           newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
           newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
@@ -1799,19 +1813,38 @@ export function updateProjectiles(gameState: GameState): void {
         }
 
         const remainingRange = proj.attackData.range ?? 5;
-        proj.x = bounceX;
-        proj.y = bounceY;
         proj.startX = bounceX;
         proj.startY = bounceY;
         proj.targetX = bounceX + newDirX * remainingRange;
         proj.targetY = bounceY + newDirY * remainingRange;
-        proj.startTime = now; // Reset timing for smooth continuation
 
         // Recompute tile path for the new bounced trajectory with wall lookahead
         // This ensures the path stops BEFORE any wall, preventing visual clipping
         proj.tilePath = computeTilePathWithWallLookahead(bounceX, bounceY, proj.targetX, proj.targetY, gameState);
         proj.currentTileIndex = 0;
-        proj.tileEntryTime = now;
+
+        // Apply remaining progress from before the bounce to continue smoothly in new direction
+        // This prevents the visual "pause" at the wall
+        const bounceRemainingProgress = (proj as any)._bounceRemainingProgress ?? 0;
+        if (bounceRemainingProgress > 0 && proj.tilePath.length > 1) {
+          // Continue movement in the new direction using leftover progress
+          const nextTileAfterBounce = proj.tilePath[1];
+          proj.x = bounceX + (nextTileAfterBounce.x - bounceX) * bounceRemainingProgress;
+          proj.y = bounceY + (nextTileAfterBounce.y - bounceY) * bounceRemainingProgress;
+          // Adjust tile entry time to account for progress already made
+          const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+          const tileTransitTime = 1 / speedTilesPerSecond;
+          proj.tileEntryTime = now - (bounceRemainingProgress * tileTransitTime * 1000);
+        } else {
+          proj.x = bounceX;
+          proj.y = bounceY;
+          proj.tileEntryTime = now;
+        }
+        proj.startTime = now; // Reset timing for smooth continuation
+
+        // Clear the pending bounce flag
+        delete (proj as any)._pendingBounce;
+        delete (proj as any)._bounceRemainingProgress;
 
         // CRITICAL: Reset prevTileIndex and recalculate collision tracking variables
         // After bounce, we have a completely new tilePath, so we must reset collision detection
