@@ -93,12 +93,10 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
                   min="1"
                   max="16"
                   step="1"
-                  value={Math.round((editedAttack.projectileSpeed || 5) * 0.8)}
+                  value={editedAttack.projectileSpeed || 4}
                   onChange={(e) => {
                     const tilesPerTurn = parseInt(e.target.value) || 1;
-                    // Convert tiles/turn to tiles/second (turn = 800ms = 0.8s)
-                    const tilesPerSecond = tilesPerTurn / 0.8;
-                    setEditedAttack({ ...editedAttack, projectileSpeed: tilesPerSecond });
+                    setEditedAttack({ ...editedAttack, projectileSpeed: tilesPerTurn });
                   }}
                   className="w-full px-3 py-2 bg-gray-700 rounded text-white"
                 />

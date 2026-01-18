@@ -1447,8 +1447,10 @@ export function updateProjectiles(gameState: GameState): void {
       const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
 
       // Move a fixed amount based on speed and frame time (assume ~16ms per frame)
+      // Convert tiles/turn to tiles/second for animation (1 turn = 0.8 seconds)
       const frameTime = 0.016; // 16ms in seconds
-      const moveDistance = proj.speed * frameTime;
+      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+      const moveDistance = speedTilesPerSecond * frameTime;
 
       if (distanceToTarget <= moveDistance || distanceToTarget < 0.1) {
         // Close enough to target - snap to target
@@ -1473,7 +1475,9 @@ export function updateProjectiles(gameState: GameState): void {
 
       const tileEntryTime = proj.tileEntryTime ?? proj.startTime;
       const timeSinceTileEntry = (now - tileEntryTime) / 1000; // seconds
-      const tileTransitTime = 1 / proj.speed; // Time to cross one tile (seconds)
+      // Convert tiles/turn to tiles/second for animation (1 turn = 0.8 seconds)
+      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+      const tileTransitTime = 1 / speedTilesPerSecond; // Time to cross one tile (seconds)
 
       // Calculate how many tiles we should advance this frame
       const tilesAdvanced = Math.floor(timeSinceTileEntry / tileTransitTime);
@@ -1528,7 +1532,9 @@ export function updateProjectiles(gameState: GameState): void {
     } else {
       // LEGACY: Non-homing projectiles without tilePath (shouldn't happen for new projectiles)
       const elapsed = (now - proj.startTime) / 1000; // seconds
-      const distanceTraveled = proj.speed * elapsed;
+      // Convert tiles/turn to tiles/second for animation (1 turn = 0.8 seconds)
+      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+      const distanceTraveled = speedTilesPerSecond * elapsed;
 
       const dx = proj.targetX - proj.startX;
       const dy = proj.targetY - proj.startY;
@@ -2150,13 +2156,12 @@ function triggerAOEExplosion(
 /**
  * Update projectiles in headless mode (turn-based movement for solver/validator)
  * Projectiles move a fixed number of tiles per turn based on their speed
- * 1 turn = 800ms = 0.8 seconds, so tiles per turn = speed * 0.8
+ * Speed is stored directly as tiles per turn (no conversion needed)
  */
 function updateProjectilesHeadless(gameState: GameState): void {
   if (!gameState.activeProjectiles) return;
 
   const projectilesToRemove: string[] = [];
-  const TURN_DURATION = 0.8; // 800ms per turn
 
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active) {
@@ -2166,8 +2171,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
     const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
     const range = proj.attackData.range || 10;
-    const speed = proj.speed || 5; // tiles per second
-    const tilesPerTurn = Math.ceil(speed * TURN_DURATION); // How far projectile moves this turn
+    const tilesPerTurn = proj.speed || 4; // Speed is now directly tiles per turn
 
     let hitSomething = false;
     let shouldRemove = false;

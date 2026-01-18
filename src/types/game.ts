@@ -659,7 +659,7 @@ export interface CustomAttack {
   aoeRadius?: number;           // For AOE attacks (tiles from center)
 
   // Projectile behavior (for PROJECTILE pattern)
-  projectileSpeed?: number;     // Tiles per second (default: 5)
+  projectileSpeed?: number;     // Tiles per turn (default: 4)
   projectilePierces?: boolean;  // Continue through enemies (default: false)
 
   // AOE targeting (for AOE patterns)
@@ -703,7 +703,7 @@ export interface Projectile {
 
   // Movement
   direction: Direction;         // Facing direction for sprite rotation
-  speed: number;                // Tiles per second
+  speed: number;                // Tiles per turn
 
   // State
   active: boolean;
@@ -839,7 +839,7 @@ export interface SpellAsset {
   meleeRange?: number;          // For melee spells - how many tiles in attack direction (default: 1)
 
   // Projectile settings (for linear templates)
-  projectileSpeed?: number;     // Tiles per second
+  projectileSpeed?: number;     // Tiles per turn (default: 4)
   pierceEnemies?: boolean;      // Continue through enemies
   bounceOffWalls?: boolean;     // Bounce/reflect off walls instead of stopping
   maxBounces?: number;          // Maximum bounces (default: 3 if bounceOffWalls enabled)
