@@ -1531,11 +1531,7 @@ export function updateProjectiles(gameState: GameState): void {
       const dx = proj.targetX - proj.startX;
       const dy = proj.targetY - proj.startY;
       if (dx !== 0 || dy !== 0) {
-        const oldDir = proj.direction;
         proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
-        if (oldDir !== proj.direction) {
-          console.log(`[DEBUG] Direction recalc: was=${oldDir}, now=${proj.direction}, start=(${proj.startX},${proj.startY}), target=(${proj.targetX},${proj.targetY}), tilePath=${JSON.stringify(proj.tilePath)}`);
-        }
       }
     } else {
       // LEGACY: Non-homing projectiles without tilePath (shouldn't happen for new projectiles)
@@ -1602,8 +1598,6 @@ export function updateProjectiles(gameState: GameState): void {
 
       // New tiles are those from prevTileIndex to currentTileIndex (exclusive of tiles already checked)
       newTiles = proj.tilePath.slice(prevTileIndex, (proj.currentTileIndex ?? 0) + 1);
-
-      console.log(`[DEBUG] Tile collision check: prevTileIndex=${prevTileIndex}, currentTileIndex=${proj.currentTileIndex}, newTiles=${JSON.stringify(newTiles)}`);
     } else {
       // LEGACY/HOMING: Calculate tiles dynamically
       tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
@@ -1819,16 +1813,9 @@ export function updateProjectiles(gameState: GameState): void {
 
     // Use newTiles for entity collision checks (only tiles we haven't checked yet)
     // This prevents hitting the same entity multiple times per frame
+    // IMPORTANT: Only use tiles from the precomputed tilePath, not the interpolated position
+    // The interpolated position can be on a different tile than the logical path (especially for diagonals)
     const tilesToCheck = [...newTiles];
-    if (tilesToCheck.length === 0 ||
-        (tilesToCheck[tilesToCheck.length - 1].x !== finalTileX ||
-         tilesToCheck[tilesToCheck.length - 1].y !== finalTileY)) {
-      // Add final tile if not already included
-      const finalKey = `${finalTileX},${finalTileY}`;
-      if (!proj.checkedTiles?.[finalKey]) {
-        tilesToCheck.push({ x: finalTileX, y: finalTileY });
-      }
-    }
 
     // If fired by a character
     let entityHitAndStopped = false;
@@ -1909,9 +1896,6 @@ export function updateProjectiles(gameState: GameState): void {
           );
 
           if (hitEnemy) {
-            // Debug: Log hit detection
-            console.log(`[PROJECTILE HIT] Enemy ${hitEnemy.enemyId} at tile (${tileX},${tileY}), enemy actual pos (${hitEnemy.x},${hitEnemy.y}), tilesToCheck: ${JSON.stringify(tilesToCheck)}`);
-
             // Track that we hit this entity (for piercing projectiles)
             if (!proj.hitEntityIds) proj.hitEntityIds = [];
             proj.hitEntityIds.push(hitEnemy.enemyId);
