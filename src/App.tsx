@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { Game } from './components/game/Game';
 import { MapEditor } from './components/editor/MapEditor';
 import { AssetManager } from './components/editor/AssetManager';
+import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 
@@ -28,6 +29,9 @@ function Navigation() {
         <div className="hidden md:flex items-center gap-4">
           <Link to="/" className={linkClass('/')}>
             Play
+          </Link>
+          <Link to="/compendium" className={linkClass('/compendium')}>
+            Compendium
           </Link>
           <Link to="/editor" className={linkClass('/editor')}>
             Map Editor
@@ -70,6 +74,13 @@ function Navigation() {
             Play
           </Link>
           <Link
+            to="/compendium"
+            className={`block ${linkClass('/compendium')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            Compendium
+          </Link>
+          <Link
             to="/editor"
             className={`block ${linkClass('/editor')}`}
             onClick={() => setMobileMenuOpen(false)}
@@ -100,6 +111,7 @@ function App() {
         <Navigation />
         <Routes>
           <Route path="/" element={<Game />} />
+          <Route path="/compendium" element={<Compendium />} />
           <Route path="/editor" element={<MapEditor />} />
           <Route path="/assets" element={<AssetManager />} />
         </Routes>
