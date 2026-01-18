@@ -17,12 +17,12 @@ function Navigation() {
     px-3 md:px-4 py-2 rounded-pixel-md transition-all duration-200 font-medium text-sm md:text-base
     border-2
     ${isActive(path)
-      ? 'bg-stone-900 text-copper-400 border-copper-600 shadow-inner-dark'
-      : 'bg-stone-800 text-stone-400 border-stone-700 hover:bg-stone-700 hover:text-parchment-200 hover:border-stone-600'}
+      ? 'bg-copper-700 text-parchment-100 border-copper-500 shadow-inner-dark'
+      : 'bg-stone-700 text-parchment-300 border-stone-500 hover:bg-stone-600 hover:text-parchment-100 hover:border-copper-600'}
   `;
 
   return (
-    <nav className="bg-stone-700 border-b-2 border-stone-600 px-4 md:px-6 py-3 shadow-dungeon">
+    <nav className="bg-stone-600 border-b-2 border-copper-700 px-4 md:px-6 py-3 shadow-dungeon">
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title - placeholder for custom logo */}
         <div className="flex items-center gap-2 md:mr-4">
