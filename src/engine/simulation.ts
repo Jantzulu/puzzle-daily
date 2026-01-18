@@ -1911,6 +1911,13 @@ export function updateProjectiles(gameState: GameState): void {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
 
+          // Debug: Log enemy positions when checking tile (13,0)
+          if (tileX === 13 && tileY === 0) {
+            const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ');
+            const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ') || 'none';
+            console.log(`[DEBUG] Checking (13,0): enemies current=[${enemyInfo}], pre-move=[${preMoveInfo}], alreadyHit=[${proj.hitEntityIds?.join(',') || 'none'}]`);
+          }
+
           // First check pre-move positions (enemies that WERE at this tile)
           let hitEnemyId: string | undefined;
           if (gameState.enemyPositionsBeforeMove) {
