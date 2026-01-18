@@ -179,7 +179,8 @@ function clonePuzzle(puzzle: Puzzle): Puzzle {
 function simulatePuzzle(
   puzzle: Puzzle,
   placements: CharacterPlacement[],
-  maxTurns: number = 200
+  maxTurns: number = 200,
+  debug: boolean = false
 ): { result: 'victory' | 'defeat' | 'timeout'; turns: number } {
   // Clone puzzle to avoid mutation
   const puzzleCopy = clonePuzzle(puzzle);
@@ -194,17 +195,36 @@ function simulatePuzzle(
   // Enable headless mode for instant projectile resolution
   gameState.headlessMode = true;
 
+  if (debug) {
+    console.log(`[SOLVER DEBUG] Starting simulation with ${placements.length} characters`);
+    console.log(`[SOLVER DEBUG] Placements:`, placements.map(p => `${p.characterId}@(${p.x},${p.y})`).join(', '));
+    console.log(`[SOLVER DEBUG] Enemies:`, gameState.puzzle.enemies.map(e => `${e.enemyId}@(${e.x},${e.y}) hp=${e.currentHealth}`).join(', '));
+    console.log(`[SOLVER DEBUG] Win conditions:`, gameState.puzzle.winConditions.map(c => c.type).join(', '));
+  }
+
   // Run simulation
   let turns = 0;
   while (turns < maxTurns) {
     executeTurn(gameState);
     turns++;
 
+    if (debug) {
+      const aliveEnemies = gameState.puzzle.enemies.filter(e => !e.dead);
+      const aliveChars = gameState.placedCharacters.filter(c => !c.dead);
+      console.log(`[SOLVER DEBUG] Turn ${turns}: status=${gameState.gameStatus}, enemies alive=${aliveEnemies.length}, chars alive=${aliveChars.length}`);
+      if (aliveEnemies.length > 0 && aliveEnemies.length <= 3) {
+        console.log(`[SOLVER DEBUG]   Remaining enemies:`, aliveEnemies.map(e => `${e.enemyId}@(${e.x},${e.y}) hp=${e.currentHealth}`).join(', '));
+      }
+    }
+
     if (gameState.gameStatus === 'victory') {
       return { result: 'victory', turns };
     }
 
     if (gameState.gameStatus === 'defeat') {
+      if (debug) {
+        console.log(`[SOLVER DEBUG] Defeat on turn ${turns}`);
+      }
       return { result: 'defeat', turns };
     }
 
@@ -213,10 +233,16 @@ function simulatePuzzle(
       (c.active && !c.dead) || (!c.dead)
     );
     if (!hasActiveOrAlive && gameState.gameStatus === 'running') {
+      if (debug) {
+        console.log(`[SOLVER DEBUG] No active characters left on turn ${turns}`);
+      }
       return { result: 'defeat', turns };
     }
   }
 
+  if (debug) {
+    console.log(`[SOLVER DEBUG] Timeout after ${turns} turns`);
+  }
   return { result: 'timeout', turns };
 }
 
@@ -304,7 +330,9 @@ export function solvePuzzle(
           options.progressCallback({ tested: totalTested, found: bestSolution !== null });
         }
 
-        const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
+        // Enable debug for first few simulations to diagnose issues
+        const enableDebug = totalTested <= 3;
+        const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns, enableDebug);
 
         if (result === 'victory') {
           // Found a solution!

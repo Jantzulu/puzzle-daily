@@ -2438,7 +2438,26 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
             // Apply damage if we found a hit
             if (hitEnemyId) {
-              const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+              // Find enemy by ID AND position to handle cases where multiple enemies share an ID
+              // First try to find a living enemy at this tile position with matching ID
+              let hitEnemy = gameState.puzzle.enemies.find(e =>
+                e.enemyId === hitEnemyId &&
+                !e.dead &&
+                Math.floor(e.x) === checkX &&
+                Math.floor(e.y) === checkY
+              );
+              // If not found at exact position, try finding any living enemy with this ID at tile
+              if (!hitEnemy) {
+                hitEnemy = gameState.puzzle.enemies.find(e =>
+                  !e.dead &&
+                  Math.floor(e.x) === checkX &&
+                  Math.floor(e.y) === checkY
+                );
+              }
+              // Fallback to original behavior (find by ID only)
+              if (!hitEnemy) {
+                hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId && !e.dead);
+              }
               if (hitEnemy && !hitEnemy.dead) {
                 hitEntityIds.push(hitEnemy.enemyId);
                 if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
