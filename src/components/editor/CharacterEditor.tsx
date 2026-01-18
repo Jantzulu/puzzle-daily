@@ -239,7 +239,7 @@ export const CharacterEditor: React.FC = () => {
                     className={`p-3 rounded-pixel cursor-pointer transition-colors ${
                       selectedId === char.id
                         ? 'bg-copper-700/50 border border-copper-500'
-                        : 'dungeon-panel-dark hover:bg-stone-700/50'
+                        : 'dungeon-panel hover:bg-stone-700'
                     }`}
                     onClick={() => handleSelect(char.id)}
                   >
