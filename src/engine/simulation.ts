@@ -1542,11 +1542,7 @@ export function updateProjectiles(gameState: GameState): void {
       const dx = proj.targetX - proj.startX;
       const dy = proj.targetY - proj.startY;
       if (dx !== 0 || dy !== 0) {
-        const oldDir = proj.direction;
         proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
-        if (oldDir !== proj.direction) {
-          console.log(`[DEBUG] Direction recalc: was=${oldDir}, now=${proj.direction}, start=(${proj.startX},${proj.startY}), target=(${proj.targetX},${proj.targetY}), tilePath=${JSON.stringify(proj.tilePath)}`);
-        }
       }
     } else {
       // LEGACY: Non-homing projectiles without tilePath (shouldn't happen for new projectiles)
@@ -1613,8 +1609,6 @@ export function updateProjectiles(gameState: GameState): void {
 
       // New tiles are those from prevTileIndex to currentTileIndex (exclusive of tiles already checked)
       newTiles = proj.tilePath.slice(prevTileIndex, (proj.currentTileIndex ?? 0) + 1);
-
-      console.log(`[DEBUG] Tile collision check: prevTileIndex=${prevTileIndex}, currentTileIndex=${proj.currentTileIndex}, newTiles=${JSON.stringify(newTiles)}`);
     } else {
       // LEGACY/HOMING: Calculate tiles dynamically
       tilesAlongPath = getTilesAlongLine(proj.startX, proj.startY, newX, newY);
@@ -1911,13 +1905,6 @@ export function updateProjectiles(gameState: GameState): void {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
 
-          // Debug: Log enemy positions when checking tile (13,0)
-          if (tileX === 13 && tileY === 0) {
-            const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', ');
-            const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y}) floor=(${Math.floor(e.x)},${Math.floor(e.y)})`).join(', ') || 'none';
-            console.log(`[DEBUG] Checking (13,0): enemies current=[${enemyInfo}], pre-move=[${preMoveInfo}], alreadyHit=[${proj.hitEntityIds?.join(',') || 'none'}]`);
-          }
-
           // First check pre-move positions (enemies that WERE at this tile)
           let hitEnemyId: string | undefined;
           if (gameState.enemyPositionsBeforeMove) {
@@ -1929,9 +1916,6 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (preMoveEnemy) {
               hitEnemyId = preMoveEnemy.enemyId;
-              if (tileX === 13 && tileY === 0) {
-                console.log(`[DEBUG] HIT! Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
-              }
             }
           }
 
@@ -1945,14 +1929,7 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (currentEnemy) {
               hitEnemyId = currentEnemy.enemyId;
-              if (tileX === 13 && tileY === 0) {
-                console.log(`[DEBUG] HIT! Found enemy ${currentEnemy.enemyId} at current position`);
-              }
             }
-          }
-
-          if (tileX === 13 && tileY === 0 && !hitEnemyId) {
-            console.log(`[DEBUG] NO HIT at (13,0) - no matching enemy found!`);
           }
 
           // Apply damage if we found a hit
@@ -1977,16 +1954,10 @@ export function updateProjectiles(gameState: GameState): void {
             if (!hitEnemy) {
               hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
             }
-            if (tileX === 13 && tileY === 0) {
-              console.log(`[DEBUG] Applying damage: hitEnemy=${hitEnemy?.enemyId}, dead=${hitEnemy?.dead}, health=${hitEnemy?.currentHealth}, pos=(${hitEnemy?.x},${hitEnemy?.y})`);
-            }
             if (hitEnemy && !hitEnemy.dead) {
               // Track that we hit this entity (for piercing projectiles)
               if (!proj.hitEntityIds) proj.hitEntityIds = [];
               proj.hitEntityIds.push(hitEnemy.enemyId);
-              if (tileX === 13 && tileY === 0) {
-                console.log(`[DEBUG] Damage applied! Enemy health now: ${hitEnemy.currentHealth}, hitEntityIds: ${proj.hitEntityIds.join(',')}`);
-              }
 
               // Check if this should explode into AOE on impact
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
