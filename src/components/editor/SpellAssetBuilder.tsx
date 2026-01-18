@@ -159,9 +159,9 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
   };
 
   return (
-    <div className="bg-gray-900 p-3 rounded">
+    <div className="bg-stone-900 p-3 rounded">
       <label className="block text-sm font-medium mb-2">{label}</label>
-      {helpText && <p className="text-xs text-gray-500 mb-2">{helpText}</p>}
+      {helpText && <p className="text-xs text-stone-500 mb-2">{helpText}</p>}
 
       {/* Mode Toggle: Shape vs Image vs Sprite Sheet */}
       <div className="flex gap-2 mb-3">
@@ -170,7 +170,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'shape'
               ? `${colors.bg} text-white`
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
           }`}
         >
           Basic Shape
@@ -180,7 +180,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'image'
               ? `${colors.bg} text-white`
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
           }`}
         >
           Image/GIF
@@ -190,7 +190,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'spritesheet'
               ? `${colors.bg} text-white`
-              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+              : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
           }`}
         >
           Sprite Sheet
@@ -201,7 +201,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
       {mode === 'shape' && (
         <>
           <div className="mb-2">
-            <label className="block text-xs text-gray-400 mb-1">Shape</label>
+            <label className="block text-xs text-stone-400 mb-1">Shape</label>
             <div className="grid grid-cols-5 gap-2">
               {['circle', 'square', 'triangle', 'star', 'diamond'].map((shape) => (
                 <button
@@ -213,7 +213,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   className={`px-2 py-1 rounded text-xs transition-colors ${
                     spriteData.shape === shape
                       ? `${colors.bg} text-white`
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
                 >
                   {shape}
@@ -223,7 +223,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           </div>
 
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Color</label>
+            <label className="block text-xs text-stone-400 mb-1">Color</label>
             <input
               type="color"
               value={spriteData.primaryColor || '#ff6600'}
@@ -241,9 +241,9 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
       {mode === 'image' && (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Upload PNG/GIF</label>
+            <label className="block text-xs text-stone-400 mb-1">Upload PNG/GIF</label>
             {showDirectionalPreview && (
-              <p className="text-xs text-gray-500 mb-2">
+              <p className="text-xs text-stone-500 mb-2">
                 Upload image pointing <strong>East (→)</strong>. It will auto-rotate for all directions.
               </p>
             )}
@@ -251,10 +251,10 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               type="file"
               accept="image/png,image/gif"
               onChange={handleImageUpload}
-              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
+              className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
             />
             {spriteData.idleImageData && (
-              <div className="mt-2 p-2 bg-gray-800 rounded flex items-center justify-center">
+              <div className="mt-2 p-2 dungeon-panel rounded flex items-center justify-center">
                 <img
                   src={spriteData.idleImageData}
                   alt="Preview"
@@ -267,8 +267,8 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           {/* Directional Preview */}
           {showDirectionalPreview && spriteData.idleImageData && (
             <div>
-              <label className="block text-xs text-gray-400 mb-2">Directional Preview</label>
-              <div className="grid grid-cols-4 gap-2 bg-gray-800 p-3 rounded">
+              <label className="block text-xs text-stone-400 mb-2">Directional Preview</label>
+              <div className="grid grid-cols-4 gap-2 dungeon-panel p-3 rounded">
                 {[
                   { label: 'E', rotation: 0, mirror: false },
                   { label: 'NE', rotation: 45, mirror: false },
@@ -279,9 +279,9 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   { label: 'S', rotation: -90, mirror: false },
                   { label: 'SE', rotation: -45, mirror: false },
                 ].map(({ label, rotation, mirror }) => (
-                  <div key={label} className="flex flex-col items-center gap-1 p-2 bg-gray-900 rounded">
-                    <span className="text-xs text-gray-400 font-bold">{label}</span>
-                    <div className="w-12 h-12 flex items-center justify-center bg-gray-700 rounded">
+                  <div key={label} className="flex flex-col items-center gap-1 p-2 bg-stone-900 rounded">
+                    <span className="text-xs text-stone-400 font-bold">{label}</span>
+                    <div className="w-12 h-12 flex items-center justify-center bg-stone-700 rounded">
                       <img
                         src={spriteData.idleImageData}
                         alt={`${label} direction`}
@@ -303,9 +303,9 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
       {mode === 'spritesheet' && (
         <div className="space-y-3">
           <div>
-            <label className="block text-xs text-gray-400 mb-1">Upload Sprite Sheet (horizontal strip)</label>
+            <label className="block text-xs text-stone-400 mb-1">Upload Sprite Sheet (horizontal strip)</label>
             {showDirectionalPreview && (
-              <p className="text-xs text-gray-500 mb-2">
+              <p className="text-xs text-stone-500 mb-2">
                 Upload sprite sheet with frames pointing <strong>East (→)</strong>. It will auto-rotate for all directions.
               </p>
             )}
@@ -313,14 +313,14 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               type="file"
               accept="image/png,image/jpg,image/jpeg"
               onChange={handleSpriteSheetUpload}
-              className={`w-full text-xs text-gray-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
+              className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
             />
           </div>
 
           {spriteData.spriteSheet && (
             <>
               {/* Sprite Sheet Preview */}
-              <div className="p-2 bg-gray-800 rounded">
+              <div className="p-2 dungeon-panel rounded">
                 <img
                   src={spriteData.spriteSheet.imageData}
                   alt="Sprite sheet preview"
@@ -331,26 +331,26 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               {/* Sprite Sheet Configuration */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                  <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                   <input
                     type="number"
                     min="1"
                     max="32"
                     value={spriteData.spriteSheet.frameCount || 4}
                     onChange={(e) => handleSpriteSheetConfigChange('frameCount', parseInt(e.target.value) || 1)}
-                    className="w-full px-2 py-1 bg-gray-700 rounded text-sm text-white"
+                    className="w-full px-2 py-1 bg-stone-700 rounded text-sm text-white"
                   />
                 </div>
 
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                  <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                   <input
                     type="number"
                     min="1"
                     max="60"
                     value={spriteData.spriteSheet.frameRate || 10}
                     onChange={(e) => handleSpriteSheetConfigChange('frameRate', parseInt(e.target.value) || 10)}
-                    className="w-full px-2 py-1 bg-gray-700 rounded text-sm text-white"
+                    className="w-full px-2 py-1 bg-stone-700 rounded text-sm text-white"
                   />
                 </div>
               </div>
@@ -363,21 +363,21 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                     onChange={(e) => handleSpriteSheetConfigChange('loop', e.target.checked)}
                     className="w-4 h-4"
                   />
-                  <span className="text-xs text-gray-400">Loop Animation</span>
+                  <span className="text-xs text-stone-400">Loop Animation</span>
                 </label>
               </div>
 
               {/* Animated Preview */}
               <div>
-                <label className="block text-xs text-gray-400 mb-2">Animation Preview</label>
+                <label className="block text-xs text-stone-400 mb-2">Animation Preview</label>
                 <SpriteSheetPreview spriteSheet={spriteData.spriteSheet} />
               </div>
 
               {/* Directional Preview for Sprite Sheets */}
               {showDirectionalPreview && (
                 <div>
-                  <label className="block text-xs text-gray-400 mb-2">Directional Preview (first frame)</label>
-                  <div className="grid grid-cols-4 gap-2 bg-gray-800 p-3 rounded">
+                  <label className="block text-xs text-stone-400 mb-2">Directional Preview (first frame)</label>
+                  <div className="grid grid-cols-4 gap-2 dungeon-panel p-3 rounded">
                     {[
                       { label: 'E', rotation: 0, mirror: false },
                       { label: 'NE', rotation: 45, mirror: false },
@@ -388,8 +388,8 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                       { label: 'S', rotation: -90, mirror: false },
                       { label: 'SE', rotation: -45, mirror: false },
                     ].map(({ label, rotation, mirror }) => (
-                      <div key={label} className="flex flex-col items-center gap-1 p-2 bg-gray-900 rounded">
-                        <span className="text-xs text-gray-400 font-bold">{label}</span>
+                      <div key={label} className="flex flex-col items-center gap-1 p-2 bg-stone-900 rounded">
+                        <span className="text-xs text-stone-400 font-bold">{label}</span>
                         <SpriteSheetPreview
                           spriteSheet={spriteData.spriteSheet}
                           rotation={rotation}
@@ -491,7 +491,7 @@ const SpriteSheetPreview: React.FC<SpriteSheetPreviewProps> = ({
       ref={canvasRef}
       width={size}
       height={size}
-      className="bg-gray-700 rounded"
+      className="bg-stone-700 rounded"
     />
   );
 };
@@ -608,7 +608,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           </button>
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+            className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-700"
           >
             Cancel
           </button>
@@ -627,7 +627,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 type="text"
                 value={editedSpell.name}
                 onChange={(e) => setEditedSpell({ ...editedSpell, name: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                 placeholder="e.g., Fireball, Lightning Bolt, Whirlwind"
               />
             </div>
@@ -649,7 +649,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <select
                 value={editedSpell.folderId || ''}
                 onChange={(e) => setEditedSpell({ ...editedSpell, folderId: e.target.value || undefined })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
               >
                 <option value="">Uncategorized</option>
                 {getFolders('spells').map(folder => (
@@ -680,7 +680,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     <img
                       src={editedSpell.thumbnailIcon}
                       alt="Thumbnail"
-                      className="w-12 h-12 object-contain bg-gray-900 rounded border border-gray-600"
+                      className="w-12 h-12 object-contain bg-stone-900 rounded border border-gray-600"
                     />
                     <button
                       onClick={() => setEditedSpell({ ...editedSpell, thumbnailIcon: '' })}
@@ -691,7 +691,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-400 mt-1">Upload a small icon to represent this spell in the library</p>
+              <p className="text-xs text-stone-400 mt-1">Upload a small icon to represent this spell in the library</p>
             </div>
           </div>
 
@@ -707,11 +707,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'melee'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
                   }`}
                 >
                   <div className="font-semibold">Melee</div>
-                  <div className="text-xs text-gray-400">Adjacent tile attack</div>
+                  <div className="text-xs text-stone-400">Adjacent tile attack</div>
                 </button>
 
                 <button
@@ -719,11 +719,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'range_linear'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
                   }`}
                 >
                   <div className="font-semibold">Range Linear</div>
-                  <div className="text-xs text-gray-400">Physical projectile</div>
+                  <div className="text-xs text-stone-400">Physical projectile</div>
                 </button>
 
                 <button
@@ -731,11 +731,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'magic_linear'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
                   }`}
                 >
                   <div className="font-semibold">Magic Linear</div>
-                  <div className="text-xs text-gray-400">Magic projectile</div>
+                  <div className="text-xs text-stone-400">Magic projectile</div>
                 </button>
 
                 <button
@@ -743,11 +743,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'aoe'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
                   }`}
                 >
                   <div className="font-semibold">AOE</div>
-                  <div className="text-xs text-gray-400">Area of effect</div>
+                  <div className="text-xs text-stone-400">Area of effect</div>
                 </button>
               </div>
             </div>
@@ -763,14 +763,14 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 <select
                   value={editedSpell.directionMode}
                   onChange={(e) => setEditedSpell({ ...editedSpell, directionMode: e.target.value as DirectionMode })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                 >
                   <option value="current_facing">Current Facing (follows character direction)</option>
                   <option value="relative">Relative (relative to character facing)</option>
                   <option value="fixed">Fixed Directions (always same)</option>
                   <option value="all_directions">All Directions (360°)</option>
                 </select>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-stone-400 mt-1">
                   {editedSpell.directionMode === 'current_facing' && 'Spell fires in the direction the caster is facing'}
                   {editedSpell.directionMode === 'relative' && 'Spell fires in direction(s) relative to caster (e.g., always to the right)'}
                   {editedSpell.directionMode === 'fixed' && 'Spell always fires in the same absolute direction(s)'}
@@ -791,7 +791,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                         className={`p-2 rounded border-2 transition-colors ${
                           isSelected
                             ? 'border-green-500 bg-green-900'
-                            : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                            : 'border-gray-600 bg-stone-700 hover:border-gray-500'
                         }`}
                       >
                         <div className="text-2xl">{dir.arrow}</div>
@@ -800,7 +800,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     );
                   })}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-stone-400 mt-2">
                   Selected: {editedSpell.defaultDirections?.length || 0} direction(s)
                 </p>
               </div>
@@ -828,7 +828,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                         className={`p-2 rounded border-2 transition-colors ${
                           isSelected
                             ? 'border-green-500 bg-green-900'
-                            : 'border-gray-600 bg-gray-700 hover:border-gray-500'
+                            : 'border-gray-600 bg-stone-700 hover:border-gray-500'
                         }`}
                       >
                         <div className="text-2xl">{dir.arrow}</div>
@@ -837,7 +837,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     );
                   })}
                 </div>
-                <p className="text-xs text-gray-400 mt-2">
+                <p className="text-xs text-stone-400 mt-2">
                   Selected: {editedSpell.relativeDirections?.length || 0} direction(s). These are relative to the caster's facing direction.
                 </p>
                 <div className="bg-blue-900 border border-blue-600 rounded p-2 mt-2">
@@ -868,7 +868,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`flex-1 px-4 py-2 rounded transition-colors ${
                     !editedSpell.healing
                       ? 'bg-red-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
                 >
                   💥 Damage
@@ -883,7 +883,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`flex-1 px-4 py-2 rounded transition-colors ${
                     editedSpell.healing
                       ? 'bg-green-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                      : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
                 >
                   💚 Healing
@@ -909,9 +909,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     setEditedSpell({ ...editedSpell, damage: value });
                   }
                 }}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-stone-400 mt-1">
                 {editedSpell.healing
                   ? 'HP restored to allies (same team only)'
                   : 'HP removed from enemies'
@@ -928,9 +928,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 max="99"
                 value={editedSpell.cooldown || 0}
                 onChange={(e) => setEditedSpell({ ...editedSpell, cooldown: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-stone-400 mt-1">
                 Turns before spell can be used again (0 = no cooldown)
               </p>
             </div>
@@ -940,11 +940,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <h4 className="text-sm font-medium mb-3 text-purple-300">Sound Effects</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Cast Sound</label>
+                  <label className="block text-xs text-stone-400 mb-1">Cast Sound</label>
                   <select
                     value={editedSpell.castSound || ''}
                     onChange={(e) => setEditedSpell({ ...editedSpell, castSound: e.target.value || undefined })}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-white text-sm"
                   >
                     <option value="">None</option>
                     {getSoundAssets().map((sound) => (
@@ -953,14 +953,14 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Plays when spell is cast</p>
+                  <p className="text-xs text-stone-500 mt-1">Plays when spell is cast</p>
                 </div>
                 <div>
-                  <label className="block text-xs text-gray-400 mb-1">Hit Sound</label>
+                  <label className="block text-xs text-stone-400 mb-1">Hit Sound</label>
                   <select
                     value={editedSpell.hitSound || ''}
                     onChange={(e) => setEditedSpell({ ...editedSpell, hitSound: e.target.value || undefined })}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-white text-sm"
                   >
                     <option value="">None</option>
                     {getSoundAssets().map((sound) => (
@@ -969,7 +969,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       </option>
                     ))}
                   </select>
-                  <p className="text-xs text-gray-500 mt-1">Plays on hit/impact</p>
+                  <p className="text-xs text-stone-500 mt-1">Plays on hit/impact</p>
                 </div>
               </div>
             </div>
@@ -986,10 +986,10 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   max="20"
                   value={editedSpell.range || (templateNeedsRange ? 5 : 2)}
                   onChange={(e) => setEditedSpell({ ...editedSpell, range: parseInt(e.target.value) || 1 })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                 />
                 {templateNeedsRadius && !editedSpell.aoeCenteredOnCaster && (
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-stone-400 mt-1">
                     Distance from caster to AOE center point (in selected direction)
                   </p>
                 )}
@@ -1006,9 +1006,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   max="10"
                   value={editedSpell.radius ?? 2}
                   onChange={(e) => setEditedSpell({ ...editedSpell, radius: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-stone-400 mt-1">
                   0 = single tile only, 1+ = affects surrounding tiles
                 </p>
               </div>
@@ -1028,9 +1028,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       const val = parseInt(e.target.value);
                       setEditedSpell({ ...editedSpell, meleeRange: isNaN(val) ? 1 : val });
                     }}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-stone-400 mt-1">
                     How many tiles in attack direction get hit. 0 = self-target only, 1 = adjacent tile (default), 2+ = extended reach
                   </p>
                 </div>
@@ -1045,7 +1045,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     />
                     <span className="text-sm font-medium">Skip Attack Sprite on Caster Tile</span>
                   </label>
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-stone-400 mt-1">
                     Don't show the attack sprite on the caster's tile (useful for range 1+ spells where you only want to see the sprite on the target tiles)
                   </p>
                 </div>
@@ -1068,7 +1068,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     className={`flex-1 px-4 py-2 rounded transition-colors ${
                       editedSpell.aoeCenteredOnCaster
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                     }`}
                   >
                     🔵 Caster
@@ -1079,13 +1079,13 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     className={`flex-1 px-4 py-2 rounded transition-colors ${
                       !editedSpell.aoeCenteredOnCaster
                         ? 'bg-blue-600 text-white'
-                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                        : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                     }`}
                   >
                     🎯 Target Tile
                   </button>
                 </div>
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-stone-400 mt-1">
                   {editedSpell.aoeCenteredOnCaster
                     ? 'AOE centered on caster (e.g., Frost Nova, Healing Aura)'
                     : 'AOE centered on target tile at range (e.g., Flamestrike)'}
@@ -1118,7 +1118,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     />
                     <span className="text-sm font-medium">Fire Projectile First</span>
                   </label>
-                  <p className="text-xs text-gray-400 ml-6">
+                  <p className="text-xs text-stone-400 ml-6">
                     If enabled, fires a projectile that travels to the target location and explodes into AOE on impact
                   </p>
                 </div>
@@ -1135,9 +1135,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   max="20"
                   value={editedSpell.persistDuration || 0}
                   onChange={(e) => setEditedSpell({ ...editedSpell, persistDuration: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-stone-400 mt-1">
                   0 = instant damage, 1+ = ground effect that persists for N turns
                 </p>
               </div>
@@ -1154,9 +1154,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     max="100"
                     value={editedSpell.persistDamagePerTurn || editedSpell.damage || 1}
                     onChange={(e) => setEditedSpell({ ...editedSpell, persistDamagePerTurn: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                   />
-                  <p className="text-xs text-gray-400 mt-1">
+                  <p className="text-xs text-stone-400 mt-1">
                     Damage dealt each turn to units in the area
                   </p>
                 </div>
@@ -1173,7 +1173,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   />
                   <span className="text-sm font-medium">Exclude Center Tile</span>
                 </label>
-                <p className="text-xs text-gray-400 ml-6">
+                <p className="text-xs text-stone-400 ml-6">
                   {editedSpell.aoeCenteredOnCaster
                     ? "Don't show effect on caster's tile"
                     : "Don't show effect on the center of the AOE"}
@@ -1200,9 +1200,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     const tilesPerTurn = parseInt(e.target.value) || 1;
                     setEditedSpell({ ...editedSpell, projectileSpeed: tilesPerTurn });
                   }}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-stone-400 mt-1">
                   How many tiles the projectile travels each turn
                 </p>
               </div>
@@ -1218,7 +1218,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   />
                   <span className="text-sm">Projectile Pierces Enemies</span>
                 </label>
-                <p className="text-xs text-gray-400 ml-6">If enabled, projectile continues through enemies</p>
+                <p className="text-xs text-stone-400 ml-6">If enabled, projectile continues through enemies</p>
               </div>
 
               {/* Bounce off walls */}
@@ -1232,7 +1232,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   />
                   <span className="text-sm">Bounce Off Walls</span>
                 </label>
-                <p className="text-xs text-gray-400 ml-6">If enabled, projectile reflects off walls instead of stopping</p>
+                <p className="text-xs text-stone-400 ml-6">If enabled, projectile reflects off walls instead of stopping</p>
               </div>
 
               {/* Bounce settings (only shown if bounce enabled) */}
@@ -1243,7 +1243,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     <select
                       value={editedSpell.bounceBehavior || 'reflect'}
                       onChange={(e) => setEditedSpell({ ...editedSpell, bounceBehavior: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                     >
                       <option value="reflect">Reflect (mirror angle)</option>
                       <option value="turn_around">Turn Around (180°)</option>
@@ -1251,7 +1251,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       <option value="turn_right">Turn Right</option>
                       <option value="random">Random direction</option>
                     </select>
-                    <p className="text-xs text-gray-400 mt-1">How the projectile changes direction when hitting a wall</p>
+                    <p className="text-xs text-stone-400 mt-1">How the projectile changes direction when hitting a wall</p>
                   </div>
 
                   {/* Turn Amount - only shown for turn_left and turn_right */}
@@ -1261,13 +1261,13 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       <select
                         value={editedSpell.bounceTurnDegrees || 90}
                         onChange={(e) => setEditedSpell({ ...editedSpell, bounceTurnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                       >
                         <option value={45}>45° (slight turn)</option>
                         <option value={90}>90° (right angle)</option>
                         <option value={135}>135° (sharp turn)</option>
                       </select>
-                      <p className="text-xs text-gray-400 mt-1">How many degrees to turn when bouncing</p>
+                      <p className="text-xs text-stone-400 mt-1">How many degrees to turn when bouncing</p>
                     </div>
                   )}
 
@@ -1279,9 +1279,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       max="10"
                       value={editedSpell.maxBounces || 3}
                       onChange={(e) => setEditedSpell({ ...editedSpell, maxBounces: parseInt(e.target.value) || 3 })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                     />
-                    <p className="text-xs text-gray-400 mt-1">Maximum number of wall bounces before projectile stops</p>
+                    <p className="text-xs text-stone-400 mt-1">Maximum number of wall bounces before projectile stops</p>
                   </div>
                 </>
               )}
@@ -1485,13 +1485,13 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
           />
           <span className="text-sm">Apply Status Effect on Hit</span>
         </label>
-        <p className="text-xs text-gray-400 ml-6">When this spell hits a target, apply a status effect</p>
+        <p className="text-xs text-stone-400 ml-6">When this spell hits a target, apply a status effect</p>
       </div>
 
       {enableEffect && (
         <div className="space-y-4 pl-4 border-l-2 border-gray-700">
           {statusEffects.length === 0 ? (
-            <div className="bg-gray-900 p-3 rounded text-sm text-gray-400">
+            <div className="bg-stone-900 p-3 rounded text-sm text-stone-400">
               No status effects defined. Create one in the Status Effect Library first.
             </div>
           ) : (
@@ -1502,7 +1502,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                 <select
                   value={editedSpell.appliesStatusEffect?.statusAssetId || ''}
                   onChange={(e) => handleEffectChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                 >
                   <option value="">Select an effect...</option>
                   {statusEffects.map(effect => (
@@ -1516,10 +1516,10 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
               {selectedEffect && (
                 <>
                   {/* Effect Preview */}
-                  <div className="bg-gray-900 p-3 rounded text-sm">
+                  <div className="bg-stone-900 p-3 rounded text-sm">
                     <div className="font-medium">{selectedEffect.name}</div>
-                    <div className="text-gray-400 text-xs mt-1">{selectedEffect.description}</div>
-                    <div className="flex gap-4 mt-2 text-xs text-gray-500">
+                    <div className="text-stone-400 text-xs mt-1">{selectedEffect.description}</div>
+                    <div className="flex gap-4 mt-2 text-xs text-stone-500">
                       <span>Duration: {selectedEffect.defaultDuration} turns</span>
                       {selectedEffect.defaultValue && <span>Value: {selectedEffect.defaultValue}/turn</span>}
                       <span className="capitalize">{selectedEffect.stackingBehavior}</span>
@@ -1536,9 +1536,9 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                         value={editedSpell.appliesStatusEffect?.durationOverride || ''}
                         onChange={(e) => handleDurationOverride(e.target.value)}
                         placeholder={String(selectedEffect.defaultDuration)}
-                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                       />
-                      <p className="text-xs text-gray-400 mt-1">Leave blank for default</p>
+                      <p className="text-xs text-stone-400 mt-1">Leave blank for default</p>
                     </div>
 
                     <div>
@@ -1549,9 +1549,9 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                         value={editedSpell.appliesStatusEffect?.valueOverride || ''}
                         onChange={(e) => handleValueOverride(e.target.value)}
                         placeholder={String(selectedEffect.defaultValue || 0)}
-                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                       />
-                      <p className="text-xs text-gray-400 mt-1">Damage/heal per turn</p>
+                      <p className="text-xs text-stone-400 mt-1">Damage/heal per turn</p>
                     </div>
 
                     <div>
@@ -1565,9 +1565,9 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                           : ''}
                         onChange={(e) => handleChanceChange(e.target.value)}
                         placeholder="100"
-                        className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
                       />
-                      <p className="text-xs text-gray-400 mt-1">100% = always applies</p>
+                      <p className="text-xs text-stone-400 mt-1">100% = always applies</p>
                     </div>
                   </div>
                 </>

@@ -2,18 +2,420 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import Google Fonts for dungeon theme */
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=MedievalSharp&family=Almendra:wght@400;700&family=Inter:wght@400;500;600;700&display=swap');
+
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+  /* Base font settings */
+  font-family: 'Inter', system-ui, sans-serif;
   line-height: 1.5;
   font-weight: 400;
+
+  /* Dungeon theme CSS variables for easy customization */
+  --color-bg-primary: #15100a;
+  --color-bg-secondary: #1f1810;
+  --color-bg-tertiary: #2a2118;
+  --color-bg-panel: #3d3224;
+
+  --color-text-primary: #f2e0b5;
+  --color-text-secondary: #b5a892;
+  --color-text-muted: #7d6c52;
+
+  --color-border-primary: #5a4a35;
+  --color-border-secondary: #3d3224;
+
+  --color-accent-gold: #d4a574;
+  --color-accent-copper: #c4915c;
+  --color-accent-blood: #c12525;
+  --color-accent-arcane: #8a5fc4;
+  --color-accent-moss: #556b2f;
+
+  /* Custom asset placeholders - override these with your own images */
+  --asset-logo: none;
+  --asset-bg-main: none;
+  --asset-bg-panel: none;
+  --asset-button-primary: none;
+  --asset-button-secondary: none;
+  --asset-border-frame: none;
 }
 
+/* Base styles */
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: var(--color-bg-primary);
+  color: var(--color-text-primary);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Pixel-perfect rendering for sprites */
+.pixelated {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+
+/* ============================================
+   DUNGEON THEME COMPONENT CLASSES
+   ============================================ */
+
+/* Dungeon Panel - stone-like container */
+@layer components {
+  .dungeon-panel {
+    @apply bg-stone-800 border-2 border-stone-600 rounded-pixel-lg;
+    background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='0.15'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.05),
+      inset -1px -1px 0 rgba(0,0,0,0.3),
+      0 4px 8px rgba(0,0,0,0.4);
+  }
+
+  .dungeon-panel-dark {
+    @apply bg-stone-900 border-2 border-stone-700 rounded-pixel-lg;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.03),
+      inset -1px -1px 0 rgba(0,0,0,0.4),
+      0 4px 8px rgba(0,0,0,0.5);
+  }
+
+  /* Parchment Panel - for info/descriptions */
+  .parchment-panel {
+    @apply bg-parchment-300 text-stone-900 border-2 border-parchment-600 rounded-pixel-md;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.05'/%3E%3C/svg%3E");
+    box-shadow:
+      inset 0 0 20px rgba(139, 101, 48, 0.2),
+      2px 2px 8px rgba(0,0,0,0.3);
+  }
+
+  /* Dungeon Button - beveled 3D effect */
+  .dungeon-btn {
+    @apply px-4 py-2 font-medium transition-all duration-150;
+    @apply bg-stone-700 text-parchment-200 border-2 border-stone-500 rounded-pixel-md;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.15),
+      inset -1px -1px 0 rgba(0,0,0,0.3),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-btn:hover {
+    @apply bg-stone-600 border-stone-400;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.2),
+      inset -1px -1px 0 rgba(0,0,0,0.25),
+      0 0 10px rgba(212, 165, 116, 0.2),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-btn:active {
+    @apply bg-stone-800;
+    box-shadow:
+      inset 2px 2px 4px rgba(0,0,0,0.4),
+      inset -1px -1px 2px rgba(255,255,255,0.05);
+    transform: translateY(1px);
+  }
+
+  /* Primary Action Button - gold/copper accent */
+  .dungeon-btn-primary {
+    @apply dungeon-btn;
+    @apply bg-copper-700 border-copper-500 text-parchment-100;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.2),
+      inset -1px -1px 0 rgba(0,0,0,0.3),
+      0 0 8px rgba(212, 165, 116, 0.2),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-btn-primary:hover {
+    @apply bg-copper-600 border-copper-400;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.25),
+      inset -1px -1px 0 rgba(0,0,0,0.25),
+      0 0 15px rgba(212, 165, 116, 0.4),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  /* Danger Button - blood red */
+  .dungeon-btn-danger {
+    @apply dungeon-btn;
+    @apply bg-blood-800 border-blood-600 text-blood-100;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.1),
+      inset -1px -1px 0 rgba(0,0,0,0.3),
+      0 0 8px rgba(193, 37, 37, 0.2),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-btn-danger:hover {
+    @apply bg-blood-700 border-blood-500;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.15),
+      inset -1px -1px 0 rgba(0,0,0,0.25),
+      0 0 15px rgba(193, 37, 37, 0.4),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  /* Success Button - moss green */
+  .dungeon-btn-success {
+    @apply dungeon-btn;
+    @apply bg-moss-700 border-moss-500 text-moss-100;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.1),
+      inset -1px -1px 0 rgba(0,0,0,0.3),
+      0 0 8px rgba(85, 107, 47, 0.2),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-btn-success:hover {
+    @apply bg-moss-600 border-moss-400;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.15),
+      inset -1px -1px 0 rgba(0,0,0,0.25),
+      0 0 15px rgba(85, 107, 47, 0.4),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  /* Arcane Button - purple magic */
+  .dungeon-btn-arcane {
+    @apply dungeon-btn;
+    @apply bg-arcane-800 border-arcane-600 text-arcane-100;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.1),
+      inset -1px -1px 0 rgba(0,0,0,0.3),
+      0 0 8px rgba(138, 95, 196, 0.2),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-btn-arcane:hover {
+    @apply bg-arcane-700 border-arcane-500;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.15),
+      inset -1px -1px 0 rgba(0,0,0,0.25),
+      0 0 15px rgba(138, 95, 196, 0.4),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  /* Input Fields */
+  .dungeon-input {
+    @apply px-3 py-2 bg-stone-900 border-2 border-stone-600 rounded-pixel-md;
+    @apply text-parchment-200 placeholder-stone-500;
+    @apply focus:outline-none focus:border-copper-500 focus:ring-1 focus:ring-copper-500/30;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-select {
+    @apply dungeon-input cursor-pointer;
+    @apply bg-stone-900;
+  }
+
+  /* Card/Item containers */
+  .dungeon-card {
+    @apply p-3 rounded-pixel-lg cursor-pointer transition-all;
+    @apply bg-stone-800 border-2 border-stone-600;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.05),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-card:hover {
+    @apply bg-stone-700 border-stone-500;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.08),
+      0 0 10px rgba(212, 165, 116, 0.15),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  .dungeon-card-selected {
+    @apply border-copper-500 bg-stone-700;
+    box-shadow:
+      inset 1px 1px 0 rgba(255,255,255,0.08),
+      0 0 12px rgba(212, 165, 116, 0.3),
+      0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  /* Tab styling */
+  .dungeon-tab {
+    @apply px-3 py-2 text-sm font-medium transition-all;
+    @apply bg-stone-800 text-stone-400 border-2 border-transparent border-b-stone-600;
+    @apply rounded-t-pixel-md;
+  }
+
+  .dungeon-tab:hover {
+    @apply text-parchment-300 bg-stone-700;
+  }
+
+  .dungeon-tab-active {
+    @apply bg-stone-900 text-copper-400 border-stone-600 border-b-stone-900;
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  /* Navigation link */
+  .dungeon-nav-link {
+    @apply px-4 py-2 rounded-pixel-md transition-all;
+    @apply text-stone-400 bg-stone-800 border-2 border-stone-700;
+  }
+
+  .dungeon-nav-link:hover {
+    @apply text-parchment-200 bg-stone-700 border-stone-600;
+    box-shadow: 0 0 8px rgba(212, 165, 116, 0.15);
+  }
+
+  .dungeon-nav-link-active {
+    @apply text-copper-400 bg-stone-900 border-copper-600;
+    box-shadow:
+      inset 0 2px 4px rgba(0,0,0,0.3),
+      0 0 10px rgba(212, 165, 116, 0.2);
+  }
+
+  /* Badge/Tag styling */
+  .dungeon-badge {
+    @apply text-xs px-2 py-0.5 rounded-pixel font-medium;
+    @apply bg-stone-700 text-stone-300 border border-stone-600;
+  }
+
+  .dungeon-badge-copper {
+    @apply bg-copper-900/50 text-copper-300 border-copper-600;
+  }
+
+  .dungeon-badge-blood {
+    @apply bg-blood-900/50 text-blood-300 border-blood-600;
+  }
+
+  .dungeon-badge-arcane {
+    @apply bg-arcane-900/50 text-arcane-300 border-arcane-600;
+  }
+
+  .dungeon-badge-moss {
+    @apply bg-moss-900/50 text-moss-300 border-moss-600;
+  }
+
+  /* Section headers with decorative lines */
+  .dungeon-header {
+    @apply text-xl font-bold text-copper-400 mb-4 pb-2;
+    @apply border-b-2 border-stone-600;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  .dungeon-header-lg {
+    @apply text-2xl md:text-3xl font-bold text-copper-400;
+    @apply font-medieval tracking-wide;
+    text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+  }
+
+  /* Scrollbar styling */
+  .dungeon-scrollbar::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .dungeon-scrollbar::-webkit-scrollbar-track {
+    @apply bg-stone-900 rounded;
+  }
+
+  .dungeon-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-stone-600 rounded border-2 border-stone-900;
+  }
+
+  .dungeon-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-stone-500;
+  }
+
+  /* Torch glow effect for important elements */
+  .torch-glow {
+    animation: torch-glow 2s ease-in-out infinite;
+  }
+
+  /* Health hearts */
+  .heart-filled {
+    @apply text-blood-500;
+    filter: drop-shadow(0 0 2px rgba(193, 37, 37, 0.5));
+  }
+
+  .heart-empty {
+    @apply text-stone-700;
+  }
+
+  /* Victory/Defeat overlays */
+  .victory-panel {
+    @apply bg-gradient-to-b from-moss-800 to-moss-900 border-2 border-moss-500;
+    box-shadow:
+      0 0 30px rgba(85, 107, 47, 0.3),
+      inset 0 0 20px rgba(85, 107, 47, 0.1);
+  }
+
+  .defeat-panel {
+    @apply bg-gradient-to-b from-blood-800 to-blood-900 border-2 border-blood-500;
+    box-shadow:
+      0 0 30px rgba(193, 37, 37, 0.3),
+      inset 0 0 20px rgba(193, 37, 37, 0.1);
+  }
+
+  /* Mobile-friendly touch targets */
+  @media (max-width: 768px) {
+    .dungeon-btn {
+      @apply min-h-[44px] min-w-[44px];
+    }
+
+    .dungeon-tab {
+      @apply min-h-[40px] px-3;
+    }
+
+    .dungeon-card {
+      @apply p-4;
+    }
+  }
+}
+
+/* ============================================
+   UTILITY CLASSES
+   ============================================ */
+
+/* Text shadows for headers */
+.text-shadow-dungeon {
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+}
+
+.text-shadow-glow-copper {
+  text-shadow: 0 0 10px rgba(212, 165, 116, 0.5);
+}
+
+.text-shadow-glow-blood {
+  text-shadow: 0 0 10px rgba(193, 37, 37, 0.5);
+}
+
+/* Border decorations */
+.border-embossed {
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,0.1),
+    inset -1px -1px 0 rgba(0,0,0,0.3);
+}
+
+/* Gradient overlays */
+.gradient-vignette {
+  background: radial-gradient(ellipse at center, transparent 0%, rgba(0,0,0,0.4) 100%);
+}
+
+/* Selection colors */
+::selection {
+  background-color: rgba(212, 165, 116, 0.3);
+  color: #f2e0b5;
+}
+
+/* Focus visible for accessibility */
+*:focus-visible {
+  outline: 2px solid #d4a574;
+  outline-offset: 2px;
+}
+
+/* Smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Prevent text selection on game elements */
+.no-select {
+  user-select: none;
+  -webkit-user-select: none;
 }

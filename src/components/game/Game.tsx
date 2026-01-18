@@ -474,7 +474,7 @@ export const Game: React.FC = () => {
     const isUnlimitedLives = puzzleLives === 0;
 
     if (isUnlimitedLives) {
-      return <span className="text-2xl" title="Unlimited lives">&#x221E;</span>;
+      return <span className="text-2xl text-copper-400" title="Unlimited lives">&#x221E;</span>;
     }
 
     const hearts = [];
@@ -483,7 +483,7 @@ export const Game: React.FC = () => {
       hearts.push(
         <span
           key={i}
-          className={`text-xl ${isFilled ? 'text-red-500' : 'text-gray-600'}`}
+          className={`text-xl ${isFilled ? 'heart-filled' : 'heart-empty'}`}
           title={isFilled ? 'Life remaining' : 'Life lost'}
         >
           &#x2665;
@@ -494,10 +494,18 @@ export const Game: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
-      <div className="max-w-6xl mx-auto">
+    <div className="min-h-screen bg-stone-950 text-parchment-200 p-4 md:p-8">
+      {/* Underground cave background effect */}
+      <div className="fixed inset-0 pointer-events-none">
+        <div className="absolute inset-0 bg-gradient-to-b from-stone-950 via-stone-900/50 to-stone-950" />
+        <div className="absolute inset-0 opacity-30" style={{
+          backgroundImage: `radial-gradient(ellipse at 50% 0%, rgba(212, 165, 116, 0.08) 0%, transparent 50%)`
+        }} />
+      </div>
+
+      <div className="max-w-6xl mx-auto relative">
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
-          {/* Game Board */}
+          {/* Game Board - The Dungeon */}
           <div className="flex-1 flex flex-col items-center">
             {/* Play controls bar - above puzzle */}
             {gameState.gameStatus === 'setup' && testMode === 'none' && (
@@ -512,10 +520,10 @@ export const Game: React.FC = () => {
                   <div className="flex justify-end">
                     <button
                       onClick={handleTestCharacters}
-                      className="px-2 py-1 md:px-3 md:py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-medium transition text-xs md:text-sm"
+                      className="dungeon-btn-arcane text-xs md:text-sm px-2 py-1 md:px-3 md:py-2"
                       title="Test your characters without enemies for 5 turns"
                     >
-                      Test Characters
+                      Test Heroes
                     </button>
                   </div>
 
@@ -523,9 +531,9 @@ export const Game: React.FC = () => {
                   <div className="flex justify-center">
                     <button
                       onClick={handlePlay}
-                      className="px-8 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition text-lg md:text-xl shadow-lg"
+                      className="dungeon-btn-success px-6 md:px-8 py-3 font-bold text-lg md:text-xl torch-glow"
                     >
-                      Play
+                      &#9876; Play
                     </button>
                   </div>
 
@@ -533,10 +541,10 @@ export const Game: React.FC = () => {
                   <div className="flex justify-start">
                     <button
                       onClick={handleTestEnemies}
-                      className="px-2 py-1 md:px-3 md:py-2 bg-red-600 hover:bg-red-700 rounded font-medium transition text-xs md:text-sm"
+                      className="dungeon-btn-danger text-xs md:text-sm px-2 py-1 md:px-3 md:py-2"
                       title="Watch enemies move without characters for 5 turns"
                     >
-                      Test Enemies
+                      Test Foes
                     </button>
                   </div>
                 </div>
@@ -551,9 +559,9 @@ export const Game: React.FC = () => {
                   {renderLivesHearts()}
                 </div>
                 {/* Turn counter */}
-                <div className="flex items-center gap-3 px-4 py-2 bg-gray-800 rounded-lg border border-gray-600">
-                  <span className="text-gray-400 text-sm font-medium">Turn</span>
-                  <span className="text-2xl font-bold text-yellow-400 min-w-[2ch] text-center">
+                <div className="dungeon-panel flex items-center gap-3 px-4 py-2">
+                  <span className="text-stone-400 text-sm font-medium">Turn</span>
+                  <span className="text-2xl font-bold text-copper-400 min-w-[2ch] text-center text-shadow-glow-copper">
                     {gameState.currentTurn}
                   </span>
                 </div>
@@ -567,24 +575,24 @@ export const Game: React.FC = () => {
                 <div className="flex items-center justify-center gap-1 mb-2">
                   {renderLivesHearts()}
                 </div>
-                {/* Test mode turn counter - blue for characters, red for enemies */}
-                <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${
+                {/* Test mode turn counter - arcane for characters, blood for enemies */}
+                <div className={`flex items-center gap-3 px-4 py-2 rounded-pixel-lg border-2 ${
                   testMode === 'enemies'
-                    ? 'bg-red-900 border-red-600'
-                    : 'bg-indigo-900 border-indigo-600'
+                    ? 'bg-blood-900/80 border-blood-600'
+                    : 'bg-arcane-900/80 border-arcane-600'
                 }`}>
                   <span className={`text-sm font-medium ${
-                    testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                    testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
                   }`}>
-                    Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'}
+                    Testing {testMode === 'enemies' ? 'Foes' : 'Heroes'}
                   </span>
                   <span className={`text-2xl font-bold min-w-[2ch] text-center ${
-                    testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                    testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
                   }`}>
                     {testTurnsRemaining}
                   </span>
                   <span className={`text-sm ${
-                    testMode === 'enemies' ? 'text-red-400' : 'text-indigo-400'
+                    testMode === 'enemies' ? 'text-blood-400' : 'text-arcane-400'
                   }`}>Turns Left</span>
                 </div>
               </div>
@@ -594,46 +602,46 @@ export const Game: React.FC = () => {
 
             {/* Victory/Defeat Message */}
             {gameState.gameStatus === 'victory' && puzzleScore && (
-              <div className="mt-4 p-4 bg-gradient-to-b from-green-700 to-green-800 rounded-lg text-center w-full max-w-md border border-green-500 shadow-lg">
+              <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
                 {/* Trophy and Rank */}
                 <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
-                <h2 className="text-xl md:text-2xl font-bold text-green-100">
+                <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
                   {getRankName(puzzleScore.rank)}
                 </h2>
 
                 {/* Stats for Gold trophy */}
                 {puzzleScore.rank === 'gold' && (
-                  <p className="text-sm text-green-200 mt-1">
-                    ({puzzleScore.stats.charactersUsed} char{puzzleScore.stats.charactersUsed !== 1 ? 's' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
+                  <p className="text-sm text-moss-300 mt-1">
+                    ({puzzleScore.stats.charactersUsed} hero{puzzleScore.stats.charactersUsed !== 1 ? 'es' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
                   </p>
                 )}
 
                 {/* Total Score */}
-                <div className="mt-3 text-2xl font-bold text-yellow-300">
+                <div className="mt-3 text-2xl font-bold text-copper-300 text-shadow-glow-copper">
                   {puzzleScore.totalPoints.toLocaleString()} pts
                 </div>
 
                 {/* Par Status */}
                 <div className="mt-2 flex justify-center gap-4 text-xs">
-                  <span className={puzzleScore.parMet.characters ? 'text-green-300' : 'text-gray-400'}>
-                    {puzzleScore.parMet.characters ? '✓' : '✗'} Char Par ({currentPuzzle.parCharacters ?? '-'})
+                  <span className={puzzleScore.parMet.characters ? 'text-moss-300' : 'text-stone-500'}>
+                    {puzzleScore.parMet.characters ? '✓' : '✗'} Hero Par ({currentPuzzle.parCharacters ?? '-'})
                   </span>
-                  <span className={puzzleScore.parMet.turns ? 'text-green-300' : 'text-gray-400'}>
+                  <span className={puzzleScore.parMet.turns ? 'text-moss-300' : 'text-stone-500'}>
                     {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({currentPuzzle.parTurns ?? '-'})
                   </span>
                 </div>
 
                 {/* Point Breakdown - Collapsible */}
-                <details className="mt-3 text-left text-xs bg-green-900/50 rounded p-2">
-                  <summary className="cursor-pointer text-green-200 font-medium">Point Breakdown</summary>
-                  <div className="mt-2 space-y-1 text-green-100">
+                <details className="mt-3 text-left text-xs bg-moss-900/50 rounded-pixel p-2 border border-moss-700">
+                  <summary className="cursor-pointer text-moss-200 font-medium">Point Breakdown</summary>
+                  <div className="mt-2 space-y-1 text-moss-100">
                     <div className="flex justify-between">
                       <span>Base:</span>
                       <span>+{puzzleScore.breakdown.basePoints}</span>
                     </div>
                     {puzzleScore.breakdown.characterBonus > 0 && (
                       <div className="flex justify-between">
-                        <span>Character Bonus:</span>
+                        <span>Hero Bonus:</span>
                         <span>+{puzzleScore.breakdown.characterBonus}</span>
                       </div>
                     )}
@@ -660,7 +668,7 @@ export const Game: React.FC = () => {
 
                 {/* Completed Side Quests */}
                 {puzzleScore.completedSideQuests.length > 0 && (
-                  <div className="mt-2 text-xs text-purple-300">
+                  <div className="mt-2 text-xs text-arcane-300">
                     Side Quests: {puzzleScore.completedSideQuests.map(qid => {
                       const quest = currentPuzzle.sideQuests?.find(q => q.id === qid);
                       return quest?.title || qid;
@@ -671,27 +679,27 @@ export const Game: React.FC = () => {
             )}
 
             {gameState.gameStatus === 'defeat' && !showGameOver && (
-              <div className="mt-4 p-4 bg-red-700 rounded text-center w-full max-w-md">
-                <h2 className="text-xl md:text-2xl font-bold">Defeat</h2>
+              <div className="defeat-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
+                <h2 className="text-xl md:text-2xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">Defeat</h2>
                 {(currentPuzzle.lives ?? 3) > 0 && (
-                  <p className="mt-2 text-sm md:text-base">
+                  <p className="mt-2 text-sm md:text-base text-blood-300">
                     Lives remaining: {livesRemaining - 1} - Returning to setup...
                   </p>
                 )}
                 {(currentPuzzle.lives ?? 3) === 0 && (
-                  <p className="mt-2 text-sm md:text-base">Try again!</p>
+                  <p className="mt-2 text-sm md:text-base text-blood-300">Try again!</p>
                 )}
               </div>
             )}
 
             {/* Game Over Overlay */}
             {showGameOver && (
-              <div className="mt-4 p-6 bg-red-900 rounded text-center w-full max-w-md border-2 border-red-500">
-                <h2 className="text-2xl md:text-3xl font-bold text-red-300">Game Over</h2>
-                <p className="mt-2 text-lg">No lives remaining!</p>
+              <div className="defeat-panel mt-4 p-6 rounded-pixel-lg text-center w-full max-w-md">
+                <h2 className="text-2xl md:text-3xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">Game Over</h2>
+                <p className="mt-2 text-lg text-blood-300">No lives remaining!</p>
                 <button
                   onClick={handleRestartPuzzle}
-                  className="mt-4 px-6 py-3 bg-red-600 hover:bg-red-500 rounded font-bold text-lg"
+                  className="dungeon-btn-danger mt-4 px-6 py-3 font-bold text-lg"
                 >
                   Try Again
                 </button>
@@ -700,27 +708,27 @@ export const Game: React.FC = () => {
 
             {/* Win Condition Display - below puzzle, above characters */}
             {gameState.gameStatus === 'setup' && (
-              <div className="mt-4 w-full max-w-md px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
-                <div className="flex items-center justify-center gap-2 text-sm">
+              <div className="mt-4 w-full max-w-md px-4 py-2 dungeon-panel-dark">
+                <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
                   <HelpButton sectionId="game_general" />
-                  <span className="text-gray-400">Goal:</span>
-                  <span className="text-yellow-300 font-medium">
+                  <span className="text-stone-400">Quest:</span>
+                  <span className="text-copper-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
                         case 'defeat_all_enemies':
-                          return 'Defeat all enemies';
+                          return 'Defeat all foes';
                         case 'collect_all':
-                          return 'Collect all items';
+                          return 'Collect all treasure';
                         case 'reach_goal':
-                          return 'Reach the goal';
+                          return 'Reach the exit';
                         case 'survive_turns':
                           return `Survive ${wc.params?.turns ?? 10} turns`;
                         case 'win_in_turns':
                           return `Win within ${wc.params?.turns ?? 10} turns`;
                         case 'max_characters':
-                          return `Use at most ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''}`;
+                          return `Use at most ${wc.params?.characterCount ?? 1} hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
                         case 'characters_alive':
-                          return `Keep ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''} alive`;
+                          return `Keep ${wc.params?.characterCount ?? 1} hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
                         default:
                           return wc.type;
                       }
@@ -728,23 +736,23 @@ export const Game: React.FC = () => {
                   </span>
                   {gameState.puzzle.maxTurns && (
                     <>
-                      <span className="text-gray-600">|</span>
-                      <span className="text-gray-400">Max Turns:</span>
-                      <span className="text-cyan-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                      <span className="text-stone-600">|</span>
+                      <span className="text-stone-400">Max Turns:</span>
+                      <span className="text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                     </>
                   )}
                 </div>
 
                 {/* Side Quests Display */}
                 {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (
-                  <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-gray-700">
+                  <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-stone-700 flex-wrap">
                     <HelpButton sectionId="side_quests" />
-                    <span className="text-purple-400">Side Quests:</span>
-                    <span className="text-purple-300">
+                    <span className="text-arcane-400">Side Quests:</span>
+                    <span className="text-arcane-300">
                       {gameState.puzzle.sideQuests.map((q, i) => (
                         <span key={q.id}>
                           {i > 0 && ', '}
-                          {q.title} <span className="text-purple-500">(+{q.bonusPoints})</span>
+                          {q.title} <span className="text-arcane-500">(+{q.bonusPoints})</span>
                         </span>
                       ))}
                     </span>
@@ -771,17 +779,17 @@ export const Game: React.FC = () => {
           <div className="w-full lg:w-80 space-y-4 md:space-y-6">
             {/* Puzzle Selector */}
             {allPuzzles.length > 0 && (
-              <div className="p-4 bg-gray-800 rounded">
-                <label className="block text-sm font-bold mb-2">
-                  Select Puzzle {savedPuzzles.length > 0 && `(${savedPuzzles.length} saved)`}
+              <div className="dungeon-panel p-4">
+                <label className="block text-sm font-bold mb-2 text-copper-400">
+                  Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
                 </label>
                 <select
                   value={currentPuzzle.id}
                   onChange={(e) => handlePuzzleChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="dungeon-select w-full"
                 >
                   {officialPuzzles.length > 0 && (
-                    <optgroup label="Official Puzzles">
+                    <optgroup label="Official Dungeons">
                       {officialPuzzles.map((puzzle) => (
                         <option key={puzzle.id} value={puzzle.id}>
                           {puzzle.name}
@@ -790,7 +798,7 @@ export const Game: React.FC = () => {
                     </optgroup>
                   )}
                   {savedPuzzles.length > 0 && (
-                    <optgroup label="📚 Your Saved Puzzles">
+                    <optgroup label="Your Saved Dungeons">
                       {savedPuzzles.map((puzzle) => (
                         <option key={puzzle.id} value={puzzle.id}>
                           {puzzle.name}

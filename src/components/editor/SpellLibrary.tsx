@@ -95,10 +95,10 @@ export const SpellLibrary: React.FC = () => {
           {/* Spell List - Left Sidebar */}
           <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Spells</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Spells</h2>
               <button
                 onClick={handleNew}
-                className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700"
+                className="dungeon-btn-success text-sm"
               >
                 + New
               </button>
@@ -110,7 +110,7 @@ export const SpellLibrary: React.FC = () => {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              className="dungeon-input text-sm"
             />
 
             {/* Folder Filter */}
@@ -122,7 +122,7 @@ export const SpellLibrary: React.FC = () => {
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredSpells.length === 0 ? (
-                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No matches' : 'No spells yet.'}
                   <br />
                   {!searchTerm && 'Click "+ New" to create one.'}
@@ -133,8 +133,8 @@ export const SpellLibrary: React.FC = () => {
                     key={spell.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
                       selectedId === spell.id
-                        ? 'bg-blue-600'
-                        : 'bg-gray-800 hover:bg-gray-700'
+                        ? 'bg-copper-700/50 border border-copper-500'
+                        : 'dungeon-panel hover:bg-stone-700'
                     }`}
                     onClick={() => handleSelect(spell)}
                   >
@@ -144,16 +144,16 @@ export const SpellLibrary: React.FC = () => {
                           <img
                             src={spell.thumbnailIcon}
                             alt={spell.name}
-                            className="w-10 h-10 object-contain bg-gray-900 rounded"
+                            className="w-10 h-10 object-contain bg-stone-900 rounded"
                           />
                         ) : (
-                          <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center text-gray-400 text-xs">
+                          <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center text-stone-400 text-xs">
                             ?
                           </div>
                         )}
                         <div>
                           <h3 className="font-bold">{spell.name || 'Unnamed'}</h3>
-                          <p className="text-xs text-gray-400 capitalize">
+                          <p className="text-xs text-stone-400 capitalize">
                             {spell.templateType.replace('_', ' ')}
                           </p>
                         </div>
@@ -166,14 +166,14 @@ export const SpellLibrary: React.FC = () => {
                         />
                         <button
                           onClick={(e) => handleDuplicate(spell, e)}
-                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
                         </button>
                         <button
                           onClick={(e) => handleDelete(spell.id, e)}
-                          className="px-1.5 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                          className="px-1.5 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
                           title="Delete"
                         >
                           ✕
@@ -181,7 +181,7 @@ export const SpellLibrary: React.FC = () => {
                       </div>
                     </div>
                     {/* Quick stats */}
-                    <div className="flex gap-2 mt-2 text-xs text-gray-400">
+                    <div className="flex gap-2 mt-2 text-xs text-stone-400">
                       <span>Dmg: {spell.damage}</span>
                       {spell.range && <span>Range: {spell.range}</span>}
                       {spell.radius && <span>Radius: {spell.radius}</span>}
@@ -201,16 +201,16 @@ export const SpellLibrary: React.FC = () => {
                 onCancel={handleCancel}
               />
             ) : (
-              <div className="bg-gray-800 p-8 rounded text-center">
-                <h2 className="text-2xl font-bold mb-4">Spell Editor</h2>
-                <p className="text-gray-400 mb-6">
-                  Create spell assets that can be equipped to characters and enemies.
+              <div className="dungeon-panel p-8 text-center">
+                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Spell Editor</h2>
+                <p className="text-stone-400 mb-6">
+                  Create spell assets that can be equipped to heroes and foes.
                   <br />
                   Select a spell from the list or create a new one.
                 </p>
                 <button
                   onClick={handleNew}
-                  className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700"
+                  className="dungeon-btn-success text-lg"
                 >
                   + Create New Spell
                 </button>

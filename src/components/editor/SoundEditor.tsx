@@ -207,15 +207,15 @@ export const SoundEditor: React.FC = () => {
       <div className="max-w-7xl mx-auto">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Left Panel - Sound Library */}
-      <div className="lg:col-span-1 bg-gray-800 rounded-lg p-4">
+      <div className="lg:col-span-1 dungeon-panel rounded-lg p-4">
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
           <button
             onClick={() => setActiveTab('library')}
             className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
               activeTab === 'library'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                ? 'bg-arcane-700 text-white'
+                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
             }`}
           >
             Sound Library
@@ -224,8 +224,8 @@ export const SoundEditor: React.FC = () => {
             onClick={() => setActiveTab('global')}
             className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
               activeTab === 'global'
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                ? 'bg-arcane-700 text-white'
+                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
             }`}
           >
             Global Config
@@ -235,10 +235,10 @@ export const SoundEditor: React.FC = () => {
         {activeTab === 'library' && (
           <>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold text-white">Sounds</h2>
+              <h2 className="text-lg font-bold font-medieval text-copper-400">Sounds</h2>
               <button
                 onClick={handleNew}
-                className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                className="dungeon-btn-success"
               >
                 + New
               </button>
@@ -260,13 +260,13 @@ export const SoundEditor: React.FC = () => {
               placeholder="Search sounds..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm mb-3"
+              className="dungeon-input w-full mb-3"
             />
 
             {/* Sound List */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {filteredSounds.length === 0 ? (
-                <p className="text-gray-400 text-sm text-center py-4">
+                <p className="text-stone-400 text-sm text-center py-4">
                   No sounds yet. Click "+ New" to add one!
                 </p>
               ) : (
@@ -276,19 +276,19 @@ export const SoundEditor: React.FC = () => {
                     onClick={() => handleSelect(sound.id)}
                     className={`p-3 rounded cursor-pointer flex items-center justify-between ${
                       selectedId === sound.id
-                        ? 'bg-blue-600'
-                        : 'bg-gray-700 hover:bg-gray-600'
+                        ? 'bg-arcane-700'
+                        : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center">
-                        <svg className="w-4 h-4 text-gray-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center">
+                        <svg className="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
                         </svg>
                       </div>
                       <div>
                         <p className="text-white text-sm font-medium">{sound.name}</p>
-                        <p className="text-gray-400 text-xs">{formatDuration(sound.duration)}</p>
+                        <p className="text-stone-400 text-xs">{formatDuration(sound.duration)}</p>
                       </div>
                     </div>
                     <button
@@ -313,22 +313,22 @@ export const SoundEditor: React.FC = () => {
         {activeTab === 'global' && (
           <div className="space-y-4 max-h-[500px] overflow-y-auto">
             <h3 className="text-white font-medium">Global Sound Configuration</h3>
-            <p className="text-gray-400 text-xs">
+            <p className="text-stone-400 text-xs">
               Assign sounds to game events. These are the default sounds used when no entity-specific sound is configured.
             </p>
 
             {GLOBAL_SOUND_TRIGGERS.map((group) => (
               <div key={group.group} className="space-y-2">
-                <h4 className="text-gray-300 text-sm font-medium border-b border-gray-700 pb-1">
+                <h4 className="text-stone-300 text-sm font-medium border-b border-gray-700 pb-1">
                   {group.group}
                 </h4>
                 {group.items.map((item) => (
                   <div key={item.key} className="flex items-center justify-between gap-2">
-                    <span className="text-gray-400 text-sm">{item.label}</span>
+                    <span className="text-stone-400 text-sm">{item.label}</span>
                     <select
                       value={globalConfig[item.key as keyof GlobalSoundConfig] || ''}
                       onChange={(e) => handleGlobalConfigChange(item.key, e.target.value || undefined)}
-                      className="flex-1 max-w-[140px] px-2 py-1 bg-gray-700 rounded text-white text-xs"
+                      className="flex-1 max-w-[140px] px-2 py-1 bg-stone-700 rounded text-white text-xs"
                     >
                       <option value="">None</option>
                       {sounds.map((sound) => (
@@ -346,9 +346,9 @@ export const SoundEditor: React.FC = () => {
       </div>
 
       {/* Right Panel - Sound Editor */}
-      <div className="lg:col-span-2 bg-gray-800 rounded-lg p-4">
+      <div className="lg:col-span-2 dungeon-panel rounded-lg p-4">
         {!editing ? (
-          <div className="flex items-center justify-center h-64 text-gray-400">
+          <div className="flex items-center justify-center h-64 text-stone-400">
             Select a sound or create a new one
           </div>
         ) : (
@@ -364,13 +364,13 @@ export const SoundEditor: React.FC = () => {
                     setSelectedId(null);
                     setIsCreating(false);
                   }}
-                  className="px-3 py-1 bg-gray-600 hover:bg-gray-500 rounded text-sm"
+                  className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-3 py-1 bg-green-600 hover:bg-green-700 rounded text-sm"
+                  className="px-3 py-1 bg-moss-700 hover:bg-moss-600 rounded text-sm"
                 >
                   Save
                 </button>
@@ -379,29 +379,29 @@ export const SoundEditor: React.FC = () => {
 
             {/* Name */}
             <div>
-              <label className="block text-gray-300 text-sm mb-1">Name</label>
+              <label className="block text-stone-300 text-sm mb-1">Name</label>
               <input
                 type="text"
                 value={editing.name}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
               />
             </div>
 
             {/* Description */}
             <div>
-              <label className="block text-gray-300 text-sm mb-1">Description (optional)</label>
+              <label className="block text-stone-300 text-sm mb-1">Description (optional)</label>
               <textarea
                 value={editing.description || ''}
                 onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white text-sm"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-white text-sm"
                 rows={2}
               />
             </div>
 
             {/* Audio File Upload */}
             <div>
-              <label className="block text-gray-300 text-sm mb-1">Audio File</label>
+              <label className="block text-stone-300 text-sm mb-1">Audio File</label>
               <div className="flex items-center gap-3">
                 <input
                   ref={fileInputRef}
@@ -412,7 +412,7 @@ export const SoundEditor: React.FC = () => {
                 />
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm"
+                  className="px-4 py-2 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
                 >
                   {editing.audioData ? 'Replace Audio' : 'Upload Audio'}
                 </button>
@@ -426,7 +426,7 @@ export const SoundEditor: React.FC = () => {
                       disabled={isPlaying}
                       className={`px-3 py-2 rounded text-sm ${
                         isPlaying
-                          ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+                          ? 'bg-stone-600 text-stone-400 cursor-not-allowed'
                           : 'bg-purple-600 hover:bg-purple-700'
                       }`}
                     >
@@ -435,7 +435,7 @@ export const SoundEditor: React.FC = () => {
                   </>
                 )}
               </div>
-              <p className="text-gray-500 text-xs mt-1">
+              <p className="text-stone-500 text-xs mt-1">
                 Supports MP3, WAV, OGG. Max file size: 1MB.
               </p>
             </div>
@@ -443,7 +443,7 @@ export const SoundEditor: React.FC = () => {
             {/* Folder */}
             {!isCreating && editing && (
               <div>
-                <label className="block text-gray-300 text-sm mb-1">Folder</label>
+                <label className="block text-stone-300 text-sm mb-1">Folder</label>
                 <InlineFolderPicker
                   category="objects"
                   currentFolderId={editing.folderId}
@@ -454,7 +454,7 @@ export const SoundEditor: React.FC = () => {
 
             {/* Audio Waveform Preview (visual indicator) */}
             {editing.audioData && (
-              <div className="mt-4 p-4 bg-gray-700 rounded">
+              <div className="mt-4 p-4 bg-stone-700 rounded">
                 <div className="flex items-center justify-center gap-1 h-12">
                   {/* Simple waveform visualization */}
                   {Array.from({ length: 40 }).map((_, i) => (
@@ -468,7 +468,7 @@ export const SoundEditor: React.FC = () => {
                     />
                   ))}
                 </div>
-                <p className="text-center text-gray-400 text-xs mt-2">
+                <p className="text-center text-stone-400 text-xs mt-2">
                   Audio ready to use
                 </p>
               </div>

@@ -24,11 +24,11 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: 'characters', label: 'Characters', icon: '👤' },
-  { id: 'enemies', label: 'Enemies', icon: '👹' },
-  { id: 'status_effects', label: 'Status Effects', icon: '✨' },
-  { id: 'special_tiles', label: 'Special Tiles', icon: '🔲' },
-  { id: 'items', label: 'Items', icon: '⭐' },
+  { id: 'characters', label: 'Heroes', icon: '⚔️' },
+  { id: 'enemies', label: 'Foes', icon: '👹' },
+  { id: 'status_effects', label: 'Enchantments', icon: '✨' },
+  { id: 'special_tiles', label: 'Dungeon Tiles', icon: '🧱' },
+  { id: 'items', label: 'Items', icon: '💎' },
 ];
 
 // ============ ENTRY CARD COMPONENTS ============
@@ -43,10 +43,10 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick, isSel
   return (
     <div
       onClick={onClick}
-      className={`p-3 rounded-lg cursor-pointer transition-all ${
+      className={`dungeon-card ${
         isSelected
-          ? 'bg-green-900/50 ring-2 ring-green-500'
-          : 'bg-gray-700 hover:bg-gray-600'
+          ? 'dungeon-card-selected border-copper-500'
+          : ''
       }`}
     >
       <div className="flex items-center gap-3">
@@ -54,20 +54,20 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick, isSel
           {character.customSprite ? (
             <SpriteThumbnail sprite={character.customSprite} size={48} />
           ) : (
-            <div className="w-12 h-12 bg-green-700 rounded flex items-center justify-center text-2xl">
-              👤
+            <div className="w-12 h-12 bg-copper-800 rounded-pixel flex items-center justify-center text-2xl">
+              ⚔️
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-green-400 truncate">{character.name}</div>
+          <div className="font-medium text-copper-400 truncate">{character.name}</div>
           {character.title && (
-            <div className="text-xs text-gray-500 italic truncate">{character.title}</div>
+            <div className="text-xs text-stone-500 italic truncate">{character.title}</div>
           )}
           {character.description ? (
-            <div className="text-xs text-gray-400 truncate">{character.description}</div>
+            <div className="text-xs text-stone-400 truncate">{character.description}</div>
           ) : (
-            <div className="text-xs text-gray-400">HP: {character.health}</div>
+            <div className="text-xs text-stone-400">HP: {character.health}</div>
           )}
         </div>
       </div>
@@ -85,10 +85,10 @@ const EnemyCard: React.FC<EnemyCardProps> = ({ enemy, onClick, isSelected }) => 
   return (
     <div
       onClick={onClick}
-      className={`p-3 rounded-lg cursor-pointer transition-all ${
+      className={`dungeon-card ${
         isSelected
-          ? 'bg-red-900/50 ring-2 ring-red-500'
-          : 'bg-gray-700 hover:bg-gray-600'
+          ? 'dungeon-card-selected border-blood-500'
+          : ''
       }`}
     >
       <div className="flex items-center gap-3">
@@ -96,20 +96,20 @@ const EnemyCard: React.FC<EnemyCardProps> = ({ enemy, onClick, isSelected }) => 
           {enemy.customSprite ? (
             <SpriteThumbnail sprite={enemy.customSprite} size={48} />
           ) : (
-            <div className="w-12 h-12 bg-red-700 rounded flex items-center justify-center text-2xl">
+            <div className="w-12 h-12 bg-blood-800 rounded-pixel flex items-center justify-center text-2xl">
               👹
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-red-400 truncate">{enemy.name}</div>
+          <div className="font-medium text-blood-400 truncate">{enemy.name}</div>
           {enemy.title && (
-            <div className="text-xs text-gray-500 italic truncate">{enemy.title}</div>
+            <div className="text-xs text-stone-500 italic truncate">{enemy.title}</div>
           )}
           {enemy.description ? (
-            <div className="text-xs text-gray-400 truncate">{enemy.description}</div>
+            <div className="text-xs text-stone-400 truncate">{enemy.description}</div>
           ) : (
-            <div className="text-xs text-gray-400">HP: {enemy.health}</div>
+            <div className="text-xs text-stone-400">HP: {enemy.health}</div>
           )}
         </div>
       </div>
@@ -133,7 +133,7 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
 
   return (
     <div
-      className="rounded bg-purple-700 flex items-center justify-center"
+      className="rounded-pixel bg-arcane-800 flex items-center justify-center"
       style={{ width: size, height: size }}
     >
       <span className="text-lg">✨</span>
@@ -145,10 +145,10 @@ const StatusEffectCard: React.FC<StatusEffectCardProps> = ({ effect, onClick, is
   return (
     <div
       onClick={onClick}
-      className={`p-3 rounded-lg cursor-pointer transition-all ${
+      className={`dungeon-card ${
         isSelected
-          ? 'bg-purple-900/50 ring-2 ring-purple-500'
-          : 'bg-gray-700 hover:bg-gray-600'
+          ? 'dungeon-card-selected border-arcane-500'
+          : ''
       }`}
     >
       <div className="flex items-center gap-3">
@@ -156,8 +156,8 @@ const StatusEffectCard: React.FC<StatusEffectCardProps> = ({ effect, onClick, is
           <StatusEffectIcon effect={effect} size={40} />
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-purple-400 truncate">{effect.name}</div>
-          <div className="text-xs text-gray-400 truncate">{effect.description}</div>
+          <div className="font-medium text-arcane-400 truncate">{effect.name}</div>
+          <div className="text-xs text-stone-400 truncate">{effect.description}</div>
         </div>
       </div>
     </div>
@@ -174,10 +174,10 @@ const TileCard: React.FC<TileCardProps> = ({ tile, onClick, isSelected }) => {
   return (
     <div
       onClick={onClick}
-      className={`p-3 rounded-lg cursor-pointer transition-all ${
+      className={`dungeon-card ${
         isSelected
-          ? 'bg-blue-900/50 ring-2 ring-blue-500'
-          : 'bg-gray-700 hover:bg-gray-600'
+          ? 'dungeon-card-selected border-rust-500'
+          : ''
       }`}
     >
       <div className="flex items-center gap-3">
@@ -185,19 +185,19 @@ const TileCard: React.FC<TileCardProps> = ({ tile, onClick, isSelected }) => {
           {tile.customSprite ? (
             <SpriteThumbnail sprite={tile.customSprite} size={48} />
           ) : (
-            <div className={`w-12 h-12 rounded flex items-center justify-center text-2xl ${
-              tile.baseType === 'wall' ? 'bg-gray-600' : 'bg-gray-800'
+            <div className={`w-12 h-12 rounded-pixel flex items-center justify-center text-2xl ${
+              tile.baseType === 'wall' ? 'bg-stone-600' : 'bg-stone-800'
             }`}>
-              🔲
+              🧱
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-blue-400 truncate">{tile.name}</div>
+          <div className="font-medium text-rust-400 truncate">{tile.name}</div>
           {tile.description ? (
-            <div className="text-xs text-gray-400 truncate">{tile.description}</div>
+            <div className="text-xs text-stone-400 truncate">{tile.description}</div>
           ) : (
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-stone-400">
               {tile.baseType === 'wall' ? 'Wall' : 'Floor'} | {tile.behaviors.length} behavior{tile.behaviors.length !== 1 ? 's' : ''}
             </div>
           )}
@@ -217,10 +217,10 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClick, isSelected }) => {
   return (
     <div
       onClick={onClick}
-      className={`p-3 rounded-lg cursor-pointer transition-all ${
+      className={`dungeon-card ${
         isSelected
-          ? 'bg-yellow-900/50 ring-2 ring-yellow-500'
-          : 'bg-gray-700 hover:bg-gray-600'
+          ? 'dungeon-card-selected border-parchment-500'
+          : ''
       }`}
     >
       <div className="flex items-center gap-3">
@@ -228,20 +228,20 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClick, isSelected }) => {
           {item.customSprite ? (
             <SpriteThumbnail sprite={item.customSprite} size={48} />
           ) : (
-            <div className="w-12 h-12 bg-yellow-700 rounded flex items-center justify-center text-2xl">
-              ⭐
+            <div className="w-12 h-12 bg-parchment-700 rounded-pixel flex items-center justify-center text-2xl">
+              💎
             </div>
           )}
         </div>
         <div className="flex-1 min-w-0">
-          <div className="font-medium text-yellow-400 truncate">{item.name}</div>
+          <div className="font-medium text-parchment-400 truncate">{item.name}</div>
           {item.description ? (
             <div
-              className="text-xs text-gray-400 truncate"
+              className="text-xs text-stone-400 truncate"
               dangerouslySetInnerHTML={{ __html: item.description }}
             />
           ) : (
-            <div className="text-xs text-gray-400">
+            <div className="text-xs text-stone-400">
               {item.effects.length} effect{item.effects.length !== 1 ? 's' : ''}
             </div>
           )}
@@ -266,21 +266,21 @@ const CharacterDetail: React.FC<CharacterDetailProps> = ({ character }) => {
           {character.customSprite ? (
             <SpriteThumbnail sprite={character.customSprite} size={80} />
           ) : (
-            <div className="w-20 h-20 bg-green-700 rounded flex items-center justify-center text-4xl">
-              👤
+            <div className="w-20 h-20 bg-copper-800 rounded-pixel flex items-center justify-center text-4xl">
+              ⚔️
             </div>
           )}
         </div>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-green-400">{character.name}</h2>
+          <h2 className="text-2xl font-bold font-medieval text-copper-400">{character.name}</h2>
           {character.title && (
-            <p className="text-gray-400 italic">{character.title}</p>
+            <p className="text-stone-400 italic">{character.title}</p>
           )}
           <div className="mt-2 space-y-1">
             <div className="text-sm">
-              <span className="text-gray-400">Health:</span>{' '}
-              <span className="text-red-400">{'❤️'.repeat(Math.min(character.health, 10))}</span>{' '}
-              <span className="text-gray-500">({character.health})</span>
+              <span className="text-stone-400">Health:</span>{' '}
+              <span className="text-blood-400">{'❤️'.repeat(Math.min(character.health, 10))}</span>{' '}
+              <span className="text-stone-500">({character.health})</span>
             </div>
           </div>
         </div>
@@ -288,17 +288,17 @@ const CharacterDetail: React.FC<CharacterDetailProps> = ({ character }) => {
 
       {/* Description */}
       {character.description && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Description</h3>
-          <p className="text-sm text-gray-400">{character.description}</p>
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-copper-400 mb-2">Description</h3>
+          <p className="text-sm text-stone-400">{character.description}</p>
         </div>
       )}
 
       {/* Behavior (Tooltip Steps) */}
       {character.tooltipSteps && character.tooltipSteps.length > 0 && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Behavior</h3>
-          <ul className="list-disc list-inside space-y-1 text-sm text-gray-400">
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-copper-400 mb-2">Behavior</h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-stone-400">
             {character.tooltipSteps.map((step, idx) => (
               <li key={idx}><RichTextRenderer html={step} /></li>
             ))}
@@ -322,21 +322,21 @@ const EnemyDetail: React.FC<EnemyDetailProps> = ({ enemy }) => {
           {enemy.customSprite ? (
             <SpriteThumbnail sprite={enemy.customSprite} size={80} />
           ) : (
-            <div className="w-20 h-20 bg-red-700 rounded flex items-center justify-center text-4xl">
+            <div className="w-20 h-20 bg-blood-800 rounded-pixel flex items-center justify-center text-4xl">
               👹
             </div>
           )}
         </div>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-red-400">{enemy.name}</h2>
+          <h2 className="text-2xl font-bold font-medieval text-blood-400">{enemy.name}</h2>
           {enemy.title && (
-            <p className="text-gray-400 italic">{enemy.title}</p>
+            <p className="text-stone-400 italic">{enemy.title}</p>
           )}
           <div className="mt-2 space-y-1">
             <div className="text-sm">
-              <span className="text-gray-400">Health:</span>{' '}
-              <span className="text-red-400">{'❤️'.repeat(Math.min(enemy.health, 10))}</span>{' '}
-              <span className="text-gray-500">({enemy.health})</span>
+              <span className="text-stone-400">Health:</span>{' '}
+              <span className="text-blood-400">{'❤️'.repeat(Math.min(enemy.health, 10))}</span>{' '}
+              <span className="text-stone-500">({enemy.health})</span>
             </div>
           </div>
         </div>
@@ -344,17 +344,17 @@ const EnemyDetail: React.FC<EnemyDetailProps> = ({ enemy }) => {
 
       {/* Description */}
       {enemy.description && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Description</h3>
-          <p className="text-sm text-gray-400">{enemy.description}</p>
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-blood-400 mb-2">Description</h3>
+          <p className="text-sm text-stone-400">{enemy.description}</p>
         </div>
       )}
 
       {/* Behavior (Tooltip Steps) */}
       {enemy.tooltipSteps && enemy.tooltipSteps.length > 0 && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Behavior</h3>
-          <ul className="list-disc list-inside space-y-1 text-sm text-gray-400">
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-blood-400 mb-2">Behavior</h3>
+          <ul className="list-disc list-inside space-y-1 text-sm text-stone-400">
             {enemy.tooltipSteps.map((step, idx) => (
               <li key={idx}><RichTextRenderer html={step} /></li>
             ))}
@@ -383,41 +383,41 @@ const StatusEffectDetail: React.FC<StatusEffectDetailProps> = ({ effect }) => {
           <StatusEffectIcon effect={effect} size={64} />
         </div>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-purple-400">{effect.name}</h2>
-          <p className="text-gray-300 mt-1">{effect.description}</p>
+          <h2 className="text-2xl font-bold font-medieval text-arcane-400">{effect.name}</h2>
+          <p className="text-parchment-300 mt-1">{effect.description}</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="bg-gray-700 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-2">Properties</h3>
+      <div className="dungeon-panel-dark p-4">
+        <h3 className="text-sm font-semibold text-arcane-400 mb-2">Properties</h3>
         <div className="grid grid-cols-2 gap-2 text-sm">
           <div>
-            <span className="text-gray-400">Type:</span>{' '}
-            <span className="text-gray-200">{effect.type}</span>
+            <span className="text-stone-400">Type:</span>{' '}
+            <span className="text-parchment-200">{effect.type}</span>
           </div>
           <div>
-            <span className="text-gray-400">Duration:</span>{' '}
-            <span className="text-gray-200">{effect.defaultDuration} turns</span>
+            <span className="text-stone-400">Duration:</span>{' '}
+            <span className="text-parchment-200">{effect.defaultDuration} turns</span>
           </div>
           {effect.defaultValue !== undefined && (
             <div>
-              <span className="text-gray-400">Value:</span>{' '}
-              <span className="text-gray-200">{effect.defaultValue}</span>
+              <span className="text-stone-400">Value:</span>{' '}
+              <span className="text-parchment-200">{effect.defaultValue}</span>
             </div>
           )}
           <div>
-            <span className="text-gray-400">Stacking:</span>{' '}
-            <span className="text-gray-200">{effect.stackingBehavior}</span>
+            <span className="text-stone-400">Stacking:</span>{' '}
+            <span className="text-parchment-200">{effect.stackingBehavior}</span>
           </div>
         </div>
       </div>
 
       {/* Effects - only show if there are effects */}
       {hasEffects && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Effects</h3>
-          <ul className="space-y-1 text-sm text-gray-400">
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-arcane-400 mb-2">Effects</h3>
+          <ul className="space-y-1 text-sm text-stone-400">
             {effect.preventsAllActions && <li>• Prevents all actions</li>}
             {effect.preventsMovement && <li>• Prevents movement</li>}
             {effect.preventsRanged && <li>• Prevents ranged attacks</li>}
@@ -464,29 +464,29 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
           {tile.customSprite ? (
             <SpriteThumbnail sprite={tile.customSprite} size={80} />
           ) : (
-            <div className={`w-20 h-20 rounded flex items-center justify-center text-4xl ${
-              tile.baseType === 'wall' ? 'bg-gray-600' : 'bg-gray-800'
+            <div className={`w-20 h-20 rounded-pixel flex items-center justify-center text-4xl ${
+              tile.baseType === 'wall' ? 'bg-stone-600' : 'bg-stone-800'
             }`}>
-              🔲
+              🧱
             </div>
           )}
         </div>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-blue-400">{tile.name}</h2>
+          <h2 className="text-2xl font-bold font-medieval text-rust-400">{tile.name}</h2>
           {tile.description && (
-            <p className="text-gray-300 mt-1">{tile.description}</p>
+            <p className="text-parchment-300 mt-1">{tile.description}</p>
           )}
           <div className="mt-2">
-            <span className={`text-xs px-2 py-1 rounded ${
-              tile.baseType === 'wall' ? 'bg-gray-600 text-gray-200' : 'bg-gray-700 text-gray-300'
+            <span className={`dungeon-badge ${
+              tile.baseType === 'wall' ? 'bg-stone-600 text-stone-200' : ''
             }`}>
               {tile.baseType === 'wall' ? 'Wall (blocks movement)' : 'Floor'}
             </span>
           </div>
           {/* Placement restriction - styled like game page */}
           {tile.preventPlacement && (
-            <div className="text-xs text-red-400/70 mt-2">
-              Cannot place characters on this tile
+            <div className="text-xs text-blood-400/70 mt-2">
+              Cannot place heroes on this tile
             </div>
           )}
         </div>
@@ -494,9 +494,9 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
 
       {/* Behaviors */}
       {tile.behaviors.length > 0 && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Behaviors</h3>
-          <ul className="space-y-1 text-sm text-gray-400">
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-rust-400 mb-2">Behaviors</h3>
+          <ul className="space-y-1 text-sm text-stone-400">
             {tile.behaviors.map((behavior, idx) => (
               <li key={idx}>• {getBehaviorDescription(behavior)}</li>
             ))}
@@ -506,9 +506,9 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
 
       {/* Properties - only show if there are properties */}
       {hasProperties && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Properties</h3>
-          <ul className="space-y-1 text-sm text-gray-400">
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-rust-400 mb-2">Properties</h3>
+          <ul className="space-y-1 text-sm text-stone-400">
             {tile.cadence?.enabled && <li>• Toggles on/off over time</li>}
             {tile.hideBehaviorIndicators && <li>• Behavior indicators hidden</li>}
           </ul>
@@ -548,23 +548,23 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item }) => {
           {item.customSprite ? (
             <SpriteThumbnail sprite={item.customSprite} size={80} />
           ) : (
-            <div className="w-20 h-20 bg-yellow-700 rounded flex items-center justify-center text-4xl">
-              ⭐
+            <div className="w-20 h-20 bg-parchment-700 rounded-pixel flex items-center justify-center text-4xl">
+              💎
             </div>
           )}
         </div>
         <div className="flex-1">
-          <h2 className="text-2xl font-bold text-yellow-400">{item.name}</h2>
+          <h2 className="text-2xl font-bold font-medieval text-parchment-400">{item.name}</h2>
           {item.description && (
             <div
-              className="text-gray-300 mt-1"
+              className="text-parchment-300 mt-1"
               dangerouslySetInnerHTML={{ __html: item.description }}
             />
           )}
           {/* Placement restriction - styled like game page */}
           {item.preventPlacement && (
-            <div className="text-xs text-red-400/70 mt-2">
-              Cannot place characters on this tile
+            <div className="text-xs text-blood-400/70 mt-2">
+              Cannot place heroes on this tile
             </div>
           )}
         </div>
@@ -572,9 +572,9 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item }) => {
 
       {/* Effects */}
       {item.effects.length > 0 && (
-        <div className="bg-gray-700 rounded-lg p-4">
-          <h3 className="text-sm font-semibold text-gray-300 mb-2">Effects</h3>
-          <ul className="space-y-1 text-sm text-gray-400">
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-parchment-400 mb-2">Effects</h3>
+          <ul className="space-y-1 text-sm text-stone-400">
             {item.effects.map((effect, idx) => (
               <li key={idx}>• {getEffectDescription(effect)}</li>
             ))}
@@ -583,12 +583,12 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item }) => {
       )}
 
       {/* Interact Info */}
-      <div className="bg-gray-700 rounded-lg p-4">
-        <h3 className="text-sm font-semibold text-gray-300 mb-2">Interact</h3>
-        <ul className="space-y-1 text-sm text-gray-400">
+      <div className="dungeon-panel-dark p-4">
+        <h3 className="text-sm font-semibold text-parchment-400 mb-2">Interact</h3>
+        <ul className="space-y-1 text-sm text-stone-400">
           <li>• Method: {item.pickupMethod === 'step_on' ? 'Step on tile' : item.pickupMethod}</li>
-          {item.pickupPermissions.characters && <li>• Can be picked up by characters</li>}
-          {item.pickupPermissions.enemies && <li>• Can be picked up by enemies</li>}
+          {item.pickupPermissions.characters && <li>• Can be picked up by heroes</li>}
+          {item.pickupPermissions.enemies && <li>• Can be picked up by foes</li>}
         </ul>
       </div>
     </div>
@@ -610,26 +610,26 @@ const DetailModal: React.FC<DetailModalProps> = ({ isOpen, onClose, children }) 
     <div className="fixed inset-0 z-50 lg:hidden">
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60"
+        className="absolute inset-0 bg-black/70"
         onClick={onClose}
       />
       {/* Modal content - slides up from bottom */}
-      <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-gray-800 rounded-t-2xl overflow-hidden flex flex-col">
+      <div className="absolute bottom-0 left-0 right-0 max-h-[85vh] bg-stone-900 border-t-2 border-stone-700 rounded-t-2xl overflow-hidden flex flex-col">
         {/* Handle bar */}
         <div className="flex justify-center py-2 flex-shrink-0">
-          <div className="w-12 h-1 bg-gray-600 rounded-full" />
+          <div className="w-12 h-1 bg-stone-600 rounded-full" />
         </div>
         {/* Close button */}
         <button
           onClick={onClose}
-          className="absolute top-2 right-3 p-2 text-gray-400 hover:text-white"
+          className="absolute top-2 right-3 p-2 text-stone-400 hover:text-copper-400 min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
         </button>
         {/* Scrollable content */}
-        <div className="flex-1 overflow-y-auto p-4 pb-8">
+        <div className="flex-1 overflow-y-auto p-4 pb-8 dungeon-scrollbar">
           {children}
         </div>
       </div>
@@ -724,12 +724,12 @@ export const Compendium: React.FC = () => {
   const detailContent = getDetailContent();
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-stone-950 text-parchment-200">
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold mb-2">Compendium</h1>
-          <p className="text-gray-400">Browse all game elements - characters, enemies, effects, tiles, and items.</p>
+          <h1 className="text-3xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">Compendium</h1>
+          <p className="text-stone-400">Browse all dungeon elements - heroes, foes, enchantments, tiles, and treasure.</p>
         </div>
 
         {/* Search */}
@@ -739,26 +739,26 @@ export const Compendium: React.FC = () => {
             placeholder="Search..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full md:w-64 px-4 py-2 bg-gray-800 border border-gray-700 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="dungeon-input w-full md:w-64"
           />
         </div>
 
         {/* Tabs */}
-        <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-700 pb-4">
+        <div className="flex flex-wrap gap-2 mb-6 border-b-2 border-stone-700 pb-4">
           {TABS.map((tab) => (
             <button
               key={tab.id}
               onClick={() => handleTabChange(tab.id)}
-              className={`px-4 py-2 rounded-lg flex items-center gap-2 transition-colors ${
+              className={`dungeon-tab flex items-center gap-2 ${
                 activeTab === tab.id
-                  ? 'bg-blue-600 text-white'
-                  : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
+                  ? 'dungeon-tab-active'
+                  : ''
               }`}
             >
               <span>{tab.icon}</span>
               <span className="hidden sm:inline">{tab.label}</span>
-              <span className={`text-xs px-1.5 py-0.5 rounded ${
-                activeTab === tab.id ? 'bg-blue-500' : 'bg-gray-700'
+              <span className={`text-xs px-1.5 py-0.5 rounded-pixel ${
+                activeTab === tab.id ? 'bg-copper-800 text-copper-200' : 'bg-stone-700 text-stone-400'
               }`}>
                 {counts[tab.id]}
               </span>
@@ -815,37 +815,37 @@ export const Compendium: React.FC = () => {
 
             {/* Empty state */}
             {activeTab === 'characters' && filteredCharacters.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                {searchQuery ? 'No characters match your search' : 'No characters yet'}
+              <div className="text-center py-12 text-stone-500">
+                {searchQuery ? 'No heroes match your search' : 'No heroes yet'}
               </div>
             )}
             {activeTab === 'enemies' && filteredEnemies.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                {searchQuery ? 'No enemies match your search' : 'No enemies yet'}
+              <div className="text-center py-12 text-stone-500">
+                {searchQuery ? 'No foes match your search' : 'No foes yet'}
               </div>
             )}
             {activeTab === 'status_effects' && filteredStatusEffects.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                {searchQuery ? 'No status effects match your search' : 'No custom status effects yet'}
+              <div className="text-center py-12 text-stone-500">
+                {searchQuery ? 'No enchantments match your search' : 'No custom enchantments yet'}
               </div>
             )}
             {activeTab === 'special_tiles' && filteredTiles.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                {searchQuery ? 'No special tiles match your search' : 'No special tiles yet'}
+              <div className="text-center py-12 text-stone-500">
+                {searchQuery ? 'No dungeon tiles match your search' : 'No dungeon tiles yet'}
               </div>
             )}
             {activeTab === 'items' && filteredItems.length === 0 && (
-              <div className="text-center py-12 text-gray-500">
-                {searchQuery ? 'No items match your search' : 'No items yet'}
+              <div className="text-center py-12 text-stone-500">
+                {searchQuery ? 'No treasure matches your search' : 'No treasure yet'}
               </div>
             )}
           </div>
 
           {/* Detail Panel - hidden on mobile, shown on desktop */}
           <div className="hidden lg:block lg:w-1/2">
-            <div className="bg-gray-800 rounded-lg p-6 min-h-[400px] sticky top-4">
+            <div className="dungeon-panel p-6 min-h-[400px] sticky top-4">
               {!selectedId && (
-                <div className="flex items-center justify-center h-full text-gray-500">
+                <div className="flex items-center justify-center h-full text-stone-500">
                   <p>Select an entry to view details</p>
                 </div>
               )}

@@ -168,8 +168,8 @@ export const EnemyEditor: React.FC = () => {
           {/* Enemy List - Left Sidebar */}
           <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Enemies</h2>
-              <button onClick={handleNew} className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700">
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Foes</h2>
+              <button onClick={handleNew} className="dungeon-btn-success text-sm">
                 + New
               </button>
             </div>
@@ -180,7 +180,7 @@ export const EnemyEditor: React.FC = () => {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              className="dungeon-input text-sm"
             />
 
             {/* Folder Filter */}
@@ -192,7 +192,7 @@ export const EnemyEditor: React.FC = () => {
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredEnemies.length === 0 ? (
-                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No enemies match your search.' : 'No enemies yet.'}
                   <br />{!searchTerm && 'Click "+ New" to create one.'}
                 </div>
@@ -201,18 +201,18 @@ export const EnemyEditor: React.FC = () => {
                   <div
                     key={enemy.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
-                      selectedId === enemy.id ? 'bg-blue-600' : 'bg-gray-800 hover:bg-gray-700'
+                      selectedId === enemy.id ? 'bg-arcane-700' : 'dungeon-panel hover:bg-stone-700'
                     }`}
                     onClick={() => handleSelect(enemy.id)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                           <SpriteThumbnail sprite={enemy.customSprite} size={40} />
                         </div>
                         <div>
                           <h3 className="font-bold">{enemy.name}</h3>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-stone-400">
                             HP: {enemy.health} • {enemy.behavior?.type || 'static'}
                           </p>
                         </div>
@@ -225,14 +225,14 @@ export const EnemyEditor: React.FC = () => {
                         />
                         <button
                           onClick={(e) => handleDuplicate(enemy, e)}
-                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
-                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
                         >
                           ✕
                         </button>
@@ -249,11 +249,11 @@ export const EnemyEditor: React.FC = () => {
             {editing ? (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">
-                    {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
+                  <h2 className="text-2xl font-bold font-medieval text-copper-400">
+                    {isCreating ? 'Create New Foe' : `Edit: ${editing.name}`}
                   </h2>
-                  <button onClick={handleSave} className="px-4 py-2 bg-green-600 rounded hover:bg-green-700">
-                    Save Enemy
+                  <button onClick={handleSave} className="dungeon-btn-success">
+                    Save Foe
                   </button>
                 </div>
 
@@ -261,7 +261,7 @@ export const EnemyEditor: React.FC = () => {
                   {/* Left Column */}
                   <div className="space-y-6">
                     {/* Basic Info */}
-                    <div className="bg-gray-800 p-4 rounded space-y-3">
+                    <div className="dungeon-panel p-4 rounded space-y-3">
                       <h3 className="text-lg font-bold">Basic Info</h3>
                       <div>
                         <label className="block text-sm mb-1">Name</label>
@@ -269,19 +269,19 @@ export const EnemyEditor: React.FC = () => {
                           type="text"
                           value={editing.name}
                           onChange={(e) => updateEnemy({ name: e.target.value })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm mb-1">Title <span className="text-gray-400 font-normal">(optional)</span></label>
+                        <label className="block text-sm mb-1">Title <span className="text-stone-400 font-normal">(optional)</span></label>
                         <input
                           type="text"
                           value={editing.title || ''}
                           onChange={(e) => updateEnemy({ title: e.target.value || undefined })}
                           placeholder="e.g., the Terrible"
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Displayed after name in italics</p>
+                        <p className="text-xs text-stone-400 mt-1">Displayed after name in italics</p>
                       </div>
                       <div>
                         <label className="block text-sm mb-1">Description</label>
@@ -297,7 +297,7 @@ export const EnemyEditor: React.FC = () => {
                         <select
                           value={editing.folderId || ''}
                           onChange={(e) => updateEnemy({ folderId: e.target.value || undefined })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         >
                           <option value="">Uncategorized</option>
                           {getFolders('enemies').map(folder => (
@@ -313,7 +313,7 @@ export const EnemyEditor: React.FC = () => {
                           max="99"
                           value={editing.health}
                           onChange={(e) => updateEnemy({ health: parseInt(e.target.value) })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         />
                       </div>
                       <div>
@@ -324,13 +324,13 @@ export const EnemyEditor: React.FC = () => {
                           max="99"
                           value={editing.contactDamage ?? 0}
                           onChange={(e) => updateEnemy({ contactDamage: parseInt(e.target.value) || 0 })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         />
                       </div>
                     </div>
 
                     {/* Properties */}
-                    <div className="bg-gray-800 p-4 rounded space-y-2">
+                    <div className="dungeon-panel p-4 rounded space-y-2">
                       <h3 className="text-lg font-bold mb-3">Properties</h3>
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={editing.canOverlapEntities || false}
@@ -365,7 +365,7 @@ export const EnemyEditor: React.FC = () => {
                     </div>
 
                     {/* Sound Effects */}
-                    <div className="bg-gray-800 p-4 rounded">
+                    <div className="dungeon-panel p-4 rounded">
                       <h3 className="text-lg font-bold mb-3">Sound Effects</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -378,7 +378,7 @@ export const EnemyEditor: React.FC = () => {
                                 death: e.target.value || undefined,
                               }
                             })}
-                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                           >
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
@@ -398,7 +398,7 @@ export const EnemyEditor: React.FC = () => {
                                 damageTaken: e.target.value || undefined,
                               }
                             })}
-                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                           >
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
@@ -412,15 +412,15 @@ export const EnemyEditor: React.FC = () => {
                     </div>
 
                     {/* Death Drop */}
-                    <div className="bg-gray-800 p-4 rounded">
+                    <div className="dungeon-panel p-4 rounded">
                       <h3 className="text-lg font-bold mb-3">Death Drop</h3>
-                      <p className="text-xs text-gray-400 mb-3">
+                      <p className="text-xs text-stone-400 mb-3">
                         Select a collectible to drop when this enemy dies.
                       </p>
                       <select
                         value={editing.droppedCollectibleId || ''}
                         onChange={(e) => updateEnemy({ droppedCollectibleId: e.target.value || undefined })}
-                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
                       >
                         <option value="">None</option>
                         {getAllCollectibles().map((coll) => (
@@ -432,7 +432,7 @@ export const EnemyEditor: React.FC = () => {
                     </div>
 
                     {/* Tooltip Steps */}
-                    <div className="bg-gray-800 p-4 rounded">
+                    <div className="dungeon-panel p-4 rounded">
                       <div className="flex justify-between items-center mb-3">
                         <h3 className="text-lg font-bold">Tooltip Steps</h3>
                         <button
@@ -440,12 +440,12 @@ export const EnemyEditor: React.FC = () => {
                             const steps = editing.tooltipSteps || [];
                             updateEnemy({ tooltipSteps: [...steps, ''] });
                           }}
-                          className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
+                          className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
                         >
                           + Add Step
                         </button>
                       </div>
-                      <p className="text-xs text-gray-400 mb-3">
+                      <p className="text-xs text-stone-400 mb-3">
                         Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
                       </p>
                       <div className="space-y-2">
@@ -460,7 +460,7 @@ export const EnemyEditor: React.FC = () => {
                                   updateEnemy({ tooltipSteps: newSteps });
                                 }}
                                 disabled={index === 0}
-                                className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
                               >
                                 ↑
                               </button>
@@ -473,12 +473,12 @@ export const EnemyEditor: React.FC = () => {
                                   updateEnemy({ tooltipSteps: newSteps });
                                 }}
                                 disabled={index === (editing.tooltipSteps?.length || 0) - 1}
-                                className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
                               >
                                 ↓
                               </button>
                             </div>
-                            <span className="text-gray-400 text-sm">•</span>
+                            <span className="text-stone-400 text-sm">•</span>
                             <div className="flex-1">
                               <RichTextEditor
                                 value={step}
@@ -495,14 +495,14 @@ export const EnemyEditor: React.FC = () => {
                                 const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
                                 updateEnemy({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
                               }}
-                              className="px-2 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
+                              className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
                             >
                               ✕
                             </button>
                           </div>
                         ))}
                         {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
-                          <div className="text-gray-500 text-sm italic">
+                          <div className="text-stone-500 text-sm italic">
                             No tooltip steps. Click "+ Add Step" to create one.
                           </div>
                         )}
@@ -510,7 +510,7 @@ export const EnemyEditor: React.FC = () => {
                     </div>
 
                     {/* Behavior */}
-                    <div className="bg-gray-800 p-4 rounded space-y-3">
+                    <div className="dungeon-panel p-4 rounded space-y-3">
                       <h3 className="text-lg font-bold">Behavior</h3>
                       <div>
                         <label className="block text-sm mb-1">Type</label>
@@ -522,7 +522,7 @@ export const EnemyEditor: React.FC = () => {
                             defaultFacing: editing.behavior?.defaultFacing || Direction.SOUTH,
                             pattern: editing.behavior?.pattern || []
                           })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         >
                           <option value="static">Static</option>
                           <option value="active">Active</option>
@@ -536,7 +536,7 @@ export const EnemyEditor: React.FC = () => {
                             <select
                               value={editing.behavior?.defaultFacing || Direction.SOUTH}
                               onChange={(e) => updateBehavior({ ...editing.behavior!, defaultFacing: e.target.value as Direction })}
-                              className="w-full px-3 py-2 bg-gray-700 rounded"
+                              className="w-full px-3 py-2 bg-stone-700 rounded"
                             >
                               <option value={Direction.NORTH}>North ↑</option>
                               <option value={Direction.EAST}>East →</option>
@@ -548,7 +548,7 @@ export const EnemyEditor: React.FC = () => {
                           <div>
                             <div className="flex justify-between items-center mb-2">
                               <label className="text-sm font-bold">Action Pattern</label>
-                              <button onClick={addAction} className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700">
+                              <button onClick={addAction} className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600">
                                 + Add
                               </button>
                             </div>
@@ -574,7 +574,7 @@ export const EnemyEditor: React.FC = () => {
                   </div>
 
                   {/* Right Column - Sprite */}
-                  <div className="bg-gray-800 p-4 rounded">
+                  <div className="dungeon-panel p-4 rounded">
                     <h3 className="text-lg font-bold mb-4">Sprite</h3>
                     {/* Allow oversized sprites checkbox */}
                     <div className="mb-4">
@@ -587,7 +587,7 @@ export const EnemyEditor: React.FC = () => {
                         />
                         <span className="text-sm">Allow sprite to exceed tile size</span>
                       </label>
-                      <p className="text-xs text-gray-400 mt-1 ml-6">
+                      <p className="text-xs text-stone-400 mt-1 ml-6">
                         Enable to allow sprites larger than 100% (for bosses, large creatures, etc.)
                       </p>
                     </div>
@@ -602,13 +602,13 @@ export const EnemyEditor: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800 p-8 rounded text-center">
-                <h2 className="text-2xl font-bold mb-4">Enemy Editor</h2>
-                <p className="text-gray-400 mb-6">
-                  Create and customize enemies with unique sprites and behaviors.
+              <div className="dungeon-panel p-8 text-center">
+                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Foe Editor</h2>
+                <p className="text-stone-400 mb-6">
+                  Create and customize foes with unique sprites and behaviors.
                 </p>
-                <button onClick={handleNew} className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700">
-                  + Create New Enemy
+                <button onClick={handleNew} className="dungeon-btn-success text-lg">
+                  + Create New Foe
                 </button>
               </div>
             )}
@@ -653,38 +653,38 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
   const spell = action.spellId ? loadSpellAsset(action.spellId) : null;
 
   return (
-    <div className="bg-gray-700 p-3 rounded">
+    <div className="bg-stone-700 p-3 rounded">
       <div className="flex gap-2 items-center mb-2">
         <div className="flex flex-col gap-1">
           <button onClick={onMoveUp} disabled={index === 0}
-            className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30">↑</button>
+            className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30">↑</button>
           <button onClick={onMoveDown} disabled={index === totalActions - 1}
-            className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30">↓</button>
+            className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30">↓</button>
         </div>
-        <span className="text-sm text-gray-400 w-6">{index + 1}.</span>
+        <span className="text-sm text-stone-400 w-6">{index + 1}.</span>
         <select
           value={action.type}
           onChange={(e) => onUpdate({ ...action, type: e.target.value as ActionType })}
-          className="flex-1 px-2 py-1 bg-gray-600 rounded text-sm"
+          className="flex-1 px-2 py-1 bg-stone-600 rounded text-sm"
         >
           {ACTION_TYPES.map(type => (
             <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
           ))}
         </select>
-        <button onClick={onRemove} className="px-2 py-1 text-sm bg-red-600 rounded hover:bg-red-700">✕</button>
+        <button onClick={onRemove} className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600">✕</button>
       </div>
 
       {action.type.startsWith('move_') && (
         <div className="ml-8 space-y-2">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-400">Tiles:</label>
+            <label className="text-xs text-stone-400">Tiles:</label>
             <input type="number" min="1" max="5" value={action.tilesPerMove || 1}
               onChange={(e) => onUpdate({ ...action, tilesPerMove: parseInt(e.target.value) || 1 })}
-              className="w-16 px-2 py-1 bg-gray-600 rounded text-sm" />
-            <label className="text-xs text-gray-400">Wall:</label>
+              className="w-16 px-2 py-1 bg-stone-600 rounded text-sm" />
+            <label className="text-xs text-stone-400">Wall:</label>
             <select value={action.onWallCollision || 'stop'}
               onChange={(e) => onUpdate({ ...action, onWallCollision: e.target.value as any })}
-              className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs">
+              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
               <option value="stop">Stop</option>
               <option value="turn_left">Turn Left</option>
               <option value="turn_right">Turn Right</option>
@@ -698,10 +698,10 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
       {(action.type === ActionType.TURN_LEFT || action.type === ActionType.TURN_RIGHT) && (
         <div className="ml-8">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-400">Degrees:</label>
+            <label className="text-xs text-stone-400">Degrees:</label>
             <select value={action.turnDegrees || 90}
               onChange={(e) => onUpdate({ ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-              className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs">
+              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
               <option value={45}>45°</option>
               <option value={90}>90°</option>
               <option value={135}>135°</option>
@@ -713,25 +713,25 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
       {action.type === ActionType.SPELL && (
         <div className="ml-8 space-y-2">
           {spell ? (
-            <div className="flex items-center gap-2 bg-gray-800 p-2 rounded">
+            <div className="flex items-center gap-2 dungeon-panel p-2 rounded">
               {spell.thumbnailIcon && <img src={spell.thumbnailIcon} alt={spell.name} className="w-8 h-8 object-contain" />}
               <div className="flex-1">
                 <div className="text-sm font-semibold">{spell.name}</div>
-                <div className="text-xs text-gray-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
+                <div className="text-xs text-stone-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
               </div>
-              <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700">Change</button>
+              <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-arcane-700 rounded hover:bg-arcane-600">Change</button>
             </div>
           ) : (
-            <button onClick={onSelectSpell} className="px-3 py-1 bg-green-600 rounded text-xs hover:bg-green-700">Select Spell</button>
+            <button onClick={onSelectSpell} className="px-3 py-1 bg-moss-700 rounded text-xs hover:bg-moss-600">Select Spell</button>
           )}
 
           {spell && (
             <>
               <div>
-                <label className="text-xs text-gray-400">Execution:</label>
+                <label className="text-xs text-stone-400">Execution:</label>
                 <select value={action.executionMode || 'sequential'}
                   onChange={(e) => onUpdate({ ...action, executionMode: e.target.value as ExecutionMode })}
-                  className="w-full px-2 py-1 bg-gray-600 rounded text-xs mt-1">
+                  className="w-full px-2 py-1 bg-stone-600 rounded text-xs mt-1">
                   <option value="sequential">Sequential</option>
                   <option value="parallel">Parallel</option>
                   <option value="parallel_with_previous">Parallel with Previous</option>
@@ -739,8 +739,8 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
               </div>
 
               {action.executionMode === 'parallel' && (
-                <div className="bg-gray-800 p-2 rounded space-y-2">
-                  <div className="text-xs font-semibold text-gray-300">Trigger:</div>
+                <div className="dungeon-panel p-2 rounded space-y-2">
+                  <div className="text-xs font-semibold text-stone-300">Trigger:</div>
                   <select value={action.trigger?.mode || 'interval'}
                     onChange={(e) => {
                       const newTrigger: TriggerConfig = {
@@ -749,19 +749,19 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
                       };
                       onUpdate({ ...action, trigger: newTrigger });
                     }}
-                    className="w-full px-2 py-1 bg-gray-600 rounded text-xs">
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-xs">
                     <option value="interval">Interval</option>
                     <option value="on_event">On Event</option>
                   </select>
                   {action.trigger?.mode === 'interval' && (
                     <input type="number" min="100" max="5000" step="100" value={action.trigger.intervalMs || 600}
                       onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, intervalMs: parseInt(e.target.value) || 600 } })}
-                      className="w-full px-2 py-1 bg-gray-600 rounded text-xs" placeholder="ms" />
+                      className="w-full px-2 py-1 bg-stone-600 rounded text-xs" placeholder="ms" />
                   )}
                   {action.trigger?.mode === 'on_event' && (
                     <select value={action.trigger.event || 'character_adjacent'}
                       onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, event: e.target.value as any } })}
-                      className="w-full px-2 py-1 bg-gray-600 rounded text-xs">
+                      className="w-full px-2 py-1 bg-stone-600 rounded text-xs">
                       <option value="character_adjacent">Character Adjacent</option>
                       <option value="character_in_range">Character in Range</option>
                       <option value="wall_ahead">Wall Ahead</option>
@@ -771,7 +771,7 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
                 </div>
               )}
 
-              <div className="bg-gray-800 p-2 rounded space-y-1">
+              <div className="dungeon-panel p-2 rounded space-y-1">
                 <label className="flex items-center gap-2 text-xs">
                   <input type="checkbox" checked={action.autoTargetNearestCharacter || false}
                     onChange={(e) => onUpdate({

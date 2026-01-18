@@ -173,10 +173,10 @@ export const ObjectEditor: React.FC = () => {
           {/* Object List */}
           <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Objects</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Objects</h2>
               <button
                 onClick={handleNew}
-                className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700"
+                className="dungeon-btn-success"
               >
                 + New
               </button>
@@ -188,7 +188,7 @@ export const ObjectEditor: React.FC = () => {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              className="dungeon-input w-full"
             />
 
             {/* Folder Filter */}
@@ -200,7 +200,7 @@ export const ObjectEditor: React.FC = () => {
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredObjects.length === 0 ? (
-                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No objects match your search.' : 'No objects yet.'}
                   <br />
                   {!searchTerm && 'Click "+ New" to create one.'}
@@ -211,20 +211,20 @@ export const ObjectEditor: React.FC = () => {
                     key={obj.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
                       selectedId === obj.id
-                        ? 'bg-blue-600'
-                        : 'bg-gray-800 hover:bg-gray-700'
+                        ? 'bg-arcane-700'
+                        : 'dungeon-panel hover:bg-stone-700'
                     }`}
                     onClick={() => handleSelect(obj.id)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
                         {/* Preview thumbnail */}
-                        <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                           <SpriteThumbnail sprite={obj.customSprite} size={40} />
                         </div>
                         <div>
                           <h3 className="font-bold">{obj.name}</h3>
-                          <p className="text-xs text-gray-400 capitalize">
+                          <p className="text-xs text-stone-400 capitalize">
                             {obj.effects.length > 0 ? `${obj.effects.length} effect${obj.effects.length !== 1 ? 's' : ''}` : 'Decorative'}
                           </p>
                         </div>
@@ -237,7 +237,7 @@ export const ObjectEditor: React.FC = () => {
                         />
                         <button
                           onClick={(e) => handleDuplicate(obj, e)}
-                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -247,7 +247,7 @@ export const ObjectEditor: React.FC = () => {
                             e.stopPropagation();
                             handleDelete(obj.id);
                           }}
-                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
                         >
                           ✕
                         </button>
@@ -270,14 +270,14 @@ export const ObjectEditor: React.FC = () => {
                   </h2>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                    className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
                   >
                     Save Object
                   </button>
                 </div>
 
                 {/* Basic Info */}
-                <div className="bg-gray-800 p-4 rounded space-y-3">
+                <div className="dungeon-panel p-4 rounded space-y-3">
                   <h3 className="text-lg font-bold">Basic Info</h3>
                   <div>
                     <label className="block text-sm mb-1">Name</label>
@@ -285,7 +285,7 @@ export const ObjectEditor: React.FC = () => {
                       type="text"
                       value={editing.name}
                       onChange={e => setEditing({ ...editing, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     />
                   </div>
                   <div>
@@ -302,7 +302,7 @@ export const ObjectEditor: React.FC = () => {
                     <select
                       value={editing.folderId || ''}
                       onChange={e => setEditing({ ...editing, folderId: e.target.value || undefined })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     >
                       <option value="">Uncategorized</option>
                       {getFolders('objects').map(folder => (
@@ -313,7 +313,7 @@ export const ObjectEditor: React.FC = () => {
                 </div>
 
                 {/* Sprite */}
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="dungeon-panel p-4 rounded">
                   <h3 className="text-lg font-bold mb-4">Sprite</h3>
                   {editing.customSprite && (
                     <StaticSpriteEditor
@@ -324,20 +324,20 @@ export const ObjectEditor: React.FC = () => {
                 </div>
 
                 {/* Positioning */}
-                <div className="bg-gray-800 p-4 rounded space-y-3">
+                <div className="dungeon-panel p-4 rounded space-y-3">
                   <h3 className="text-lg font-bold">Positioning</h3>
                   <div>
                     <label className="block text-sm mb-1">Anchor Point</label>
                     <select
                       value={editing.anchorPoint}
                       onChange={(e) => setEditing({ ...editing, anchorPoint: e.target.value as ObjectAnchorPoint })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     >
                       {ANCHOR_POINTS.map(ap => (
                         <option key={ap.value} value={ap.value}>{ap.label}</option>
                       ))}
                     </select>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-stone-400 mt-1">
                       {ANCHOR_POINTS.find(ap => ap.value === editing.anchorPoint)?.description}
                     </p>
                   </div>
@@ -346,7 +346,7 @@ export const ObjectEditor: React.FC = () => {
                     <select
                       value={editing.renderLayer || 'below_entities'}
                       onChange={(e) => setEditing({ ...editing, renderLayer: e.target.value as 'below_entities' | 'above_entities' })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     >
                       <option value="below_entities">Below Entities</option>
                       <option value="above_entities">Above Entities</option>
@@ -355,32 +355,32 @@ export const ObjectEditor: React.FC = () => {
                 </div>
 
                 {/* Effects */}
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="dungeon-panel p-4 rounded">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-bold">Effects</h3>
                     <button
                       onClick={addEffect}
-                      className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
+                      className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
                     >
                       + Add Effect
                     </button>
                   </div>
 
                   {editing.effects.length === 0 ? (
-                    <p className="text-gray-400 text-sm">
+                    <p className="text-stone-400 text-sm">
                       No effects added. Add effects to make this object interact with entities.
                     </p>
                   ) : (
                     <div className="space-y-3">
                       {editing.effects.map((effect, index) => (
-                        <div key={index} className="bg-gray-700 rounded p-3">
+                        <div key={index} className="bg-stone-700 rounded p-3">
                           <div className="flex justify-between items-center mb-2">
                             <div className="flex items-center gap-2">
                               <span>{getEffectIcon(effect.type)}</span>
                               <select
                                 value={effect.type}
                                 onChange={(e) => updateEffect(index, { ...effect, type: e.target.value as ObjectEffectConfig['type'] })}
-                                className="px-2 py-1 bg-gray-600 rounded text-sm"
+                                className="px-2 py-1 bg-stone-600 rounded text-sm"
                               >
                                 {EFFECT_TYPES.map(et => (
                                   <option key={et.value} value={et.value}>{et.label}</option>
@@ -389,7 +389,7 @@ export const ObjectEditor: React.FC = () => {
                             </div>
                             <button
                               onClick={() => removeEffect(index)}
-                              className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                              className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
                             >
                               Remove
                             </button>
@@ -398,25 +398,25 @@ export const ObjectEditor: React.FC = () => {
                           <div className="grid grid-cols-2 gap-2 text-sm">
                             {(effect.type === 'damage' || effect.type === 'heal') && (
                               <div>
-                                <label className="block text-xs text-gray-400">Value</label>
+                                <label className="block text-xs text-stone-400">Value</label>
                                 <input
                                   type="number"
                                   min="1"
                                   value={effect.value || 1}
                                   onChange={(e) => updateEffect(index, { ...effect, value: Number(e.target.value) })}
-                                  className="w-full px-2 py-1 bg-gray-600 rounded"
+                                  className="w-full px-2 py-1 bg-stone-600 rounded"
                                 />
                               </div>
                             )}
                             <div>
-                              <label className="block text-xs text-gray-400">Radius (tiles)</label>
+                              <label className="block text-xs text-stone-400">Radius (tiles)</label>
                               <input
                                 type="number"
                                 min="0"
                                 max="10"
                                 value={effect.radius}
                                 onChange={(e) => updateEffect(index, { ...effect, radius: Number(e.target.value) })}
-                                className="w-full px-2 py-1 bg-gray-600 rounded"
+                                className="w-full px-2 py-1 bg-stone-600 rounded"
                               />
                             </div>
                           </div>
@@ -465,15 +465,15 @@ export const ObjectEditor: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800 p-8 rounded text-center">
+              <div className="dungeon-panel p-8 rounded text-center">
                 <h2 className="text-2xl font-bold mb-4">Object Editor</h2>
-                <p className="text-gray-400 mb-6">
+                <p className="text-stone-400 mb-6">
                   Create decorative objects with custom sprites that can be placed on tiles.
                   For collision, use tiles with wall behavior instead.
                 </p>
                 <button
                   onClick={handleNew}
-                  className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700"
+                  className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
                 >
                   + Create New Object
                 </button>

@@ -20,18 +20,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onClearAll,
 }) => {
   return (
-    <div className="bg-gray-800 p-4 rounded">
-      <div className="flex items-center justify-center gap-2 mb-3">
+    <div className="dungeon-panel p-4">
+      <div className="flex items-center justify-center gap-2 mb-3 flex-wrap">
         <HelpButton sectionId="characters" />
-        <h3 className="text-lg font-bold">Available Characters</h3>
-        <span className="text-sm text-gray-400">
+        <h3 className="text-lg font-bold text-copper-400">Available Heroes</h3>
+        <span className="text-sm text-stone-400">
           ({placedCharacterIds.length} Placed)
         </span>
         {onClearAll && placedCharacterIds.length > 0 && (
           <button
             onClick={onClearAll}
-            className="p-1 text-gray-400 hover:text-red-400 hover:bg-gray-700 rounded transition-colors"
-            title="Remove all placed characters"
+            className="p-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center"
+            title="Remove all placed heroes"
           >
             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -53,17 +53,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             <div
               key={charId}
               onClick={() => !isPlaced && onSelectCharacter(isSelected ? null : charId)}
-              className={`rounded p-2 transition-all cursor-pointer flex flex-col items-center ${
+              className={`rounded-pixel-md p-2 transition-all cursor-pointer flex flex-col items-center border-2 min-w-[80px] ${
                 isPlaced
-                  ? 'bg-gray-900 border border-dashed border-gray-600 opacity-60 cursor-not-allowed'
+                  ? 'bg-stone-900/80 border-dashed border-stone-600 opacity-60 cursor-not-allowed'
                   : isSelected
-                  ? 'bg-green-600 ring-2 ring-green-400'
-                  : 'bg-gray-700 hover:bg-gray-600'
+                  ? 'bg-copper-800/80 border-copper-500 shadow-torch'
+                  : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700 hover:border-copper-600'
               }`}
             >
               {/* HP display - above sprite */}
               <div className={`text-xs text-center font-medium mb-1 ${
-                isSelected ? 'text-white' : 'text-green-400'
+                isSelected ? 'text-parchment-100' : 'text-copper-400'
               }`}>
                 HP: {character.health}
               </div>
@@ -72,8 +72,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               <div className="relative flex-shrink-0">
                 <SpriteThumbnail sprite={character.customSprite} size={48} />
                 {isPlaced && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded">
-                    <span className="text-green-400 text-lg">✓</span>
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
+                    <span className="text-copper-400 text-lg">✓</span>
                   </div>
                 )}
               </div>
@@ -81,13 +81,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* Name and Title */}
               <div className="mt-1 text-center max-w-[100px]">
                 <span className={`text-xs font-medium ${
-                  isSelected ? 'text-white' : 'text-gray-200'
+                  isSelected ? 'text-parchment-100' : 'text-parchment-300'
                 }`}>
                   {character.name}
                 </span>
                 {character.title && (
                   <span className={`text-xs italic ${
-                    isSelected ? 'text-green-100' : 'text-gray-400'
+                    isSelected ? 'text-copper-200' : 'text-stone-500'
                   }`}> {character.title}</span>
                 )}
               </div>
@@ -95,7 +95,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
                 <ul className={`mt-1 text-xs text-left max-w-[100px] list-disc list-inside ${
-                  isSelected ? 'text-green-100' : 'text-gray-400'
+                  isSelected ? 'text-copper-200' : 'text-stone-400'
                 }`}>
                   {character.tooltipSteps!.map((step, idx) => (
                     <li key={idx}><RichTextRenderer html={step} /></li>
@@ -108,8 +108,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       </div>
 
       {selectedCharacterId && (
-        <div className="mt-3 pt-3 border-t border-gray-700 text-sm text-green-400 font-medium text-center">
-          Click on the grid to place your character
+        <div className="mt-3 pt-3 border-t border-stone-700 text-sm text-copper-400 font-medium text-center">
+          Click on the dungeon to place your hero
         </div>
       )}
     </div>

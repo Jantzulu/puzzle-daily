@@ -181,18 +181,18 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
   if (iconSprite.type === 'stored' && iconSprite.spriteId) {
     return (
       <div
-        className="rounded bg-gray-600 flex items-center justify-center"
+        className="rounded-pixel bg-arcane-800 flex items-center justify-center"
         style={{ width: size, height: size }}
       >
-        <span className="text-xs text-gray-400">?</span>
+        <span className="text-xs text-arcane-400">?</span>
       </div>
     );
   }
 
-  // Fallback - gray placeholder
+  // Fallback - arcane placeholder
   return (
     <div
-      className="rounded bg-gray-600"
+      className="rounded-pixel bg-arcane-800"
       style={{ width: size, height: size }}
     />
   );
@@ -207,13 +207,13 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   }
 
   return (
-    <div className="bg-gray-800 p-4 rounded">
+    <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold">Status Effects</h3>
+          <h3 className="text-lg font-bold text-arcane-400">Enchantments</h3>
           <HelpButton sectionId="status_effects" />
         </div>
-        <span className="text-sm text-gray-400">
+        <span className="text-sm text-stone-400">
           {statusEffectsWithSources.length} possible
         </span>
       </div>
@@ -222,7 +222,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
         {statusEffectsWithSources.map(({ effect, sources }) => (
           <div
             key={effect.id}
-            className="p-2 bg-gray-700 rounded"
+            className="p-2 bg-stone-800/80 rounded-pixel-md border border-arcane-900/30"
           >
             <div className="flex items-start gap-3">
               {/* Icon */}
@@ -232,10 +232,10 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
 
               {/* Name and description */}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-200">
+                <div className="text-sm font-medium text-arcane-300">
                   {effect.name}
                 </div>
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-stone-400">
                   {effect.description}
                 </div>
               </div>
@@ -243,20 +243,20 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
 
             {/* Entity sources - who can apply this effect */}
             {sources.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-600">
+              <div className="mt-2 pt-2 border-t border-stone-700">
                 <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-xs text-gray-500 mr-1">Applied by:</span>
+                  <span className="text-xs text-stone-500 mr-1">Applied by:</span>
                   {sources.map((source) => {
                     const colorClass = source.sourceType === 'enemy'
-                      ? 'bg-red-900/50 text-red-300'
+                      ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
                       : source.sourceType === 'item'
-                      ? 'bg-yellow-900/50 text-yellow-300'
-                      : 'bg-green-900/50 text-green-300';
+                      ? 'bg-parchment-900/50 text-parchment-300 border border-parchment-700'
+                      : 'bg-copper-900/50 text-copper-300 border border-copper-700';
 
                     return (
                       <div
                         key={`${source.sourceType}-${source.id}`}
-                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${colorClass}`}
+                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${colorClass}`}
                         title={source.name}
                       >
                         {source.sprite && (

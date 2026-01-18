@@ -14,30 +14,38 @@ function Navigation() {
   const isActive = (path: string) => location.pathname === path;
 
   const linkClass = (path: string) => `
-    px-4 py-2 rounded transition-colors
+    px-3 md:px-4 py-2 rounded-pixel-md transition-all duration-200 font-medium text-sm md:text-base
+    border-2
     ${isActive(path)
-      ? 'bg-blue-600 text-white'
-      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}
+      ? 'bg-stone-900 text-copper-400 border-copper-600 shadow-inner-dark'
+      : 'bg-stone-800 text-stone-400 border-stone-700 hover:bg-stone-700 hover:text-parchment-200 hover:border-stone-600'}
   `;
 
   return (
-    <nav className="bg-gray-800 border-b border-gray-700 px-4 md:px-6 py-3">
-      <div className="flex items-center gap-4">
-        <h1 className="text-lg md:text-xl font-bold text-white md:mr-6">Puzzle Daily</h1>
+    <nav className="bg-stone-850 border-b-2 border-stone-700 px-4 md:px-6 py-3 shadow-dungeon">
+      <div className="flex items-center gap-3 md:gap-4">
+        {/* Logo/Title - placeholder for custom logo */}
+        <div className="flex items-center gap-2 md:mr-4">
+          {/* Torch icon placeholder */}
+          <span className="text-copper-400 text-xl md:text-2xl animate-flicker">&#128293;</span>
+          <h1 className="text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide">
+            Puzzle Daily
+          </h1>
+        </div>
 
         {/* Desktop navigation */}
-        <div className="hidden md:flex items-center gap-4">
+        <div className="hidden md:flex items-center gap-2">
           <Link to="/" className={linkClass('/')}>
-            Play
+            <span className="mr-1">&#9876;</span> Play
           </Link>
           <Link to="/compendium" className={linkClass('/compendium')}>
-            Compendium
+            <span className="mr-1">&#128214;</span> Compendium
           </Link>
           <Link to="/editor" className={linkClass('/editor')}>
-            Map Editor
+            <span className="mr-1">&#128736;</span> Map Editor
           </Link>
           <Link to="/assets" className={linkClass('/assets')}>
-            Asset Manager
+            <span className="mr-1">&#128230;</span> Assets
           </Link>
         </div>
 
@@ -51,7 +59,7 @@ function Navigation() {
         {/* Mobile hamburger button */}
         <button
           onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          className="md:hidden p-2 text-gray-300 hover:text-white"
+          className="md:hidden p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {mobileMenuOpen ? (
@@ -65,36 +73,36 @@ function Navigation() {
 
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-3 pt-3 border-t border-gray-700 space-y-2">
+        <div className="md:hidden mt-3 pt-3 border-t-2 border-stone-700 space-y-2">
           <Link
             to="/"
             className={`block ${linkClass('/')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            Play
+            <span className="mr-2">&#9876;</span> Play
           </Link>
           <Link
             to="/compendium"
             className={`block ${linkClass('/compendium')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            Compendium
+            <span className="mr-2">&#128214;</span> Compendium
           </Link>
           <Link
             to="/editor"
             className={`block ${linkClass('/editor')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            Map Editor
+            <span className="mr-2">&#128736;</span> Map Editor
           </Link>
           <Link
             to="/assets"
             className={`block ${linkClass('/assets')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            Asset Manager
+            <span className="mr-2">&#128230;</span> Assets
           </Link>
-          <div className="pt-2 flex items-center gap-2">
+          <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
             <SoundSettings />
             <CloudSyncButton />
           </div>
@@ -107,7 +115,7 @@ function Navigation() {
 function App() {
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-gray-900">
+      <div className="min-h-screen bg-stone-950">
         <Navigation />
         <Routes>
           <Route path="/" element={<Game />} />

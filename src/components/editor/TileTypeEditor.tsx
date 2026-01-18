@@ -62,14 +62,14 @@ interface BehaviorEditorProps {
 
 const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onRemove }) => {
   return (
-    <div className="bg-gray-700 rounded p-3 mb-2">
+    <div className="bg-stone-700 rounded p-3 mb-2">
       <div className="flex justify-between items-center mb-2">
         <span className="font-medium text-blue-300">
           {BEHAVIOR_OPTIONS.find(b => b.type === behavior.type)?.label || behavior.type}
         </span>
         <button
           onClick={onRemove}
-          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
         >
           Remove
         </button>
@@ -79,16 +79,16 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
       {behavior.type === 'damage' && (
         <div className="space-y-2">
           <div>
-            <label className="text-sm text-gray-300">Damage Amount</label>
+            <label className="text-sm text-stone-300">Damage Amount</label>
             <input
               type="number"
               value={behavior.damageAmount || 1}
               onChange={e => onChange({ ...behavior, damageAmount: parseInt(e.target.value) || 1 })}
-              className="w-full bg-gray-600 rounded px-2 py-1 text-sm mt-1"
+              className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
               min="1"
             />
           </div>
-          <label className="flex items-center text-sm text-gray-300">
+          <label className="flex items-center text-sm text-stone-300">
             <input
               type="checkbox"
               checked={behavior.damageOnce || false}
@@ -104,25 +104,25 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
       {behavior.type === 'teleport' && (
         <div className="space-y-3">
           <div>
-            <label className="text-sm text-gray-300">Teleport Group</label>
+            <label className="text-sm text-stone-300">Teleport Group</label>
             <select
               value={behavior.teleportGroupId || 'A'}
               onChange={e => onChange({ ...behavior, teleportGroupId: e.target.value })}
-              className="w-full bg-gray-600 rounded px-2 py-1 text-sm mt-1"
+              className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
             >
               {TELEPORT_GROUPS.map(group => (
                 <option key={group} value={group}>{group}</option>
               ))}
             </select>
-            <p className="text-xs text-gray-400 mt-1">
+            <p className="text-xs text-stone-400 mt-1">
               Tiles with the same group teleport to each other (bidirectional)
             </p>
           </div>
 
           {/* Activation Sprite (optional) */}
           <div>
-            <label className="text-sm text-gray-300">Activation Sprite (Optional)</label>
-            <p className="text-xs text-gray-400 mb-2">
+            <label className="text-sm text-stone-300">Activation Sprite (Optional)</label>
+            <p className="text-xs text-stone-400 mb-2">
               Sprite shown on top of the teleport tile when activated. Displayed above entities.
             </p>
             {behavior.activationSprite?.imageData ? (
@@ -131,18 +131,18 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                   <img
                     src={behavior.activationSprite.imageData}
                     alt="Activation sprite"
-                    className="w-16 h-16 object-contain bg-gray-600 rounded"
+                    className="w-16 h-16 object-contain bg-stone-600 rounded"
                   />
                   <button
                     onClick={() => onChange({ ...behavior, activationSprite: undefined })}
-                    className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                    className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
                   >
                     Remove
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-gray-400">Frame Count</label>
+                    <label className="text-xs text-stone-400">Frame Count</label>
                     <input
                       type="number"
                       value={behavior.activationSprite.frameCount || 1}
@@ -153,12 +153,12 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                           frameCount: Math.max(1, parseInt(e.target.value) || 1)
                         }
                       })}
-                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
                       min="1"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400">Frame Rate (fps)</label>
+                    <label className="text-xs text-stone-400">Frame Rate (fps)</label>
                     <input
                       type="number"
                       value={behavior.activationSprite.frameRate || 10}
@@ -169,14 +169,14 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                           frameRate: Math.max(1, parseInt(e.target.value) || 10)
                         }
                       })}
-                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
                       min="1"
                     />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
                   <div>
-                    <label className="text-xs text-gray-400">Opacity (0-100%)</label>
+                    <label className="text-xs text-stone-400">Opacity (0-100%)</label>
                     <input
                       type="number"
                       value={Math.round((behavior.activationSprite.opacity ?? 1) * 100)}
@@ -187,13 +187,13 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                           opacity: Math.max(0, Math.min(100, parseInt(e.target.value) || 100)) / 100
                         }
                       })}
-                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
                       min="0"
                       max="100"
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-gray-400">Duration (ms)</label>
+                    <label className="text-xs text-stone-400">Duration (ms)</label>
                     <input
                       type="number"
                       value={behavior.activationSprite.durationMs || 800}
@@ -204,12 +204,12 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                           durationMs: Math.max(100, parseInt(e.target.value) || 800)
                         }
                       })}
-                      className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+                      className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
                       min="100"
                     />
                   </div>
                 </div>
-                <label className="flex items-center text-xs text-gray-300">
+                <label className="flex items-center text-xs text-stone-300">
                   <input
                     type="checkbox"
                     checked={behavior.activationSprite.loop !== false}
@@ -227,9 +227,9 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
               </div>
             ) : (
               <label className="block cursor-pointer">
-                <div className="w-full h-16 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-gray-400 hover:border-gray-400 text-sm">
+                <div className="w-full h-16 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-gray-400 text-sm">
                   <span>+ Upload Activation Sprite</span>
-                  <span className="text-xs text-gray-500">Single image or horizontal spritesheet</span>
+                  <span className="text-xs text-stone-500">Single image or horizontal spritesheet</span>
                 </div>
                 <input
                   type="file"
@@ -262,11 +262,11 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
       {/* Direction change behavior config */}
       {behavior.type === 'direction_change' && (
         <div>
-          <label className="text-sm text-gray-300">Force Direction</label>
+          <label className="text-sm text-stone-300">Force Direction</label>
           <select
             value={behavior.newFacing || 'south'}
             onChange={e => onChange({ ...behavior, newFacing: e.target.value as Direction })}
-            className="w-full bg-gray-600 rounded px-2 py-1 text-sm mt-1"
+            className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
           >
             {DIRECTION_OPTIONS.map(dir => (
               <option key={dir.value} value={dir.value}>{dir.label}</option>
@@ -277,7 +277,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
 
       {/* Ice behavior - no extra config needed */}
       {behavior.type === 'ice' && (
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-stone-400">
           Characters will slide in their movement direction until hitting a wall.
         </p>
       )}
@@ -285,11 +285,11 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
       {/* Pressure plate behavior config */}
       {behavior.type === 'pressure_plate' && (
         <div className="space-y-2">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-stone-400">
             Configure what happens when this plate is stepped on.
           </p>
           {(behavior.pressurePlateEffects || []).map((effect, idx) => (
-            <div key={idx} className="bg-gray-600 rounded p-2 text-sm">
+            <div key={idx} className="bg-stone-600 rounded p-2 text-sm">
               <div className="flex justify-between items-center mb-1">
                 <span>{PRESSURE_PLATE_EFFECTS.find(e => e.type === effect.type)?.label}</span>
                 <button
@@ -329,7 +329,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                   />
                 </div>
               )}
-              <label className="flex items-center text-xs text-gray-300 mt-1">
+              <label className="flex items-center text-xs text-stone-300 mt-1">
                 <input
                   type="checkbox"
                   checked={effect.stayPressed || false}
@@ -358,7 +358,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
               });
               e.target.value = '';
             }}
-            className="w-full bg-gray-600 rounded px-2 py-1 text-sm"
+            className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
           >
             <option value="">+ Add Effect...</option>
             {PRESSURE_PLATE_EFFECTS.map(effect => (
@@ -551,10 +551,10 @@ export const TileTypeEditor: React.FC = () => {
           {/* Tile Type List */}
           <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Custom Tile Types</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Custom Tile Types</h2>
               <button
                 onClick={handleNew}
-                className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700"
+                className="dungeon-btn-success"
               >
                 + New
               </button>
@@ -566,7 +566,7 @@ export const TileTypeEditor: React.FC = () => {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              className="dungeon-input w-full"
             />
 
             {/* Folder Filter */}
@@ -578,7 +578,7 @@ export const TileTypeEditor: React.FC = () => {
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredTileTypes.length === 0 ? (
-                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No tile types match your search.' : 'No custom tile types yet.'}
                   <br />
                   {!searchTerm && 'Click "+ New" to create one.'}
@@ -589,15 +589,15 @@ export const TileTypeEditor: React.FC = () => {
                     key={tileType.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
                       selectedId === tileType.id
-                        ? 'bg-blue-600'
-                        : 'bg-gray-800 hover:bg-gray-700'
+                        ? 'bg-arcane-700'
+                        : 'dungeon-panel hover:bg-stone-700'
                     }`}
                     onClick={() => handleSelect(tileType.id)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
                         {/* Preview thumbnail */}
-                        <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                           {tileType.customSprite?.idleImageData ? (
                             <img
                               src={tileType.customSprite.idleImageData}
@@ -612,7 +612,7 @@ export const TileTypeEditor: React.FC = () => {
                         </div>
                         <div>
                           <h3 className="font-bold">{tileType.name}</h3>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-xs text-stone-400">
                             {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
                           </p>
                         </div>
@@ -625,7 +625,7 @@ export const TileTypeEditor: React.FC = () => {
                         />
                         <button
                           onClick={(e) => handleDuplicate(tileType, e)}
-                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -635,7 +635,7 @@ export const TileTypeEditor: React.FC = () => {
                             e.stopPropagation();
                             handleDelete(tileType.id);
                           }}
-                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
                         >
                           ✕
                         </button>
@@ -658,14 +658,14 @@ export const TileTypeEditor: React.FC = () => {
                   </h2>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                    className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
                   >
                     💾 Save Tile Type
                   </button>
                 </div>
 
                 {/* Basic Info */}
-                <div className="bg-gray-800 p-4 rounded space-y-3">
+                <div className="dungeon-panel p-4 rounded space-y-3">
                   <h3 className="text-lg font-bold">Basic Info</h3>
                   <div>
                     <label className="block text-sm mb-1">Name</label>
@@ -673,7 +673,7 @@ export const TileTypeEditor: React.FC = () => {
                       type="text"
                       value={editing.name}
                       onChange={e => setEditing({ ...editing, name: e.target.value })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     />
                   </div>
                   <div>
@@ -690,7 +690,7 @@ export const TileTypeEditor: React.FC = () => {
                     <select
                       value={editing.folderId || ''}
                       onChange={e => setEditing({ ...editing, folderId: e.target.value || undefined })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     >
                       <option value="">Uncategorized</option>
                       {getFolders('tiles').map(folder => (
@@ -703,19 +703,19 @@ export const TileTypeEditor: React.FC = () => {
                     <select
                       value={editing.baseType}
                       onChange={e => setEditing({ ...editing, baseType: e.target.value as 'empty' | 'wall' })}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     >
                       <option value="empty">Empty (Walkable)</option>
                       <option value="wall">Wall (Blocked)</option>
                     </select>
-                    <p className="text-xs text-gray-400 mt-1">
+                    <p className="text-xs text-stone-400 mt-1">
                       Determines if characters can walk on this tile.
                     </p>
                   </div>
 
                   {/* Prevent Placement Option */}
                   <div className="pt-3 border-t border-gray-700">
-                    <label className="flex items-center text-sm text-gray-300 cursor-pointer">
+                    <label className="flex items-center text-sm text-stone-300 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={editing.preventPlacement || false}
@@ -724,17 +724,17 @@ export const TileTypeEditor: React.FC = () => {
                       />
                       Prevent character placement
                     </label>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-stone-500 mt-1">
                       Characters cannot be placed on this tile during setup, but can still walk on it during gameplay.
                     </p>
                   </div>
                 </div>
 
                 {/* Behaviors */}
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="dungeon-panel p-4 rounded">
                   <h3 className="text-lg font-bold mb-4">Behaviors</h3>
                   {editing.behaviors.length === 0 ? (
-                    <p className="text-gray-400 text-sm mb-3">
+                    <p className="text-stone-400 text-sm mb-3">
                       No behaviors added. Add behaviors to make this tile interactive.
                     </p>
                   ) : (
@@ -754,7 +754,7 @@ export const TileTypeEditor: React.FC = () => {
                       handleAddBehavior(e.target.value as TileBehaviorType);
                       e.target.value = '';
                     }}
-                    className="w-full px-3 py-2 bg-gray-700 rounded"
+                    className="w-full px-3 py-2 bg-stone-700 rounded"
                   >
                     <option value="">+ Add Behavior...</option>
                     {BEHAVIOR_OPTIONS.map(opt => (
@@ -766,13 +766,13 @@ export const TileTypeEditor: React.FC = () => {
                 </div>
 
                 {/* Cadence Configuration */}
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="dungeon-panel p-4 rounded">
                   <h3 className="text-lg font-bold mb-4">On/Off Cadence</h3>
-                  <p className="text-sm text-gray-400 mb-4">
+                  <p className="text-sm text-stone-400 mb-4">
                     Make tile behaviors toggle on and off based on turn count.
                   </p>
 
-                  <label className="flex items-center text-sm text-gray-300 cursor-pointer mb-4">
+                  <label className="flex items-center text-sm text-stone-300 cursor-pointer mb-4">
                     <input
                       type="checkbox"
                       checked={editing.cadence?.enabled || false}
@@ -799,14 +799,14 @@ export const TileTypeEditor: React.FC = () => {
                     <div className="space-y-4 pl-4 border-l-2 border-blue-500">
                       {/* Pattern Type */}
                       <div>
-                        <label className="text-sm text-gray-300 block mb-1">Pattern</label>
+                        <label className="text-sm text-stone-300 block mb-1">Pattern</label>
                         <select
                           value={editing.cadence.pattern}
                           onChange={e => setEditing({
                             ...editing,
                             cadence: { ...editing.cadence!, pattern: e.target.value as CadencePattern },
                           })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                          className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                         >
                           {CADENCE_PATTERNS.map(p => (
                             <option key={p.value} value={p.value}>{p.label} - {p.description}</option>
@@ -818,7 +818,7 @@ export const TileTypeEditor: React.FC = () => {
                       {editing.cadence.pattern === 'interval' && (
                         <div className="flex gap-4">
                           <div className="flex-1">
-                            <label className="text-sm text-gray-300 block mb-1">On Turns</label>
+                            <label className="text-sm text-stone-300 block mb-1">On Turns</label>
                             <input
                               type="number"
                               min="1"
@@ -827,11 +827,11 @@ export const TileTypeEditor: React.FC = () => {
                                 ...editing,
                                 cadence: { ...editing.cadence!, onTurns: parseInt(e.target.value) || 1 },
                               })}
-                              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                              className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                             />
                           </div>
                           <div className="flex-1">
-                            <label className="text-sm text-gray-300 block mb-1">Off Turns</label>
+                            <label className="text-sm text-stone-300 block mb-1">Off Turns</label>
                             <input
                               type="number"
                               min="1"
@@ -840,7 +840,7 @@ export const TileTypeEditor: React.FC = () => {
                                 ...editing,
                                 cadence: { ...editing.cadence!, offTurns: parseInt(e.target.value) || 1 },
                               })}
-                              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                              className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                             />
                           </div>
                         </div>
@@ -849,7 +849,7 @@ export const TileTypeEditor: React.FC = () => {
                       {/* Custom Pattern */}
                       {editing.cadence.pattern === 'custom' && (
                         <div>
-                          <label className="text-sm text-gray-300 block mb-2">
+                          <label className="text-sm text-stone-300 block mb-2">
                             Custom Pattern (click to toggle)
                           </label>
                           <div className="flex flex-wrap gap-1 mb-2">
@@ -865,7 +865,7 @@ export const TileTypeEditor: React.FC = () => {
                                   });
                                 }}
                                 className={`w-8 h-8 rounded text-xs font-bold ${
-                                  isOn ? 'bg-green-600 text-white' : 'bg-gray-600 text-gray-400'
+                                  isOn ? 'bg-moss-700 text-white' : 'bg-stone-600 text-stone-400'
                                 }`}
                               >
                                 {idx + 1}
@@ -879,7 +879,7 @@ export const TileTypeEditor: React.FC = () => {
                                   cadence: { ...editing.cadence!, customPattern: newPattern },
                                 });
                               }}
-                              className="w-8 h-8 rounded bg-gray-700 text-gray-400 hover:bg-gray-600 text-lg"
+                              className="w-8 h-8 rounded bg-stone-700 text-stone-400 hover:bg-stone-600 text-lg"
                               title="Add turn"
                             >
                               +
@@ -893,14 +893,14 @@ export const TileTypeEditor: React.FC = () => {
                                     cadence: { ...editing.cadence!, customPattern: newPattern },
                                   });
                                 }}
-                                className="w-8 h-8 rounded bg-gray-700 text-gray-400 hover:bg-red-600 text-lg"
+                                className="w-8 h-8 rounded bg-stone-700 text-stone-400 hover:bg-blood-700 text-lg"
                                 title="Remove last turn"
                               >
                                 -
                               </button>
                             )}
                           </div>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-xs text-stone-500">
                             Green = On, Gray = Off. Pattern repeats.
                           </p>
                         </div>
@@ -908,7 +908,7 @@ export const TileTypeEditor: React.FC = () => {
 
                       {/* Starting State */}
                       <div>
-                        <label className="text-sm text-gray-300 block mb-1">Starting State</label>
+                        <label className="text-sm text-stone-300 block mb-1">Starting State</label>
                         <div className="flex gap-2">
                           <button
                             onClick={() => setEditing({
@@ -917,8 +917,8 @@ export const TileTypeEditor: React.FC = () => {
                             })}
                             className={`flex-1 px-3 py-2 rounded text-sm ${
                               editing.cadence.startState === 'on'
-                                ? 'bg-green-600 text-white'
-                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                ? 'bg-moss-700 text-white'
+                                : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
                             }`}
                           >
                             On
@@ -931,7 +931,7 @@ export const TileTypeEditor: React.FC = () => {
                             className={`flex-1 px-3 py-2 rounded text-sm ${
                               editing.cadence.startState === 'off'
                                 ? 'bg-gray-500 text-white'
-                                : 'bg-gray-700 text-gray-400 hover:bg-gray-600'
+                                : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
                             }`}
                           >
                             Off
@@ -943,11 +943,11 @@ export const TileTypeEditor: React.FC = () => {
                 </div>
 
                 {/* Tile Sprite */}
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="dungeon-panel p-4 rounded">
                   <h3 className="text-lg font-bold mb-4">
                     {editing.cadence?.enabled ? 'On State Sprite' : 'Tile Sprite'}
                   </h3>
-                  <p className="text-sm text-gray-400 mb-4">
+                  <p className="text-sm text-stone-400 mb-4">
                     Upload a custom sprite for this tile type. If not set, a default visual will be used based on behaviors.
                   </p>
 
@@ -956,20 +956,20 @@ export const TileTypeEditor: React.FC = () => {
                       <img
                         src={editing.customSprite.idleImageData}
                         alt="Tile sprite"
-                        className="w-24 h-24 object-contain bg-gray-600 rounded"
+                        className="w-24 h-24 object-contain bg-stone-600 rounded"
                       />
                       <button
                         onClick={handleSpriteRemove}
-                        className="absolute top-0 right-0 px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                        className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
                       >
                         ✕
                       </button>
                     </div>
                   ) : (
                     <label className="block cursor-pointer">
-                      <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-gray-400 hover:border-gray-400">
+                      <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-gray-400">
                         <span>+ Upload Sprite</span>
-                        <span className="text-xs text-gray-500 mt-1">48x48 recommended</span>
+                        <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
                       </div>
                       <input
                         type="file"
@@ -985,7 +985,7 @@ export const TileTypeEditor: React.FC = () => {
 
                   {/* Hide Behavior Indicators Option */}
                   <div className="mt-4 pt-4 border-t border-gray-700">
-                    <label className="flex items-center text-sm text-gray-300 cursor-pointer">
+                    <label className="flex items-center text-sm text-stone-300 cursor-pointer">
                       <input
                         type="checkbox"
                         checked={editing.hideBehaviorIndicators || false}
@@ -994,7 +994,7 @@ export const TileTypeEditor: React.FC = () => {
                       />
                       Hide behavior indicators
                     </label>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-stone-500 mt-1">
                       Hides the default overlays (purple for teleport, blue for ice, etc.) when the tile has a custom sprite.
                     </p>
                   </div>
@@ -1002,9 +1002,9 @@ export const TileTypeEditor: React.FC = () => {
 
                 {/* Off State Sprite (only shown when cadence is enabled) */}
                 {editing.cadence?.enabled && (
-                  <div className="bg-gray-800 p-4 rounded">
+                  <div className="dungeon-panel p-4 rounded">
                     <h3 className="text-lg font-bold mb-4">Off State Sprite</h3>
-                    <p className="text-sm text-gray-400 mb-4">
+                    <p className="text-sm text-stone-400 mb-4">
                       Sprite shown when tile is in "off" state. If not set, the on state sprite will be used (or greyed out).
                     </p>
 
@@ -1013,20 +1013,20 @@ export const TileTypeEditor: React.FC = () => {
                         <img
                           src={editing.offStateSprite.idleImageData}
                           alt="Off state sprite"
-                          className="w-24 h-24 object-contain bg-gray-600 rounded"
+                          className="w-24 h-24 object-contain bg-stone-600 rounded"
                         />
                         <button
                           onClick={handleOffStateSpriteRemove}
-                          className="absolute top-0 right-0 px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                          className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
                         >
                           ✕
                         </button>
                       </div>
                     ) : (
                       <label className="block cursor-pointer">
-                        <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-gray-400 hover:border-gray-400">
+                        <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-gray-400">
                           <span>+ Upload Off State Sprite</span>
-                          <span className="text-xs text-gray-500 mt-1">48x48 recommended</span>
+                          <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
                         </div>
                         <input
                           type="file"
@@ -1043,15 +1043,15 @@ export const TileTypeEditor: React.FC = () => {
                 )}
               </div>
             ) : (
-              <div className="bg-gray-800 p-8 rounded text-center">
+              <div className="dungeon-panel p-8 rounded text-center">
                 <h2 className="text-2xl font-bold mb-4">Custom Tile Type Editor</h2>
-                <p className="text-gray-400 mb-6">
+                <p className="text-stone-400 mb-6">
                   Create custom tile types with special behaviors like damage zones, teleporters,
                   ice tiles, and pressure plates. Tile types can be placed in the map editor.
                 </p>
                 <button
                   onClick={handleNew}
-                  className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700"
+                  className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
                 >
                   + Create New Tile Type
                 </button>

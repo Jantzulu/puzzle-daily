@@ -200,10 +200,10 @@ export const CharacterEditor: React.FC = () => {
           {/* Character List - Left Sidebar */}
           <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Characters</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Heroes</h2>
               <button
                 onClick={handleNew}
-                className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700"
+                className="dungeon-btn-success text-sm"
               >
                 + New
               </button>
@@ -215,7 +215,7 @@ export const CharacterEditor: React.FC = () => {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              className="dungeon-input text-sm"
             />
 
             {/* Folder Filter */}
@@ -225,10 +225,10 @@ export const CharacterEditor: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto dungeon-scrollbar">
               {filteredCharacters.length === 0 ? (
-                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
-                  {searchTerm ? 'No characters match your search.' : 'No characters yet.'}
+                <div className="dungeon-panel p-4 text-center text-stone-400 text-sm">
+                  {searchTerm ? 'No heroes match your search.' : 'No heroes yet.'}
                   <br />
                   {!searchTerm && 'Click "+ New" to create one.'}
                 </div>
@@ -236,21 +236,21 @@ export const CharacterEditor: React.FC = () => {
                 filteredCharacters.map(char => (
                   <div
                     key={char.id}
-                    className={`p-3 rounded cursor-pointer transition-colors ${
+                    className={`p-3 rounded-pixel cursor-pointer transition-colors ${
                       selectedId === char.id
-                        ? 'bg-blue-600'
-                        : 'bg-gray-800 hover:bg-gray-700'
+                        ? 'bg-copper-700/50 border border-copper-500'
+                        : 'dungeon-panel-dark hover:bg-stone-700/50'
                     }`}
                     onClick={() => handleSelect(char.id)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
-                        <div className="w-10 h-10 bg-gray-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <div className="w-10 h-10 bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0">
                           <SpriteThumbnail sprite={char.customSprite} size={40} />
                         </div>
                         <div>
-                          <h3 className="font-bold">{char.name}</h3>
-                          <p className="text-xs text-gray-400">
+                          <h3 className="font-bold text-parchment-200">{char.name}</h3>
+                          <p className="text-xs text-stone-400">
                             HP: {char.health} • {char.behavior.length} actions
                           </p>
                         </div>
@@ -263,7 +263,7 @@ export const CharacterEditor: React.FC = () => {
                         />
                         <button
                           onClick={(e) => handleDuplicate(char, e)}
-                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          className="px-1.5 py-1 text-xs bg-stone-600 rounded-pixel hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -273,7 +273,7 @@ export const CharacterEditor: React.FC = () => {
                             e.stopPropagation();
                             handleDelete(char.id);
                           }}
-                          className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                          className="px-2 py-1 text-xs bg-blood-700 rounded-pixel hover:bg-blood-600"
                         >
                           ✕
                         </button>
@@ -291,14 +291,14 @@ export const CharacterEditor: React.FC = () => {
               <div className="space-y-6">
                 {/* Header */}
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">
-                    {isCreating ? 'Create New Character' : `Edit: ${editing.name}`}
+                  <h2 className="text-2xl font-bold font-medieval text-copper-400">
+                    {isCreating ? 'Create New Hero' : `Edit: ${editing.name}`}
                   </h2>
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                    className="dungeon-btn-success"
                   >
-                    Save Character
+                    Save Hero
                   </button>
                 </div>
 
@@ -306,7 +306,7 @@ export const CharacterEditor: React.FC = () => {
                   {/* Left Column - Stats */}
                   <div className="space-y-6">
                     {/* Basic Info */}
-                    <div className="bg-gray-800 p-4 rounded space-y-3">
+                    <div className="dungeon-panel p-4 rounded space-y-3">
                       <h3 className="text-lg font-bold">Basic Info</h3>
                       <div>
                         <label className="block text-sm mb-1">Name</label>
@@ -314,19 +314,19 @@ export const CharacterEditor: React.FC = () => {
                           type="text"
                           value={editing.name}
                           onChange={(e) => updateCharacter({ name: e.target.value })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm mb-1">Title <span className="text-gray-400 font-normal">(optional)</span></label>
+                        <label className="block text-sm mb-1">Title <span className="text-stone-400 font-normal">(optional)</span></label>
                         <input
                           type="text"
                           value={editing.title || ''}
                           onChange={(e) => updateCharacter({ title: e.target.value || undefined })}
                           placeholder="e.g., the Brave"
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         />
-                        <p className="text-xs text-gray-400 mt-1">Displayed after name in italics</p>
+                        <p className="text-xs text-stone-400 mt-1">Displayed after name in italics</p>
                       </div>
                       <div>
                         <label className="block text-sm mb-1">Description</label>
@@ -342,7 +342,7 @@ export const CharacterEditor: React.FC = () => {
                         <select
                           value={editing.folderId || ''}
                           onChange={(e) => updateCharacter({ folderId: e.target.value || undefined })}
-                          className="w-full px-3 py-2 bg-gray-700 rounded"
+                          className="w-full px-3 py-2 bg-stone-700 rounded"
                         >
                           <option value="">Uncategorized</option>
                           {getFolders('characters').map(folder => (
@@ -359,7 +359,7 @@ export const CharacterEditor: React.FC = () => {
                             max="99"
                             value={editing.health}
                             onChange={(e) => updateCharacter({ health: parseInt(e.target.value) })}
-                            className="w-full px-3 py-2 bg-gray-700 rounded"
+                            className="w-full px-3 py-2 bg-stone-700 rounded"
                           />
                         </div>
                         <div>
@@ -370,7 +370,7 @@ export const CharacterEditor: React.FC = () => {
                             max="99"
                             value={editing.contactDamage ?? 0}
                             onChange={(e) => updateCharacter({ contactDamage: parseInt(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 bg-gray-700 rounded"
+                            className="w-full px-3 py-2 bg-stone-700 rounded"
                           />
                         </div>
                       </div>
@@ -380,7 +380,7 @@ export const CharacterEditor: React.FC = () => {
                           <select
                             value={editing.defaultFacing}
                             onChange={(e) => updateCharacter({ defaultFacing: e.target.value as Direction })}
-                            className="w-full px-3 py-2 bg-gray-700 rounded"
+                            className="w-full px-3 py-2 bg-stone-700 rounded"
                           >
                             <option value={Direction.NORTH}>North ↑</option>
                             <option value={Direction.NORTHEAST}>NE ↗</option>
@@ -396,7 +396,7 @@ export const CharacterEditor: React.FC = () => {
                     </div>
 
                     {/* Properties */}
-                    <div className="bg-gray-800 p-4 rounded space-y-2">
+                    <div className="dungeon-panel p-4 rounded space-y-2">
                       <h3 className="text-lg font-bold mb-3">Properties</h3>
                       <label className="flex items-center gap-2">
                         <input
@@ -446,7 +446,7 @@ export const CharacterEditor: React.FC = () => {
                     </div>
 
                     {/* Sound Effects */}
-                    <div className="bg-gray-800 p-4 rounded">
+                    <div className="dungeon-panel p-4 rounded">
                       <h3 className="text-lg font-bold mb-3">Sound Effects</h3>
                       <div className="grid grid-cols-2 gap-4">
                         <div>
@@ -459,7 +459,7 @@ export const CharacterEditor: React.FC = () => {
                                 death: e.target.value || undefined,
                               }
                             })}
-                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                           >
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
@@ -479,7 +479,7 @@ export const CharacterEditor: React.FC = () => {
                                 damageTaken: e.target.value || undefined,
                               }
                             })}
-                            className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                           >
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
@@ -493,15 +493,15 @@ export const CharacterEditor: React.FC = () => {
                     </div>
 
                     {/* Death Drop */}
-                    <div className="bg-gray-800 p-4 rounded">
+                    <div className="dungeon-panel p-4 rounded">
                       <h3 className="text-lg font-bold mb-3">Death Drop</h3>
-                      <p className="text-xs text-gray-400 mb-3">
+                      <p className="text-xs text-stone-400 mb-3">
                         Select a collectible to drop when this character dies.
                       </p>
                       <select
                         value={editing.droppedCollectibleId || ''}
                         onChange={(e) => updateCharacter({ droppedCollectibleId: e.target.value || undefined })}
-                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
                       >
                         <option value="">None</option>
                         {getAllCollectibles().map((coll) => (
@@ -513,7 +513,7 @@ export const CharacterEditor: React.FC = () => {
                     </div>
 
                     {/* Tooltip Steps */}
-                    <div className="bg-gray-800 p-4 rounded">
+                    <div className="dungeon-panel p-4 rounded">
                       <div className="flex justify-between items-center mb-3">
                         <h3 className="text-lg font-bold">Tooltip Steps</h3>
                         <button
@@ -521,12 +521,12 @@ export const CharacterEditor: React.FC = () => {
                             const steps = editing.tooltipSteps || [];
                             updateCharacter({ tooltipSteps: [...steps, ''] });
                           }}
-                          className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
+                          className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
                         >
                           + Add Step
                         </button>
                       </div>
-                      <p className="text-xs text-gray-400 mb-3">
+                      <p className="text-xs text-stone-400 mb-3">
                         Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
                       </p>
                       <div className="space-y-2">
@@ -541,7 +541,7 @@ export const CharacterEditor: React.FC = () => {
                                   updateCharacter({ tooltipSteps: newSteps });
                                 }}
                                 disabled={index === 0}
-                                className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
                               >
                                 ↑
                               </button>
@@ -554,12 +554,12 @@ export const CharacterEditor: React.FC = () => {
                                   updateCharacter({ tooltipSteps: newSteps });
                                 }}
                                 disabled={index === (editing.tooltipSteps?.length || 0) - 1}
-                                className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
                               >
                                 ↓
                               </button>
                             </div>
-                            <span className="text-gray-400 text-sm">•</span>
+                            <span className="text-stone-400 text-sm">•</span>
                             <div className="flex-1">
                               <RichTextEditor
                                 value={step}
@@ -576,14 +576,14 @@ export const CharacterEditor: React.FC = () => {
                                 const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
                                 updateCharacter({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
                               }}
-                              className="px-2 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
+                              className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
                             >
                               ✕
                             </button>
                           </div>
                         ))}
                         {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
-                          <div className="text-gray-500 text-sm italic">
+                          <div className="text-stone-500 text-sm italic">
                             No tooltip steps. Click "+ Add Step" to create one.
                           </div>
                         )}
@@ -591,12 +591,12 @@ export const CharacterEditor: React.FC = () => {
                     </div>
 
                     {/* Behavior */}
-                    <div className="bg-gray-800 p-4 rounded">
+                    <div className="dungeon-panel p-4 rounded">
                       <div className="flex justify-between items-center mb-3">
                         <h3 className="text-lg font-bold">Behavior Sequence</h3>
                         <button
                           onClick={addBehaviorAction}
-                          className="px-3 py-1 text-sm bg-blue-600 rounded hover:bg-blue-700"
+                          className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
                         >
                           + Add Action
                         </button>
@@ -617,14 +617,14 @@ export const CharacterEditor: React.FC = () => {
                           />
                         ))}
                       </div>
-                      <p className="text-xs text-gray-400 mt-2">
+                      <p className="text-xs text-stone-400 mt-2">
                         Tip: Add REPEAT at the end to loop the behavior
                       </p>
                     </div>
                   </div>
 
                   {/* Right Column - Sprite */}
-                  <div className="bg-gray-800 p-4 rounded">
+                  <div className="dungeon-panel p-4 rounded">
                     <h3 className="text-lg font-bold mb-4">Sprite</h3>
                     {/* Allow oversized sprites checkbox */}
                     <div className="mb-4">
@@ -637,7 +637,7 @@ export const CharacterEditor: React.FC = () => {
                         />
                         <span className="text-sm">Allow sprite to exceed tile size</span>
                       </label>
-                      <p className="text-xs text-gray-400 mt-1 ml-6">
+                      <p className="text-xs text-stone-400 mt-1 ml-6">
                         Enable to allow sprites larger than 100%
                       </p>
                     </div>
@@ -652,18 +652,18 @@ export const CharacterEditor: React.FC = () => {
                 </div>
               </div>
             ) : (
-              <div className="bg-gray-800 p-8 rounded text-center">
-                <h2 className="text-2xl font-bold mb-4">Character Editor</h2>
-                <p className="text-gray-400 mb-6">
-                  Create and customize characters with unique sprites and behaviors.
+              <div className="dungeon-panel p-8 text-center">
+                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Hero Editor</h2>
+                <p className="text-stone-400 mb-6">
+                  Create and customize heroes with unique sprites and behaviors.
                   <br />
-                  Select a character from the list or create a new one.
+                  Select a hero from the list or create a new one.
                 </p>
                 <button
                   onClick={handleNew}
-                  className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700"
+                  className="dungeon-btn-success text-lg"
                 >
-                  + Create New Character
+                  + Create New Hero
                 </button>
               </div>
             )}
@@ -729,29 +729,29 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
   const spell = action.spellId ? loadSpellAsset(action.spellId) : null;
 
   return (
-    <div className="bg-gray-700 p-3 rounded">
+    <div className="bg-stone-700 p-3 rounded">
       <div className="flex gap-2 items-center mb-2">
         <div className="flex flex-col gap-1">
           <button
             onClick={onMoveUp}
             disabled={index === 0}
-            className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+            className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
           >
             ↑
           </button>
           <button
             onClick={onMoveDown}
             disabled={index === totalActions - 1}
-            className="px-1 py-0.5 text-xs bg-gray-600 rounded hover:bg-gray-500 disabled:opacity-30"
+            className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
           >
             ↓
           </button>
         </div>
-        <span className="text-sm text-gray-400 w-6">{index + 1}.</span>
+        <span className="text-sm text-stone-400 w-6">{index + 1}.</span>
         <select
           value={action.type}
           onChange={(e) => onUpdate({ ...action, type: e.target.value as ActionType })}
-          className="flex-1 px-2 py-1 bg-gray-600 rounded text-sm"
+          className="flex-1 px-2 py-1 bg-stone-600 rounded text-sm"
         >
           {ACTION_TYPES.map(type => (
             <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
@@ -759,7 +759,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
         </select>
         <button
           onClick={onRemove}
-          className="px-2 py-1 text-sm bg-red-600 rounded hover:bg-red-700"
+          className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
         >
           ✕
         </button>
@@ -769,20 +769,20 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
       {action.type.startsWith('move_') && (
         <div className="ml-8 space-y-2">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-400">Tiles:</label>
+            <label className="text-xs text-stone-400">Tiles:</label>
             <input
               type="number"
               min="1"
               max="5"
               value={action.tilesPerMove || 1}
               onChange={(e) => onUpdate({ ...action, tilesPerMove: parseInt(e.target.value) || 1 })}
-              className="w-16 px-2 py-1 bg-gray-600 rounded text-sm"
+              className="w-16 px-2 py-1 bg-stone-600 rounded text-sm"
             />
-            <label className="text-xs text-gray-400">Wall:</label>
+            <label className="text-xs text-stone-400">Wall:</label>
             <select
               value={action.onWallCollision || 'stop'}
               onChange={(e) => onUpdate({ ...action, onWallCollision: e.target.value as any })}
-              className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs"
+              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
             >
               <option value="stop">Stop</option>
               <option value="turn_left">Turn Left</option>
@@ -793,11 +793,11 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
           </div>
           {(action.onWallCollision === 'turn_left' || action.onWallCollision === 'turn_right') && (
             <div className="flex items-center gap-2">
-              <label className="text-xs text-gray-400">Turn degrees:</label>
+              <label className="text-xs text-stone-400">Turn degrees:</label>
               <select
                 value={action.turnDegrees || 90}
                 onChange={(e) => onUpdate({ ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-                className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs"
+                className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
               >
                 <option value={45}>45°</option>
                 <option value={90}>90°</option>
@@ -812,11 +812,11 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
       {(action.type === ActionType.TURN_LEFT || action.type === ActionType.TURN_RIGHT) && (
         <div className="ml-8">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-gray-400">Turn degrees:</label>
+            <label className="text-xs text-stone-400">Turn degrees:</label>
             <select
               value={action.turnDegrees || 90}
               onChange={(e) => onUpdate({ ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-              className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs"
+              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
             >
               <option value={45}>45°</option>
               <option value={90}>90°</option>
@@ -830,17 +830,17 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
       {action.type === ActionType.SPELL && (
         <div className="ml-8 space-y-2">
           {spell ? (
-            <div className="flex items-center gap-2 bg-gray-800 p-2 rounded">
+            <div className="flex items-center gap-2 dungeon-panel p-2 rounded">
               {spell.thumbnailIcon && (
                 <img src={spell.thumbnailIcon} alt={spell.name} className="w-8 h-8 object-contain" />
               )}
               <div className="flex-1">
                 <div className="text-sm font-semibold">{spell.name}</div>
-                <div className="text-xs text-gray-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
+                <div className="text-xs text-stone-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
               </div>
               <button
                 onClick={onSelectSpell}
-                className="px-2 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
+                className="px-2 py-1 text-xs bg-arcane-700 rounded hover:bg-arcane-600"
               >
                 Change
               </button>
@@ -848,7 +848,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
           ) : (
             <button
               onClick={onSelectSpell}
-              className="px-3 py-1 bg-green-600 rounded text-xs hover:bg-green-700"
+              className="px-3 py-1 bg-moss-700 rounded text-xs hover:bg-moss-600"
             >
               Select Spell
             </button>
@@ -857,11 +857,11 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
           {spell && (
             <>
               <div>
-                <label className="text-xs text-gray-400">Execution:</label>
+                <label className="text-xs text-stone-400">Execution:</label>
                 <select
                   value={action.executionMode || 'sequential'}
                   onChange={(e) => onUpdate({ ...action, executionMode: e.target.value as ExecutionMode })}
-                  className="w-full px-2 py-1 bg-gray-600 rounded text-xs mt-1"
+                  className="w-full px-2 py-1 bg-stone-600 rounded text-xs mt-1"
                 >
                   <option value="sequential">Sequential</option>
                   <option value="parallel">Parallel</option>
@@ -870,8 +870,8 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
               </div>
 
               {action.executionMode === 'parallel' && (
-                <div className="bg-gray-800 p-2 rounded space-y-2">
-                  <div className="text-xs font-semibold text-gray-300">Trigger:</div>
+                <div className="dungeon-panel p-2 rounded space-y-2">
+                  <div className="text-xs font-semibold text-stone-300">Trigger:</div>
                   <select
                     value={action.trigger?.mode || 'interval'}
                     onChange={(e) => {
@@ -881,7 +881,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                       };
                       onUpdate({ ...action, trigger: newTrigger });
                     }}
-                    className="w-full px-2 py-1 bg-gray-600 rounded text-xs"
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-xs"
                   >
                     <option value="interval">Interval</option>
                     <option value="on_event">On Event</option>
@@ -897,7 +897,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                         ...action,
                         trigger: { ...action.trigger!, intervalMs: parseInt(e.target.value) || 600 }
                       })}
-                      className="w-full px-2 py-1 bg-gray-600 rounded text-xs"
+                      className="w-full px-2 py-1 bg-stone-600 rounded text-xs"
                       placeholder="Interval (ms)"
                     />
                   )}
@@ -908,7 +908,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                         ...action,
                         trigger: { ...action.trigger!, event: e.target.value as any }
                       })}
-                      className="w-full px-2 py-1 bg-gray-600 rounded text-xs"
+                      className="w-full px-2 py-1 bg-stone-600 rounded text-xs"
                     >
                       <option value="enemy_adjacent">Enemy Adjacent</option>
                       <option value="enemy_in_range">Enemy in Range</option>
@@ -924,7 +924,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
               )}
 
               {/* Auto-targeting */}
-              <div className="bg-gray-800 p-2 rounded space-y-1">
+              <div className="dungeon-panel p-2 rounded space-y-1">
                 <label className="flex items-center gap-2 text-xs">
                   <input
                     type="checkbox"

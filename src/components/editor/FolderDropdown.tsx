@@ -94,23 +94,23 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
       {/* Dropdown button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-3 py-2 bg-gray-700 rounded text-sm flex items-center justify-between hover:bg-gray-600 transition-colors"
+        className="w-full px-3 py-2 bg-stone-700 rounded text-sm flex items-center justify-between hover:bg-stone-600 transition-colors"
       >
         <span className="flex items-center gap-2">
-          <span className="text-gray-400">Folder:</span>
+          <span className="text-stone-400">Folder:</span>
           <span>{getSelectedLabel()}</span>
         </span>
-        <span className="text-gray-400">{isOpen ? '▲' : '▼'}</span>
+        <span className="text-stone-400">{isOpen ? '▲' : '▼'}</span>
       </button>
 
       {/* Dropdown menu */}
       {isOpen && (
-        <div className="absolute z-50 w-full mt-1 bg-gray-800 border border-gray-600 rounded shadow-lg max-h-64 overflow-y-auto">
+        <div className="absolute z-50 w-full mt-1 bg-stone-800 border border-stone-600 rounded shadow-lg max-h-64 overflow-y-auto">
           {/* All option */}
           <button
             onClick={() => { onFolderSelect(null); setIsOpen(false); }}
-            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 ${
-              selectedFolderId === null ? 'bg-blue-600' : ''
+            className={`w-full px-3 py-2 text-left text-sm hover:bg-stone-700 transition-colors flex items-center gap-2 ${
+              selectedFolderId === null ? 'bg-copper-700' : ''
             }`}
           >
             <span>All</span>
@@ -119,22 +119,22 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
           {/* Uncategorized option */}
           <button
             onClick={() => { onFolderSelect(''); setIsOpen(false); }}
-            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors flex items-center gap-2 ${
-              selectedFolderId === '' ? 'bg-blue-600' : ''
+            className={`w-full px-3 py-2 text-left text-sm hover:bg-stone-700 transition-colors flex items-center gap-2 ${
+              selectedFolderId === '' ? 'bg-copper-700' : ''
             }`}
           >
             <span>Uncategorized</span>
           </button>
 
           {/* Divider */}
-          {folders.length > 0 && <div className="border-t border-gray-600 my-1" />}
+          {folders.length > 0 && <div className="border-t border-stone-600 my-1" />}
 
           {/* Folder list */}
           {folders.map(folder => (
             <div
               key={folder.id}
               className={`flex items-center group ${
-                selectedFolderId === folder.id ? 'bg-blue-600' : 'hover:bg-gray-700'
+                selectedFolderId === folder.id ? 'bg-copper-700' : 'hover:bg-stone-700'
               }`}
             >
               {editingFolderId === folder.id ? (
@@ -149,7 +149,7 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
                       if (e.key === 'Escape') { setEditingFolderId(null); setEditingName(''); }
                     }}
                     onBlur={() => handleRenameFolder(folder.id)}
-                    className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
                   />
                 </div>
               ) : (
@@ -163,14 +163,14 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
                   <div className="flex items-center gap-1 px-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={(e) => startEditing(folder, e)}
-                      className="p-1 text-xs text-gray-400 hover:text-white"
+                      className="p-1 text-xs text-stone-400 hover:text-white"
                       title="Rename"
                     >
                       ✏️
                     </button>
                     <button
                       onClick={(e) => handleDeleteFolder(folder.id, e)}
-                      className="p-1 text-xs text-gray-400 hover:text-red-400"
+                      className="p-1 text-xs text-stone-400 hover:text-blood-400"
                       title="Delete"
                     >
                       🗑️
@@ -182,7 +182,7 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
           ))}
 
           {/* Divider */}
-          <div className="border-t border-gray-600 my-1" />
+          <div className="border-t border-stone-600 my-1" />
 
           {/* Create new folder */}
           {isCreating ? (
@@ -197,18 +197,18 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
                   if (e.key === 'Enter') handleCreateFolder();
                   if (e.key === 'Escape') { setIsCreating(false); setNewFolderName(''); }
                 }}
-                className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
               />
               <div className="flex gap-2 mt-2">
                 <button
                   onClick={handleCreateFolder}
-                  className="flex-1 px-2 py-1 bg-green-600 rounded text-xs hover:bg-green-700"
+                  className="flex-1 px-2 py-1 bg-moss-700 rounded text-xs hover:bg-moss-600"
                 >
                   Create
                 </button>
                 <button
                   onClick={() => { setIsCreating(false); setNewFolderName(''); }}
-                  className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500"
+                  className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs hover:bg-stone-500"
                 >
                   Cancel
                 </button>
@@ -217,7 +217,7 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
           ) : (
             <button
               onClick={() => setIsCreating(true)}
-              className="w-full px-3 py-2 text-left text-sm text-green-400 hover:bg-gray-700 transition-colors"
+              className="w-full px-3 py-2 text-left text-sm text-moss-400 hover:bg-stone-700 transition-colors"
             >
               + New Folder
             </button>
@@ -298,8 +298,8 @@ export const InlineFolderPicker: React.FC<InlineFolderPickerProps> = ({
         }}
         className={`p-1.5 rounded text-xs transition-colors ${
           currentFolder
-            ? 'bg-blue-600 hover:bg-blue-700 text-white'
-            : 'bg-gray-600 hover:bg-gray-500 text-gray-300'
+            ? 'bg-copper-700 hover:bg-copper-600 text-white'
+            : 'bg-stone-600 hover:bg-stone-500 text-stone-300'
         }`}
         title={currentFolder ? `Folder: ${currentFolder.name}` : 'Assign to folder'}
       >
@@ -307,26 +307,26 @@ export const InlineFolderPicker: React.FC<InlineFolderPickerProps> = ({
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 z-50 mt-1 w-40 bg-gray-800 border border-gray-600 rounded shadow-lg max-h-48 overflow-y-auto">
+        <div className="absolute right-0 z-50 mt-1 w-40 bg-stone-800 border border-stone-600 rounded shadow-lg max-h-48 overflow-y-auto">
           {/* Uncategorized option */}
           <button
             onClick={(e) => handleSelect(undefined, e)}
-            className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${
-              !currentFolderId ? 'bg-blue-600' : ''
+            className={`w-full px-3 py-2 text-left text-sm hover:bg-stone-700 transition-colors ${
+              !currentFolderId ? 'bg-copper-700' : ''
             }`}
           >
             None
           </button>
 
-          {folders.length > 0 && <div className="border-t border-gray-600" />}
+          {folders.length > 0 && <div className="border-t border-stone-600" />}
 
           {/* Folder list */}
           {folders.map(folder => (
             <button
               key={folder.id}
               onClick={(e) => handleSelect(folder.id, e)}
-              className={`w-full px-3 py-2 text-left text-sm hover:bg-gray-700 transition-colors ${
-                currentFolderId === folder.id ? 'bg-blue-600' : ''
+              className={`w-full px-3 py-2 text-left text-sm hover:bg-stone-700 transition-colors ${
+                currentFolderId === folder.id ? 'bg-copper-700' : ''
               }`}
             >
               📁 {folder.name}
@@ -334,7 +334,7 @@ export const InlineFolderPicker: React.FC<InlineFolderPickerProps> = ({
           ))}
 
           {folders.length === 0 && (
-            <div className="px-3 py-2 text-xs text-gray-400">
+            <div className="px-3 py-2 text-xs text-stone-400">
               No folders yet. Create one from the filter dropdown.
             </div>
           )}

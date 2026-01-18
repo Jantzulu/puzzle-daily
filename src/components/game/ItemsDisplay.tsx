@@ -120,10 +120,10 @@ const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({
   // Fallback - star icon for items without sprite
   return (
     <div
-      className="rounded bg-yellow-700 flex items-center justify-center"
+      className="rounded-pixel bg-parchment-700 flex items-center justify-center"
       style={{ width: size, height: size }}
     >
-      <span className="text-yellow-300">⭐</span>
+      <span className="text-parchment-300">⭐</span>
     </div>
   );
 };
@@ -137,13 +137,13 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
   }
 
   return (
-    <div className="bg-gray-800 p-4 rounded">
+    <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold">Items</h3>
+          <h3 className="text-lg font-bold text-parchment-400">Treasure</h3>
           <HelpButton sectionId="items" />
         </div>
-        <span className="text-sm text-gray-400">
+        <span className="text-sm text-stone-400">
           {itemsWithSources.length} type{itemsWithSources.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -152,7 +152,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
         {itemsWithSources.map(({ collectible, onMap, dropSources }) => (
           <div
             key={collectible.id}
-            className="p-2 bg-gray-700 rounded"
+            className="p-2 bg-stone-800/80 rounded-pixel-md border border-parchment-900/30"
           >
             <div className="flex items-start gap-3">
               {/* Icon */}
@@ -162,13 +162,13 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
 
               {/* Name and effects */}
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium text-gray-200">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium text-parchment-200">
                     {collectible.name}
                   </span>
                   {/* On map indicator */}
                   {onMap && (
-                    <span className="text-xs px-1.5 py-0.5 rounded bg-gray-600 text-gray-300">
+                    <span className="dungeon-badge">
                       On Map
                     </span>
                   )}
@@ -177,14 +177,14 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
                 {/* Description if available */}
                 {collectible.description && (
                   <div
-                    className="text-xs text-gray-400 mt-0.5"
+                    className="text-xs text-stone-400 mt-0.5"
                     dangerouslySetInnerHTML={{ __html: collectible.description }}
                   />
                 )}
                 {/* Show placement restriction info - separate line like SpecialTilesDisplay */}
                 {collectible.preventPlacement && (
-                  <div className="text-xs text-red-400/70 mt-0.5">
-                    Cannot place characters on this tile
+                  <div className="text-xs text-blood-400/70 mt-0.5">
+                    Cannot place heroes on this tile
                   </div>
                 )}
               </div>
@@ -192,16 +192,16 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
 
             {/* Drop sources - who drops this item */}
             {dropSources.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-gray-600">
+              <div className="mt-2 pt-2 border-t border-stone-700">
                 <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-xs text-gray-500 mr-1">Dropped by:</span>
+                  <span className="text-xs text-stone-500 mr-1">Dropped by:</span>
                   {dropSources.map((source) => (
                     <div
                       key={source.id}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${
                         source.isEnemy
-                          ? 'bg-red-900/50 text-red-300'
-                          : 'bg-green-900/50 text-green-300'
+                          ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
+                          : 'bg-copper-900/50 text-copper-300 border border-copper-700'
                       }`}
                       title={source.name}
                     >

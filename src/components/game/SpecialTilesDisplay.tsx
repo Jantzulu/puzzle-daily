@@ -165,13 +165,13 @@ const TileSprite: React.FC<{ info: SpecialTileInfo; size?: number; isOffState?: 
   }
 
   // Fallback: Show colored placeholder based on base type
-  const bgColor = info.tileType.baseType === 'wall' ? 'bg-gray-600' : 'bg-gray-700';
+  const bgColor = info.tileType.baseType === 'wall' ? 'bg-stone-600' : 'bg-stone-700';
   return (
     <div
-      className={`${bgColor} rounded flex items-center justify-center`}
+      className={`${bgColor} rounded-pixel flex items-center justify-center`}
       style={{ width: size, height: size, opacity: isOffState ? 0.6 : 1 }}
     >
-      <span className="text-xs text-gray-400">?</span>
+      <span className="text-xs text-stone-400">?</span>
     </div>
   );
 };
@@ -212,13 +212,13 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   }
 
   return (
-    <div className="bg-gray-800 p-4 rounded">
+    <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold">Special Tiles</h3>
+          <h3 className="text-lg font-bold text-rust-400">Dungeon Tiles</h3>
           <HelpButton sectionId="special_tiles" />
         </div>
-        <span className="text-sm text-gray-400">
+        <span className="text-sm text-stone-400">
           {specialTiles.length} type{specialTiles.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -227,7 +227,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
         {specialTiles.map((info) => (
           <div
             key={info.tileType.id}
-            className="p-2 bg-gray-700 rounded"
+            className="p-2 bg-stone-800/80 rounded-pixel-md border border-rust-900/30"
           >
             <div className="flex items-start gap-3">
               {/* Tile sprite(s) */}
@@ -237,12 +237,12 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                   <div className="flex items-center gap-1">
                     <div className="relative">
                       <TileSprite info={info} size={28} isOffState={false} />
-                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-green-600 text-white px-0.5 rounded">ON</div>
+                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-moss-700 text-white px-0.5 rounded-pixel">ON</div>
                     </div>
-                    <span className="text-gray-500 text-xs">⇄</span>
+                    <span className="text-stone-500 text-xs">⇄</span>
                     <div className="relative">
                       <TileSprite info={info} size={28} isOffState={true} />
-                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-gray-600 text-white px-0.5 rounded">OFF</div>
+                      <div className="absolute -bottom-1 -right-1 text-[8px] bg-stone-600 text-white px-0.5 rounded-pixel">OFF</div>
                     </div>
                   </div>
                 ) : (
@@ -253,31 +253,31 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
 
               {/* Name and description */}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-gray-200 flex items-center gap-2">
+                <div className="text-sm font-medium text-parchment-200 flex items-center gap-2 flex-wrap">
                   {info.tileType.name}
                   {info.hasCadence && (
-                    <span className="text-yellow-400 text-xs" title="Has on/off cadence">⟳</span>
+                    <span className="text-copper-400 text-xs" title="Has on/off cadence">⟳</span>
                   )}
                 </div>
                 {/* Use tile's description if available, otherwise generate from behaviors */}
-                <div className="text-xs text-gray-400">
+                <div className="text-xs text-stone-400">
                   {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}
                 </div>
                 {/* Show wall behavior info */}
                 {info.behavesLikeWall && (
-                  <div className="text-xs text-orange-400/70 mt-0.5">
+                  <div className="text-xs text-rust-400/70 mt-0.5">
                     Blocks movement (behaves like wall)
                   </div>
                 )}
                 {/* Show placement restriction info */}
                 {info.preventPlacement && (
-                  <div className="text-xs text-red-400/70 mt-0.5">
-                    Cannot place characters on this tile
+                  <div className="text-xs text-blood-400/70 mt-0.5">
+                    Cannot place heroes on this tile
                   </div>
                 )}
                 {/* Show cadence info if applicable */}
                 {info.hasCadence && info.cadence && (
-                  <div className="text-xs text-yellow-400/70 mt-0.5">
+                  <div className="text-xs text-copper-400/70 mt-0.5">
                     {getCadenceDescription(info.cadence)}
                   </div>
                 )}

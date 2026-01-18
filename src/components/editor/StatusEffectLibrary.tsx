@@ -9,16 +9,16 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 // Get display color for status effect type
 function getEffectTypeColor(type: StatusEffectType): string {
   switch (type) {
-    case StatusEffectType.POISON: return 'bg-green-600';
+    case StatusEffectType.POISON: return 'bg-moss-700';
     case StatusEffectType.BURN: return 'bg-orange-600';
-    case StatusEffectType.BLEED: return 'bg-red-600';
+    case StatusEffectType.BLEED: return 'bg-blood-700';
     case StatusEffectType.REGEN: return 'bg-emerald-600';
     case StatusEffectType.STUN: return 'bg-yellow-600';
     case StatusEffectType.SLEEP: return 'bg-indigo-600';
-    case StatusEffectType.SLOW: return 'bg-blue-600';
+    case StatusEffectType.SLOW: return 'bg-arcane-700';
     case StatusEffectType.SILENCED: return 'bg-purple-600';
-    case StatusEffectType.DISARMED: return 'bg-gray-600';
-    default: return 'bg-gray-600';
+    case StatusEffectType.DISARMED: return 'bg-stone-600';
+    default: return 'bg-stone-600';
   }
 }
 
@@ -119,10 +119,10 @@ export const StatusEffectLibrary: React.FC = () => {
           {/* Effect List - Left Sidebar */}
           <div className="w-full md:w-72 space-y-4">
             <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold">Status Effects</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Enchantments</h2>
               <button
                 onClick={handleNew}
-                className="px-3 py-1 bg-green-600 rounded text-sm hover:bg-green-700"
+                className="dungeon-btn-success"
               >
                 + New
               </button>
@@ -134,7 +134,7 @@ export const StatusEffectLibrary: React.FC = () => {
               placeholder="Search..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-sm"
+              className="dungeon-input w-full"
             />
 
             {/* Folder Filter */}
@@ -146,7 +146,7 @@ export const StatusEffectLibrary: React.FC = () => {
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredEffects.length === 0 ? (
-                <div className="bg-gray-800 p-4 rounded text-center text-gray-400 text-sm">
+                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No matches' : 'No status effects yet.'}
                   <br />
                   {!searchTerm && 'Click "+ New" to create one.'}
@@ -157,8 +157,8 @@ export const StatusEffectLibrary: React.FC = () => {
                     key={effect.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
                       selectedId === effect.id
-                        ? 'bg-blue-600'
-                        : 'bg-gray-800 hover:bg-gray-700'
+                        ? 'bg-arcane-700'
+                        : 'dungeon-panel hover:bg-stone-700'
                     }`}
                     onClick={() => handleSelect(effect)}
                   >
@@ -178,10 +178,10 @@ export const StatusEffectLibrary: React.FC = () => {
                           <h3 className="font-bold flex items-center gap-1">
                             {effect.name || 'Unnamed'}
                             {effect.isBuiltIn && (
-                              <span className="text-xs bg-gray-600 px-1 rounded">Built-in</span>
+                              <span className="text-xs bg-stone-600 px-1 rounded">Built-in</span>
                             )}
                           </h3>
-                          <p className="text-xs text-gray-400 capitalize">
+                          <p className="text-xs text-stone-400 capitalize">
                             {effect.type.replace('_', ' ')}
                           </p>
                         </div>
@@ -196,7 +196,7 @@ export const StatusEffectLibrary: React.FC = () => {
                         )}
                         <button
                           onClick={(e) => handleDuplicate(effect, e)}
-                          className="px-1.5 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -204,7 +204,7 @@ export const StatusEffectLibrary: React.FC = () => {
                         {!effect.isBuiltIn && (
                           <button
                             onClick={(e) => handleDelete(effect.id, e)}
-                            className="px-1.5 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                            className="px-1.5 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
                             title="Delete"
                           >
                             ✕
@@ -213,7 +213,7 @@ export const StatusEffectLibrary: React.FC = () => {
                       </div>
                     </div>
                     {/* Quick stats */}
-                    <div className="flex gap-2 mt-2 text-xs text-gray-400">
+                    <div className="flex gap-2 mt-2 text-xs text-stone-400">
                       <span>Duration: {effect.defaultDuration}</span>
                       {effect.defaultValue && <span>Value: {effect.defaultValue}</span>}
                       <span className="capitalize">{effect.stackingBehavior}</span>
@@ -233,9 +233,9 @@ export const StatusEffectLibrary: React.FC = () => {
                 onCancel={handleCancel}
               />
             ) : (
-              <div className="bg-gray-800 p-8 rounded text-center">
+              <div className="dungeon-panel p-8 rounded text-center">
                 <h2 className="text-2xl font-bold mb-4">Status Effect Editor</h2>
-                <p className="text-gray-400 mb-6">
+                <p className="text-stone-400 mb-6">
                   Create status effects that can be applied by spells.
                   <br />
                   Effects like poison, stun, sleep, and more can be configured here.
@@ -244,7 +244,7 @@ export const StatusEffectLibrary: React.FC = () => {
                 </p>
                 <button
                   onClick={handleNew}
-                  className="px-6 py-3 bg-green-600 rounded text-lg hover:bg-green-700"
+                  className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
                 >
                   + Create New Status Effect
                 </button>
