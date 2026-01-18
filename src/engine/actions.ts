@@ -1459,6 +1459,7 @@ function spawnProjectile(
     speed,
     active: true,
     startTime: Date.now(),
+    spawnTurn: gameState.currentTurn, // Track spawn turn for same-turn hit detection
     // Homing behavior
     isHoming: !!homingTarget,
     targetEntityId: homingTarget?.targetEntityId,

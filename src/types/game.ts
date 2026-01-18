@@ -550,6 +550,11 @@ export interface GameState {
 
   // Headless mode - when true, projectiles resolve instantly (for solver/validator)
   headlessMode?: boolean;
+
+  // Snapshot of entity positions at start of turn (for same-turn projectile hit detection)
+  // Projectiles spawned this turn can hit entities at their pre-move positions
+  enemyPositionsAtTurnStart?: Array<{ enemyId: string; x: number; y: number; dead: boolean }>;
+  characterPositionsAtTurnStart?: Array<{ characterId: string; x: number; y: number; dead: boolean }>;
 }
 
 export interface PlayerProgress {
@@ -708,6 +713,7 @@ export interface Projectile {
   // State
   active: boolean;
   startTime: number;            // Date.now() when spawned
+  spawnTurn?: number;           // Turn number when projectile was created (for same-turn hit detection)
 
   // Bounce behavior
   bounceOffWalls?: boolean;     // Enable wall bouncing

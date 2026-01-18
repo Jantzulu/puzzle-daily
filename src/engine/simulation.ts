@@ -781,6 +781,21 @@ export function executeTurn(gameState: GameState): GameState {
 
   gameState.currentTurn++;
 
+  // Snapshot entity positions at start of turn (for same-turn projectile hit detection)
+  // This allows projectiles fired this turn to hit entities at their pre-move positions
+  gameState.enemyPositionsAtTurnStart = gameState.puzzle.enemies.map(e => ({
+    enemyId: e.enemyId,
+    x: e.x,
+    y: e.y,
+    dead: e.dead,
+  }));
+  gameState.characterPositionsAtTurnStart = gameState.placedCharacters.map(c => ({
+    characterId: c.characterId,
+    x: c.x,
+    y: c.y,
+    dead: c.dead,
+  }));
+
   // Process turn-start status effects for all entities
   processAllStatusEffectsTurnStart(gameState);
 
@@ -2315,11 +2330,28 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            // Check for enemy hits at current position only
-            const hitEnemy = gameState.puzzle.enemies.find(
+            // Check for enemy hits
+            // For projectiles spawned this turn, also check pre-move positions
+            // This allows same-turn hits (projectile reaches tile before enemy moves away)
+            let hitEnemy: PlacedEnemy | undefined;
+
+            // First check current positions
+            hitEnemy = gameState.puzzle.enemies.find(
               e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                    !hitEntityIds.includes(e.enemyId)
             );
+
+            // If no hit at current position and this is a same-turn projectile, check pre-move positions
+            if (!hitEnemy && proj.spawnTurn === gameState.currentTurn && gameState.enemyPositionsAtTurnStart) {
+              const preMoveEnemy = gameState.enemyPositionsAtTurnStart.find(
+                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+                     !hitEntityIds.includes(e.enemyId)
+              );
+              if (preMoveEnemy) {
+                // Find the actual enemy object to apply damage to
+                hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === preMoveEnemy.enemyId && !e.dead);
+              }
+            }
 
             if (hitEnemy) {
               hitEntityIds.push(hitEnemy.enemyId);
@@ -2361,10 +2393,28 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           } else {
-            const hitChar = gameState.placedCharacters.find(
+            // Check for character hits
+            // For projectiles spawned this turn, also check pre-move positions
+            let hitChar: PlacedCharacter | undefined;
+
+            // First check current positions
+            hitChar = gameState.placedCharacters.find(
               c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
                    !hitEntityIds.includes(c.characterId)
             );
+
+            // If no hit at current position and this is a same-turn projectile, check pre-move positions
+            if (!hitChar && proj.spawnTurn === gameState.currentTurn && gameState.characterPositionsAtTurnStart) {
+              const preMoveChar = gameState.characterPositionsAtTurnStart.find(
+                c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
+                     !hitEntityIds.includes(c.characterId)
+              );
+              if (preMoveChar) {
+                // Find the actual character object to apply damage to
+                hitChar = gameState.placedCharacters.find(c => c.characterId === preMoveChar.characterId && !c.dead);
+              }
+            }
+
             if (hitChar) {
               hitEntityIds.push(hitChar.characterId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
