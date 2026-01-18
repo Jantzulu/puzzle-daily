@@ -67,11 +67,20 @@ export interface ThemeAssets {
   colorAccentDanger?: string;   // Danger/warning actions
   colorAccentMagic?: string;    // Magic/special effects
 
+  // Button colors
+  colorButtonBg?: string;         // Default button background
+  colorButtonBorder?: string;     // Default button border
+  colorButtonPrimaryBg?: string;  // Primary button background
+  colorButtonPrimaryBorder?: string; // Primary button border
+  colorButtonDangerBg?: string;   // Danger button background
+  colorButtonDangerBorder?: string; // Danger button border
+
   // === STYLE SETTINGS ===
   borderRadius?: string;        // Border radius (e.g., "4px", "8px", "0px")
   borderWidth?: string;         // Border width (e.g., "1px", "2px", "3px")
   shadowIntensity?: string;     // Shadow intensity ("none", "light", "medium", "heavy")
-  fontFamily?: string;          // Font family override
+  fontFamily?: string;          // Font family override (applies to body text)
+  fontFamilyHeading?: string;   // Font family for headings/titles
 }
 
 export type ThemeAssetKey = keyof ThemeAssets;
@@ -110,16 +119,23 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorTextHeading: { label: 'Heading Text', description: 'Heading and title color', category: 'colors', inputType: 'color' },
   colorBorderPrimary: { label: 'Primary Border', description: 'Main border color', category: 'colors', inputType: 'color' },
   colorBorderAccent: { label: 'Accent Border', description: 'Focus and highlight border color', category: 'colors', inputType: 'color' },
-  colorAccentPrimary: { label: 'Primary Accent', description: 'Main accent color for buttons and links', category: 'colors', inputType: 'color' },
+  colorAccentPrimary: { label: 'Primary Accent', description: 'Main accent color for links', category: 'colors', inputType: 'color' },
   colorAccentSuccess: { label: 'Success Color', description: 'Positive/success actions color', category: 'colors', inputType: 'color' },
   colorAccentDanger: { label: 'Danger Color', description: 'Warning/danger actions color', category: 'colors', inputType: 'color' },
   colorAccentMagic: { label: 'Magic Color', description: 'Magic/arcane effect color', category: 'colors', inputType: 'color' },
+  colorButtonBg: { label: 'Button Background', description: 'Default button background color', category: 'colors', inputType: 'color' },
+  colorButtonBorder: { label: 'Button Border', description: 'Default button border color', category: 'colors', inputType: 'color' },
+  colorButtonPrimaryBg: { label: 'Primary Button Bg', description: 'Primary/action button background', category: 'colors', inputType: 'color' },
+  colorButtonPrimaryBorder: { label: 'Primary Button Border', description: 'Primary button border color', category: 'colors', inputType: 'color' },
+  colorButtonDangerBg: { label: 'Danger Button Bg', description: 'Danger/warning button background', category: 'colors', inputType: 'color' },
+  colorButtonDangerBorder: { label: 'Danger Button Border', description: 'Danger button border color', category: 'colors', inputType: 'color' },
 
   // Style settings
   borderRadius: { label: 'Border Radius', description: 'Roundness of corners', category: 'styles', inputType: 'select' },
   borderWidth: { label: 'Border Width', description: 'Thickness of borders', category: 'styles', inputType: 'select' },
   shadowIntensity: { label: 'Shadow Intensity', description: 'Strength of drop shadows', category: 'styles', inputType: 'select' },
-  fontFamily: { label: 'Font Style', description: 'Typography style', category: 'styles', inputType: 'select' },
+  fontFamily: { label: 'Body Font', description: 'Font for body text and UI elements', category: 'styles', inputType: 'select' },
+  fontFamilyHeading: { label: 'Heading Font', description: 'Font for titles and headings', category: 'styles', inputType: 'select' },
 };
 
 export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'styles'] as const;
@@ -244,25 +260,44 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.colorAccentDanger) properties['--theme-accent-danger'] = assets.colorAccentDanger;
   if (assets.colorAccentMagic) properties['--theme-accent-magic'] = assets.colorAccentMagic;
 
+  // Button colors
+  if (assets.colorButtonBg) properties['--theme-button-bg'] = assets.colorButtonBg;
+  if (assets.colorButtonBorder) properties['--theme-button-border'] = assets.colorButtonBorder;
+  if (assets.colorButtonPrimaryBg) properties['--theme-button-primary-bg'] = assets.colorButtonPrimaryBg;
+  if (assets.colorButtonPrimaryBorder) properties['--theme-button-primary-border'] = assets.colorButtonPrimaryBorder;
+  if (assets.colorButtonDangerBg) properties['--theme-button-danger-bg'] = assets.colorButtonDangerBg;
+  if (assets.colorButtonDangerBorder) properties['--theme-button-danger-border'] = assets.colorButtonDangerBorder;
+
   // Style settings
   if (assets.borderRadius) properties['--theme-border-radius'] = assets.borderRadius;
   if (assets.borderWidth) properties['--theme-border-width'] = assets.borderWidth;
 
   // Font family - map option values to actual CSS font-family strings
-  if (assets.fontFamily && assets.fontFamily !== 'default') {
-    const fontMap: Record<string, string> = {
-      'medieval': "'Almendra', serif",
-      'pixel': "'Press Start 2P', monospace",
-      'fantasy': "'MedievalSharp', cursive",
-      'handwritten': "'Caveat', cursive",
-      'serif': "'Crimson Text', Georgia, serif",
-      'gothic': "'UnifrakturCook', cursive",
-      'runic': "'Noto Sans Runic', sans-serif",
-      'elegant': "'Cinzel', serif",
-    };
-    if (fontMap[assets.fontFamily]) {
-      properties['--theme-font-family'] = fontMap[assets.fontFamily];
-    }
+  const fontMap: Record<string, string> = {
+    'medieval': "'Almendra', serif",
+    'pixel': "'Press Start 2P', monospace",
+    'fantasy': "'MedievalSharp', cursive",
+    'handwritten': "'Caveat', cursive",
+    'serif': "'Crimson Text', Georgia, serif",
+    'gothic': "'UnifrakturCook', cursive",
+    'runic': "'Noto Sans Runic', sans-serif",
+    'elegant': "'Cinzel', serif",
+    'grenze': "'Grenze Gotisch', serif",
+    'germania': "'Germania One', sans-serif",
+    'jacquard': "'Jacquard 24', serif",
+    'jacquarda': "'Jacquarda Bastarda 9', serif",
+    'amarante': "'Amarante', serif",
+    'faculty': "'Faculty Glyphic', serif",
+  };
+
+  // Body font
+  if (assets.fontFamily && assets.fontFamily !== 'default' && fontMap[assets.fontFamily]) {
+    properties['--theme-font-family'] = fontMap[assets.fontFamily];
+  }
+
+  // Heading font (separate from body)
+  if (assets.fontFamilyHeading && assets.fontFamilyHeading !== 'default' && fontMap[assets.fontFamilyHeading]) {
+    properties['--theme-font-family-heading'] = fontMap[assets.fontFamilyHeading];
   }
 
   return properties;
@@ -289,9 +324,16 @@ const ALL_THEME_CSS_VARS = [
   '--theme-accent-success',
   '--theme-accent-danger',
   '--theme-accent-magic',
+  '--theme-button-bg',
+  '--theme-button-border',
+  '--theme-button-primary-bg',
+  '--theme-button-primary-border',
+  '--theme-button-danger-bg',
+  '--theme-button-danger-border',
   '--theme-border-radius',
   '--theme-border-width',
   '--theme-font-family',
+  '--theme-font-family-heading',
 ];
 
 /**

@@ -3,7 +3,7 @@
 @tailwind utilities;
 
 /* Import Google Fonts for dungeon theme */
-@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Almendra:wght@400;700&family=Inter:wght@400;500;600;700&family=MedievalSharp&family=Caveat:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&family=UnifrakturCook:wght@700&family=Cinzel:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&family=Almendra:wght@400;700&family=Inter:wght@400;500;600;700&family=MedievalSharp&family=Caveat:wght@400;500;600;700&family=Crimson+Text:wght@400;600;700&family=UnifrakturCook:wght@700&family=Cinzel:wght@400;500;600;700&family=Grenze+Gotisch:wght@400;500;600;700&family=Germania+One&family=Jacquard+24&family=Jacquarda+Bastarda+9&family=Amarante&family=Faculty+Glyphic&display=swap');
 
 :root {
   /* Base font settings */
@@ -452,14 +452,25 @@ body {
 }
 
 /* Theme-aware buttons */
+.dungeon-btn {
+  background-color: var(--theme-button-bg, #44403c);
+  border-color: var(--theme-button-border, #57534e);
+  border-radius: var(--theme-border-radius, 3px);
+}
+
+.dungeon-btn:hover {
+  background-color: var(--theme-button-bg, #57534e);
+  filter: brightness(1.1);
+}
+
 .dungeon-btn-primary {
-  background-color: var(--theme-accent-primary, #8c5c37);
-  border-color: var(--theme-border-accent, #c4915c);
+  background-color: var(--theme-button-primary-bg, var(--theme-accent-primary, #8c5c37));
+  border-color: var(--theme-button-primary-border, var(--theme-border-accent, #c4915c));
   border-radius: var(--theme-border-radius, 3px);
 }
 
 .dungeon-btn-primary:hover {
-  background-color: var(--theme-accent-primary, #a97545);
+  background-color: var(--theme-button-primary-bg, var(--theme-accent-primary, #a97545));
   filter: brightness(1.1);
 }
 
@@ -469,8 +480,14 @@ body {
 }
 
 .dungeon-btn-danger {
-  background-color: var(--theme-accent-danger, #841919);
+  background-color: var(--theme-button-danger-bg, var(--theme-accent-danger, #841919));
+  border-color: var(--theme-button-danger-border, #b91c1c);
   border-radius: var(--theme-border-radius, 3px);
+}
+
+.dungeon-btn-danger:hover {
+  background-color: var(--theme-button-danger-bg, var(--theme-accent-danger, #991b1b));
+  filter: brightness(1.1);
 }
 
 .dungeon-btn-arcane {
@@ -512,7 +529,7 @@ body {
   color: var(--theme-text-secondary, #7d6c52);
 }
 
-/* Override font-medieval to use theme font when set */
+/* Override font-medieval to use theme heading font when set */
 .font-medieval {
-  font-family: var(--theme-font-family, 'Almendra', serif);
+  font-family: var(--theme-font-family-heading, var(--theme-font-family, 'Almendra', serif));
 }

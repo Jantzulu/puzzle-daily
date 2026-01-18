@@ -29,6 +29,12 @@ const DEFAULT_COLORS: Partial<ThemeAssets> = {
   colorAccentSuccess: '#556b2f',
   colorAccentDanger: '#c12525',
   colorAccentMagic: '#8a5fc4',
+  colorButtonBg: '#44403c',
+  colorButtonBorder: '#57534e',
+  colorButtonPrimaryBg: '#8c5c37',
+  colorButtonPrimaryBorder: '#c4915c',
+  colorButtonDangerBg: '#841919',
+  colorButtonDangerBorder: '#b91c1c',
 };
 
 // Style options
@@ -63,6 +69,12 @@ const FONT_OPTIONS = [
   { value: 'serif', label: 'Classic Serif (Crimson)' },
   { value: 'gothic', label: 'Gothic (UnifrakturCook)' },
   { value: 'elegant', label: 'Elegant (Cinzel)' },
+  { value: 'grenze', label: 'Grenze Gotisch' },
+  { value: 'germania', label: 'Germania One' },
+  { value: 'jacquard', label: 'Jacquard 24' },
+  { value: 'jacquarda', label: 'Jacquarda Bastarda 9' },
+  { value: 'amarante', label: 'Amarante' },
+  { value: 'faculty', label: 'Faculty Glyphic' },
 ];
 
 interface AssetUploadProps {
@@ -264,6 +276,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       defaultValue = 'medium';
       break;
     case 'fontFamily':
+    case 'fontFamilyHeading':
       options = FONT_OPTIONS;
       defaultValue = 'default';
       break;
@@ -311,7 +324,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
       )}
 
       {/* Preview for font family */}
-      {assetKey === 'fontFamily' && (
+      {(assetKey === 'fontFamily' || assetKey === 'fontFamilyHeading') && (
         <div className="mt-3 space-y-2">
           <p className="text-xs text-stone-500">Preview:</p>
           <div
@@ -327,6 +340,12 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
                   'serif': "'Crimson Text', Georgia, serif",
                   'gothic': "'UnifrakturCook', cursive",
                   'elegant': "'Cinzel', serif",
+                  'grenze': "'Grenze Gotisch', serif",
+                  'germania': "'Germania One', sans-serif",
+                  'jacquard': "'Jacquard 24', serif",
+                  'jacquarda': "'Jacquarda Bastarda 9', serif",
+                  'amarante': "'Amarante', serif",
+                  'faculty': "'Faculty Glyphic', serif",
                 };
                 return fontMap[value || defaultValue] || fontMap['default'];
               })()
