@@ -22,7 +22,7 @@ function Navigation() {
   `;
 
   return (
-    <nav className="bg-stone-850 border-b-2 border-stone-700 px-4 md:px-6 py-3 shadow-dungeon">
+    <nav className="bg-stone-700 border-b-2 border-stone-600 px-4 md:px-6 py-3 shadow-dungeon">
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title - placeholder for custom logo */}
         <div className="flex items-center gap-2 md:mr-4">

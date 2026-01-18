@@ -106,7 +106,7 @@ export default {
       // Dungeon-themed fonts
       fontFamily: {
         pixel: ['"Press Start 2P"', 'cursive'],
-        medieval: ['"MedievalSharp"', 'cursive'],
+        medieval: ['"Almendra"', 'serif'],
         dungeon: ['"Almendra"', 'serif'],
         body: ['Inter', 'system-ui', 'sans-serif'],
       },
