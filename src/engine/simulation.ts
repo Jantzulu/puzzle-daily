@@ -1447,7 +1447,8 @@ export function updateProjectiles(gameState: GameState): void {
 
     // Save previous tile index BEFORE movement calculation updates it
     // This is needed to determine which tiles are "new" for collision detection
-    const prevTileIndex = proj.currentTileIndex ?? 0;
+    // Note: This may be updated after a bounce to reset collision tracking
+    let prevTileIndex = proj.currentTileIndex ?? 0;
 
     // Calculate position based on whether this is a homing projectile or not
     let newX: number;
@@ -1521,9 +1522,13 @@ export function updateProjectiles(gameState: GameState): void {
         const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
 
         if (nextTileIsWall) {
-          // Interpolate only up to the edge of the current tile (50% toward wall)
-          // This prevents visual clipping while still showing movement toward the wall
-          const clampedProgress = Math.min(tileProgress, 0.4);
+          // For bouncing projectiles, allow them to visually move closer to the wall
+          // before bouncing (up to 90% progress). For non-bouncing projectiles,
+          // clamp at 40% to prevent visual clipping.
+          const canBounce = proj.bounceOffWalls &&
+                           (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);
+          const maxProgress = canBounce ? 0.9 : 0.4;
+          const clampedProgress = Math.min(tileProgress, maxProgress);
           newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
           newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
         } else {
@@ -1807,6 +1812,13 @@ export function updateProjectiles(gameState: GameState): void {
         proj.tilePath = computeTilePathWithWallLookahead(bounceX, bounceY, proj.targetX, proj.targetY, gameState);
         proj.currentTileIndex = 0;
         proj.tileEntryTime = now;
+
+        // CRITICAL: Reset prevTileIndex and recalculate collision tracking variables
+        // After bounce, we have a completely new tilePath, so we must reset collision detection
+        // to start fresh from the bounce point (tile index 0)
+        prevTileIndex = 0;
+        tilesAlongPath = proj.tilePath.slice(0, 1); // Just the bounce tile
+        newTiles = proj.tilePath.slice(0, 1); // Only check the bounce tile initially
 
         // Update direction for sprite rendering
         proj.direction = getDirectionFromVector(newDirX, newDirY);
