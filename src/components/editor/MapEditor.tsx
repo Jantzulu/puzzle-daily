@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType, PuzzleScore } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
@@ -10,6 +10,12 @@ import { AnimatedGameBoard, ResponsiveGameBoard } from '../game/AnimatedGameBoar
 import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { EnemyDisplay } from '../game/EnemyDisplay';
+import { StatusEffectsDisplay } from '../game/StatusEffectsDisplay';
+import { SpecialTilesDisplay } from '../game/SpecialTilesDisplay';
+import { ItemsDisplay } from '../game/ItemsDisplay';
+import { HelpButton } from '../game/HelpOverlay';
+import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
+import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, type CustomObject, type CustomCollectible } from '../../utils/assetStorage';
@@ -336,6 +342,9 @@ export const MapEditor: React.FC = () => {
   const [originalPlaytestPuzzle, setOriginalPlaytestPuzzle] = useState<Puzzle | null>(null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [livesRemaining, setLivesRemaining] = useState<number>(3);
+  const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
+  const [playStartCharacters, setPlayStartCharacters] = useState<PlacedCharacter[]>([]);
 
   // Test mode state
   type TestMode = 'none' | 'enemies' | 'characters';
@@ -642,6 +651,21 @@ export const MapEditor: React.FC = () => {
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
+
+          // Handle victory
+          if (newState.gameStatus === 'victory' && originalPlaytestPuzzle) {
+            playGameSound('victory');
+            playVictoryMusic();
+            // Calculate and store score
+            const score = calculateScore(newState, livesRemaining, originalPlaytestPuzzle.lives ?? 3);
+            setPuzzleScore(score);
+          }
+
+          // Handle defeat
+          if (newState.gameStatus === 'defeat') {
+            playGameSound('defeat');
+            playDefeatMusic();
+          }
         }
 
         return newState;
@@ -649,7 +673,7 @@ export const MapEditor: React.FC = () => {
     }, 800);
 
     return () => clearInterval(interval);
-  }, [isSimulating, gameState?.gameStatus, testMode, testTurnsRemaining]);
+  }, [isSimulating, gameState?.gameStatus, testMode, testTurnsRemaining, livesRemaining, originalPlaytestPuzzle]);
 
   // Draw grid
   useEffect(() => {
@@ -1296,6 +1320,9 @@ export const MapEditor: React.FC = () => {
     setGameState(initializeGameState(puzzle));
     setSelectedCharacterId(null);
     setIsSimulating(false);
+    setLivesRemaining(puzzle.lives ?? 3);
+    setPuzzleScore(null);
+    setPlayStartCharacters([]);
   };
 
   const handleBackToEditor = () => {
@@ -1303,6 +1330,7 @@ export const MapEditor: React.FC = () => {
     setGameState(null);
     setOriginalPlaytestPuzzle(null);
     setSelectedCharacterId(null);
+    stopMusic();
     setIsSimulating(false);
   };
 
@@ -1349,21 +1377,52 @@ export const MapEditor: React.FC = () => {
       return;
     }
 
+    // Save snapshot of placed characters for Reset
+    setPlayStartCharacters(JSON.parse(JSON.stringify(gameState.placedCharacters)));
     setGameState((prev) => prev ? ({ ...prev, gameStatus: 'running' }) : null);
     setIsSimulating(true);
+    playGameSound('simulation_start');
   };
 
   const handlePause = () => {
     setIsSimulating(false);
+    playGameSound('simulation_stop');
   };
 
   const handleReset = () => {
     if (!gameState || !originalPlaytestPuzzle) return;
     // Reset using the original puzzle, not the mutated one from gameState
     const resetPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    setGameState(initializeGameState(resetPuzzle));
+    const resetState = initializeGameState(resetPuzzle);
+    // Restore the placed characters from when Play was pressed, resetting their state
+    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
+      const charData = getCharacter(char.characterId);
+      return {
+        ...char,
+        actionIndex: 0,
+        currentHealth: charData ? charData.health : char.currentHealth,
+        dead: false,
+        active: true,
+      };
+    });
+    resetState.gameStatus = playStartCharacters.length > 0 ? 'running' : 'setup';
+    setGameState(resetState);
     setIsSimulating(false);
     setSelectedCharacterId(null);
+    setPuzzleScore(null);
+  };
+
+  const handleWipe = () => {
+    if (!originalPlaytestPuzzle) return;
+    // Wipe: restore enemy positions but remove all characters (go back to setup)
+    const wipedPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
+    const wipedState = initializeGameState(wipedPuzzle);
+    wipedState.placedCharacters = []; // Remove all characters
+    wipedState.gameStatus = 'setup'; // Back to setup mode
+    setGameState(wipedState);
+    setIsSimulating(false);
+    setSelectedCharacterId(null);
+    setPuzzleScore(null);
   };
 
   const handleStep = () => {
@@ -1482,106 +1541,362 @@ export const MapEditor: React.FC = () => {
     : canvasWidth * editorScale;
   const scaledCanvasHeight = canvasHeight * editorScale;
 
+  // Helper to render lives hearts (for playtest mode)
+  const renderLivesHearts = () => {
+    if (!originalPlaytestPuzzle) return null;
+    const puzzleLives = originalPlaytestPuzzle.lives ?? 3;
+    const isUnlimitedLives = puzzleLives === 0;
+
+    if (isUnlimitedLives) {
+      return <span className="text-2xl" title="Unlimited lives">&#x221E;</span>;
+    }
+
+    const hearts = [];
+    for (let i = 0; i < puzzleLives; i++) {
+      const isFilled = i < livesRemaining;
+      hearts.push(
+        <span
+          key={i}
+          className={`text-xl ${isFilled ? 'text-red-500' : 'text-gray-600'}`}
+          title={isFilled ? 'Life remaining' : 'Life lost'}
+        >
+          &#x2665;
+        </span>
+      );
+    }
+    return hearts;
+  };
+
   // Render playtest mode
   if (state.mode === 'playtest' && gameState) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-8">
+      <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
-          <div className="mb-8 flex justify-between items-center">
-            <h1 className="text-4xl font-bold">Playtesting: {state.puzzleName}</h1>
-            <button
-              onClick={handleBackToEditor}
-              className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-            >
-              ← Back to Editor
-            </button>
-          </div>
-
-          <div className="flex flex-col lg:flex-row gap-8">
+          <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
             {/* Game Board */}
             <div className="flex-1 flex flex-col items-center">
+              {/* Play controls bar - above puzzle (setup mode, not test mode) */}
+              {gameState.gameStatus === 'setup' && testMode === 'none' && (
+                <div className="mb-4">
+                  {/* Lives display - centered above the button row */}
+                  <div className="flex items-center justify-center gap-1 mb-2">
+                    {renderLivesHearts()}
+                  </div>
+                  {/* Grid layout: 3 columns with Play button centered, test buttons vertically centered */}
+                  <div className="grid grid-cols-3 gap-2 md:gap-3 items-center">
+                    {/* Left column - Test Characters */}
+                    <div className="flex justify-end">
+                      <button
+                        onClick={handleTestCharacters}
+                        className="px-2 py-1 md:px-3 md:py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-medium transition text-xs md:text-sm"
+                        title="Test your characters without enemies for 5 turns"
+                      >
+                        Test Characters
+                      </button>
+                    </div>
+
+                    {/* Center column - Play button */}
+                    <div className="flex justify-center">
+                      <button
+                        onClick={handlePlay}
+                        className="px-8 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition text-lg md:text-xl shadow-lg"
+                      >
+                        Play
+                      </button>
+                    </div>
+
+                    {/* Right column - Test Enemies */}
+                    <div className="flex justify-start">
+                      <button
+                        onClick={handleTestEnemies}
+                        className="px-2 py-1 md:px-3 md:py-2 bg-red-600 hover:bg-red-700 rounded font-medium transition text-xs md:text-sm"
+                        title="Watch enemies move without characters for 5 turns"
+                      >
+                        Test Enemies
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Turn counter and lives display - during gameplay (not setup, not test mode) */}
+              {gameState.gameStatus !== 'setup' && testMode === 'none' && (
+                <div className="mb-4 flex flex-col items-center">
+                  {/* Lives display */}
+                  <div className="flex items-center justify-center gap-1 mb-2">
+                    {renderLivesHearts()}
+                  </div>
+                  {/* Turn counter */}
+                  <div className="flex items-center gap-3 px-4 py-2 bg-gray-800 rounded-lg border border-gray-600">
+                    <span className="text-gray-400 text-sm font-medium">Turn</span>
+                    <span className="text-2xl font-bold text-yellow-400 min-w-[2ch] text-center">
+                      {gameState.currentTurn}
+                    </span>
+                  </div>
+                </div>
+              )}
+
+              {/* Test mode indicator - above puzzle */}
+              {testMode !== 'none' && (
+                <div className="mb-4 flex flex-col items-center">
+                  {/* Lives display during test mode */}
+                  <div className="flex items-center justify-center gap-1 mb-2">
+                    {renderLivesHearts()}
+                  </div>
+                  {/* Test mode turn counter - blue for characters, red for enemies */}
+                  <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${
+                    testMode === 'enemies'
+                      ? 'bg-red-900 border-red-600'
+                      : 'bg-indigo-900 border-indigo-600'
+                  }`}>
+                    <span className={`text-sm font-medium ${
+                      testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                    }`}>
+                      Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'}
+                    </span>
+                    <span className={`text-2xl font-bold min-w-[2ch] text-center ${
+                      testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                    }`}>
+                      {testTurnsRemaining}
+                    </span>
+                    <span className={`text-sm ${
+                      testMode === 'enemies' ? 'text-red-400' : 'text-indigo-400'
+                    }`}>Turns Left</span>
+                  </div>
+                </div>
+              )}
+
               <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} isEditor={true} />
 
-              {/* Victory/Defeat Message */}
-              {gameState.gameStatus === 'victory' && (
-                <div className="mt-4 p-4 bg-green-700 rounded text-center w-full max-w-md">
-                  <h2 className="text-2xl font-bold">Victory!</h2>
-                  <p className="mt-2">Characters used: {gameState.placedCharacters.length}</p>
+              {/* Victory Message with Score */}
+              {gameState.gameStatus === 'victory' && puzzleScore && (
+                <div className="mt-4 p-4 bg-gradient-to-b from-green-700 to-green-800 rounded-lg text-center w-full max-w-md border border-green-500 shadow-lg">
+                  {/* Trophy and Rank */}
+                  <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
+                  <h2 className="text-xl md:text-2xl font-bold text-green-100">
+                    {getRankName(puzzleScore.rank)}
+                  </h2>
+
+                  {/* Stats for Gold trophy */}
+                  {puzzleScore.rank === 'gold' && (
+                    <p className="text-sm text-green-200 mt-1">
+                      ({puzzleScore.stats.charactersUsed} char{puzzleScore.stats.charactersUsed !== 1 ? 's' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
+                    </p>
+                  )}
+
+                  {/* Total Score */}
+                  <div className="mt-3 text-2xl font-bold text-yellow-300">
+                    {puzzleScore.totalPoints.toLocaleString()} pts
+                  </div>
+
+                  {/* Par Status */}
+                  {originalPlaytestPuzzle && (
+                    <div className="mt-2 flex justify-center gap-4 text-xs">
+                      <span className={puzzleScore.parMet.characters ? 'text-green-300' : 'text-gray-400'}>
+                        {puzzleScore.parMet.characters ? '✓' : '✗'} Char Par ({originalPlaytestPuzzle.parCharacters ?? '-'})
+                      </span>
+                      <span className={puzzleScore.parMet.turns ? 'text-green-300' : 'text-gray-400'}>
+                        {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({originalPlaytestPuzzle.parTurns ?? '-'})
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Point Breakdown - Collapsible */}
+                  <details className="mt-3 text-left text-xs bg-green-900/50 rounded p-2">
+                    <summary className="cursor-pointer text-green-200 font-medium">Point Breakdown</summary>
+                    <div className="mt-2 space-y-1 text-green-100">
+                      <div className="flex justify-between">
+                        <span>Base:</span>
+                        <span>+{puzzleScore.breakdown.basePoints}</span>
+                      </div>
+                      {puzzleScore.breakdown.characterBonus > 0 && (
+                        <div className="flex justify-between">
+                          <span>Character Bonus:</span>
+                          <span>+{puzzleScore.breakdown.characterBonus}</span>
+                        </div>
+                      )}
+                      {puzzleScore.breakdown.turnBonus > 0 && (
+                        <div className="flex justify-between">
+                          <span>Turn Bonus:</span>
+                          <span>+{puzzleScore.breakdown.turnBonus}</span>
+                        </div>
+                      )}
+                      {puzzleScore.breakdown.livesBonus > 0 && (
+                        <div className="flex justify-between">
+                          <span>Lives Bonus:</span>
+                          <span>+{puzzleScore.breakdown.livesBonus}</span>
+                        </div>
+                      )}
+                      {puzzleScore.breakdown.sideQuestPoints > 0 && (
+                        <div className="flex justify-between">
+                          <span>Side Quest Bonus:</span>
+                          <span>+{puzzleScore.breakdown.sideQuestPoints}</span>
+                        </div>
+                      )}
+                    </div>
+                  </details>
+
+                  {/* Completed Side Quests */}
+                  {puzzleScore.completedSideQuests.length > 0 && originalPlaytestPuzzle && (
+                    <div className="mt-2 text-xs text-purple-300">
+                      Side Quests: {puzzleScore.completedSideQuests.map(qid => {
+                        const quest = originalPlaytestPuzzle.sideQuests?.find(q => q.id === qid);
+                        return quest?.title || qid;
+                      }).join(', ')}
+                    </div>
+                  )}
                 </div>
               )}
 
               {gameState.gameStatus === 'defeat' && (
                 <div className="mt-4 p-4 bg-red-700 rounded text-center w-full max-w-md">
-                  <h2 className="text-2xl font-bold">Defeat</h2>
-                  <p className="mt-2">Try again!</p>
+                  <h2 className="text-xl md:text-2xl font-bold">Defeat</h2>
+                  <p className="mt-2 text-sm md:text-base">Try again!</p>
+                </div>
+              )}
+
+              {/* Win Condition Display - below puzzle, above characters */}
+              {gameState.gameStatus === 'setup' && (
+                <div className="mt-4 w-full max-w-md px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                  <div className="flex items-center justify-center gap-2 text-sm">
+                    <HelpButton sectionId="game_general" />
+                    <span className="text-gray-400">Goal:</span>
+                    <span className="text-yellow-300 font-medium">
+                      {gameState.puzzle.winConditions.map((wc) => {
+                        switch (wc.type) {
+                          case 'defeat_all_enemies':
+                            return 'Defeat all enemies';
+                          case 'collect_all':
+                            return 'Collect all items';
+                          case 'reach_goal':
+                            return 'Reach the goal';
+                          case 'survive_turns':
+                            return `Survive ${wc.params?.turns ?? 10} turns`;
+                          case 'win_in_turns':
+                            return `Win within ${wc.params?.turns ?? 10} turns`;
+                          case 'max_characters':
+                            return `Use at most ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''}`;
+                          case 'characters_alive':
+                            return `Keep ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''} alive`;
+                          default:
+                            return wc.type;
+                        }
+                      }).join(' & ')}
+                    </span>
+                    {gameState.puzzle.maxTurns && (
+                      <>
+                        <span className="text-gray-600">|</span>
+                        <span className="text-gray-400">Max Turns:</span>
+                        <span className="text-cyan-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Side Quests Display */}
+                  {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (
+                    <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-gray-700">
+                      <HelpButton sectionId="side_quests" />
+                      <span className="text-purple-400">Side Quests:</span>
+                      <span className="text-purple-300">
+                        {gameState.puzzle.sideQuests.map((q, i) => (
+                          <span key={q.id}>
+                            {i > 0 && ', '}
+                            {q.title} <span className="text-purple-500">(+{q.bonusPoints})</span>
+                          </span>
+                        ))}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
 
               {/* Character Selector - below puzzle */}
               {gameState.gameStatus === 'setup' && (
-                <div className="mt-4 w-full max-w-md">
+                <div className="mt-3 w-full max-w-md">
                   <CharacterSelector
                     availableCharacterIds={gameState.puzzle.availableCharacters}
                     selectedCharacterId={selectedCharacterId}
                     onSelectCharacter={setSelectedCharacterId}
                     placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                    onClearAll={handleWipe}
                   />
                 </div>
               )}
             </div>
 
             {/* Sidebar */}
-            <div className="w-full lg:w-80 space-y-6">
-              {/* Controls */}
-              <Controls
-                gameStatus={gameState.gameStatus}
-                isSimulating={isSimulating}
-                onPlay={handlePlay}
-                onPause={handlePause}
-                onReset={handleReset}
-                onWipe={() => {}}
-                onStep={handleStep}
-                onTestEnemies={handleTestEnemies}
-                onTestCharacters={handleTestCharacters}
-                testMode={testMode}
-                testTurnsRemaining={testTurnsRemaining}
-                showPlayControls={true}
-              />
-
-              {/* Game Status */}
+            <div className="w-full lg:w-80 space-y-4 md:space-y-6">
+              {/* Playtest Controls Panel - exclusive to playtest */}
               <div className="p-4 bg-gray-800 rounded">
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <span className="text-gray-400">Status:</span>
-                    <span className="ml-2 font-bold capitalize">{gameState.gameStatus}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Turn:</span>
-                    <span className="ml-2 font-bold">{gameState.currentTurn}</span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Characters:</span>
-                    <span className="ml-2 font-bold">
-                      {gameState.placedCharacters.length} / {gameState.puzzle.maxCharacters}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-gray-400">Score:</span>
-                    <span className="ml-2 font-bold">{gameState.score}</span>
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-lg font-bold">Playtest Controls</h3>
+                  <button
+                    onClick={handleBackToEditor}
+                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition"
+                  >
+                    ← Back to Editor
+                  </button>
                 </div>
-              </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {/* Resume button - shows when game is running but paused */}
+                  {testMode === 'none' && gameState.gameStatus === 'running' && !isSimulating && (
+                    <button
+                      onClick={handlePlay}
+                      className="col-span-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
+                    >
+                      Resume
+                    </button>
+                  )}
 
-              {/* Puzzle Info */}
-              <div className="p-4 bg-gray-800 rounded">
-                <h3 className="text-lg font-bold mb-2">Puzzle: {gameState.puzzle.name}</h3>
-                <p className="text-sm text-gray-400">
-                  {gameState.puzzle.winConditions.map((wc) => wc.type).join(', ')}
-                </p>
+                  {isSimulating && gameState.gameStatus === 'running' && testMode === 'none' && (
+                    <button
+                      onClick={handlePause}
+                      className="col-span-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded font-semibold transition"
+                    >
+                      Pause
+                    </button>
+                  )}
+
+                  {gameState.gameStatus === 'running' && !isSimulating && testMode === 'none' && (
+                    <button
+                      onClick={handleStep}
+                      className="col-span-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition"
+                    >
+                      Step
+                    </button>
+                  )}
+
+                  {testMode === 'none' && (
+                    <>
+                      <button
+                        onClick={handleReset}
+                        className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+                      >
+                        Reset
+                      </button>
+
+                      <button
+                        onClick={handleWipe}
+                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition"
+                      >
+                        Wipe
+                      </button>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Enemies Display */}
               <EnemyDisplay enemies={gameState.puzzle.enemies} />
+
+              {/* Items Display - only shown if puzzle has items */}
+              <ItemsDisplay puzzle={gameState.puzzle} />
+
+              {/* Status Effects Display - only shown if puzzle has status effects */}
+              <StatusEffectsDisplay puzzle={gameState.puzzle} />
+
+              {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
+              <SpecialTilesDisplay puzzle={gameState.puzzle} />
             </div>
           </div>
         </div>

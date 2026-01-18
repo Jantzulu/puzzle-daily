@@ -33,6 +33,7 @@ import {
   getSpellAssets,
   getStatusEffectAssets,
   getCustomCollectibleTypes,
+  getCustomCollectibles,
   getFolders,
   getHiddenAssets,
   getSoundAssets,
@@ -46,6 +47,7 @@ import {
   saveSpellAsset,
   saveStatusEffectAsset,
   saveCollectibleType,
+  saveCollectible,
   saveFolder,
   saveSoundAsset,
   saveGlobalSoundConfig,
@@ -58,12 +60,14 @@ import {
   deleteSpellAsset,
   deleteStatusEffectAsset,
   deleteCollectibleType,
+  deleteCollectible,
   deleteFolder,
   deleteSoundAsset,
   getPendingAssetDeletions,
   clearPendingAssetDeletions,
   type AssetFolder,
   type CustomCollectibleType,
+  type CustomCollectible,
   type HelpContentStorage,
 } from './assetStorage';
 import type { SoundAsset, GlobalSoundConfig } from '../types/game';
@@ -174,6 +178,13 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     for (const collectible of collectibleTypes) {
       const success = await saveAssetToCloud(collectible.id, 'collectible_type', collectible.name, collectible);
       if (!success) errors.push(`Failed to upload collectible type: ${collectible.name}`);
+    }
+
+    // Push collectible assets (full-featured collectibles)
+    const collectibleAssets = getCustomCollectibles();
+    for (const collectible of collectibleAssets) {
+      const success = await saveAssetToCloud(collectible.id, 'collectible', collectible.name, collectible);
+      if (!success) errors.push(`Failed to upload collectible: ${collectible.name}`);
     }
 
     // Push hidden assets (as a single record containing all hidden IDs)
@@ -419,6 +430,23 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           }
         } catch (e) {
           errors.push(`Failed to import collectible type: ${asset.name}`);
+        }
+      }
+    }
+
+    // Import collectible assets (full-featured collectibles) (or delete if soft-deleted)
+    if (cloudData.collectibles) {
+      for (const asset of cloudData.collectibles) {
+        try {
+          if (asset.deleted_at) {
+            deleteCollectible(asset.id);
+            console.log(`[CloudSync] Deleted collectible locally: ${asset.name}`);
+          } else {
+            const collectible = asset.data as unknown as CustomCollectible;
+            saveCollectible(collectible);
+          }
+        } catch (e) {
+          errors.push(`Failed to import collectible: ${asset.name}`);
         }
       }
     }
