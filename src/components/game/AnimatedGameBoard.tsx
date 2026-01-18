@@ -803,11 +803,18 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
+      // Get device pixel ratio for high-DPI rendering
+      const dpr = window.devicePixelRatio || 1;
+
       // Disable image smoothing for crisp pixel art
       ctx.imageSmoothingEnabled = false;
 
-      // Clear
+      // Clear entire canvas (at full resolution)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      // Scale context for high-DPI rendering
+      ctx.save();
+      ctx.scale(dpr, dpr);
 
       // Load skin for tile sprites
       const skin = gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null;
@@ -1111,6 +1118,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Restore context (undo translate offset)
       ctx.restore();
 
+      // Restore context (undo dpr scaling)
+      ctx.restore();
+
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -1177,8 +1187,15 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
   }
 
+  // Get device pixel ratio for crisp rendering on high-DPI displays (e.g., Retina, mobile)
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+
   const scaledWidth = canvasWidth * scale;
   const scaledHeight = canvasHeight * scale;
+
+  // Canvas resolution accounts for both responsive scale and device pixel ratio
+  const canvasResWidth = Math.round(canvasWidth * dpr);
+  const canvasResHeight = Math.round(canvasHeight * dpr);
 
   return (
     <div
@@ -1190,12 +1207,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     >
       <canvas
         ref={canvasRef}
-        width={canvasWidth}
-        height={canvasHeight}
+        width={canvasResWidth}
+        height={canvasResHeight}
         onClick={handleCanvasClick}
         className="cursor-pointer"
         style={{
-          imageRendering: 'auto',
+          width: canvasWidth,
+          height: canvasHeight,
+          imageRendering: 'pixelated',
           transform: `scale(${scale})`,
           transformOrigin: 'top left'
         }}
