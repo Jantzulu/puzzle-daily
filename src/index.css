@@ -548,3 +548,8 @@ html body.theme-font-active,
 .font-medieval {
   font-family: var(--theme-font-family-heading, var(--theme-font-family, 'Almendra', serif));
 }
+
+/* Theme-aware navigation link buttons (header nav) */
+.nav-link-btn {
+  border-radius: var(--theme-border-radius, 3px) !important;
+}

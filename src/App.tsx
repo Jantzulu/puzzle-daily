@@ -25,8 +25,8 @@ function Navigation() {
   const isActive = (path: string) => location.pathname === path;
 
   const linkClass = (path: string) => `
-    px-3 md:px-4 py-2 rounded-pixel-md transition-all duration-200 font-medium text-sm md:text-base
-    border-2
+    px-3 md:px-4 py-2 transition-all duration-200 font-medium text-sm md:text-base
+    border-2 nav-link-btn
     ${isActive(path)
       ? 'bg-copper-700 text-parchment-100 border-copper-500 shadow-inner-dark'
       : 'bg-stone-700 text-parchment-300 border-stone-500 hover:bg-stone-600 hover:text-parchment-100 hover:border-copper-600'}
