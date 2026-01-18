@@ -73,9 +73,9 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({ onSyncComplete }
   const isLoading = syncStatus === 'syncing';
 
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
+    <div className="bg-stone-800 rounded-lg p-4 border border-stone-700">
       <div className="flex items-center justify-between mb-3">
-        <h3 className="text-white font-semibold flex items-center gap-2">
+        <h3 className="text-parchment-100 font-semibold flex items-center gap-2">
           <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
@@ -85,7 +85,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({ onSyncComplete }
           syncStatus === 'syncing' ? 'bg-blue-600 text-blue-100' :
           syncStatus === 'success' ? 'bg-green-600 text-green-100' :
           syncStatus === 'error' ? 'bg-red-600 text-red-100' :
-          'bg-gray-600 text-gray-300'
+          'bg-stone-600 text-parchment-300'
         }`}>
           {syncStatus === 'syncing' ? 'Syncing...' :
            syncStatus === 'success' ? 'Synced' :
@@ -93,7 +93,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({ onSyncComplete }
         </span>
       </div>
 
-      <p className="text-gray-400 text-sm mb-3">
+      <p className="text-stone-400 text-sm mb-3">
         Last sync: {formatLastSync(lastSync)}
       </p>
 
@@ -103,8 +103,8 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({ onSyncComplete }
           disabled={isLoading}
           className={`flex-1 px-3 py-2 rounded text-sm font-medium flex items-center justify-center gap-2 ${
             isLoading
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
-              : 'bg-blue-600 hover:bg-blue-700 text-white'
+              ? 'bg-stone-600 text-stone-400 cursor-not-allowed'
+              : 'bg-blue-600 hover:bg-blue-700 text-parchment-100'
           }`}
         >
           {isLoading ? (
@@ -125,10 +125,10 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({ onSyncComplete }
           disabled={isLoading}
           className={`flex-1 px-3 py-2 rounded text-sm font-medium flex items-center justify-center gap-2 ${
             isLoading
-              ? 'bg-gray-600 text-gray-400 cursor-not-allowed'
+              ? 'bg-stone-600 text-stone-400 cursor-not-allowed'
               : confirmPull
-              ? 'bg-yellow-600 hover:bg-yellow-700 text-white'
-              : 'bg-green-600 hover:bg-green-700 text-white'
+              ? 'bg-yellow-600 hover:bg-yellow-700 text-parchment-100'
+              : 'bg-green-600 hover:bg-green-700 text-parchment-100'
           }`}
         >
           {isLoading ? (
@@ -150,7 +150,7 @@ export const CloudSyncPanel: React.FC<CloudSyncPanelProps> = ({ onSyncComplete }
           Warning: This will overwrite local data with cloud data. Click again to confirm.
           <button
             onClick={() => setConfirmPull(false)}
-            className="ml-2 text-gray-400 hover:text-white underline"
+            className="ml-2 text-stone-400 hover:text-parchment-100 underline"
           >
             Cancel
           </button>

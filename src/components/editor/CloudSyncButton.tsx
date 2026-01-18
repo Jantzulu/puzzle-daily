@@ -85,13 +85,13 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
 
   const statusColor = syncStatus === 'syncing' ? 'text-blue-400' :
                       syncStatus === 'success' ? 'text-green-400' :
-                      syncStatus === 'error' ? 'text-red-400' : 'text-gray-400';
+                      syncStatus === 'error' ? 'text-red-400' : 'text-stone-400';
 
   return (
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className={`flex items-center gap-2 px-3 py-2 rounded transition-colors bg-gray-700 hover:bg-gray-600 ${statusColor}`}
+        className={`flex items-center gap-2 px-3 py-2 rounded transition-colors bg-stone-700 hover:bg-stone-600 ${statusColor}`}
         title={`Cloud Sync - ${formatLastSync(lastSync)}`}
       >
         {isLoading ? (
@@ -104,29 +104,29 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 15a4 4 0 004 4h9a5 5 0 10-.1-9.999 5.002 5.002 0 10-9.78 2.096A4.001 4.001 0 003 15z" />
           </svg>
         )}
-        <span className="text-sm text-gray-300">Cloud</span>
-        <svg className={`w-3 h-3 text-gray-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <span className="text-sm text-parchment-300">Cloud</span>
+        <svg className={`w-3 h-3 text-stone-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {showDropdown && (
-        <div className="fixed left-1/2 -translate-x-1/2 top-16 sm:absolute sm:left-auto sm:translate-x-0 sm:right-0 sm:top-full sm:mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
-          <div className="p-3 border-b border-gray-700">
+        <div className="fixed left-1/2 -translate-x-1/2 top-16 sm:absolute sm:left-auto sm:translate-x-0 sm:right-0 sm:top-full sm:mt-2 w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-50">
+          <div className="p-3 border-b border-stone-700">
             <div className="flex items-center justify-between">
-              <span className="text-white font-medium">Cloud Sync</span>
+              <span className="text-parchment-100 font-medium">Cloud Sync</span>
               <span className={`text-xs px-2 py-0.5 rounded ${
                 syncStatus === 'syncing' ? 'bg-blue-600/30 text-blue-300' :
                 syncStatus === 'success' ? 'bg-green-600/30 text-green-300' :
                 syncStatus === 'error' ? 'bg-red-600/30 text-red-300' :
-                'bg-gray-600/30 text-gray-400'
+                'bg-stone-600/30 text-stone-400'
               }`}>
                 {syncStatus === 'syncing' ? 'Syncing...' :
                  syncStatus === 'success' ? 'Synced' :
                  syncStatus === 'error' ? 'Error' : 'Ready'}
               </span>
             </div>
-            <p className="text-gray-400 text-xs mt-1">
+            <p className="text-stone-400 text-xs mt-1">
               Last sync: {formatLastSync(lastSync)}
             </p>
           </div>
@@ -137,8 +137,8 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
               disabled={isLoading}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left ${
                 isLoading
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+                  ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                  : 'bg-stone-700 hover:bg-stone-600 text-parchment-100'
               }`}
             >
               <svg className="w-4 h-4 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -152,10 +152,10 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
               disabled={isLoading}
               className={`w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left ${
                 isLoading
-                  ? 'bg-gray-700 text-gray-500 cursor-not-allowed'
+                  ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
                   : confirmPull
                   ? 'bg-yellow-600/20 hover:bg-yellow-600/30 text-yellow-300'
-                  : 'bg-gray-700 hover:bg-gray-600 text-white'
+                  : 'bg-stone-700 hover:bg-stone-600 text-parchment-100'
               }`}
             >
               <svg className="w-4 h-4 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -174,7 +174,7 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
           )}
 
           {errors.length > 0 && (
-            <div className="p-2 border-t border-gray-700">
+            <div className="p-2 border-t border-stone-700">
               <p className="text-red-400 text-xs font-medium mb-1">Errors:</p>
               <ul className="text-red-300 text-xs space-y-0.5 max-h-20 overflow-auto">
                 {errors.slice(0, 3).map((err, i) => (

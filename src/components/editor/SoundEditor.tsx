@@ -214,7 +214,7 @@ export const SoundEditor: React.FC = () => {
             onClick={() => setActiveTab('library')}
             className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
               activeTab === 'library'
-                ? 'bg-arcane-700 text-white'
+                ? 'bg-arcane-700 text-parchment-100'
                 : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
             }`}
           >
@@ -224,7 +224,7 @@ export const SoundEditor: React.FC = () => {
             onClick={() => setActiveTab('global')}
             className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
               activeTab === 'global'
-                ? 'bg-arcane-700 text-white'
+                ? 'bg-arcane-700 text-parchment-100'
                 : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
             }`}
           >
@@ -287,7 +287,7 @@ export const SoundEditor: React.FC = () => {
                         </svg>
                       </div>
                       <div>
-                        <p className="text-white text-sm font-medium">{sound.name}</p>
+                        <p className="text-parchment-100 text-sm font-medium">{sound.name}</p>
                         <p className="text-stone-400 text-xs">{formatDuration(sound.duration)}</p>
                       </div>
                     </div>
@@ -312,14 +312,14 @@ export const SoundEditor: React.FC = () => {
 
         {activeTab === 'global' && (
           <div className="space-y-4 max-h-[500px] overflow-y-auto">
-            <h3 className="text-white font-medium">Global Sound Configuration</h3>
+            <h3 className="text-parchment-100 font-medium">Global Sound Configuration</h3>
             <p className="text-stone-400 text-xs">
               Assign sounds to game events. These are the default sounds used when no entity-specific sound is configured.
             </p>
 
             {GLOBAL_SOUND_TRIGGERS.map((group) => (
               <div key={group.group} className="space-y-2">
-                <h4 className="text-stone-300 text-sm font-medium border-b border-gray-700 pb-1">
+                <h4 className="text-stone-300 text-sm font-medium border-b border-stone-700 pb-1">
                   {group.group}
                 </h4>
                 {group.items.map((item) => (
@@ -328,7 +328,7 @@ export const SoundEditor: React.FC = () => {
                     <select
                       value={globalConfig[item.key as keyof GlobalSoundConfig] || ''}
                       onChange={(e) => handleGlobalConfigChange(item.key, e.target.value || undefined)}
-                      className="flex-1 max-w-[140px] px-2 py-1 bg-stone-700 rounded text-white text-xs"
+                      className="flex-1 max-w-[140px] px-2 py-1 bg-stone-700 rounded text-parchment-100 text-xs"
                     >
                       <option value="">None</option>
                       {sounds.map((sound) => (
@@ -354,7 +354,7 @@ export const SoundEditor: React.FC = () => {
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-white">
+              <h2 className="text-lg font-bold text-parchment-100">
                 {isCreating ? 'New Sound' : 'Edit Sound'}
               </h2>
               <div className="flex gap-2">
@@ -384,7 +384,7 @@ export const SoundEditor: React.FC = () => {
                 type="text"
                 value={editing.name}
                 onChange={(e) => setEditing({ ...editing, name: e.target.value })}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               />
             </div>
 
@@ -394,7 +394,7 @@ export const SoundEditor: React.FC = () => {
               <textarea
                 value={editing.description || ''}
                 onChange={(e) => setEditing({ ...editing, description: e.target.value })}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-white text-sm"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm"
                 rows={2}
               />
             </div>

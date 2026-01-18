@@ -130,12 +130,12 @@ const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> =
       {children}
       {show && (
         <div
-          className="fixed z-[9999] w-48 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          className="fixed z-[9999] w-48 p-2 bg-stone-900 border border-stone-600 rounded shadow-lg text-xs pointer-events-none"
           style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
         >
-          <div className="font-bold text-white mb-1">{spell.name}</div>
-          <div className="text-gray-400 mb-1">{spell.description}</div>
-          <div className="text-gray-300">
+          <div className="font-bold text-parchment-100 mb-1">{spell.name}</div>
+          <div className="text-stone-400 mb-1">{spell.description}</div>
+          <div className="text-parchment-300">
             {spell.damage && <div>Damage: {spell.damage}</div>}
             {spell.healing && <div>Healing: {spell.healing}</div>}
             {spell.range && <div>Range: {spell.range}</div>}
@@ -186,12 +186,12 @@ const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children
       {children}
       {show && (
         <div
-          className="fixed z-[9999] w-44 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          className="fixed z-[9999] w-44 p-2 bg-stone-900 border border-stone-600 rounded shadow-lg text-xs pointer-events-none"
           style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
         >
-          <div className="font-bold text-white mb-1">Action Sequence</div>
+          <div className="font-bold text-parchment-100 mb-1">Action Sequence</div>
           {sequence.map((action, i) => (
-            <div key={i} className="text-gray-300">{action}</div>
+            <div key={i} className="text-parchment-300">{action}</div>
           ))}
         </div>
       )}
@@ -221,21 +221,21 @@ const ObjectTooltip: React.FC<{ object: CustomObject; children: React.ReactNode 
       {children}
       {show && (
         <div
-          className="fixed z-[9999] w-52 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          className="fixed z-[9999] w-52 p-2 bg-stone-900 border border-stone-600 rounded shadow-lg text-xs pointer-events-none"
           style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
         >
-          <div className="font-bold text-white mb-1">{object.name}</div>
+          <div className="font-bold text-parchment-100 mb-1">{object.name}</div>
           {object.description && (
-            <div className="text-gray-400 mb-1">{object.description}</div>
+            <div className="text-stone-400 mb-1">{object.description}</div>
           )}
-          <div className="text-gray-300 space-y-0.5">
+          <div className="text-parchment-300 space-y-0.5">
             <div>Collision: <span className="capitalize">{object.collisionType.replace('_', ' ')}</span></div>
             <div>Anchor: <span className="capitalize">{object.anchorPoint.replace('_', ' ')}</span></div>
             {object.effects.length > 0 && (
-              <div className="mt-1 pt-1 border-t border-gray-700">
+              <div className="mt-1 pt-1 border-t border-stone-700">
                 <div className="font-semibold mb-0.5">Effects:</div>
                 {object.effects.map((effect, i) => (
-                  <div key={i} className="text-gray-400">
+                  <div key={i} className="text-stone-400">
                     • {effect.type.charAt(0).toUpperCase() + effect.type.slice(1)}
                     {effect.value ? ` (${effect.value})` : ''} - r{effect.radius}
                     {effect.affectsCharacters && effect.affectsEnemies ? ' [All]' :
@@ -1557,7 +1557,7 @@ export const MapEditor: React.FC = () => {
       hearts.push(
         <span
           key={i}
-          className={`text-xl ${isFilled ? 'text-red-500' : 'text-gray-600'}`}
+          className={`text-xl ${isFilled ? 'text-blood-500' : 'text-stone-600'}`}
           title={isFilled ? 'Life remaining' : 'Life lost'}
         >
           &#x2665;
@@ -1570,7 +1570,7 @@ export const MapEditor: React.FC = () => {
   // Render playtest mode
   if (state.mode === 'playtest' && gameState) {
     return (
-      <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+      <div className="min-h-screen bg-stone-900 text-parchment-100 p-4 md:p-8">
         <div className="max-w-6xl mx-auto">
           <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
             {/* Game Board */}
@@ -1588,7 +1588,7 @@ export const MapEditor: React.FC = () => {
                     <div className="flex justify-end">
                       <button
                         onClick={handleTestCharacters}
-                        className="px-2 py-1 md:px-3 md:py-2 bg-indigo-600 hover:bg-indigo-700 rounded font-medium transition text-xs md:text-sm"
+                        className="px-2 py-1 md:px-3 md:py-2 bg-arcane-700 hover:bg-arcane-800 rounded font-medium transition text-xs md:text-sm"
                         title="Test your characters without enemies for 5 turns"
                       >
                         Test Characters
@@ -1599,7 +1599,7 @@ export const MapEditor: React.FC = () => {
                     <div className="flex justify-center">
                       <button
                         onClick={handlePlay}
-                        className="px-8 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-bold transition text-lg md:text-xl shadow-lg"
+                        className="px-8 py-3 bg-moss-600 hover:bg-moss-700 rounded-lg font-bold transition text-lg md:text-xl shadow-lg"
                       >
                         Play
                       </button>
@@ -1609,7 +1609,7 @@ export const MapEditor: React.FC = () => {
                     <div className="flex justify-start">
                       <button
                         onClick={handleTestEnemies}
-                        className="px-2 py-1 md:px-3 md:py-2 bg-red-600 hover:bg-red-700 rounded font-medium transition text-xs md:text-sm"
+                        className="px-2 py-1 md:px-3 md:py-2 bg-blood-600 hover:bg-blood-700 rounded font-medium transition text-xs md:text-sm"
                         title="Watch enemies move without characters for 5 turns"
                       >
                         Test Enemies
@@ -1627,8 +1627,8 @@ export const MapEditor: React.FC = () => {
                     {renderLivesHearts()}
                   </div>
                   {/* Turn counter */}
-                  <div className="flex items-center gap-3 px-4 py-2 bg-gray-800 rounded-lg border border-gray-600">
-                    <span className="text-gray-400 text-sm font-medium">Turn</span>
+                  <div className="flex items-center gap-3 px-4 py-2 bg-stone-800 rounded-lg border border-stone-600">
+                    <span className="text-stone-400 text-sm font-medium">Turn</span>
                     <span className="text-2xl font-bold text-yellow-400 min-w-[2ch] text-center">
                       {gameState.currentTurn}
                     </span>
@@ -1692,10 +1692,10 @@ export const MapEditor: React.FC = () => {
                   {/* Par Status */}
                   {originalPlaytestPuzzle && (
                     <div className="mt-2 flex justify-center gap-4 text-xs">
-                      <span className={puzzleScore.parMet.characters ? 'text-green-300' : 'text-gray-400'}>
+                      <span className={puzzleScore.parMet.characters ? 'text-green-300' : 'text-stone-400'}>
                         {puzzleScore.parMet.characters ? '✓' : '✗'} Char Par ({originalPlaytestPuzzle.parCharacters ?? '-'})
                       </span>
-                      <span className={puzzleScore.parMet.turns ? 'text-green-300' : 'text-gray-400'}>
+                      <span className={puzzleScore.parMet.turns ? 'text-green-300' : 'text-stone-400'}>
                         {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({originalPlaytestPuzzle.parTurns ?? '-'})
                       </span>
                     </div>
@@ -1757,10 +1757,10 @@ export const MapEditor: React.FC = () => {
 
               {/* Win Condition Display - below puzzle, above characters */}
               {gameState.gameStatus === 'setup' && (
-                <div className="mt-4 w-full max-w-md px-4 py-2 bg-gray-800/50 rounded-lg border border-gray-700">
+                <div className="mt-4 w-full max-w-md px-4 py-2 bg-stone-800/50 rounded-lg border border-stone-700">
                   <div className="flex items-center justify-center gap-2 text-sm">
                     <HelpButton sectionId="game_general" />
-                    <span className="text-gray-400">Goal:</span>
+                    <span className="text-stone-400">Goal:</span>
                     <span className="text-yellow-300 font-medium">
                       {gameState.puzzle.winConditions.map((wc) => {
                         switch (wc.type) {
@@ -1785,8 +1785,8 @@ export const MapEditor: React.FC = () => {
                     </span>
                     {gameState.puzzle.maxTurns && (
                       <>
-                        <span className="text-gray-600">|</span>
-                        <span className="text-gray-400">Max Turns:</span>
+                        <span className="text-stone-600">|</span>
+                        <span className="text-stone-400">Max Turns:</span>
                         <span className="text-cyan-300 font-medium">{gameState.puzzle.maxTurns}</span>
                       </>
                     )}
@@ -1794,7 +1794,7 @@ export const MapEditor: React.FC = () => {
 
                   {/* Side Quests Display */}
                   {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (
-                    <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-gray-700">
+                    <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-stone-700">
                       <HelpButton sectionId="side_quests" />
                       <span className="text-purple-400">Side Quests:</span>
                       <span className="text-purple-300">
@@ -1827,7 +1827,7 @@ export const MapEditor: React.FC = () => {
             {/* Sidebar */}
             <div className="w-full lg:w-80 space-y-4 md:space-y-6">
               {/* Playtest Controls Panel - exclusive to playtest */}
-              <div className="p-4 bg-gray-800 rounded">
+              <div className="p-4 bg-stone-800 rounded">
                 <div className="flex items-center justify-between mb-3">
                   <h3 className="text-lg font-bold">Playtest Controls</h3>
                   <button
@@ -1842,7 +1842,7 @@ export const MapEditor: React.FC = () => {
                   {testMode === 'none' && gameState.gameStatus === 'running' && !isSimulating && (
                     <button
                       onClick={handlePlay}
-                      className="col-span-2 px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-semibold transition"
+                      className="col-span-2 px-4 py-2 bg-moss-600 hover:bg-moss-700 rounded font-semibold transition"
                     >
                       Resume
                     </button>
@@ -1870,7 +1870,7 @@ export const MapEditor: React.FC = () => {
                     <>
                       <button
                         onClick={handleReset}
-                        className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-semibold transition"
+                        className="px-4 py-2 bg-blood-600 hover:bg-blood-700 rounded font-semibold transition"
                       >
                         Reset
                       </button>
@@ -1906,7 +1906,7 @@ export const MapEditor: React.FC = () => {
 
   // Render edit mode
   return (
-    <div className="min-h-screen bg-gray-900 text-white p-4 md:p-8">
+    <div className="min-h-screen bg-stone-900 text-parchment-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header - stacks on mobile */}
         <div className="mb-4 md:mb-6 space-y-3 md:space-y-0 md:flex md:items-center md:gap-4">
@@ -1914,7 +1914,7 @@ export const MapEditor: React.FC = () => {
             <h1 className="text-2xl md:text-4xl font-bold">Map Editor</h1>
             <button
               onClick={handlePlaytest}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-purple-600 rounded hover:bg-purple-700 font-bold text-sm md:text-base"
+              className="px-3 py-1.5 md:px-4 md:py-2 bg-arcane-600 rounded hover:bg-arcane-700 font-bold text-sm md:text-base"
             >
               ▶ Play
             </button>
@@ -1923,15 +1923,15 @@ export const MapEditor: React.FC = () => {
           {/* Grid Size and Undo/Redo - row on mobile */}
           <div className="flex items-center gap-2 md:gap-4 flex-wrap">
             {/* Grid Size */}
-            <div className="flex items-center gap-2 md:gap-3 bg-gray-800 px-3 py-1.5 md:px-4 md:py-2 rounded">
-              <span className="text-xs md:text-sm font-medium text-gray-300">Grid:</span>
+            <div className="flex items-center gap-2 md:gap-3 bg-stone-800 px-3 py-1.5 md:px-4 md:py-2 rounded">
+              <span className="text-xs md:text-sm font-medium text-parchment-300">Grid:</span>
               <div className="flex items-center gap-1">
-                <label className="text-xs text-gray-400">W</label>
+                <label className="text-xs text-stone-400">W</label>
                 <div className="flex items-center">
                   <button
                     onClick={() => handleResize(state.gridWidth - 1, state.gridHeight)}
                     disabled={state.gridWidth <= 3}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
                   >
                     −
                   </button>
@@ -1954,24 +1954,24 @@ export const MapEditor: React.FC = () => {
                         (e.target as HTMLInputElement).blur();
                       }
                     }}
-                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600"
+                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
                   />
                   <button
                     onClick={() => handleResize(state.gridWidth + 1, state.gridHeight)}
                     disabled={state.gridWidth >= 20}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
                   >
                     +
                   </button>
                 </div>
               </div>
               <div className="flex items-center gap-1">
-                <label className="text-xs text-gray-400">H</label>
+                <label className="text-xs text-stone-400">H</label>
                 <div className="flex items-center">
                   <button
                     onClick={() => handleResize(state.gridWidth, state.gridHeight - 1)}
                     disabled={state.gridHeight <= 3}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
                   >
                     −
                   </button>
@@ -1994,12 +1994,12 @@ export const MapEditor: React.FC = () => {
                         (e.target as HTMLInputElement).blur();
                       }
                     }}
-                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-gray-700 text-sm text-center border-x border-gray-600"
+                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
                   />
                   <button
                     onClick={() => handleResize(state.gridWidth, state.gridHeight + 1)}
                     disabled={state.gridHeight >= 20}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-gray-700 hover:bg-gray-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
                   >
                     +
                   </button>
@@ -2007,14 +2007,14 @@ export const MapEditor: React.FC = () => {
               </div>
             </div>
             {/* Undo/Redo buttons */}
-            <div className="flex items-center gap-1 bg-gray-800 px-2 py-1 rounded">
+            <div className="flex items-center gap-1 bg-stone-800 px-2 py-1 rounded">
               <button
                 onClick={handleUndo}
                 disabled={!canUndo}
                 className={`px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${
                   canUndo
-                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100'
+                    : 'bg-stone-800 text-stone-500 cursor-not-allowed'
                 }`}
                 title="Undo (Ctrl+Z)"
               >
@@ -2025,8 +2025,8 @@ export const MapEditor: React.FC = () => {
                 disabled={!canRedo}
                 className={`px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${
                   canRedo
-                    ? 'bg-gray-700 hover:bg-gray-600 text-white'
-                    : 'bg-gray-800 text-gray-500 cursor-not-allowed'
+                    ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100'
+                    : 'bg-stone-800 text-stone-500 cursor-not-allowed'
                 }`}
                 title="Redo (Ctrl+Y)"
               >
@@ -2050,7 +2050,7 @@ export const MapEditor: React.FC = () => {
                 ref={canvasRef}
                 width={canvasWidth}
                 height={canvasHeight}
-                className="border-2 border-gray-600 cursor-crosshair rounded"
+                className="border-2 border-stone-600 cursor-crosshair rounded"
                 style={{
                   transform: `scale(${editorScale})`,
                   transformOrigin: 'top left'
@@ -2063,10 +2063,10 @@ export const MapEditor: React.FC = () => {
             </div>
 
             {/* Selected Characters - Shows selected available characters with sprites */}
-            <div className="bg-gray-800 p-4 rounded" style={{ maxWidth: scaledCanvasWidth }}>
+            <div className="bg-stone-800 p-4 rounded" style={{ maxWidth: scaledCanvasWidth }}>
               <h2 className="text-lg font-bold mb-3">Selected Characters</h2>
               {state.availableCharacters.length === 0 ? (
-                <p className="text-sm text-gray-400">No characters selected</p>
+                <p className="text-sm text-stone-400">No characters selected</p>
               ) : (
                 <div
                   className="grid gap-2"
@@ -2083,14 +2083,14 @@ export const MapEditor: React.FC = () => {
                       <ActionTooltip key={index} actions={char?.behavior}>
                         <div
                           className={`rounded flex flex-col items-center justify-center p-2 ${
-                            char ? 'bg-gray-700' : 'bg-gray-800 border border-dashed border-gray-600'
+                            char ? 'bg-stone-700' : 'bg-stone-800 border border-dashed border-stone-600'
                           }`}
                           title={char?.name || 'Empty slot'}
                         >
                           {char ? (
                             <>
                               <SpriteThumbnail sprite={char.customSprite} size={48} />
-                              <span className="text-sm font-medium text-gray-200 truncate w-full text-center mt-1">
+                              <span className="text-sm font-medium text-parchment-200 truncate w-full text-center mt-1">
                                 {char.name.length > 8 ? char.name.slice(0, 8) + '...' : char.name}
                               </span>
                               {spells.length > 0 && (
@@ -2101,7 +2101,7 @@ export const MapEditor: React.FC = () => {
                                         {spell.thumbnailIcon ? (
                                           <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
                                         ) : (
-                                          <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                          <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
                                         )}
                                       </div>
                                     </SpellTooltip>
@@ -2111,7 +2111,7 @@ export const MapEditor: React.FC = () => {
                             </>
                           ) : (
                             <div className="h-16 flex items-center justify-center">
-                              <span className="text-gray-600 text-xs">Empty</span>
+                              <span className="text-stone-600 text-xs">Empty</span>
                             </div>
                           )}
                         </div>
@@ -2128,7 +2128,7 @@ export const MapEditor: React.FC = () => {
             {/* Column 1 (Left) - Tools, Tile/Enemy Selectors, Available Characters */}
             <div className="space-y-4">
               {/* Tools - At top of left column */}
-              <div className="bg-gray-800 p-4 rounded">
+              <div className="bg-stone-800 p-4 rounded">
                 <h2 className="text-lg font-bold mb-3">Tools</h2>
                 <div className="grid grid-cols-4 gap-2">
                   <button
@@ -2138,7 +2138,7 @@ export const MapEditor: React.FC = () => {
                     }}
                     className={`p-3 rounded text-sm ${
                       state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall'
-                        ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                        ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     Tile
@@ -2146,7 +2146,7 @@ export const MapEditor: React.FC = () => {
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'enemy' }))}
                     className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'enemy' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      state.selectedTool === 'enemy' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     Enemy
@@ -2154,7 +2154,7 @@ export const MapEditor: React.FC = () => {
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'object' }))}
                     className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'object' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      state.selectedTool === 'object' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     Object
@@ -2162,7 +2162,7 @@ export const MapEditor: React.FC = () => {
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
                     className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     Item
@@ -2170,7 +2170,7 @@ export const MapEditor: React.FC = () => {
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'characters' }))}
                     className={`p-3 rounded text-sm ${
-                      state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                      state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     Chars
@@ -2180,57 +2180,57 @@ export const MapEditor: React.FC = () => {
 
               {/* Tile Selector - Shows when Tile tool is selected */}
               {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="bg-stone-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Tile Type</h2>
                   <div className="space-y-2">
                     {/* Built-in tiles: Void at top */}
                     <button
                       onClick={() => setState(prev => ({ ...prev, selectedTool: 'void' }))}
                       className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        state.selectedTool === 'void' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                        state.selectedTool === 'void' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-gray-900 rounded flex items-center justify-center">
-                        <span className="text-gray-600">✕</span>
+                      <div className="w-8 h-8 bg-stone-900 rounded flex items-center justify-center">
+                        <span className="text-stone-600">✕</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">Void</div>
-                        <div className="text-xs text-gray-400">Empty space (no tile)</div>
+                        <div className="text-xs text-stone-400">Empty space (no tile)</div>
                       </div>
                     </button>
                     <button
                       onClick={() => setState(prev => ({ ...prev, selectedTool: 'empty' }))}
                       className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        state.selectedTool === 'empty' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                        state.selectedTool === 'empty' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center">
-                        <span className="text-gray-400">⬜</span>
+                      <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center">
+                        <span className="text-stone-400">⬜</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">Empty</div>
-                        <div className="text-xs text-gray-400">Walkable floor tile</div>
+                        <div className="text-xs text-stone-400">Walkable floor tile</div>
                       </div>
                     </button>
                     <button
                       onClick={() => setState(prev => ({ ...prev, selectedTool: 'wall' }))}
                       className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        state.selectedTool === 'wall' ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                        state.selectedTool === 'wall' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-gray-500 rounded flex items-center justify-center">
-                        <span className="text-gray-300">▓</span>
+                      <div className="w-8 h-8 bg-stone-500 rounded flex items-center justify-center">
+                        <span className="text-parchment-300">▓</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">Wall</div>
-                        <div className="text-xs text-gray-400">Impassable barrier</div>
+                        <div className="text-xs text-stone-400">Impassable barrier</div>
                       </div>
                     </button>
 
                     {/* Divider if custom tiles exist */}
                     {customTileTypes.length > 0 && (
-                      <div className="border-t border-gray-600 my-2 pt-2">
-                        <div className="text-xs text-gray-400 mb-2">Custom Tiles</div>
+                      <div className="border-t border-stone-600 my-2 pt-2">
+                        <div className="text-xs text-stone-400 mb-2">Custom Tiles</div>
                         <FolderDropdown
                           category="tiles"
                           selectedFolderId={tileFolderId}
@@ -2261,10 +2261,10 @@ export const MapEditor: React.FC = () => {
                             setState(prev => ({ ...prev, selectedTool: 'custom' }));
                           }}
                           className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                            isSelected ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                            isSelected ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                           }`}
                         >
-                          <div className="w-8 h-8 bg-gray-600 rounded flex items-center justify-center overflow-hidden">
+                          <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
                             {tileType.customSprite?.idleImageData ? (
                               <img
                                 src={tileType.customSprite.idleImageData}
@@ -2277,7 +2277,7 @@ export const MapEditor: React.FC = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{tileType.name}</div>
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-stone-400">
                               {tileType.baseType} • {behaviorIcons}
                             </div>
                           </div>
@@ -2287,14 +2287,14 @@ export const MapEditor: React.FC = () => {
 
                     {/* Message when no tiles in folder or no tiles at all */}
                     {customTileTypes.length === 0 ? (
-                      <p className="text-xs text-gray-400 mt-2">
+                      <p className="text-xs text-stone-400 mt-2">
                         Create custom tiles in{' '}
                         <a href="/assets" className="text-blue-400 hover:underline">
                           Asset Manager → Tiles
                         </a>
                       </p>
                     ) : filteredTileTypes.length === 0 && (
-                      <p className="text-xs text-gray-400 mt-2">No tiles in this folder.</p>
+                      <p className="text-xs text-stone-400 mt-2">No tiles in this folder.</p>
                     )}
                   </div>
                 </div>
@@ -2302,7 +2302,7 @@ export const MapEditor: React.FC = () => {
 
               {/* Enemy Type Selector - List style with sprites */}
               {state.selectedTool === 'enemy' && (
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="bg-stone-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Select Enemy</h2>
                   <FolderDropdown
                     category="enemies"
@@ -2310,7 +2310,7 @@ export const MapEditor: React.FC = () => {
                     onFolderSelect={setEnemyFolderId}
                   />
                   {filteredEnemies.length === 0 ? (
-                    <p className="text-sm text-gray-400 mt-2">
+                    <p className="text-sm text-stone-400 mt-2">
                       {allEnemies.length === 0 ? 'No enemies available. Create enemies in Asset Manager!' : 'No enemies in this folder.'}
                     </p>
                   ) : (
@@ -2322,13 +2322,13 @@ export const MapEditor: React.FC = () => {
                             <button
                               onClick={() => setSelectedEnemyId(enemy.id)}
                               className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                                selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                                selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                               }`}
                             >
                               <SpriteThumbnail sprite={enemy.customSprite} size={32} />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium truncate">{enemy.name}</div>
-                                <div className="text-xs text-gray-400">HP: {enemy.health}</div>
+                                <div className="text-xs text-stone-400">HP: {enemy.health}</div>
                               </div>
                               {spells.length > 0 && (
                                 <div className="flex gap-1 flex-shrink-0">
@@ -2338,7 +2338,7 @@ export const MapEditor: React.FC = () => {
                                         {spell.thumbnailIcon ? (
                                           <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
                                         ) : (
-                                          <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                          <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
                                         )}
                                       </div>
                                     </SpellTooltip>
@@ -2356,7 +2356,7 @@ export const MapEditor: React.FC = () => {
 
               {/* Object Type Selector - List style with sprites and tooltips */}
               {state.selectedTool === 'object' && (
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="bg-stone-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Select Object</h2>
                   <FolderDropdown
                     category="objects"
@@ -2365,7 +2365,7 @@ export const MapEditor: React.FC = () => {
                   />
                   {filteredObjects.length === 0 ? (
                     <div className="text-center py-4">
-                      <p className="text-sm text-gray-400 mb-2">
+                      <p className="text-sm text-stone-400 mb-2">
                         {allObjects.length === 0 ? 'No objects available.' : 'No objects in this folder.'}
                       </p>
                       {allObjects.length === 0 && (
@@ -2381,13 +2381,13 @@ export const MapEditor: React.FC = () => {
                           <button
                             onClick={() => setSelectedObjectId(obj.id)}
                             className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                              selectedObjectId === obj.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                              selectedObjectId === obj.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                             }`}
                           >
                             <SpriteThumbnail sprite={obj.customSprite} size={32} />
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium truncate">{obj.name}</div>
-                              <div className="text-xs text-gray-400 capitalize">
+                              <div className="text-xs text-stone-400 capitalize">
                                 {obj.collisionType.replace('_', ' ')}
                                 {obj.effects.length > 0 && ` • ${obj.effects.length} effect${obj.effects.length > 1 ? 's' : ''}`}
                               </div>
@@ -2418,7 +2418,7 @@ export const MapEditor: React.FC = () => {
 
               {/* Collectible Type Selector - List style with sprites */}
               {state.selectedTool === 'collectible' && (
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="bg-stone-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Select Collectible</h2>
                   <FolderDropdown
                     category="collectibles"
@@ -2430,24 +2430,24 @@ export const MapEditor: React.FC = () => {
                     <button
                       onClick={() => setSelectedCollectibleId(null)}
                       className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        selectedCollectibleId === null ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                        selectedCollectibleId === null ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                       }`}
                     >
-                      <div className="w-8 h-8 rounded flex items-center justify-center bg-gray-600">
+                      <div className="w-8 h-8 rounded flex items-center justify-center bg-stone-600">
                         <span className="text-yellow-400">⭐</span>
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium truncate">Default Coin</div>
-                        <div className="text-xs text-gray-400">Legacy collectible (10 points)</div>
+                        <div className="text-xs text-stone-400">Legacy collectible (10 points)</div>
                       </div>
                     </button>
                     {filteredCollectibles.length === 0 && allCollectibles.length > 0 ? (
                       <div className="text-center py-2">
-                        <p className="text-sm text-gray-400">No collectibles in this folder.</p>
+                        <p className="text-sm text-stone-400">No collectibles in this folder.</p>
                       </div>
                     ) : allCollectibles.length === 0 ? (
                       <div className="text-center py-2">
-                        <p className="text-sm text-gray-400 mb-2">No custom collectibles available.</p>
+                        <p className="text-sm text-stone-400 mb-2">No custom collectibles available.</p>
                         <a href="/assets" className="text-blue-400 hover:underline text-sm">
                           Create collectibles in Asset Manager
                         </a>
@@ -2458,13 +2458,13 @@ export const MapEditor: React.FC = () => {
                           key={coll.id}
                           onClick={() => setSelectedCollectibleId(coll.id)}
                           className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                            selectedCollectibleId === coll.id ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                            selectedCollectibleId === coll.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                           }`}
                         >
                           <SpriteThumbnail sprite={coll.customSprite} size={32} />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{coll.name}</div>
-                            <div className="text-xs text-gray-400">
+                            <div className="text-xs text-stone-400">
                               {coll.effects.length > 0
                                 ? coll.effects.map(e => e.type).join(', ')
                                 : 'No effects'}
@@ -2497,16 +2497,16 @@ export const MapEditor: React.FC = () => {
 
               {/* Available Characters - Shows when Characters tool is selected */}
               {state.selectedTool === 'characters' && (
-                <div className="bg-gray-800 p-4 rounded">
+                <div className="bg-stone-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Available Characters</h2>
-                  <p className="text-xs text-gray-400 mb-3">Select which characters players can use</p>
+                  <p className="text-xs text-stone-400 mb-3">Select which characters players can use</p>
                   <FolderDropdown
                     category="characters"
                     selectedFolderId={characterFolderId}
                     onFolderSelect={setCharacterFolderId}
                   />
                   {filteredCharacters.length === 0 ? (
-                    <p className="text-sm text-gray-400 mt-2">
+                    <p className="text-sm text-stone-400 mt-2">
                       {allCharacters.length === 0 ? 'No characters available' : 'No characters in this folder.'}
                     </p>
                   ) : (
@@ -2515,7 +2515,7 @@ export const MapEditor: React.FC = () => {
                         const spells = getAllSpells(char.behavior);
                         return (
                           <ActionTooltip key={char.id} actions={char.behavior}>
-                            <label className="flex items-center gap-2 p-2 bg-gray-700 rounded hover:bg-gray-600 cursor-pointer">
+                            <label className="flex items-center gap-2 p-2 bg-stone-700 rounded hover:bg-stone-600 cursor-pointer">
                               <input
                                 type="checkbox"
                                 checked={state.availableCharacters.includes(char.id)}
@@ -2532,7 +2532,7 @@ export const MapEditor: React.FC = () => {
                               <SpriteThumbnail sprite={char.customSprite} size={32} />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium truncate">{char.name}</div>
-                                <div className="text-xs text-gray-400">HP: {char.health}</div>
+                                <div className="text-xs text-stone-400">HP: {char.health}</div>
                               </div>
                               {spells.length > 0 && (
                                 <div className="flex gap-1 flex-shrink-0">
@@ -2542,7 +2542,7 @@ export const MapEditor: React.FC = () => {
                                         {spell.thumbnailIcon ? (
                                           <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
                                         ) : (
-                                          <div className="w-full h-full bg-purple-600 flex items-center justify-center text-xs">S</div>
+                                          <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
                                         )}
                                       </div>
                                     </SpellTooltip>
@@ -2562,18 +2562,18 @@ export const MapEditor: React.FC = () => {
             {/* Column 2 (Right) - Actions, Puzzle Info, Library */}
             <div className="space-y-4">
               {/* Actions - At top of right column */}
-              <div className="bg-gray-800 p-4 rounded space-y-2">
+              <div className="bg-stone-800 p-4 rounded space-y-2">
                 <h2 className="text-lg font-bold mb-2">Actions</h2>
                 <button
                   onClick={handleNewPuzzle}
-                  className="w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+                  className="w-full px-4 py-2 bg-stone-600 rounded hover:bg-stone-700"
                 >
                   New
                 </button>
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleSave}
-                    className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+                    className="px-4 py-2 bg-moss-600 rounded hover:bg-moss-700"
                   >
                     Save
                   </button>
@@ -2593,34 +2593,34 @@ export const MapEditor: React.FC = () => {
                 <div className="grid grid-cols-2 gap-2">
                   <button
                     onClick={handleExport}
-                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
+                    className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-700 text-sm"
                   >
                     Export
                   </button>
                   <button
                     onClick={handleImport}
-                    className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700 text-sm"
+                    className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-700 text-sm"
                   >
                     Import
                   </button>
                 </div>
                 <button
                   onClick={handleClear}
-                  className="w-full px-4 py-2 bg-red-600 rounded hover:bg-red-700"
+                  className="w-full px-4 py-2 bg-blood-600 rounded hover:bg-blood-700"
                 >
                   Clear Grid
                 </button>
                 <button
                   onClick={handleValidate}
                   disabled={isValidating}
-                  className="w-full px-4 py-2 bg-purple-600 rounded hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full px-4 py-2 bg-arcane-600 rounded hover:bg-arcane-700 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {isValidating ? 'Validating...' : 'Validate Puzzle'}
                 </button>
               </div>
 
               {/* Puzzle Info - Below Actions */}
-              <div className="bg-gray-800 p-4 rounded">
+              <div className="bg-stone-800 p-4 rounded">
                 <h2 className="text-lg font-bold mb-3">Puzzle Info</h2>
                 <div className="space-y-3">
                   <div>
@@ -2629,7 +2629,7 @@ export const MapEditor: React.FC = () => {
                       type="text"
                       value={state.puzzleName}
                       onChange={(e) => setState(prev => ({ ...prev, puzzleName: e.target.value }))}
-                      className="w-full px-3 py-2 bg-gray-700 rounded"
+                      className="w-full px-3 py-2 bg-stone-700 rounded"
                     />
                   </div>
                   <div>
@@ -2640,7 +2640,7 @@ export const MapEditor: React.FC = () => {
                         setState(prev => ({ ...prev, skinId: e.target.value }));
                         setAvailableSkins(getAllPuzzleSkins()); // Refresh in case new skins were added
                       }}
-                      className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                     >
                       {availableSkins.map((skin) => (
                         <option key={skin.id} value={skin.id}>
@@ -2658,7 +2658,7 @@ export const MapEditor: React.FC = () => {
                         max="10"
                         value={state.maxCharacters}
                         onChange={(e) => setState(prev => ({ ...prev, maxCharacters: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
                       />
                     </div>
                     <div>
@@ -2669,7 +2669,7 @@ export const MapEditor: React.FC = () => {
                         max="1000"
                         value={state.maxTurns}
                         onChange={(e) => setState(prev => ({ ...prev, maxTurns: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
                       />
                     </div>
                     <div>
@@ -2680,19 +2680,19 @@ export const MapEditor: React.FC = () => {
                         max="99"
                         value={state.lives ?? 3}
                         onChange={(e) => setState(prev => ({ ...prev, lives: Number(e.target.value) }))}
-                        className="w-full px-3 py-2 bg-gray-700 rounded"
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
                         title="Number of attempts (0 = unlimited)"
                       />
                     </div>
                   </div>
-                  <p className="text-xs text-gray-400 mt-1">Lives: 0 = unlimited attempts</p>
+                  <p className="text-xs text-stone-400 mt-1">Lives: 0 = unlimited attempts</p>
 
                   {/* Win Conditions - moved into Puzzle Info */}
-                  <div className="pt-3 border-t border-gray-700">
+                  <div className="pt-3 border-t border-stone-700">
                     <h3 className="text-sm font-semibold mb-2">Win Conditions</h3>
                     <div className="space-y-2">
                       {state.winConditions.map((condition, index) => (
-                        <div key={index} className="bg-gray-700 p-2 rounded">
+                        <div key={index} className="bg-stone-700 p-2 rounded">
                           <div className="flex justify-between items-start gap-2">
                             <div className="flex-1 min-w-0">
                               <select
@@ -2705,7 +2705,7 @@ export const MapEditor: React.FC = () => {
                                     return { ...prev, winConditions: newConditions };
                                   });
                                 }}
-                                className="w-full px-2 py-1 bg-gray-600 rounded text-sm mb-1"
+                                className="w-full px-2 py-1 bg-stone-600 rounded text-sm mb-1"
                               >
                                 <option value="defeat_all_enemies">Defeat All Enemies</option>
                                 <option value="collect_all">Collect All Items</option>
@@ -2720,7 +2720,7 @@ export const MapEditor: React.FC = () => {
                               {/* Params for conditions that need them */}
                               {(condition.type === 'survive_turns' || condition.type === 'win_in_turns') && (
                                 <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">Turns:</label>
+                                  <label className="text-xs text-stone-400">Turns:</label>
                                   <input
                                     type="number"
                                     min="1"
@@ -2736,14 +2736,14 @@ export const MapEditor: React.FC = () => {
                                         return { ...prev, winConditions: newConditions };
                                       });
                                     }}
-                                    className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                                    className="w-20 px-2 py-1 bg-stone-600 rounded text-sm"
                                   />
                                 </div>
                               )}
 
                               {(condition.type === 'max_characters' || condition.type === 'characters_alive') && (
                                 <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">Characters:</label>
+                                  <label className="text-xs text-stone-400">Characters:</label>
                                   <input
                                     type="number"
                                     min="1"
@@ -2759,7 +2759,7 @@ export const MapEditor: React.FC = () => {
                                         return { ...prev, winConditions: newConditions };
                                       });
                                     }}
-                                    className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                                    className="w-20 px-2 py-1 bg-stone-600 rounded text-sm"
                                   />
                                 </div>
                               )}
@@ -2774,7 +2774,7 @@ export const MapEditor: React.FC = () => {
                                     winConditions: prev.winConditions.filter((_, i) => i !== index)
                                   }));
                                 }}
-                                className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                                className="px-2 py-1 bg-blood-600 rounded text-xs hover:bg-blood-700"
                               >
                                 ✕
                               </button>
@@ -2791,7 +2791,7 @@ export const MapEditor: React.FC = () => {
                             winConditions: [...prev.winConditions, { type: 'defeat_all_enemies' }]
                           }));
                         }}
-                        className="w-full px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500"
+                        className="w-full px-2 py-1 bg-stone-600 rounded text-xs hover:bg-stone-500"
                       >
                         + Add Condition
                       </button>
@@ -2799,11 +2799,11 @@ export const MapEditor: React.FC = () => {
                   </div>
 
                   {/* Par (for Trophy Rating) */}
-                  <div className="pt-3 border-t border-gray-700">
+                  <div className="pt-3 border-t border-stone-700">
                     <h3 className="text-sm font-semibold mb-2">Par (for Trophy Rating)</h3>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Character Par</label>
+                        <label className="block text-xs text-stone-400 mb-1">Character Par</label>
                         <input
                           type="number"
                           min="1"
@@ -2814,11 +2814,11 @@ export const MapEditor: React.FC = () => {
                             ...prev,
                             parCharacters: e.target.value ? Number(e.target.value) : undefined
                           }))}
-                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-full px-2 py-1 bg-stone-700 rounded text-sm"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs text-gray-400 mb-1">Turn Par</label>
+                        <label className="block text-xs text-stone-400 mb-1">Turn Par</label>
                         <input
                           type="number"
                           min="1"
@@ -2829,21 +2829,21 @@ export const MapEditor: React.FC = () => {
                             ...prev,
                             parTurns: e.target.value ? Number(e.target.value) : undefined
                           }))}
-                          className="w-full px-2 py-1 bg-gray-700 rounded text-sm"
+                          className="w-full px-2 py-1 bg-stone-700 rounded text-sm"
                         />
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
+                    <p className="text-xs text-stone-500 mt-1">
                       Run validator to auto-suggest. 🏆 Gold = meet both pars.
                     </p>
                   </div>
 
                   {/* Side Quests (Bonus Objectives) */}
-                  <div className="pt-3 border-t border-gray-700">
+                  <div className="pt-3 border-t border-stone-700">
                     <h3 className="text-sm font-semibold mb-2">Side Quests (Bonus Objectives)</h3>
                     <div className="space-y-2">
                       {state.sideQuests.map((quest, index) => (
-                        <div key={quest.id} className="bg-gray-700 p-2 rounded">
+                        <div key={quest.id} className="bg-stone-700 p-2 rounded">
                           <div className="flex justify-between items-start gap-2">
                             <div className="flex-1 min-w-0 space-y-1">
                               {/* Title */}
@@ -2858,7 +2858,7 @@ export const MapEditor: React.FC = () => {
                                     return { ...prev, sideQuests: newQuests };
                                   });
                                 }}
-                                className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                                className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
                               />
 
                               {/* Type dropdown */}
@@ -2871,7 +2871,7 @@ export const MapEditor: React.FC = () => {
                                     return { ...prev, sideQuests: newQuests };
                                   });
                                 }}
-                                className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                                className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
                               >
                                 <option value="collect_all_items">Collect All Items</option>
                                 <option value="no_damage_taken">No Damage Taken</option>
@@ -2886,7 +2886,7 @@ export const MapEditor: React.FC = () => {
                               {/* Params for speed_run */}
                               {quest.type === 'speed_run' && (
                                 <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">Max Turns:</label>
+                                  <label className="text-xs text-stone-400">Max Turns:</label>
                                   <input
                                     type="number"
                                     min="1"
@@ -2902,7 +2902,7 @@ export const MapEditor: React.FC = () => {
                                         return { ...prev, sideQuests: newQuests };
                                       });
                                     }}
-                                    className="w-16 px-2 py-1 bg-gray-600 rounded text-sm"
+                                    className="w-16 px-2 py-1 bg-stone-600 rounded text-sm"
                                   />
                                 </div>
                               )}
@@ -2910,7 +2910,7 @@ export const MapEditor: React.FC = () => {
                               {/* Params for minimalist */}
                               {quest.type === 'minimalist' && (
                                 <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">Max Characters:</label>
+                                  <label className="text-xs text-stone-400">Max Characters:</label>
                                   <input
                                     type="number"
                                     min="1"
@@ -2926,7 +2926,7 @@ export const MapEditor: React.FC = () => {
                                         return { ...prev, sideQuests: newQuests };
                                       });
                                     }}
-                                    className="w-16 px-2 py-1 bg-gray-600 rounded text-sm"
+                                    className="w-16 px-2 py-1 bg-stone-600 rounded text-sm"
                                   />
                                 </div>
                               )}
@@ -2934,7 +2934,7 @@ export const MapEditor: React.FC = () => {
                               {/* Params for use_specific_character / avoid_character */}
                               {(quest.type === 'use_specific_character' || quest.type === 'avoid_character') && (
                                 <div className="flex items-center gap-2">
-                                  <label className="text-xs text-gray-400">Character:</label>
+                                  <label className="text-xs text-stone-400">Character:</label>
                                   <select
                                     value={quest.params?.characterId ?? ''}
                                     onChange={(e) => {
@@ -2947,7 +2947,7 @@ export const MapEditor: React.FC = () => {
                                         return { ...prev, sideQuests: newQuests };
                                       });
                                     }}
-                                    className="flex-1 px-2 py-1 bg-gray-600 rounded text-sm"
+                                    className="flex-1 px-2 py-1 bg-stone-600 rounded text-sm"
                                   >
                                     <option value="">Select...</option>
                                     {state.availableCharacters.map(charId => {
@@ -2964,7 +2964,7 @@ export const MapEditor: React.FC = () => {
 
                               {/* Bonus points */}
                               <div className="flex items-center gap-2">
-                                <label className="text-xs text-gray-400">Bonus Pts:</label>
+                                <label className="text-xs text-stone-400">Bonus Pts:</label>
                                 <input
                                   type="number"
                                   min="0"
@@ -2977,7 +2977,7 @@ export const MapEditor: React.FC = () => {
                                       return { ...prev, sideQuests: newQuests };
                                     });
                                   }}
-                                  className="w-20 px-2 py-1 bg-gray-600 rounded text-sm"
+                                  className="w-20 px-2 py-1 bg-stone-600 rounded text-sm"
                                 />
                               </div>
                             </div>
@@ -2990,7 +2990,7 @@ export const MapEditor: React.FC = () => {
                                   sideQuests: prev.sideQuests.filter((_, i) => i !== index)
                                 }));
                               }}
-                              className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                              className="px-2 py-1 bg-blood-600 rounded text-xs hover:bg-blood-700"
                             >
                               ✕
                             </button>
@@ -3011,7 +3011,7 @@ export const MapEditor: React.FC = () => {
                             }]
                           }));
                         }}
-                        className="w-full px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500"
+                        className="w-full px-2 py-1 bg-stone-600 rounded text-xs hover:bg-stone-500"
                       >
                         + Add Side Quest
                       </button>
@@ -3039,7 +3039,7 @@ export const MapEditor: React.FC = () => {
       {/* Validation Results Modal */}
       {showValidationModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-gray-800 rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
+          <div className="bg-stone-800 rounded-lg p-6 max-w-lg w-full mx-4 shadow-xl max-h-[90vh] overflow-y-auto">
             <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
               {isValidating ? (
                 <>
@@ -3057,7 +3057,7 @@ export const MapEditor: React.FC = () => {
             </h2>
 
             {isValidating ? (
-              <div className="text-gray-400 text-center py-4">
+              <div className="text-stone-400 text-center py-4">
                 <p>Testing character placement combinations...</p>
                 <p className="text-sm mt-2">This may take a few seconds.</p>
               </div>
@@ -3076,31 +3076,31 @@ export const MapEditor: React.FC = () => {
                       <div className="font-semibold text-green-400 mb-2">Solution Found!</div>
                       <div className="text-sm space-y-1">
                         <div>
-                          <span className="text-gray-400">Minimum characters needed: </span>
-                          <span className="text-white font-bold">{validationResult.minCharactersNeeded}</span>
+                          <span className="text-stone-400">Minimum characters needed: </span>
+                          <span className="text-parchment-100 font-bold">{validationResult.minCharactersNeeded}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400">Fastest solution: </span>
-                          <span className="text-white font-bold">{validationResult.solutionFound.turnsToWin} turns</span>
+                          <span className="text-stone-400">Fastest solution: </span>
+                          <span className="text-parchment-100 font-bold">{validationResult.solutionFound.turnsToWin} turns</span>
                         </div>
                         <div>
-                          <span className="text-gray-400">Combinations tested: </span>
-                          <span className="text-white">{validationResult.totalCombinationsTested.toLocaleString()}</span>
+                          <span className="text-stone-400">Combinations tested: </span>
+                          <span className="text-parchment-100">{validationResult.totalCombinationsTested.toLocaleString()}</span>
                         </div>
                         <div>
-                          <span className="text-gray-400">Search time: </span>
-                          <span className="text-white">{(validationResult.searchTimeMs / 1000).toFixed(2)}s</span>
+                          <span className="text-stone-400">Search time: </span>
+                          <span className="text-parchment-100">{(validationResult.searchTimeMs / 1000).toFixed(2)}s</span>
                         </div>
                       </div>
                     </div>
 
-                    <div className="bg-gray-700/50 rounded p-3">
-                      <div className="font-semibold text-gray-300 mb-2 text-sm">Optimal Placement:</div>
+                    <div className="bg-stone-700/50 rounded p-3">
+                      <div className="font-semibold text-parchment-300 mb-2 text-sm">Optimal Placement:</div>
 
                       {/* Visual Mini-Map */}
                       <div className="flex justify-center mb-3">
                         <div
-                          className="inline-grid gap-px bg-gray-600 p-px rounded"
+                          className="inline-grid gap-px bg-stone-600 p-px rounded"
                           style={{
                             gridTemplateColumns: `repeat(${state.gridWidth}, minmax(0, 1fr))`,
                           }}
@@ -3115,9 +3115,9 @@ export const MapEditor: React.FC = () => {
                               const enemy = state.enemies.find(e => e.x === x && e.y === y);
 
                               // Determine tile background color
-                              let bgColor = 'bg-gray-800'; // empty
-                              if (!tile) bgColor = 'bg-gray-950'; // void
-                              else if (tile.type === 'wall') bgColor = 'bg-gray-600';
+                              let bgColor = 'bg-stone-800'; // empty
+                              if (!tile) bgColor = 'bg-stone-950'; // void
+                              else if (tile.type === 'wall') bgColor = 'bg-stone-600';
                               else if (tile.type === 'goal') bgColor = 'bg-yellow-600/50';
                               else if (tile.customTileTypeId) bgColor = 'bg-purple-900/50';
 
@@ -3145,14 +3145,14 @@ export const MapEditor: React.FC = () => {
                                 >
                                   {placement && (
                                     <div className="absolute inset-0 bg-green-500 rounded-full m-0.5 flex items-center justify-center">
-                                      <span className="text-white font-bold" style={{ fontSize: Math.max(8, cellSize - 8) }}>
+                                      <span className="text-parchment-100 font-bold" style={{ fontSize: Math.max(8, cellSize - 8) }}>
                                         {directionArrows[placement.facing] || '•'}
                                       </span>
                                     </div>
                                   )}
                                   {enemy && !placement && (
                                     <div className="absolute inset-0 bg-red-500 rounded-sm m-0.5 flex items-center justify-center">
-                                      <span className="text-white" style={{ fontSize: Math.max(6, cellSize - 10) }}>E</span>
+                                      <span className="text-parchment-100" style={{ fontSize: Math.max(6, cellSize - 10) }}>E</span>
                                     </div>
                                   )}
                                 </div>
@@ -3163,7 +3163,7 @@ export const MapEditor: React.FC = () => {
                       </div>
 
                       {/* Legend */}
-                      <div className="flex flex-wrap gap-3 text-xs text-gray-400 mb-2 justify-center">
+                      <div className="flex flex-wrap gap-3 text-xs text-stone-400 mb-2 justify-center">
                         <div className="flex items-center gap-1">
                           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                           <span>Character</span>
@@ -3173,7 +3173,7 @@ export const MapEditor: React.FC = () => {
                           <span>Enemy</span>
                         </div>
                         <div className="flex items-center gap-1">
-                          <div className="w-3 h-3 bg-gray-600"></div>
+                          <div className="w-3 h-3 bg-stone-600"></div>
                           <span>Wall</span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -3183,7 +3183,7 @@ export const MapEditor: React.FC = () => {
                       </div>
 
                       {/* Text details */}
-                      <div className="space-y-1 text-sm border-t border-gray-600 pt-2">
+                      <div className="space-y-1 text-sm border-t border-stone-600 pt-2">
                         {validationResult.solutionFound.placements.map((p, i) => {
                           const charData = getCharacter(p.characterId);
                           const directionArrows: Record<string, string> = {
@@ -3192,11 +3192,11 @@ export const MapEditor: React.FC = () => {
                           };
                           return (
                             <div key={i} className="flex items-center gap-2">
-                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-white text-xs font-bold">
+                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-parchment-100 text-xs font-bold">
                                 {directionArrows[p.facing]}
                               </div>
-                              <span className="text-white">{charData?.name || p.characterId}</span>
-                              <span className="text-gray-500">at column {p.x + 1}, row {p.y + 1}</span>
+                              <span className="text-parchment-100">{charData?.name || p.characterId}</span>
+                              <span className="text-stone-500">at column {p.x + 1}, row {p.y + 1}</span>
                             </div>
                           );
                         })}
@@ -3205,7 +3205,7 @@ export const MapEditor: React.FC = () => {
                   </>
                 )}
 
-                <div className="text-xs text-gray-500 pt-2 border-t border-gray-700">
+                <div className="text-xs text-stone-500 pt-2 border-t border-stone-700">
                   Tested {validationResult.totalCombinationsTested.toLocaleString()} combinations in{' '}
                   {(validationResult.searchTimeMs / 1000).toFixed(2)}s
                 </div>
@@ -3214,7 +3214,7 @@ export const MapEditor: React.FC = () => {
 
             <button
               onClick={() => setShowValidationModal(false)}
-              className="mt-4 w-full px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+              className="mt-4 w-full px-4 py-2 bg-stone-600 rounded hover:bg-stone-700"
             >
               Close
             </button>

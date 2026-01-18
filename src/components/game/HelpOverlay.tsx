@@ -42,15 +42,15 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
     >
       {/* Modal container - full screen on mobile, centered box on desktop */}
       <div
-        className="relative w-full max-w-lg max-h-[90vh] md:max-h-[80vh] bg-gray-800 rounded-lg shadow-xl overflow-hidden flex flex-col"
+        className="relative w-full max-w-lg max-h-[90vh] md:max-h-[80vh] bg-stone-800 rounded-lg shadow-xl overflow-hidden flex flex-col"
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-xl font-bold text-white">{helpContent.title}</h2>
+        <div className="flex items-center justify-between p-4 border-b border-stone-700">
+          <h2 className="text-xl font-bold text-parchment-100">{helpContent.title}</h2>
           <button
             onClick={onClose}
-            className="p-2 text-gray-400 hover:text-white hover:bg-gray-700 rounded-lg transition-colors"
+            className="p-2 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded-lg transition-colors"
             aria-label="Close help"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -61,15 +61,15 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
 
         {/* Content */}
         <div
-          className="flex-1 overflow-y-auto p-4 text-gray-300 help-content"
+          className="flex-1 overflow-y-auto p-4 text-parchment-300 help-content"
           dangerouslySetInnerHTML={{ __html: helpContent.content }}
         />
 
         {/* Footer with close button for mobile */}
-        <div className="p-4 border-t border-gray-700 md:hidden">
+        <div className="p-4 border-t border-stone-700 md:hidden">
           <button
             onClick={onClose}
-            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors"
+            className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-parchment-100 font-medium rounded-lg transition-colors"
           >
             Got it
           </button>
@@ -127,7 +127,7 @@ export const HelpButton: React.FC<HelpButtonProps> = ({ sectionId, className = '
     <>
       <button
         onClick={() => setIsOpen(true)}
-        className={`p-1 text-gray-400 hover:text-white hover:bg-gray-700 rounded transition-colors ${className}`}
+        className={`p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded transition-colors ${className}`}
         aria-label="Help"
         title="What's this?"
       >

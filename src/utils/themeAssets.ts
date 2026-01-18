@@ -43,33 +43,83 @@ export interface ThemeAssets {
   // Overlay effects
   overlayVignette?: string;
   overlayNoise?: string;
+
+  // === COLOR SETTINGS ===
+  // Background colors
+  colorBgPrimary?: string;    // Main page background color
+  colorBgSecondary?: string;  // Panel/card background color
+  colorBgNavbar?: string;     // Navigation bar background color
+  colorBgInput?: string;      // Input field background color
+
+  // Text colors
+  colorTextPrimary?: string;  // Main text color
+  colorTextSecondary?: string; // Secondary/muted text color
+  colorTextHeading?: string;  // Heading text color
+
+  // Border colors
+  colorBorderPrimary?: string; // Main border color
+  colorBorderAccent?: string;  // Accent border color (for focus/highlight)
+
+  // Accent colors
+  colorAccentPrimary?: string;  // Primary accent (buttons, links)
+  colorAccentSuccess?: string;  // Success/positive actions
+  colorAccentDanger?: string;   // Danger/warning actions
+  colorAccentMagic?: string;    // Magic/special effects
+
+  // === STYLE SETTINGS ===
+  borderRadius?: string;        // Border radius (e.g., "4px", "8px", "0px")
+  borderWidth?: string;         // Border width (e.g., "1px", "2px", "3px")
+  shadowIntensity?: string;     // Shadow intensity ("none", "light", "medium", "heavy")
+  fontFamily?: string;          // Font family override
 }
 
 export type ThemeAssetKey = keyof ThemeAssets;
 
 // Asset metadata for the editor UI
-export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; description: string; category: string }> = {
-  logo: { label: 'Logo', description: 'Main game logo (recommended: PNG with transparency)', category: 'branding' },
-  logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding' },
-  bgMain: { label: 'Main Background', description: 'Background for the entire page', category: 'backgrounds' },
-  bgPanel: { label: 'Panel Background', description: 'Background texture for panels and cards', category: 'backgrounds' },
-  bgGameArea: { label: 'Game Area Background', description: 'Underground/cave background surrounding the dungeon', category: 'backgrounds' },
-  bgNavbar: { label: 'Navbar Background', description: 'Navigation bar background', category: 'backgrounds' },
-  buttonPrimary: { label: 'Primary Button', description: 'Main action button style', category: 'buttons' },
-  buttonSecondary: { label: 'Secondary Button', description: 'Secondary button style', category: 'buttons' },
-  buttonDanger: { label: 'Danger Button', description: 'Warning/delete button style', category: 'buttons' },
-  buttonSuccess: { label: 'Success Button', description: 'Confirm/success button style', category: 'buttons' },
-  borderFrame: { label: 'Border Frame', description: 'Decorative border for large panels', category: 'borders' },
-  borderFrameSmall: { label: 'Small Border Frame', description: 'Decorative border for smaller elements', category: 'borders' },
-  iconHeart: { label: 'Heart Icon (Filled)', description: 'Custom filled heart for lives display', category: 'icons' },
-  iconHeartEmpty: { label: 'Heart Icon (Empty)', description: 'Custom empty heart for lives display', category: 'icons' },
-  iconSword: { label: 'Sword Icon', description: 'Attack/combat icon', category: 'icons' },
-  iconShield: { label: 'Shield Icon', description: 'Defense/protection icon', category: 'icons' },
-  overlayVignette: { label: 'Vignette Overlay', description: 'Edge darkening effect', category: 'effects' },
-  overlayNoise: { label: 'Noise Overlay', description: 'Texture noise overlay', category: 'effects' },
+export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; description: string; category: string; inputType?: 'image' | 'text' | 'color' | 'select' }> = {
+  // Images
+  logo: { label: 'Logo', description: 'Main game logo (recommended: PNG with transparency)', category: 'branding', inputType: 'image' },
+  logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding', inputType: 'text' },
+  bgMain: { label: 'Main Background', description: 'Background for the entire page', category: 'backgrounds', inputType: 'image' },
+  bgPanel: { label: 'Panel Background', description: 'Background texture for panels and cards', category: 'backgrounds', inputType: 'image' },
+  bgGameArea: { label: 'Game Area Background', description: 'Underground/cave background surrounding the dungeon', category: 'backgrounds', inputType: 'image' },
+  bgNavbar: { label: 'Navbar Background', description: 'Navigation bar background', category: 'backgrounds', inputType: 'image' },
+  buttonPrimary: { label: 'Primary Button', description: 'Main action button style', category: 'buttons', inputType: 'image' },
+  buttonSecondary: { label: 'Secondary Button', description: 'Secondary button style', category: 'buttons', inputType: 'image' },
+  buttonDanger: { label: 'Danger Button', description: 'Warning/delete button style', category: 'buttons', inputType: 'image' },
+  buttonSuccess: { label: 'Success Button', description: 'Confirm/success button style', category: 'buttons', inputType: 'image' },
+  borderFrame: { label: 'Border Frame', description: 'Decorative border for large panels', category: 'borders', inputType: 'image' },
+  borderFrameSmall: { label: 'Small Border Frame', description: 'Decorative border for smaller elements', category: 'borders', inputType: 'image' },
+  iconHeart: { label: 'Heart Icon (Filled)', description: 'Custom filled heart for lives display', category: 'icons', inputType: 'image' },
+  iconHeartEmpty: { label: 'Heart Icon (Empty)', description: 'Custom empty heart for lives display', category: 'icons', inputType: 'image' },
+  iconSword: { label: 'Sword Icon', description: 'Attack/combat icon', category: 'icons', inputType: 'image' },
+  iconShield: { label: 'Shield Icon', description: 'Defense/protection icon', category: 'icons', inputType: 'image' },
+  overlayVignette: { label: 'Vignette Overlay', description: 'Edge darkening effect', category: 'effects', inputType: 'image' },
+  overlayNoise: { label: 'Noise Overlay', description: 'Texture noise overlay', category: 'effects', inputType: 'image' },
+
+  // Color settings
+  colorBgPrimary: { label: 'Page Background', description: 'Main page background color', category: 'colors', inputType: 'color' },
+  colorBgSecondary: { label: 'Panel Background', description: 'Panel and card background color', category: 'colors', inputType: 'color' },
+  colorBgNavbar: { label: 'Navbar Background', description: 'Navigation bar background color', category: 'colors', inputType: 'color' },
+  colorBgInput: { label: 'Input Background', description: 'Input field background color', category: 'colors', inputType: 'color' },
+  colorTextPrimary: { label: 'Primary Text', description: 'Main text color', category: 'colors', inputType: 'color' },
+  colorTextSecondary: { label: 'Secondary Text', description: 'Muted/secondary text color', category: 'colors', inputType: 'color' },
+  colorTextHeading: { label: 'Heading Text', description: 'Heading and title color', category: 'colors', inputType: 'color' },
+  colorBorderPrimary: { label: 'Primary Border', description: 'Main border color', category: 'colors', inputType: 'color' },
+  colorBorderAccent: { label: 'Accent Border', description: 'Focus and highlight border color', category: 'colors', inputType: 'color' },
+  colorAccentPrimary: { label: 'Primary Accent', description: 'Main accent color for buttons and links', category: 'colors', inputType: 'color' },
+  colorAccentSuccess: { label: 'Success Color', description: 'Positive/success actions color', category: 'colors', inputType: 'color' },
+  colorAccentDanger: { label: 'Danger Color', description: 'Warning/danger actions color', category: 'colors', inputType: 'color' },
+  colorAccentMagic: { label: 'Magic Color', description: 'Magic/arcane effect color', category: 'colors', inputType: 'color' },
+
+  // Style settings
+  borderRadius: { label: 'Border Radius', description: 'Roundness of corners', category: 'styles', inputType: 'select' },
+  borderWidth: { label: 'Border Width', description: 'Thickness of borders', category: 'styles', inputType: 'select' },
+  shadowIntensity: { label: 'Shadow Intensity', description: 'Strength of drop shadows', category: 'styles', inputType: 'select' },
+  fontFamily: { label: 'Font Style', description: 'Typography style', category: 'styles', inputType: 'select' },
 };
 
-export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects'] as const;
+export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'styles'] as const;
 export type AssetCategory = typeof ASSET_CATEGORIES[number];
 
 /**
@@ -168,12 +218,32 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   const assets = loadThemeAssets();
   const properties: Record<string, string> = {};
 
+  // Image assets
   if (assets.logo) properties['--asset-logo'] = `url(${assets.logo})`;
   if (assets.bgMain) properties['--asset-bg-main'] = `url(${assets.bgMain})`;
   if (assets.bgPanel) properties['--asset-bg-panel'] = `url(${assets.bgPanel})`;
   if (assets.bgGameArea) properties['--asset-bg-game-area'] = `url(${assets.bgGameArea})`;
   if (assets.buttonPrimary) properties['--asset-button-primary'] = `url(${assets.buttonPrimary})`;
   if (assets.borderFrame) properties['--asset-border-frame'] = `url(${assets.borderFrame})`;
+
+  // Color settings
+  if (assets.colorBgPrimary) properties['--theme-bg-primary'] = assets.colorBgPrimary;
+  if (assets.colorBgSecondary) properties['--theme-bg-secondary'] = assets.colorBgSecondary;
+  if (assets.colorBgNavbar) properties['--theme-bg-navbar'] = assets.colorBgNavbar;
+  if (assets.colorBgInput) properties['--theme-bg-input'] = assets.colorBgInput;
+  if (assets.colorTextPrimary) properties['--theme-text-primary'] = assets.colorTextPrimary;
+  if (assets.colorTextSecondary) properties['--theme-text-secondary'] = assets.colorTextSecondary;
+  if (assets.colorTextHeading) properties['--theme-text-heading'] = assets.colorTextHeading;
+  if (assets.colorBorderPrimary) properties['--theme-border-primary'] = assets.colorBorderPrimary;
+  if (assets.colorBorderAccent) properties['--theme-border-accent'] = assets.colorBorderAccent;
+  if (assets.colorAccentPrimary) properties['--theme-accent-primary'] = assets.colorAccentPrimary;
+  if (assets.colorAccentSuccess) properties['--theme-accent-success'] = assets.colorAccentSuccess;
+  if (assets.colorAccentDanger) properties['--theme-accent-danger'] = assets.colorAccentDanger;
+  if (assets.colorAccentMagic) properties['--theme-accent-magic'] = assets.colorAccentMagic;
+
+  // Style settings
+  if (assets.borderRadius) properties['--theme-border-radius'] = assets.borderRadius;
+  if (assets.borderWidth) properties['--theme-border-width'] = assets.borderWidth;
 
   return properties;
 }

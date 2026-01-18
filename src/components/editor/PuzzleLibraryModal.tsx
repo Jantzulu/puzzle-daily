@@ -197,13 +197,13 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
       />
 
       {/* Modal */}
-      <div className="relative bg-gray-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[95vh] sm:max-h-[85vh] flex flex-col">
+      <div className="relative bg-stone-900 rounded-lg shadow-xl w-full max-w-3xl max-h-[95vh] sm:max-h-[85vh] flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-gray-700">
+        <div className="flex items-center justify-between p-3 sm:p-4 border-b border-stone-700">
           <h2 className="text-lg sm:text-xl font-bold">Puzzle Library</h2>
           <button
             onClick={onClose}
-            className="p-1 hover:bg-gray-700 rounded text-gray-400 hover:text-white"
+            className="p-1 hover:bg-stone-700 rounded text-stone-400 hover:text-parchment-100"
           >
             <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -213,9 +213,9 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
 
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar - Folders (hidden on mobile) */}
-          <div className="hidden md:flex w-48 border-r border-gray-700 flex-col">
-            <div className="p-3 border-b border-gray-700">
-              <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide">Folders</h3>
+          <div className="hidden md:flex w-48 border-r border-stone-700 flex-col">
+            <div className="p-3 border-b border-stone-700">
+              <h3 className="text-sm font-semibold text-stone-400 uppercase tracking-wide">Folders</h3>
             </div>
             <div className="flex-1 overflow-y-auto p-2 space-y-1">
               {/* All Puzzles */}
@@ -223,8 +223,8 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                 onClick={() => setSelectedFolder(null)}
                 className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
                   selectedFolder === null
-                    ? 'bg-blue-600 text-white'
-                    : 'hover:bg-gray-800 text-gray-300'
+                    ? 'bg-blue-600 text-parchment-100'
+                    : 'hover:bg-stone-800 text-parchment-300'
                 }`}
               >
                 <span>All Puzzles</span>
@@ -236,8 +236,8 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                 onClick={() => setSelectedFolder('')}
                 className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
                   selectedFolder === ''
-                    ? 'bg-blue-600 text-white'
-                    : 'hover:bg-gray-800 text-gray-300'
+                    ? 'bg-blue-600 text-parchment-100'
+                    : 'hover:bg-stone-800 text-parchment-300'
                 }`}
               >
                 <span>Unfiled</span>
@@ -245,7 +245,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
               </button>
 
               {/* Divider */}
-              {folders.length > 0 && <div className="border-t border-gray-700 my-2" />}
+              {folders.length > 0 && <div className="border-t border-stone-700 my-2" />}
 
               {/* Custom folders */}
               {folders.map(folder => (
@@ -256,7 +256,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                       <div className="flex gap-1">
                         <button
                           onClick={() => setFolderToDelete(null)}
-                          className="flex-1 px-2 py-1 bg-gray-600 rounded text-xs hover:bg-gray-500"
+                          className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs hover:bg-stone-500"
                         >
                           Cancel
                         </button>
@@ -273,8 +273,8 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                       onClick={() => setSelectedFolder(folder)}
                       className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
                         selectedFolder === folder
-                          ? 'bg-blue-600 text-white'
-                          : 'hover:bg-gray-800 text-gray-300'
+                          ? 'bg-blue-600 text-parchment-100'
+                          : 'hover:bg-stone-800 text-parchment-300'
                       }`}
                     >
                       <span className="truncate flex-1">{folder}</span>
@@ -311,7 +311,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                       }
                     }}
                     placeholder="Folder name..."
-                    className="w-full px-2 py-1 text-sm bg-gray-800 rounded border border-gray-600 focus:border-blue-500 focus:outline-none"
+                    className="w-full px-2 py-1 text-sm bg-stone-800 rounded border border-stone-600 focus:border-blue-500 focus:outline-none"
                     autoFocus
                   />
                   <div className="flex gap-1 mt-1">
@@ -320,7 +320,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                         setShowNewFolderInput(false);
                         setNewFolderName('');
                       }}
-                      className="flex-1 px-2 py-1 text-xs bg-gray-700 rounded hover:bg-gray-600"
+                      className="flex-1 px-2 py-1 text-xs bg-stone-700 rounded hover:bg-stone-600"
                     >
                       Cancel
                     </button>
@@ -336,7 +336,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
               ) : (
                 <button
                   onClick={() => setShowNewFolderInput(true)}
-                  className="w-full text-left px-3 py-2 rounded text-sm text-gray-500 hover:text-gray-300 hover:bg-gray-800"
+                  className="w-full text-left px-3 py-2 rounded text-sm text-stone-500 hover:text-parchment-300 hover:bg-stone-800"
                 >
                   + New Folder
                 </button>
@@ -347,12 +347,12 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
           {/* Main content */}
           <div className="flex-1 flex flex-col overflow-hidden">
             {/* Search and Sort */}
-            <div className="p-3 sm:p-4 border-b border-gray-700 space-y-2 sm:space-y-3">
+            <div className="p-3 sm:p-4 border-b border-stone-700 space-y-2 sm:space-y-3">
               {/* Mobile folder selector */}
               <div className="md:hidden">
                 <button
                   onClick={() => setShowMobileFolders(!showMobileFolders)}
-                  className="w-full flex items-center justify-between px-3 py-2 bg-gray-800 rounded border border-gray-600 text-sm"
+                  className="w-full flex items-center justify-between px-3 py-2 bg-stone-800 rounded border border-stone-600 text-sm"
                 >
                   <span className="flex items-center gap-2">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -367,11 +367,11 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
 
                 {/* Mobile folder dropdown */}
                 {showMobileFolders && (
-                  <div className="mt-2 p-2 bg-gray-800 rounded border border-gray-600 space-y-1 max-h-48 overflow-y-auto">
+                  <div className="mt-2 p-2 bg-stone-800 rounded border border-stone-600 space-y-1 max-h-48 overflow-y-auto">
                     <button
                       onClick={() => { setSelectedFolder(null); setShowMobileFolders(false); }}
                       className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
-                        selectedFolder === null ? 'bg-blue-600 text-white' : 'hover:bg-gray-700 text-gray-300'
+                        selectedFolder === null ? 'bg-blue-600 text-parchment-100' : 'hover:bg-stone-700 text-parchment-300'
                       }`}
                     >
                       <span>All Puzzles</span>
@@ -380,29 +380,29 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                     <button
                       onClick={() => { setSelectedFolder(''); setShowMobileFolders(false); }}
                       className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
-                        selectedFolder === '' ? 'bg-blue-600 text-white' : 'hover:bg-gray-700 text-gray-300'
+                        selectedFolder === '' ? 'bg-blue-600 text-parchment-100' : 'hover:bg-stone-700 text-parchment-300'
                       }`}
                     >
                       <span>Unfiled</span>
                       <span className="text-xs opacity-70">{folderCounts._unfiled}</span>
                     </button>
-                    {folders.length > 0 && <div className="border-t border-gray-600 my-1" />}
+                    {folders.length > 0 && <div className="border-t border-stone-600 my-1" />}
                     {folders.map(folder => (
                       <button
                         key={folder}
                         onClick={() => { setSelectedFolder(folder); setShowMobileFolders(false); }}
                         className={`w-full text-left px-3 py-2 rounded text-sm flex justify-between items-center ${
-                          selectedFolder === folder ? 'bg-blue-600 text-white' : 'hover:bg-gray-700 text-gray-300'
+                          selectedFolder === folder ? 'bg-blue-600 text-parchment-100' : 'hover:bg-stone-700 text-parchment-300'
                         }`}
                       >
                         <span className="truncate">{folder}</span>
                         <span className="text-xs opacity-70">{folderCounts[folder] || 0}</span>
                       </button>
                     ))}
-                    <div className="border-t border-gray-600 my-1" />
+                    <div className="border-t border-stone-600 my-1" />
                     <button
                       onClick={() => { setShowNewFolderInput(true); setShowMobileFolders(false); }}
-                      className="w-full text-left px-3 py-2 rounded text-sm text-gray-500 hover:text-gray-300 hover:bg-gray-700"
+                      className="w-full text-left px-3 py-2 rounded text-sm text-stone-500 hover:text-parchment-300 hover:bg-stone-700"
                     >
                       + New Folder
                     </button>
@@ -419,10 +419,10 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search puzzles..."
-                    className="w-full px-4 py-2 pl-10 bg-gray-800 rounded border border-gray-600 focus:border-blue-500 focus:outline-none text-sm sm:text-base"
+                    className="w-full px-4 py-2 pl-10 bg-stone-800 rounded border border-stone-600 focus:border-blue-500 focus:outline-none text-sm sm:text-base"
                   />
                   <svg
-                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400"
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -435,7 +435,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                 <select
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value as SortOption)}
-                  className="px-3 py-2 bg-gray-800 rounded border border-gray-600 text-sm"
+                  className="px-3 py-2 bg-stone-800 rounded border border-stone-600 text-sm"
                 >
                   <option value="date_newest">Newest First</option>
                   <option value="date_oldest">Oldest First</option>
@@ -445,7 +445,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
               </div>
 
               {/* Stats - hidden on mobile, shown in desktop sidebar context */}
-              <div className="hidden sm:flex items-center justify-between text-sm text-gray-400">
+              <div className="hidden sm:flex items-center justify-between text-sm text-stone-400">
                 <span className="md:hidden">{getFolderDisplayName()}</span>
                 <span className="hidden md:inline">{getFolderDisplayName()}</span>
                 <span>
@@ -457,7 +457,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
               </div>
 
               {/* Mobile stats - simplified */}
-              <div className="sm:hidden text-xs text-gray-400 text-center">
+              <div className="sm:hidden text-xs text-stone-400 text-center">
                 {filteredPuzzles.length === puzzles.length
                   ? `${puzzles.length} puzzle${puzzles.length !== 1 ? 's' : ''}`
                   : `${filteredPuzzles.length} of ${puzzles.length}`
@@ -468,7 +468,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
             {/* Puzzle List */}
             <div className="flex-1 overflow-y-auto p-2 sm:p-4">
               {puzzles.length === 0 ? (
-                <div className="text-center py-8 sm:py-12 text-gray-400">
+                <div className="text-center py-8 sm:py-12 text-stone-400">
                   <svg className="w-12 sm:w-16 h-12 sm:h-16 mx-auto mb-4 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                   </svg>
@@ -476,7 +476,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                   <p className="text-xs sm:text-sm mt-1">Save your first puzzle to see it here</p>
                 </div>
               ) : filteredPuzzles.length === 0 ? (
-                <div className="text-center py-8 sm:py-12 text-gray-400">
+                <div className="text-center py-8 sm:py-12 text-stone-400">
                   <p className="text-base sm:text-lg font-medium">No puzzles match your search</p>
                   <p className="text-xs sm:text-sm mt-1">Try a different search term or folder</p>
                 </div>
@@ -488,7 +488,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                       className={`p-2 sm:p-3 rounded-lg border transition-colors ${
                         puzzle.id === currentPuzzleId
                           ? 'bg-blue-900/30 border-blue-600'
-                          : 'bg-gray-800 border-gray-700 hover:border-gray-600'
+                          : 'bg-stone-800 border-stone-700 hover:border-stone-600'
                       }`}
                     >
                       {confirmDelete === puzzle.id ? (
@@ -498,7 +498,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                           <div className="flex gap-2">
                             <button
                               onClick={() => setConfirmDelete(null)}
-                              className="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-gray-600 rounded hover:bg-gray-500"
+                              className="flex-1 sm:flex-none px-3 py-1.5 text-sm bg-stone-600 rounded hover:bg-stone-500"
                             >
                               Cancel
                             </button>
@@ -513,12 +513,12 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                       ) : movingPuzzle === puzzle.id ? (
                         // Move to folder UI
                         <div>
-                          <p className="text-xs sm:text-sm text-gray-400 mb-2">Move "{puzzle.name}" to:</p>
+                          <p className="text-xs sm:text-sm text-stone-400 mb-2">Move "{puzzle.name}" to:</p>
                           <div className="flex flex-wrap gap-1">
                             <button
                               onClick={() => handleMovePuzzle(puzzle.id, undefined)}
                               className={`px-2 py-1 text-xs rounded ${
-                                !puzzle.folder ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                                !puzzle.folder ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                               }`}
                             >
                               Unfiled
@@ -528,7 +528,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                                 key={f}
                                 onClick={() => handleMovePuzzle(puzzle.id, f)}
                                 className={`px-2 py-1 text-xs rounded ${
-                                  puzzle.folder === f ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                                  puzzle.folder === f ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                                 }`}
                               >
                                 {f}
@@ -536,7 +536,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                             ))}
                             <button
                               onClick={() => setMovingPuzzle(null)}
-                              className="px-2 py-1 text-xs bg-gray-600 rounded hover:bg-gray-500"
+                              className="px-2 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
                             >
                               Cancel
                             </button>
@@ -552,12 +552,12 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                                 <span className="px-1.5 py-0.5 text-xs bg-blue-600 rounded flex-shrink-0">Current</span>
                               )}
                               {puzzle.folder && (
-                                <span className="px-1.5 py-0.5 text-xs bg-gray-700 rounded text-gray-400 flex-shrink-0 hidden sm:inline">
+                                <span className="px-1.5 py-0.5 text-xs bg-stone-700 rounded text-stone-400 flex-shrink-0 hidden sm:inline">
                                   {puzzle.folder}
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-gray-400 mt-1">
+                            <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-stone-400 mt-1">
                               <span>{puzzle.width}x{puzzle.height}</span>
                               <span>{puzzle.enemies.length} enem{puzzle.enemies.length === 1 ? 'y' : 'ies'}</span>
                               <span className="hidden sm:inline text-xs">{formatDate(puzzle.savedAt)}</span>
@@ -566,7 +566,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                           <div className="flex gap-2 flex-shrink-0">
                             <button
                               onClick={() => setMovingPuzzle(puzzle.id)}
-                              className="p-2 sm:px-2 sm:py-1.5 text-sm bg-gray-700 rounded hover:bg-gray-600 text-gray-400 hover:text-white"
+                              className="p-2 sm:px-2 sm:py-1.5 text-sm bg-stone-700 rounded hover:bg-stone-600 text-stone-400 hover:text-parchment-100"
                               title="Move to folder"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -581,7 +581,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                             </button>
                             <button
                               onClick={() => handleDeleteClick(puzzle.id)}
-                              className="p-2 sm:px-2 sm:py-1.5 text-sm bg-gray-700 rounded hover:bg-red-600 text-gray-400 hover:text-white"
+                              className="p-2 sm:px-2 sm:py-1.5 text-sm bg-stone-700 rounded hover:bg-red-600 text-stone-400 hover:text-parchment-100"
                               title="Delete puzzle"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -600,10 +600,10 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-3 sm:p-4 border-t border-gray-700 flex justify-end">
+        <div className="p-3 sm:p-4 border-t border-stone-700 flex justify-end">
           <button
             onClick={onClose}
-            className="px-4 py-2 bg-gray-700 rounded hover:bg-gray-600 text-sm sm:text-base"
+            className="px-4 py-2 bg-stone-700 rounded hover:bg-stone-600 text-sm sm:text-base"
           >
             Close
           </button>

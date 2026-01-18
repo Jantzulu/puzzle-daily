@@ -227,7 +227,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
               </div>
             ) : (
               <label className="block cursor-pointer">
-                <div className="w-full h-16 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-gray-400 text-sm">
+                <div className="w-full h-16 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400 text-sm">
                   <span>+ Upload Activation Sprite</span>
                   <span className="text-xs text-stone-500">Single image or horizontal spritesheet</span>
                 </div>
@@ -314,7 +314,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                       newEffects[idx] = { ...effect, targetX: parseInt(e.target.value) };
                       onChange({ ...behavior, pressurePlateEffects: newEffects });
                     }}
-                    className="w-16 bg-gray-500 rounded px-2 py-1"
+                    className="w-16 bg-stone-500 rounded px-2 py-1"
                   />
                   <input
                     type="number"
@@ -325,7 +325,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                       newEffects[idx] = { ...effect, targetY: parseInt(e.target.value) };
                       onChange({ ...behavior, pressurePlateEffects: newEffects });
                     }}
-                    className="w-16 bg-gray-500 rounded px-2 py-1"
+                    className="w-16 bg-stone-500 rounded px-2 py-1"
                   />
                 </div>
               )}
@@ -714,7 +714,7 @@ export const TileTypeEditor: React.FC = () => {
                   </div>
 
                   {/* Prevent Placement Option */}
-                  <div className="pt-3 border-t border-gray-700">
+                  <div className="pt-3 border-t border-stone-700">
                     <label className="flex items-center text-sm text-stone-300 cursor-pointer">
                       <input
                         type="checkbox"
@@ -865,7 +865,7 @@ export const TileTypeEditor: React.FC = () => {
                                   });
                                 }}
                                 className={`w-8 h-8 rounded text-xs font-bold ${
-                                  isOn ? 'bg-moss-700 text-white' : 'bg-stone-600 text-stone-400'
+                                  isOn ? 'bg-moss-700 text-parchment-100' : 'bg-stone-600 text-stone-400'
                                 }`}
                               >
                                 {idx + 1}
@@ -917,7 +917,7 @@ export const TileTypeEditor: React.FC = () => {
                             })}
                             className={`flex-1 px-3 py-2 rounded text-sm ${
                               editing.cadence.startState === 'on'
-                                ? 'bg-moss-700 text-white'
+                                ? 'bg-moss-700 text-parchment-100'
                                 : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
                             }`}
                           >
@@ -930,7 +930,7 @@ export const TileTypeEditor: React.FC = () => {
                             })}
                             className={`flex-1 px-3 py-2 rounded text-sm ${
                               editing.cadence.startState === 'off'
-                                ? 'bg-gray-500 text-white'
+                                ? 'bg-stone-500 text-parchment-100'
                                 : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
                             }`}
                           >
@@ -967,7 +967,7 @@ export const TileTypeEditor: React.FC = () => {
                     </div>
                   ) : (
                     <label className="block cursor-pointer">
-                      <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-gray-400">
+                      <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
                         <span>+ Upload Sprite</span>
                         <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
                       </div>
@@ -984,7 +984,7 @@ export const TileTypeEditor: React.FC = () => {
                   )}
 
                   {/* Hide Behavior Indicators Option */}
-                  <div className="mt-4 pt-4 border-t border-gray-700">
+                  <div className="mt-4 pt-4 border-t border-stone-700">
                     <label className="flex items-center text-sm text-stone-300 cursor-pointer">
                       <input
                         type="checkbox"
@@ -1024,7 +1024,7 @@ export const TileTypeEditor: React.FC = () => {
                       </div>
                     ) : (
                       <label className="block cursor-pointer">
-                        <div className="w-full h-24 border-2 border-dashed border-gray-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-gray-400">
+                        <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
                           <span>+ Upload Off State Sprite</span>
                           <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
                         </div>

@@ -282,19 +282,19 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           ref={canvasRef}
           width={size}
           height={size}
-          className="border border-gray-600 rounded"
+          className="border border-stone-600 rounded"
         />
         {hasTriggeredSprite && (
           <div className="flex gap-2">
             <button
               onClick={() => setPreviewMode('default')}
-              className={`px-2 py-1 text-xs rounded ${previewMode === 'default' ? 'bg-blue-600' : 'bg-gray-600'}`}
+              className={`px-2 py-1 text-xs rounded ${previewMode === 'default' ? 'bg-blue-600' : 'bg-stone-600'}`}
             >
               Default
             </button>
             <button
               onClick={() => setPreviewMode('triggered')}
-              className={`px-2 py-1 text-xs rounded ${previewMode === 'triggered' ? 'bg-blue-600' : 'bg-gray-600'}`}
+              className={`px-2 py-1 text-xs rounded ${previewMode === 'triggered' ? 'bg-blue-600' : 'bg-stone-600'}`}
             >
               Triggered
             </button>
@@ -303,12 +303,12 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       </div>
 
       {/* Default Sprite */}
-      <div className="bg-gray-700 p-3 rounded">
+      <div className="bg-stone-700 p-3 rounded">
         <h4 className="text-sm font-bold mb-2">Default Sprite</h4>
 
         {/* Static Image */}
         <div className="mb-3">
-          <label className="text-xs text-gray-400 block mb-1">Static Image</label>
+          <label className="text-xs text-stone-400 block mb-1">Static Image</label>
           {hasDefaultImage ? (
             <div className="flex items-center gap-2">
               <span className="text-sm text-green-400">Image set</span>
@@ -321,7 +321,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
             </div>
           ) : (
             <label className="block cursor-pointer">
-              <div className="px-3 py-2 bg-gray-600 rounded text-sm text-center hover:bg-gray-500">
+              <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
                 Upload Image
               </div>
               <input
@@ -336,7 +336,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
 
         {/* Spritesheet */}
         <div>
-          <label className="text-xs text-gray-400 block mb-1">Animated Spritesheet</label>
+          <label className="text-xs text-stone-400 block mb-1">Animated Spritesheet</label>
           {hasDefaultSpriteSheet ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
@@ -350,32 +350,32 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
               </div>
               <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-xs text-gray-400">Frames</label>
+                  <label className="text-xs text-stone-400">Frames</label>
                   <input
                     type="number"
                     min="1"
                     max="32"
                     value={sprite.idleSpriteSheet?.frameCount || 4}
                     onChange={(e) => updateSpriteSheet('idleSpriteSheet', { frameCount: Number(e.target.value) })}
-                    className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-gray-400">FPS</label>
+                  <label className="text-xs text-stone-400">FPS</label>
                   <input
                     type="number"
                     min="1"
                     max="30"
                     value={sprite.idleSpriteSheet?.frameRate || 8}
                     onChange={(e) => updateSpriteSheet('idleSpriteSheet', { frameRate: Number(e.target.value) })}
-                    className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                    className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
                   />
                 </div>
               </div>
             </div>
           ) : (
             <label className="block cursor-pointer">
-              <div className="px-3 py-2 bg-gray-600 rounded text-sm text-center hover:bg-gray-500">
+              <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
                 Upload Spritesheet
               </div>
               <input
@@ -387,25 +387,25 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
             </label>
           )}
         </div>
-        <p className="text-xs text-gray-500 mt-2">
+        <p className="text-xs text-stone-500 mt-2">
           Spritesheet takes priority over static image if both are set.
         </p>
       </div>
 
       {/* Triggered Sprite (optional) */}
-      <div className="bg-gray-700 p-3 rounded">
+      <div className="bg-stone-700 p-3 rounded">
         <h4 className="text-sm font-bold mb-2">Triggered Sprite (Optional)</h4>
-        <p className="text-xs text-gray-400 mb-2">
+        <p className="text-xs text-stone-400 mb-2">
           Alternate appearance when triggered by nearby entities.
         </p>
 
         {/* Trigger Type */}
         <div className="mb-3">
-          <label className="text-xs text-gray-400 block mb-1">Trigger Condition</label>
+          <label className="text-xs text-stone-400 block mb-1">Trigger Condition</label>
           <select
             value={sprite.triggerType || 'none'}
             onChange={(e) => handleTriggerTypeChange(e.target.value)}
-            className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+            className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
           >
             {TRIGGER_TYPES.map(t => (
               <option key={t.value} value={t.value}>{t.label}</option>
@@ -417,7 +417,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           <>
             {/* Triggered Static Image */}
             <div className="mb-3">
-              <label className="text-xs text-gray-400 block mb-1">Triggered Static Image</label>
+              <label className="text-xs text-stone-400 block mb-1">Triggered Static Image</label>
               {hasTriggeredImage ? (
                 <div className="flex items-center gap-2">
                   <span className="text-sm text-green-400">Image set</span>
@@ -430,7 +430,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                 </div>
               ) : (
                 <label className="block cursor-pointer">
-                  <div className="px-3 py-2 bg-gray-600 rounded text-sm text-center hover:bg-gray-500">
+                  <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
                     Upload Image
                   </div>
                   <input
@@ -445,7 +445,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
 
             {/* Triggered Spritesheet */}
             <div>
-              <label className="text-xs text-gray-400 block mb-1">Triggered Spritesheet</label>
+              <label className="text-xs text-stone-400 block mb-1">Triggered Spritesheet</label>
               {hasTriggeredSpriteSheet ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
@@ -459,32 +459,32 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                   </div>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="text-xs text-gray-400">Frames</label>
+                      <label className="text-xs text-stone-400">Frames</label>
                       <input
                         type="number"
                         min="1"
                         max="32"
                         value={sprite.triggeredSpriteSheet?.frameCount || 4}
                         onChange={(e) => updateSpriteSheet('triggeredSpriteSheet', { frameCount: Number(e.target.value) })}
-                        className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                        className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
                       />
                     </div>
                     <div>
-                      <label className="text-xs text-gray-400">FPS</label>
+                      <label className="text-xs text-stone-400">FPS</label>
                       <input
                         type="number"
                         min="1"
                         max="30"
                         value={sprite.triggeredSpriteSheet?.frameRate || 8}
                         onChange={(e) => updateSpriteSheet('triggeredSpriteSheet', { frameRate: Number(e.target.value) })}
-                        className="w-full px-2 py-1 bg-gray-600 rounded text-sm"
+                        className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
                       />
                     </div>
                   </div>
                 </div>
               ) : (
                 <label className="block cursor-pointer">
-                  <div className="px-3 py-2 bg-gray-600 rounded text-sm text-center hover:bg-gray-500">
+                  <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
                     Upload Spritesheet
                   </div>
                   <input
@@ -503,7 +503,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       {/* Shape Options (only shown if no default image/spritesheet) */}
       {!hasDefaultImage && !hasDefaultSpriteSheet && (
         <>
-          <div className="bg-gray-700 p-3 rounded">
+          <div className="bg-stone-700 p-3 rounded">
             <h4 className="text-sm font-bold mb-2">Fallback Shape</h4>
             <div className="grid grid-cols-5 gap-1">
               {SHAPES.map(s => (
@@ -513,7 +513,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                   className={`p-2 rounded text-xs ${
                     sprite.shape === s.value
                       ? 'bg-blue-600'
-                      : 'bg-gray-600 hover:bg-gray-500'
+                      : 'bg-stone-600 hover:bg-stone-500'
                   }`}
                 >
                   {s.label}
@@ -522,7 +522,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
             </div>
             <div className="grid grid-cols-2 gap-3 mt-3">
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Primary</label>
+                <label className="text-xs text-stone-400 block mb-1">Primary</label>
                 <input
                   type="color"
                   value={sprite.primaryColor || '#8b4513'}
@@ -531,7 +531,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                 />
               </div>
               <div>
-                <label className="text-xs text-gray-400 block mb-1">Secondary</label>
+                <label className="text-xs text-stone-400 block mb-1">Secondary</label>
                 <input
                   type="color"
                   value={sprite.secondaryColor || '#d2691e'}
@@ -545,7 +545,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       )}
 
       {/* Size */}
-      <div className="bg-gray-700 p-3 rounded">
+      <div className="bg-stone-700 p-3 rounded">
         <h4 className="text-sm font-bold mb-2">Size: {((sprite.size || 0.8) * 100).toFixed(0)}%</h4>
         <input
           type="range"
@@ -556,7 +556,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           onChange={(e) => handleSizeChange(parseFloat(e.target.value))}
           className="w-full"
         />
-        <p className="text-xs text-gray-400 mt-1">
+        <p className="text-xs text-stone-400 mt-1">
           Size relative to tile. Values &gt;100% extend beyond tile bounds.
         </p>
       </div>

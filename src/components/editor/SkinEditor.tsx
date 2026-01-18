@@ -469,8 +469,8 @@ export const SkinEditor: React.FC = () => {
                           <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                             <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
                               isBuiltIn
-                                ? 'border-gray-600 text-gray-600'
-                                : 'border-gray-500 text-stone-400 hover:border-gray-400'
+                                ? 'border-stone-600 text-stone-600'
+                                : 'border-stone-500 text-stone-400 hover:border-stone-400'
                             }`}>
                               {isBuiltIn ? 'N/A' : '+ Upload'}
                             </div>
@@ -524,8 +524,8 @@ export const SkinEditor: React.FC = () => {
                           <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
                             <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
                               isBuiltIn
-                                ? 'border-gray-600 text-gray-600'
-                                : 'border-gray-500 text-stone-400 hover:border-gray-400'
+                                ? 'border-stone-600 text-stone-600'
+                                : 'border-stone-500 text-stone-400 hover:border-stone-400'
                             }`}>
                               {isBuiltIn ? 'Default' : '+ Upload'}
                             </div>
@@ -605,8 +605,8 @@ export const SkinEditor: React.FC = () => {
                                 <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${defaultSprite ? 'absolute inset-0' : ''}`}>
                                   <div className={`w-full h-10 border-2 border-dashed rounded flex items-center justify-center text-xs ${
                                     isBuiltIn
-                                      ? 'border-gray-600 text-gray-600'
-                                      : 'border-gray-500 text-stone-400 hover:border-gray-400'
+                                      ? 'border-stone-600 text-stone-600'
+                                      : 'border-stone-500 text-stone-400 hover:border-stone-400'
                                   } ${defaultSprite ? 'bg-black/50' : ''}`}>
                                     {isBuiltIn ? 'Default' : (defaultSprite ? 'Override' : '+ Upload')}
                                   </div>
@@ -687,8 +687,8 @@ export const SkinEditor: React.FC = () => {
                                     <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${tileType.customSprite?.idleImageData ? 'absolute inset-0' : ''}`}>
                                       <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
                                         isBuiltIn
-                                          ? 'border-gray-600 text-gray-600'
-                                          : 'border-gray-500 text-stone-400 hover:border-gray-400'
+                                          ? 'border-stone-600 text-stone-600'
+                                          : 'border-stone-500 text-stone-400 hover:border-stone-400'
                                       } ${tileType.customSprite?.idleImageData ? 'bg-black/50' : ''}`}>
                                         {isBuiltIn ? 'Default' : (tileType.customSprite?.idleImageData ? 'Override' : '+ Upload')}
                                       </div>

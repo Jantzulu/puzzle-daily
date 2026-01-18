@@ -357,7 +357,7 @@ export const CollectibleEditor: React.FC = () => {
                           <span>Enemies</span>
                         </label>
                       </div>
-                      <div className="pt-2 border-t border-gray-700">
+                      <div className="pt-2 border-t border-stone-700">
                         <label className="flex items-center gap-2 cursor-pointer">
                           <input
                             type="checkbox"

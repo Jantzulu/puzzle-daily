@@ -60,8 +60,8 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose }) => {
   }> = ({ label, value, onChange, disabled }) => (
     <div className="space-y-1">
       <div className="flex justify-between items-center">
-        <span className="text-sm text-gray-300">{label}</span>
-        <span className="text-xs text-gray-500">{Math.round(value * 100)}%</span>
+        <span className="text-sm text-parchment-300">{label}</span>
+        <span className="text-xs text-stone-500">{Math.round(value * 100)}%</span>
       </div>
       <input
         type="range"
@@ -72,7 +72,7 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose }) => {
         onChange={(e) => onChange(parseFloat(e.target.value))}
         disabled={disabled}
         className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
-          disabled ? 'bg-gray-700 opacity-50' : 'bg-gray-700'
+          disabled ? 'bg-stone-700 opacity-50' : 'bg-stone-700'
         }`}
         style={{
           background: disabled
@@ -87,8 +87,8 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose }) => {
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-2 rounded transition-colors bg-gray-700 hover:bg-gray-600 ${
-          settings.enabled ? 'text-gray-300' : 'text-gray-500'
+        className={`flex items-center gap-2 px-3 py-2 rounded transition-colors bg-stone-700 hover:bg-stone-600 ${
+          settings.enabled ? 'text-parchment-300' : 'text-stone-500'
         }`}
         title="Sound Settings"
       >
@@ -102,20 +102,20 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose }) => {
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
           </svg>
         )}
-        <svg className={`w-3 h-3 text-gray-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <svg className={`w-3 h-3 text-stone-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-gray-800 border border-gray-700 rounded-lg shadow-xl z-50">
-          <div className="p-3 border-b border-gray-700">
+        <div className="absolute right-0 top-full mt-2 w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-50">
+          <div className="p-3 border-b border-stone-700">
             <div className="flex items-center justify-between">
-              <span className="text-white font-medium">Sound Settings</span>
+              <span className="text-parchment-100 font-medium">Sound Settings</span>
               <button
                 onClick={handleToggle}
                 className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  settings.enabled ? 'bg-blue-600' : 'bg-gray-600'
+                  settings.enabled ? 'bg-blue-600' : 'bg-stone-600'
                 }`}
               >
                 <span
@@ -150,7 +150,7 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose }) => {
 
           {!settings.enabled && (
             <div className="px-3 pb-3">
-              <p className="text-gray-500 text-xs">
+              <p className="text-stone-500 text-xs">
                 Sound is muted. Toggle the switch to enable.
               </p>
             </div>

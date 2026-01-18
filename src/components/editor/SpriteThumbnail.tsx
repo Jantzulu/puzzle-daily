@@ -159,10 +159,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   if (!sprite) {
     return (
       <div
-        className={`bg-gray-700 rounded flex items-center justify-center ${className}`}
+        className={`bg-stone-700 rounded flex items-center justify-center ${className}`}
         style={{ width: size, height: size }}
       >
-        <span className="text-gray-500 text-xs">No Sprite</span>
+        <span className="text-stone-500 text-xs">No Sprite</span>
       </div>
     );
   }

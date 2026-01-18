@@ -14,6 +14,52 @@ import {
   type AssetCategory,
 } from '../../utils/themeAssets';
 
+// Default dungeon theme colors for reset functionality
+const DEFAULT_COLORS: Partial<ThemeAssets> = {
+  colorBgPrimary: '#15100a',
+  colorBgSecondary: '#2a2118',
+  colorBgNavbar: '#5a4a35',
+  colorBgInput: '#15100a',
+  colorTextPrimary: '#f2e0b5',
+  colorTextSecondary: '#7d6c52',
+  colorTextHeading: '#d4a574',
+  colorBorderPrimary: '#5a4a35',
+  colorBorderAccent: '#c4915c',
+  colorAccentPrimary: '#c4915c',
+  colorAccentSuccess: '#556b2f',
+  colorAccentDanger: '#c12525',
+  colorAccentMagic: '#8a5fc4',
+};
+
+// Style options
+const BORDER_RADIUS_OPTIONS = [
+  { value: '0px', label: 'Sharp (0px)' },
+  { value: '2px', label: 'Pixel (2px)' },
+  { value: '4px', label: 'Rounded (4px)' },
+  { value: '8px', label: 'Soft (8px)' },
+  { value: '12px', label: 'Very Soft (12px)' },
+];
+
+const BORDER_WIDTH_OPTIONS = [
+  { value: '1px', label: 'Thin (1px)' },
+  { value: '2px', label: 'Normal (2px)' },
+  { value: '3px', label: 'Thick (3px)' },
+  { value: '4px', label: 'Heavy (4px)' },
+];
+
+const SHADOW_OPTIONS = [
+  { value: 'none', label: 'None' },
+  { value: 'light', label: 'Light' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'heavy', label: 'Heavy' },
+];
+
+const FONT_OPTIONS = [
+  { value: 'default', label: 'Default (Inter)' },
+  { value: 'medieval', label: 'Medieval (Almendra)' },
+  { value: 'pixel', label: 'Pixel (Press Start 2P)' },
+];
+
 interface AssetUploadProps {
   assetKey: ThemeAssetKey;
   value?: string;
@@ -44,7 +90,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange }) 
   };
 
   // For text fields like logoAlt
-  if (assetKey === 'logoAlt') {
+  if (config.inputType === 'text') {
     return (
       <div className="dungeon-panel-dark p-3">
         <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
@@ -54,7 +100,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange }) 
           value={value || ''}
           onChange={(e) => onChange(e.target.value || undefined)}
           className="dungeon-input w-full"
-          placeholder="Enter alt text..."
+          placeholder="Enter text..."
         />
       </div>
     );
@@ -111,6 +157,144 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange }) 
   );
 };
 
+interface ColorPickerProps {
+  assetKey: ThemeAssetKey;
+  value?: string;
+  onChange: (value: string | undefined) => void;
+}
+
+const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) => {
+  const config = THEME_ASSET_CONFIG[assetKey];
+  const defaultColor = DEFAULT_COLORS[assetKey as keyof typeof DEFAULT_COLORS] || '#000000';
+
+  return (
+    <div className="dungeon-panel-dark p-3">
+      <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
+      <p className="text-xs text-stone-500 mb-2">{config.description}</p>
+
+      <div className="flex items-center gap-3">
+        {/* Color picker */}
+        <div className="relative">
+          <input
+            type="color"
+            value={value || defaultColor}
+            onChange={(e) => onChange(e.target.value)}
+            className="w-12 h-10 rounded-pixel border-2 border-stone-600 cursor-pointer bg-transparent"
+          />
+        </div>
+
+        {/* Hex input */}
+        <input
+          type="text"
+          value={value || ''}
+          onChange={(e) => {
+            const val = e.target.value;
+            if (val === '' || /^#[0-9A-Fa-f]{0,6}$/.test(val)) {
+              onChange(val || undefined);
+            }
+          }}
+          placeholder={defaultColor}
+          className="dungeon-input flex-1 text-sm font-mono"
+        />
+
+        {/* Reset button */}
+        {value && (
+          <button
+            onClick={() => onChange(undefined)}
+            className="dungeon-btn text-xs px-2"
+            title="Reset to default"
+          >
+            Reset
+          </button>
+        )}
+      </div>
+
+      {/* Preview swatch */}
+      <div className="mt-2 flex items-center gap-2">
+        <div
+          className="w-full h-6 rounded-pixel border border-stone-600"
+          style={{ backgroundColor: value || defaultColor }}
+        />
+      </div>
+    </div>
+  );
+};
+
+interface StyleSelectorProps {
+  assetKey: ThemeAssetKey;
+  value?: string;
+  onChange: (value: string | undefined) => void;
+}
+
+const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange }) => {
+  const config = THEME_ASSET_CONFIG[assetKey];
+
+  let options: { value: string; label: string }[] = [];
+  let defaultValue = '';
+
+  switch (assetKey) {
+    case 'borderRadius':
+      options = BORDER_RADIUS_OPTIONS;
+      defaultValue = '2px';
+      break;
+    case 'borderWidth':
+      options = BORDER_WIDTH_OPTIONS;
+      defaultValue = '2px';
+      break;
+    case 'shadowIntensity':
+      options = SHADOW_OPTIONS;
+      defaultValue = 'medium';
+      break;
+    case 'fontFamily':
+      options = FONT_OPTIONS;
+      defaultValue = 'default';
+      break;
+  }
+
+  return (
+    <div className="dungeon-panel-dark p-3">
+      <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
+      <p className="text-xs text-stone-500 mb-2">{config.description}</p>
+
+      <div className="flex flex-wrap gap-2">
+        {options.map((option) => (
+          <button
+            key={option.value}
+            onClick={() => onChange(option.value === defaultValue ? undefined : option.value)}
+            className={`px-3 py-2 rounded-pixel text-sm transition-all border-2 ${
+              (value || defaultValue) === option.value
+                ? 'bg-copper-700 border-copper-500 text-parchment-100'
+                : 'bg-stone-800 border-stone-600 text-stone-400 hover:bg-stone-700 hover:text-parchment-200'
+            }`}
+          >
+            {option.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Preview for border radius */}
+      {assetKey === 'borderRadius' && (
+        <div className="mt-3">
+          <div
+            className="w-full h-12 bg-copper-700 border-2 border-copper-500"
+            style={{ borderRadius: value || defaultValue }}
+          />
+        </div>
+      )}
+
+      {/* Preview for border width */}
+      {assetKey === 'borderWidth' && (
+        <div className="mt-3">
+          <div
+            className="w-full h-12 bg-stone-800 border-copper-500"
+            style={{ borderWidth: value || defaultValue, borderStyle: 'solid' }}
+          />
+        </div>
+      )}
+    </div>
+  );
+};
+
 export const ThemeAssetsEditor: React.FC = () => {
   const [assets, setAssets] = useState<ThemeAssets>({});
   const [activeCategory, setActiveCategory] = useState<AssetCategory>('branding');
@@ -155,6 +339,26 @@ export const ThemeAssetsEditor: React.FC = () => {
     }
   };
 
+  const handleResetAllColors = () => {
+    // Clear all color settings
+    const colorKeys = Object.keys(THEME_ASSET_CONFIG).filter(
+      key => THEME_ASSET_CONFIG[key as ThemeAssetKey].inputType === 'color'
+    );
+    colorKeys.forEach(key => deleteThemeAsset(key as ThemeAssetKey));
+    setAssets(loadThemeAssets());
+    notifyThemeAssetsChanged();
+  };
+
+  const handleResetAllStyles = () => {
+    // Clear all style settings
+    const styleKeys = Object.keys(THEME_ASSET_CONFIG).filter(
+      key => THEME_ASSET_CONFIG[key as ThemeAssetKey].inputType === 'select'
+    );
+    styleKeys.forEach(key => deleteThemeAsset(key as ThemeAssetKey));
+    setAssets(loadThemeAssets());
+    notifyThemeAssetsChanged();
+  };
+
   // Get assets for current category
   const categoryAssets = Object.entries(THEME_ASSET_CONFIG)
     .filter(([_, config]) => config.category === activeCategory)
@@ -167,6 +371,54 @@ export const ThemeAssetsEditor: React.FC = () => {
     borders: 'Borders',
     icons: 'Icons',
     effects: 'Effects',
+    colors: 'Colors',
+    styles: 'Styles',
+  };
+
+  const categoryIcons: Record<AssetCategory, string> = {
+    branding: '🏷️',
+    backgrounds: '🖼️',
+    buttons: '🔘',
+    borders: '🖼️',
+    icons: '⚔️',
+    effects: '✨',
+    colors: '🎨',
+    styles: '⚙️',
+  };
+
+  const renderAssetControl = (key: ThemeAssetKey) => {
+    const config = THEME_ASSET_CONFIG[key];
+
+    if (config.inputType === 'color') {
+      return (
+        <ColorPicker
+          key={key}
+          assetKey={key}
+          value={assets[key]}
+          onChange={(value) => handleAssetChange(key, value)}
+        />
+      );
+    }
+
+    if (config.inputType === 'select') {
+      return (
+        <StyleSelector
+          key={key}
+          assetKey={key}
+          value={assets[key]}
+          onChange={(value) => handleAssetChange(key, value)}
+        />
+      );
+    }
+
+    return (
+      <AssetUpload
+        key={key}
+        assetKey={key}
+        value={assets[key]}
+        onChange={(value) => handleAssetChange(key, value)}
+      />
+    );
   };
 
   return (
@@ -175,7 +427,7 @@ export const ThemeAssetsEditor: React.FC = () => {
       <div className="mb-6">
         <h2 className="text-xl font-bold font-medieval text-copper-400 mb-2">Theme Assets</h2>
         <p className="text-sm text-stone-400">
-          Upload custom images to personalize the look of your game. These assets will apply to both the editor and player-facing game.
+          Customize colors, styles, and upload images to personalize the look of your game. Changes apply to both the editor and player-facing game.
         </p>
       </div>
 
@@ -202,36 +454,82 @@ export const ThemeAssetsEditor: React.FC = () => {
           <button
             key={category}
             onClick={() => setActiveCategory(category)}
-            className={`dungeon-tab ${activeCategory === category ? 'dungeon-tab-active' : ''}`}
+            className={`dungeon-tab flex items-center gap-1 ${activeCategory === category ? 'dungeon-tab-active' : ''}`}
           >
-            {categoryLabels[category]}
+            <span>{categoryIcons[category]}</span>
+            <span>{categoryLabels[category]}</span>
           </button>
         ))}
       </div>
 
+      {/* Reset buttons for colors and styles */}
+      {activeCategory === 'colors' && (
+        <div className="mb-4">
+          <button
+            onClick={handleResetAllColors}
+            className="dungeon-btn-danger text-sm"
+          >
+            Reset All Colors to Default
+          </button>
+        </div>
+      )}
+      {activeCategory === 'styles' && (
+        <div className="mb-4">
+          <button
+            onClick={handleResetAllStyles}
+            className="dungeon-btn-danger text-sm"
+          >
+            Reset All Styles to Default
+          </button>
+        </div>
+      )}
+
       {/* Asset grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {categoryAssets.map((key) => (
-          <AssetUpload
-            key={key}
-            assetKey={key}
-            value={assets[key]}
-            onChange={(value) => handleAssetChange(key, value)}
-          />
-        ))}
+      <div className={`grid gap-4 ${
+        activeCategory === 'colors' || activeCategory === 'styles'
+          ? 'grid-cols-1 sm:grid-cols-2'
+          : 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+      }`}>
+        {categoryAssets.map((key) => renderAssetControl(key))}
       </div>
 
-      {/* Usage hint */}
-      <div className="mt-8 parchment-panel p-4">
-        <h3 className="font-medium text-parchment-800 mb-2">How to use custom assets</h3>
-        <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
-          <li>Upload images in PNG format with transparency for best results</li>
-          <li>Background images work best as tileable textures or large images</li>
-          <li>Button images can be 9-slice sprites for proper scaling</li>
-          <li>Icons should be square (e.g., 32x32 or 64x64 pixels)</li>
-          <li>Assets are stored locally and will sync with your puzzle skins</li>
-        </ul>
-      </div>
+      {/* Usage hints based on category */}
+      {activeCategory !== 'colors' && activeCategory !== 'styles' && (
+        <div className="mt-8 parchment-panel p-4">
+          <h3 className="font-medium text-parchment-800 mb-2">How to use custom assets</h3>
+          <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
+            <li>Upload images in PNG format with transparency for best results</li>
+            <li>Background images work best as tileable textures or large images</li>
+            <li>Button images can be 9-slice sprites for proper scaling</li>
+            <li>Icons should be square (e.g., 32x32 or 64x64 pixels)</li>
+            <li>Assets are stored locally and will sync with your puzzle skins</li>
+          </ul>
+        </div>
+      )}
+
+      {activeCategory === 'colors' && (
+        <div className="mt-8 parchment-panel p-4">
+          <h3 className="font-medium text-parchment-800 mb-2">Color Customization</h3>
+          <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
+            <li>Click the color swatch to open a color picker</li>
+            <li>Enter hex codes directly (e.g., #ff0000 for red)</li>
+            <li>Use the Reset button to restore individual colors to default</li>
+            <li>Colors apply to UI elements throughout the game</li>
+          </ul>
+        </div>
+      )}
+
+      {activeCategory === 'styles' && (
+        <div className="mt-8 parchment-panel p-4">
+          <h3 className="font-medium text-parchment-800 mb-2">Style Settings</h3>
+          <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
+            <li>Border radius controls the roundness of corners</li>
+            <li>Border width affects the thickness of element borders</li>
+            <li>Shadow intensity controls the depth effect of panels</li>
+            <li>Font style changes the typography throughout the game</li>
+          </ul>
+        </div>
+      )}
     </div>
   );
 };

@@ -91,13 +91,13 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   return (
     <div className={`rich-text-editor ${className}`}>
       {/* Toolbar */}
-      <div className="flex gap-1 mb-1 p-1 bg-gray-700 rounded-t border-b border-gray-600">
+      <div className="flex gap-1 mb-1 p-1 bg-stone-700 rounded-t border-b border-stone-600">
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => execCommand('bold')}
-          className={`px-2 py-1 text-sm rounded hover:bg-gray-600 font-bold ${
-            isFormatActive('bold') ? 'bg-gray-500 text-white' : 'text-gray-300'
+          className={`px-2 py-1 text-sm rounded hover:bg-stone-600 font-bold ${
+            isFormatActive('bold') ? 'bg-stone-500 text-parchment-100' : 'text-parchment-300'
           }`}
           title="Bold (Ctrl+B)"
         >
@@ -107,8 +107,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => execCommand('italic')}
-          className={`px-2 py-1 text-sm rounded hover:bg-gray-600 italic ${
-            isFormatActive('italic') ? 'bg-gray-500 text-white' : 'text-gray-300'
+          className={`px-2 py-1 text-sm rounded hover:bg-stone-600 italic ${
+            isFormatActive('italic') ? 'bg-stone-500 text-parchment-100' : 'text-parchment-300'
           }`}
           title="Italic (Ctrl+I)"
         >
@@ -118,8 +118,8 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => execCommand('underline')}
-          className={`px-2 py-1 text-sm rounded hover:bg-gray-600 underline ${
-            isFormatActive('underline') ? 'bg-gray-500 text-white' : 'text-gray-300'
+          className={`px-2 py-1 text-sm rounded hover:bg-stone-600 underline ${
+            isFormatActive('underline') ? 'bg-stone-500 text-parchment-100' : 'text-parchment-300'
           }`}
           title="Underline (Ctrl+U)"
         >
@@ -129,15 +129,15 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => execCommand('strikeThrough')}
-          className={`px-2 py-1 text-sm rounded hover:bg-gray-600 line-through ${
-            isFormatActive('strikeThrough') ? 'bg-gray-500 text-white' : 'text-gray-300'
+          className={`px-2 py-1 text-sm rounded hover:bg-stone-600 line-through ${
+            isFormatActive('strikeThrough') ? 'bg-stone-500 text-parchment-100' : 'text-parchment-300'
           }`}
           title="Strikethrough"
         >
           S
         </button>
 
-        <div className="w-px bg-gray-600 mx-1" />
+        <div className="w-px bg-stone-600 mx-1" />
 
         {/* Color picker */}
         <div className="relative">
@@ -145,21 +145,21 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
             type="button"
             onMouseDown={(e) => e.preventDefault()}
             onClick={() => setShowColorPicker(!showColorPicker)}
-            className="px-2 py-1 text-sm rounded hover:bg-gray-600 text-gray-300 flex items-center gap-1"
+            className="px-2 py-1 text-sm rounded hover:bg-stone-600 text-parchment-300 flex items-center gap-1"
             title="Text Color"
           >
             <span className="text-red-400">A</span>
             <span className="text-[10px]">▼</span>
           </button>
           {showColorPicker && (
-            <div className="absolute top-full left-0 mt-1 p-2 bg-gray-800 rounded shadow-lg border border-gray-600 z-50 grid grid-cols-5 gap-1">
+            <div className="absolute top-full left-0 mt-1 p-2 bg-stone-800 rounded shadow-lg border border-stone-600 z-50 grid grid-cols-5 gap-1">
               {PRESET_COLORS.map((color) => (
                 <button
                   key={color}
                   type="button"
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => applyColor(color)}
-                  className="w-6 h-6 rounded border border-gray-500 hover:scale-110 transition-transform"
+                  className="w-6 h-6 rounded border border-stone-500 hover:scale-110 transition-transform"
                   style={{ backgroundColor: color }}
                   title={color}
                 />
@@ -168,14 +168,14 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
           )}
         </div>
 
-        <div className="w-px bg-gray-600 mx-1" />
+        <div className="w-px bg-stone-600 mx-1" />
 
         {/* Clear formatting */}
         <button
           type="button"
           onMouseDown={(e) => e.preventDefault()}
           onClick={() => execCommand('removeFormat')}
-          className="px-2 py-1 text-sm rounded hover:bg-gray-600 text-gray-300"
+          className="px-2 py-1 text-sm rounded hover:bg-stone-600 text-parchment-300"
           title="Clear Formatting"
         >
           ✕
@@ -190,9 +190,9 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
         onKeyDown={handleKeyDown}
         onBlur={() => setShowColorPicker(false)}
         data-placeholder={placeholder}
-        className={`px-3 py-2 bg-gray-700 rounded-b text-sm text-white outline-none focus:ring-1 focus:ring-blue-500 min-h-[2.5rem] ${
+        className={`px-3 py-2 bg-stone-700 rounded-b text-sm text-parchment-100 outline-none focus:ring-1 focus:ring-blue-500 min-h-[2.5rem] ${
           multiline ? 'min-h-[4rem]' : ''
-        } empty:before:content-[attr(data-placeholder)] empty:before:text-gray-500`}
+        } empty:before:content-[attr(data-placeholder)] empty:before:text-stone-500`}
         style={{ whiteSpace: multiline ? 'pre-wrap' : 'nowrap' }}
       />
     </div>

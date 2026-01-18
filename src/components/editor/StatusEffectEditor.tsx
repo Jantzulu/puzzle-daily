@@ -193,7 +193,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   };
 
   return (
-    <div className="bg-gray-800 p-6 rounded space-y-6">
+    <div className="bg-stone-800 p-6 rounded space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-xl font-bold">
           {effect ? (isBuiltIn ? 'View Built-in Effect' : 'Edit Status Effect') : 'Create Status Effect'}
@@ -201,7 +201,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         <div className="flex gap-2">
           <button
             onClick={onCancel}
-            className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-500"
+            className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-500"
           >
             Cancel
           </button>
@@ -232,7 +232,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               value={name}
               onChange={(e) => setName(e.target.value)}
               disabled={isBuiltIn}
-              className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
+              className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
               placeholder="e.g., Poison, Stun, Sleep"
             />
           </div>
@@ -240,7 +240,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
             {isBuiltIn ? (
-              <div className="w-full px-3 py-2 bg-gray-700 rounded opacity-50 text-gray-400">
+              <div className="w-full px-3 py-2 bg-stone-700 rounded opacity-50 text-stone-400">
                 {description || 'No description'}
               </div>
             ) : (
@@ -259,7 +259,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               value={type}
               onChange={(e) => applyTypeDefaults(e.target.value as StatusEffectType)}
               disabled={isBuiltIn}
-              className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
+              className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
             >
               {Object.values(StatusEffectType).map(t => (
                 <option key={t} value={t}>
@@ -281,7 +281,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 value={defaultDuration}
                 onChange={(e) => setDefaultDuration(Math.max(1, parseInt(e.target.value) || 1))}
                 disabled={isBuiltIn}
-                className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
+                className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
                 min="1"
               />
             </div>
@@ -295,10 +295,10 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 value={defaultValue}
                 onChange={(e) => setDefaultValue(Math.max(0, parseInt(e.target.value) || 0))}
                 disabled={isBuiltIn}
-                className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
+                className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
                 min="0"
               />
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-stone-400 mt-1">
                 {type === StatusEffectType.SHIELD
                   ? 'Total damage absorbed before shield breaks (0 = blocks all damage)'
                   : 'Damage per turn (poison/burn) or heal per turn (regen)'}
@@ -316,15 +316,15 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   value={healthBarColor}
                   onChange={(e) => setHealthBarColor(e.target.value)}
                   disabled={isBuiltIn}
-                  className="w-12 h-8 rounded cursor-pointer border border-gray-600"
+                  className="w-12 h-8 rounded cursor-pointer border border-stone-600"
                 />
                 <div
                   className="flex-1 h-4 rounded"
                   style={{ backgroundColor: healthBarColor }}
                 />
-                <span className="text-xs text-gray-400 font-mono">{healthBarColor}</span>
+                <span className="text-xs text-stone-400 font-mono">{healthBarColor}</span>
               </div>
-              <p className="text-xs text-gray-400 mt-1">
+              <p className="text-xs text-stone-400 mt-1">
                 Color applied to health bar when shielded (fill and border)
               </p>
             </div>
@@ -336,7 +336,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               value={stackingBehavior}
               onChange={(e) => setStackingBehavior(e.target.value as typeof stackingBehavior)}
               disabled={isBuiltIn}
-              className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
+              className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
             >
               <option value="refresh">Refresh - Reset duration</option>
               <option value="stack">Stack - Increase stacks</option>
@@ -353,7 +353,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 value={maxStacks}
                 onChange={(e) => setMaxStacks(Math.max(1, parseInt(e.target.value) || 1))}
                 disabled={isBuiltIn}
-                className="w-full px-3 py-2 bg-gray-700 rounded disabled:opacity-50"
+                className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
                 min="1"
                 max="99"
               />
@@ -367,7 +367,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             <label className="block text-sm font-medium mb-2">Icon</label>
             <div className="flex items-center gap-4">
               <div
-                className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center cursor-pointer hover:border-blue-500"
+                className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-blue-500"
                 onClick={() => !isBuiltIn && setEditingIcon(true)}
               >
                 <SpriteThumbnail sprite={iconSprite.spriteData} size={48} />
@@ -458,7 +458,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
           </div>
 
           {/* Preview */}
-          <div className="mt-4 p-4 bg-gray-900 rounded">
+          <div className="mt-4 p-4 bg-stone-900 rounded">
             <h3 className="text-sm font-medium mb-2">Preview</h3>
             <div className="flex items-center gap-3">
               <div
@@ -469,7 +469,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               </div>
               <div>
                 <p className="font-bold">{name || 'Unnamed'}</p>
-                <p className="text-xs text-gray-400">
+                <p className="text-xs text-stone-400">
                   {defaultDuration} turns
                   {defaultValue > 0 && ` | ${defaultValue} ${
                     type === StatusEffectType.REGEN ? 'heal/turn' :
@@ -487,7 +487,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       {/* Icon Editor Modal */}
       {editingIcon && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
-          <div className="bg-gray-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
+          <div className="bg-stone-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
             <h3 className="text-lg font-bold mb-4">Edit Status Effect Icon</h3>
             <SimpleIconEditor
               sprite={iconSprite}

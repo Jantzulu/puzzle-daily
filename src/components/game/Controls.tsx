@@ -35,7 +35,7 @@ export const Controls: React.FC<ControlsProps> = ({
   const isTestMode = testMode !== 'none';
 
   return (
-    <div className="p-4 bg-gray-800 rounded space-y-3">
+    <div className="p-4 bg-stone-800 rounded space-y-3">
       <h3 className="text-lg font-bold mb-4">Controls</h3>
 
       {/* Developer controls - hidden on player-facing page */}
@@ -91,7 +91,7 @@ export const Controls: React.FC<ControlsProps> = ({
 
       {/* Play and Test buttons - show in setup mode (only for playtest page) */}
       {showPlayControls && gameStatus === 'setup' && !isTestMode && (
-        <div className="space-y-2 pt-2 border-t border-gray-700">
+        <div className="space-y-2 pt-2 border-t border-stone-700">
           <div className="grid grid-cols-2 gap-2">
             <button
               onClick={onPlay}
@@ -131,7 +131,7 @@ export const Controls: React.FC<ControlsProps> = ({
       )}
 
       {showPlayControls && gameStatus === 'setup' && !isTestMode && (
-        <p className="text-sm text-gray-400 mt-4">
+        <p className="text-sm text-stone-400 mt-4">
           Select a character and click on the board to place it.
         </p>
       )}

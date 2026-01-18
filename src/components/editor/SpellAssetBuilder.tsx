@@ -169,7 +169,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           onClick={() => handleModeChange('shape')}
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'shape'
-              ? `${colors.bg} text-white`
+              ? `${colors.bg} text-parchment-100`
               : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
           }`}
         >
@@ -179,7 +179,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           onClick={() => handleModeChange('image')}
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'image'
-              ? `${colors.bg} text-white`
+              ? `${colors.bg} text-parchment-100`
               : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
           }`}
         >
@@ -189,7 +189,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           onClick={() => handleModeChange('spritesheet')}
           className={`flex-1 px-2 py-1 rounded text-xs transition-colors ${
             mode === 'spritesheet'
-              ? `${colors.bg} text-white`
+              ? `${colors.bg} text-parchment-100`
               : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
           }`}
         >
@@ -212,7 +212,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   })}
                   className={`px-2 py-1 rounded text-xs transition-colors ${
                     spriteData.shape === shape
-                      ? `${colors.bg} text-white`
+                      ? `${colors.bg} text-parchment-100`
                       : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
                 >
@@ -251,7 +251,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               type="file"
               accept="image/png,image/gif"
               onChange={handleImageUpload}
-              className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
+              className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-parchment-100 ${colors.fileHover}`}
             />
             {spriteData.idleImageData && (
               <div className="mt-2 p-2 dungeon-panel rounded flex items-center justify-center">
@@ -313,7 +313,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               type="file"
               accept="image/png,image/jpg,image/jpeg"
               onChange={handleSpriteSheetUpload}
-              className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-white ${colors.fileHover}`}
+              className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-parchment-100 ${colors.fileHover}`}
             />
           </div>
 
@@ -338,7 +338,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                     max="32"
                     value={spriteData.spriteSheet.frameCount || 4}
                     onChange={(e) => handleSpriteSheetConfigChange('frameCount', parseInt(e.target.value) || 1)}
-                    className="w-full px-2 py-1 bg-stone-700 rounded text-sm text-white"
+                    className="w-full px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100"
                   />
                 </div>
 
@@ -350,7 +350,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                     max="60"
                     value={spriteData.spriteSheet.frameRate || 10}
                     onChange={(e) => handleSpriteSheetConfigChange('frameRate', parseInt(e.target.value) || 10)}
-                    className="w-full px-2 py-1 bg-stone-700 rounded text-sm text-white"
+                    className="w-full px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100"
                   />
                 </div>
               </div>
@@ -618,7 +618,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
         <div className="space-y-6">
           {/* Basic Info */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Basic Information</h3>
+            <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Basic Information</h3>
 
             {/* Spell Name */}
             <div>
@@ -627,7 +627,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 type="text"
                 value={editedSpell.name}
                 onChange={(e) => setEditedSpell({ ...editedSpell, name: e.target.value })}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 placeholder="e.g., Fireball, Lightning Bolt, Whirlwind"
               />
             </div>
@@ -649,7 +649,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <select
                 value={editedSpell.folderId || ''}
                 onChange={(e) => setEditedSpell({ ...editedSpell, folderId: e.target.value || undefined })}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               >
                 <option value="">Uncategorized</option>
                 {getFolders('spells').map(folder => (
@@ -680,7 +680,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     <img
                       src={editedSpell.thumbnailIcon}
                       alt="Thumbnail"
-                      className="w-12 h-12 object-contain bg-stone-900 rounded border border-gray-600"
+                      className="w-12 h-12 object-contain bg-stone-900 rounded border border-stone-600"
                     />
                     <button
                       onClick={() => setEditedSpell({ ...editedSpell, thumbnailIcon: '' })}
@@ -697,7 +697,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
           {/* Template Type */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Spell Type</h3>
+            <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Spell Type</h3>
 
             <div>
               <label className="block text-sm font-medium mb-2">Template *</label>
@@ -707,7 +707,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'melee'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
                   }`}
                 >
                   <div className="font-semibold">Melee</div>
@@ -719,7 +719,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'range_linear'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
                   }`}
                 >
                   <div className="font-semibold">Range Linear</div>
@@ -731,7 +731,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'magic_linear'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
                   }`}
                 >
                   <div className="font-semibold">Magic Linear</div>
@@ -743,7 +743,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'aoe'
                       ? 'border-blue-500 bg-blue-900'
-                      : 'border-gray-600 bg-stone-700 hover:border-gray-500'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
                   }`}
                 >
                   <div className="font-semibold">AOE</div>
@@ -756,14 +756,14 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           {/* Direction Configuration - Hidden for self-centered AOE */}
           {!(templateNeedsRadius && editedSpell.aoeCenteredOnCaster) && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Direction Configuration</h3>
+              <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Direction Configuration</h3>
 
               <div>
                 <label className="block text-sm font-medium mb-2">Direction Mode *</label>
                 <select
                   value={editedSpell.directionMode}
                   onChange={(e) => setEditedSpell({ ...editedSpell, directionMode: e.target.value as DirectionMode })}
-                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 >
                   <option value="current_facing">Current Facing (follows character direction)</option>
                   <option value="relative">Relative (relative to character facing)</option>
@@ -791,7 +791,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                         className={`p-2 rounded border-2 transition-colors ${
                           isSelected
                             ? 'border-green-500 bg-green-900'
-                            : 'border-gray-600 bg-stone-700 hover:border-gray-500'
+                            : 'border-stone-600 bg-stone-700 hover:border-stone-500'
                         }`}
                       >
                         <div className="text-2xl">{dir.arrow}</div>
@@ -828,7 +828,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                         className={`p-2 rounded border-2 transition-colors ${
                           isSelected
                             ? 'border-green-500 bg-green-900'
-                            : 'border-gray-600 bg-stone-700 hover:border-gray-500'
+                            : 'border-stone-600 bg-stone-700 hover:border-stone-500'
                         }`}
                       >
                         <div className="text-2xl">{dir.arrow}</div>
@@ -852,7 +852,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
           {/* Combat Stats */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Combat Stats</h3>
+            <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Combat Stats</h3>
 
             {/* Damage vs Healing Toggle */}
             <div>
@@ -867,7 +867,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   })}
                   className={`flex-1 px-4 py-2 rounded transition-colors ${
                     !editedSpell.healing
-                      ? 'bg-red-600 text-white'
+                      ? 'bg-red-600 text-parchment-100'
                       : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
                 >
@@ -882,7 +882,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   })}
                   className={`flex-1 px-4 py-2 rounded transition-colors ${
                     editedSpell.healing
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-green-600 text-parchment-100'
                       : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
                 >
@@ -909,7 +909,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     setEditedSpell({ ...editedSpell, damage: value });
                   }
                 }}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               />
               <p className="text-xs text-stone-400 mt-1">
                 {editedSpell.healing
@@ -928,7 +928,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 max="99"
                 value={editedSpell.cooldown || 0}
                 onChange={(e) => setEditedSpell({ ...editedSpell, cooldown: parseInt(e.target.value) || 0 })}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               />
               <p className="text-xs text-stone-400 mt-1">
                 Turns before spell can be used again (0 = no cooldown)
@@ -936,7 +936,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             </div>
 
             {/* Sound Effects */}
-            <div className="border-t border-gray-600 pt-4 mt-4">
+            <div className="border-t border-stone-600 pt-4 mt-4">
               <h4 className="text-sm font-medium mb-3 text-purple-300">Sound Effects</h4>
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -944,7 +944,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <select
                     value={editedSpell.castSound || ''}
                     onChange={(e) => setEditedSpell({ ...editedSpell, castSound: e.target.value || undefined })}
-                    className="w-full px-3 py-2 bg-stone-700 rounded text-white text-sm"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm"
                   >
                     <option value="">None</option>
                     {getSoundAssets().map((sound) => (
@@ -960,7 +960,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <select
                     value={editedSpell.hitSound || ''}
                     onChange={(e) => setEditedSpell({ ...editedSpell, hitSound: e.target.value || undefined })}
-                    className="w-full px-3 py-2 bg-stone-700 rounded text-white text-sm"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm"
                   >
                     <option value="">None</option>
                     {getSoundAssets().map((sound) => (
@@ -986,7 +986,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   max="20"
                   value={editedSpell.range || (templateNeedsRange ? 5 : 2)}
                   onChange={(e) => setEditedSpell({ ...editedSpell, range: parseInt(e.target.value) || 1 })}
-                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 />
                 {templateNeedsRadius && !editedSpell.aoeCenteredOnCaster && (
                   <p className="text-xs text-stone-400 mt-1">
@@ -1006,7 +1006,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   max="10"
                   value={editedSpell.radius ?? 2}
                   onChange={(e) => setEditedSpell({ ...editedSpell, radius: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 />
                 <p className="text-xs text-stone-400 mt-1">
                   0 = single tile only, 1+ = affects surrounding tiles
@@ -1028,7 +1028,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       const val = parseInt(e.target.value);
                       setEditedSpell({ ...editedSpell, meleeRange: isNaN(val) ? 1 : val });
                     }}
-                    className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                   />
                   <p className="text-xs text-stone-400 mt-1">
                     How many tiles in attack direction get hit. 0 = self-target only, 1 = adjacent tile (default), 2+ = extended reach
@@ -1056,7 +1056,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           {/* AOE Settings */}
           {templateNeedsRadius && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">AOE Behavior</h3>
+              <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">AOE Behavior</h3>
 
               {/* AOE Center Point */}
               <div>
@@ -1067,7 +1067,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     onClick={() => setEditedSpell({ ...editedSpell, aoeCenteredOnCaster: true })}
                     className={`flex-1 px-4 py-2 rounded transition-colors ${
                       editedSpell.aoeCenteredOnCaster
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-600 text-parchment-100'
                         : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                     }`}
                   >
@@ -1078,7 +1078,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     onClick={() => setEditedSpell({ ...editedSpell, aoeCenteredOnCaster: false })}
                     className={`flex-1 px-4 py-2 rounded transition-colors ${
                       !editedSpell.aoeCenteredOnCaster
-                        ? 'bg-blue-600 text-white'
+                        ? 'bg-blue-600 text-parchment-100'
                         : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                     }`}
                   >
@@ -1135,7 +1135,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   max="20"
                   value={editedSpell.persistDuration || 0}
                   onChange={(e) => setEditedSpell({ ...editedSpell, persistDuration: parseInt(e.target.value) || 0 })}
-                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 />
                 <p className="text-xs text-stone-400 mt-1">
                   0 = instant damage, 1+ = ground effect that persists for N turns
@@ -1154,7 +1154,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     max="100"
                     value={editedSpell.persistDamagePerTurn || editedSpell.damage || 1}
                     onChange={(e) => setEditedSpell({ ...editedSpell, persistDamagePerTurn: parseInt(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                   />
                   <p className="text-xs text-stone-400 mt-1">
                     Damage dealt each turn to units in the area
@@ -1185,7 +1185,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           {/* Projectile Settings */}
           {templateNeedsProjectileSettings && (
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Projectile Settings</h3>
+              <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Projectile Settings</h3>
 
               {/* Speed */}
               <div>
@@ -1200,7 +1200,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     const tilesPerTurn = parseInt(e.target.value) || 1;
                     setEditedSpell({ ...editedSpell, projectileSpeed: tilesPerTurn });
                   }}
-                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 />
                 <p className="text-xs text-stone-400 mt-1">
                   How many tiles the projectile travels each turn
@@ -1243,7 +1243,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     <select
                       value={editedSpell.bounceBehavior || 'reflect'}
                       onChange={(e) => setEditedSpell({ ...editedSpell, bounceBehavior: e.target.value as any })}
-                      className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                     >
                       <option value="reflect">Reflect (mirror angle)</option>
                       <option value="turn_around">Turn Around (180°)</option>
@@ -1261,7 +1261,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       <select
                         value={editedSpell.bounceTurnDegrees || 90}
                         onChange={(e) => setEditedSpell({ ...editedSpell, bounceTurnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                       >
                         <option value={45}>45° (slight turn)</option>
                         <option value={90}>90° (right angle)</option>
@@ -1279,7 +1279,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       max="10"
                       value={editedSpell.maxBounces || 3}
                       onChange={(e) => setEditedSpell({ ...editedSpell, maxBounces: parseInt(e.target.value) || 3 })}
-                      className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                     />
                     <p className="text-xs text-stone-400 mt-1">Maximum number of wall bounces before projectile stops</p>
                   </div>
@@ -1290,7 +1290,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
           {/* Visual Configuration */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Visual Effects</h3>
+            <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Visual Effects</h3>
 
             {/* Projectile Visual (for linear spells) */}
             {templateNeedsProjectileSettings && (
@@ -1473,7 +1473,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
 
   return (
     <div className="space-y-4">
-      <h3 className="text-lg font-semibold border-b border-gray-700 pb-2">Status Effect</h3>
+      <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Status Effect</h3>
 
       <div>
         <label className="flex items-center gap-2 cursor-pointer">
@@ -1489,7 +1489,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
       </div>
 
       {enableEffect && (
-        <div className="space-y-4 pl-4 border-l-2 border-gray-700">
+        <div className="space-y-4 pl-4 border-l-2 border-stone-700">
           {statusEffects.length === 0 ? (
             <div className="bg-stone-900 p-3 rounded text-sm text-stone-400">
               No status effects defined. Create one in the Status Effect Library first.
@@ -1502,7 +1502,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                 <select
                   value={editedSpell.appliesStatusEffect?.statusAssetId || ''}
                   onChange={(e) => handleEffectChange(e.target.value)}
-                  className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 >
                   <option value="">Select an effect...</option>
                   {statusEffects.map(effect => (
@@ -1536,7 +1536,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                         value={editedSpell.appliesStatusEffect?.durationOverride || ''}
                         onChange={(e) => handleDurationOverride(e.target.value)}
                         placeholder={String(selectedEffect.defaultDuration)}
-                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                       />
                       <p className="text-xs text-stone-400 mt-1">Leave blank for default</p>
                     </div>
@@ -1549,7 +1549,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                         value={editedSpell.appliesStatusEffect?.valueOverride || ''}
                         onChange={(e) => handleValueOverride(e.target.value)}
                         placeholder={String(selectedEffect.defaultValue || 0)}
-                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                       />
                       <p className="text-xs text-stone-400 mt-1">Damage/heal per turn</p>
                     </div>
@@ -1565,7 +1565,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                           : ''}
                         onChange={(e) => handleChanceChange(e.target.value)}
                         placeholder="100"
-                        className="w-full px-3 py-2 bg-stone-700 rounded text-white"
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                       />
                       <p className="text-xs text-stone-400 mt-1">100% = always applies</p>
                     </div>

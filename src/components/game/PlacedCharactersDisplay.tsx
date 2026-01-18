@@ -14,10 +14,10 @@ export const PlacedCharactersDisplay: React.FC<PlacedCharactersDisplayProps> = (
   maxCharacters,
 }) => {
   return (
-    <div className="bg-gray-800 p-4 rounded">
+    <div className="bg-stone-800 p-4 rounded">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-lg font-bold">Placed Characters</h3>
-        <span className="text-sm text-gray-400">
+        <span className="text-sm text-stone-400">
           {placedCharacters.length} / {maxCharacters}
         </span>
       </div>
@@ -43,7 +43,7 @@ export const PlacedCharactersDisplay: React.FC<PlacedCharactersDisplayProps> = (
                     className={`rounded flex flex-col items-center justify-center p-2 transition-all ${
                       isDead
                         ? 'bg-red-900/50 opacity-60'
-                        : 'bg-gray-700 hover:bg-gray-600'
+                        : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     <div className="relative">
@@ -55,12 +55,12 @@ export const PlacedCharactersDisplay: React.FC<PlacedCharactersDisplayProps> = (
                       )}
                     </div>
 
-                    <span className="text-sm font-medium text-gray-200 truncate w-full text-center mt-1">
+                    <span className="text-sm font-medium text-parchment-200 truncate w-full text-center mt-1">
                       {character.name.length > 8 ? character.name.slice(0, 8) + '...' : character.name}
                     </span>
 
                     {/* Health bar */}
-                    <div className="w-full h-1.5 bg-gray-600 rounded-full mt-1 overflow-hidden">
+                    <div className="w-full h-1.5 bg-stone-600 rounded-full mt-1 overflow-hidden">
                       <div
                         className={`h-full transition-all ${
                           healthPercent > 50 ? 'bg-green-500' :
@@ -69,7 +69,7 @@ export const PlacedCharactersDisplay: React.FC<PlacedCharactersDisplayProps> = (
                         style={{ width: `${healthPercent}%` }}
                       />
                     </div>
-                    <span className="text-xs text-gray-400 mt-0.5">
+                    <span className="text-xs text-stone-400 mt-0.5">
                       {placed.currentHealth} / {character.health}
                     </span>
 
@@ -94,11 +94,11 @@ export const PlacedCharactersDisplay: React.FC<PlacedCharactersDisplayProps> = (
                   </div>
                 </ActionTooltip>
               ) : (
-                <div className="rounded flex flex-col items-center justify-center p-2 bg-gray-800 border border-dashed border-gray-600 w-full min-h-[100px]">
-                  <div className="w-12 h-12 rounded bg-gray-700 flex items-center justify-center">
-                    <span className="text-gray-500 text-2xl">+</span>
+                <div className="rounded flex flex-col items-center justify-center p-2 bg-stone-800 border border-dashed border-stone-600 w-full min-h-[100px]">
+                  <div className="w-12 h-12 rounded bg-stone-700 flex items-center justify-center">
+                    <span className="text-stone-500 text-2xl">+</span>
                   </div>
-                  <span className="text-gray-500 text-xs mt-1">Empty</span>
+                  <span className="text-stone-500 text-xs mt-1">Empty</span>
                 </div>
               )}
             </div>

@@ -1131,10 +1131,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleIdleSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-parchment-100 hover:file:bg-purple-700"
                 />
                 {hasIdleSpriteSheet && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.idleSpriteSheet?.imageData}
                       alt="Sprite sheet"
@@ -1147,29 +1147,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         max="64"
                         value={sprite.idleSpriteSheet?.frameCount || 4}
                         onChange={(e) => handleIdleSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={sprite.idleSpriteSheet?.frameRate || 10}
                         onChange={(e) => handleIdleSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-stone-400">
                     <input
                       type="checkbox"
                       checked={sprite.idleSpriteSheet?.loop !== false}
@@ -1186,7 +1186,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   </button>
                 </>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasIdleSpriteSheet ? '✓ Sprite sheet configured' : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-purple-400">
@@ -1206,10 +1206,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleIdleImageUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasIdleImage && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.idleImageData || sprite.imageData}
                       alt="Static image"
@@ -1226,7 +1226,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ✕ Clear Static Image
                 </button>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasIdleImage ? '✓ Static image uploaded' : 'No static image - using shapes/colors'}
               </p>
             </div>
@@ -1243,10 +1243,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleDeathSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-white hover:file:bg-red-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-parchment-100 hover:file:bg-red-700"
                 />
                 {hasDeathSpriteSheet && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.deathSpriteSheet?.imageData}
                       alt="Death sprite sheet"
@@ -1259,29 +1259,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         max="64"
                         value={sprite.deathSpriteSheet?.frameCount || 4}
                         onChange={(e) => handleDeathSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={sprite.deathSpriteSheet?.frameRate || 10}
                         onChange={(e) => handleDeathSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-stone-400">
                     <input
                       type="checkbox"
                       checked={sprite.deathSpriteSheet?.loop !== false}
@@ -1298,7 +1298,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   </button>
                 </>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasDeathSpriteSheet ? '✓ Death sprite sheet configured' : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-red-400">
@@ -1318,10 +1318,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleDeathImageUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasDeathImage && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.deathImageData}
                       alt="Death static"
@@ -1338,7 +1338,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ✕ Clear Death Image
                 </button>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasDeathImage ? '✓ Death image uploaded' : 'No death image - will show X overlay'}
               </p>
             </div>
@@ -1355,10 +1355,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleCastingSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-white hover:file:bg-yellow-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-parchment-100 hover:file:bg-yellow-700"
                 />
                 {hasCastingSpriteSheet && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.castingSpriteSheet?.imageData}
                       alt="Casting sprite sheet"
@@ -1371,29 +1371,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         max="64"
                         value={sprite.castingSpriteSheet?.frameCount || 4}
                         onChange={(e) => handleCastingSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={sprite.castingSpriteSheet?.frameRate || 10}
                         onChange={(e) => handleCastingSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-stone-400">
                     <input
                       type="checkbox"
                       checked={sprite.castingSpriteSheet?.loop !== false}
@@ -1410,7 +1410,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   </button>
                 </>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasCastingSpriteSheet ? '✓ Casting sprite sheet configured' : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-yellow-400">
@@ -1430,10 +1430,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleCastingImageUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasCastingImage && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.castingImageData}
                       alt="Casting static"
@@ -1450,7 +1450,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ✕ Clear Casting Image
                 </button>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasCastingImage ? '✓ Casting image uploaded' : 'No casting image - will use idle sprite'}
               </p>
             </div>
@@ -1483,7 +1483,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     className={`p-2 rounded text-xs flex flex-col items-center gap-1 ${
                       selectedDirection === dir.key
                         ? 'bg-purple-600'
-                        : 'bg-gray-700 hover:bg-gray-600'
+                        : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     <div className="text-sm">{dir.arrow} {dir.label}</div>
@@ -1496,7 +1496,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                       {!hasDeathSS && hasDeathImg && <span className="text-orange-400" title="Has death image">🪦</span>}
                       {hasCastingSS && <span className="text-yellow-400" title="Has casting sprite sheet">✨</span>}
                       {!hasCastingSS && hasCastingImg && <span className="text-amber-400" title="Has casting image">🔮</span>}
-                      {!hasIdleSS && !hasIdleImg && !hasMovingSS && !hasMovingImg && !hasDeathSS && !hasDeathImg && !hasCastingSS && !hasCastingImg && <span className="text-gray-500">—</span>}
+                      {!hasIdleSS && !hasIdleImg && !hasMovingSS && !hasMovingImg && !hasDeathSS && !hasDeathImg && !hasCastingSS && !hasCastingImg && <span className="text-stone-500">—</span>}
                     </div>
                   </button>
                 );
@@ -1514,7 +1514,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           {/* IDLE & MOVING STATES */}
           <div className="bg-green-950 bg-opacity-30 p-4 rounded border-2 border-green-900">
             <h3 className="text-lg font-semibold mb-3 text-green-400">💤 Idle & Moving States</h3>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="text-xs text-stone-400 mb-4">
               Sprites for when the unit is idle (not moving) or actively moving
             </p>
 
@@ -1529,10 +1529,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleIdleSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-parchment-100 hover:file:bg-purple-700"
                 />
                 {hasIdleSpriteSheet && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.idleSpriteSheet?.imageData}
                       alt="Idle sprite sheet"
@@ -1545,29 +1545,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         max="64"
                         value={currentConfig.idleSpriteSheet?.frameCount || 4}
                         onChange={(e) => handleIdleSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={currentConfig.idleSpriteSheet?.frameRate || 10}
                         onChange={(e) => handleIdleSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-stone-400">
                     <input
                       type="checkbox"
                       checked={currentConfig.idleSpriteSheet?.loop !== false}
@@ -1584,7 +1584,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   </button>
                 </>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasIdleSpriteSheet ? '✓ Idle sprite sheet configured' : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-purple-400">
@@ -1604,10 +1604,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleIdleImageUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasIdleImage && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.idleImageData || currentConfig.imageData}
                       alt="Idle static"
@@ -1624,7 +1624,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ✕ Clear Idle Image
                 </button>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasIdleImage ? '✓ Idle image uploaded' : 'No idle image - using shapes/colors'}
               </p>
             </div>
@@ -1641,10 +1641,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleMovingSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-white hover:file:bg-purple-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-parchment-100 hover:file:bg-purple-700"
                 />
                 {hasMovingSpriteSheet && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.movingSpriteSheet?.imageData}
                       alt="Moving sprite sheet"
@@ -1657,29 +1657,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         max="64"
                         value={currentConfig.movingSpriteSheet?.frameCount || 4}
                         onChange={(e) => handleMovingSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={currentConfig.movingSpriteSheet?.frameRate || 10}
                         onChange={(e) => handleMovingSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-stone-400">
                     <input
                       type="checkbox"
                       checked={currentConfig.movingSpriteSheet?.loop !== false}
@@ -1696,7 +1696,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   </button>
                 </>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasMovingSpriteSheet ? '✓ Moving sprite sheet configured' : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-purple-400">
@@ -1716,10 +1716,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleMovingImageUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasMovingImage && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.movingImageData}
                       alt="Moving static"
@@ -1736,7 +1736,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ✕ Clear Moving Image
                 </button>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasMovingImage ? '✓ Moving image uploaded' : 'No moving image - will use idle image'}
               </p>
             </div>
@@ -1746,7 +1746,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           {/* DEATH STATE */}
           <div className="bg-red-950 bg-opacity-30 p-4 rounded border-2 border-red-900">
             <h3 className="text-lg font-semibold mb-3 text-red-400">💀 Death State</h3>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="text-xs text-stone-400 mb-4">
               Animation that plays when the unit dies (before corpse appears)
             </p>
 
@@ -1761,10 +1761,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleDeathSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-white hover:file:bg-red-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-parchment-100 hover:file:bg-red-700"
                 />
                 {hasDeathSpriteSheet && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.deathSpriteSheet?.imageData}
                       alt="Death sprite sheet"
@@ -1777,29 +1777,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         max="64"
                         value={currentConfig.deathSpriteSheet?.frameCount || 4}
                         onChange={(e) => handleDeathSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={currentConfig.deathSpriteSheet?.frameRate || 10}
                         onChange={(e) => handleDeathSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-stone-400">
                     <input
                       type="checkbox"
                       checked={currentConfig.deathSpriteSheet?.loop !== false}
@@ -1816,7 +1816,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   </button>
                 </>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasDeathSpriteSheet ? '✓ Death sprite sheet configured' : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-red-400">
@@ -1836,10 +1836,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleDeathImageUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasDeathImage && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.deathImageData}
                       alt="Death static"
@@ -1856,7 +1856,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ✕ Clear Death Image
                 </button>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasDeathImage ? '✓ Death image uploaded' : 'No death image - will show X overlay'}
               </p>
             </div>
@@ -1866,7 +1866,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           {/* CASTING STATE */}
           <div className="bg-yellow-950 bg-opacity-30 p-4 rounded border-2 border-yellow-900">
             <h3 className="text-lg font-semibold mb-3 text-yellow-400">✨ Casting State</h3>
-            <p className="text-xs text-gray-400 mb-4">
+            <p className="text-xs text-stone-400 mb-4">
               Animation when casting a spell while stationary (moving animation has priority)
             </p>
 
@@ -1881,10 +1881,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleCastingSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-white hover:file:bg-yellow-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-parchment-100 hover:file:bg-yellow-700"
                 />
                 {hasCastingSpriteSheet && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.castingSpriteSheet?.imageData}
                       alt="Casting sprite sheet"
@@ -1897,29 +1897,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 <>
                   <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Count</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
                       <input
                         type="number"
                         min="1"
                         max="64"
                         value={currentConfig.castingSpriteSheet?.frameCount || 4}
                         onChange={(e) => handleCastingSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                     <div>
-                      <label className="block text-xs text-gray-400 mb-1">Frame Rate (FPS)</label>
+                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
                       <input
                         type="number"
                         min="1"
                         max="60"
                         value={currentConfig.castingSpriteSheet?.frameRate || 10}
                         onChange={(e) => handleCastingSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-gray-700 rounded text-white text-sm"
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
                       />
                     </div>
                   </div>
-                  <label className="flex items-center gap-2 text-xs text-gray-400">
+                  <label className="flex items-center gap-2 text-xs text-stone-400">
                     <input
                       type="checkbox"
                       checked={currentConfig.castingSpriteSheet?.loop !== false}
@@ -1936,7 +1936,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   </button>
                 </>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasCastingSpriteSheet ? '✓ Casting sprite sheet configured' : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-yellow-400">
@@ -1956,10 +1956,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
                   onChange={handleCastingImageUpload}
-                  className="flex-1 px-3 py-2 bg-gray-700 rounded text-white text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-white hover:file:bg-blue-700"
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasCastingImage && (
-                  <div className="w-16 h-16 bg-gray-900 rounded border border-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.castingImageData}
                       alt="Casting static"
@@ -1976,7 +1976,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ✕ Clear Casting Image
                 </button>
               )}
-              <p className="text-xs text-gray-400">
+              <p className="text-xs text-stone-400">
                 {hasCastingImage ? '✓ Casting image uploaded' : 'No casting image - will use idle sprite'}
               </p>
             </div>
@@ -1995,7 +1995,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           ref={canvasRef}
           width={size}
           height={size}
-          className="border-2 border-gray-600 rounded bg-gray-800"
+          className="border-2 border-stone-600 rounded bg-stone-800"
         />
       </div>
 
@@ -2007,7 +2007,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               key={shape}
               onClick={() => handleShapeChange(shape)}
               className={`p-2 rounded capitalize ${
-                currentConfig.shape === shape ? 'bg-blue-600' : 'bg-gray-700 hover:bg-gray-600'
+                currentConfig.shape === shape ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
               }`}
             >
               {shape}
@@ -2029,7 +2029,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             type="text"
             value={currentConfig.primaryColor}
             onChange={(e) => handleColorChange('primary', e.target.value)}
-            className="flex-1 px-3 py-2 bg-gray-700 rounded text-white font-mono text-sm"
+            className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 font-mono text-sm"
           />
         </div>
       </div>
@@ -2047,7 +2047,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             type="text"
             value={currentConfig.secondaryColor}
             onChange={(e) => handleColorChange('secondary', e.target.value)}
-            className="flex-1 px-3 py-2 bg-gray-700 rounded text-white font-mono text-sm"
+            className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 font-mono text-sm"
           />
         </div>
       </div>
@@ -2066,7 +2066,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           className="w-full"
         />
         {allowOversized && (
-          <p className="text-xs text-gray-400 mt-1">
+          <p className="text-xs text-stone-400 mt-1">
             Values &gt;100% extend beyond tile bounds
           </p>
         )}

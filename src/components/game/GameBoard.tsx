@@ -82,7 +82,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onTileClick }) 
       width={canvasWidth}
       height={canvasHeight}
       onClick={handleCanvasClick}
-      className="border-2 border-gray-600 cursor-pointer"
+      className="border-2 border-stone-600 cursor-pointer"
       style={{ imageRendering: 'pixelated' }}
     />
   );

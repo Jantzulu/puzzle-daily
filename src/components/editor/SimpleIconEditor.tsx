@@ -259,7 +259,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
           ref={canvasRef}
           width={size * 2}
           height={size * 2}
-          className="border border-gray-600 rounded"
+          className="border border-stone-600 rounded"
           style={{ width: size, height: size }}
         />
       </div>
@@ -307,7 +307,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
             onChange={(e) => handleScaleChange(parseFloat(e.target.value))}
             className="w-full"
           />
-          <div className="flex justify-between text-xs text-gray-400 mt-1">
+          <div className="flex justify-between text-xs text-stone-400 mt-1">
             <span>20%</span>
             <span>100%</span>
           </div>
@@ -327,7 +327,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
                   className={`w-10 h-10 rounded border-2 flex items-center justify-center ${
                     currentShape === shape
                       ? 'border-blue-500 bg-blue-600/20'
-                      : 'border-gray-600 hover:border-gray-500'
+                      : 'border-stone-600 hover:border-stone-500'
                   }`}
                   title={shape}
                 >
@@ -346,7 +346,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
                   key={color}
                   onClick={() => handleColorChange(color)}
                   className={`w-8 h-8 rounded border-2 ${
-                    currentColor === color ? 'border-white' : 'border-gray-600'
+                    currentColor === color ? 'border-white' : 'border-stone-600'
                   }`}
                   style={{ backgroundColor: color }}
                   title={color}
@@ -370,7 +370,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
                   key={color}
                   onClick={() => handleSecondaryColorChange(color)}
                   className={`w-8 h-8 rounded border-2 ${
-                    currentSecondaryColor === color ? 'border-white' : 'border-gray-600'
+                    currentSecondaryColor === color ? 'border-white' : 'border-stone-600'
                   }`}
                   style={{ backgroundColor: color }}
                   title={color}

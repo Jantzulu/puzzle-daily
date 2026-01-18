@@ -217,12 +217,12 @@ export const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNo
       {children}
       {show && (
         <div
-          className="fixed z-[9999] w-48 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          className="fixed z-[9999] w-48 p-2 bg-stone-900 border border-stone-600 rounded shadow-lg text-xs pointer-events-none"
           style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
         >
-          <div className="font-bold text-white mb-1">{spell.name}</div>
-          <div className="text-gray-400 mb-1">{spell.description}</div>
-          <div className="text-gray-300">
+          <div className="font-bold text-parchment-100 mb-1">{spell.name}</div>
+          <div className="text-stone-400 mb-1">{spell.description}</div>
+          <div className="text-parchment-300">
             {spell.damage && <div>Damage: {spell.damage}</div>}
             {spell.healing && <div>Healing: {spell.healing}</div>}
             {spell.range && <div>Range: {spell.range}</div>}
@@ -270,12 +270,12 @@ export const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; c
       {children}
       {show && (
         <div
-          className="fixed z-[9999] w-44 p-2 bg-gray-900 border border-gray-600 rounded shadow-lg text-xs pointer-events-none"
+          className="fixed z-[9999] w-44 p-2 bg-stone-900 border border-stone-600 rounded shadow-lg text-xs pointer-events-none"
           style={{ left: position.x, top: position.y + 8, transform: 'translateX(-50%)' }}
         >
-          <div className="font-bold text-white mb-1">Action Sequence</div>
+          <div className="font-bold text-parchment-100 mb-1">Action Sequence</div>
           {sequence.map((action, i) => (
-            <div key={i} className="text-gray-300">{action}</div>
+            <div key={i} className="text-parchment-300">{action}</div>
           ))}
         </div>
       )}

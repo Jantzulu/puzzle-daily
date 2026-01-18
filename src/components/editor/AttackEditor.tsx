@@ -23,7 +23,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div className="bg-stone-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
         <h2 className="text-2xl font-bold mb-4">Configure Attack</h2>
 
         <div className="space-y-4">
@@ -34,7 +34,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
               type="text"
               value={editedAttack.name || ''}
               onChange={(e) => setEditedAttack({ ...editedAttack, name: e.target.value })}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+              className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               placeholder="e.g., Fireball, Ice Spike, Heal"
             />
           </div>
@@ -45,7 +45,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
             <select
               value={editedAttack.pattern}
               onChange={(e) => setEditedAttack({ ...editedAttack, pattern: e.target.value as any })}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+              className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
             >
               <option value={AttackPattern.PROJECTILE}>Projectile (straight line)</option>
               <option value={AttackPattern.MELEE}>Melee (adjacent tile)</option>
@@ -62,7 +62,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
               min="0"
               value={editedAttack.damage ?? 1}
               onChange={(e) => setEditedAttack({ ...editedAttack, damage: parseInt(e.target.value) || 0 })}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+              className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
             />
           </div>
 
@@ -78,7 +78,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
                 max="20"
                 value={editedAttack.range || 5}
                 onChange={(e) => setEditedAttack({ ...editedAttack, range: parseInt(e.target.value) || 1 })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               />
             </div>
           )}
@@ -98,9 +98,9 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
                     const tilesPerTurn = parseInt(e.target.value) || 1;
                     setEditedAttack({ ...editedAttack, projectileSpeed: tilesPerTurn });
                   }}
-                  className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                 />
-                <p className="text-xs text-gray-400 mt-1">
+                <p className="text-xs text-stone-400 mt-1">
                   How many tiles the projectile travels each turn
                 </p>
               </div>
@@ -115,7 +115,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
                   />
                   <span className="text-sm">Projectile Pierces Enemies</span>
                 </label>
-                <p className="text-xs text-gray-400 ml-6">If enabled, projectile continues through enemies</p>
+                <p className="text-xs text-stone-400 ml-6">If enabled, projectile continues through enemies</p>
               </div>
             </>
           )}
@@ -130,9 +130,9 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
               step="100"
               value={editedAttack.effectDuration || 300}
               onChange={(e) => setEditedAttack({ ...editedAttack, effectDuration: parseInt(e.target.value) || 300 })}
-              className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+              className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
             />
-            <p className="text-xs text-gray-400 mt-1">How long visual effects last</p>
+            <p className="text-xs text-stone-400 mt-1">How long visual effects last</p>
           </div>
 
           {/* AOE Targeting (for AOE attacks) */}
@@ -142,7 +142,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
               <select
                 value={editedAttack.aoeTargeting || 'caster'}
                 onChange={(e) => setEditedAttack({ ...editedAttack, aoeTargeting: e.target.value as any })}
-                className="w-full px-3 py-2 bg-gray-700 rounded text-white"
+                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               >
                 <option value="caster">Centered on Caster</option>
                 <option value="target_tile">Centered on Target Tile</option>
@@ -161,7 +161,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
           </button>
           <button
             onClick={onCancel}
-            className="flex-1 px-4 py-2 bg-gray-600 rounded hover:bg-gray-700"
+            className="flex-1 px-4 py-2 bg-stone-600 rounded hover:bg-stone-700"
           >
             Cancel
           </button>
