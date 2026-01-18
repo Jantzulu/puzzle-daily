@@ -1445,6 +1445,9 @@ function spawnProjectile(
   // For non-homing projectiles, this path is fixed at creation time
   const tilePath = homingTarget ? undefined : computeTilePath(character.x, character.y, targetX, targetY);
 
+  // Debug: Log projectile spawn info
+  console.log(`[PROJECTILE SPAWN] from (${character.x},${character.y}) facing ${character.facing}, target (${targetX},${targetY}), tilePath: ${JSON.stringify(tilePath)}`);
+
   // Create projectile
   const projectile: Projectile = {
     id: `proj_${Date.now()}_${Math.random()}`,

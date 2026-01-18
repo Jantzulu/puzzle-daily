@@ -1909,6 +1909,9 @@ export function updateProjectiles(gameState: GameState): void {
           );
 
           if (hitEnemy) {
+            // Debug: Log hit detection
+            console.log(`[PROJECTILE HIT] Enemy ${hitEnemy.enemyId} at tile (${tileX},${tileY}), enemy actual pos (${hitEnemy.x},${hitEnemy.y}), tilesToCheck: ${JSON.stringify(tilesToCheck)}`);
+
             // Track that we hit this entity (for piercing projectiles)
             if (!proj.hitEntityIds) proj.hitEntityIds = [];
             proj.hitEntityIds.push(hitEnemy.enemyId);
