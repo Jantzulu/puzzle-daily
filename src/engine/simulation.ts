@@ -1445,6 +1445,10 @@ export function updateProjectiles(gameState: GameState): void {
       }
     }
 
+    // Save previous tile index BEFORE movement calculation updates it
+    // This is needed to determine which tiles are "new" for collision detection
+    const prevTileIndex = proj.currentTileIndex ?? 0;
+
     // Calculate position based on whether this is a homing projectile or not
     let newX: number;
     let newY: number;
@@ -1592,9 +1596,6 @@ export function updateProjectiles(gameState: GameState): void {
       projectilesToRemove.push(proj.id);
       continue;
     }
-
-    // Save previous tile index for detecting new tiles entered
-    const prevTileIndex = proj.currentTileIndex ?? 0;
 
     // Update position before collision check
     proj.x = newX;
