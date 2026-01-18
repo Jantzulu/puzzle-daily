@@ -1532,9 +1532,13 @@ export function updateProjectiles(gameState: GameState): void {
             const clampedProgress = Math.min(tileProgress, 0.5);
             newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
             newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
-            // Store how much progress beyond 50% we have, for use after bounce
-            if (tileProgress > 0.5) {
+            // Mark whether we've reached the bounce point (50% toward wall)
+            // This tells the wall collision check whether to trigger the bounce
+            if (tileProgress >= 0.5) {
+              (proj as any)._readyToBounce = true;
               (proj as any)._bounceExtraProgress = tileProgress - 0.5;
+            } else {
+              (proj as any)._readyToBounce = false;
             }
           } else {
             // Non-bouncing projectile, clamp at 40%
@@ -1699,7 +1703,13 @@ export function updateProjectiles(gameState: GameState): void {
       const canBounce = proj.bounceOffWalls &&
                         (proj.bounceCount ?? 0) < (proj.maxBounces ?? 3);
 
-      if (canBounce) {
+      // For bouncing projectiles, only trigger the bounce when visually ready
+      // (i.e., when we've reached 50% progress toward the wall)
+      const readyToBounce = (proj as any)._readyToBounce === true;
+      if (canBounce && !readyToBounce) {
+        // Not yet at wall edge - skip bounce processing this frame
+        // The projectile will continue approaching the wall
+      } else if (canBounce) {
         // Perform bounce based on configured behavior
         proj.bounceCount = (proj.bounceCount ?? 0) + 1;
 
@@ -1820,34 +1830,25 @@ export function updateProjectiles(gameState: GameState): void {
         proj.tilePath = computeTilePathWithWallLookahead(bounceX, bounceY, proj.targetX, proj.targetY, gameState);
         proj.currentTileIndex = 0;
 
-        // The projectile bounced at the tile edge (50% progress toward wall).
-        // In the new direction, it should start at 50% progress AWAY from the wall
-        // (i.e., already halfway through the first tile of the new path).
-        // Plus any extra progress accumulated while waiting for the bounce to trigger.
+        // Position at the bounce point and continue from there
+        proj.x = bounceX;
+        proj.y = bounceY;
+
+        // Apply any extra progress beyond the 50% threshold
         const extraProgress = (proj as any)._bounceExtraProgress ?? 0;
-        const startingProgress = 0.5 + extraProgress;
 
         // Calculate speed for timing adjustment
         const speedTilesPerSecond = (proj.speed || 4) / 0.8;
         const tileTransitTime = 1 / speedTilesPerSecond;
 
-        // Set tile entry time in the past so we start at the correct progress
-        proj.tileEntryTime = now - (startingProgress * tileTransitTime * 1000);
+        // Set tile entry time slightly in the past to account for extra progress
+        // This makes the projectile continue smoothly without pausing
+        proj.tileEntryTime = now - (extraProgress * tileTransitTime * 1000);
         proj.startTime = now;
 
-        // Update visual position to match the starting progress
-        if (proj.tilePath.length > 1) {
-          const firstTile = proj.tilePath[0];
-          const secondTile = proj.tilePath[1];
-          proj.x = firstTile.x + (secondTile.x - firstTile.x) * startingProgress;
-          proj.y = firstTile.y + (secondTile.y - firstTile.y) * startingProgress;
-        } else {
-          proj.x = bounceX;
-          proj.y = bounceY;
-        }
-
-        // Clear the extra progress flag
+        // Clear bounce flags
         delete (proj as any)._bounceExtraProgress;
+        delete (proj as any)._readyToBounce;
 
         // CRITICAL: Reset prevTileIndex and recalculate collision tracking variables
         // After bounce, we have a completely new tilePath, so we must reset collision detection
