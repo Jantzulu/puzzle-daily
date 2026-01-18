@@ -1899,9 +1899,19 @@ export function updateProjectiles(gameState: GameState): void {
       } else {
         // Damage projectile - check for enemy hits along entire path
         // Use pre-move positions first (projectile wins ties), then current positions
+
+        // Debug log once per projectile update
+        const enemyInfo = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ');
+        const preMoveInfo = gameState.enemyPositionsBeforeMove?.filter(e => !e.dead).map(e => `${e.enemyId}@(${e.x},${e.y})`).join(', ') || 'none';
+        console.log(`[DEBUG] Projectile checking tiles: ${tilesToCheck.map(t => `(${t.x},${t.y})`).join(', ')} | dir=${proj.direction}`);
+        console.log(`[DEBUG]   Enemies current: ${enemyInfo}`);
+        console.log(`[DEBUG]   Enemies pre-move: ${preMoveInfo}`);
+
         for (const checkTile of tilesToCheck) {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
+
+          console.log(`[DEBUG]   Checking tile (${tileX},${tileY})`);
 
           // First check pre-move positions (enemies that WERE at this tile)
           let hitEnemyId: string | undefined;
@@ -1914,6 +1924,7 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (preMoveEnemy) {
               hitEnemyId = preMoveEnemy.enemyId;
+              console.log(`[DEBUG]   -> Found enemy ${preMoveEnemy.enemyId} at pre-move position`);
             }
           }
 
@@ -1927,12 +1938,18 @@ export function updateProjectiles(gameState: GameState): void {
             );
             if (currentEnemy) {
               hitEnemyId = currentEnemy.enemyId;
+              console.log(`[DEBUG]   -> Found enemy ${currentEnemy.enemyId} at current position`);
             }
+          }
+
+          if (!hitEnemyId) {
+            console.log(`[DEBUG]   -> No enemy found at (${tileX},${tileY})`);
           }
 
           // Apply damage if we found a hit
           if (hitEnemyId) {
             const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+            console.log(`[DEBUG]   -> Applying damage to ${hitEnemyId}, enemy found=${!!hitEnemy}, dead=${hitEnemy?.dead}`);
             if (hitEnemy && !hitEnemy.dead) {
               // Track that we hit this entity (for piercing projectiles)
               if (!proj.hitEntityIds) proj.hitEntityIds = [];
