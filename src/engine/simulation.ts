@@ -1958,10 +1958,16 @@ export function updateProjectiles(gameState: GameState): void {
           // Apply damage if we found a hit
           if (hitEnemyId) {
             const hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === hitEnemyId);
+            if (tileX === 13 && tileY === 0) {
+              console.log(`[DEBUG] Applying damage: hitEnemy=${hitEnemy?.enemyId}, dead=${hitEnemy?.dead}, health=${hitEnemy?.currentHealth}`);
+            }
             if (hitEnemy && !hitEnemy.dead) {
               // Track that we hit this entity (for piercing projectiles)
               if (!proj.hitEntityIds) proj.hitEntityIds = [];
               proj.hitEntityIds.push(hitEnemy.enemyId);
+              if (tileX === 13 && tileY === 0) {
+                console.log(`[DEBUG] Damage applied! Enemy health now: ${hitEnemy.currentHealth}, hitEntityIds: ${proj.hitEntityIds.join(',')}`);
+              }
 
               // Check if this should explode into AOE on impact
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
