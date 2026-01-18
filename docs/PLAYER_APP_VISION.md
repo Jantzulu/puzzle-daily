@@ -23,8 +23,82 @@
 
 1. **Today's Puzzle** - Main game page (based on current Game.tsx)
 2. **Archive** - Browse/play past puzzles (requires unlock)
-3. **Stats/Profile** - Track streak, scores, history
-4. **Settings** - Sound, preferences
+3. **Compendium** - Browse all game elements (see below)
+4. **Stats/Profile** - Track streak, scores, history
+5. **Settings** - Sound, preferences
+
+---
+
+## Compendium (Bestiary/Codex)
+
+A reference page where players can learn about all game elements. Only shows assets published to "live" tables.
+
+### Tabs
+
+| Tab | Contents |
+|-----|----------|
+| **Characters** | All playable characters with abilities, stats, behaviors |
+| **Enemies** | All enemy types with behaviors, attack patterns |
+| **Status Effects** | Buffs/debuffs, duration, effects |
+| **Special Tiles** | Tile behaviors (teleport, damage, ice, etc.) |
+| **Items** | Collectibles and their effects |
+| **Spells** | Spell types and how they work (optional - may be character-specific) |
+
+### Layout (Per Entry)
+
+Similar to League of Legends champion pages or a game wiki:
+
+```
+┌─────────────────────────────────────────────────────┐
+│  [Sprite]     WIZARD                                │
+│               ═══════                               │
+│               "Master of arcane arts"               │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ STATS                                        │   │
+│  │ Health: ❤️❤️❤️ (3)                           │   │
+│  │ Speed: 1 tile/turn                           │   │
+│  │ Type: Ranged Caster                          │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ ABILITIES                                    │   │
+│  │                                              │   │
+│  │ 🔥 Fireball                                  │   │
+│  │ Launches a projectile that deals 2 damage   │   │
+│  │ Range: 5 tiles | Pierce: No                  │   │
+│  │                                              │   │
+│  │ 🛡️ Arcane Shield                            │   │
+│  │ Blocks the next incoming attack              │   │
+│  └─────────────────────────────────────────────┘   │
+│                                                     │
+│  ┌─────────────────────────────────────────────┐   │
+│  │ BEHAVIOR PATTERN                             │   │
+│  │ Move → Cast Fireball → Move → Shield → ...   │   │
+│  └─────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────────────┘
+```
+
+### Features
+
+- **Search/Filter** - Find entries by name
+- **Sorting** - Alphabetical, by type, by health, etc.
+- **Grid/List View** - Toggle between card grid and detailed list
+- **Favorites** - Mark frequently referenced entries (nice-to-have)
+- **"Seen in Puzzle"** - Badge showing which puzzles feature this entity (nice-to-have)
+
+### Data Source
+
+- Pulls from `assets_live` tables only
+- Same data structures as game uses (characters, enemies, tiles, etc.)
+- Reuses existing display components (EnemyDisplay, ItemsDisplay, etc.) or creates dedicated Compendium components
+
+### Why This Is Valuable
+
+1. **Learning** - New players understand game mechanics before encountering them
+2. **Strategy** - Players can study enemy patterns to plan solutions
+3. **Engagement** - Content to explore outside of daily puzzle
+4. **Discoverability** - Shows the variety/depth of the game
 
 ### What Player App Does NOT Have
 
