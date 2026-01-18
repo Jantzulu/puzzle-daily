@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { MapEditor } from './components/editor/MapEditor';
@@ -6,6 +6,7 @@ import { AssetManager } from './components/editor/AssetManager';
 import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
+import { applyThemeAssets, subscribeToThemeAssets } from './utils/themeAssets';
 
 function Navigation() {
   const location = useLocation();
@@ -113,9 +114,18 @@ function Navigation() {
 }
 
 function App() {
+  // Apply theme assets on mount and subscribe to changes
+  useEffect(() => {
+    applyThemeAssets();
+    const unsubscribe = subscribeToThemeAssets(() => {
+      applyThemeAssets();
+    });
+    return unsubscribe;
+  }, []);
+
   return (
     <BrowserRouter>
-      <div className="min-h-screen bg-stone-950">
+      <div className="min-h-screen bg-stone-950 theme-root">
         <Navigation />
         <Routes>
           <Route path="/" element={<Game />} />
