@@ -2236,21 +2236,13 @@ function drawHealthBar(
     ? 1 - (timeSinceChange / flashDuration)
     : 0;
 
-  // Draw background (dark gray with subtle gradient)
-  const bgGradient = ctx.createLinearGradient(startX, startY, startX, startY + barHeight);
-  bgGradient.addColorStop(0, '#1a1a1a');
-  bgGradient.addColorStop(1, '#2a2a2a');
-  ctx.fillStyle = bgGradient;
-  ctx.fillRect(startX + 1, startY + 1, barWidth - 2, barHeight - 2);
-
   // Calculate segment width based on max health
-  const segmentWidth = (barWidth - 2) / maxHealth; // Account for frame
+  const segmentWidth = barWidth / maxHealth;
 
-  // Draw health segments with gradients
+  // Draw health segments
   for (let i = 0; i < maxHealth; i++) {
-    const segX = startX + 1 + i * segmentWidth;
-    const segW = segmentWidth - 1;
-    const segH = barHeight - 2;
+    const segX = startX + i * segmentWidth;
+    const segW = segmentWidth;
 
     // Determine segment color based on display health for smooth transitions
     const isFilled = i < Math.ceil(state.displayHealth);
@@ -2259,11 +2251,11 @@ function drawHealthBar(
     if (fillAmount > 0) {
       // Filled health - green or shield color
       ctx.fillStyle = hasShield ? shieldColor : '#4ade80';
-      ctx.fillRect(segX + 0.5, startY + 1.5, segW, segH - 1);
+      ctx.fillRect(segX, startY, segW, barHeight);
     } else {
       // Empty segment (lost health) - dark red
       ctx.fillStyle = '#991b1b';
-      ctx.fillRect(segX + 0.5, startY + 1.5, segW, segH - 1);
+      ctx.fillRect(segX, startY, segW, barHeight);
     }
   }
 
@@ -2271,15 +2263,10 @@ function drawHealthBar(
   if (maxHealth > 1) {
     ctx.fillStyle = '#111';
     for (let i = 1; i < maxHealth; i++) {
-      const dividerX = startX + 1 + i * segmentWidth;
-      ctx.fillRect(dividerX - 0.5, startY + 1, 1, barHeight - 2);
+      const dividerX = startX + i * segmentWidth;
+      ctx.fillRect(dividerX - 0.5, startY, 1, barHeight);
     }
   }
-
-  // Simple border around the whole bar
-  ctx.strokeStyle = hasShield ? shieldColor : '#222';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(startX, startY, barWidth, barHeight);
 
   // Damage/heal flash overlay
   if (flashIntensity > 0 && state.changeType) {
