@@ -2187,7 +2187,7 @@ function drawHealthBar(
   now: number = Date.now()
 ) {
   const barWidth = 32; // Fixed total width of the health bar
-  const barHeight = 6; // Slightly taller for better visibility with frame
+  const barHeight = 4; // Height of the health bar
 
   // Position: centered above the sprite, near the top of the tile
   const startX = px + (TILE_SIZE - barWidth) / 2;
