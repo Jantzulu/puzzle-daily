@@ -2276,40 +2276,10 @@ function drawHealthBar(
     }
   }
 
-  // Draw pixel-art frame
-  const frameColor = hasShield ? shieldColor : '#444';
-  const frameDark = hasShield ? adjustColorBrightness(shieldColor, -40) : '#222';
-  const frameLight = hasShield ? adjustColorBrightness(shieldColor, 20) : '#555';
-
-  // Main border
-  ctx.fillStyle = frameDark;
-  // Top edge
-  ctx.fillRect(startX + 2, startY, barWidth - 4, 1);
-  // Bottom edge
-  ctx.fillRect(startX + 2, startY + barHeight - 1, barWidth - 4, 1);
-  // Left edge
-  ctx.fillRect(startX, startY + 2, 1, barHeight - 4);
-  // Right edge
-  ctx.fillRect(startX + barWidth - 1, startY + 2, 1, barHeight - 4);
-
-  // Corner pixels (pixel-art style beveled corners)
-  ctx.fillStyle = frameColor;
-  // Top-left corner
-  ctx.fillRect(startX + 1, startY, 1, 1);
-  ctx.fillRect(startX, startY + 1, 1, 1);
-  ctx.fillRect(startX + 1, startY + 1, 1, 1);
-  // Top-right corner
-  ctx.fillRect(startX + barWidth - 2, startY, 1, 1);
-  ctx.fillRect(startX + barWidth - 1, startY + 1, 1, 1);
-  ctx.fillRect(startX + barWidth - 2, startY + 1, 1, 1);
-  // Bottom-left corner
-  ctx.fillRect(startX + 1, startY + barHeight - 1, 1, 1);
-  ctx.fillRect(startX, startY + barHeight - 2, 1, 1);
-  ctx.fillRect(startX + 1, startY + barHeight - 2, 1, 1);
-  // Bottom-right corner
-  ctx.fillRect(startX + barWidth - 2, startY + barHeight - 1, 1, 1);
-  ctx.fillRect(startX + barWidth - 1, startY + barHeight - 2, 1, 1);
-  ctx.fillRect(startX + barWidth - 2, startY + barHeight - 2, 1, 1);
+  // Simple border around the whole bar
+  ctx.strokeStyle = hasShield ? shieldColor : '#222';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(startX, startY, barWidth, barHeight);
 
   // Damage/heal flash overlay
   if (flashIntensity > 0 && state.changeType) {
@@ -2332,25 +2302,6 @@ function drawHealthBar(
   if (flashIntensity === 0 && state.changeType) {
     state.changeType = null;
   }
-}
-
-// Helper to adjust color brightness
-function adjustColorBrightness(hex: string, amount: number): string {
-  // Remove # if present
-  hex = hex.replace('#', '');
-
-  // Parse RGB
-  let r = parseInt(hex.substring(0, 2), 16);
-  let g = parseInt(hex.substring(2, 4), 16);
-  let b = parseInt(hex.substring(4, 6), 16);
-
-  // Adjust brightness
-  r = Math.max(0, Math.min(255, r + amount));
-  g = Math.max(0, Math.min(255, g + amount));
-  b = Math.max(0, Math.min(255, b + amount));
-
-  // Return hex
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 // Helper to draw status effect icons above health bar
