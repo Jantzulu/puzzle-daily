@@ -3309,7 +3309,7 @@ function drawPuzzleVignette(
 
   // --- FOG/MIST EFFECT ---
   // Subtle animated fog that drifts slowly across the board
-  const fogOpacity = 0.5; // TEMP: dramatically increased for troubleshooting
+  const fogOpacity = 0.2; // Subtle fog effect
   const fogSpeed = 0.0003; // Slow drift
 
   clipToPlayableTiles(() => {
