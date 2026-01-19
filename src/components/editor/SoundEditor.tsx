@@ -88,8 +88,8 @@ export const SoundEditor: React.FC = () => {
 
   const handleSave = () => {
     if (!editing) return;
-    if (!editing.audioData) {
-      alert('Please upload an audio file first');
+    if (!editing.audioData && !editing.audioUrl) {
+      alert('Please upload an audio file or provide a URL');
       return;
     }
     saveSoundAsset(editing);
@@ -156,12 +156,35 @@ export const SoundEditor: React.FC = () => {
   };
 
   const handlePlaySound = async () => {
-    if (!editing?.audioData || isPlaying) return;
+    if ((!editing?.audioData && !editing?.audioUrl) || isPlaying) return;
 
     setIsPlaying(true);
     try {
       await soundManager.initialize();
-      await soundManager.playSfx(editing.audioData);
+
+      // If we have base64 data, use it directly
+      if (editing.audioData) {
+        await soundManager.playSfx(editing.audioData);
+      } else if (editing.audioUrl) {
+        // Fetch from URL and play
+        const response = await fetch(editing.audioUrl);
+        if (!response.ok) throw new Error('Failed to fetch audio');
+        const buffer = await response.arrayBuffer();
+        const bytes = new Uint8Array(buffer);
+        let binary = '';
+        for (let i = 0; i < bytes.byteLength; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+        const extension = editing.audioUrl.split('.').pop()?.toLowerCase() || 'mp3';
+        const mimeTypes: Record<string, string> = {
+          'mp3': 'audio/mpeg', 'wav': 'audio/wav', 'ogg': 'audio/ogg',
+          'webm': 'audio/webm', 'm4a': 'audio/mp4', 'aac': 'audio/aac',
+        };
+        const mimeType = mimeTypes[extension] || 'audio/mpeg';
+        const dataUrl = `data:${mimeType};base64,${base64}`;
+        await soundManager.playSfx(dataUrl);
+      }
 
       // Reset playing state after sound duration (or 3 seconds max)
       const duration = editing.duration ? Math.min(editing.duration * 1000, 3000) : 1000;
@@ -399,45 +422,80 @@ export const SoundEditor: React.FC = () => {
               />
             </div>
 
-            {/* Audio File Upload */}
+            {/* Audio Source - File Upload OR URL */}
             <div>
-              <label className="block text-stone-300 text-sm mb-1">Audio File</label>
-              <div className="flex items-center gap-3">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="audio/*"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
-                >
-                  {editing.audioData ? 'Replace Audio' : 'Upload Audio'}
-                </button>
-                {editing.audioData && (
-                  <>
+              <label className="block text-stone-300 text-sm mb-2">Audio Source</label>
+
+              {/* Upload File Option */}
+              <div className="mb-3">
+                <div className="flex items-center gap-3">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="audio/*"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="px-4 py-2 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    {editing.audioData ? 'Replace Audio File' : 'Upload Audio File'}
+                  </button>
+                  {editing.audioData && (
                     <span className="text-green-400 text-sm">
-                      Audio loaded ({formatDuration(editing.duration)})
+                      File loaded ({formatDuration(editing.duration)})
                     </span>
-                    <button
-                      onClick={handlePlaySound}
-                      disabled={isPlaying}
-                      className={`px-3 py-2 rounded text-sm ${
-                        isPlaying
-                          ? 'bg-stone-600 text-stone-400 cursor-not-allowed'
-                          : 'bg-purple-600 hover:bg-purple-700'
-                      }`}
-                    >
-                      {isPlaying ? 'Playing...' : 'Preview'}
-                    </button>
-                  </>
-                )}
+                  )}
+                </div>
+                <p className="text-stone-500 text-xs mt-1">
+                  Supports MP3, WAV, OGG. Max file size: 1MB (stored in browser).
+                </p>
               </div>
-              <p className="text-stone-500 text-xs mt-1">
-                Supports MP3, WAV, OGG. Max file size: 1MB.
-              </p>
+
+              {/* Divider */}
+              <div className="flex items-center gap-3 my-3">
+                <div className="flex-1 h-px bg-stone-600"></div>
+                <span className="text-stone-500 text-xs">OR</span>
+                <div className="flex-1 h-px bg-stone-600"></div>
+              </div>
+
+              {/* URL Option */}
+              <div>
+                <label className="block text-stone-400 text-xs mb-1">Audio URL (Supabase, CDN, etc.)</label>
+                <input
+                  type="url"
+                  value={editing.audioUrl || ''}
+                  onChange={(e) => setEditing({ ...editing, audioUrl: e.target.value || undefined })}
+                  placeholder="https://your-storage.com/audio/file.mp3"
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm"
+                />
+                <p className="text-stone-500 text-xs mt-1">
+                  Link to external audio file. No file size limit. Fetched when played.
+                </p>
+              </div>
+
+              {/* Preview Button */}
+              {(editing.audioData || editing.audioUrl) && (
+                <div className="mt-3">
+                  <button
+                    onClick={handlePlaySound}
+                    disabled={isPlaying}
+                    className={`px-4 py-2 rounded text-sm ${
+                      isPlaying
+                        ? 'bg-stone-600 text-stone-400 cursor-not-allowed'
+                        : 'bg-purple-600 hover:bg-purple-700'
+                    }`}
+                  >
+                    {isPlaying ? 'Playing...' : '▶ Preview Sound'}
+                  </button>
+                  {editing.audioUrl && !editing.audioData && (
+                    <span className="ml-3 text-stone-400 text-xs">
+                      (Will fetch from URL)
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Folder */}

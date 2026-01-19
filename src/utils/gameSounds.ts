@@ -8,11 +8,66 @@ import { getEnemy } from '../data/enemies';
 import { loadSpellAsset } from './assetStorage';
 import type { SoundTrigger, GlobalSoundConfig } from '../types/game';
 
-// Cache for resolved sound data (base64 audio)
+// Cache for resolved sound data (base64 audio or URL)
 const soundCache = new Map<string, string | null>();
 
+// Cache for URL audio data (fetched from remote)
+const urlAudioCache = new Map<string, ArrayBuffer>();
+
 /**
- * Get the base64 audio data for a sound asset ID
+ * Fetch audio from URL and convert to base64 data URL
+ */
+async function fetchAudioFromUrl(url: string): Promise<string | null> {
+  // Check URL cache first
+  if (urlAudioCache.has(url)) {
+    const buffer = urlAudioCache.get(url)!;
+    return arrayBufferToBase64DataUrl(buffer, url);
+  }
+
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(`Failed to fetch audio from URL: ${url}`, response.status);
+      return null;
+    }
+
+    const buffer = await response.arrayBuffer();
+    urlAudioCache.set(url, buffer);
+    return arrayBufferToBase64DataUrl(buffer, url);
+  } catch (error) {
+    console.error(`Error fetching audio from URL: ${url}`, error);
+    return null;
+  }
+}
+
+/**
+ * Convert ArrayBuffer to base64 data URL
+ */
+function arrayBufferToBase64DataUrl(buffer: ArrayBuffer, url: string): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = '';
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  const base64 = btoa(binary);
+
+  // Determine MIME type from URL extension
+  const extension = url.split('.').pop()?.toLowerCase() || 'mp3';
+  const mimeTypes: Record<string, string> = {
+    'mp3': 'audio/mpeg',
+    'wav': 'audio/wav',
+    'ogg': 'audio/ogg',
+    'webm': 'audio/webm',
+    'm4a': 'audio/mp4',
+    'aac': 'audio/aac',
+  };
+  const mimeType = mimeTypes[extension] || 'audio/mpeg';
+
+  return `data:${mimeType};base64,${base64}`;
+}
+
+/**
+ * Get the audio data for a sound asset ID (supports both base64 and URL)
  */
 async function resolveSoundData(soundId: string | undefined): Promise<string | null> {
   if (!soundId) return null;
@@ -24,9 +79,22 @@ async function resolveSoundData(soundId: string | undefined): Promise<string | n
 
   // Load sound asset
   const soundAsset = loadSoundAsset(soundId);
-  if (soundAsset?.audioData) {
+  if (!soundAsset) {
+    soundCache.set(soundId, null);
+    return null;
+  }
+
+  // Prefer base64 data if available (faster, no network request)
+  if (soundAsset.audioData) {
     soundCache.set(soundId, soundAsset.audioData);
     return soundAsset.audioData;
+  }
+
+  // Fall back to URL if available
+  if (soundAsset.audioUrl) {
+    const audioData = await fetchAudioFromUrl(soundAsset.audioUrl);
+    soundCache.set(soundId, audioData);
+    return audioData;
   }
 
   soundCache.set(soundId, null);

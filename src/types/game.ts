@@ -1004,7 +1004,8 @@ export interface SoundAsset {
   id: string;
   name: string;
   description?: string;
-  audioData: string;       // Base64 encoded audio data
+  audioData?: string;      // Base64 encoded audio data (optional if audioUrl is provided)
+  audioUrl?: string;       // URL to audio file (e.g., Supabase storage URL)
   duration?: number;       // Duration in seconds (for display)
   createdAt: string;
   isBuiltIn?: boolean;     // True for default sounds
