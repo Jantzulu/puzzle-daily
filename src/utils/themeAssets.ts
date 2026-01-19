@@ -38,6 +38,12 @@ export interface ThemeAssets {
   bgPanel?: string; // Panel/card background
   bgGameArea?: string; // Underground/cave background for game area
   bgNavbar?: string; // Navigation bar background
+  bgCard?: string; // Inner card background image (heroes, enemies, items)
+
+  // Background tiling options (true/'true' = tile/repeat, false/undefined = cover/stretch)
+  bgMainTile?: boolean | string;
+  bgPanelTile?: boolean | string;
+  bgCardTile?: boolean | string;
 
   // Buttons (can be 9-slice sprites or simple images)
   buttonPrimary?: string;
@@ -117,7 +123,11 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   navLabelAssets: { label: 'Assets Button Label', description: 'Text for Assets navigation button (default: "Assets")', category: 'branding', inputType: 'text' },
   // Images
   bgMain: { label: 'Main Background', description: 'Background for the entire page', category: 'backgrounds', inputType: 'image' },
+  bgMainTile: { label: 'Tile Main Background', description: 'Tile (repeat) instead of stretch to cover', category: 'backgrounds', inputType: 'toggle' },
   bgPanel: { label: 'Panel Background', description: 'Background texture for panels and cards', category: 'backgrounds', inputType: 'image' },
+  bgPanelTile: { label: 'Tile Panel Background', description: 'Tile (repeat) instead of stretch to cover', category: 'backgrounds', inputType: 'toggle' },
+  bgCard: { label: 'Card Background', description: 'Background image for inner cards (heroes, enemies, items)', category: 'backgrounds', inputType: 'image' },
+  bgCardTile: { label: 'Tile Card Background', description: 'Tile (repeat) instead of stretch to cover', category: 'backgrounds', inputType: 'toggle' },
   bgGameArea: { label: 'Game Area Background', description: 'Underground/cave background surrounding the dungeon', category: 'backgrounds', inputType: 'image' },
   bgNavbar: { label: 'Navbar Background', description: 'Navigation bar background', category: 'backgrounds', inputType: 'image' },
   buttonPrimary: { label: 'Primary Button', description: 'Main action button style', category: 'buttons', inputType: 'image' },
@@ -345,9 +355,25 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.logo) properties['--asset-logo'] = `url(${assets.logo})`;
   if (assets.bgMain) properties['--asset-bg-main'] = `url(${assets.bgMain})`;
   if (assets.bgPanel) properties['--asset-bg-panel'] = `url(${assets.bgPanel})`;
+  if (assets.bgCard) properties['--asset-bg-card'] = `url(${assets.bgCard})`;
   if (assets.bgGameArea) properties['--asset-bg-game-area'] = `url(${assets.bgGameArea})`;
   if (assets.buttonPrimary) properties['--asset-button-primary'] = `url(${assets.buttonPrimary})`;
   if (assets.borderFrame) properties['--asset-border-frame'] = `url(${assets.borderFrame})`;
+
+  // Tiling options - set both repeat and size properties
+  // Handle both boolean true and string 'true' (from storage)
+  if (assets.bgMainTile === true || assets.bgMainTile === 'true') {
+    properties['--asset-bg-main-repeat'] = 'repeat';
+    properties['--asset-bg-main-size'] = 'auto';
+  }
+  if (assets.bgPanelTile === true || assets.bgPanelTile === 'true') {
+    properties['--asset-bg-panel-repeat'] = 'repeat';
+    properties['--asset-bg-panel-size'] = 'auto';
+  }
+  if (assets.bgCardTile === true || assets.bgCardTile === 'true') {
+    properties['--asset-bg-card-repeat'] = 'repeat';
+    properties['--asset-bg-card-size'] = 'auto';
+  }
 
   // Color settings
   if (assets.colorBgPrimary) properties['--theme-bg-primary'] = assets.colorBgPrimary;
@@ -429,9 +455,16 @@ const ALL_THEME_CSS_VARS = [
   '--asset-logo',
   '--asset-bg-main',
   '--asset-bg-panel',
+  '--asset-bg-card',
   '--asset-bg-game-area',
   '--asset-button-primary',
   '--asset-border-frame',
+  '--asset-bg-main-repeat',
+  '--asset-bg-main-size',
+  '--asset-bg-panel-repeat',
+  '--asset-bg-panel-size',
+  '--asset-bg-card-repeat',
+  '--asset-bg-card-size',
   '--theme-bg-primary',
   '--theme-bg-secondary',
   '--theme-bg-card',

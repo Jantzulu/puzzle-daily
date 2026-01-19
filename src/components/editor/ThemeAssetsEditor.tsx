@@ -96,6 +96,41 @@ const SUBTITLE_SIZE_OPTIONS = [
   { value: 'x-large', label: 'Extra Large (1.25x)' },
 ];
 
+interface ToggleSwitchProps {
+  assetKey: ThemeAssetKey;
+  value?: string | boolean;
+  onChange: (value: string | undefined) => void;
+}
+
+const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ assetKey, value, onChange }) => {
+  const config = THEME_ASSET_CONFIG[assetKey];
+  // Handle both boolean and string 'true'
+  const isEnabled = value === true || value === 'true';
+
+  return (
+    <div className="dungeon-panel-dark p-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <label className="block text-sm font-medium text-copper-400">{config.label}</label>
+          <p className="text-xs text-stone-500">{config.description}</p>
+        </div>
+        <button
+          onClick={() => onChange(isEnabled ? undefined : 'true')}
+          className={`relative w-12 h-6 rounded-full transition-colors ${
+            isEnabled ? 'bg-copper-600' : 'bg-stone-700'
+          }`}
+        >
+          <span
+            className={`absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-parchment-200 transition-transform ${
+              isEnabled ? 'translate-x-6' : 'translate-x-0'
+            }`}
+          />
+        </button>
+      </div>
+    </div>
+  );
+};
+
 interface AssetUploadProps {
   assetKey: ThemeAssetKey;
   value?: string;
@@ -660,6 +695,17 @@ export const ThemeAssetsEditor: React.FC = () => {
       );
     }
 
+    if (config.inputType === 'toggle') {
+      return (
+        <ToggleSwitch
+          key={key}
+          assetKey={key}
+          value={assets[key]}
+          onChange={(value) => handleAssetChange(key, value)}
+        />
+      );
+    }
+
     return (
       <AssetUpload
         key={key}
@@ -758,6 +804,7 @@ export const ThemeAssetsEditor: React.FC = () => {
             <li>Upload images or paste a public URL (click 🔗 URL button)</li>
             <li>Upload images in PNG format with transparency for best results</li>
             <li>Background images work best as tileable textures or large images</li>
+            <li>Enable "Tile" toggle to repeat smaller textures instead of stretching</li>
             <li>Button images can be 9-slice sprites for proper scaling</li>
             <li>Icons should be square (e.g., 32x32 or 64x64 pixels)</li>
             <li>Uploaded assets are stored in cloud, URLs are referenced directly</li>

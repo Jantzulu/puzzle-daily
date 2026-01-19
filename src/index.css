@@ -427,7 +427,8 @@ html {
 .theme-root {
   background-color: var(--theme-bg-primary, #0a0805);
   background-image: var(--asset-bg-main, none);
-  background-size: cover;
+  background-repeat: var(--asset-bg-main-repeat, no-repeat);
+  background-size: var(--asset-bg-main-size, cover);
   background-position: center;
   background-attachment: fixed;
 }
@@ -459,7 +460,8 @@ html body.theme-font-active,
 .dungeon-panel {
   background-color: var(--theme-bg-secondary, #2a2118);
   background-image: var(--asset-bg-panel, none);
-  background-size: cover;
+  background-repeat: var(--asset-bg-panel-repeat, no-repeat);
+  background-size: var(--asset-bg-panel-size, cover);
   background-position: center;
   border-color: var(--theme-border-primary, #5a4a35);
   border-radius: var(--theme-border-radius, 4px);
@@ -536,9 +538,13 @@ html body.theme-font-active,
   border-radius: var(--theme-border-radius, 4px);
 }
 
-/* Override bg-stone-800/80 for info cards when theme card color is set */
+/* Override bg-stone-800/80 for info cards when theme card color/image is set */
 .theme-root [class*="bg-stone-800"] {
   background-color: var(--theme-bg-card, rgba(42, 42, 42, 0.8));
+  background-image: var(--asset-bg-card, none);
+  background-repeat: var(--asset-bg-card-repeat, no-repeat);
+  background-size: var(--asset-bg-card-size, cover);
+  background-position: center;
 }
 
 /* Theme-aware tabs */

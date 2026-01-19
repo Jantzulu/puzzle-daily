@@ -15,6 +15,7 @@ import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
+import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -54,6 +55,15 @@ export const Game: React.FC = () => {
     puzzle: Puzzle;
   } | null>(null);
 
+  // Theme assets for custom icons
+  const [themeAssets, setThemeAssets] = useState<ThemeAssets>(() => loadThemeAssets());
+
+  // Concede confirmation state
+  const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+
+  // Track defeat reason
+  const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
+
   // Reload saved puzzles when component mounts or when returning from editor
   useEffect(() => {
     const handleFocus = () => {
@@ -61,6 +71,14 @@ export const Game: React.FC = () => {
     };
     window.addEventListener('focus', handleFocus);
     return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+
+  // Subscribe to theme asset changes
+  useEffect(() => {
+    const unsubscribe = subscribeToThemeAssets((assets) => {
+      setThemeAssets(assets);
+    });
+    return unsubscribe;
   }, []);
 
   // Simulation loop
@@ -136,6 +154,11 @@ export const Game: React.FC = () => {
           if (newState.gameStatus === 'defeat') {
             const puzzleLives = currentPuzzle.lives ?? 3;
             const isUnlimitedLives = puzzleLives === 0;
+
+            // Determine defeat reason
+            const maxTurns = currentPuzzle.maxTurns || 1000;
+            const ranOutOfTurns = newState.currentTurn >= maxTurns;
+            setDefeatReason(ranOutOfTurns ? 'turns' : 'damage');
 
             playGameSound('defeat');
 
@@ -364,6 +387,37 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
     setPlayStartCharacters([]);
     setPuzzleScore(null);
+    setDefeatReason(null);
+  };
+
+  // Concede current attempt - lose a life and return to setup
+  const handleConcede = () => {
+    setShowConcedeConfirm(false);
+    setIsSimulating(false);
+    setDefeatReason('damage'); // Conceding counts as damage death
+
+    const puzzleLives = currentPuzzle.lives ?? 3;
+    const isUnlimitedLives = puzzleLives === 0;
+
+    playGameSound('defeat');
+
+    if (!isUnlimitedLives) {
+      const newLives = livesRemaining - 1;
+      setLivesRemaining(newLives);
+
+      if (newLives <= 0) {
+        // No lives left - show game over
+        setShowGameOver(true);
+        playDefeatMusic();
+      } else {
+        // Life lost - play sound and reset
+        playGameSound('life_lost');
+        handleAutoReset();
+      }
+    } else {
+      // Unlimited lives - just reset
+      handleAutoReset();
+    }
   };
 
   const handlePuzzleChange = (puzzleId: string) => {
@@ -468,7 +522,7 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
   };
 
-  // Render heart icons for lives
+  // Render heart icons for lives (uses custom theme icons if available)
   const renderLivesHearts = () => {
     const puzzleLives = currentPuzzle.lives ?? 3;
     const isUnlimitedLives = puzzleLives === 0;
@@ -480,15 +534,32 @@ export const Game: React.FC = () => {
     const hearts = [];
     for (let i = 0; i < puzzleLives; i++) {
       const isFilled = i < livesRemaining;
-      hearts.push(
-        <span
-          key={i}
-          className={`text-xl ${isFilled ? 'heart-filled' : 'heart-empty'}`}
-          title={isFilled ? 'Life remaining' : 'Life lost'}
-        >
-          &#x2665;
-        </span>
-      );
+      const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
+
+      if (customIcon) {
+        // Use custom heart icon from theme
+        hearts.push(
+          <img
+            key={i}
+            src={customIcon}
+            alt={isFilled ? 'Life remaining' : 'Life lost'}
+            title={isFilled ? 'Life remaining' : 'Life lost'}
+            className="w-6 h-6 object-contain pixelated"
+            style={{ opacity: isFilled ? 1 : 0.4 }}
+          />
+        );
+      } else {
+        // Use default Unicode heart
+        hearts.push(
+          <span
+            key={i}
+            className={`text-xl ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+            title={isFilled ? 'Life remaining' : 'Life lost'}
+          >
+            &#x2665;
+          </span>
+        );
+      }
     }
     return hearts;
   };
@@ -558,12 +629,48 @@ export const Game: React.FC = () => {
                 <div className="flex items-center justify-center gap-1 mb-2">
                   {renderLivesHearts()}
                 </div>
-                {/* Turn counter */}
-                <div className="dungeon-panel flex items-center gap-3 px-4 py-2">
-                  <span className="text-stone-400 text-sm font-medium">Turn</span>
-                  <span className="text-2xl font-bold text-copper-400 min-w-[2ch] text-center text-shadow-glow-copper">
-                    {gameState.currentTurn}
-                  </span>
+                {/* Turn counter with concede button */}
+                <div className="flex items-center gap-3">
+                  <div className="dungeon-panel flex items-center gap-3 px-4 py-2">
+                    <span className="text-stone-400 text-sm font-medium">Turn</span>
+                    {(() => {
+                      const maxTurns = currentPuzzle.maxTurns;
+                      const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
+                      const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                      const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+
+                      return (
+                        <>
+                          <span className={`text-2xl font-bold min-w-[2ch] text-center ${
+                            isVeryNearLimit
+                              ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                              : isNearLimit
+                              ? 'text-rust-400'
+                              : 'text-copper-400 text-shadow-glow-copper'
+                          }`}>
+                            {gameState.currentTurn}
+                          </span>
+                          {maxTurns && (
+                            <span className={`text-sm ${
+                              isNearLimit ? 'text-blood-400' : 'text-stone-500'
+                            }`}>
+                              / {maxTurns}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
+                  </div>
+                  {/* Concede button - only during running state */}
+                  {gameState.gameStatus === 'running' && (
+                    <button
+                      onClick={() => setShowConcedeConfirm(true)}
+                      className="dungeon-btn-danger text-xs px-2 py-1"
+                      title="Give up this attempt and lose a life"
+                    >
+                      Concede
+                    </button>
+                  )}
                 </div>
               </div>
             )}
@@ -680,7 +787,14 @@ export const Game: React.FC = () => {
 
             {gameState.gameStatus === 'defeat' && !showGameOver && (
               <div className="defeat-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
-                <h2 className="text-xl md:text-2xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">Defeat</h2>
+                <h2 className="text-xl md:text-2xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
+                  {defeatReason === 'turns' ? 'Out of Time!' : 'Defeat'}
+                </h2>
+                <p className="mt-1 text-sm text-blood-400">
+                  {defeatReason === 'turns'
+                    ? 'You ran out of turns before completing the objective.'
+                    : 'Your heroes have fallen in battle.'}
+                </p>
                 {(currentPuzzle.lives ?? 3) > 0 && (
                   <p className="mt-2 text-sm md:text-base text-blood-300">
                     Lives remaining: {livesRemaining - 1} - Returning to setup...
@@ -703,6 +817,34 @@ export const Game: React.FC = () => {
                 >
                   Try Again
                 </button>
+              </div>
+            )}
+
+            {/* Concede Confirmation Popup */}
+            {showConcedeConfirm && (
+              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+                <div className="defeat-panel p-6 rounded-pixel-lg text-center max-w-sm mx-4">
+                  <h3 className="text-xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
+                    Concede?
+                  </h3>
+                  <p className="mt-2 text-blood-300">
+                    You will lose a life and return to setup.
+                  </p>
+                  <div className="mt-4 flex gap-3 justify-center">
+                    <button
+                      onClick={() => setShowConcedeConfirm(false)}
+                      className="dungeon-btn px-4 py-2"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={handleConcede}
+                      className="dungeon-btn-danger px-4 py-2"
+                    >
+                      Concede
+                    </button>
+                  </div>
+                </div>
               </div>
             )}
 
