@@ -3479,7 +3479,11 @@ function drawPuzzleVignette(
   // --- FOG/MIST EFFECT ---
   // Subtle animated fog that drifts slowly across the board
   const fogOpacity = 0.2; // Subtle fog effect
-  const fogSpeed = 0.0003; // Slow drift
+  // Scale fog speed based on puzzle size - slower for smaller puzzles, faster for larger
+  // Reference: 8x8 = 64 tiles is "medium", scale from there
+  const puzzleArea = gridWidth * gridHeight;
+  const fogSpeedScale = Math.max(0.4, Math.min(1.5, puzzleArea / 64)); // Clamp between 0.4x and 1.5x
+  const fogSpeed = 0.0003 * fogSpeedScale;
 
   clipToPlayableTiles(() => {
     // Use a fixed base size for fog clusters (in pixels), capped so large puzzles
