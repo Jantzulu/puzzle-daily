@@ -3274,34 +3274,46 @@ function drawPuzzleVignette(
 
     // Draw shadows for interior convex corners (corners facing void tiles, not outer perimeter)
     // These are corners where two interior edges meet - the edge shadows don't cover the corner piece
+    //
+    // Build a lookup of which edges exist and whether they're outer
+    const edgeLookup = new Map<string, boolean>();
+    borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
+      edgeLookup.set(`${x},${y},${edge}`, isOuterEdge);
+    });
+
     borderData.corners.forEach(({ x, y, type }) => {
       // Skip concave corners - they face INTO the playable area
       if (type.startsWith('concave')) return;
 
-      // Check if this is an interior corner (not on outer perimeter)
-      // A corner is interior if NEITHER of its contributing edges is on the outer perimeter
-      let isInteriorCorner = false;
+      // Check if this is an interior corner by looking at the actual edges
+      // A corner is interior only if BOTH of its contributing edges are interior (not outer)
+      let edge1Key: string, edge2Key: string;
       switch (type) {
         case 'convex-tl':
-          // Top-left corner: check if top edge AND left edge are both interior
-          isInteriorCorner = (y > 0) && (x > 0);
+          edge1Key = `${x},${y},top`;
+          edge2Key = `${x},${y},left`;
           break;
         case 'convex-tr':
-          // Top-right corner: check if top edge AND right edge are both interior
-          isInteriorCorner = (y > 0) && (x < gridWidth - 1);
+          edge1Key = `${x},${y},top`;
+          edge2Key = `${x},${y},right`;
           break;
         case 'convex-bl':
-          // Bottom-left corner: check if bottom edge AND left edge are both interior
-          isInteriorCorner = (y < gridHeight - 1) && (x > 0);
+          edge1Key = `${x},${y},bottom`;
+          edge2Key = `${x},${y},left`;
           break;
         case 'convex-br':
-          // Bottom-right corner: check if bottom edge AND right edge are both interior
-          isInteriorCorner = (y < gridHeight - 1) && (x < gridWidth - 1);
+          edge1Key = `${x},${y},bottom`;
+          edge2Key = `${x},${y},right`;
           break;
+        default:
+          return;
       }
 
-      // Skip outer corners - they're handled by bounding box shadows
-      if (!isInteriorCorner) return;
+      const edge1IsOuter = edgeLookup.get(edge1Key) ?? true;
+      const edge2IsOuter = edgeLookup.get(edge2Key) ?? true;
+
+      // Skip if either edge is outer - those corners are handled by bounding box shadows
+      if (edge1IsOuter || edge2IsOuter) return;
 
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
