@@ -1440,9 +1440,8 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
 
   ctx.save();
 
-  // Background behind border (dark void)
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(0, 0, totalWidth, totalHeight);
+  // NOTE: We do NOT fill the background here - void tiles should be transparent
+  // to allow the page background to show through
 
   // Top wall (front-facing with depth)
   ctx.fillStyle = '#3a3a4a'; // Stone color
@@ -1520,9 +1519,8 @@ function drawCustomBorder(
 
   ctx.save();
 
-  // Background behind border (dark void)
-  ctx.fillStyle = '#0a0a0a';
-  ctx.fillRect(0, 0, totalWidth, totalHeight);
+  // NOTE: We do NOT fill the background here - void tiles should be transparent
+  // to allow the page background to show through
 
   // Load all sprite images
   const wallFrontImg = loadBorderImage(sprites.wallFront || '');
@@ -3162,6 +3160,9 @@ function drawPersistentAreaEffect(
  * Draw a vignette effect on the OUTER edges of the border walls.
  * This darkens the border walls where they meet the dark background,
  * creating a smooth blend. Does NOT affect the inner game tiles.
+ *
+ * For puzzles with void tiles, the vignette is clipped to only affect
+ * the border walls around playable tiles, not void areas.
  */
 function drawPuzzleVignette(
   ctx: CanvasRenderingContext2D,
@@ -3179,6 +3180,40 @@ function drawPuzzleVignette(
   // Calculate the total canvas area including borders
   const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
   const totalHeight = gridHeight * TILE_SIZE + (BORDER_SIZE * 2);
+
+  // Check if we have void tiles
+  const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
+
+  // Helper to create clipping path for border walls only (excludes void tile areas)
+  const clipToBorderAndPlayableTiles = () => {
+    ctx.beginPath();
+    // Add the outer border region
+    // Top border
+    ctx.rect(0, 0, totalWidth, BORDER_SIZE);
+    // Bottom border
+    ctx.rect(0, BORDER_SIZE + gridHeight * TILE_SIZE, totalWidth, BORDER_SIZE);
+    // Left border
+    ctx.rect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridHeight * TILE_SIZE);
+    // Right border
+    ctx.rect(SIDE_BORDER_SIZE + gridWidth * TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, gridHeight * TILE_SIZE);
+    // Add playable tiles
+    for (let y = 0; y < gridHeight; y++) {
+      for (let x = 0; x < gridWidth; x++) {
+        if (tiles[y]?.[x] !== null) {
+          const px = offsetX + x * TILE_SIZE;
+          const py = offsetY + y * TILE_SIZE;
+          ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+    ctx.clip();
+  };
+
+  // If we have void tiles, clip the edge vignettes to avoid drawing over void areas
+  if (hasVoidTiles) {
+    ctx.save();
+    clipToBorderAndPlayableTiles();
+  }
 
   // Top edge vignette (on the top border wall)
   const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
@@ -3208,54 +3243,41 @@ function drawPuzzleVignette(
   ctx.fillStyle = rightGradient;
   ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
 
+  if (hasVoidTiles) {
+    ctx.restore();
+  }
+
   // ==========================================
   // INNER TILE VIGNETTE (subtle radial darkening on game area)
   // Only applies to playable tiles, not void tiles
+  // For irregular shapes, we skip this effect entirely to avoid
+  // darkening tiles near void boundaries
   // ==========================================
-  const innerVignetteOpacity = 0.4; // Moderate effect on tiles
 
-  // Calculate the game area bounds (inside the border)
-  const gameAreaX = offsetX;
-  const gameAreaY = offsetY;
-  const gameAreaWidth = gridWidth * TILE_SIZE;
-  const gameAreaHeight = gridHeight * TILE_SIZE;
+  // Skip inner vignette for puzzles with void tiles - the radial gradient
+  // doesn't work well with irregular shapes
+  if (!hasVoidTiles) {
+    const innerVignetteOpacity = 0.4; // Moderate effect on tiles
 
-  // Create a radial gradient centered on the game area
-  const centerX = gameAreaX + gameAreaWidth / 2;
-  const centerY = gameAreaY + gameAreaHeight / 2;
-  const maxRadius = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight) / 2;
+    // Calculate the game area bounds (inside the border)
+    const gameAreaX = offsetX;
+    const gameAreaY = offsetY;
+    const gameAreaWidth = gridWidth * TILE_SIZE;
+    const gameAreaHeight = gridHeight * TILE_SIZE;
 
-  const innerGradient = ctx.createRadialGradient(
-    centerX, centerY, maxRadius * 0.4, // Inner radius (transparent zone)
-    centerX, centerY, maxRadius         // Outer radius (dark edges)
-  );
-  innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
-  innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
+    // Create a radial gradient centered on the game area
+    const centerX = gameAreaX + gameAreaWidth / 2;
+    const centerY = gameAreaY + gameAreaHeight / 2;
+    const maxRadius = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight) / 2;
 
-  // Check if we have void tiles - if so, clip to only playable tiles
-  const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
+    const innerGradient = ctx.createRadialGradient(
+      centerX, centerY, maxRadius * 0.4, // Inner radius (transparent zone)
+      centerX, centerY, maxRadius         // Outer radius (dark edges)
+    );
+    innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+    innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
 
-  if (hasVoidTiles) {
-    // Create a clipping path that only includes playable tiles
-    ctx.save();
-    ctx.beginPath();
-    for (let y = 0; y < gridHeight; y++) {
-      for (let x = 0; x < gridWidth; x++) {
-        if (tiles[y]?.[x] !== null) {
-          const px = gameAreaX + x * TILE_SIZE;
-          const py = gameAreaY + y * TILE_SIZE;
-          ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
-        }
-      }
-    }
-    ctx.clip();
-
-    // Apply vignette only to clipped area (playable tiles)
-    ctx.fillStyle = innerGradient;
-    ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
-    ctx.restore();
-  } else {
     // No void tiles - apply vignette to entire game area
     ctx.fillStyle = innerGradient;
     ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
