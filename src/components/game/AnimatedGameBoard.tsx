@@ -3331,9 +3331,9 @@ function drawPuzzleVignette(
         fogCenterX, fogCenterY, 0,
         fogCenterX, fogCenterY, fogRadius
       );
-      fogGradient.addColorStop(0, `rgba(180, 190, 210, ${layerOpacity})`);
-      fogGradient.addColorStop(0.5, `rgba(150, 160, 180, ${layerOpacity * 0.5})`);
-      fogGradient.addColorStop(1, 'rgba(150, 160, 180, 0)');
+      fogGradient.addColorStop(0, `rgba(0, 0, 0, ${layerOpacity})`);
+      fogGradient.addColorStop(0.5, `rgba(0, 0, 0, ${layerOpacity * 0.5})`);
+      fogGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = fogGradient;
       ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
@@ -3368,16 +3368,14 @@ function drawPuzzleVignette(
       const x = gameAreaX + ((baseX + driftX) % 1) * gameAreaWidth;
       const y = gameAreaY + ((baseY + driftY) % 1) * gameAreaHeight;
 
-      // Vary particle size slightly
-      const size = 1 + (seed3 - Math.floor(seed3)) * 1.5;
+      // Vary particle size slightly (smaller squares)
+      const size = 0.5 + (seed3 - Math.floor(seed3)) * 0.5; // 0.5 to 1px
 
       // Slight twinkle effect
       const twinkle = 0.5 + Math.sin(timestamp * 0.002 + i * 0.5) * 0.5;
 
       ctx.globalAlpha = dustOpacity * twinkle;
-      ctx.beginPath();
-      ctx.arc(x, y, size, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(x, y, size, size); // Square particles
     }
     ctx.globalAlpha = 1;
   });
