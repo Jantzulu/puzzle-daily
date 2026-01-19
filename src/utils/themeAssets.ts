@@ -60,6 +60,7 @@ export interface ThemeAssets {
   iconHeartEmpty?: string;
   iconSword?: string;
   iconShield?: string;
+  iconBossHealthBar?: string; // Skull icon shown next to boss health bars
 
   // Navigation & Tab Icons (emoji/text)
   iconNavPlay?: string;       // Icon for Play nav button (default: ⚔)

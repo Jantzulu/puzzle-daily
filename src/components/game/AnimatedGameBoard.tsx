@@ -6,6 +6,7 @@ import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible } from '../../utils/assetStorage';
+import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
@@ -2144,7 +2145,8 @@ function drawEnemy(
 
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
-    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.statusEffects, now);
+    const isBoss = enemyData?.isBoss === true;
+    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.statusEffects, now, isBoss);
 
     // Draw status effect icons above health bar
     drawStatusEffectIcons(ctx, px, py, enemy.statusEffects);
@@ -2176,6 +2178,42 @@ function getHealthBarKey(px: number, py: number): string {
   return `${Math.round(px)},${Math.round(py)}`;
 }
 
+// Cache for boss icon image
+let bossIconImage: HTMLImageElement | null = null;
+let bossIconLoading = false;
+let lastBossIconUrl: string | null = null;
+
+// Default skull icon as a tiny data URL (8x8 pixel skull)
+const DEFAULT_BOSS_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAAXNSR0IArs4c6QAAAERJREFUGFdj/P///38GBgYG5v///zMwMDD8Z2Bg+A9hMzAw/GdgYGD4z8DAwPC/EibJAFH0/z8DA8N/BgaG/4yEJBkYALrEIQnveCPwAAAAAElFTkSuQmCC';
+
+// Helper to load boss icon
+function loadBossIcon(): HTMLImageElement | null {
+  const customIconUrl = getThemeAsset('iconBossHealthBar');
+  const iconUrl = customIconUrl || DEFAULT_BOSS_ICON;
+
+  // Check if we need to reload (URL changed)
+  if (iconUrl !== lastBossIconUrl) {
+    bossIconImage = null;
+    bossIconLoading = false;
+    lastBossIconUrl = iconUrl;
+  }
+
+  if (bossIconImage) return bossIconImage;
+  if (bossIconLoading) return null;
+
+  bossIconLoading = true;
+  const img = new Image();
+  img.onload = () => {
+    bossIconImage = img;
+    bossIconLoading = false;
+  };
+  img.onerror = () => {
+    bossIconLoading = false;
+  };
+  img.src = iconUrl;
+  return null;
+}
+
 // Helper to draw health bar above entity
 function drawHealthBar(
   ctx: CanvasRenderingContext2D,
@@ -2184,15 +2222,32 @@ function drawHealthBar(
   currentHealth: number,
   maxHealth: number,
   statusEffects?: StatusEffectInstance[],
-  now: number = Date.now()
+  now: number = Date.now(),
+  isBoss: boolean = false
 ) {
   const barWidth = 32; // Fixed total width of the health bar (including border)
   const barHeight = 5; // Total height including 1px border on each side (3px inner + 2px border)
   const innerHeight = 3; // Height of the colored bar inside the border
 
+  // Boss icon dimensions
+  const bossIconSize = 7; // Small icon size
+  const bossIconGap = 2; // Gap between icon and health bar
+
   // Position: centered above the sprite, near the top of the tile
-  const startX = px + (TILE_SIZE - barWidth) / 2;
+  // If boss, shift the bar right to make room for the icon
+  const totalWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
+  const startX = px + (TILE_SIZE - totalWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
   const startY = py + 2; // 2px from top of tile
+
+  // Draw boss icon if this is a boss
+  if (isBoss) {
+    const icon = loadBossIcon();
+    if (icon) {
+      const iconX = startX - bossIconSize - bossIconGap;
+      const iconY = startY + (barHeight - bossIconSize) / 2; // Center vertically with health bar
+      ctx.drawImage(icon, iconX, iconY, bossIconSize, bossIconSize);
+    }
+  }
 
   // Draw 1px border around the bar
   ctx.fillStyle = '#111';
