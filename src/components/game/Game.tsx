@@ -537,15 +537,20 @@ export const Game: React.FC = () => {
       const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
 
       if (customIcon) {
-        // Use custom heart icon from theme (no pixelated for smooth rendering)
+        // Use custom heart icon from theme with pixel-perfect 2x scaling
+        // 14x16 source -> 28x32 display for crisp pixel art
         hearts.push(
           <img
             key={i}
             src={customIcon}
             alt={isFilled ? 'Life remaining' : 'Life lost'}
             title={isFilled ? 'Life remaining' : 'Life lost'}
-            className="w-6 h-6 object-contain"
-            style={{ opacity: isFilled ? 1 : 0.4, imageRendering: 'auto' }}
+            className="object-contain pixelated"
+            style={{
+              width: '28px',
+              height: '32px',
+              opacity: isFilled ? 1 : 0.4
+            }}
           />
         );
       } else {

@@ -360,19 +360,29 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.buttonPrimary) properties['--asset-button-primary'] = `url(${assets.buttonPrimary})`;
   if (assets.borderFrame) properties['--asset-border-frame'] = `url(${assets.borderFrame})`;
 
-  // Tiling options - set both repeat and size properties
+  // Tiling options - always set both repeat and size properties explicitly
+  // This ensures toggling works correctly (CSS fallbacks don't apply when variable is unset)
   // Handle both boolean true and string 'true' (from storage)
   if (assets.bgMainTile === true || assets.bgMainTile === 'true') {
     properties['--asset-bg-main-repeat'] = 'repeat';
     properties['--asset-bg-main-size'] = 'auto';
+  } else {
+    properties['--asset-bg-main-repeat'] = 'no-repeat';
+    properties['--asset-bg-main-size'] = 'cover';
   }
   if (assets.bgPanelTile === true || assets.bgPanelTile === 'true') {
     properties['--asset-bg-panel-repeat'] = 'repeat';
     properties['--asset-bg-panel-size'] = 'auto';
+  } else {
+    properties['--asset-bg-panel-repeat'] = 'no-repeat';
+    properties['--asset-bg-panel-size'] = 'cover';
   }
   if (assets.bgCardTile === true || assets.bgCardTile === 'true') {
     properties['--asset-bg-card-repeat'] = 'repeat';
     properties['--asset-bg-card-size'] = 'auto';
+  } else {
+    properties['--asset-bg-card-repeat'] = 'no-repeat';
+    properties['--asset-bg-card-size'] = 'cover';
   }
 
   // Color settings
