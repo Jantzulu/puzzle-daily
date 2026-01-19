@@ -3204,7 +3204,7 @@ function drawPuzzleVignette(
   // ==========================================
   // INNER TILE VIGNETTE (subtle radial darkening on game area)
   // ==========================================
-  const innerVignetteOpacity = 0.25; // Subtle effect on tiles
+  const innerVignetteOpacity = 0.4; // Moderate effect on tiles
 
   // Calculate the game area bounds (inside the border)
   const gameAreaX = offsetX;
