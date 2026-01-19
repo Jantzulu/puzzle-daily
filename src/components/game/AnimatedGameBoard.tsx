@@ -796,7 +796,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Animation loop
   useEffect(() => {
-    const animate = () => {
+    const animate = (timestamp: number) => {
       const canvas = canvasRef.current;
       if (!canvas) return;
 
@@ -1120,7 +1120,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Draw vignette effect on puzzle edges (after all rendering, follows puzzle shape)
       if (hasBorder) {
-        drawPuzzleVignette(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY);
+        drawPuzzleVignette(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY, timestamp);
       }
 
       // Restore context (undo dpr scaling)
@@ -3175,7 +3175,8 @@ function drawPuzzleVignette(
   gridWidth: number,
   gridHeight: number,
   offsetX: number,
-  offsetY: number
+  offsetY: number,
+  timestamp: number = 0
 ) {
   // Edge shadow depths proportional to border thickness for consistent appearance
   const shadowOpacity = 0.6; // Maximum darkness at outer edges
@@ -3281,6 +3282,105 @@ function drawPuzzleVignette(
     ctx.fillStyle = innerGradient;
     ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
   }
+
+  // ==========================================
+  // ATMOSPHERIC EFFECTS (fog and dust particles)
+  // ==========================================
+
+  // Helper to clip effects to playable tiles only
+  const clipToPlayableTiles = (callback: () => void) => {
+    ctx.save();
+    if (hasVoidTiles) {
+      ctx.beginPath();
+      for (let y = 0; y < gridHeight; y++) {
+        for (let x = 0; x < gridWidth; x++) {
+          if (tiles[y]?.[x] !== null) {
+            const px = gameAreaX + x * TILE_SIZE;
+            const py = gameAreaY + y * TILE_SIZE;
+            ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+          }
+        }
+      }
+      ctx.clip();
+    }
+    callback();
+    ctx.restore();
+  };
+
+  // --- FOG/MIST EFFECT ---
+  // Subtle animated fog that pools in corners and drifts slowly
+  const fogOpacity = 0.08; // Very subtle
+  const fogSpeed = 0.0003; // Slow drift
+
+  clipToPlayableTiles(() => {
+    // Create multiple fog layers at different positions/speeds for depth
+    for (let layer = 0; layer < 3; layer++) {
+      const layerOffset = layer * 1000;
+      const layerSpeed = fogSpeed * (1 + layer * 0.5);
+      const layerOpacity = fogOpacity * (1 - layer * 0.2);
+
+      // Fog center drifts in a slow circular pattern
+      const fogCenterX = gameAreaX + gameAreaWidth / 2 +
+        Math.sin((timestamp + layerOffset) * layerSpeed) * gameAreaWidth * 0.3;
+      const fogCenterY = gameAreaY + gameAreaHeight / 2 +
+        Math.cos((timestamp + layerOffset) * layerSpeed * 0.7) * gameAreaHeight * 0.3;
+
+      const fogRadius = Math.max(gameAreaWidth, gameAreaHeight) * (0.6 + layer * 0.2);
+
+      const fogGradient = ctx.createRadialGradient(
+        fogCenterX, fogCenterY, 0,
+        fogCenterX, fogCenterY, fogRadius
+      );
+      fogGradient.addColorStop(0, `rgba(180, 190, 210, ${layerOpacity})`);
+      fogGradient.addColorStop(0.5, `rgba(150, 160, 180, ${layerOpacity * 0.5})`);
+      fogGradient.addColorStop(1, 'rgba(150, 160, 180, 0)');
+
+      ctx.fillStyle = fogGradient;
+      ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+    }
+  });
+
+  // --- DUST PARTICLES ---
+  // Small floating specks that drift slowly across the board
+  const dustCount = Math.floor((gridWidth * gridHeight) / 2); // Scale with board size
+  const dustOpacity = 0.4;
+  const dustSpeed = 0.00005; // Very slow drift
+
+  clipToPlayableTiles(() => {
+    ctx.fillStyle = `rgba(255, 250, 240, ${dustOpacity})`;
+
+    // Use seeded random based on position for consistent particle placement
+    for (let i = 0; i < dustCount; i++) {
+      // Deterministic "random" positions based on index
+      const seed1 = Math.sin(i * 12.9898) * 43758.5453;
+      const seed2 = Math.sin(i * 78.233) * 43758.5453;
+      const seed3 = Math.sin(i * 45.164) * 43758.5453;
+
+      const baseX = (seed1 - Math.floor(seed1));
+      const baseY = (seed2 - Math.floor(seed2));
+      const particleSpeed = 0.5 + (seed3 - Math.floor(seed3)) * 1.5;
+
+      // Particles drift slowly, wrapping around
+      const time = timestamp * dustSpeed * particleSpeed;
+      const driftX = (time * 0.3) % 1;
+      const driftY = (time * 0.2 + Math.sin(time * 2 + i) * 0.02) % 1;
+
+      const x = gameAreaX + ((baseX + driftX) % 1) * gameAreaWidth;
+      const y = gameAreaY + ((baseY + driftY) % 1) * gameAreaHeight;
+
+      // Vary particle size slightly
+      const size = 1 + (seed3 - Math.floor(seed3)) * 1.5;
+
+      // Slight twinkle effect
+      const twinkle = 0.5 + Math.sin(timestamp * 0.002 + i * 0.5) * 0.5;
+
+      ctx.globalAlpha = dustOpacity * twinkle;
+      ctx.beginPath();
+      ctx.arc(x, y, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+  });
 
   ctx.restore();
 }
