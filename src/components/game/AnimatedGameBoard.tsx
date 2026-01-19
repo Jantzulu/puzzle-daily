@@ -2144,7 +2144,7 @@ function drawEnemy(
 
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
-    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.statusEffects);
+    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.statusEffects, now);
 
     // Draw status effect icons above health bar
     drawStatusEffectIcons(ctx, px, py, enemy.statusEffects);
@@ -2163,6 +2163,19 @@ function drawDeadX(ctx: CanvasRenderingContext2D, px: number, py: number) {
   ctx.stroke();
 }
 
+// Health bar animation state tracking (module-level for persistence across renders)
+const healthBarState = new Map<string, {
+  lastHealth: number;
+  changeTime: number;
+  changeType: 'damage' | 'heal' | null;
+  displayHealth: number; // For smooth color transitions
+}>();
+
+// Helper to get unique key for entity health tracking
+function getHealthBarKey(px: number, py: number): string {
+  return `${Math.round(px)},${Math.round(py)}`;
+}
+
 // Helper to draw health bar above entity
 function drawHealthBar(
   ctx: CanvasRenderingContext2D,
@@ -2170,14 +2183,38 @@ function drawHealthBar(
   py: number,
   currentHealth: number,
   maxHealth: number,
-  statusEffects?: StatusEffectInstance[]
+  statusEffects?: StatusEffectInstance[],
+  now: number = Date.now()
 ) {
   const barWidth = 32; // Fixed total width of the health bar
-  const barHeight = 4; // Height of the health bar
+  const barHeight = 6; // Slightly taller for better visibility with frame
 
   // Position: centered above the sprite, near the top of the tile
   const startX = px + (TILE_SIZE - barWidth) / 2;
   const startY = py + 2; // 2px from top of tile
+
+  // Track health changes for flash effects
+  const key = getHealthBarKey(px, py);
+  let state = healthBarState.get(key);
+
+  if (!state) {
+    state = { lastHealth: currentHealth, changeTime: 0, changeType: null, displayHealth: currentHealth };
+    healthBarState.set(key, state);
+  }
+
+  // Detect health changes
+  if (state.lastHealth !== currentHealth) {
+    state.changeType = currentHealth < state.lastHealth ? 'damage' : 'heal';
+    state.changeTime = now;
+    state.lastHealth = currentHealth;
+  }
+
+  // Smooth color transition for displayHealth (lerp towards actual health)
+  const transitionSpeed = 0.15;
+  state.displayHealth += (currentHealth - state.displayHealth) * transitionSpeed;
+  if (Math.abs(state.displayHealth - currentHealth) < 0.01) {
+    state.displayHealth = currentHealth;
+  }
 
   // Check if entity has a shield effect and get custom color
   const shieldEffect = statusEffects?.find(e => e.type === StatusEffectType.SHIELD);
@@ -2192,40 +2229,157 @@ function drawHealthBar(
     }
   }
 
-  // Draw background (dark gray)
-  ctx.fillStyle = '#333';
-  ctx.fillRect(startX, startY, barWidth, barHeight);
+  // Calculate flash effect intensity (fades over 300ms)
+  const flashDuration = 300;
+  const timeSinceChange = now - state.changeTime;
+  const flashIntensity = state.changeType && timeSinceChange < flashDuration
+    ? 1 - (timeSinceChange / flashDuration)
+    : 0;
+
+  // Draw background (dark gray with subtle gradient)
+  const bgGradient = ctx.createLinearGradient(startX, startY, startX, startY + barHeight);
+  bgGradient.addColorStop(0, '#1a1a1a');
+  bgGradient.addColorStop(1, '#2a2a2a');
+  ctx.fillStyle = bgGradient;
+  ctx.fillRect(startX + 1, startY + 1, barWidth - 2, barHeight - 2);
 
   // Calculate segment width based on max health
-  const segmentWidth = barWidth / maxHealth;
+  const segmentWidth = (barWidth - 2) / maxHealth; // Account for frame
 
-  // Draw health segments
+  // Draw health segments with gradients
   for (let i = 0; i < maxHealth; i++) {
-    const segX = startX + i * segmentWidth;
+    const segX = startX + 1 + i * segmentWidth;
+    const segW = segmentWidth - 1;
+    const segH = barHeight - 2;
 
-    if (i < currentHealth) {
-      // Custom shield color or green for normal health
-      ctx.fillStyle = hasShield ? shieldColor : '#4ade80';
+    // Determine segment color based on display health for smooth transitions
+    const isFilled = i < Math.ceil(state.displayHealth);
+    const fillAmount = isFilled ? Math.min(1, state.displayHealth - i) : 0;
+
+    if (fillAmount > 0) {
+      // Create gradient for filled health
+      const gradient = ctx.createLinearGradient(segX, startY + 1, segX, startY + 1 + segH);
+
+      if (hasShield) {
+        // Shield colors (use custom or cyan)
+        gradient.addColorStop(0, shieldColor);
+        gradient.addColorStop(0.5, shieldColor);
+        gradient.addColorStop(1, adjustColorBrightness(shieldColor, -30));
+      } else {
+        // Green health gradient
+        gradient.addColorStop(0, '#6ee7a0'); // Light green top
+        gradient.addColorStop(0.5, '#4ade80'); // Mid green
+        gradient.addColorStop(1, '#22c55e'); // Darker green bottom
+      }
+
+      ctx.fillStyle = gradient;
+      ctx.fillRect(segX + 0.5, startY + 1.5, segW, segH - 1);
+
+      // Inner highlight (top edge)
+      ctx.fillStyle = hasShield
+        ? adjustColorBrightness(shieldColor, 40)
+        : 'rgba(255, 255, 255, 0.3)';
+      ctx.fillRect(segX + 0.5, startY + 1.5, segW, 1);
+
+      // Inner shadow (bottom edge)
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+      ctx.fillRect(segX + 0.5, startY + segH, segW, 1);
     } else {
-      // Red for lost health
-      ctx.fillStyle = '#ef4444';
+      // Empty segment (lost health) - dark red gradient
+      const emptyGradient = ctx.createLinearGradient(segX, startY + 1, segX, startY + 1 + segH);
+      emptyGradient.addColorStop(0, '#7f1d1d'); // Dark red top
+      emptyGradient.addColorStop(0.5, '#991b1b');
+      emptyGradient.addColorStop(1, '#450a0a'); // Darker red bottom
+
+      ctx.fillStyle = emptyGradient;
+      ctx.fillRect(segX + 0.5, startY + 1.5, segW, segH - 1);
     }
-    ctx.fillRect(segX + 0.5, startY + 0.5, segmentWidth - 1, barHeight - 1);
   }
 
   // Draw segment dividers (only if more than 1 HP)
   if (maxHealth > 1) {
-    ctx.fillStyle = '#333';
+    ctx.fillStyle = '#111';
     for (let i = 1; i < maxHealth; i++) {
-      const dividerX = startX + i * segmentWidth;
-      ctx.fillRect(dividerX - 0.5, startY, 1, barHeight);
+      const dividerX = startX + 1 + i * segmentWidth;
+      ctx.fillRect(dividerX - 0.5, startY + 1, 1, barHeight - 2);
     }
   }
 
-  // Draw border around the whole bar - shield color border when shielded
-  ctx.strokeStyle = hasShield ? shieldColor : '#222';
-  ctx.lineWidth = hasShield ? 1 : 0.5;
-  ctx.strokeRect(startX, startY, barWidth, barHeight);
+  // Draw pixel-art frame
+  const frameColor = hasShield ? shieldColor : '#444';
+  const frameDark = hasShield ? adjustColorBrightness(shieldColor, -40) : '#222';
+  const frameLight = hasShield ? adjustColorBrightness(shieldColor, 20) : '#555';
+
+  // Main border
+  ctx.fillStyle = frameDark;
+  // Top edge
+  ctx.fillRect(startX + 2, startY, barWidth - 4, 1);
+  // Bottom edge
+  ctx.fillRect(startX + 2, startY + barHeight - 1, barWidth - 4, 1);
+  // Left edge
+  ctx.fillRect(startX, startY + 2, 1, barHeight - 4);
+  // Right edge
+  ctx.fillRect(startX + barWidth - 1, startY + 2, 1, barHeight - 4);
+
+  // Corner pixels (pixel-art style beveled corners)
+  ctx.fillStyle = frameColor;
+  // Top-left corner
+  ctx.fillRect(startX + 1, startY, 1, 1);
+  ctx.fillRect(startX, startY + 1, 1, 1);
+  ctx.fillRect(startX + 1, startY + 1, 1, 1);
+  // Top-right corner
+  ctx.fillRect(startX + barWidth - 2, startY, 1, 1);
+  ctx.fillRect(startX + barWidth - 1, startY + 1, 1, 1);
+  ctx.fillRect(startX + barWidth - 2, startY + 1, 1, 1);
+  // Bottom-left corner
+  ctx.fillRect(startX + 1, startY + barHeight - 1, 1, 1);
+  ctx.fillRect(startX, startY + barHeight - 2, 1, 1);
+  ctx.fillRect(startX + 1, startY + barHeight - 2, 1, 1);
+  // Bottom-right corner
+  ctx.fillRect(startX + barWidth - 2, startY + barHeight - 1, 1, 1);
+  ctx.fillRect(startX + barWidth - 1, startY + barHeight - 2, 1, 1);
+  ctx.fillRect(startX + barWidth - 2, startY + barHeight - 2, 1, 1);
+
+  // Damage/heal flash overlay
+  if (flashIntensity > 0 && state.changeType) {
+    ctx.save();
+    ctx.globalAlpha = flashIntensity * 0.6;
+
+    if (state.changeType === 'damage') {
+      // Red flash for damage
+      ctx.fillStyle = '#ff0000';
+    } else {
+      // Green/white flash for heal
+      ctx.fillStyle = '#90ff90';
+    }
+
+    ctx.fillRect(startX + 1, startY + 1, barWidth - 2, barHeight - 2);
+    ctx.restore();
+  }
+
+  // Clear flash state after it's done
+  if (flashIntensity === 0 && state.changeType) {
+    state.changeType = null;
+  }
+}
+
+// Helper to adjust color brightness
+function adjustColorBrightness(hex: string, amount: number): string {
+  // Remove # if present
+  hex = hex.replace('#', '');
+
+  // Parse RGB
+  let r = parseInt(hex.substring(0, 2), 16);
+  let g = parseInt(hex.substring(2, 4), 16);
+  let b = parseInt(hex.substring(4, 6), 16);
+
+  // Adjust brightness
+  r = Math.max(0, Math.min(255, r + amount));
+  g = Math.max(0, Math.min(255, g + amount));
+  b = Math.max(0, Math.min(255, b + amount));
+
+  // Return hex
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
 }
 
 // Helper to draw status effect icons above health bar
@@ -2485,7 +2639,7 @@ function drawCharacter(
 
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
-    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.statusEffects);
+    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.statusEffects, now);
 
     // Draw status effect icons above health bar
     drawStatusEffectIcons(ctx, px, py, character.statusEffects);
