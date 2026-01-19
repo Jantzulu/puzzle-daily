@@ -13,7 +13,9 @@ export const safeLocalStorageSet = (key: string, value: string): boolean => {
     // Verify the save worked (some mobile browsers fail silently)
     const verification = localStorage.getItem(key);
     if (verification !== value) {
-      console.error(`[Storage] Verification failed for key: ${key}`);
+      console.error(`[Storage] Verification failed for key: ${key}. Data may be too large for mobile storage.`);
+      // Alert the user about the silent failure
+      alert('Storage is full or data is too large. Some items may not have been saved. Please delete unused items to free up space.');
       return false;
     }
     return true;
@@ -153,7 +155,7 @@ export const getFolders = (category?: AssetCategory): AssetFolder[] => {
   }
 };
 
-export const saveFolder = (folder: AssetFolder): void => {
+export const saveFolder = (folder: AssetFolder): boolean => {
   const folders = getFolders();
   const existingIndex = folders.findIndex(f => f.id === folder.id);
   if (existingIndex >= 0) {
@@ -161,7 +163,7 @@ export const saveFolder = (folder: AssetFolder): void => {
   } else {
     folders.push(folder);
   }
-  localStorage.setItem(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
+  return safeLocalStorageSet(FOLDERS_STORAGE_KEY, JSON.stringify(folders));
 };
 
 export const deleteFolder = (folderId: string): void => {
@@ -516,7 +518,7 @@ export const loadTileType = (tileId: string): CustomTileType | null => {
 // ============ COLLECTIBLE STORAGE ============
 
 // Legacy collectible type storage (kept for backwards compatibility)
-export const saveCollectibleType = (collectible: CustomCollectibleType): void => {
+export const saveCollectibleType = (collectible: CustomCollectibleType): boolean => {
   const collectibles = getCustomCollectibleTypes();
   const existingIndex = collectibles.findIndex(c => c.id === collectible.id);
 
@@ -526,7 +528,7 @@ export const saveCollectibleType = (collectible: CustomCollectibleType): void =>
     collectibles.push({ ...collectible, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  localStorage.setItem(COLLECTIBLE_STORAGE_KEY, JSON.stringify(collectibles));
+  return safeLocalStorageSet(COLLECTIBLE_STORAGE_KEY, JSON.stringify(collectibles));
 };
 
 export const getCustomCollectibleTypes = (): CustomCollectibleType[] => {
@@ -974,7 +976,7 @@ export const DEFAULT_DUNGEON_SKIN: PuzzleSkin = {
   isBuiltIn: true,
 };
 
-export const savePuzzleSkin = (skin: PuzzleSkin): void => {
+export const savePuzzleSkin = (skin: PuzzleSkin): boolean => {
   const skins = getPuzzleSkins();
 
   const existingIndex = skins.findIndex(s => s.id === skin.id);
@@ -984,7 +986,7 @@ export const savePuzzleSkin = (skin: PuzzleSkin): void => {
     skins.push(skin);
   }
 
-  localStorage.setItem(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(skins));
+  return safeLocalStorageSet(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(skins));
 };
 
 export const getPuzzleSkins = (): PuzzleSkin[] => {

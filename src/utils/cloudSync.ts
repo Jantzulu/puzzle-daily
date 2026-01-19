@@ -305,7 +305,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           console.log(`[CloudSync] Deleted tile type locally: ${asset.name}`);
         } else {
           const tileType = asset.data as unknown as CustomTileType;
-          saveTileType(tileType);
+          const saved = saveTileType(tileType);
+          if (!saved) {
+            errors.push(`Storage full - failed to save tile type: ${asset.name}`);
+          }
         }
       } catch (e) {
         errors.push(`Failed to import tile type: ${asset.name}`);
@@ -320,7 +323,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           console.log(`[CloudSync] Deleted enemy locally: ${asset.name}`);
         } else {
           const enemy = asset.data as unknown as CustomEnemy;
-          saveEnemy(enemy);
+          const saved = saveEnemy(enemy);
+          if (!saved) {
+            errors.push(`Storage full - failed to save enemy: ${asset.name}`);
+          }
         }
       } catch (e) {
         errors.push(`Failed to import enemy: ${asset.name}`);
@@ -335,7 +341,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           console.log(`[CloudSync] Deleted character locally: ${asset.name}`);
         } else {
           const character = asset.data as unknown as CustomCharacter;
-          saveCharacter(character);
+          const saved = saveCharacter(character);
+          if (!saved) {
+            errors.push(`Storage full - failed to save character: ${asset.name}`);
+          }
         }
       } catch (e) {
         errors.push(`Failed to import character: ${asset.name}`);
@@ -350,7 +359,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           console.log(`[CloudSync] Deleted object locally: ${asset.name}`);
         } else {
           const obj = asset.data as unknown as CustomObject;
-          saveObject(obj);
+          const saved = saveObject(obj);
+          if (!saved) {
+            errors.push(`Storage full - failed to save object: ${asset.name}`);
+          }
         }
       } catch (e) {
         errors.push(`Failed to import object: ${asset.name}`);
@@ -366,7 +378,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
         } else {
           const skin = asset.data as unknown as PuzzleSkin;
           if (!skin.isBuiltIn) {
-            savePuzzleSkin(skin);
+            const saved = savePuzzleSkin(skin);
+            if (!saved) {
+              errors.push(`Storage full - failed to save skin: ${asset.name}`);
+            }
           }
         }
       } catch (e) {
@@ -382,7 +397,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           console.log(`[CloudSync] Deleted spell locally: ${asset.name}`);
         } else {
           const spell = asset.data as unknown as SpellAsset;
-          saveSpellAsset(spell);
+          const saved = saveSpellAsset(spell);
+          if (!saved) {
+            errors.push(`Storage full - failed to save spell: ${asset.name}`);
+          }
         }
       } catch (e) {
         errors.push(`Failed to import spell: ${asset.name}`);
@@ -399,7 +417,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           } else {
             const effect = asset.data as unknown as StatusEffectAsset;
             if (!effect.isBuiltIn) {
-              saveStatusEffectAsset(effect);
+              const saved = saveStatusEffectAsset(effect);
+              if (!saved) {
+                errors.push(`Storage full - failed to save status effect: ${asset.name}`);
+              }
             }
           }
         } catch (e) {
@@ -417,7 +438,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             console.log(`[CloudSync] Deleted folder locally: ${asset.name}`);
           } else {
             const folder = asset.data as unknown as AssetFolder;
-            saveFolder(folder);
+            const saved = saveFolder(folder);
+            if (!saved) {
+              errors.push(`Storage full - failed to save folder: ${asset.name}`);
+            }
           }
         } catch (e) {
           errors.push(`Failed to import folder: ${asset.name}`);
@@ -434,7 +458,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             console.log(`[CloudSync] Deleted collectible type locally: ${asset.name}`);
           } else {
             const collectible = asset.data as unknown as CustomCollectibleType;
-            saveCollectibleType(collectible);
+            const saved = saveCollectibleType(collectible);
+            if (!saved) {
+              errors.push(`Storage full - failed to save collectible type: ${asset.name}`);
+            }
           }
         } catch (e) {
           errors.push(`Failed to import collectible type: ${asset.name}`);
@@ -451,7 +478,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             console.log(`[CloudSync] Deleted collectible locally: ${asset.name}`);
           } else {
             const collectible = asset.data as unknown as CustomCollectible;
-            saveCollectible(collectible);
+            const saved = saveCollectible(collectible);
+            if (!saved) {
+              errors.push(`Storage full - failed to save collectible: ${asset.name}`);
+            }
           }
         } catch (e) {
           errors.push(`Failed to import collectible: ${asset.name}`);
@@ -488,7 +518,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           } else {
             const sound = asset.data as unknown as SoundAsset;
             if (!sound.isBuiltIn) {
-              saveSoundAsset(sound);
+              const saved = saveSoundAsset(sound);
+              if (!saved) {
+                errors.push(`Storage full - failed to save sound: ${asset.name}`);
+              }
             }
           }
         } catch (e) {
@@ -503,8 +536,12 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
         try {
           if (!asset.deleted_at && asset.id === 'global_sound_config') {
             const config = asset.data as unknown as GlobalSoundConfig;
-            saveGlobalSoundConfig(config);
-            console.log(`[CloudSync] Imported global sound config`);
+            const saved = saveGlobalSoundConfig(config);
+            if (!saved) {
+              errors.push(`Storage full - failed to save global sound config`);
+            } else {
+              console.log(`[CloudSync] Imported global sound config`);
+            }
           }
         } catch (e) {
           errors.push(`Failed to import global sound config`);
@@ -520,7 +557,10 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             const helpData = asset.data as unknown as HelpContentStorage;
             if (helpData.sections) {
               for (const section of helpData.sections) {
-                saveHelpSection(section);
+                const saved = saveHelpSection(section);
+                if (!saved) {
+                  errors.push(`Storage full - failed to save help section: ${section.sectionId}`);
+                }
               }
               console.log(`[CloudSync] Imported ${helpData.sections.length} help sections`);
             }
@@ -537,9 +577,13 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
         try {
           if (!asset.deleted_at && asset.id === 'theme_settings') {
             const themeData = asset.data as unknown as ThemeAssets;
-            saveThemeAssets(themeData);
-            notifyThemeAssetsChanged();
-            console.log(`[CloudSync] Imported theme settings`);
+            const result = saveThemeAssets(themeData);
+            if (!result.success) {
+              errors.push(`Storage full - failed to save theme settings: ${result.error || 'unknown error'}`);
+            } else {
+              notifyThemeAssetsChanged();
+              console.log(`[CloudSync] Imported theme settings`);
+            }
           }
         } catch (e) {
           errors.push(`Failed to import theme settings`);
