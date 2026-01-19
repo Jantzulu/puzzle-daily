@@ -58,9 +58,16 @@ function Navigation() {
           ) : (
             <span className="text-copper-400 text-xl md:text-2xl animate-flicker">&#128293;</span>
           )}
-          <h1 className="text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide">
-            {themeAssets.siteTitle || 'Puzzle Daily'}
-          </h1>
+          <div className="flex items-center gap-2 md:gap-3">
+            <h1 className="text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide">
+              {themeAssets.siteTitle || 'Puzzle Daily'}
+            </h1>
+            {themeAssets.siteSubtitle && (
+              <span className="text-sm md:text-base font-medieval text-copper-300/80 text-shadow-dungeon hidden sm:inline">
+                {themeAssets.siteSubtitle}
+              </span>
+            )}
+          </div>
         </div>
 
         {/* Desktop navigation */}
