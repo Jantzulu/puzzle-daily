@@ -2257,31 +2257,12 @@ function drawHealthBar(
     const fillAmount = isFilled ? Math.min(1, state.displayHealth - i) : 0;
 
     if (fillAmount > 0) {
-      // Create gradient for filled health
-      const gradient = ctx.createLinearGradient(segX, startY + 1, segX, startY + 1 + segH);
-
-      if (hasShield) {
-        // Shield colors (use custom or cyan)
-        gradient.addColorStop(0, shieldColor);
-        gradient.addColorStop(0.5, shieldColor);
-        gradient.addColorStop(1, adjustColorBrightness(shieldColor, -30));
-      } else {
-        // Green health gradient
-        gradient.addColorStop(0, '#6ee7a0'); // Light green top
-        gradient.addColorStop(0.5, '#4ade80'); // Mid green
-        gradient.addColorStop(1, '#22c55e'); // Darker green bottom
-      }
-
-      ctx.fillStyle = gradient;
+      // Filled health - green or shield color
+      ctx.fillStyle = hasShield ? shieldColor : '#4ade80';
       ctx.fillRect(segX + 0.5, startY + 1.5, segW, segH - 1);
     } else {
-      // Empty segment (lost health) - dark red gradient
-      const emptyGradient = ctx.createLinearGradient(segX, startY + 1, segX, startY + 1 + segH);
-      emptyGradient.addColorStop(0, '#7f1d1d'); // Dark red top
-      emptyGradient.addColorStop(0.5, '#991b1b');
-      emptyGradient.addColorStop(1, '#450a0a'); // Darker red bottom
-
-      ctx.fillStyle = emptyGradient;
+      // Empty segment (lost health) - dark red
+      ctx.fillStyle = '#991b1b';
       ctx.fillRect(segX + 0.5, startY + 1.5, segW, segH - 1);
     }
   }
