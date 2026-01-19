@@ -3194,15 +3194,13 @@ function drawPuzzleVignette(
   const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
 
   if (hasVoidTiles) {
-    // For irregular shapes, use smart border data to only apply edge vignettes
-    // to the OUTER perimeter (edges that face the page background, not interior voids)
+    // For irregular shapes, use smart border data to apply edge vignettes
+    // to ALL edges - both outer (facing page background) and interior (facing void tiles)
+    // Darkness emanates from any void/outside area
     const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
 
-    // Draw vignette only for OUTER edges (isOuterEdge = true)
-    // Interior edges facing void tiles don't get edge darkening
-    borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
-      // Skip interior edges - they don't need darkening from the void side
-      if (!isOuterEdge) return;
+    // Draw vignette for ALL edges - darkness comes from void tiles and outside
+    borderData.edges.forEach(({ x, y, edge }) => {
 
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
@@ -3269,38 +3267,14 @@ function drawPuzzleVignette(
       ctx.restore();
     });
 
-    // Draw vignette only for OUTER corners (convex corners on the outer perimeter)
-    // Skip concave corners (interior) and convex corners that aren't on the outer perimeter
-    borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
+    // Draw vignette for ALL convex corners - darkness emanates from void/outside
+    // Skip concave corners (they face into the playable area, not away from it)
+    borderData.corners.forEach(({ x, y, type }) => {
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
 
-      // Skip concave corners - they're interior corners facing void tiles
+      // Skip concave corners - they're interior corners facing INTO the playable area
       if (type.startsWith('concave')) return;
-
-      // For convex corners, check if they're on the outer perimeter
-      // A corner is on the outer perimeter if at least one of its edges is outer
-      const tileX = x;
-      const tileY = y;
-      let isOuterCorner = false;
-
-      switch (type) {
-        case 'convex-tl':
-          // Check if top or left edge of this tile is outer
-          isOuterCorner = (tileY === 0) || (tileX === 0);
-          break;
-        case 'convex-tr':
-          isOuterCorner = (tileY === 0) || (tileX === gridWidth - 1);
-          break;
-        case 'convex-bl':
-          isOuterCorner = (tileY === gridHeight - 1) || (tileX === 0);
-          break;
-        case 'convex-br':
-          isOuterCorner = (tileY === gridHeight - 1) || (tileX === gridWidth - 1);
-          break;
-      }
-
-      if (!isOuterCorner) return;
 
       ctx.save();
 
@@ -3366,37 +3340,6 @@ function drawPuzzleVignette(
 
       ctx.restore();
     });
-
-    // Also apply outer edge vignettes for irregular shapes
-    // This darkens the wall sprites at the outer corners and edges
-
-    // Top edge vignette
-    const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
-    topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-    topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = topGradient;
-    ctx.fillRect(0, 0, totalWidth, vignetteSize);
-
-    // Bottom edge vignette
-    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - vignetteSize);
-    bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-    bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = bottomGradient;
-    ctx.fillRect(0, totalHeight - vignetteSize, totalWidth, vignetteSize);
-
-    // Left edge vignette
-    const leftGradient = ctx.createLinearGradient(0, 0, vignetteSize, 0);
-    leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-    leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = leftGradient;
-    ctx.fillRect(0, 0, vignetteSize, totalHeight);
-
-    // Right edge vignette
-    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - vignetteSize, 0);
-    rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-    rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = rightGradient;
-    ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
   } else {
     // Regular rectangular puzzle - apply edge vignettes to full borders
 
