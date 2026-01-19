@@ -3197,7 +3197,7 @@ function drawPuzzleVignette(
 
   if (hasVoidTiles) {
     // SINGLE-PASS APPROACH for irregular shapes:
-    // Process ALL edges once, then ALL corners once. No separate bounding box shadows.
+    // Shadows only cover wall sprites (not tiles), fading from void-facing edge inward.
     // Each wall segment gets exactly one shadow application.
     const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
 
@@ -3207,7 +3207,8 @@ function drawPuzzleVignette(
       edgeSet.add(`${x},${y},${edge}`);
     });
 
-    // PASS 1: Draw shadow for EVERY edge (both outer and interior)
+    // PASS 1: Draw shadow for EVERY edge wall segment
+    // Shadow covers only the wall sprite, fading from void edge toward playable area
     borderData.edges.forEach(({ x, y, edge }) => {
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
@@ -3217,48 +3218,55 @@ function drawPuzzleVignette(
 
       switch (edge) {
         case 'top': {
+          // Top wall: void is above, shadow fades downward (into wall, toward tile)
           const wallTop = py - BORDER_SIZE;
-          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE + verticalShadowDepth);
+          const wallBottom = py;
+          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE);
           ctx.clip();
-          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallTop + verticalShadowDepth);
+          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallBottom);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallTop, TILE_SIZE, verticalShadowDepth);
+          ctx.fillRect(px, wallTop, TILE_SIZE, BORDER_SIZE);
           break;
         }
         case 'bottom': {
+          // Bottom wall: void is below, shadow fades upward (into wall, toward tile)
           const wallTop = py + TILE_SIZE;
           const wallBottom = wallTop + BORDER_SIZE;
-          ctx.rect(px, wallTop - verticalShadowDepth, TILE_SIZE, BORDER_SIZE + verticalShadowDepth);
+          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE);
           ctx.clip();
-          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallBottom - verticalShadowDepth);
+          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallTop);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallBottom - verticalShadowDepth, TILE_SIZE, verticalShadowDepth);
+          ctx.fillRect(px, wallTop, TILE_SIZE, BORDER_SIZE);
           break;
         }
         case 'left': {
+          // Left wall: void is to the left, shadow fades rightward (into wall, toward tile)
           const wallLeft = px - SIDE_BORDER_SIZE;
-          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE + horizontalShadowDepth, TILE_SIZE);
+          const wallRight = px;
+          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
           ctx.clip();
-          const gradient = ctx.createLinearGradient(wallLeft, 0, wallLeft + horizontalShadowDepth, 0);
+          const gradient = ctx.createLinearGradient(wallLeft, 0, wallRight, 0);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(wallLeft, py, horizontalShadowDepth, TILE_SIZE);
+          ctx.fillRect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
           break;
         }
         case 'right': {
-          const wallRight = px + TILE_SIZE + SIDE_BORDER_SIZE;
-          ctx.rect(px + TILE_SIZE - horizontalShadowDepth, py, SIDE_BORDER_SIZE + horizontalShadowDepth, TILE_SIZE);
+          // Right wall: void is to the right, shadow fades leftward (into wall, toward tile)
+          const wallLeft = px + TILE_SIZE;
+          const wallRight = wallLeft + SIDE_BORDER_SIZE;
+          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
           ctx.clip();
-          const gradient = ctx.createLinearGradient(wallRight, 0, wallRight - horizontalShadowDepth, 0);
+          const gradient = ctx.createLinearGradient(wallRight, 0, wallLeft, 0);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(wallRight - horizontalShadowDepth, py, horizontalShadowDepth, TILE_SIZE);
+          ctx.fillRect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
           break;
         }
       }
@@ -3267,7 +3275,7 @@ function drawPuzzleVignette(
     });
 
     // PASS 2: Draw shadow for EVERY convex corner
-    // Each corner gets gradients from the directions that face void/outside
+    // Corner gets shadow from direction(s) that face void
     borderData.corners.forEach(({ x, y, type }) => {
       // Skip concave corners - they face INTO the playable area, not toward void
       if (type.startsWith('concave')) return;
@@ -3275,75 +3283,76 @@ function drawPuzzleVignette(
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
 
-      // Determine which edges this corner has (to know which directions face void)
-      let hasTopEdge = false, hasBottomEdge = false, hasLeftEdge = false, hasRightEdge = false;
-      switch (type) {
-        case 'convex-tl':
-          hasTopEdge = edgeSet.has(`${x},${y},top`);
-          hasLeftEdge = edgeSet.has(`${x},${y},left`);
-          break;
-        case 'convex-tr':
-          hasTopEdge = edgeSet.has(`${x},${y},top`);
-          hasRightEdge = edgeSet.has(`${x},${y},right`);
-          break;
-        case 'convex-bl':
-          hasBottomEdge = edgeSet.has(`${x},${y},bottom`);
-          hasLeftEdge = edgeSet.has(`${x},${y},left`);
-          break;
-        case 'convex-br':
-          hasBottomEdge = edgeSet.has(`${x},${y},bottom`);
-          hasRightEdge = edgeSet.has(`${x},${y},right`);
-          break;
-      }
+      // Determine which edges this tile has adjacent to this corner
+      // This tells us which direction(s) face void
+      const hasTopEdge = edgeSet.has(`${x},${y},top`);
+      const hasBottomEdge = edgeSet.has(`${x},${y},bottom`);
+      const hasLeftEdge = edgeSet.has(`${x},${y},left`);
+      const hasRightEdge = edgeSet.has(`${x},${y},right`);
 
-      // Define the corner clip region
-      let clipX: number, clipY: number, clipW: number, clipH: number;
+      // Define the corner clip region (just the corner piece itself)
+      let clipX: number, clipY: number;
+      const clipW = SIDE_BORDER_SIZE;
+      const clipH = BORDER_SIZE;
+
+      // Determine which directions this corner faces void based on corner type
+      let facesTop = false, facesBottom = false, facesLeft = false, facesRight = false;
+
       switch (type) {
         case 'convex-tl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py - BORDER_SIZE;
-          clipW = SIDE_BORDER_SIZE;
-          clipH = BORDER_SIZE;
+          // TL corner faces void at top-left, so void is above AND to the left
+          facesTop = true;
+          facesLeft = true;
           break;
         case 'convex-tr':
           clipX = px + TILE_SIZE;
           clipY = py - BORDER_SIZE;
-          clipW = SIDE_BORDER_SIZE;
-          clipH = BORDER_SIZE;
+          // TR corner faces void at top-right, so void is above AND to the right
+          facesTop = true;
+          facesRight = true;
           break;
         case 'convex-bl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py + TILE_SIZE;
-          clipW = SIDE_BORDER_SIZE;
-          clipH = BORDER_SIZE;
+          // BL corner faces void at bottom-left, so void is below AND to the left
+          facesBottom = true;
+          facesLeft = true;
           break;
         case 'convex-br':
           clipX = px + TILE_SIZE;
           clipY = py + TILE_SIZE;
-          clipW = SIDE_BORDER_SIZE;
-          clipH = BORDER_SIZE;
+          // BR corner faces void at bottom-right, so void is below AND to the right
+          facesBottom = true;
+          facesRight = true;
           break;
         default:
           return;
       }
 
-      // Draw vertical gradient if there's a top or bottom edge
-      if (hasTopEdge || hasBottomEdge) {
+      // Only apply shadow from directions where there's actually an adjacent edge
+      // (meaning that direction actually faces void for this tile)
+      const applyVertical = (facesTop && hasTopEdge) || (facesBottom && hasBottomEdge);
+      const applyHorizontal = (facesLeft && hasLeftEdge) || (facesRight && hasRightEdge);
+
+      // Draw vertical gradient if applicable
+      if (applyVertical) {
         ctx.save();
         ctx.beginPath();
         ctx.rect(clipX, clipY, clipW, clipH);
         ctx.clip();
 
-        let vGradientStart: number, vGradientEnd: number;
-        if (hasTopEdge) {
-          vGradientStart = clipY;
-          vGradientEnd = clipY + verticalShadowDepth;
+        let vStart: number, vEnd: number;
+        if (facesTop) {
+          vStart = clipY;
+          vEnd = clipY + clipH;
         } else {
-          vGradientStart = clipY + clipH;
-          vGradientEnd = clipY + clipH - verticalShadowDepth;
+          vStart = clipY + clipH;
+          vEnd = clipY;
         }
 
-        const vGradient = ctx.createLinearGradient(0, vGradientStart, 0, vGradientEnd);
+        const vGradient = ctx.createLinearGradient(0, vStart, 0, vEnd);
         vGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
         vGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = vGradient;
@@ -3351,23 +3360,23 @@ function drawPuzzleVignette(
         ctx.restore();
       }
 
-      // Draw horizontal gradient if there's a left or right edge
-      if (hasLeftEdge || hasRightEdge) {
+      // Draw horizontal gradient if applicable
+      if (applyHorizontal) {
         ctx.save();
         ctx.beginPath();
         ctx.rect(clipX, clipY, clipW, clipH);
         ctx.clip();
 
-        let hGradientStart: number, hGradientEnd: number;
-        if (hasLeftEdge) {
-          hGradientStart = clipX;
-          hGradientEnd = clipX + horizontalShadowDepth;
+        let hStart: number, hEnd: number;
+        if (facesLeft) {
+          hStart = clipX;
+          hEnd = clipX + clipW;
         } else {
-          hGradientStart = clipX + clipW;
-          hGradientEnd = clipX + clipW - horizontalShadowDepth;
+          hStart = clipX + clipW;
+          hEnd = clipX;
         }
 
-        const hGradient = ctx.createLinearGradient(hGradientStart, 0, hGradientEnd, 0);
+        const hGradient = ctx.createLinearGradient(hStart, 0, hEnd, 0);
         hGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
         hGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = hGradient;
