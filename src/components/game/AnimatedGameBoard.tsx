@@ -3177,10 +3177,10 @@ function drawPuzzleVignette(
   offsetX: number,
   offsetY: number
 ) {
-  // Vignette sizes proportional to border thickness for consistent appearance
-  const vignetteOpacity = 0.6; // Maximum darkness at outer edges
-  const verticalVignetteSize = BORDER_SIZE * 0.6; // For top/bottom walls (48 * 0.6 = ~29px)
-  const horizontalVignetteSize = SIDE_BORDER_SIZE * 1.2; // For left/right walls (16 * 1.2 = ~19px)
+  // Edge shadow depths proportional to border thickness for consistent appearance
+  const shadowOpacity = 0.6; // Maximum darkness at outer edges
+  const verticalShadowDepth = BORDER_SIZE * 0.6; // For top/bottom walls (48 * 0.6 = ~29px)
+  const horizontalShadowDepth = SIDE_BORDER_SIZE * 1.2; // For left/right walls (16 * 1.2 = ~19px)
 
   ctx.save();
 
@@ -3196,13 +3196,16 @@ function drawPuzzleVignette(
   const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
 
   if (hasVoidTiles) {
-    // For irregular shapes, use smart border data to apply edge vignettes
-    // to ALL edges - both outer (facing page background) and interior (facing void tiles)
-    // Darkness emanates from any void/outside area
+    // For irregular shapes, apply edge shadows in two parts:
+    // 1. Outer bounding box shadows (handled below) - covers the entire outer perimeter
+    // 2. Interior edge shadows (this section) - only for edges facing interior void tiles
+    //    (not on the outer perimeter, to avoid double-darkening)
     const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
 
-    // Draw vignette for ALL edges - darkness comes from void tiles and outside
-    borderData.edges.forEach(({ x, y, edge }) => {
+    // Draw edge shadows only for INTERIOR edges (facing void tiles, not the outer perimeter)
+    borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
+      // Skip outer edges - they're handled by the bounding box shadows below
+      if (isOuterEdge) return;
 
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
@@ -3212,56 +3215,56 @@ function drawPuzzleVignette(
 
       switch (edge) {
         case 'top': {
-          // Top wall extends upward from the tile
+          // Top wall extends upward from the tile (interior void above)
           const wallTop = py - BORDER_SIZE;
-          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE + verticalVignetteSize);
+          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE + verticalShadowDepth);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallTop + verticalVignetteSize);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallTop + verticalShadowDepth);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallTop, TILE_SIZE, verticalVignetteSize);
+          ctx.fillRect(px, wallTop, TILE_SIZE, verticalShadowDepth);
           break;
         }
         case 'bottom': {
-          // Bottom wall extends downward from the tile (outer edges use BORDER_SIZE)
+          // Bottom wall extends downward from the tile (interior void below)
           const wallTop = py + TILE_SIZE;
           const wallBottom = wallTop + BORDER_SIZE;
-          ctx.rect(px, wallTop - verticalVignetteSize, TILE_SIZE, BORDER_SIZE + verticalVignetteSize);
+          ctx.rect(px, wallTop - verticalShadowDepth, TILE_SIZE, BORDER_SIZE + verticalShadowDepth);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallBottom - verticalVignetteSize);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallBottom - verticalShadowDepth);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallBottom - verticalVignetteSize, TILE_SIZE, verticalVignetteSize);
+          ctx.fillRect(px, wallBottom - verticalShadowDepth, TILE_SIZE, verticalShadowDepth);
           break;
         }
         case 'left': {
-          // Left wall extends to the left of the tile
+          // Left wall extends to the left of the tile (interior void to the left)
           const wallLeft = px - SIDE_BORDER_SIZE;
-          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE + horizontalVignetteSize, TILE_SIZE);
+          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE + horizontalShadowDepth, TILE_SIZE);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(wallLeft, 0, wallLeft + horizontalVignetteSize, 0);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          const gradient = ctx.createLinearGradient(wallLeft, 0, wallLeft + horizontalShadowDepth, 0);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(wallLeft, py, horizontalVignetteSize, TILE_SIZE);
+          ctx.fillRect(wallLeft, py, horizontalShadowDepth, TILE_SIZE);
           break;
         }
         case 'right': {
-          // Right wall extends to the right of the tile
+          // Right wall extends to the right of the tile (interior void to the right)
           const wallRight = px + TILE_SIZE + SIDE_BORDER_SIZE;
-          ctx.rect(px + TILE_SIZE - horizontalVignetteSize, py, SIDE_BORDER_SIZE + horizontalVignetteSize, TILE_SIZE);
+          ctx.rect(px + TILE_SIZE - horizontalShadowDepth, py, SIDE_BORDER_SIZE + horizontalShadowDepth, TILE_SIZE);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(wallRight, 0, wallRight - horizontalVignetteSize, 0);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          const gradient = ctx.createLinearGradient(wallRight, 0, wallRight - horizontalShadowDepth, 0);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(wallRight - horizontalVignetteSize, py, horizontalVignetteSize, TILE_SIZE);
+          ctx.fillRect(wallRight - horizontalShadowDepth, py, horizontalShadowDepth, TILE_SIZE);
           break;
         }
       }
@@ -3269,173 +3272,69 @@ function drawPuzzleVignette(
       ctx.restore();
     });
 
-    // Draw vignette for ALL convex corners - darkness emanates from void/outside
-    // Use dual linear gradients (one vertical, one horizontal) instead of radial
-    // This matches the adjacent edge vignettes and respects different wall thicknesses
-    // Skip concave corners (they face into the playable area, not away from it)
-    borderData.corners.forEach(({ x, y, type }) => {
-      const px = offsetX + x * TILE_SIZE;
-      const py = offsetY + y * TILE_SIZE;
+    // Note: Corner shadows are handled by the overlap of edge shadows (for interior corners)
+    // and by the bounding box shadows (for outer corners), so no separate corner handling needed.
 
-      // Skip concave corners - they're interior corners facing INTO the playable area
-      if (type.startsWith('concave')) return;
+    // Apply outer bounding box edge shadows for irregular shapes
+    // This darkens the wall sprites at the outer perimeter of the entire canvas
 
-      // Define the corner region and gradient directions based on corner type
-      let clipX: number, clipY: number, clipW: number, clipH: number;
-      let vGradientStart: number, vGradientEnd: number; // Vertical gradient (top/bottom edge)
-      let hGradientStart: number, hGradientEnd: number; // Horizontal gradient (left/right edge)
-
-      switch (type) {
-        case 'convex-tl': {
-          // Top-left corner: darkness from top and left
-          clipX = px - SIDE_BORDER_SIZE;
-          clipY = py - BORDER_SIZE;
-          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
-          clipH = BORDER_SIZE + verticalVignetteSize;
-          // Vertical gradient: dark at top, fades down
-          vGradientStart = clipY;
-          vGradientEnd = clipY + verticalVignetteSize;
-          // Horizontal gradient: dark at left, fades right
-          hGradientStart = clipX;
-          hGradientEnd = clipX + horizontalVignetteSize;
-          break;
-        }
-        case 'convex-tr': {
-          // Top-right corner: darkness from top and right
-          clipX = px + TILE_SIZE - horizontalVignetteSize;
-          clipY = py - BORDER_SIZE;
-          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
-          clipH = BORDER_SIZE + verticalVignetteSize;
-          // Vertical gradient: dark at top, fades down
-          vGradientStart = clipY;
-          vGradientEnd = clipY + verticalVignetteSize;
-          // Horizontal gradient: dark at right, fades left
-          hGradientStart = clipX + clipW;
-          hGradientEnd = clipX + clipW - horizontalVignetteSize;
-          break;
-        }
-        case 'convex-bl': {
-          // Bottom-left corner: darkness from bottom and left
-          clipX = px - SIDE_BORDER_SIZE;
-          clipY = py + TILE_SIZE - verticalVignetteSize;
-          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
-          clipH = BORDER_SIZE + verticalVignetteSize;
-          // Vertical gradient: dark at bottom, fades up
-          vGradientStart = clipY + clipH;
-          vGradientEnd = clipY + clipH - verticalVignetteSize;
-          // Horizontal gradient: dark at left, fades right
-          hGradientStart = clipX;
-          hGradientEnd = clipX + horizontalVignetteSize;
-          break;
-        }
-        case 'convex-br': {
-          // Bottom-right corner: darkness from bottom and right
-          clipX = px + TILE_SIZE - horizontalVignetteSize;
-          clipY = py + TILE_SIZE - verticalVignetteSize;
-          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
-          clipH = BORDER_SIZE + verticalVignetteSize;
-          // Vertical gradient: dark at bottom, fades up
-          vGradientStart = clipY + clipH;
-          vGradientEnd = clipY + clipH - verticalVignetteSize;
-          // Horizontal gradient: dark at right, fades left
-          hGradientStart = clipX + clipW;
-          hGradientEnd = clipX + clipW - horizontalVignetteSize;
-          break;
-        }
-        default:
-          return;
-      }
-
-      // Draw vertical gradient (from top or bottom edge)
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(clipX, clipY, clipW, clipH);
-      ctx.clip();
-
-      const vGradient = ctx.createLinearGradient(0, vGradientStart, 0, vGradientEnd);
-      vGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-      vGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = vGradient;
-      ctx.fillRect(clipX, clipY, clipW, clipH);
-
-      ctx.restore();
-
-      // Draw horizontal gradient (from left or right edge)
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(clipX, clipY, clipW, clipH);
-      ctx.clip();
-
-      const hGradient = ctx.createLinearGradient(hGradientStart, 0, hGradientEnd, 0);
-      hGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-      hGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = hGradient;
-      ctx.fillRect(clipX, clipY, clipW, clipH);
-
-      ctx.restore();
-    });
-
-    // Also apply outer bounding box edge vignettes for irregular shapes
-    // This darkens the wall sprites at the outer corners and edges of the entire canvas
-    // (areas not covered by per-tile edge vignettes because they're in void regions)
-
-    // Top edge vignette (entire top of bounding box)
-    const topGradient = ctx.createLinearGradient(0, 0, 0, verticalVignetteSize);
-    topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Top edge shadow (entire top of bounding box)
+    const topGradient = ctx.createLinearGradient(0, 0, 0, verticalShadowDepth);
+    topGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = topGradient;
-    ctx.fillRect(0, 0, totalWidth, verticalVignetteSize);
+    ctx.fillRect(0, 0, totalWidth, verticalShadowDepth);
 
-    // Bottom edge vignette (entire bottom of bounding box)
-    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - verticalVignetteSize);
-    bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Bottom edge shadow (entire bottom of bounding box)
+    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - verticalShadowDepth);
+    bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = bottomGradient;
-    ctx.fillRect(0, totalHeight - verticalVignetteSize, totalWidth, verticalVignetteSize);
+    ctx.fillRect(0, totalHeight - verticalShadowDepth, totalWidth, verticalShadowDepth);
 
-    // Left edge vignette (entire left of bounding box)
-    const leftGradient = ctx.createLinearGradient(0, 0, horizontalVignetteSize, 0);
-    leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Left edge shadow (entire left of bounding box)
+    const leftGradient = ctx.createLinearGradient(0, 0, horizontalShadowDepth, 0);
+    leftGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = leftGradient;
-    ctx.fillRect(0, 0, horizontalVignetteSize, totalHeight);
+    ctx.fillRect(0, 0, horizontalShadowDepth, totalHeight);
 
-    // Right edge vignette (entire right of bounding box)
-    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - horizontalVignetteSize, 0);
-    rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Right edge shadow (entire right of bounding box)
+    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - horizontalShadowDepth, 0);
+    rightGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = rightGradient;
-    ctx.fillRect(totalWidth - horizontalVignetteSize, 0, horizontalVignetteSize, totalHeight);
+    ctx.fillRect(totalWidth - horizontalShadowDepth, 0, horizontalShadowDepth, totalHeight);
   } else {
-    // Regular rectangular puzzle - apply edge vignettes to full borders
+    // Regular rectangular puzzle - apply edge shadows to full borders
 
-    // Top edge vignette (on the top border wall)
-    const topGradient = ctx.createLinearGradient(0, 0, 0, verticalVignetteSize);
-    topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Top edge shadow
+    const topGradient = ctx.createLinearGradient(0, 0, 0, verticalShadowDepth);
+    topGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = topGradient;
-    ctx.fillRect(0, 0, totalWidth, verticalVignetteSize);
+    ctx.fillRect(0, 0, totalWidth, verticalShadowDepth);
 
-    // Bottom edge vignette (on the bottom border wall)
-    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - verticalVignetteSize);
-    bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Bottom edge shadow
+    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - verticalShadowDepth);
+    bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = bottomGradient;
-    ctx.fillRect(0, totalHeight - verticalVignetteSize, totalWidth, verticalVignetteSize);
+    ctx.fillRect(0, totalHeight - verticalShadowDepth, totalWidth, verticalShadowDepth);
 
-    // Left edge vignette (on the left border wall)
-    const leftGradient = ctx.createLinearGradient(0, 0, horizontalVignetteSize, 0);
-    leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Left edge shadow
+    const leftGradient = ctx.createLinearGradient(0, 0, horizontalShadowDepth, 0);
+    leftGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = leftGradient;
-    ctx.fillRect(0, 0, horizontalVignetteSize, totalHeight);
+    ctx.fillRect(0, 0, horizontalShadowDepth, totalHeight);
 
-    // Right edge vignette (on the right border wall)
-    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - horizontalVignetteSize, 0);
-    rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    // Right edge shadow
+    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - horizontalShadowDepth, 0);
+    rightGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
     rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = rightGradient;
-    ctx.fillRect(totalWidth - horizontalVignetteSize, 0, horizontalVignetteSize, totalHeight);
+    ctx.fillRect(totalWidth - horizontalShadowDepth, 0, horizontalShadowDepth, totalHeight);
   }
 
   // ==========================================
