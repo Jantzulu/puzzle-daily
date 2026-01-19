@@ -63,6 +63,7 @@ export interface ThemeAssets {
   // Background colors
   colorBgPrimary?: string;    // Main page background color
   colorBgSecondary?: string;  // Panel/card background color
+  colorBgCard?: string;       // Inner card background (heroes, enemies, items)
   colorBgNavbar?: string;     // Navigation bar background color
   colorBgInput?: string;      // Input field background color
 
@@ -134,7 +135,8 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
 
   // Color settings
   colorBgPrimary: { label: 'Page Background', description: 'Main page background color', category: 'colors', inputType: 'color' },
-  colorBgSecondary: { label: 'Panel Background', description: 'Panel and card background color', category: 'colors', inputType: 'color' },
+  colorBgSecondary: { label: 'Panel Background', description: 'Outer panel background color', category: 'colors', inputType: 'color' },
+  colorBgCard: { label: 'Card Background', description: 'Inner card background (heroes, enemies, items)', category: 'colors', inputType: 'color' },
   colorBgNavbar: { label: 'Navbar Background', description: 'Navigation bar background color', category: 'colors', inputType: 'color' },
   colorBgInput: { label: 'Input Background', description: 'Input field background color', category: 'colors', inputType: 'color' },
   colorTextPrimary: { label: 'Primary Text', description: 'Main text color', category: 'colors', inputType: 'color' },
@@ -350,6 +352,7 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   // Color settings
   if (assets.colorBgPrimary) properties['--theme-bg-primary'] = assets.colorBgPrimary;
   if (assets.colorBgSecondary) properties['--theme-bg-secondary'] = assets.colorBgSecondary;
+  if (assets.colorBgCard) properties['--theme-bg-card'] = assets.colorBgCard;
   if (assets.colorBgNavbar) properties['--theme-bg-navbar'] = assets.colorBgNavbar;
   if (assets.colorBgInput) properties['--theme-bg-input'] = assets.colorBgInput;
   if (assets.colorTextPrimary) properties['--theme-text-primary'] = assets.colorTextPrimary;
@@ -431,6 +434,7 @@ const ALL_THEME_CSS_VARS = [
   '--asset-border-frame',
   '--theme-bg-primary',
   '--theme-bg-secondary',
+  '--theme-bg-card',
   '--theme-bg-navbar',
   '--theme-bg-input',
   '--theme-text-primary',

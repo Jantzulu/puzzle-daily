@@ -531,9 +531,14 @@ html body.theme-font-active,
 
 /* Theme-aware cards */
 .dungeon-card {
-  background-color: var(--theme-bg-secondary, #2a2118);
+  background-color: var(--theme-bg-card, var(--theme-bg-secondary, #2a2118));
   border-color: var(--theme-border-primary, #5a4a35);
   border-radius: var(--theme-border-radius, 4px);
+}
+
+/* Override bg-stone-800/80 for info cards when theme card color is set */
+.theme-root [class*="bg-stone-800"] {
+  background-color: var(--theme-bg-card, rgba(42, 42, 42, 0.8));
 }
 
 /* Theme-aware tabs */
