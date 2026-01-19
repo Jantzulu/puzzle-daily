@@ -3152,8 +3152,9 @@ function drawPersistentAreaEffect(
 // ==========================================
 
 /**
- * Draw a vignette effect around the edges of the puzzle that follows the shape.
- * Creates a subtle darkening gradient on edge tiles to blend with the dark background.
+ * Draw a vignette effect on the OUTER edges of the border walls.
+ * This darkens the border walls where they meet the dark background,
+ * creating a smooth blend. Does NOT affect the inner game tiles.
  */
 function drawPuzzleVignette(
   ctx: CanvasRenderingContext2D,
@@ -3163,101 +3164,73 @@ function drawPuzzleVignette(
   offsetX: number,
   offsetY: number
 ) {
-  const vignetteSize = TILE_SIZE * 1.5; // How far the vignette extends inward
-  const vignetteOpacity = 0.4; // Maximum darkness at edges
+  const vignetteSize = 24; // How far the vignette extends inward from outer edge
+  const vignetteOpacity = 0.6; // Maximum darkness at outer edges
 
   ctx.save();
 
-  // For each tile, check if it's an edge tile and draw a vignette gradient
-  for (let y = 0; y < gridHeight; y++) {
-    for (let x = 0; x < gridWidth; x++) {
-      const tile = tiles[y]?.[x];
-      if (!tile) continue; // Skip null tiles
+  // Calculate the total canvas area including borders
+  const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
+  const totalHeight = gridHeight * TILE_SIZE + (BORDER_SIZE * 2);
 
-      const px = offsetX + x * TILE_SIZE;
-      const py = offsetY + y * TILE_SIZE;
-      const centerX = px + TILE_SIZE / 2;
-      const centerY = py + TILE_SIZE / 2;
+  // Top edge vignette (on the top border wall)
+  const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
+  topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+  topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = topGradient;
+  ctx.fillRect(0, 0, totalWidth, vignetteSize);
 
-      // Check which edges are exposed (adjacent to null or out of bounds)
-      const hasTopEdge = y === 0 || !tiles[y - 1]?.[x];
-      const hasBottomEdge = y === gridHeight - 1 || !tiles[y + 1]?.[x];
-      const hasLeftEdge = x === 0 || !tiles[y]?.[x - 1];
-      const hasRightEdge = x === gridWidth - 1 || !tiles[y]?.[x + 1];
+  // Bottom edge vignette (on the bottom border wall)
+  const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - vignetteSize);
+  bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+  bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = bottomGradient;
+  ctx.fillRect(0, totalHeight - vignetteSize, totalWidth, vignetteSize);
 
-      // Check corners
-      const hasTopLeftCorner = hasTopEdge && hasLeftEdge;
-      const hasTopRightCorner = hasTopEdge && hasRightEdge;
-      const hasBottomLeftCorner = hasBottomEdge && hasLeftEdge;
-      const hasBottomRightCorner = hasBottomEdge && hasRightEdge;
+  // Left edge vignette (on the left border wall)
+  const leftGradient = ctx.createLinearGradient(0, 0, vignetteSize, 0);
+  leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+  leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = leftGradient;
+  ctx.fillRect(0, 0, vignetteSize, totalHeight);
 
-      // Draw edge gradients
-      if (hasTopEdge) {
-        const gradient = ctx.createLinearGradient(px, py, px, py + vignetteSize);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px, py, TILE_SIZE, Math.min(vignetteSize, TILE_SIZE));
-      }
+  // Right edge vignette (on the right border wall)
+  const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - vignetteSize, 0);
+  rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+  rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = rightGradient;
+  ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
 
-      if (hasBottomEdge) {
-        const gradient = ctx.createLinearGradient(px, py + TILE_SIZE, px, py + TILE_SIZE - vignetteSize);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px, py + TILE_SIZE - Math.min(vignetteSize, TILE_SIZE), TILE_SIZE, Math.min(vignetteSize, TILE_SIZE));
-      }
+  // Corner vignettes for smoother blending
+  const cornerSize = vignetteSize * 1.5;
 
-      if (hasLeftEdge) {
-        const gradient = ctx.createLinearGradient(px, py, px + vignetteSize, py);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px, py, Math.min(vignetteSize, TILE_SIZE), TILE_SIZE);
-      }
+  // Top-left corner
+  const tlGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, cornerSize);
+  tlGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
+  tlGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = tlGradient;
+  ctx.fillRect(0, 0, cornerSize, cornerSize);
 
-      if (hasRightEdge) {
-        const gradient = ctx.createLinearGradient(px + TILE_SIZE, py, px + TILE_SIZE - vignetteSize, py);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px + TILE_SIZE - Math.min(vignetteSize, TILE_SIZE), py, Math.min(vignetteSize, TILE_SIZE), TILE_SIZE);
-      }
+  // Top-right corner
+  const trGradient = ctx.createRadialGradient(totalWidth, 0, 0, totalWidth, 0, cornerSize);
+  trGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
+  trGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = trGradient;
+  ctx.fillRect(totalWidth - cornerSize, 0, cornerSize, cornerSize);
 
-      // Draw corner radial gradients for smoother blending
-      if (hasTopLeftCorner) {
-        const gradient = ctx.createRadialGradient(px, py, 0, px, py, vignetteSize);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px, py, vignetteSize, vignetteSize);
-      }
+  // Bottom-left corner
+  const blGradient = ctx.createRadialGradient(0, totalHeight, 0, 0, totalHeight, cornerSize);
+  blGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
+  blGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = blGradient;
+  ctx.fillRect(0, totalHeight - cornerSize, cornerSize, cornerSize);
 
-      if (hasTopRightCorner) {
-        const gradient = ctx.createRadialGradient(px + TILE_SIZE, py, 0, px + TILE_SIZE, py, vignetteSize);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px + TILE_SIZE - vignetteSize, py, vignetteSize, vignetteSize);
-      }
-
-      if (hasBottomLeftCorner) {
-        const gradient = ctx.createRadialGradient(px, py + TILE_SIZE, 0, px, py + TILE_SIZE, vignetteSize);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px, py + TILE_SIZE - vignetteSize, vignetteSize, vignetteSize);
-      }
-
-      if (hasBottomRightCorner) {
-        const gradient = ctx.createRadialGradient(px + TILE_SIZE, py + TILE_SIZE, 0, px + TILE_SIZE, py + TILE_SIZE, vignetteSize);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px + TILE_SIZE - vignetteSize, py + TILE_SIZE - vignetteSize, vignetteSize, vignetteSize);
-      }
-    }
-  }
+  // Bottom-right corner
+  const brGradient = ctx.createRadialGradient(totalWidth, totalHeight, 0, totalWidth, totalHeight, cornerSize);
+  brGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
+  brGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+  ctx.fillStyle = brGradient;
+  ctx.fillRect(totalWidth - cornerSize, totalHeight - cornerSize, cornerSize, cornerSize);
 
   ctx.restore();
 }
