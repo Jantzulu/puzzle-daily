@@ -3275,7 +3275,8 @@ function drawPuzzleVignette(
     });
 
     // PASS 2: Draw shadow for EVERY convex corner
-    // Corner gets shadow from direction(s) that face void
+    // Corner shadow should seamlessly continue from adjacent edge shadows
+    // Only apply ONE gradient per corner to avoid double-darkening
     borderData.corners.forEach(({ x, y, type }) => {
       // Skip concave corners - they face INTO the playable area, not toward void
       if (type.startsWith('concave')) return;
@@ -3283,8 +3284,7 @@ function drawPuzzleVignette(
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
 
-      // Determine which edges this tile has adjacent to this corner
-      // This tells us which direction(s) face void
+      // Determine which edges this tile has
       const hasTopEdge = edgeSet.has(`${x},${y},top`);
       const hasBottomEdge = edgeSet.has(`${x},${y},bottom`);
       const hasLeftEdge = edgeSet.has(`${x},${y},left`);
@@ -3295,94 +3295,96 @@ function drawPuzzleVignette(
       const clipW = SIDE_BORDER_SIZE;
       const clipH = BORDER_SIZE;
 
-      // Determine which directions this corner faces void based on corner type
-      let facesTop = false, facesBottom = false, facesLeft = false, facesRight = false;
+      // Determine which edges are adjacent to this corner type
+      let adjacentVerticalEdge = false; // top or bottom edge exists
+      let adjacentHorizontalEdge = false; // left or right edge exists
+      let verticalFromTop = false;
+      let horizontalFromLeft = false;
 
       switch (type) {
         case 'convex-tl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py - BORDER_SIZE;
-          // TL corner faces void at top-left, so void is above AND to the left
-          facesTop = true;
-          facesLeft = true;
+          adjacentVerticalEdge = hasTopEdge;
+          adjacentHorizontalEdge = hasLeftEdge;
+          verticalFromTop = true;
+          horizontalFromLeft = true;
           break;
         case 'convex-tr':
           clipX = px + TILE_SIZE;
           clipY = py - BORDER_SIZE;
-          // TR corner faces void at top-right, so void is above AND to the right
-          facesTop = true;
-          facesRight = true;
+          adjacentVerticalEdge = hasTopEdge;
+          adjacentHorizontalEdge = hasRightEdge;
+          verticalFromTop = true;
+          horizontalFromLeft = false;
           break;
         case 'convex-bl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py + TILE_SIZE;
-          // BL corner faces void at bottom-left, so void is below AND to the left
-          facesBottom = true;
-          facesLeft = true;
+          adjacentVerticalEdge = hasBottomEdge;
+          adjacentHorizontalEdge = hasLeftEdge;
+          verticalFromTop = false;
+          horizontalFromLeft = true;
           break;
         case 'convex-br':
           clipX = px + TILE_SIZE;
           clipY = py + TILE_SIZE;
-          // BR corner faces void at bottom-right, so void is below AND to the right
-          facesBottom = true;
-          facesRight = true;
+          adjacentVerticalEdge = hasBottomEdge;
+          adjacentHorizontalEdge = hasRightEdge;
+          verticalFromTop = false;
+          horizontalFromLeft = false;
           break;
         default:
           return;
       }
 
-      // Only apply shadow from directions where there's actually an adjacent edge
-      // (meaning that direction actually faces void for this tile)
-      const applyVertical = (facesTop && hasTopEdge) || (facesBottom && hasBottomEdge);
-      const applyHorizontal = (facesLeft && hasLeftEdge) || (facesRight && hasRightEdge);
+      // Decide which gradient to apply:
+      // - If only one edge exists, apply that direction's gradient (seamless with the edge)
+      // - If both edges exist (true corner where two walls meet), apply horizontal (thinner walls = more prominent shadow)
+      // - If neither edge exists, this corner only has diagonal void - apply horizontal as default
 
-      // Draw vertical gradient if applicable
+      let applyVertical = false;
+      let applyHorizontal = false;
+
+      if (adjacentVerticalEdge && !adjacentHorizontalEdge) {
+        // Only vertical wall continues through this corner
+        applyVertical = true;
+      } else if (adjacentHorizontalEdge && !adjacentVerticalEdge) {
+        // Only horizontal wall continues through this corner
+        applyHorizontal = true;
+      } else if (adjacentVerticalEdge && adjacentHorizontalEdge) {
+        // Both walls meet at this corner - apply both but at half opacity to avoid over-darkening
+        // Actually, let's just apply horizontal since side walls are thinner and more prominent
+        applyHorizontal = true;
+      } else {
+        // Neither edge - diagonal void only. Apply horizontal as default
+        applyHorizontal = true;
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, clipW, clipH);
+      ctx.clip();
+
       if (applyVertical) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(clipX, clipY, clipW, clipH);
-        ctx.clip();
-
-        let vStart: number, vEnd: number;
-        if (facesTop) {
-          vStart = clipY;
-          vEnd = clipY + clipH;
-        } else {
-          vStart = clipY + clipH;
-          vEnd = clipY;
-        }
-
+        const vStart = verticalFromTop ? clipY : clipY + clipH;
+        const vEnd = verticalFromTop ? clipY + clipH : clipY;
         const vGradient = ctx.createLinearGradient(0, vStart, 0, vEnd);
         vGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
         vGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = vGradient;
         ctx.fillRect(clipX, clipY, clipW, clipH);
-        ctx.restore();
-      }
-
-      // Draw horizontal gradient if applicable
-      if (applyHorizontal) {
-        ctx.save();
-        ctx.beginPath();
-        ctx.rect(clipX, clipY, clipW, clipH);
-        ctx.clip();
-
-        let hStart: number, hEnd: number;
-        if (facesLeft) {
-          hStart = clipX;
-          hEnd = clipX + clipW;
-        } else {
-          hStart = clipX + clipW;
-          hEnd = clipX;
-        }
-
+      } else if (applyHorizontal) {
+        const hStart = horizontalFromLeft ? clipX : clipX + clipW;
+        const hEnd = horizontalFromLeft ? clipX + clipW : clipX;
         const hGradient = ctx.createLinearGradient(hStart, 0, hEnd, 0);
         hGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
         hGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
         ctx.fillStyle = hGradient;
         ctx.fillRect(clipX, clipY, clipW, clipH);
-        ctx.restore();
       }
+
+      ctx.restore();
     });
   } else {
     // Regular rectangular puzzle - apply edge shadows to full borders
