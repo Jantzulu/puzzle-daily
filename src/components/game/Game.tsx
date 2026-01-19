@@ -891,7 +891,7 @@ export const Game: React.FC = () => {
                         case 'collect_all': {
                           // Count collectibles that haven't been collected
                           const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
-                          return `Collect all Treasure (${collectibleCount})`;
+                          return `Collect all Items (${collectibleCount})`;
                         }
                         case 'collect_keys': {
                           // Count key collectibles that haven't been collected

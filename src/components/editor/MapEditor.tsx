@@ -1814,7 +1814,7 @@ export const MapEditor: React.FC = () => {
                             if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
                             return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]}`;
                           case 'collect_all':
-                            return 'Collect all treasure';
+                            return 'Collect all items';
                           case 'reach_goal':
                             return 'Reach the exit';
                           case 'survive_turns':

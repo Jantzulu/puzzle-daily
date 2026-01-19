@@ -3366,6 +3366,37 @@ function drawPuzzleVignette(
 
       ctx.restore();
     });
+
+    // Also apply outer edge vignettes for irregular shapes
+    // This darkens the wall sprites at the outer corners and edges
+
+    // Top edge vignette
+    const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
+    topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = topGradient;
+    ctx.fillRect(0, 0, totalWidth, vignetteSize);
+
+    // Bottom edge vignette
+    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - vignetteSize);
+    bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = bottomGradient;
+    ctx.fillRect(0, totalHeight - vignetteSize, totalWidth, vignetteSize);
+
+    // Left edge vignette
+    const leftGradient = ctx.createLinearGradient(0, 0, vignetteSize, 0);
+    leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = leftGradient;
+    ctx.fillRect(0, 0, vignetteSize, totalHeight);
+
+    // Right edge vignette
+    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - vignetteSize, 0);
+    rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = rightGradient;
+    ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
   } else {
     // Regular rectangular puzzle - apply edge vignettes to full borders
 

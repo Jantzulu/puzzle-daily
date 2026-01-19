@@ -899,7 +899,7 @@ export const Compendium: React.FC = () => {
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-3xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">Compendium</h1>
-          <p className="text-stone-400">Browse all dungeon elements - heroes, enemies, enchantments, tiles, and treasure.</p>
+          <p className="text-stone-400">Browse all dungeon elements - heroes, enemies, enchantments, tiles, and items.</p>
         </div>
 
         {/* Search */}
@@ -1006,7 +1006,7 @@ export const Compendium: React.FC = () => {
             )}
             {activeTab === 'items' && filteredItems.length === 0 && (
               <div className="text-center py-12 text-stone-500">
-                {searchQuery ? 'No treasure matches your search' : 'No treasure yet'}
+                {searchQuery ? 'No items match your search' : 'No items yet'}
               </div>
             )}
           </div>

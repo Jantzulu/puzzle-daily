@@ -140,7 +140,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
     <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold text-parchment-400">Treasure</h3>
+          <h3 className="text-lg font-bold text-parchment-400">Items</h3>
           <HelpButton sectionId="items" />
         </div>
         <span className="text-sm text-stone-400">
