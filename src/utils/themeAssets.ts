@@ -9,9 +9,14 @@
  * - Icons
  *
  * These assets can be synced to the player-facing game through the skin/theme system.
+ *
+ * Images are stored in Supabase Storage for unlimited size, while settings are in localStorage.
  */
 
+import { supabase } from '../lib/supabase';
+
 const STORAGE_KEY = 'theme_assets';
+const STORAGE_BUCKET = 'theme-assets';
 
 export interface ThemeAssets {
   // Branding
@@ -179,11 +184,30 @@ export function loadThemeAssets(): ThemeAssets {
 /**
  * Save theme assets to localStorage
  */
-export function saveThemeAssets(assets: ThemeAssets): void {
+export function saveThemeAssets(assets: ThemeAssets): { success: boolean; error?: string } {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(assets));
+    const json = JSON.stringify(assets);
+    const sizeKB = Math.round(json.length / 1024);
+
+    // Check if we're approaching localStorage limits (typically 5-10MB)
+    if (sizeKB > 4000) {
+      return {
+        success: false,
+        error: `Theme data is too large (${sizeKB}KB). Try using smaller images or fewer custom assets.`
+      };
+    }
+
+    localStorage.setItem(STORAGE_KEY, json);
+    return { success: true };
   } catch (e) {
     console.error('Failed to save theme assets:', e);
+    if (e instanceof Error && e.name === 'QuotaExceededError') {
+      return {
+        success: false,
+        error: 'Storage quota exceeded. Try removing some images or using smaller files. Images are automatically compressed, but very large images may still exceed limits.'
+      };
+    }
+    return { success: false, error: 'Failed to save theme settings.' };
   }
 }
 
@@ -216,12 +240,70 @@ export function deleteThemeAsset(key: ThemeAssetKey): void {
 }
 
 /**
- * Convert a File to a data URL
+ * Convert a File to a data URL (with optional compression for images)
  */
 export function fileToDataUrl(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+/**
+ * Compress an image file and return as data URL
+ * Uses canvas to resize and compress images
+ */
+export function compressImage(
+  file: File,
+  maxWidth: number = 512,
+  maxHeight: number = 512,
+  quality: number = 0.8
+): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    img.onload = () => {
+      let { width, height } = img;
+
+      // Calculate new dimensions maintaining aspect ratio
+      if (width > maxWidth || height > maxHeight) {
+        const ratio = Math.min(maxWidth / width, maxHeight / height);
+        width = Math.round(width * ratio);
+        height = Math.round(height * ratio);
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      if (ctx) {
+        // Use pixelated rendering for small images (likely pixel art)
+        if (img.width <= 64 && img.height <= 64) {
+          ctx.imageSmoothingEnabled = false;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+
+        // Try WebP first (better compression), fall back to JPEG for photos or PNG for transparency
+        const isPng = file.type === 'image/png';
+        const format = isPng ? 'image/png' : 'image/jpeg';
+        const dataUrl = canvas.toDataURL(format, quality);
+
+        resolve(dataUrl);
+      } else {
+        reject(new Error('Could not get canvas context'));
+      }
+    };
+
+    img.onerror = () => reject(new Error('Failed to load image'));
+
+    // Read the file as data URL first
+    const reader = new FileReader();
+    reader.onload = () => {
+      img.src = reader.result as string;
+    };
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
@@ -406,4 +488,141 @@ export function notifyThemeAssetsChanged(): void {
   const assets = loadThemeAssets();
   listeners.forEach(listener => listener(assets));
   applyThemeAssets();
+}
+
+// ==========================================
+// SUPABASE STORAGE FOR THEME IMAGES
+// ==========================================
+
+/**
+ * Check if a string is a Supabase Storage URL
+ */
+export function isSupabaseStorageUrl(url: string): boolean {
+  return url.includes('supabase.co/storage/v1/object/public/');
+}
+
+/**
+ * Check if a string is a data URL (base64)
+ */
+export function isDataUrl(url: string): boolean {
+  return url.startsWith('data:');
+}
+
+/**
+ * Convert a data URL to a Blob
+ */
+function dataUrlToBlob(dataUrl: string): Blob {
+  const [header, base64] = dataUrl.split(',');
+  const mimeMatch = header.match(/:(.*?);/);
+  const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+  const binary = atob(base64);
+  const array = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    array[i] = binary.charCodeAt(i);
+  }
+  return new Blob([array], { type: mime });
+}
+
+/**
+ * Generate a unique filename for a theme asset
+ */
+function generateAssetFilename(assetKey: string, mimeType: string): string {
+  const ext = mimeType.includes('png') ? 'png' : mimeType.includes('jpeg') || mimeType.includes('jpg') ? 'jpg' : 'png';
+  const timestamp = Date.now();
+  return `${assetKey}_${timestamp}.${ext}`;
+}
+
+/**
+ * Upload a theme image to Supabase Storage
+ * Returns the public URL on success, or null on failure
+ */
+export async function uploadThemeImageToStorage(
+  assetKey: string,
+  dataUrl: string
+): Promise<{ url: string | null; error: string | null }> {
+  try {
+    // Convert data URL to blob
+    const blob = dataUrlToBlob(dataUrl);
+    const filename = generateAssetFilename(assetKey, blob.type);
+    const filePath = `public/${filename}`;
+
+    // Upload to Supabase Storage
+    const { error: uploadError } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .upload(filePath, blob, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (uploadError) {
+      console.error('Failed to upload to Supabase Storage:', uploadError);
+      return { url: null, error: uploadError.message };
+    }
+
+    // Get the public URL
+    const { data: urlData } = supabase.storage
+      .from(STORAGE_BUCKET)
+      .getPublicUrl(filePath);
+
+    if (!urlData?.publicUrl) {
+      return { url: null, error: 'Failed to get public URL' };
+    }
+
+    return { url: urlData.publicUrl, error: null };
+  } catch (e) {
+    console.error('Error uploading theme image:', e);
+    return { url: null, error: e instanceof Error ? e.message : 'Upload failed' };
+  }
+}
+
+/**
+ * Delete a theme image from Supabase Storage
+ */
+export async function deleteThemeImageFromStorage(url: string): Promise<boolean> {
+  try {
+    if (!isSupabaseStorageUrl(url)) {
+      return true; // Not a storage URL, nothing to delete
+    }
+
+    // Extract the file path from the URL
+    // URL format: https://xxx.supabase.co/storage/v1/object/public/theme-assets/public/filename.png
+    const match = url.match(/\/theme-assets\/(.+)$/);
+    if (!match) {
+      console.warn('Could not extract file path from URL:', url);
+      return false;
+    }
+
+    const filePath = match[1];
+    const { error } = await supabase.storage
+      .from(STORAGE_BUCKET)
+      .remove([filePath]);
+
+    if (error) {
+      console.error('Failed to delete from Supabase Storage:', error);
+      return false;
+    }
+
+    return true;
+  } catch (e) {
+    console.error('Error deleting theme image:', e);
+    return false;
+  }
+}
+
+/**
+ * Upload an image and return the storage URL, or fall back to data URL on error
+ */
+export async function uploadImageWithFallback(
+  assetKey: string,
+  dataUrl: string
+): Promise<{ url: string; isStorageUrl: boolean; error: string | null }> {
+  const result = await uploadThemeImageToStorage(assetKey, dataUrl);
+
+  if (result.url) {
+    return { url: result.url, isStorageUrl: true, error: null };
+  }
+
+  // Fall back to data URL if upload fails
+  console.warn('Falling back to data URL for', assetKey);
+  return { url: dataUrl, isStorageUrl: false, error: result.error };
 }

@@ -3201,37 +3201,6 @@ function drawPuzzleVignette(
   ctx.fillStyle = rightGradient;
   ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
 
-  // Corner vignettes for smoother blending
-  const cornerSize = vignetteSize * 1.5;
-
-  // Top-left corner
-  const tlGradient = ctx.createRadialGradient(0, 0, 0, 0, 0, cornerSize);
-  tlGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
-  tlGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = tlGradient;
-  ctx.fillRect(0, 0, cornerSize, cornerSize);
-
-  // Top-right corner
-  const trGradient = ctx.createRadialGradient(totalWidth, 0, 0, totalWidth, 0, cornerSize);
-  trGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
-  trGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = trGradient;
-  ctx.fillRect(totalWidth - cornerSize, 0, cornerSize, cornerSize);
-
-  // Bottom-left corner
-  const blGradient = ctx.createRadialGradient(0, totalHeight, 0, 0, totalHeight, cornerSize);
-  blGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
-  blGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = blGradient;
-  ctx.fillRect(0, totalHeight - cornerSize, cornerSize, cornerSize);
-
-  // Bottom-right corner
-  const brGradient = ctx.createRadialGradient(totalWidth, totalHeight, 0, totalWidth, totalHeight, cornerSize);
-  brGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.8})`);
-  brGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = brGradient;
-  ctx.fillRect(totalWidth - cornerSize, totalHeight - cornerSize, cornerSize, cornerSize);
-
   ctx.restore();
 }
 

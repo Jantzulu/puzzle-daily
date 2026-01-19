@@ -47,35 +47,37 @@ function Navigation() {
     >
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title */}
-        <div className="flex items-center gap-2 md:mr-4">
+        <div className="flex items-center gap-2 md:mr-4 min-w-0 flex-1">
           {/* Custom logo or default torch icon */}
           {themeAssets.logo ? (
             <img
               src={themeAssets.logo}
               alt={themeAssets.logoAlt || 'Logo'}
-              className="h-8 md:h-10 w-auto object-contain"
+              className="h-8 md:h-10 w-auto object-contain flex-shrink-0"
             />
           ) : (
-            <span className="text-copper-400 text-xl md:text-2xl animate-flicker">&#128293;</span>
+            <span className="text-copper-400 text-xl md:text-2xl animate-flicker flex-shrink-0">&#128293;</span>
           )}
-          <div className="flex items-center gap-2 md:gap-3">
-            <h1 className="text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide">
+          {/* Title and subtitle - stack vertically on very small screens, horizontal otherwise */}
+          <div className="flex flex-col xs:flex-row xs:items-center gap-0 xs:gap-1 md:gap-3 min-w-0">
+            <h1 className="text-sm xs:text-base md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap leading-tight">
               {themeAssets.siteTitle || 'Puzzle Daily'}
             </h1>
             {themeAssets.siteSubtitle && (
               <span
-                className="font-medieval text-shadow-dungeon hidden sm:inline"
+                className="font-medieval text-shadow-dungeon truncate leading-tight"
                 style={{
                   color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
                   fontSize: (() => {
+                    // Use smaller sizes on mobile
                     const sizeMap: Record<string, string> = {
-                      'x-small': '0.75rem',
-                      'small': '0.875rem',
-                      'medium': '1rem',
-                      'large': '1.125rem',
-                      'x-large': '1.25rem',
+                      'x-small': 'clamp(0.5rem, 2.5vw, 0.75rem)',
+                      'small': 'clamp(0.55rem, 2.8vw, 0.875rem)',
+                      'medium': 'clamp(0.6rem, 3vw, 1rem)',
+                      'large': 'clamp(0.65rem, 3.2vw, 1.125rem)',
+                      'x-large': 'clamp(0.7rem, 3.5vw, 1.25rem)',
                     };
-                    return sizeMap[themeAssets.siteSubtitleSize || 'small'] || '0.875rem';
+                    return sizeMap[themeAssets.siteSubtitleSize || 'small'] || sizeMap['small'];
                   })()
                 }}
               >

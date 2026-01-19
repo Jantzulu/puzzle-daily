@@ -3,10 +3,13 @@ import {
   loadThemeAssets,
   setThemeAsset,
   deleteThemeAsset,
-  fileToDataUrl,
+  compressImage,
   exportThemeAssets,
   importThemeAssets,
   notifyThemeAssetsChanged,
+  uploadImageWithFallback,
+  deleteThemeImageFromStorage,
+  isSupabaseStorageUrl,
   THEME_ASSET_CONFIG,
   ASSET_CATEGORIES,
   type ThemeAssets,
@@ -97,25 +100,58 @@ interface AssetUploadProps {
   assetKey: ThemeAssetKey;
   value?: string;
   onChange: (value: string | undefined) => void;
+  onError?: (error: string) => void;
 }
 
-const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange }) => {
+const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, onError }) => {
   const inputRef = useRef<HTMLInputElement>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const config = THEME_ASSET_CONFIG[assetKey];
+
+  // Determine max dimensions based on asset type
+  const getMaxDimensions = () => {
+    if (assetKey === 'logo') return { maxWidth: 128, maxHeight: 64 };
+    if (assetKey.startsWith('icon')) return { maxWidth: 64, maxHeight: 64 };
+    if (assetKey.startsWith('bg')) return { maxWidth: 1024, maxHeight: 1024 };
+    return { maxWidth: 512, maxHeight: 512 };
+  };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setIsLoading(true);
       try {
-        const dataUrl = await fileToDataUrl(file);
-        onChange(dataUrl);
+        const { maxWidth, maxHeight } = getMaxDimensions();
+        // Compress the image first
+        const dataUrl = await compressImage(file, maxWidth, maxHeight, 0.85);
+
+        // Upload to Supabase Storage (falls back to data URL if upload fails)
+        const result = await uploadImageWithFallback(assetKey, dataUrl);
+
+        if (result.error && !result.isStorageUrl) {
+          // Show warning but still use the data URL
+          console.warn('Using local storage fallback:', result.error);
+        }
+
+        onChange(result.url);
+
+        if (result.isStorageUrl) {
+          console.log(`Uploaded ${assetKey} to Supabase Storage`);
+        }
       } catch (err) {
         console.error('Failed to load file:', err);
+        onError?.('Failed to process image. Try a smaller file.');
+      } finally {
+        setIsLoading(false);
       }
     }
   };
 
-  const handleRemove = () => {
+  const handleRemove = async () => {
+    // Delete from Supabase Storage if it's a storage URL
+    if (value && isSupabaseStorageUrl(value)) {
+      await deleteThemeImageFromStorage(value);
+    }
     onChange(undefined);
     if (inputRef.current) {
       inputRef.current.value = '';
@@ -144,7 +180,11 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange }) 
       <label className="block text-sm font-medium text-copper-400 mb-1">{config.label}</label>
       <p className="text-xs text-stone-500 mb-2">{config.description}</p>
 
-      {value ? (
+      {isLoading ? (
+        <div className="flex items-center justify-center py-4 text-stone-400">
+          <span className="animate-pulse">Uploading to cloud...</span>
+        </div>
+      ) : value ? (
         <div className="space-y-2">
           {/* Preview */}
           <div className="relative bg-stone-800 rounded-pixel p-2 border border-stone-600 flex items-center justify-center min-h-[60px]">
@@ -153,6 +193,17 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange }) 
               alt={config.label}
               className="max-w-full max-h-20 object-contain pixelated"
             />
+            {/* Cloud/Local indicator */}
+            <span
+              className={`absolute top-1 right-1 text-xs px-1.5 py-0.5 rounded ${
+                isSupabaseStorageUrl(value)
+                  ? 'bg-arcane-900/80 text-arcane-300'
+                  : 'bg-stone-700/80 text-stone-400'
+              }`}
+              title={isSupabaseStorageUrl(value) ? 'Stored in cloud' : 'Stored locally'}
+            >
+              {isSupabaseStorageUrl(value) ? '☁️' : '💾'}
+            </span>
           </div>
           {/* Actions */}
           <div className="flex gap-2">
@@ -414,6 +465,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
 export const ThemeAssetsEditor: React.FC = () => {
   const [assets, setAssets] = useState<ThemeAssets>({});
   const [activeCategory, setActiveCategory] = useState<AssetCategory>('branding');
+  const [error, setError] = useState<string | null>(null);
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -421,13 +473,22 @@ export const ThemeAssetsEditor: React.FC = () => {
   }, []);
 
   const handleAssetChange = (key: ThemeAssetKey, value: string | undefined) => {
+    setError(null);
     if (value) {
       setThemeAsset(key, value);
     } else {
       deleteThemeAsset(key);
     }
-    setAssets(loadThemeAssets());
+    // Check if save was successful
+    const currentAssets = loadThemeAssets();
+    setAssets(currentAssets);
     notifyThemeAssetsChanged();
+  };
+
+  const handleError = (errorMessage: string) => {
+    setError(errorMessage);
+    // Auto-clear error after 5 seconds
+    setTimeout(() => setError(null), 5000);
   };
 
   const handleExport = () => {
@@ -533,6 +594,7 @@ export const ThemeAssetsEditor: React.FC = () => {
         assetKey={key}
         value={assets[key]}
         onChange={(value) => handleAssetChange(key, value)}
+        onError={handleError}
       />
     );
   };
@@ -546,6 +608,13 @@ export const ThemeAssetsEditor: React.FC = () => {
           Customize colors, styles, and upload images to personalize the look of your game. Changes apply to both the editor and player-facing game.
         </p>
       </div>
+
+      {/* Error message */}
+      {error && (
+        <div className="mb-4 p-3 bg-blood-900/50 border border-blood-600 rounded-pixel text-blood-200 text-sm">
+          {error}
+        </div>
+      )}
 
       {/* Import/Export */}
       <div className="flex gap-2 mb-6">
