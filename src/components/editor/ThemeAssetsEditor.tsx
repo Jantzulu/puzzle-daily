@@ -244,8 +244,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
         <div className="space-y-2">
           {/* Preview */}
           <div
-            className="relative rounded-pixel p-2 border border-stone-600 flex items-center justify-center min-h-[60px]"
-            style={{ backgroundColor: 'var(--theme-bg-preview, #1f1810)' }}
+            className="relative rounded-pixel p-2 border border-stone-600 flex items-center justify-center min-h-[60px] sprite-preview-bg"
           >
             <img
               src={value}

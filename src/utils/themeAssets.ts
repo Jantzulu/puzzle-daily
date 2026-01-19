@@ -98,6 +98,8 @@ export interface ThemeAssets {
 
   // Preview/thumbnail background
   colorBgPreview?: string;        // Background for asset thumbnail previews
+  bgPreview?: string;             // Background image for asset thumbnail previews
+  bgPreviewTile?: boolean | string; // Tile (repeat) the preview background image
 
   // === STYLE SETTINGS ===
   borderRadius?: string;        // Border radius (e.g., "4px", "8px", "0px")
@@ -168,6 +170,8 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorButtonDangerBg: { label: 'Danger Button Bg', description: 'Danger/warning button background', category: 'colors', inputType: 'color' },
   colorButtonDangerBorder: { label: 'Danger Button Border', description: 'Danger button border color', category: 'colors', inputType: 'color' },
   colorBgPreview: { label: 'Preview Background', description: 'Background color for asset thumbnail previews', category: 'colors', inputType: 'color' },
+  bgPreview: { label: 'Preview Background Image', description: 'Background image for asset thumbnail previews (e.g., a tile sprite)', category: 'backgrounds', inputType: 'image' },
+  bgPreviewTile: { label: 'Tile Preview Background', description: 'Tile (repeat) the preview background image', category: 'backgrounds', inputType: 'toggle' },
 
   // Style settings
   borderRadius: { label: 'Border Radius', description: 'Roundness of corners', category: 'styles', inputType: 'select' },
@@ -413,6 +417,16 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.colorButtonDangerBg) properties['--theme-button-danger-bg'] = assets.colorButtonDangerBg;
   if (assets.colorButtonDangerBorder) properties['--theme-button-danger-border'] = assets.colorButtonDangerBorder;
   if (assets.colorBgPreview) properties['--theme-bg-preview'] = assets.colorBgPreview;
+  if (assets.bgPreview) properties['--asset-bg-preview'] = `url(${assets.bgPreview})`;
+
+  // Preview background tiling
+  if (assets.bgPreviewTile === true || assets.bgPreviewTile === 'true') {
+    properties['--asset-bg-preview-repeat'] = 'repeat';
+    properties['--asset-bg-preview-size'] = 'auto';
+  } else {
+    properties['--asset-bg-preview-repeat'] = 'no-repeat';
+    properties['--asset-bg-preview-size'] = 'cover';
+  }
 
   // Style settings
   if (assets.borderRadius) properties['--theme-border-radius'] = assets.borderRadius;
@@ -501,6 +515,9 @@ const ALL_THEME_CSS_VARS = [
   '--theme-button-danger-bg',
   '--theme-button-danger-border',
   '--theme-bg-preview',
+  '--asset-bg-preview',
+  '--asset-bg-preview-repeat',
+  '--asset-bg-preview-size',
   '--theme-border-radius',
   '--theme-border-width',
   '--theme-font-family',
@@ -541,6 +558,8 @@ export function notifyThemeAssetsChanged(): void {
   const assets = loadThemeAssets();
   listeners.forEach(listener => listener(assets));
   applyThemeAssets();
+  // Clear the preview background cache so it reloads with new settings
+  clearPreviewBgCache();
 }
 
 // ==========================================
@@ -678,4 +697,118 @@ export async function uploadImageWithFallback(
   // Fall back to data URL if upload fails
   console.warn('Falling back to data URL for', assetKey);
   return { url: dataUrl, isStorageUrl: false, error: result.error };
+}
+
+// ==========================================
+// CANVAS BACKGROUND DRAWING UTILITIES
+// ==========================================
+
+// Cache for preview background image
+let previewBgImageCache: { url: string; img: HTMLImageElement } | null = null;
+
+/**
+ * Get the preview background color from theme settings
+ */
+export function getPreviewBgColor(): string {
+  return getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-preview').trim() || '#15100a';
+}
+
+/**
+ * Get the preview background image URL from theme settings (without the url() wrapper)
+ */
+export function getPreviewBgImageUrl(): string | null {
+  const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--asset-bg-preview').trim();
+  if (!cssValue || cssValue === 'none') return null;
+
+  // Extract URL from url(...)
+  const match = cssValue.match(/url\(["']?([^"')]+)["']?\)/);
+  return match ? match[1] : null;
+}
+
+/**
+ * Check if preview background should be tiled
+ */
+export function getPreviewBgTiled(): boolean {
+  const repeat = getComputedStyle(document.documentElement).getPropertyValue('--asset-bg-preview-repeat').trim();
+  return repeat === 'repeat';
+}
+
+/**
+ * Draw the preview background on a canvas context.
+ * Supports both solid color and image backgrounds (tiled or stretched).
+ *
+ * @param ctx - Canvas 2D rendering context
+ * @param width - Canvas width
+ * @param height - Canvas height
+ * @param onComplete - Optional callback when background is drawn (needed for async image loading)
+ */
+export function drawPreviewBackground(
+  ctx: CanvasRenderingContext2D,
+  width: number,
+  height: number,
+  onComplete?: () => void
+): void {
+  const bgColor = getPreviewBgColor();
+  const bgImageUrl = getPreviewBgImageUrl();
+  const tiled = getPreviewBgTiled();
+
+  // Always draw the background color first (as fallback)
+  ctx.fillStyle = bgColor;
+  ctx.fillRect(0, 0, width, height);
+
+  // If no background image, we're done
+  if (!bgImageUrl) {
+    onComplete?.();
+    return;
+  }
+
+  // Check if we have the image cached
+  if (previewBgImageCache && previewBgImageCache.url === bgImageUrl && previewBgImageCache.img.complete) {
+    drawBgImage(ctx, previewBgImageCache.img, width, height, tiled);
+    onComplete?.();
+    return;
+  }
+
+  // Load the background image
+  const img = new Image();
+  img.onload = () => {
+    previewBgImageCache = { url: bgImageUrl, img };
+    drawBgImage(ctx, img, width, height, tiled);
+    onComplete?.();
+  };
+  img.onerror = () => {
+    // Failed to load, just use the color background
+    onComplete?.();
+  };
+  img.src = bgImageUrl;
+}
+
+/**
+ * Helper to draw the background image (tiled or stretched)
+ */
+function drawBgImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  width: number,
+  height: number,
+  tiled: boolean
+): void {
+  if (tiled) {
+    // Create a pattern and fill
+    const pattern = ctx.createPattern(img, 'repeat');
+    if (pattern) {
+      ctx.fillStyle = pattern;
+      ctx.fillRect(0, 0, width, height);
+    }
+  } else {
+    // Stretch to cover
+    ctx.drawImage(img, 0, 0, width, height);
+  }
+}
+
+/**
+ * Clear the preview background image cache (call when theme changes)
+ */
+export function clearPreviewBgCache(): void {
+  previewBgImageCache = null;
 }

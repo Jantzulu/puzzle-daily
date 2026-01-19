@@ -1,6 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import type { CustomSprite } from '../../utils/assetStorage';
 import { drawSprite } from './SpriteEditor';
+import { drawPreviewBackground } from '../../utils/themeAssets';
 
 interface SpriteThumbnailProps {
   sprite?: CustomSprite;
@@ -36,11 +37,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     let animationFrameId: number | null = null;
 
     const renderThumbnail = async () => {
-      // Clear and draw background using theme color
-      const previewBg = getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-preview').trim() || '#15100a';
+      // Clear canvas first
       ctx.clearRect(0, 0, size, size);
-      ctx.fillStyle = previewBg;
-      ctx.fillRect(0, 0, size, size);
 
       // Determine what to render based on sprite mode
       let spriteSheet = null;
@@ -57,11 +55,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         imageData = sprite.idleImageData || sprite.imageData;
       }
 
-      // Priority: sprite sheet > static image > shapes
-      if (spriteSheet?.imageData) {
-        // Render animated sprite sheet
-        const img = new Image();
-        await new Promise<void>((resolve) => {
+      // Draw preview background (color and/or image)
+      drawPreviewBackground(ctx, size, size, () => {
+        // Priority: sprite sheet > static image > shapes
+        if (spriteSheet?.imageData) {
+          // Render animated sprite sheet
+          const img = new Image();
           img.onload = () => {
             let frameIndex = 0;
             const frameCount = spriteSheet.frameCount || 4;
@@ -81,70 +80,67 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
                 lastFrameTime = now;
               }
 
-              // Clear canvas
-              ctx.clearRect(0, 0, size, size);
-              ctx.fillStyle = previewBg;
-              ctx.fillRect(0, 0, size, size);
+              // Redraw background then sprite frame
+              drawPreviewBackground(ctx, size, size, () => {
+                // Calculate frame dimensions
+                const frameWidth = spriteSheet.frameWidth || img.width / frameCount;
+                const frameHeight = spriteSheet.frameHeight || img.height;
 
-              // Calculate frame dimensions
-              const frameWidth = spriteSheet.frameWidth || img.width / frameCount;
-              const frameHeight = spriteSheet.frameHeight || img.height;
+                // Calculate display size preserving aspect ratio
+                const maxSize = (sprite.size || 0.6) * size;
+                const frameAspectRatio = frameWidth / frameHeight;
+                let drawWidth = maxSize;
+                let drawHeight = maxSize;
 
-              // Calculate display size preserving aspect ratio
-              const maxSize = (sprite.size || 0.6) * size;
-              const frameAspectRatio = frameWidth / frameHeight;
-              let drawWidth = maxSize;
-              let drawHeight = maxSize;
+                if (frameAspectRatio > 1) {
+                  drawHeight = maxSize / frameAspectRatio;
+                } else {
+                  drawWidth = maxSize * frameAspectRatio;
+                }
 
-              if (frameAspectRatio > 1) {
-                drawHeight = maxSize / frameAspectRatio;
-              } else {
-                drawWidth = maxSize * frameAspectRatio;
-              }
-
-              // Draw current frame
-              const sourceX = frameIndex * frameWidth;
-              ctx.drawImage(
-                img,
-                sourceX, 0, frameWidth, frameHeight,
-                size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight
-              );
+                // Draw current frame
+                const sourceX = frameIndex * frameWidth;
+                ctx.drawImage(
+                  img,
+                  sourceX, 0, frameWidth, frameHeight,
+                  size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight
+                );
+              });
 
               animationFrameId = requestAnimationFrame(animate);
             };
 
             animate();
-            resolve();
           };
-          img.onerror = () => resolve();
+          img.onerror = () => {};
           img.src = spriteSheet.imageData;
-        });
-      } else if (imageData) {
-        // Render static image
-        const img = new Image();
-        await new Promise<void>((resolve) => {
+        } else if (imageData) {
+          // Render static image
+          const img = new Image();
           img.onload = () => {
-            const maxSize = (sprite.size || 0.6) * size;
-            const aspectRatio = img.width / img.height;
-            let drawWidth = maxSize;
-            let drawHeight = maxSize;
+            // Redraw background then sprite
+            drawPreviewBackground(ctx, size, size, () => {
+              const maxSize = (sprite.size || 0.6) * size;
+              const aspectRatio = img.width / img.height;
+              let drawWidth = maxSize;
+              let drawHeight = maxSize;
 
-            if (aspectRatio > 1) {
-              drawHeight = maxSize / aspectRatio;
-            } else {
-              drawWidth = maxSize * aspectRatio;
-            }
+              if (aspectRatio > 1) {
+                drawHeight = maxSize / aspectRatio;
+              } else {
+                drawWidth = maxSize * aspectRatio;
+              }
 
-            ctx.drawImage(img, size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight);
-            resolve();
+              ctx.drawImage(img, size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight);
+            });
           };
-          img.onerror = () => resolve();
+          img.onerror = () => {};
           img.src = imageData;
-        });
-      } else {
-        // Draw sprite using shapes
-        drawSprite(ctx, sprite, size / 2, size / 2, size);
-      }
+        } else {
+          // Draw sprite using shapes
+          drawSprite(ctx, sprite, size / 2, size / 2, size);
+        }
+      });
     };
 
     renderThumbnail();

@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
+import { drawPreviewBackground, getPreviewBgColor } from '../../utils/themeAssets';
 
 // Global image cache for GIF animation support
 const globalImageCache = new Map<string, HTMLImageElement>();
@@ -288,76 +289,72 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       // Clear
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw preview background using theme color
-      const previewBg = getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-preview').trim() || '#15100a';
-      ctx.fillStyle = previewBg;
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Draw preview background (color and/or image)
+      drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
+        // Draw sprite based on mode after background is ready
+        if (spriteMode === 'directional' && sprite.directionalSprites) {
+          const dirSprite = sprite.directionalSprites[selectedDirection] || sprite.directionalSprites['default'];
+          if (dirSprite) {
+            const imageToShow = dirSprite.idleImageData || dirSprite.imageData;
+            if (imageToShow) {
+              // Load and draw image
+              const img = new Image();
+              img.onload = () => {
+                // Redraw background then sprite
+                drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
+                  // Preserve aspect ratio
+                  const maxSize = (dirSprite.size || 0.6) * canvas.width;
+                  const aspectRatio = img.width / img.height;
+                  let drawWidth = maxSize;
+                  let drawHeight = maxSize;
 
-      // Draw sprite based on mode
-      if (spriteMode === 'directional' && sprite.directionalSprites) {
-        const dirSprite = sprite.directionalSprites[selectedDirection] || sprite.directionalSprites['default'];
-        if (dirSprite) {
-          const imageToShow = dirSprite.idleImageData || dirSprite.imageData;
-          if (imageToShow) {
-            // Load and draw image
+                  if (aspectRatio > 1) {
+                    // Wider than tall
+                    drawHeight = maxSize / aspectRatio;
+                  } else {
+                    // Taller than wide
+                    drawWidth = maxSize * aspectRatio;
+                  }
+
+                  ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
+                });
+              };
+              img.src = imageToShow;
+            } else {
+              drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
+            }
+          }
+        } else {
+          // Simple mode
+          const simpleImageToShow = sprite.idleImageData || sprite.imageData;
+          if (simpleImageToShow) {
             const img = new Image();
             img.onload = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              ctx.fillStyle = previewBg;
-              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              // Redraw background then sprite
+              drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
+                // Preserve aspect ratio
+                const maxSize = (sprite.size || 0.6) * canvas.width;
+                const aspectRatio = img.width / img.height;
+                let drawWidth = maxSize;
+                let drawHeight = maxSize;
 
-              // Preserve aspect ratio
-              const maxSize = (dirSprite.size || 0.6) * canvas.width;
-              const aspectRatio = img.width / img.height;
-              let drawWidth = maxSize;
-              let drawHeight = maxSize;
+                if (aspectRatio > 1) {
+                  // Wider than tall
+                  drawHeight = maxSize / aspectRatio;
+                } else {
+                  // Taller than wide
+                  drawWidth = maxSize * aspectRatio;
+                }
 
-              if (aspectRatio > 1) {
-                // Wider than tall
-                drawHeight = maxSize / aspectRatio;
-              } else {
-                // Taller than wide
-                drawWidth = maxSize * aspectRatio;
-              }
-
-              ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
+                ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
+              });
             };
-            img.src = imageToShow;
+            img.src = simpleImageToShow;
           } else {
-            drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
+            drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
           }
         }
-      } else {
-        // Simple mode
-        const simpleImageToShow = sprite.idleImageData || sprite.imageData;
-        if (simpleImageToShow) {
-          const img = new Image();
-          img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = previewBg;
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-            // Preserve aspect ratio
-            const maxSize = (sprite.size || 0.6) * canvas.width;
-            const aspectRatio = img.width / img.height;
-            let drawWidth = maxSize;
-            let drawHeight = maxSize;
-
-            if (aspectRatio > 1) {
-              // Wider than tall
-              drawHeight = maxSize / aspectRatio;
-            } else {
-              // Taller than wide
-              drawWidth = maxSize * aspectRatio;
-            }
-
-            ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
-          };
-          img.src = simpleImageToShow;
-        } else {
-          drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
-        }
-      }
+      });
     };
 
     renderPreview();

@@ -541,6 +541,10 @@ html body.theme-font-active,
 /* Theme-aware sprite/asset preview backgrounds */
 .sprite-preview-bg {
   background-color: var(--theme-bg-preview, #15100a) !important;
+  background-image: var(--asset-bg-preview, none) !important;
+  background-repeat: var(--asset-bg-preview-repeat, no-repeat) !important;
+  background-size: var(--asset-bg-preview-size, cover) !important;
+  background-position: center !important;
 }
 
 /* Override bg-stone-800/80 for info cards when theme card color/image is set */
