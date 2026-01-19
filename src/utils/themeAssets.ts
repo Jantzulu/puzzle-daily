@@ -170,6 +170,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconHeartEmpty: { label: 'Heart Icon (Empty)', description: 'Custom empty heart for lives display', category: 'icons', inputType: 'image' },
   iconSword: { label: 'Sword Icon', description: 'Attack/combat icon', category: 'icons', inputType: 'image' },
   iconShield: { label: 'Shield Icon', description: 'Defense/protection icon', category: 'icons', inputType: 'image' },
+  iconBossHealthBar: { label: 'Boss Health Bar Icon', description: 'Small skull/icon shown next to boss health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconNavPlay: { label: 'Play Nav Icon', description: 'Icon/emoji for Play button in navbar (default: ⚔)', category: 'icons', inputType: 'text' },
   iconNavCompendium: { label: 'Compendium Nav Icon', description: 'Icon/emoji for Compendium button in navbar (default: 📖)', category: 'icons', inputType: 'text' },
   iconNavEditor: { label: 'Editor Nav Icon', description: 'Icon/emoji for Map Editor button in navbar (default: 🛠)', category: 'icons', inputType: 'text' },

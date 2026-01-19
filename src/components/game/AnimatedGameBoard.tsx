@@ -2182,14 +2182,59 @@ function getHealthBarKey(px: number, py: number): string {
 let bossIconImage: HTMLImageElement | null = null;
 let bossIconLoading = false;
 let lastBossIconUrl: string | null = null;
+let defaultBossIconGenerated: string | null = null;
 
-// Default skull icon as a tiny data URL (8x8 pixel skull)
-const DEFAULT_BOSS_ICON = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAgAAAAICAYAAADED76LAAAAAXNSR0IArs4c6QAAAERJREFUGFdj/P///38GBgYG5v///zMwMDD8Z2Bg+A9hMzAw/GdgYGD4z8DAwPC/EibJAFH0/z8DA8N/BgaG/4yEJBkYALrEIQnveCPwAAAAAElFTkSuQmCC';
+// Generate a default skull icon using canvas (8x8 pixel art skull)
+function generateDefaultBossIcon(): string {
+  if (defaultBossIconGenerated) return defaultBossIconGenerated;
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 8;
+  canvas.height = 8;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  // Draw a simple 8x8 skull pixel art
+  ctx.fillStyle = '#ffffff';
+  // Row 0: top of skull
+  ctx.fillRect(2, 0, 4, 1);
+  // Row 1: wider skull
+  ctx.fillRect(1, 1, 6, 1);
+  // Row 2: full width with eyes
+  ctx.fillRect(0, 2, 8, 1);
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(1, 2, 2, 1); // left eye
+  ctx.fillRect(5, 2, 2, 1); // right eye
+  // Row 3: skull with nose
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 3, 8, 1);
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(3, 3, 2, 1); // nose
+  // Row 4: upper jaw
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(1, 4, 6, 1);
+  // Row 5: teeth row
+  ctx.fillRect(1, 5, 6, 1);
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(2, 5, 1, 1); // tooth gap
+  ctx.fillRect(5, 5, 1, 1); // tooth gap
+  // Row 6: lower teeth
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(2, 6, 4, 1);
+  ctx.fillStyle = '#000000';
+  ctx.fillRect(3, 6, 2, 1); // gap
+  // Row 7: jaw bottom
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(3, 7, 2, 1);
+
+  defaultBossIconGenerated = canvas.toDataURL('image/png');
+  return defaultBossIconGenerated;
+}
 
 // Helper to load boss icon
 function loadBossIcon(): HTMLImageElement | null {
   const customIconUrl = getThemeAsset('iconBossHealthBar');
-  const iconUrl = customIconUrl || DEFAULT_BOSS_ICON;
+  const iconUrl = customIconUrl || generateDefaultBossIcon();
 
   // Check if we need to reload (URL changed)
   if (iconUrl !== lastBossIconUrl) {
@@ -2250,7 +2295,7 @@ function drawHealthBar(
   }
 
   // Draw 1px border around the bar
-  ctx.fillStyle = '#111';
+  ctx.fillStyle = '#141414';
   ctx.fillRect(startX, startY, barWidth, barHeight);
 
   // Track health changes for flash effects
