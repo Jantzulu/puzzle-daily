@@ -63,7 +63,22 @@ function Navigation() {
               {themeAssets.siteTitle || 'Puzzle Daily'}
             </h1>
             {themeAssets.siteSubtitle && (
-              <span className="text-sm md:text-base font-medieval text-copper-300/80 text-shadow-dungeon hidden sm:inline">
+              <span
+                className="font-medieval text-shadow-dungeon hidden sm:inline"
+                style={{
+                  color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
+                  fontSize: (() => {
+                    const sizeMap: Record<string, string> = {
+                      'x-small': '0.75rem',
+                      'small': '0.875rem',
+                      'medium': '1rem',
+                      'large': '1.125rem',
+                      'x-large': '1.25rem',
+                    };
+                    return sizeMap[themeAssets.siteSubtitleSize || 'small'] || '0.875rem';
+                  })()
+                }}
+              >
                 {themeAssets.siteSubtitle}
               </span>
             )}

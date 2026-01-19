@@ -85,6 +85,14 @@ const FONT_SIZE_OPTIONS = [
   { value: 'x-large', label: 'Extra Large (1.25x)' },
 ];
 
+const SUBTITLE_SIZE_OPTIONS = [
+  { value: 'x-small', label: 'Extra Small' },
+  { value: 'small', label: 'Small (default)' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'large', label: 'Large' },
+  { value: 'x-large', label: 'Extra Large (1.25x)' },
+];
+
 interface AssetUploadProps {
   assetKey: ThemeAssetKey;
   value?: string;
@@ -292,6 +300,10 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
     case 'fontSizeHeading':
       options = FONT_SIZE_OPTIONS;
       defaultValue = 'medium';
+      break;
+    case 'siteSubtitleSize':
+      options = SUBTITLE_SIZE_OPTIONS;
+      defaultValue = 'small';
       break;
   }
 
