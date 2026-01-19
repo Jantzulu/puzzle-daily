@@ -2274,16 +2274,6 @@ function drawHealthBar(
 
       ctx.fillStyle = gradient;
       ctx.fillRect(segX + 0.5, startY + 1.5, segW, segH - 1);
-
-      // Inner highlight (top edge)
-      ctx.fillStyle = hasShield
-        ? adjustColorBrightness(shieldColor, 40)
-        : 'rgba(255, 255, 255, 0.3)';
-      ctx.fillRect(segX + 0.5, startY + 1.5, segW, 1);
-
-      // Inner shadow (bottom edge)
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
-      ctx.fillRect(segX + 0.5, startY + segH, segW, 1);
     } else {
       // Empty segment (lost health) - dark red gradient
       const emptyGradient = ctx.createLinearGradient(segX, startY + 1, segX, startY + 1 + segH);
