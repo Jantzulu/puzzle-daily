@@ -3204,7 +3204,7 @@ function drawPuzzleVignette(
     // Build a lookup of which edges exist (for corner processing)
     const edgeSet = new Set<string>();
     borderData.edges.forEach(({ x, y, edge }) => {
-      edgeSet.set(`${x},${y},${edge}`);
+      edgeSet.add(`${x},${y},${edge}`);
     });
 
     // PASS 1: Draw shadow for EVERY edge (both outer and interior)
