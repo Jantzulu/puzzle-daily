@@ -3196,233 +3196,145 @@ function drawPuzzleVignette(
   const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
 
   if (hasVoidTiles) {
-    // SINGLE-PASS APPROACH for irregular shapes:
-    // Shadows only cover wall sprites (not tiles), fading from void-facing edge inward.
-    // Each wall segment gets exactly one shadow application.
+    // SIMPLIFIED APPROACH for irregular shapes:
+    // - Each edge shadows ONLY its own wall segment (no extension into corners)
+    // - Convex corners (outer corners) get their own shadow
+    // - Concave corners (inner corners) get NO shadow - they don't touch void directly
     //
-    // KEY INSIGHT: At concave corners (inner corners), two perpendicular edges meet.
-    // To avoid double-darkening, we let HORIZONTAL edges (top/bottom) claim concave corners,
-    // and VERTICAL edges (left/right) stop short of them.
+    // This prevents any overlap by keeping each wall piece completely separate.
     const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
 
-    // Build lookup sets for corners
-    const convexCornerSet = new Set<string>();
-    const concaveCornerSet = new Set<string>();
-    borderData.corners.forEach(({ x, y, type }) => {
-      if (type.startsWith('convex')) {
-        convexCornerSet.add(`${x},${y},${type}`);
-      } else if (type.startsWith('concave')) {
-        concaveCornerSet.add(`${x},${y},${type}`);
-      }
-    });
-
-    // Track which convex corners have been shadowed (to avoid double-shadowing)
-    const shadowedConvexCorners = new Set<string>();
-
-    // PASS 1: Draw shadows for HORIZONTAL edges (top/bottom)
-    // These edges WILL extend into concave corners (they claim the concave corner space)
+    // Draw shadows for all edges (no corner extension)
     borderData.edges.forEach(({ x, y, edge }) => {
-      if (edge !== 'top' && edge !== 'bottom') return;
-
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
 
       ctx.save();
       ctx.beginPath();
 
-      if (edge === 'top') {
-        // Top wall: void is above, shadow fades downward
-        const wallTop = py - BORDER_SIZE;
-        const wallBottom = py;
-
-        // Check for convex corners at this tile
-        const hasTLConvex = convexCornerSet.has(`${x},${y},convex-tl`);
-        const hasTRConvex = convexCornerSet.has(`${x},${y},convex-tr`);
-
-        // Check for concave corners at ADJACENT tiles that share wall space
-        // A concave-tr at (x-1, y) means: tile (x-1,y) has void at its top-right diagonal
-        // This concave corner is at the LEFT side of our top edge
-        const hasConcaveLeft = concaveCornerSet.has(`${x - 1},${y},concave-tr`);
-        // A concave-tl at (x+1, y) means: tile (x+1,y) has void at its top-left diagonal
-        // This concave corner is at the RIGHT side of our top edge
-        const hasConcaveRight = concaveCornerSet.has(`${x + 1},${y},concave-tl`);
-
-        // Extend into convex corners if not yet shadowed
-        let extendLeft = (hasTLConvex && !shadowedConvexCorners.has(`${x},${y},convex-tl`)) ? SIDE_BORDER_SIZE : 0;
-        let extendRight = (hasTRConvex && !shadowedConvexCorners.has(`${x},${y},convex-tr`)) ? SIDE_BORDER_SIZE : 0;
-
-        // Also extend into adjacent concave corners (horizontal edges claim them)
-        if (hasConcaveLeft) extendLeft = SIDE_BORDER_SIZE;
-        if (hasConcaveRight) extendRight = SIDE_BORDER_SIZE;
-
-        if (hasTLConvex && extendLeft > 0) shadowedConvexCorners.add(`${x},${y},convex-tl`);
-        if (hasTRConvex && extendRight > 0) shadowedConvexCorners.add(`${x},${y},convex-tr`);
-
-        ctx.rect(px - extendLeft, wallTop, TILE_SIZE + extendLeft + extendRight, BORDER_SIZE);
-        ctx.clip();
-        const gradient = ctx.createLinearGradient(0, wallTop, 0, wallBottom);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px - extendLeft, wallTop, TILE_SIZE + extendLeft + extendRight, BORDER_SIZE);
-      } else {
-        // Bottom wall: void is below, shadow fades upward
-        const wallTop = py + TILE_SIZE;
-        const wallBottom = wallTop + BORDER_SIZE;
-
-        // Check for convex corners
-        const hasBLConvex = convexCornerSet.has(`${x},${y},convex-bl`);
-        const hasBRConvex = convexCornerSet.has(`${x},${y},convex-br`);
-
-        // Check for concave corners at adjacent tiles
-        const hasConcaveLeft = concaveCornerSet.has(`${x - 1},${y},concave-br`);
-        const hasConcaveRight = concaveCornerSet.has(`${x + 1},${y},concave-bl`);
-
-        let extendLeft = (hasBLConvex && !shadowedConvexCorners.has(`${x},${y},convex-bl`)) ? SIDE_BORDER_SIZE : 0;
-        let extendRight = (hasBRConvex && !shadowedConvexCorners.has(`${x},${y},convex-br`)) ? SIDE_BORDER_SIZE : 0;
-
-        if (hasConcaveLeft) extendLeft = SIDE_BORDER_SIZE;
-        if (hasConcaveRight) extendRight = SIDE_BORDER_SIZE;
-
-        if (hasBLConvex && extendLeft > 0) shadowedConvexCorners.add(`${x},${y},convex-bl`);
-        if (hasBRConvex && extendRight > 0) shadowedConvexCorners.add(`${x},${y},convex-br`);
-
-        ctx.rect(px - extendLeft, wallTop, TILE_SIZE + extendLeft + extendRight, BORDER_SIZE);
-        ctx.clip();
-        const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallTop);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(px - extendLeft, wallTop, TILE_SIZE + extendLeft + extendRight, BORDER_SIZE);
+      switch (edge) {
+        case 'top': {
+          // Top wall: void is above, shadow fades downward
+          const wallTop = py - BORDER_SIZE;
+          const wallBottom = py;
+          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE);
+          ctx.clip();
+          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallBottom);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(px, wallTop, TILE_SIZE, BORDER_SIZE);
+          break;
+        }
+        case 'bottom': {
+          // Bottom wall: void is below, shadow fades upward
+          const wallTop = py + TILE_SIZE;
+          const wallBottom = wallTop + BORDER_SIZE;
+          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE);
+          ctx.clip();
+          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallTop);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(px, wallTop, TILE_SIZE, BORDER_SIZE);
+          break;
+        }
+        case 'left': {
+          // Left wall: void is to the left, shadow fades rightward
+          const wallLeft = px - SIDE_BORDER_SIZE;
+          const wallRight = px;
+          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
+          ctx.clip();
+          const gradient = ctx.createLinearGradient(wallLeft, 0, wallRight, 0);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
+          break;
+        }
+        case 'right': {
+          // Right wall: void is to the right, shadow fades leftward
+          const wallLeft = px + TILE_SIZE;
+          const wallRight = wallLeft + SIDE_BORDER_SIZE;
+          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
+          ctx.clip();
+          const gradient = ctx.createLinearGradient(wallRight, 0, wallLeft, 0);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
+          break;
+        }
       }
 
       ctx.restore();
     });
 
-    // PASS 2: Draw shadows for VERTICAL edges (left/right)
-    // These edges do NOT extend into concave corners (horizontal edges already claimed them)
-    // They DO extend into convex corners if not already shadowed
-    borderData.edges.forEach(({ x, y, edge }) => {
-      if (edge !== 'left' && edge !== 'right') return;
-
-      const px = offsetX + x * TILE_SIZE;
-      const py = offsetY + y * TILE_SIZE;
-
-      ctx.save();
-      ctx.beginPath();
-
-      if (edge === 'left') {
-        // Left wall: void is to the left, shadow fades rightward
-        const wallLeft = px - SIDE_BORDER_SIZE;
-        const wallRight = px;
-
-        // Check for convex corners
-        const hasTLConvex = convexCornerSet.has(`${x},${y},convex-tl`);
-        const hasBLConvex = convexCornerSet.has(`${x},${y},convex-bl`);
-
-        // Check for concave corners at ADJACENT tiles (above/below this tile)
-        // A concave-bl at (x, y-1) is at the TOP of our left edge
-        const hasConcaveTop = concaveCornerSet.has(`${x},${y - 1},concave-bl`);
-        // A concave-tl at (x, y+1) is at the BOTTOM of our left edge
-        const hasConcaveBottom = concaveCornerSet.has(`${x},${y + 1},concave-tl`);
-
-        // Only extend into convex corners, NOT concave
-        let extendUp = (hasTLConvex && !shadowedConvexCorners.has(`${x},${y},convex-tl`)) ? BORDER_SIZE : 0;
-        let extendDown = (hasBLConvex && !shadowedConvexCorners.has(`${x},${y},convex-bl`)) ? BORDER_SIZE : 0;
-
-        // If there's a concave corner, do NOT extend in that direction
-        if (hasConcaveTop) extendUp = 0;
-        if (hasConcaveBottom) extendDown = 0;
-
-        if (hasTLConvex && extendUp > 0) shadowedConvexCorners.add(`${x},${y},convex-tl`);
-        if (hasBLConvex && extendDown > 0) shadowedConvexCorners.add(`${x},${y},convex-bl`);
-
-        ctx.rect(wallLeft, py - extendUp, SIDE_BORDER_SIZE, TILE_SIZE + extendUp + extendDown);
-        ctx.clip();
-        const gradient = ctx.createLinearGradient(wallLeft, 0, wallRight, 0);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(wallLeft, py - extendUp, SIDE_BORDER_SIZE, TILE_SIZE + extendUp + extendDown);
-      } else {
-        // Right wall: void is to the right, shadow fades leftward
-        const wallLeft = px + TILE_SIZE;
-        const wallRight = wallLeft + SIDE_BORDER_SIZE;
-
-        const hasTRConvex = convexCornerSet.has(`${x},${y},convex-tr`);
-        const hasBRConvex = convexCornerSet.has(`${x},${y},convex-br`);
-
-        // Check for concave corners at adjacent tiles
-        const hasConcaveTop = concaveCornerSet.has(`${x},${y - 1},concave-br`);
-        const hasConcaveBottom = concaveCornerSet.has(`${x},${y + 1},concave-tr`);
-
-        let extendUp = (hasTRConvex && !shadowedConvexCorners.has(`${x},${y},convex-tr`)) ? BORDER_SIZE : 0;
-        let extendDown = (hasBRConvex && !shadowedConvexCorners.has(`${x},${y},convex-br`)) ? BORDER_SIZE : 0;
-
-        if (hasConcaveTop) extendUp = 0;
-        if (hasConcaveBottom) extendDown = 0;
-
-        if (hasTRConvex && extendUp > 0) shadowedConvexCorners.add(`${x},${y},convex-tr`);
-        if (hasBRConvex && extendDown > 0) shadowedConvexCorners.add(`${x},${y},convex-br`);
-
-        ctx.rect(wallLeft, py - extendUp, SIDE_BORDER_SIZE, TILE_SIZE + extendUp + extendDown);
-        ctx.clip();
-        const gradient = ctx.createLinearGradient(wallRight, 0, wallLeft, 0);
-        gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = gradient;
-        ctx.fillRect(wallLeft, py - extendUp, SIDE_BORDER_SIZE, TILE_SIZE + extendUp + extendDown);
-      }
-
-      ctx.restore();
-    });
-
-    // PASS 3: Handle any convex corners that weren't covered by edges (diagonal void only)
+    // Draw shadows for CONVEX corners only (outer corners that touch void)
+    // Concave corners (inner corners) don't get shadows - they don't touch void
     borderData.corners.forEach(({ x, y, type }) => {
       if (!type.startsWith('convex')) return;
-      if (shadowedConvexCorners.has(`${x},${y},${type}`)) return; // Already handled
 
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
 
       let clipX: number, clipY: number;
-      let hStart: number, hEnd: number;
+      let gradientStartX: number, gradientEndX: number;
+      let gradientStartY: number, gradientEndY: number;
 
+      // For convex corners, create a diagonal-ish gradient from the outer corner
       switch (type) {
         case 'convex-tl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py - BORDER_SIZE;
-          hStart = clipX;
-          hEnd = clipX + SIDE_BORDER_SIZE;
+          // Gradient from top-left corner toward bottom-right
+          gradientStartX = clipX;
+          gradientStartY = clipY;
+          gradientEndX = clipX + SIDE_BORDER_SIZE;
+          gradientEndY = clipY + BORDER_SIZE;
           break;
         case 'convex-tr':
           clipX = px + TILE_SIZE;
           clipY = py - BORDER_SIZE;
-          hStart = clipX + SIDE_BORDER_SIZE;
-          hEnd = clipX;
+          // Gradient from top-right corner toward bottom-left
+          gradientStartX = clipX + SIDE_BORDER_SIZE;
+          gradientStartY = clipY;
+          gradientEndX = clipX;
+          gradientEndY = clipY + BORDER_SIZE;
           break;
         case 'convex-bl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py + TILE_SIZE;
-          hStart = clipX;
-          hEnd = clipX + SIDE_BORDER_SIZE;
+          // Gradient from bottom-left corner toward top-right
+          gradientStartX = clipX;
+          gradientStartY = clipY + BORDER_SIZE;
+          gradientEndX = clipX + SIDE_BORDER_SIZE;
+          gradientEndY = clipY;
           break;
         case 'convex-br':
           clipX = px + TILE_SIZE;
           clipY = py + TILE_SIZE;
-          hStart = clipX + SIDE_BORDER_SIZE;
-          hEnd = clipX;
+          // Gradient from bottom-right corner toward top-left
+          gradientStartX = clipX + SIDE_BORDER_SIZE;
+          gradientStartY = clipY + BORDER_SIZE;
+          gradientEndX = clipX;
+          gradientEndY = clipY;
           break;
         default:
           return;
       }
 
-      // Apply horizontal gradient as default for diagonal-only corners
       ctx.save();
       ctx.beginPath();
       ctx.rect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
       ctx.clip();
-      const gradient = ctx.createLinearGradient(hStart, 0, hEnd, 0);
+
+      // Use a radial gradient from the outer corner for more natural corner shadow
+      const cornerX = type.includes('l') ? clipX : clipX + SIDE_BORDER_SIZE;
+      const cornerY = type.includes('t') ? clipY : clipY + BORDER_SIZE;
+      const radius = Math.max(SIDE_BORDER_SIZE, BORDER_SIZE) * 1.5;
+
+      const gradient = ctx.createRadialGradient(cornerX, cornerY, 0, cornerX, cornerY, radius);
       gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = gradient;
