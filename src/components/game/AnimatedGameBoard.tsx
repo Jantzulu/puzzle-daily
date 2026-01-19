@@ -2186,12 +2186,17 @@ function drawHealthBar(
   statusEffects?: StatusEffectInstance[],
   now: number = Date.now()
 ) {
-  const barWidth = 32; // Fixed total width of the health bar
-  const barHeight = 4; // Height of the health bar
+  const barWidth = 32; // Fixed total width of the health bar (including border)
+  const barHeight = 5; // Total height including 1px border on each side (3px inner + 2px border)
+  const innerHeight = 3; // Height of the colored bar inside the border
 
   // Position: centered above the sprite, near the top of the tile
   const startX = px + (TILE_SIZE - barWidth) / 2;
   const startY = py + 2; // 2px from top of tile
+
+  // Draw 1px border around the bar
+  ctx.fillStyle = '#111';
+  ctx.fillRect(startX, startY, barWidth, barHeight);
 
   // Track health changes for flash effects
   const key = getHealthBarKey(px, py);
@@ -2236,12 +2241,13 @@ function drawHealthBar(
     ? 1 - (timeSinceChange / flashDuration)
     : 0;
 
-  // Calculate segment width based on max health
-  const segmentWidth = barWidth / maxHealth;
+  // Calculate segment width based on max health (accounting for 1px border on each side)
+  const innerWidth = barWidth - 2;
+  const segmentWidth = innerWidth / maxHealth;
 
-  // Draw health segments
+  // Draw health segments inside the border
   for (let i = 0; i < maxHealth; i++) {
-    const segX = startX + i * segmentWidth;
+    const segX = startX + 1 + i * segmentWidth;
     const segW = segmentWidth;
 
     // Determine segment color based on display health for smooth transitions
@@ -2251,11 +2257,11 @@ function drawHealthBar(
     if (fillAmount > 0) {
       // Filled health - green or shield color
       ctx.fillStyle = hasShield ? shieldColor : '#4ade80';
-      ctx.fillRect(segX, startY, segW, barHeight);
+      ctx.fillRect(segX, startY + 1, segW, innerHeight);
     } else {
       // Empty segment (lost health) - dark red
       ctx.fillStyle = '#991b1b';
-      ctx.fillRect(segX, startY, segW, barHeight);
+      ctx.fillRect(segX, startY + 1, segW, innerHeight);
     }
   }
 
@@ -2263,8 +2269,8 @@ function drawHealthBar(
   if (maxHealth > 1) {
     ctx.fillStyle = '#111';
     for (let i = 1; i < maxHealth; i++) {
-      const dividerX = startX + i * segmentWidth;
-      ctx.fillRect(dividerX - 0.5, startY, 1, barHeight);
+      const dividerX = startX + 1 + i * segmentWidth;
+      ctx.fillRect(dividerX - 0.5, startY + 1, 1, innerHeight);
     }
   }
 
@@ -2281,7 +2287,7 @@ function drawHealthBar(
       ctx.fillStyle = '#90ff90';
     }
 
-    ctx.fillRect(startX + 1, startY + 1, barWidth - 2, barHeight - 2);
+    ctx.fillRect(startX + 1, startY + 1, innerWidth, innerHeight);
     ctx.restore();
   }
 
