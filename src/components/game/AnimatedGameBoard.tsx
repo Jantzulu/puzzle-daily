@@ -3255,6 +3255,9 @@ function drawPuzzleVignette(
   innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
   innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
 
+  // Check if we have void tiles for inner vignette clipping
+  const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
+
   if (hasVoidTiles) {
     // For irregular shapes, clip the inner vignette to only playable tiles
     ctx.save();
