@@ -869,29 +869,48 @@ export const Game: React.FC = () => {
                   <span className="text-copper-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
-                        case 'defeat_all_enemies':
-                          return 'Defeat all enemies';
-                        case 'defeat_boss':
+                        case 'defeat_all_enemies': {
+                          // Count all enemies that are still alive
+                          const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
+                          return `Defeat all Enemies (${enemyCount})`;
+                        }
+                        case 'defeat_boss': {
                           // Get boss names from placed enemies
-                          const bossNames = gameState.puzzle.enemies
-                            .map(e => loadEnemy(e.enemyId))
-                            .filter(enemy => enemy?.isBoss)
-                            .map(enemy => enemy!.name);
-                          if (bossNames.length === 0) return 'Defeat the boss';
+                          const bossEnemies = gameState.puzzle.enemies
+                            .filter(e => {
+                              const enemy = loadEnemy(e.enemyId);
+                              return enemy?.isBoss && !e.dead;
+                            })
+                            .map(e => loadEnemy(e.enemyId)!);
+                          const bossCount = bossEnemies.length;
+                          const bossNames = bossEnemies.map(enemy => enemy.name);
+                          if (bossNames.length === 0) return 'Defeat the Boss';
                           if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
-                          return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]}`;
-                        case 'collect_all':
-                          return 'Collect all treasure';
+                          return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
+                        }
+                        case 'collect_all': {
+                          // Count collectibles that haven't been collected
+                          const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
+                          return `Collect all Treasure (${collectibleCount})`;
+                        }
+                        case 'collect_keys': {
+                          // Count key collectibles that haven't been collected
+                          const keyCount = gameState.puzzle.collectibles.filter(c => {
+                            const collectible = loadCollectible(c.collectibleId);
+                            return collectible?.effect === 'win_key' && !c.collected;
+                          }).length;
+                          return `Collect all Keys (${keyCount})`;
+                        }
                         case 'reach_goal':
-                          return 'Reach the exit';
+                          return 'Reach the Exit';
                         case 'survive_turns':
-                          return `Survive ${wc.params?.turns ?? 10} turns`;
+                          return `Survive ${wc.params?.turns ?? 10} Turns`;
                         case 'win_in_turns':
-                          return `Win within ${wc.params?.turns ?? 10} turns`;
+                          return `Win within ${wc.params?.turns ?? 10} Turns`;
                         case 'max_characters':
-                          return `Use at most ${wc.params?.characterCount ?? 1} hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
+                          return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
                         case 'characters_alive':
-                          return `Keep ${wc.params?.characterCount ?? 1} hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
+                          return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
                         default:
                           return wc.type;
                       }

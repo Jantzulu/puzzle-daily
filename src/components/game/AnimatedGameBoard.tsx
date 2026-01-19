@@ -3157,12 +3157,17 @@ function drawPersistentAreaEffect(
 // ==========================================
 
 /**
- * Draw a vignette effect on the OUTER edges of the border walls.
+ * Draw a vignette effect on the border walls and playable tiles.
  * This darkens the border walls where they meet the dark background,
- * creating a smooth blend. Does NOT affect the inner game tiles.
+ * creating a smooth blend that makes the puzzle appear to emerge from darkness.
  *
- * For puzzles with void tiles, the vignette is clipped to only affect
- * the border walls around playable tiles, not void areas.
+ * For puzzles with void tiles:
+ * - Edge vignettes are only applied to wall segments that exist (using smart border data)
+ * - Inner vignette is clipped to only affect playable tiles
+ * - Void areas remain completely transparent (showing page background)
+ *
+ * Uses 'source-atop' composite mode to only affect existing pixels,
+ * preventing darkening of transparent areas in wall sprites.
  */
 function drawPuzzleVignette(
   ctx: CanvasRenderingContext2D,
@@ -3177,6 +3182,10 @@ function drawPuzzleVignette(
 
   ctx.save();
 
+  // Use 'source-atop' composite mode - this only draws on existing non-transparent pixels
+  // This prevents darkening of transparent areas in wall sprites
+  ctx.globalCompositeOperation = 'source-atop';
+
   // Calculate the total canvas area including borders
   const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
   const totalHeight = gridHeight * TILE_SIZE + (BORDER_SIZE * 2);
@@ -3184,100 +3193,155 @@ function drawPuzzleVignette(
   // Check if we have void tiles
   const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
 
-  // Helper to create clipping path for border walls only (excludes void tile areas)
-  const clipToBorderAndPlayableTiles = () => {
-    ctx.beginPath();
-    // Add the outer border region
-    // Top border
-    ctx.rect(0, 0, totalWidth, BORDER_SIZE);
-    // Bottom border
-    ctx.rect(0, BORDER_SIZE + gridHeight * TILE_SIZE, totalWidth, BORDER_SIZE);
-    // Left border
-    ctx.rect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridHeight * TILE_SIZE);
-    // Right border
-    ctx.rect(SIDE_BORDER_SIZE + gridWidth * TILE_SIZE, BORDER_SIZE, SIDE_BORDER_SIZE, gridHeight * TILE_SIZE);
-    // Add playable tiles
-    for (let y = 0; y < gridHeight; y++) {
-      for (let x = 0; x < gridWidth; x++) {
-        if (tiles[y]?.[x] !== null) {
-          const px = offsetX + x * TILE_SIZE;
-          const py = offsetY + y * TILE_SIZE;
-          ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+  if (hasVoidTiles) {
+    // For irregular shapes, use smart border data to only apply vignettes
+    // to areas where walls actually exist
+    const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
+
+    // Draw vignette per-edge for each wall segment
+    borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
+      const px = offsetX + x * TILE_SIZE;
+      const py = offsetY + y * TILE_SIZE;
+
+      ctx.save();
+      ctx.beginPath();
+
+      switch (edge) {
+        case 'top': {
+          // Top wall extends upward from the tile
+          const wallTop = py - BORDER_SIZE;
+          const wallBottom = py;
+          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE + vignetteSize);
+          ctx.clip();
+
+          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallTop + vignetteSize);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(px, wallTop, TILE_SIZE, vignetteSize);
+          break;
+        }
+        case 'bottom': {
+          // Bottom wall extends downward from the tile
+          const wallHeight = isOuterEdge ? BORDER_SIZE : SIDE_BORDER_SIZE;
+          const wallTop = py + TILE_SIZE;
+          const wallBottom = wallTop + wallHeight;
+          ctx.rect(px, wallTop - vignetteSize, TILE_SIZE, wallHeight + vignetteSize);
+          ctx.clip();
+
+          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallBottom - vignetteSize);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(px, wallBottom - vignetteSize, TILE_SIZE, vignetteSize);
+          break;
+        }
+        case 'left': {
+          // Left wall extends to the left of the tile
+          const wallLeft = px - SIDE_BORDER_SIZE;
+          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE + vignetteSize, TILE_SIZE);
+          ctx.clip();
+
+          const gradient = ctx.createLinearGradient(wallLeft, 0, wallLeft + vignetteSize, 0);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(wallLeft, py, vignetteSize, TILE_SIZE);
+          break;
+        }
+        case 'right': {
+          // Right wall extends to the right of the tile
+          const wallRight = px + TILE_SIZE + SIDE_BORDER_SIZE;
+          ctx.rect(px + TILE_SIZE - vignetteSize, py, SIDE_BORDER_SIZE + vignetteSize, TILE_SIZE);
+          ctx.clip();
+
+          const gradient = ctx.createLinearGradient(wallRight, 0, wallRight - vignetteSize, 0);
+          gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+          ctx.fillStyle = gradient;
+          ctx.fillRect(wallRight - vignetteSize, py, vignetteSize, TILE_SIZE);
+          break;
         }
       }
-    }
-    ctx.clip();
-  };
 
-  // If we have void tiles, clip the edge vignettes to avoid drawing over void areas
-  if (hasVoidTiles) {
-    ctx.save();
-    clipToBorderAndPlayableTiles();
-  }
+      ctx.restore();
+    });
+  } else {
+    // Regular rectangular puzzle - apply edge vignettes to full borders
 
-  // Top edge vignette (on the top border wall)
-  const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
-  topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-  topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = topGradient;
-  ctx.fillRect(0, 0, totalWidth, vignetteSize);
+    // Top edge vignette (on the top border wall)
+    const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
+    topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = topGradient;
+    ctx.fillRect(0, 0, totalWidth, vignetteSize);
 
-  // Bottom edge vignette (on the bottom border wall)
-  const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - vignetteSize);
-  bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-  bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = bottomGradient;
-  ctx.fillRect(0, totalHeight - vignetteSize, totalWidth, vignetteSize);
+    // Bottom edge vignette (on the bottom border wall)
+    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - vignetteSize);
+    bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = bottomGradient;
+    ctx.fillRect(0, totalHeight - vignetteSize, totalWidth, vignetteSize);
 
-  // Left edge vignette (on the left border wall)
-  const leftGradient = ctx.createLinearGradient(0, 0, vignetteSize, 0);
-  leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-  leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = leftGradient;
-  ctx.fillRect(0, 0, vignetteSize, totalHeight);
+    // Left edge vignette (on the left border wall)
+    const leftGradient = ctx.createLinearGradient(0, 0, vignetteSize, 0);
+    leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = leftGradient;
+    ctx.fillRect(0, 0, vignetteSize, totalHeight);
 
-  // Right edge vignette (on the right border wall)
-  const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - vignetteSize, 0);
-  rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-  rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-  ctx.fillStyle = rightGradient;
-  ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
-
-  if (hasVoidTiles) {
-    ctx.restore();
+    // Right edge vignette (on the right border wall)
+    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - vignetteSize, 0);
+    rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+    rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.fillStyle = rightGradient;
+    ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
   }
 
   // ==========================================
   // INNER TILE VIGNETTE (subtle radial darkening on game area)
   // Only applies to playable tiles, not void tiles
-  // For irregular shapes, we skip this effect entirely to avoid
-  // darkening tiles near void boundaries
   // ==========================================
+  const innerVignetteOpacity = 0.4; // Moderate effect on tiles
 
-  // Skip inner vignette for puzzles with void tiles - the radial gradient
-  // doesn't work well with irregular shapes
-  if (!hasVoidTiles) {
-    const innerVignetteOpacity = 0.4; // Moderate effect on tiles
+  // Calculate the game area bounds (inside the border)
+  const gameAreaX = offsetX;
+  const gameAreaY = offsetY;
+  const gameAreaWidth = gridWidth * TILE_SIZE;
+  const gameAreaHeight = gridHeight * TILE_SIZE;
 
-    // Calculate the game area bounds (inside the border)
-    const gameAreaX = offsetX;
-    const gameAreaY = offsetY;
-    const gameAreaWidth = gridWidth * TILE_SIZE;
-    const gameAreaHeight = gridHeight * TILE_SIZE;
+  // Create a radial gradient centered on the game area
+  const centerX = gameAreaX + gameAreaWidth / 2;
+  const centerY = gameAreaY + gameAreaHeight / 2;
+  const maxRadius = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight) / 2;
 
-    // Create a radial gradient centered on the game area
-    const centerX = gameAreaX + gameAreaWidth / 2;
-    const centerY = gameAreaY + gameAreaHeight / 2;
-    const maxRadius = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight) / 2;
+  const innerGradient = ctx.createRadialGradient(
+    centerX, centerY, maxRadius * 0.4, // Inner radius (transparent zone)
+    centerX, centerY, maxRadius         // Outer radius (dark edges)
+  );
+  innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+  innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
 
-    const innerGradient = ctx.createRadialGradient(
-      centerX, centerY, maxRadius * 0.4, // Inner radius (transparent zone)
-      centerX, centerY, maxRadius         // Outer radius (dark edges)
-    );
-    innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
-    innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
+  if (hasVoidTiles) {
+    // For irregular shapes, clip the inner vignette to only playable tiles
+    ctx.save();
+    ctx.beginPath();
+    for (let y = 0; y < gridHeight; y++) {
+      for (let x = 0; x < gridWidth; x++) {
+        if (tiles[y]?.[x] !== null) {
+          const px = gameAreaX + x * TILE_SIZE;
+          const py = gameAreaY + y * TILE_SIZE;
+          ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+    ctx.clip();
 
+    ctx.fillStyle = innerGradient;
+    ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+    ctx.restore();
+  } else {
     // No void tiles - apply vignette to entire game area
     ctx.fillStyle = innerGradient;
     ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
