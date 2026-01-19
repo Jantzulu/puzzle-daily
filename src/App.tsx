@@ -47,7 +47,7 @@ function Navigation() {
     >
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title */}
-        <div className="flex items-center gap-2 md:mr-4">
+        <div className="flex items-center gap-2">
           {/* Custom logo or default torch icon */}
           {themeAssets.logo ? (
             <img
@@ -58,23 +58,23 @@ function Navigation() {
           ) : (
             <span className="text-copper-400 text-xl md:text-2xl animate-flicker flex-shrink-0">&#128293;</span>
           )}
-          {/* Title and subtitle - inline with separator */}
-          <div className="flex items-baseline gap-1 md:gap-2">
-            <h1 className="text-sm xs:text-base md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap leading-tight">
+          {/* Title and subtitle - stacked vertically */}
+          <div className="flex flex-col leading-none">
+            <h1 className="text-sm xs:text-base md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap">
               {themeAssets.siteTitle || 'Puzzle Daily'}
             </h1>
             {themeAssets.siteSubtitle && (
               <span
-                className="font-medieval text-shadow-dungeon leading-tight"
+                className="font-medieval text-shadow-dungeon"
                 style={{
                   color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
                   fontSize: (() => {
                     const sizeMap: Record<string, string> = {
-                      'x-small': '0.65rem',
-                      'small': '0.75rem',
-                      'medium': '0.875rem',
-                      'large': '1rem',
-                      'x-large': '1.125rem',
+                      'x-small': '0.6rem',
+                      'small': '0.7rem',
+                      'medium': '0.8rem',
+                      'large': '0.9rem',
+                      'x-large': '1rem',
                     };
                     return sizeMap[themeAssets.siteSubtitleSize || 'small'] || sizeMap['small'];
                   })()
@@ -86,8 +86,8 @@ function Navigation() {
           </div>
         </div>
 
-        {/* Desktop navigation */}
-        <div className="hidden md:flex items-center gap-2">
+        {/* Desktop navigation - closer to title */}
+        <div className="hidden md:flex items-center gap-2 ml-4">
           <Link to="/" className={linkClass('/')}>
             <span className="mr-1">&#9876;</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
