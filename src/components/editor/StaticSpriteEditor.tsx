@@ -55,7 +55,9 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
 
     const render = (timestamp: number) => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = '#2a2a2a';
+      // Use theme preview background color
+      const previewBg = getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-preview').trim() || '#15100a';
+      ctx.fillStyle = previewBg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Determine which sprite data to show based on preview mode
@@ -92,7 +94,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           }
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = '#2a2a2a';
+          ctx.fillStyle = previewBg;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
 
           ctx.drawImage(
@@ -121,7 +123,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           }
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          ctx.fillStyle = '#2a2a2a';
+          ctx.fillStyle = previewBg;
           ctx.fillRect(0, 0, canvas.width, canvas.height);
           ctx.drawImage(
             img,
@@ -282,7 +284,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           ref={canvasRef}
           width={size}
           height={size}
-          className="border border-stone-600 rounded"
+          className="border border-stone-600 rounded sprite-preview-bg"
         />
         {hasTriggeredSprite && (
           <div className="flex gap-2">

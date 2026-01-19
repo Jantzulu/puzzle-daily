@@ -288,8 +288,9 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       // Clear
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw preview background
-      ctx.fillStyle = '#2a2a2a';
+      // Draw preview background using theme color
+      const previewBg = getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-preview').trim() || '#15100a';
+      ctx.fillStyle = previewBg;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw sprite based on mode
@@ -302,7 +303,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             const img = new Image();
             img.onload = () => {
               ctx.clearRect(0, 0, canvas.width, canvas.height);
-              ctx.fillStyle = '#2a2a2a';
+              ctx.fillStyle = previewBg;
               ctx.fillRect(0, 0, canvas.width, canvas.height);
 
               // Preserve aspect ratio
@@ -333,7 +334,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           const img = new Image();
           img.onload = () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            ctx.fillStyle = '#2a2a2a';
+            ctx.fillStyle = previewBg;
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Preserve aspect ratio
@@ -1134,7 +1135,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-parchment-100 hover:file:bg-purple-700"
                 />
                 {hasIdleSpriteSheet && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.idleSpriteSheet?.imageData}
                       alt="Sprite sheet"
@@ -1209,7 +1210,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasIdleImage && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.idleImageData || sprite.imageData}
                       alt="Static image"
@@ -1246,7 +1247,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-parchment-100 hover:file:bg-red-700"
                 />
                 {hasDeathSpriteSheet && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.deathSpriteSheet?.imageData}
                       alt="Death sprite sheet"
@@ -1321,7 +1322,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasDeathImage && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.deathImageData}
                       alt="Death static"
@@ -1358,7 +1359,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-parchment-100 hover:file:bg-yellow-700"
                 />
                 {hasCastingSpriteSheet && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.castingSpriteSheet?.imageData}
                       alt="Casting sprite sheet"
@@ -1433,7 +1434,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasCastingImage && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={sprite.castingImageData}
                       alt="Casting static"
@@ -1532,7 +1533,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-parchment-100 hover:file:bg-purple-700"
                 />
                 {hasIdleSpriteSheet && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.idleSpriteSheet?.imageData}
                       alt="Idle sprite sheet"
@@ -1607,7 +1608,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasIdleImage && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.idleImageData || currentConfig.imageData}
                       alt="Idle static"
@@ -1644,7 +1645,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-parchment-100 hover:file:bg-purple-700"
                 />
                 {hasMovingSpriteSheet && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.movingSpriteSheet?.imageData}
                       alt="Moving sprite sheet"
@@ -1719,7 +1720,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasMovingImage && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.movingImageData}
                       alt="Moving static"
@@ -1764,7 +1765,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-parchment-100 hover:file:bg-red-700"
                 />
                 {hasDeathSpriteSheet && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.deathSpriteSheet?.imageData}
                       alt="Death sprite sheet"
@@ -1839,7 +1840,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasDeathImage && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.deathImageData}
                       alt="Death static"
@@ -1884,7 +1885,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-yellow-600 file:text-parchment-100 hover:file:bg-yellow-700"
                 />
                 {hasCastingSpriteSheet && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.castingSpriteSheet?.imageData}
                       alt="Casting sprite sheet"
@@ -1959,7 +1960,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasCastingImage && (
-                  <div className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
                       src={currentConfig.castingImageData}
                       alt="Casting static"
@@ -1995,7 +1996,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           ref={canvasRef}
           width={size}
           height={size}
-          className="border-2 border-stone-600 rounded bg-stone-800"
+          className="border-2 border-stone-600 rounded sprite-preview-bg"
         />
       </div>
 

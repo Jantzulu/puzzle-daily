@@ -538,6 +538,11 @@ html body.theme-font-active,
   border-radius: var(--theme-border-radius, 4px);
 }
 
+/* Theme-aware sprite/asset preview backgrounds */
+.sprite-preview-bg {
+  background-color: var(--theme-bg-preview, #15100a) !important;
+}
+
 /* Override bg-stone-800/80 for info cards when theme card color/image is set */
 .theme-root [class*="bg-stone-800"] {
   background-color: var(--theme-bg-card, rgba(42, 42, 42, 0.8));

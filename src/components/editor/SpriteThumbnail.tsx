@@ -36,9 +36,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     let animationFrameId: number | null = null;
 
     const renderThumbnail = async () => {
-      // Clear and draw background
+      // Clear and draw background using theme color
+      const previewBg = getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-preview').trim() || '#15100a';
       ctx.clearRect(0, 0, size, size);
-      ctx.fillStyle = '#2a2a2a';
+      ctx.fillStyle = previewBg;
       ctx.fillRect(0, 0, size, size);
 
       // Determine what to render based on sprite mode
@@ -82,7 +83,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
               // Clear canvas
               ctx.clearRect(0, 0, size, size);
-              ctx.fillStyle = '#2a2a2a';
+              ctx.fillStyle = previewBg;
               ctx.fillRect(0, 0, size, size);
 
               // Calculate frame dimensions
