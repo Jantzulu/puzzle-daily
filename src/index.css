@@ -423,9 +423,13 @@ html {
    These apply when theme settings are set via the Theme editor
    ============================================ */
 
-/* Apply theme background color when set */
+/* Apply theme background color and image when set */
 .theme-root {
   background-color: var(--theme-bg-primary, #0a0805);
+  background-image: var(--asset-bg-main, none);
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
 }
 
 /* Apply theme text colors and font when set */
@@ -454,6 +458,9 @@ html body.theme-font-active,
 /* Theme-aware dungeon panels */
 .dungeon-panel {
   background-color: var(--theme-bg-secondary, #2a2118);
+  background-image: var(--asset-bg-panel, none);
+  background-size: cover;
+  background-position: center;
   border-color: var(--theme-border-primary, #5a4a35);
   border-radius: var(--theme-border-radius, 4px);
   border-width: var(--theme-border-width, 2px);
