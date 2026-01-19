@@ -484,6 +484,7 @@ export interface Puzzle {
   lives?: number; // Number of attempts allowed (default: 3, 0 = unlimited)
   borderConfig?: BorderConfig; // Optional border decoration (legacy, use skinId instead)
   skinId?: string; // Reference to PuzzleSkin for visual theming
+  backgroundMusicId?: string; // Reference to sound asset for puzzle-specific background music (falls back to global config)
 
   // Scoring - Par values (set by creator, suggested by validator)
   parCharacters?: number;    // Target character count for gold trophy

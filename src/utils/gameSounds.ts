@@ -179,12 +179,20 @@ export async function playSpellSound(
 
 /**
  * Play background music (if configured)
+ * @param puzzleMusicId - Optional puzzle-specific music ID. If provided and valid, uses this instead of global config.
  */
-export async function playBackgroundMusic(): Promise<void> {
-  const config = getGlobalSoundConfig();
-  if (!config.backgroundMusic) return;
+export async function playBackgroundMusic(puzzleMusicId?: string): Promise<void> {
+  // Try puzzle-specific music first, fall back to global config
+  let musicId = puzzleMusicId;
 
-  const audioData = await resolveSoundData(config.backgroundMusic);
+  if (!musicId) {
+    const config = getGlobalSoundConfig();
+    musicId = config.backgroundMusic;
+  }
+
+  if (!musicId) return;
+
+  const audioData = await resolveSoundData(musicId);
   if (audioData) {
     await soundManager.playMusic(audioData, true);
   }

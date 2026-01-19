@@ -14,11 +14,11 @@ import { StatusEffectsDisplay } from '../game/StatusEffectsDisplay';
 import { SpecialTilesDisplay } from '../game/SpecialTilesDisplay';
 import { ItemsDisplay } from '../game/ItemsDisplay';
 import { HelpButton } from '../game/HelpOverlay';
-import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
+import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, type CustomObject, type CustomCollectible } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, getSoundAssets, type CustomObject, type CustomCollectible, type SoundAsset } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -278,6 +278,7 @@ interface EditorState {
   winConditions: WinCondition[];
   borderConfig?: BorderConfig; // Legacy - kept for backwards compatibility
   skinId?: string; // Reference to PuzzleSkin
+  backgroundMusicId?: string; // Reference to sound asset for puzzle-specific background music
 
   // Scoring
   parCharacters?: number;
@@ -552,6 +553,9 @@ export const MapEditor: React.FC = () => {
   // Puzzle skins state
   const [availableSkins, setAvailableSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
 
+  // Sound assets state (for background music selection)
+  const [availableSounds, setAvailableSounds] = useState<SoundAsset[]>(() => getSoundAssets());
+
   // Custom tile types state
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [selectedCustomTileTypeId, setSelectedCustomTileTypeId] = useState<string | null>(null);
@@ -597,6 +601,7 @@ export const MapEditor: React.FC = () => {
         winConditions: state.winConditions,
         borderConfig: state.borderConfig,
         skinId: state.skinId,
+        backgroundMusicId: state.backgroundMusicId,
         selectedTool: state.selectedTool,
       });
     }
@@ -1003,6 +1008,7 @@ export const MapEditor: React.FC = () => {
       lives: state.lives,
       borderConfig,
       skinId: state.skinId,
+      backgroundMusicId: state.backgroundMusicId,
       parCharacters: state.parCharacters,
       parTurns: state.parTurns,
       sideQuests: state.sideQuests.length > 0 ? state.sideQuests : undefined,
@@ -1082,6 +1088,7 @@ export const MapEditor: React.FC = () => {
       availableCharacters: puzzle.availableCharacters,
       winConditions: puzzle.winConditions,
       skinId: puzzle.skinId || 'builtin_dungeon',
+      backgroundMusicId: puzzle.backgroundMusicId,
       parCharacters: puzzle.parCharacters,
       parTurns: puzzle.parTurns,
       sideQuests: puzzle.sideQuests || [],
@@ -1145,6 +1152,7 @@ export const MapEditor: React.FC = () => {
         availableCharacters: puzzle.availableCharacters,
         winConditions: puzzle.winConditions,
         skinId: puzzle.skinId || 'builtin_dungeon',
+        backgroundMusicId: puzzle.backgroundMusicId,
         parCharacters: puzzle.parCharacters,
         parTurns: puzzle.parTurns,
         sideQuests: puzzle.sideQuests || [],
@@ -1318,6 +1326,7 @@ export const MapEditor: React.FC = () => {
       lives: state.lives,
       borderConfig,
       skinId: state.skinId,
+      backgroundMusicId: state.backgroundMusicId,
     };
 
     // Store deep copy of original puzzle for reset
@@ -1330,6 +1339,9 @@ export const MapEditor: React.FC = () => {
     setLivesRemaining(puzzle.lives ?? 3);
     setPuzzleScore(null);
     setPlayStartCharacters([]);
+
+    // Start background music for playtest (puzzle-specific or global fallback)
+    playBackgroundMusic(state.backgroundMusicId);
   };
 
   const handleBackToEditor = () => {
@@ -1337,7 +1349,7 @@ export const MapEditor: React.FC = () => {
     setGameState(null);
     setOriginalPlaytestPuzzle(null);
     setSelectedCharacterId(null);
-    stopMusic();
+    stopMusic(); // Stop music when exiting playtest
     setIsSimulating(false);
   };
 
@@ -2694,6 +2706,24 @@ export const MapEditor: React.FC = () => {
                       {availableSkins.map((skin) => (
                         <option key={skin.id} value={skin.id}>
                           {skin.name} {skin.isBuiltIn ? '(Built-in)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm mb-1">Background Music</label>
+                    <select
+                      value={state.backgroundMusicId || ''}
+                      onChange={(e) => {
+                        setState(prev => ({ ...prev, backgroundMusicId: e.target.value || undefined }));
+                        setAvailableSounds(getSoundAssets()); // Refresh in case new sounds were added
+                      }}
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                    >
+                      <option value="">Use Global Config</option>
+                      {availableSounds.map((sound) => (
+                        <option key={sound.id} value={sound.id}>
+                          {sound.name}
                         </option>
                       ))}
                     </select>

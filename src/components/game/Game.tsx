@@ -14,7 +14,7 @@ import { ItemsDisplay } from './ItemsDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
-import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
+import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
 
@@ -87,6 +87,11 @@ export const Game: React.FC = () => {
     });
     return unsubscribe;
   }, []);
+
+  // Play background music when puzzle changes (puzzle-specific or global fallback)
+  useEffect(() => {
+    playBackgroundMusic(currentPuzzle.backgroundMusicId);
+  }, [currentPuzzle.id, currentPuzzle.backgroundMusicId]);
 
   // Simulation loop
   useEffect(() => {
