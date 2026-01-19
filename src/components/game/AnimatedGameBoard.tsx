@@ -3375,51 +3375,52 @@ function drawPuzzleVignette(
   // ==========================================
   // INNER TILE VIGNETTE (subtle radial darkening on game area)
   // Only applies to playable tiles, not void tiles
+  // TEMPORARILY DISABLED FOR DEBUGGING
   // ==========================================
-  const innerVignetteOpacity = 0.4; // Moderate effect on tiles
-
-  // Calculate the game area bounds (inside the border)
-  const gameAreaX = offsetX;
-  const gameAreaY = offsetY;
-  const gameAreaWidth = gridWidth * TILE_SIZE;
-  const gameAreaHeight = gridHeight * TILE_SIZE;
-
-  // Create a radial gradient centered on the game area
-  const centerX = gameAreaX + gameAreaWidth / 2;
-  const centerY = gameAreaY + gameAreaHeight / 2;
-  const maxRadius = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight) / 2;
-
-  const innerGradient = ctx.createRadialGradient(
-    centerX, centerY, maxRadius * 0.4, // Inner radius (transparent zone)
-    centerX, centerY, maxRadius         // Outer radius (dark edges)
-  );
-  innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
-  innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
-  innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
-
-  if (hasVoidTiles) {
-    // For irregular shapes, clip the inner vignette to only playable tiles
-    ctx.save();
-    ctx.beginPath();
-    for (let y = 0; y < gridHeight; y++) {
-      for (let x = 0; x < gridWidth; x++) {
-        if (tiles[y]?.[x] !== null) {
-          const px = gameAreaX + x * TILE_SIZE;
-          const py = gameAreaY + y * TILE_SIZE;
-          ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
-        }
-      }
-    }
-    ctx.clip();
-
-    ctx.fillStyle = innerGradient;
-    ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
-    ctx.restore();
-  } else {
-    // No void tiles - apply vignette to entire game area
-    ctx.fillStyle = innerGradient;
-    ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
-  }
+  // const innerVignetteOpacity = 0.4; // Moderate effect on tiles
+  //
+  // // Calculate the game area bounds (inside the border)
+  // const gameAreaX = offsetX;
+  // const gameAreaY = offsetY;
+  // const gameAreaWidth = gridWidth * TILE_SIZE;
+  // const gameAreaHeight = gridHeight * TILE_SIZE;
+  //
+  // // Create a radial gradient centered on the game area
+  // const centerX = gameAreaX + gameAreaWidth / 2;
+  // const centerY = gameAreaY + gameAreaHeight / 2;
+  // const maxRadius = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight) / 2;
+  //
+  // const innerGradient = ctx.createRadialGradient(
+  //   centerX, centerY, maxRadius * 0.4, // Inner radius (transparent zone)
+  //   centerX, centerY, maxRadius         // Outer radius (dark edges)
+  // );
+  // innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  // innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+  // innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
+  //
+  // if (hasVoidTiles) {
+  //   // For irregular shapes, clip the inner vignette to only playable tiles
+  //   ctx.save();
+  //   ctx.beginPath();
+  //   for (let y = 0; y < gridHeight; y++) {
+  //     for (let x = 0; x < gridWidth; x++) {
+  //       if (tiles[y]?.[x] !== null) {
+  //         const px = gameAreaX + x * TILE_SIZE;
+  //         const py = gameAreaY + y * TILE_SIZE;
+  //         ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+  //       }
+  //     }
+  //   }
+  //   ctx.clip();
+  //
+  //   ctx.fillStyle = innerGradient;
+  //   ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+  //   ctx.restore();
+  // } else {
+  //   // No void tiles - apply vignette to entire game area
+  //   ctx.fillStyle = innerGradient;
+  //   ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+  // }
 
   ctx.restore();
 }
