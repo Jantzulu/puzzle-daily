@@ -106,6 +106,8 @@ interface AssetUploadProps {
 const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, onError }) => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlValue, setUrlValue] = useState('');
   const config = THEME_ASSET_CONFIG[assetKey];
 
   // Determine max dimensions based on asset type
@@ -158,6 +160,24 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
     }
   };
 
+  const handleUrlSubmit = () => {
+    if (urlValue.trim()) {
+      // Basic URL validation
+      try {
+        new URL(urlValue.trim());
+        onChange(urlValue.trim());
+        setUrlValue('');
+        setShowUrlInput(false);
+      } catch {
+        onError?.('Please enter a valid URL');
+      }
+    }
+  };
+
+  const isExternalUrl = (url: string) => {
+    return url.startsWith('http://') || url.startsWith('https://');
+  };
+
   // For text fields like logoAlt
   if (config.inputType === 'text') {
     return (
@@ -193,16 +213,24 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
               alt={config.label}
               className="max-w-full max-h-20 object-contain pixelated"
             />
-            {/* Cloud/Local indicator */}
+            {/* Cloud/Local/External indicator */}
             <span
               className={`absolute top-1 right-1 text-xs px-1.5 py-0.5 rounded ${
                 isSupabaseStorageUrl(value)
                   ? 'bg-arcane-900/80 text-arcane-300'
+                  : isExternalUrl(value)
+                  ? 'bg-moss-900/80 text-moss-300'
                   : 'bg-stone-700/80 text-stone-400'
               }`}
-              title={isSupabaseStorageUrl(value) ? 'Stored in cloud' : 'Stored locally'}
+              title={
+                isSupabaseStorageUrl(value)
+                  ? 'Stored in cloud'
+                  : isExternalUrl(value)
+                  ? 'External URL'
+                  : 'Stored locally'
+              }
             >
-              {isSupabaseStorageUrl(value) ? '☁️' : '💾'}
+              {isSupabaseStorageUrl(value) ? '☁️' : isExternalUrl(value) ? '🔗' : '💾'}
             </span>
           </div>
           {/* Actions */}
@@ -221,13 +249,57 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
             </button>
           </div>
         </div>
+      ) : showUrlInput ? (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              type="url"
+              value={urlValue}
+              onChange={(e) => setUrlValue(e.target.value)}
+              placeholder="https://example.com/image.png"
+              className="dungeon-input flex-1 text-sm"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleUrlSubmit();
+                if (e.key === 'Escape') {
+                  setShowUrlInput(false);
+                  setUrlValue('');
+                }
+              }}
+              autoFocus
+            />
+            <button
+              onClick={handleUrlSubmit}
+              className="dungeon-btn-primary text-xs px-3"
+            >
+              Use
+            </button>
+          </div>
+          <button
+            onClick={() => {
+              setShowUrlInput(false);
+              setUrlValue('');
+            }}
+            className="text-xs text-stone-500 hover:text-stone-400"
+          >
+            ← Back to upload
+          </button>
+        </div>
       ) : (
-        <button
-          onClick={() => inputRef.current?.click()}
-          className="dungeon-btn w-full text-sm"
-        >
-          Upload Image
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => inputRef.current?.click()}
+            className="dungeon-btn flex-1 text-sm"
+          >
+            Upload Image
+          </button>
+          <button
+            onClick={() => setShowUrlInput(true)}
+            className="dungeon-btn text-sm px-3"
+            title="Use a public URL"
+          >
+            🔗 URL
+          </button>
+        </div>
       )}
 
       <input
@@ -683,11 +755,12 @@ export const ThemeAssetsEditor: React.FC = () => {
         <div className="mt-8 parchment-panel p-4">
           <h3 className="font-medium text-parchment-800 mb-2">How to use custom assets</h3>
           <ul className="text-sm text-parchment-700 space-y-1 list-disc list-inside">
+            <li>Upload images or paste a public URL (click 🔗 URL button)</li>
             <li>Upload images in PNG format with transparency for best results</li>
             <li>Background images work best as tileable textures or large images</li>
             <li>Button images can be 9-slice sprites for proper scaling</li>
             <li>Icons should be square (e.g., 32x32 or 64x64 pixels)</li>
-            <li>Assets are stored locally and will sync with your puzzle skins</li>
+            <li>Uploaded assets are stored in cloud, URLs are referenced directly</li>
           </ul>
         </div>
       )}

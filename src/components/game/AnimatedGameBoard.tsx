@@ -3201,6 +3201,33 @@ function drawPuzzleVignette(
   ctx.fillStyle = rightGradient;
   ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
 
+  // ==========================================
+  // INNER TILE VIGNETTE (subtle radial darkening on game area)
+  // ==========================================
+  const innerVignetteOpacity = 0.25; // Subtle effect on tiles
+
+  // Calculate the game area bounds (inside the border)
+  const gameAreaX = offsetX;
+  const gameAreaY = offsetY;
+  const gameAreaWidth = gridWidth * TILE_SIZE;
+  const gameAreaHeight = gridHeight * TILE_SIZE;
+
+  // Create a radial gradient centered on the game area
+  const centerX = gameAreaX + gameAreaWidth / 2;
+  const centerY = gameAreaY + gameAreaHeight / 2;
+  const maxRadius = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight) / 2;
+
+  const innerGradient = ctx.createRadialGradient(
+    centerX, centerY, maxRadius * 0.4, // Inner radius (transparent zone)
+    centerX, centerY, maxRadius         // Outer radius (dark edges)
+  );
+  innerGradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
+  innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
+
+  ctx.fillStyle = innerGradient;
+  ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+
   ctx.restore();
 }
 
