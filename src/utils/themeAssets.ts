@@ -109,7 +109,7 @@ export interface ThemeAssets {
 export type ThemeAssetKey = keyof ThemeAssets;
 
 // Asset metadata for the editor UI
-export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; description: string; category: string; inputType?: 'image' | 'text' | 'color' | 'select' }> = {
+export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; description: string; category: string; inputType?: 'image' | 'text' | 'color' | 'select' | 'toggle' }> = {
   // Branding
   logo: { label: 'Logo', description: 'Logo image shown in navbar (recommended: PNG with transparency, ~32-48px height)', category: 'branding', inputType: 'image' },
   logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding', inputType: 'text' },
