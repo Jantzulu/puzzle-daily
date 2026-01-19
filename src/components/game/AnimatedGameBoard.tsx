@@ -1118,6 +1118,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Restore context (undo translate offset)
       ctx.restore();
 
+      // Draw vignette effect on puzzle edges (after all rendering, follows puzzle shape)
+      if (hasBorder) {
+        drawPuzzleVignette(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY);
+      }
+
       // Restore context (undo dpr scaling)
       ctx.restore();
 
@@ -3140,6 +3145,121 @@ function drawPersistentAreaEffect(
       ctx.restore();
     }
   }
+}
+
+// ==========================================
+// VIGNETTE EFFECT
+// ==========================================
+
+/**
+ * Draw a vignette effect around the edges of the puzzle that follows the shape.
+ * Creates a subtle darkening gradient on edge tiles to blend with the dark background.
+ */
+function drawPuzzleVignette(
+  ctx: CanvasRenderingContext2D,
+  tiles: (import('../../types/game').TileOrNull)[][],
+  gridWidth: number,
+  gridHeight: number,
+  offsetX: number,
+  offsetY: number
+) {
+  const vignetteSize = TILE_SIZE * 1.5; // How far the vignette extends inward
+  const vignetteOpacity = 0.4; // Maximum darkness at edges
+
+  ctx.save();
+
+  // For each tile, check if it's an edge tile and draw a vignette gradient
+  for (let y = 0; y < gridHeight; y++) {
+    for (let x = 0; x < gridWidth; x++) {
+      const tile = tiles[y]?.[x];
+      if (!tile) continue; // Skip null tiles
+
+      const px = offsetX + x * TILE_SIZE;
+      const py = offsetY + y * TILE_SIZE;
+      const centerX = px + TILE_SIZE / 2;
+      const centerY = py + TILE_SIZE / 2;
+
+      // Check which edges are exposed (adjacent to null or out of bounds)
+      const hasTopEdge = y === 0 || !tiles[y - 1]?.[x];
+      const hasBottomEdge = y === gridHeight - 1 || !tiles[y + 1]?.[x];
+      const hasLeftEdge = x === 0 || !tiles[y]?.[x - 1];
+      const hasRightEdge = x === gridWidth - 1 || !tiles[y]?.[x + 1];
+
+      // Check corners
+      const hasTopLeftCorner = hasTopEdge && hasLeftEdge;
+      const hasTopRightCorner = hasTopEdge && hasRightEdge;
+      const hasBottomLeftCorner = hasBottomEdge && hasLeftEdge;
+      const hasBottomRightCorner = hasBottomEdge && hasRightEdge;
+
+      // Draw edge gradients
+      if (hasTopEdge) {
+        const gradient = ctx.createLinearGradient(px, py, px, py + vignetteSize);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px, py, TILE_SIZE, Math.min(vignetteSize, TILE_SIZE));
+      }
+
+      if (hasBottomEdge) {
+        const gradient = ctx.createLinearGradient(px, py + TILE_SIZE, px, py + TILE_SIZE - vignetteSize);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px, py + TILE_SIZE - Math.min(vignetteSize, TILE_SIZE), TILE_SIZE, Math.min(vignetteSize, TILE_SIZE));
+      }
+
+      if (hasLeftEdge) {
+        const gradient = ctx.createLinearGradient(px, py, px + vignetteSize, py);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px, py, Math.min(vignetteSize, TILE_SIZE), TILE_SIZE);
+      }
+
+      if (hasRightEdge) {
+        const gradient = ctx.createLinearGradient(px + TILE_SIZE, py, px + TILE_SIZE - vignetteSize, py);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px + TILE_SIZE - Math.min(vignetteSize, TILE_SIZE), py, Math.min(vignetteSize, TILE_SIZE), TILE_SIZE);
+      }
+
+      // Draw corner radial gradients for smoother blending
+      if (hasTopLeftCorner) {
+        const gradient = ctx.createRadialGradient(px, py, 0, px, py, vignetteSize);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px, py, vignetteSize, vignetteSize);
+      }
+
+      if (hasTopRightCorner) {
+        const gradient = ctx.createRadialGradient(px + TILE_SIZE, py, 0, px + TILE_SIZE, py, vignetteSize);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px + TILE_SIZE - vignetteSize, py, vignetteSize, vignetteSize);
+      }
+
+      if (hasBottomLeftCorner) {
+        const gradient = ctx.createRadialGradient(px, py + TILE_SIZE, 0, px, py + TILE_SIZE, vignetteSize);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px, py + TILE_SIZE - vignetteSize, vignetteSize, vignetteSize);
+      }
+
+      if (hasBottomRightCorner) {
+        const gradient = ctx.createRadialGradient(px + TILE_SIZE, py + TILE_SIZE, 0, px + TILE_SIZE, py + TILE_SIZE, vignetteSize);
+        gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity * 0.7})`);
+        gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = gradient;
+        ctx.fillRect(px + TILE_SIZE - vignetteSize, py + TILE_SIZE - vignetteSize, vignetteSize, vignetteSize);
+      }
+    }
+  }
+
+  ctx.restore();
 }
 
 // ==========================================
