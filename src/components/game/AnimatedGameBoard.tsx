@@ -3196,129 +3196,254 @@ function drawPuzzleVignette(
   const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
 
   if (hasVoidTiles) {
-    // SIMPLIFIED APPROACH for irregular shapes:
-    // - Each edge shadows ONLY its own wall segment (no extension into corners)
-    // - Convex corners (outer corners) get their own shadow
-    // - Concave corners (inner corners) get NO shadow - they don't touch void directly
-    //
-    // This prevents any overlap by keeping each wall piece completely separate.
+    // CONTINUOUS WALL RUN APPROACH:
+    // Instead of shadowing individual tiles, find continuous wall segments
+    // and apply ONE gradient across the entire segment (including corners).
+    // This ensures uniform darkness along any continuous wall.
     const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
 
-    // Draw shadows for all edges (no corner extension)
+    // Build lookup maps for edges and corners
+    const topEdges = new Set<string>();
+    const bottomEdges = new Set<string>();
+    const leftEdges = new Set<string>();
+    const rightEdges = new Set<string>();
+
     borderData.edges.forEach(({ x, y, edge }) => {
-      const px = offsetX + x * TILE_SIZE;
-      const py = offsetY + y * TILE_SIZE;
+      const key = `${x},${y}`;
+      if (edge === 'top') topEdges.add(key);
+      if (edge === 'bottom') bottomEdges.add(key);
+      if (edge === 'left') leftEdges.add(key);
+      if (edge === 'right') rightEdges.add(key);
+    });
+
+    const convexCorners = new Map<string, string>();
+    borderData.corners.forEach(({ x, y, type }) => {
+      if (type.startsWith('convex')) {
+        convexCorners.set(`${x},${y},${type}`, type);
+      }
+    });
+
+    // Helper to find continuous horizontal runs (for top/bottom edges)
+    const findHorizontalRuns = (edgeSet: Set<string>, edgeType: 'top' | 'bottom') => {
+      const runs: Array<{ startX: number; endX: number; y: number; hasLeftCorner: boolean; hasRightCorner: boolean }> = [];
+      const processed = new Set<string>();
+
+      edgeSet.forEach(key => {
+        if (processed.has(key)) return;
+
+        const [startX, y] = key.split(',').map(Number);
+        let endX = startX;
+
+        // Extend right as far as possible
+        while (edgeSet.has(`${endX + 1},${y}`)) {
+          processed.add(`${endX + 1},${y}`);
+          endX++;
+        }
+        processed.add(key);
+
+        // Check for corners at the ends
+        const cornerSuffix = edgeType === 'top' ? 'tl' : 'bl';
+        const cornerSuffixR = edgeType === 'top' ? 'tr' : 'br';
+        const hasLeftCorner = convexCorners.has(`${startX},${y},convex-${cornerSuffix}`);
+        const hasRightCorner = convexCorners.has(`${endX},${y},convex-${cornerSuffixR}`);
+
+        runs.push({ startX, endX, y, hasLeftCorner, hasRightCorner });
+      });
+
+      return runs;
+    };
+
+    // Helper to find continuous vertical runs (for left/right edges)
+    const findVerticalRuns = (edgeSet: Set<string>, edgeType: 'left' | 'right') => {
+      const runs: Array<{ x: number; startY: number; endY: number; hasTopCorner: boolean; hasBottomCorner: boolean }> = [];
+      const processed = new Set<string>();
+
+      edgeSet.forEach(key => {
+        if (processed.has(key)) return;
+
+        const [x, startY] = key.split(',').map(Number);
+        let endY = startY;
+
+        // Extend down as far as possible
+        while (edgeSet.has(`${x},${endY + 1}`)) {
+          processed.add(`${x},${endY + 1}`);
+          endY++;
+        }
+        processed.add(key);
+
+        // Check for corners at the ends
+        const cornerSuffixT = edgeType === 'left' ? 'tl' : 'tr';
+        const cornerSuffixB = edgeType === 'left' ? 'bl' : 'br';
+        const hasTopCorner = convexCorners.has(`${x},${startY},convex-${cornerSuffixT}`);
+        const hasBottomCorner = convexCorners.has(`${x},${endY},convex-${cornerSuffixB}`);
+
+        runs.push({ x, startY, endY, hasTopCorner, hasBottomCorner });
+      });
+
+      return runs;
+    };
+
+    // Track which corners have been shadowed
+    const shadowedCorners = new Set<string>();
+
+    // Process TOP edge runs
+    findHorizontalRuns(topEdges, 'top').forEach(run => {
+      const { startX, endX, y, hasLeftCorner, hasRightCorner } = run;
+
+      // Calculate pixel bounds
+      let pixelLeft = offsetX + startX * TILE_SIZE;
+      let pixelRight = offsetX + (endX + 1) * TILE_SIZE;
+      const wallTop = offsetY + y * TILE_SIZE - BORDER_SIZE;
+      const wallBottom = offsetY + y * TILE_SIZE;
+
+      // Extend into corners
+      if (hasLeftCorner) {
+        pixelLeft -= SIDE_BORDER_SIZE;
+        shadowedCorners.add(`${startX},${y},convex-tl`);
+      }
+      if (hasRightCorner) {
+        pixelRight += SIDE_BORDER_SIZE;
+        shadowedCorners.add(`${endX},${y},convex-tr`);
+      }
 
       ctx.save();
       ctx.beginPath();
-
-      switch (edge) {
-        case 'top': {
-          // Top wall: void is above, shadow fades downward
-          const wallTop = py - BORDER_SIZE;
-          const wallBottom = py;
-          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE);
-          ctx.clip();
-          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallBottom);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallTop, TILE_SIZE, BORDER_SIZE);
-          break;
-        }
-        case 'bottom': {
-          // Bottom wall: void is below, shadow fades upward
-          const wallTop = py + TILE_SIZE;
-          const wallBottom = wallTop + BORDER_SIZE;
-          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE);
-          ctx.clip();
-          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallTop);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallTop, TILE_SIZE, BORDER_SIZE);
-          break;
-        }
-        case 'left': {
-          // Left wall: void is to the left, shadow fades rightward
-          const wallLeft = px - SIDE_BORDER_SIZE;
-          const wallRight = px;
-          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
-          ctx.clip();
-          const gradient = ctx.createLinearGradient(wallLeft, 0, wallRight, 0);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
-          break;
-        }
-        case 'right': {
-          // Right wall: void is to the right, shadow fades leftward
-          const wallLeft = px + TILE_SIZE;
-          const wallRight = wallLeft + SIDE_BORDER_SIZE;
-          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
-          ctx.clip();
-          const gradient = ctx.createLinearGradient(wallRight, 0, wallLeft, 0);
-          gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-          gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(wallLeft, py, SIDE_BORDER_SIZE, TILE_SIZE);
-          break;
-        }
-      }
-
+      ctx.rect(pixelLeft, wallTop, pixelRight - pixelLeft, BORDER_SIZE);
+      ctx.clip();
+      const gradient = ctx.createLinearGradient(0, wallTop, 0, wallBottom);
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(pixelLeft, wallTop, pixelRight - pixelLeft, BORDER_SIZE);
       ctx.restore();
     });
 
-    // Draw shadows for CONVEX corners only (outer corners that touch void)
-    // Concave corners (inner corners) don't get shadows - they don't touch void
+    // Process BOTTOM edge runs
+    findHorizontalRuns(bottomEdges, 'bottom').forEach(run => {
+      const { startX, endX, y, hasLeftCorner, hasRightCorner } = run;
+
+      let pixelLeft = offsetX + startX * TILE_SIZE;
+      let pixelRight = offsetX + (endX + 1) * TILE_SIZE;
+      const wallTop = offsetY + (y + 1) * TILE_SIZE;
+      const wallBottom = wallTop + BORDER_SIZE;
+
+      if (hasLeftCorner) {
+        pixelLeft -= SIDE_BORDER_SIZE;
+        shadowedCorners.add(`${startX},${y},convex-bl`);
+      }
+      if (hasRightCorner) {
+        pixelRight += SIDE_BORDER_SIZE;
+        shadowedCorners.add(`${endX},${y},convex-br`);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(pixelLeft, wallTop, pixelRight - pixelLeft, BORDER_SIZE);
+      ctx.clip();
+      const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallTop);
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(pixelLeft, wallTop, pixelRight - pixelLeft, BORDER_SIZE);
+      ctx.restore();
+    });
+
+    // Process LEFT edge runs
+    findVerticalRuns(leftEdges, 'left').forEach(run => {
+      const { x, startY, endY, hasTopCorner, hasBottomCorner } = run;
+
+      const wallLeft = offsetX + x * TILE_SIZE - SIDE_BORDER_SIZE;
+      const wallRight = offsetX + x * TILE_SIZE;
+      let pixelTop = offsetY + startY * TILE_SIZE;
+      let pixelBottom = offsetY + (endY + 1) * TILE_SIZE;
+
+      // Only extend into corners if they haven't been claimed by horizontal runs
+      if (hasTopCorner && !shadowedCorners.has(`${x},${startY},convex-tl`)) {
+        pixelTop -= BORDER_SIZE;
+        shadowedCorners.add(`${x},${startY},convex-tl`);
+      }
+      if (hasBottomCorner && !shadowedCorners.has(`${x},${endY},convex-bl`)) {
+        pixelBottom += BORDER_SIZE;
+        shadowedCorners.add(`${x},${endY},convex-bl`);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(wallLeft, pixelTop, SIDE_BORDER_SIZE, pixelBottom - pixelTop);
+      ctx.clip();
+      const gradient = ctx.createLinearGradient(wallLeft, 0, wallRight, 0);
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(wallLeft, pixelTop, SIDE_BORDER_SIZE, pixelBottom - pixelTop);
+      ctx.restore();
+    });
+
+    // Process RIGHT edge runs
+    findVerticalRuns(rightEdges, 'right').forEach(run => {
+      const { x, startY, endY, hasTopCorner, hasBottomCorner } = run;
+
+      const wallLeft = offsetX + (x + 1) * TILE_SIZE;
+      const wallRight = wallLeft + SIDE_BORDER_SIZE;
+      let pixelTop = offsetY + startY * TILE_SIZE;
+      let pixelBottom = offsetY + (endY + 1) * TILE_SIZE;
+
+      if (hasTopCorner && !shadowedCorners.has(`${x},${startY},convex-tr`)) {
+        pixelTop -= BORDER_SIZE;
+        shadowedCorners.add(`${x},${startY},convex-tr`);
+      }
+      if (hasBottomCorner && !shadowedCorners.has(`${x},${endY},convex-br`)) {
+        pixelBottom += BORDER_SIZE;
+        shadowedCorners.add(`${x},${endY},convex-br`);
+      }
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(wallLeft, pixelTop, SIDE_BORDER_SIZE, pixelBottom - pixelTop);
+      ctx.clip();
+      const gradient = ctx.createLinearGradient(wallRight, 0, wallLeft, 0);
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(wallLeft, pixelTop, SIDE_BORDER_SIZE, pixelBottom - pixelTop);
+      ctx.restore();
+    });
+
+    // Handle any convex corners that weren't claimed by edge runs (diagonal-only corners)
     borderData.corners.forEach(({ x, y, type }) => {
       if (!type.startsWith('convex')) return;
+      if (shadowedCorners.has(`${x},${y},${type}`)) return;
 
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
 
       let clipX: number, clipY: number;
-      let gradientStartX: number, gradientEndX: number;
-      let gradientStartY: number, gradientEndY: number;
+      let gradStartX: number, gradStartY: number, gradEndX: number, gradEndY: number;
 
-      // For convex corners, create a diagonal-ish gradient from the outer corner
       switch (type) {
         case 'convex-tl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py - BORDER_SIZE;
-          // Gradient from top-left corner toward bottom-right
-          gradientStartX = clipX;
-          gradientStartY = clipY;
-          gradientEndX = clipX + SIDE_BORDER_SIZE;
-          gradientEndY = clipY + BORDER_SIZE;
+          gradStartX = clipX; gradStartY = clipY;
+          gradEndX = px; gradEndY = py;
           break;
         case 'convex-tr':
           clipX = px + TILE_SIZE;
           clipY = py - BORDER_SIZE;
-          // Gradient from top-right corner toward bottom-left
-          gradientStartX = clipX + SIDE_BORDER_SIZE;
-          gradientStartY = clipY;
-          gradientEndX = clipX;
-          gradientEndY = clipY + BORDER_SIZE;
+          gradStartX = clipX + SIDE_BORDER_SIZE; gradStartY = clipY;
+          gradEndX = clipX; gradEndY = py;
           break;
         case 'convex-bl':
           clipX = px - SIDE_BORDER_SIZE;
           clipY = py + TILE_SIZE;
-          // Gradient from bottom-left corner toward top-right
-          gradientStartX = clipX;
-          gradientStartY = clipY + BORDER_SIZE;
-          gradientEndX = clipX + SIDE_BORDER_SIZE;
-          gradientEndY = clipY;
+          gradStartX = clipX; gradStartY = clipY + BORDER_SIZE;
+          gradEndX = px; gradEndY = clipY;
           break;
         case 'convex-br':
           clipX = px + TILE_SIZE;
           clipY = py + TILE_SIZE;
-          // Gradient from bottom-right corner toward top-left
-          gradientStartX = clipX + SIDE_BORDER_SIZE;
-          gradientStartY = clipY + BORDER_SIZE;
-          gradientEndX = clipX;
-          gradientEndY = clipY;
+          gradStartX = clipX + SIDE_BORDER_SIZE; gradStartY = clipY + BORDER_SIZE;
+          gradEndX = clipX; gradEndY = clipY;
           break;
         default:
           return;
@@ -3328,13 +3453,7 @@ function drawPuzzleVignette(
       ctx.beginPath();
       ctx.rect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
       ctx.clip();
-
-      // Use a radial gradient from the outer corner for more natural corner shadow
-      const cornerX = type.includes('l') ? clipX : clipX + SIDE_BORDER_SIZE;
-      const cornerY = type.includes('t') ? clipY : clipY + BORDER_SIZE;
-      const radius = Math.max(SIDE_BORDER_SIZE, BORDER_SIZE) * 1.5;
-
-      const gradient = ctx.createRadialGradient(cornerX, cornerY, 0, cornerX, cornerY, radius);
+      const gradient = ctx.createLinearGradient(gradStartX, gradStartY, gradEndX, gradEndY);
       gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = gradient;
