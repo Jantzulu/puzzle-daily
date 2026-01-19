@@ -3194,12 +3194,16 @@ function drawPuzzleVignette(
   const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
 
   if (hasVoidTiles) {
-    // For irregular shapes, use smart border data to only apply vignettes
-    // to areas where walls actually exist
+    // For irregular shapes, use smart border data to only apply edge vignettes
+    // to the OUTER perimeter (edges that face the page background, not interior voids)
     const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
 
-    // Draw vignette per-edge for each wall segment
+    // Draw vignette only for OUTER edges (isOuterEdge = true)
+    // Interior edges facing void tiles don't get edge darkening
     borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
+      // Skip interior edges - they don't need darkening from the void side
+      if (!isOuterEdge) return;
+
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
 
@@ -3221,11 +3225,10 @@ function drawPuzzleVignette(
           break;
         }
         case 'bottom': {
-          // Bottom wall extends downward from the tile
-          const wallHeight = isOuterEdge ? BORDER_SIZE : SIDE_BORDER_SIZE;
+          // Bottom wall extends downward from the tile (outer edges use BORDER_SIZE)
           const wallTop = py + TILE_SIZE;
-          const wallBottom = wallTop + wallHeight;
-          ctx.rect(px, wallTop - vignetteSize, TILE_SIZE, wallHeight + vignetteSize);
+          const wallBottom = wallTop + BORDER_SIZE;
+          ctx.rect(px, wallTop - vignetteSize, TILE_SIZE, BORDER_SIZE + vignetteSize);
           ctx.clip();
 
           const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallBottom - vignetteSize);
@@ -3266,10 +3269,38 @@ function drawPuzzleVignette(
       ctx.restore();
     });
 
-    // Draw vignette for corners - corners need radial gradients emanating from the outer corner point
+    // Draw vignette only for OUTER corners (convex corners on the outer perimeter)
+    // Skip concave corners (interior) and convex corners that aren't on the outer perimeter
     borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
       const px = offsetX + x * TILE_SIZE;
       const py = offsetY + y * TILE_SIZE;
+
+      // Skip concave corners - they're interior corners facing void tiles
+      if (type.startsWith('concave')) return;
+
+      // For convex corners, check if they're on the outer perimeter
+      // A corner is on the outer perimeter if at least one of its edges is outer
+      const tileX = x;
+      const tileY = y;
+      let isOuterCorner = false;
+
+      switch (type) {
+        case 'convex-tl':
+          // Check if top or left edge of this tile is outer
+          isOuterCorner = (tileY === 0) || (tileX === 0);
+          break;
+        case 'convex-tr':
+          isOuterCorner = (tileY === 0) || (tileX === gridWidth - 1);
+          break;
+        case 'convex-bl':
+          isOuterCorner = (tileY === gridHeight - 1) || (tileX === 0);
+          break;
+        case 'convex-br':
+          isOuterCorner = (tileY === gridHeight - 1) || (tileX === gridWidth - 1);
+          break;
+      }
+
+      if (!isOuterCorner) return;
 
       ctx.save();
 
@@ -3279,7 +3310,6 @@ function drawPuzzleVignette(
 
       switch (type) {
         case 'convex-tl': {
-          // Top-left convex corner - outer point is at top-left
           cornerX = px - SIDE_BORDER_SIZE;
           cornerY = py - BORDER_SIZE;
           clipX = cornerX;
@@ -3289,7 +3319,6 @@ function drawPuzzleVignette(
           break;
         }
         case 'convex-tr': {
-          // Top-right convex corner - outer point is at top-right
           cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
           cornerY = py - BORDER_SIZE;
           clipX = px + TILE_SIZE - vignetteSize;
@@ -3299,62 +3328,21 @@ function drawPuzzleVignette(
           break;
         }
         case 'convex-bl': {
-          // Bottom-left convex corner
-          const wallHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
           cornerX = px - SIDE_BORDER_SIZE;
-          cornerY = py + TILE_SIZE + wallHeight;
+          cornerY = py + TILE_SIZE + BORDER_SIZE;
           clipX = cornerX;
           clipY = py + TILE_SIZE - vignetteSize;
           clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = wallHeight + vignetteSize;
+          clipH = BORDER_SIZE + vignetteSize;
           break;
         }
         case 'convex-br': {
-          // Bottom-right convex corner
-          const wallHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
           cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
-          cornerY = py + TILE_SIZE + wallHeight;
+          cornerY = py + TILE_SIZE + BORDER_SIZE;
           clipX = px + TILE_SIZE - vignetteSize;
           clipY = py + TILE_SIZE - vignetteSize;
           clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = wallHeight + vignetteSize;
-          break;
-        }
-        case 'concave-tl': {
-          // Concave top-left - inner corner, vignette from inside
-          cornerX = px;
-          cornerY = py;
-          clipX = px - SIDE_BORDER_SIZE;
-          clipY = py - SIDE_BORDER_SIZE;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = SIDE_BORDER_SIZE + vignetteSize;
-          break;
-        }
-        case 'concave-tr': {
-          cornerX = px + TILE_SIZE;
-          cornerY = py;
-          clipX = px + TILE_SIZE - vignetteSize;
-          clipY = py - SIDE_BORDER_SIZE;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = SIDE_BORDER_SIZE + vignetteSize;
-          break;
-        }
-        case 'concave-bl': {
-          cornerX = px;
-          cornerY = py + TILE_SIZE;
-          clipX = px - SIDE_BORDER_SIZE;
-          clipY = py + TILE_SIZE - vignetteSize;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = SIDE_BORDER_SIZE + vignetteSize;
-          break;
-        }
-        case 'concave-br': {
-          cornerX = px + TILE_SIZE;
-          cornerY = py + TILE_SIZE;
-          clipX = px + TILE_SIZE - vignetteSize;
-          clipY = py + TILE_SIZE - vignetteSize;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = BORDER_SIZE + vignetteSize;
           break;
         }
         default:
