@@ -3210,7 +3210,6 @@ function drawPuzzleVignette(
         case 'top': {
           // Top wall extends upward from the tile
           const wallTop = py - BORDER_SIZE;
-          const wallBottom = py;
           ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE + vignetteSize);
           ctx.clip();
 
@@ -3263,6 +3262,119 @@ function drawPuzzleVignette(
           break;
         }
       }
+
+      ctx.restore();
+    });
+
+    // Draw vignette for corners - corners need radial gradients emanating from the outer corner point
+    borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
+      const px = offsetX + x * TILE_SIZE;
+      const py = offsetY + y * TILE_SIZE;
+
+      ctx.save();
+
+      // Determine corner position and create radial gradient from outer corner
+      let cornerX: number, cornerY: number;
+      let clipX: number, clipY: number, clipW: number, clipH: number;
+
+      switch (type) {
+        case 'convex-tl': {
+          // Top-left convex corner - outer point is at top-left
+          cornerX = px - SIDE_BORDER_SIZE;
+          cornerY = py - BORDER_SIZE;
+          clipX = cornerX;
+          clipY = cornerY;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = BORDER_SIZE + vignetteSize;
+          break;
+        }
+        case 'convex-tr': {
+          // Top-right convex corner - outer point is at top-right
+          cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
+          cornerY = py - BORDER_SIZE;
+          clipX = px + TILE_SIZE - vignetteSize;
+          clipY = cornerY;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = BORDER_SIZE + vignetteSize;
+          break;
+        }
+        case 'convex-bl': {
+          // Bottom-left convex corner
+          const wallHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
+          cornerX = px - SIDE_BORDER_SIZE;
+          cornerY = py + TILE_SIZE + wallHeight;
+          clipX = cornerX;
+          clipY = py + TILE_SIZE - vignetteSize;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = wallHeight + vignetteSize;
+          break;
+        }
+        case 'convex-br': {
+          // Bottom-right convex corner
+          const wallHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
+          cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
+          cornerY = py + TILE_SIZE + wallHeight;
+          clipX = px + TILE_SIZE - vignetteSize;
+          clipY = py + TILE_SIZE - vignetteSize;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = wallHeight + vignetteSize;
+          break;
+        }
+        case 'concave-tl': {
+          // Concave top-left - inner corner, vignette from inside
+          cornerX = px;
+          cornerY = py;
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py - SIDE_BORDER_SIZE;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = SIDE_BORDER_SIZE + vignetteSize;
+          break;
+        }
+        case 'concave-tr': {
+          cornerX = px + TILE_SIZE;
+          cornerY = py;
+          clipX = px + TILE_SIZE - vignetteSize;
+          clipY = py - SIDE_BORDER_SIZE;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = SIDE_BORDER_SIZE + vignetteSize;
+          break;
+        }
+        case 'concave-bl': {
+          cornerX = px;
+          cornerY = py + TILE_SIZE;
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py + TILE_SIZE - vignetteSize;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = SIDE_BORDER_SIZE + vignetteSize;
+          break;
+        }
+        case 'concave-br': {
+          cornerX = px + TILE_SIZE;
+          cornerY = py + TILE_SIZE;
+          clipX = px + TILE_SIZE - vignetteSize;
+          clipY = py + TILE_SIZE - vignetteSize;
+          clipW = SIDE_BORDER_SIZE + vignetteSize;
+          clipH = SIDE_BORDER_SIZE + vignetteSize;
+          break;
+        }
+        default:
+          ctx.restore();
+          return;
+      }
+
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, clipW, clipH);
+      ctx.clip();
+
+      // Create radial gradient from the corner point
+      const gradient = ctx.createRadialGradient(
+        cornerX, cornerY, 0,
+        cornerX, cornerY, vignetteSize * 1.5
+      );
+      gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = gradient;
+      ctx.fillRect(clipX, clipY, clipW, clipH);
 
       ctx.restore();
     });
