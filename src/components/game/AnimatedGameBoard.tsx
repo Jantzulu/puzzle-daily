@@ -3283,28 +3283,110 @@ function drawPuzzleVignette(
       return runs;
     };
 
-    // Track which corners have been shadowed
-    const shadowedCorners = new Set<string>();
+    // Build a set of concave corners for lookup
+    const concaveCornerSet = new Set<string>();
+    borderData.corners.forEach(({ x, y, type }) => {
+      if (type.startsWith('concave')) {
+        concaveCornerSet.add(`${x},${y},${type}`);
+      }
+    });
+
+    // STEP 1: Draw CONVEX CORNERS with solid fill
+    // Convex corners are exposed to void from two directions, so they get
+    // maximum darkness (solid fill at shadow opacity)
+    borderData.corners.forEach(({ x, y, type }) => {
+      if (!type.startsWith('convex')) return;
+
+      const px = offsetX + x * TILE_SIZE;
+      const py = offsetY + y * TILE_SIZE;
+
+      let clipX: number, clipY: number;
+
+      switch (type) {
+        case 'convex-tl':
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py - BORDER_SIZE;
+          break;
+        case 'convex-tr':
+          clipX = px + TILE_SIZE;
+          clipY = py - BORDER_SIZE;
+          break;
+        case 'convex-bl':
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py + TILE_SIZE;
+          break;
+        case 'convex-br':
+          clipX = px + TILE_SIZE;
+          clipY = py + TILE_SIZE;
+          break;
+        default:
+          return;
+      }
+
+      // Solid fill for corners - they're maximally exposed to void
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.clip();
+      ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`;
+      ctx.fillRect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.restore();
+    });
+
+    // STEP 2: Draw CONCAVE CORNERS with solid fill
+    // Concave corners also get solid fill - they're at the intersection of two walls
+    // and should match the darkness of adjacent wall edges (which start at full opacity)
+    borderData.corners.forEach(({ x, y, type }) => {
+      if (!type.startsWith('concave')) return;
+
+      const px = offsetX + x * TILE_SIZE;
+      const py = offsetY + y * TILE_SIZE;
+
+      let clipX: number, clipY: number;
+
+      switch (type) {
+        case 'concave-tl':
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py - BORDER_SIZE;
+          break;
+        case 'concave-tr':
+          clipX = px + TILE_SIZE;
+          clipY = py - BORDER_SIZE;
+          break;
+        case 'concave-bl':
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py + TILE_SIZE;
+          break;
+        case 'concave-br':
+          clipX = px + TILE_SIZE;
+          clipY = py + TILE_SIZE;
+          break;
+        default:
+          return;
+      }
+
+      // Solid fill for concave corners too - they connect two wall edges
+      // that both start at full opacity at their outer edge
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.clip();
+      ctx.fillStyle = `rgba(0, 0, 0, ${shadowOpacity})`;
+      ctx.fillRect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.restore();
+    });
+
+    // STEP 3: Draw edge runs (NOT extending into ANY corners - convex or concave)
+    // Edges only cover the wall segments directly adjacent to tiles
 
     // Process TOP edge runs
     findHorizontalRuns(topEdges, 'top').forEach(run => {
-      const { startX, endX, y, hasLeftCorner, hasRightCorner } = run;
+      const { startX, endX, y } = run;
 
-      // Calculate pixel bounds
-      let pixelLeft = offsetX + startX * TILE_SIZE;
-      let pixelRight = offsetX + (endX + 1) * TILE_SIZE;
+      const pixelLeft = offsetX + startX * TILE_SIZE;
+      const pixelRight = offsetX + (endX + 1) * TILE_SIZE;
       const wallTop = offsetY + y * TILE_SIZE - BORDER_SIZE;
       const wallBottom = offsetY + y * TILE_SIZE;
-
-      // Extend into corners
-      if (hasLeftCorner) {
-        pixelLeft -= SIDE_BORDER_SIZE;
-        shadowedCorners.add(`${startX},${y},convex-tl`);
-      }
-      if (hasRightCorner) {
-        pixelRight += SIDE_BORDER_SIZE;
-        shadowedCorners.add(`${endX},${y},convex-tr`);
-      }
 
       ctx.save();
       ctx.beginPath();
@@ -3320,21 +3402,12 @@ function drawPuzzleVignette(
 
     // Process BOTTOM edge runs
     findHorizontalRuns(bottomEdges, 'bottom').forEach(run => {
-      const { startX, endX, y, hasLeftCorner, hasRightCorner } = run;
+      const { startX, endX, y } = run;
 
-      let pixelLeft = offsetX + startX * TILE_SIZE;
-      let pixelRight = offsetX + (endX + 1) * TILE_SIZE;
+      const pixelLeft = offsetX + startX * TILE_SIZE;
+      const pixelRight = offsetX + (endX + 1) * TILE_SIZE;
       const wallTop = offsetY + (y + 1) * TILE_SIZE;
       const wallBottom = wallTop + BORDER_SIZE;
-
-      if (hasLeftCorner) {
-        pixelLeft -= SIDE_BORDER_SIZE;
-        shadowedCorners.add(`${startX},${y},convex-bl`);
-      }
-      if (hasRightCorner) {
-        pixelRight += SIDE_BORDER_SIZE;
-        shadowedCorners.add(`${endX},${y},convex-br`);
-      }
 
       ctx.save();
       ctx.beginPath();
@@ -3350,22 +3423,12 @@ function drawPuzzleVignette(
 
     // Process LEFT edge runs
     findVerticalRuns(leftEdges, 'left').forEach(run => {
-      const { x, startY, endY, hasTopCorner, hasBottomCorner } = run;
+      const { x, startY, endY } = run;
 
       const wallLeft = offsetX + x * TILE_SIZE - SIDE_BORDER_SIZE;
       const wallRight = offsetX + x * TILE_SIZE;
-      let pixelTop = offsetY + startY * TILE_SIZE;
-      let pixelBottom = offsetY + (endY + 1) * TILE_SIZE;
-
-      // Only extend into corners if they haven't been claimed by horizontal runs
-      if (hasTopCorner && !shadowedCorners.has(`${x},${startY},convex-tl`)) {
-        pixelTop -= BORDER_SIZE;
-        shadowedCorners.add(`${x},${startY},convex-tl`);
-      }
-      if (hasBottomCorner && !shadowedCorners.has(`${x},${endY},convex-bl`)) {
-        pixelBottom += BORDER_SIZE;
-        shadowedCorners.add(`${x},${endY},convex-bl`);
-      }
+      const pixelTop = offsetY + startY * TILE_SIZE;
+      const pixelBottom = offsetY + (endY + 1) * TILE_SIZE;
 
       ctx.save();
       ctx.beginPath();
@@ -3381,21 +3444,12 @@ function drawPuzzleVignette(
 
     // Process RIGHT edge runs
     findVerticalRuns(rightEdges, 'right').forEach(run => {
-      const { x, startY, endY, hasTopCorner, hasBottomCorner } = run;
+      const { x, startY, endY } = run;
 
       const wallLeft = offsetX + (x + 1) * TILE_SIZE;
       const wallRight = wallLeft + SIDE_BORDER_SIZE;
-      let pixelTop = offsetY + startY * TILE_SIZE;
-      let pixelBottom = offsetY + (endY + 1) * TILE_SIZE;
-
-      if (hasTopCorner && !shadowedCorners.has(`${x},${startY},convex-tr`)) {
-        pixelTop -= BORDER_SIZE;
-        shadowedCorners.add(`${x},${startY},convex-tr`);
-      }
-      if (hasBottomCorner && !shadowedCorners.has(`${x},${endY},convex-br`)) {
-        pixelBottom += BORDER_SIZE;
-        shadowedCorners.add(`${x},${endY},convex-br`);
-      }
+      const pixelTop = offsetY + startY * TILE_SIZE;
+      const pixelBottom = offsetY + (endY + 1) * TILE_SIZE;
 
       ctx.save();
       ctx.beginPath();
@@ -3406,58 +3460,6 @@ function drawPuzzleVignette(
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
       ctx.fillStyle = gradient;
       ctx.fillRect(wallLeft, pixelTop, SIDE_BORDER_SIZE, pixelBottom - pixelTop);
-      ctx.restore();
-    });
-
-    // Handle any convex corners that weren't claimed by edge runs (diagonal-only corners)
-    borderData.corners.forEach(({ x, y, type }) => {
-      if (!type.startsWith('convex')) return;
-      if (shadowedCorners.has(`${x},${y},${type}`)) return;
-
-      const px = offsetX + x * TILE_SIZE;
-      const py = offsetY + y * TILE_SIZE;
-
-      let clipX: number, clipY: number;
-      let gradStartX: number, gradStartY: number, gradEndX: number, gradEndY: number;
-
-      switch (type) {
-        case 'convex-tl':
-          clipX = px - SIDE_BORDER_SIZE;
-          clipY = py - BORDER_SIZE;
-          gradStartX = clipX; gradStartY = clipY;
-          gradEndX = px; gradEndY = py;
-          break;
-        case 'convex-tr':
-          clipX = px + TILE_SIZE;
-          clipY = py - BORDER_SIZE;
-          gradStartX = clipX + SIDE_BORDER_SIZE; gradStartY = clipY;
-          gradEndX = clipX; gradEndY = py;
-          break;
-        case 'convex-bl':
-          clipX = px - SIDE_BORDER_SIZE;
-          clipY = py + TILE_SIZE;
-          gradStartX = clipX; gradStartY = clipY + BORDER_SIZE;
-          gradEndX = px; gradEndY = clipY;
-          break;
-        case 'convex-br':
-          clipX = px + TILE_SIZE;
-          clipY = py + TILE_SIZE;
-          gradStartX = clipX + SIDE_BORDER_SIZE; gradStartY = clipY + BORDER_SIZE;
-          gradEndX = clipX; gradEndY = clipY;
-          break;
-        default:
-          return;
-      }
-
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
-      ctx.clip();
-      const gradient = ctx.createLinearGradient(gradStartX, gradStartY, gradEndX, gradEndY);
-      gradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = gradient;
-      ctx.fillRect(clipX, clipY, SIDE_BORDER_SIZE, BORDER_SIZE);
       ctx.restore();
     });
   } else {
