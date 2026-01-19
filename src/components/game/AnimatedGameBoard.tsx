@@ -3270,6 +3270,8 @@ function drawPuzzleVignette(
     });
 
     // Draw vignette for ALL convex corners - darkness emanates from void/outside
+    // Use dual linear gradients (one vertical, one horizontal) instead of radial
+    // This matches the adjacent edge vignettes and respects different wall thicknesses
     // Skip concave corners (they face into the playable area, not away from it)
     borderData.corners.forEach(({ x, y, type }) => {
       const px = offsetX + x * TILE_SIZE;
@@ -3278,69 +3280,96 @@ function drawPuzzleVignette(
       // Skip concave corners - they're interior corners facing INTO the playable area
       if (type.startsWith('concave')) return;
 
-      ctx.save();
-
-      // Determine corner position and create radial gradient from outer corner
-      let cornerX: number, cornerY: number;
+      // Define the corner region and gradient directions based on corner type
       let clipX: number, clipY: number, clipW: number, clipH: number;
-
-      // Use average of both vignette sizes for corner radius
-      const cornerVignetteRadius = (horizontalVignetteSize + verticalVignetteSize) / 2;
+      let vGradientStart: number, vGradientEnd: number; // Vertical gradient (top/bottom edge)
+      let hGradientStart: number, hGradientEnd: number; // Horizontal gradient (left/right edge)
 
       switch (type) {
         case 'convex-tl': {
-          cornerX = px - SIDE_BORDER_SIZE;
-          cornerY = py - BORDER_SIZE;
-          clipX = cornerX;
-          clipY = cornerY;
+          // Top-left corner: darkness from top and left
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py - BORDER_SIZE;
           clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
           clipH = BORDER_SIZE + verticalVignetteSize;
+          // Vertical gradient: dark at top, fades down
+          vGradientStart = clipY;
+          vGradientEnd = clipY + verticalVignetteSize;
+          // Horizontal gradient: dark at left, fades right
+          hGradientStart = clipX;
+          hGradientEnd = clipX + horizontalVignetteSize;
           break;
         }
         case 'convex-tr': {
-          cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
-          cornerY = py - BORDER_SIZE;
+          // Top-right corner: darkness from top and right
           clipX = px + TILE_SIZE - horizontalVignetteSize;
-          clipY = cornerY;
+          clipY = py - BORDER_SIZE;
           clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
           clipH = BORDER_SIZE + verticalVignetteSize;
+          // Vertical gradient: dark at top, fades down
+          vGradientStart = clipY;
+          vGradientEnd = clipY + verticalVignetteSize;
+          // Horizontal gradient: dark at right, fades left
+          hGradientStart = clipX + clipW;
+          hGradientEnd = clipX + clipW - horizontalVignetteSize;
           break;
         }
         case 'convex-bl': {
-          cornerX = px - SIDE_BORDER_SIZE;
-          cornerY = py + TILE_SIZE + BORDER_SIZE;
-          clipX = cornerX;
+          // Bottom-left corner: darkness from bottom and left
+          clipX = px - SIDE_BORDER_SIZE;
           clipY = py + TILE_SIZE - verticalVignetteSize;
           clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
           clipH = BORDER_SIZE + verticalVignetteSize;
+          // Vertical gradient: dark at bottom, fades up
+          vGradientStart = clipY + clipH;
+          vGradientEnd = clipY + clipH - verticalVignetteSize;
+          // Horizontal gradient: dark at left, fades right
+          hGradientStart = clipX;
+          hGradientEnd = clipX + horizontalVignetteSize;
           break;
         }
         case 'convex-br': {
-          cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
-          cornerY = py + TILE_SIZE + BORDER_SIZE;
+          // Bottom-right corner: darkness from bottom and right
           clipX = px + TILE_SIZE - horizontalVignetteSize;
           clipY = py + TILE_SIZE - verticalVignetteSize;
           clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
           clipH = BORDER_SIZE + verticalVignetteSize;
+          // Vertical gradient: dark at bottom, fades up
+          vGradientStart = clipY + clipH;
+          vGradientEnd = clipY + clipH - verticalVignetteSize;
+          // Horizontal gradient: dark at right, fades left
+          hGradientStart = clipX + clipW;
+          hGradientEnd = clipX + clipW - horizontalVignetteSize;
           break;
         }
         default:
-          ctx.restore();
           return;
       }
 
+      // Draw vertical gradient (from top or bottom edge)
+      ctx.save();
       ctx.beginPath();
       ctx.rect(clipX, clipY, clipW, clipH);
       ctx.clip();
 
-      // Create radial gradient from the corner point
-      const gradient = ctx.createRadialGradient(
-        cornerX, cornerY, 0,
-        cornerX, cornerY, cornerVignetteRadius * 1.5
-      );
-      gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
-      gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = gradient;
+      const vGradient = ctx.createLinearGradient(0, vGradientStart, 0, vGradientEnd);
+      vGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+      vGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = vGradient;
+      ctx.fillRect(clipX, clipY, clipW, clipH);
+
+      ctx.restore();
+
+      // Draw horizontal gradient (from left or right edge)
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, clipW, clipH);
+      ctx.clip();
+
+      const hGradient = ctx.createLinearGradient(hGradientStart, 0, hGradientEnd, 0);
+      hGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
+      hGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = hGradient;
       ctx.fillRect(clipX, clipY, clipW, clipH);
 
       ctx.restore();
