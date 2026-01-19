@@ -3272,8 +3272,118 @@ function drawPuzzleVignette(
       ctx.restore();
     });
 
-    // Note: Corner shadows are handled by the overlap of edge shadows (for interior corners)
-    // and by the bounding box shadows (for outer corners), so no separate corner handling needed.
+    // Draw shadows for interior convex corners (corners facing void tiles, not outer perimeter)
+    // These are corners where two interior edges meet - the edge shadows don't cover the corner piece
+    borderData.corners.forEach(({ x, y, type }) => {
+      // Skip concave corners - they face INTO the playable area
+      if (type.startsWith('concave')) return;
+
+      // Check if this is an interior corner (not on outer perimeter)
+      // A corner is interior if NEITHER of its contributing edges is on the outer perimeter
+      let isInteriorCorner = false;
+      switch (type) {
+        case 'convex-tl':
+          // Top-left corner: check if top edge AND left edge are both interior
+          isInteriorCorner = (y > 0) && (x > 0);
+          break;
+        case 'convex-tr':
+          // Top-right corner: check if top edge AND right edge are both interior
+          isInteriorCorner = (y > 0) && (x < gridWidth - 1);
+          break;
+        case 'convex-bl':
+          // Bottom-left corner: check if bottom edge AND left edge are both interior
+          isInteriorCorner = (y < gridHeight - 1) && (x > 0);
+          break;
+        case 'convex-br':
+          // Bottom-right corner: check if bottom edge AND right edge are both interior
+          isInteriorCorner = (y < gridHeight - 1) && (x < gridWidth - 1);
+          break;
+      }
+
+      // Skip outer corners - they're handled by bounding box shadows
+      if (!isInteriorCorner) return;
+
+      const px = offsetX + x * TILE_SIZE;
+      const py = offsetY + y * TILE_SIZE;
+
+      // Draw dual linear gradients for the corner (same as edges but for the corner piece)
+      let clipX: number, clipY: number, clipW: number, clipH: number;
+      let vGradientStart: number, vGradientEnd: number;
+      let hGradientStart: number, hGradientEnd: number;
+
+      switch (type) {
+        case 'convex-tl': {
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py - BORDER_SIZE;
+          clipW = SIDE_BORDER_SIZE + horizontalShadowDepth;
+          clipH = BORDER_SIZE + verticalShadowDepth;
+          vGradientStart = clipY;
+          vGradientEnd = clipY + verticalShadowDepth;
+          hGradientStart = clipX;
+          hGradientEnd = clipX + horizontalShadowDepth;
+          break;
+        }
+        case 'convex-tr': {
+          clipX = px + TILE_SIZE - horizontalShadowDepth;
+          clipY = py - BORDER_SIZE;
+          clipW = SIDE_BORDER_SIZE + horizontalShadowDepth;
+          clipH = BORDER_SIZE + verticalShadowDepth;
+          vGradientStart = clipY;
+          vGradientEnd = clipY + verticalShadowDepth;
+          hGradientStart = clipX + clipW;
+          hGradientEnd = clipX + clipW - horizontalShadowDepth;
+          break;
+        }
+        case 'convex-bl': {
+          clipX = px - SIDE_BORDER_SIZE;
+          clipY = py + TILE_SIZE - verticalShadowDepth;
+          clipW = SIDE_BORDER_SIZE + horizontalShadowDepth;
+          clipH = BORDER_SIZE + verticalShadowDepth;
+          vGradientStart = clipY + clipH;
+          vGradientEnd = clipY + clipH - verticalShadowDepth;
+          hGradientStart = clipX;
+          hGradientEnd = clipX + horizontalShadowDepth;
+          break;
+        }
+        case 'convex-br': {
+          clipX = px + TILE_SIZE - horizontalShadowDepth;
+          clipY = py + TILE_SIZE - verticalShadowDepth;
+          clipW = SIDE_BORDER_SIZE + horizontalShadowDepth;
+          clipH = BORDER_SIZE + verticalShadowDepth;
+          vGradientStart = clipY + clipH;
+          vGradientEnd = clipY + clipH - verticalShadowDepth;
+          hGradientStart = clipX + clipW;
+          hGradientEnd = clipX + clipW - horizontalShadowDepth;
+          break;
+        }
+        default:
+          return;
+      }
+
+      // Draw vertical gradient for corner
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, clipW, clipH);
+      ctx.clip();
+      const vGradient = ctx.createLinearGradient(0, vGradientStart, 0, vGradientEnd);
+      vGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+      vGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = vGradient;
+      ctx.fillRect(clipX, clipY, clipW, clipH);
+      ctx.restore();
+
+      // Draw horizontal gradient for corner
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(clipX, clipY, clipW, clipH);
+      ctx.clip();
+      const hGradient = ctx.createLinearGradient(hGradientStart, 0, hGradientEnd, 0);
+      hGradient.addColorStop(0, `rgba(0, 0, 0, ${shadowOpacity})`);
+      hGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.fillStyle = hGradient;
+      ctx.fillRect(clipX, clipY, clipW, clipH);
+      ctx.restore();
+    });
 
     // Apply outer bounding box edge shadows for irregular shapes
     // This darkens the wall sprites at the outer perimeter of the entire canvas
