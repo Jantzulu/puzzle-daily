@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   getCustomCharacters,
   getCustomEnemies,
@@ -14,21 +14,23 @@ import {
 import type { StatusEffectAsset } from '../../types/game';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
+import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 
 type TabId = 'characters' | 'enemies' | 'status_effects' | 'special_tiles' | 'items';
 
 interface TabConfig {
   id: TabId;
   label: string;
-  icon: string;
+  defaultIcon: string;
+  themeIconKey: keyof ThemeAssets;
 }
 
 const TABS: TabConfig[] = [
-  { id: 'characters', label: 'Heroes', icon: '⚔️' },
-  { id: 'enemies', label: 'Enemies', icon: '👹' },
-  { id: 'status_effects', label: 'Enchantments', icon: '✨' },
-  { id: 'special_tiles', label: 'Dungeon Tiles', icon: '🧱' },
-  { id: 'items', label: 'Items', icon: '💎' },
+  { id: 'characters', label: 'Heroes', defaultIcon: '⚔️', themeIconKey: 'iconTabHeroes' },
+  { id: 'enemies', label: 'Enemies', defaultIcon: '👹', themeIconKey: 'iconTabEnemies' },
+  { id: 'status_effects', label: 'Enchantments', defaultIcon: '✨', themeIconKey: 'iconTabEnchantments' },
+  { id: 'special_tiles', label: 'Dungeon Tiles', defaultIcon: '🧱', themeIconKey: 'iconTabTiles' },
+  { id: 'items', label: 'Items', defaultIcon: '💎', themeIconKey: 'iconTabItems' },
 ];
 
 // ============ ENTRY CARD COMPONENTS ============
@@ -644,6 +646,17 @@ export const Compendium: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(null);
 
+  // Theme assets for custom tab icons
+  const [themeAssets, setThemeAssets] = useState<ThemeAssets>(() => loadThemeAssets());
+
+  // Subscribe to theme asset changes
+  useEffect(() => {
+    const unsubscribe = subscribeToThemeAssets((assets) => {
+      setThemeAssets(assets);
+    });
+    return unsubscribe;
+  }, []);
+
   // Load all assets - filter out built-in status effects
   const characters = useMemo(() => getCustomCharacters(), []);
   const enemies = useMemo(() => getCustomEnemies(), []);
@@ -755,7 +768,7 @@ export const Compendium: React.FC = () => {
                   : ''
               }`}
             >
-              <span>{tab.icon}</span>
+              <span>{(themeAssets[tab.themeIconKey] as string) || tab.defaultIcon}</span>
               <span className="hidden sm:inline">{tab.label}</span>
               <span className={`text-xs px-1.5 py-0.5 rounded-pixel ${
                 activeTab === tab.id ? 'bg-copper-800 text-copper-200' : 'bg-stone-700 text-stone-400'

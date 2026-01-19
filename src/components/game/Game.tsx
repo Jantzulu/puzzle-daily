@@ -16,6 +16,7 @@ import { loadTileType, loadCollectible } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
+import { WarningModal } from '../shared/WarningModal';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -63,6 +64,12 @@ export const Game: React.FC = () => {
 
   // Track defeat reason
   const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
+
+  // Warning modal state
+  const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: '',
+  });
 
   // Reload saved puzzles when component mounts or when returning from editor
   useEffect(() => {
@@ -300,7 +307,7 @@ export const Game: React.FC = () => {
 
   const handlePlay = () => {
     if (gameState.placedCharacters.length === 0) {
-      alert('Place at least one character!');
+      setWarningModal({ isOpen: true, message: 'Place at least one hero on the board before starting!' });
       return;
     }
 
@@ -485,7 +492,7 @@ export const Game: React.FC = () => {
 
   const handleTestCharacters = () => {
     if (gameState.placedCharacters.length === 0) {
-      alert('Place at least one character to test!');
+      setWarningModal({ isOpen: true, message: 'Place at least one hero to test!' });
       return;
     }
 
@@ -609,7 +616,7 @@ export const Game: React.FC = () => {
                       onClick={handlePlay}
                       className="dungeon-btn-success px-6 md:px-8 py-3 font-bold text-lg md:text-xl torch-glow"
                     >
-                      &#9876; Play
+                      {themeAssets.iconNavPlay || '\u2694'} Play
                     </button>
                   </div>
 
@@ -972,6 +979,14 @@ export const Game: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Warning Modal */}
+      <WarningModal
+        isOpen={warningModal.isOpen}
+        onClose={() => setWarningModal({ isOpen: false, message: '' })}
+        title="Hold On!"
+        message={warningModal.message}
+      />
     </div>
   );
 };

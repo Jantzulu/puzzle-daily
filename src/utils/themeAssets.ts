@@ -61,6 +61,19 @@ export interface ThemeAssets {
   iconSword?: string;
   iconShield?: string;
 
+  // Navigation & Tab Icons (emoji/text)
+  iconNavPlay?: string;       // Icon for Play nav button (default: ⚔)
+  iconNavCompendium?: string; // Icon for Compendium nav button (default: 📖)
+  iconNavEditor?: string;     // Icon for Map Editor nav button (default: 🛠)
+  iconNavAssets?: string;     // Icon for Assets nav button (default: 📦)
+
+  // Compendium Tab Icons (emoji/text)
+  iconTabHeroes?: string;       // Icon for Heroes tab (default: ⚔️)
+  iconTabEnemies?: string;      // Icon for Enemies tab (default: 👹)
+  iconTabEnchantments?: string; // Icon for Enchantments tab (default: ✨)
+  iconTabTiles?: string;        // Icon for Dungeon Tiles tab (default: 🧱)
+  iconTabItems?: string;        // Icon for Items tab (default: 💎)
+
   // Overlay effects
   overlayVignette?: string;
   overlayNoise?: string;
@@ -145,6 +158,15 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconHeartEmpty: { label: 'Heart Icon (Empty)', description: 'Custom empty heart for lives display', category: 'icons', inputType: 'image' },
   iconSword: { label: 'Sword Icon', description: 'Attack/combat icon', category: 'icons', inputType: 'image' },
   iconShield: { label: 'Shield Icon', description: 'Defense/protection icon', category: 'icons', inputType: 'image' },
+  iconNavPlay: { label: 'Play Nav Icon', description: 'Icon/emoji for Play button in navbar (default: ⚔)', category: 'icons', inputType: 'text' },
+  iconNavCompendium: { label: 'Compendium Nav Icon', description: 'Icon/emoji for Compendium button in navbar (default: 📖)', category: 'icons', inputType: 'text' },
+  iconNavEditor: { label: 'Editor Nav Icon', description: 'Icon/emoji for Map Editor button in navbar (default: 🛠)', category: 'icons', inputType: 'text' },
+  iconNavAssets: { label: 'Assets Nav Icon', description: 'Icon/emoji for Assets button in navbar (default: 📦)', category: 'icons', inputType: 'text' },
+  iconTabHeroes: { label: 'Heroes Tab Icon', description: 'Icon/emoji for Heroes tab in Compendium (default: ⚔️)', category: 'icons', inputType: 'text' },
+  iconTabEnemies: { label: 'Enemies Tab Icon', description: 'Icon/emoji for Enemies tab in Compendium (default: 👹)', category: 'icons', inputType: 'text' },
+  iconTabEnchantments: { label: 'Enchantments Tab Icon', description: 'Icon/emoji for Enchantments tab in Compendium (default: ✨)', category: 'icons', inputType: 'text' },
+  iconTabTiles: { label: 'Tiles Tab Icon', description: 'Icon/emoji for Dungeon Tiles tab in Compendium (default: 🧱)', category: 'icons', inputType: 'text' },
+  iconTabItems: { label: 'Items Tab Icon', description: 'Icon/emoji for Items tab in Compendium (default: 💎)', category: 'icons', inputType: 'text' },
   overlayVignette: { label: 'Vignette Overlay', description: 'Edge darkening effect', category: 'effects', inputType: 'image' },
   overlayNoise: { label: 'Noise Overlay', description: 'Texture noise overlay', category: 'effects', inputType: 'image' },
 

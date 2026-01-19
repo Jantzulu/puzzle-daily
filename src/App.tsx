@@ -89,16 +89,16 @@ function Navigation() {
         {/* Desktop navigation - closer to title */}
         <div className="hidden md:flex items-center gap-2 ml-4">
           <Link to="/" className={linkClass('/')}>
-            <span className="mr-1">&#9876;</span> {themeAssets.navLabelPlay || 'Play'}
+            <span className="mr-1">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
           <Link to="/compendium" className={linkClass('/compendium')}>
-            <span className="mr-1">&#128214;</span> {themeAssets.navLabelCompendium || 'Compendium'}
+            <span className="mr-1">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
           <Link to="/editor" className={linkClass('/editor')}>
-            <span className="mr-1">&#128736;</span> {themeAssets.navLabelEditor || 'Map Editor'}
+            <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
           </Link>
           <Link to="/assets" className={linkClass('/assets')}>
-            <span className="mr-1">&#128230;</span> {themeAssets.navLabelAssets || 'Assets'}
+            <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
         </div>
 
@@ -132,28 +132,28 @@ function Navigation() {
             className={`block ${linkClass('/')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="mr-2">&#9876;</span> {themeAssets.navLabelPlay || 'Play'}
+            <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
           <Link
             to="/compendium"
             className={`block ${linkClass('/compendium')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="mr-2">&#128214;</span> {themeAssets.navLabelCompendium || 'Compendium'}
+            <span className="mr-2">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
           <Link
             to="/editor"
             className={`block ${linkClass('/editor')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="mr-2">&#128736;</span> {themeAssets.navLabelEditor || 'Map Editor'}
+            <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
           </Link>
           <Link
             to="/assets"
             className={`block ${linkClass('/assets')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="mr-2">&#128230;</span> {themeAssets.navLabelAssets || 'Assets'}
+            <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
             <SoundSettings />

@@ -28,6 +28,7 @@ import { subscribeToSpriteImageLoads } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 import { solvePuzzle, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
+import { WarningModal } from '../shared/WarningModal';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -375,6 +376,12 @@ export const MapEditor: React.FC = () => {
   const [isValidating, setIsValidating] = useState(false);
   const [validationResult, setValidationResult] = useState<SolverResult | null>(null);
   const [showValidationModal, setShowValidationModal] = useState(false);
+
+  // Warning modal state
+  const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({
+    isOpen: false,
+    message: '',
+  });
 
   // Local input state for grid size (allows typing without immediate validation)
   const [widthInput, setWidthInput] = useState(String(state.gridWidth));
@@ -1373,7 +1380,7 @@ export const MapEditor: React.FC = () => {
 
   const handlePlay = () => {
     if (!gameState || gameState.placedCharacters.length === 0) {
-      alert('Place at least one character!');
+      setWarningModal({ isOpen: true, message: 'Place at least one hero on the board before starting!' });
       return;
     }
 
@@ -1478,7 +1485,7 @@ export const MapEditor: React.FC = () => {
     if (!gameState || !originalPlaytestPuzzle) return;
 
     if (gameState.placedCharacters.length === 0) {
-      alert('Place at least one character to test!');
+      setWarningModal({ isOpen: true, message: 'Place at least one hero to test!' });
       return;
     }
 
@@ -3221,6 +3228,14 @@ export const MapEditor: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Warning Modal */}
+      <WarningModal
+        isOpen={warningModal.isOpen}
+        onClose={() => setWarningModal({ isOpen: false, message: '' })}
+        title="Hold On!"
+        message={warningModal.message}
+      />
     </div>
   );
 };
