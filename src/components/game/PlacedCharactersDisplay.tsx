@@ -47,7 +47,7 @@ export const PlacedCharactersDisplay: React.FC<PlacedCharactersDisplayProps> = (
                     }`}
                   >
                     <div className="relative">
-                      <SpriteThumbnail sprite={character.customSprite} size={48} />
+                      <SpriteThumbnail sprite={character.customSprite} size={48} previewType="entity" />
                       {isDead && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <span className="text-2xl">💀</span>

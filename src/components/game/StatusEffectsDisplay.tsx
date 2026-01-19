@@ -174,7 +174,7 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
   // Handle inline sprite - use SpriteThumbnail for full rendering support
   if (iconSprite.type === 'inline' && iconSprite.spriteData) {
     const spriteData = iconSprite.spriteData as CustomSprite;
-    return <SpriteThumbnail sprite={spriteData} size={size} />;
+    return <SpriteThumbnail sprite={spriteData} size={size} previewType="asset" />;
   }
 
   // Handle stored sprite (would need to load from storage)
@@ -260,7 +260,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
                         title={source.name}
                       >
                         {source.sprite && (
-                          <SpriteThumbnail sprite={source.sprite} size={16} />
+                          <SpriteThumbnail sprite={source.sprite} size={16} previewType="entity" />
                         )}
                         <span className="max-w-[60px] truncate">{source.name}</span>
                       </div>

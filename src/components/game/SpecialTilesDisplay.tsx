@@ -159,7 +159,7 @@ const TileSprite: React.FC<{ info: SpecialTileInfo; size?: number; isOffState?: 
   if (sprite) {
     return (
       <div style={{ opacity: isOffState ? 0.6 : 1 }}>
-        <SpriteThumbnail sprite={sprite} size={size} />
+        <SpriteThumbnail sprite={sprite} size={size} previewType="asset" />
       </div>
     );
   }

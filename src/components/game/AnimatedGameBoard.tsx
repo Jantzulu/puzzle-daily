@@ -2562,6 +2562,13 @@ function drawCollectible(
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
+  // Calculate bobbing offset - gentle up/down animation like items dropped on the ground
+  // Use position-based offset so items bob at slightly different phases
+  const bobPhase = (x * 1.3 + y * 0.7) * Math.PI;
+  const bobSpeed = 2; // Cycles per second
+  const bobAmount = TILE_SIZE * 0.06; // 6% of tile size
+  const bobOffset = Math.sin((now / 1000) * bobSpeed * Math.PI * 2 + bobPhase) * bobAmount;
+
   // Try to load custom collectible data
   const collectibleData = collectibleId ? loadCollectible(collectibleId) : null;
 
@@ -2569,12 +2576,12 @@ function drawCollectible(
   if (collectibleData?.customSprite) {
     const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
 
-    // Calculate center position based on anchor point
+    // Calculate center position based on anchor point, with bobbing
     let centerX = px + TILE_SIZE / 2;
-    let centerY = py + TILE_SIZE / 2;
+    let centerY = py + TILE_SIZE / 2 + bobOffset;
 
     if (collectibleData.anchorPoint === 'bottom_center') {
-      centerY = py + TILE_SIZE / 2 - spriteSize / 2;
+      centerY = py + TILE_SIZE / 2 - spriteSize / 2 + bobOffset;
     }
 
     // Draw the sprite
@@ -2582,13 +2589,13 @@ function drawCollectible(
     return;
   }
 
-  // Legacy fallback: draw based on type
+  // Legacy fallback: draw based on type (with bobbing)
   if (type === 'gem') {
     // Draw a diamond shape for gems
     ctx.fillStyle = '#9333ea'; // Purple
     ctx.beginPath();
     const cx = px + TILE_SIZE / 2;
-    const cy = py + TILE_SIZE / 2;
+    const cy = py + TILE_SIZE / 2 + bobOffset;
     const size = TILE_SIZE / 3;
     ctx.moveTo(cx, cy - size);
     ctx.lineTo(cx + size, cy);
@@ -2599,11 +2606,11 @@ function drawCollectible(
     return;
   }
 
-  // Default: draw a star shape (original behavior for coins and unknown types)
+  // Default: draw a star shape (original behavior for coins and unknown types, with bobbing)
   ctx.fillStyle = COLORS.collectible;
   ctx.beginPath();
   const cx = px + TILE_SIZE / 2;
-  const cy = py + TILE_SIZE / 2;
+  const cy = py + TILE_SIZE / 2 + bobOffset;
   const spikes = 5;
   const outerRadius = TILE_SIZE / 4;
   const innerRadius = TILE_SIZE / 8;
@@ -3203,6 +3210,7 @@ function drawPuzzleVignette(
 
   // ==========================================
   // INNER TILE VIGNETTE (subtle radial darkening on game area)
+  // Only applies to playable tiles, not void tiles
   // ==========================================
   const innerVignetteOpacity = 0.4; // Moderate effect on tiles
 
@@ -3225,8 +3233,33 @@ function drawPuzzleVignette(
   innerGradient.addColorStop(0.7, 'rgba(0, 0, 0, 0)');
   innerGradient.addColorStop(1, `rgba(0, 0, 0, ${innerVignetteOpacity})`);
 
-  ctx.fillStyle = innerGradient;
-  ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+  // Check if we have void tiles - if so, clip to only playable tiles
+  const hasVoidTiles = hasIrregularShape(tiles, gridWidth, gridHeight);
+
+  if (hasVoidTiles) {
+    // Create a clipping path that only includes playable tiles
+    ctx.save();
+    ctx.beginPath();
+    for (let y = 0; y < gridHeight; y++) {
+      for (let x = 0; x < gridWidth; x++) {
+        if (tiles[y]?.[x] !== null) {
+          const px = gameAreaX + x * TILE_SIZE;
+          const py = gameAreaY + y * TILE_SIZE;
+          ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+        }
+      }
+    }
+    ctx.clip();
+
+    // Apply vignette only to clipped area (playable tiles)
+    ctx.fillStyle = innerGradient;
+    ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+    ctx.restore();
+  } else {
+    // No void tiles - apply vignette to entire game area
+    ctx.fillStyle = innerGradient;
+    ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+  }
 
   ctx.restore();
 }

@@ -4,7 +4,7 @@ import { Direction } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { initializeGameState, executeTurn, checkVictoryConditions } from '../../engine/simulation';
-import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
+import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
@@ -860,8 +860,8 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Win Condition Display - below puzzle, above characters */}
-            {gameState.gameStatus === 'setup' && (
+            {/* Win Condition Display - below puzzle, visible during setup and gameplay */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && (
               <div className="mt-4 w-full max-w-md px-4 py-2 dungeon-panel-dark">
                 <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
                   <HelpButton sectionId="game_general" />
@@ -906,21 +906,35 @@ export const Game: React.FC = () => {
                   )}
                 </div>
 
-                {/* Side Quests Display */}
-                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (
-                  <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-stone-700 flex-wrap">
-                    <HelpButton sectionId="side_quests" />
-                    <span className="text-arcane-400">Side Quests:</span>
-                    <span className="text-arcane-300">
-                      {gameState.puzzle.sideQuests.map((q, i) => (
-                        <span key={q.id}>
-                          {i > 0 && ', '}
-                          {q.title} <span className="text-arcane-500">(+{q.bonusPoints})</span>
-                        </span>
-                      ))}
-                    </span>
-                  </div>
-                )}
+                {/* Side Quests Display - with dynamic completion status during gameplay */}
+                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
+                  // Check current completion status during gameplay
+                  const completedQuestIds = gameState.gameStatus === 'running'
+                    ? checkSideQuests(gameState)
+                    : [];
+
+                  return (
+                    <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-stone-700 flex-wrap">
+                      <HelpButton sectionId="side_quests" />
+                      <span className="text-arcane-400">Side Quests:</span>
+                      <span className="text-arcane-300">
+                        {gameState.puzzle.sideQuests.map((q, i) => {
+                          const isCompleted = completedQuestIds.includes(q.id);
+                          return (
+                            <span
+                              key={q.id}
+                              className={isCompleted ? 'text-moss-400' : ''}
+                            >
+                              {i > 0 && ', '}
+                              {isCompleted && '✓ '}
+                              {q.title} <span className={isCompleted ? 'text-moss-500' : 'text-arcane-500'}>(+{q.bonusPoints})</span>
+                            </span>
+                          );
+                        })}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 

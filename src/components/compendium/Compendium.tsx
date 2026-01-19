@@ -34,6 +34,36 @@ const TABS: TabConfig[] = [
   { id: 'items', label: 'Items', defaultIcon: '💎', themeIconKey: 'iconTabItems' },
 ];
 
+// ============ TILE SPRITE PREVIEW COMPONENT ============
+
+/**
+ * Renders a tile sprite preview - displays a sprite image like a tile on the game board
+ * without labels or extra decoration, just the sprite filling the preview area.
+ */
+interface TileSpritePreviewProps {
+  src: string;
+  title?: string;
+  size?: number;
+}
+
+const TileSpritePreview: React.FC<TileSpritePreviewProps> = ({ src, title, size = 32 }) => {
+  return (
+    <div
+      className="rounded pixelated"
+      style={{
+        width: size,
+        height: size,
+        backgroundImage: `url(${src})`,
+        backgroundSize: 'contain',
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        imageRendering: 'pixelated',
+      }}
+      title={title}
+    />
+  );
+};
+
 // ============ ENTRY CARD COMPONENTS ============
 
 interface CharacterCardProps {
@@ -228,36 +258,25 @@ const TileCard: React.FC<TileCardProps> = ({ tile, onClick, isSelected }) => {
           )}
         </div>
       </div>
-      {/* Show skin variations as small thumbnails */}
+      {/* Show alternate tile appearances - just the sprites rendered like tiles */}
       {hasVariations && (
         <div className="mt-2 pt-2 border-t border-stone-700/50">
           <div className="flex items-center gap-1 flex-wrap">
             {tile.offStateSprite && (
-              <>
-                <span className="text-xs text-stone-500 mr-1">Off:</span>
-                <div className="relative mr-2" title="Off State">
-                  <img
-                    src={tile.offStateSprite.idleImageData || tile.offStateSprite.imageData}
-                    alt="Off state"
-                    className="w-6 h-6 object-contain rounded bg-stone-700/50"
-                  />
-                </div>
-              </>
+              <TileSpritePreview
+                src={tile.offStateSprite.idleImageData || tile.offStateSprite.imageData}
+                title="Off State"
+                size={24}
+              />
             )}
-            {skinVariations.length > 0 && (
-              <>
-                <span className="text-xs text-stone-500 mr-1">Overrides:</span>
-                {skinVariations.map((v, idx) => (
-                  <div key={idx} className="relative" title={v.skinName}>
-                    <img
-                      src={v.sprite}
-                      alt={v.skinName}
-                      className="w-6 h-6 object-contain rounded bg-stone-700/50"
-                    />
-                  </div>
-                ))}
-              </>
-            )}
+            {skinVariations.map((v, idx) => (
+              <TileSpritePreview
+                key={idx}
+                src={v.sprite}
+                title={v.skinName}
+                size={24}
+              />
+            ))}
           </div>
         </div>
       )}
@@ -627,41 +646,27 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
         </div>
       )}
 
-      {/* Skin Overrides - show how skins can replace the default sprite */}
+      {/* Alternate Appearances - show skin variations as tile-like previews without labels */}
       {skinVariations.length > 0 && (
         <div className="dungeon-panel-dark p-4">
-          <h3 className="text-sm font-semibold text-rust-400 mb-2">Skin Overrides</h3>
-          <p className="text-xs text-stone-500 mb-3">Puzzle skins can override this tile's appearance</p>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+          <h3 className="text-sm font-semibold text-rust-400 mb-2">Alternate Appearances</h3>
+          <p className="text-xs text-stone-500 mb-3">Other visual styles for this tile</p>
+          <div className="flex flex-wrap gap-2">
             {skinVariations.map((variation, idx) => (
               <React.Fragment key={idx}>
                 {variation.onSprite && (
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="bg-stone-700/50 rounded p-1">
-                      <img
-                        src={variation.onSprite}
-                        alt={`${variation.skinName}`}
-                        className="w-12 h-12 object-contain"
-                      />
-                    </div>
-                    <span className="text-xs text-stone-400 text-center truncate w-full" title={variation.skinName}>
-                      {variation.skinName}
-                    </span>
-                  </div>
+                  <TileSpritePreview
+                    src={variation.onSprite}
+                    title={variation.skinName}
+                    size={48}
+                  />
                 )}
                 {variation.offSprite && (
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="bg-stone-700/50 rounded p-1">
-                      <img
-                        src={variation.offSprite}
-                        alt={`${variation.skinName} off state`}
-                        className="w-12 h-12 object-contain"
-                      />
-                    </div>
-                    <span className="text-xs text-stone-400 text-center truncate w-full" title={`${variation.skinName} (Off)`}>
-                      {variation.skinName} (Off)
-                    </span>
-                  </div>
+                  <TileSpritePreview
+                    src={variation.offSprite}
+                    title={`${variation.skinName} (Off)`}
+                    size={48}
+                  />
                 )}
               </React.Fragment>
             ))}

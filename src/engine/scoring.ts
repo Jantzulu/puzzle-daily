@@ -94,8 +94,9 @@ export function calculateScore(
 
 /**
  * Check which side quests have been completed
+ * Exported for use in Game UI to show real-time completion status
  */
-function checkSideQuests(gameState: GameState): string[] {
+export function checkSideQuests(gameState: GameState): string[] {
   const completed: string[] = [];
   const puzzle = gameState.puzzle;
 

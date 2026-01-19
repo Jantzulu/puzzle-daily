@@ -114,7 +114,7 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
  */
 const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({ collectible, size = 24 }) => {
   if (collectible.customSprite) {
-    return <SpriteThumbnail sprite={collectible.customSprite} size={size} />;
+    return <SpriteThumbnail sprite={collectible.customSprite} size={size} previewType="asset" />;
   }
 
   // Fallback - star icon for items without sprite
@@ -206,7 +206,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
                       title={source.name}
                     >
                       {source.sprite && (
-                        <SpriteThumbnail sprite={source.sprite} size={16} />
+                        <SpriteThumbnail sprite={source.sprite} size={16} previewType="entity" />
                       )}
                       <span className="max-w-[60px] truncate">{source.name}</span>
                     </div>
