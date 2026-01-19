@@ -96,6 +96,9 @@ export interface ThemeAssets {
   colorButtonDangerBg?: string;   // Danger button background
   colorButtonDangerBorder?: string; // Danger button border
 
+  // Preview/thumbnail background
+  colorBgPreview?: string;        // Background for asset thumbnail previews
+
   // === STYLE SETTINGS ===
   borderRadius?: string;        // Border radius (e.g., "4px", "8px", "0px")
   borderWidth?: string;         // Border width (e.g., "1px", "2px", "3px")
@@ -164,6 +167,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorButtonPrimaryBorder: { label: 'Primary Button Border', description: 'Primary button border color', category: 'colors', inputType: 'color' },
   colorButtonDangerBg: { label: 'Danger Button Bg', description: 'Danger/warning button background', category: 'colors', inputType: 'color' },
   colorButtonDangerBorder: { label: 'Danger Button Border', description: 'Danger button border color', category: 'colors', inputType: 'color' },
+  colorBgPreview: { label: 'Preview Background', description: 'Background color for asset thumbnail previews', category: 'colors', inputType: 'color' },
 
   // Style settings
   borderRadius: { label: 'Border Radius', description: 'Roundness of corners', category: 'styles', inputType: 'select' },
@@ -408,6 +412,7 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.colorButtonPrimaryBorder) properties['--theme-button-primary-border'] = assets.colorButtonPrimaryBorder;
   if (assets.colorButtonDangerBg) properties['--theme-button-danger-bg'] = assets.colorButtonDangerBg;
   if (assets.colorButtonDangerBorder) properties['--theme-button-danger-border'] = assets.colorButtonDangerBorder;
+  if (assets.colorBgPreview) properties['--theme-bg-preview'] = assets.colorBgPreview;
 
   // Style settings
   if (assets.borderRadius) properties['--theme-border-radius'] = assets.borderRadius;
@@ -495,6 +500,7 @@ const ALL_THEME_CSS_VARS = [
   '--theme-button-primary-border',
   '--theme-button-danger-bg',
   '--theme-button-danger-border',
+  '--theme-bg-preview',
   '--theme-border-radius',
   '--theme-border-width',
   '--theme-font-family',

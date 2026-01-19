@@ -23,6 +23,7 @@ const DEFAULT_COLORS: Partial<ThemeAssets> = {
   colorBgSecondary: '#2a2118',    // Panel background
   colorBgNavbar: '#3d3224',       // Navbar background
   colorBgInput: '#15100a',        // Input/dark panel background
+  colorBgPreview: '#1f1810',      // Preview/thumbnail background
   colorTextPrimary: '#f2e0b5',
   colorTextSecondary: '#7d6c52',
   colorTextHeading: '#d4a574',
@@ -242,7 +243,10 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
       ) : value ? (
         <div className="space-y-2">
           {/* Preview */}
-          <div className="relative bg-stone-800 rounded-pixel p-2 border border-stone-600 flex items-center justify-center min-h-[60px]">
+          <div
+            className="relative rounded-pixel p-2 border border-stone-600 flex items-center justify-center min-h-[60px]"
+            style={{ backgroundColor: 'var(--theme-bg-preview, #1f1810)' }}
+          >
             <img
               src={value}
               alt={config.label}
