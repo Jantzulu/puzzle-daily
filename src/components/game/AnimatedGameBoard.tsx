@@ -3313,21 +3313,25 @@ function drawPuzzleVignette(
   const fogSpeed = 0.0003; // Slow drift
 
   clipToPlayableTiles(() => {
+    // Use a fixed base size for fog clusters (in pixels), capped so large puzzles
+    // have visible moving clouds rather than one big blob
+    const baseFogSize = 200; // Base fog cluster size in pixels
+    const maxFogSize = 350; // Cap the fog size
+
     // Create multiple fog layers at different positions/speeds for depth
     for (let layer = 0; layer < 3; layer++) {
       const layerOffset = layer * 2000;
       const layerSpeed = fogSpeed * (1 + layer * 0.3);
       const layerOpacity = fogOpacity * (1 - layer * 0.15);
 
-      // Fog center drifts in a slow pattern, covering more area
+      // Fog center drifts across the entire game area
       const fogCenterX = gameAreaX + gameAreaWidth / 2 +
         Math.sin((timestamp + layerOffset) * layerSpeed) * gameAreaWidth * 0.4;
       const fogCenterY = gameAreaY + gameAreaHeight / 2 +
         Math.cos((timestamp + layerOffset) * layerSpeed * 0.7) * gameAreaHeight * 0.4;
 
-      // Make radius large enough to cover the entire game area from any drift position
-      const diagonal = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight);
-      const fogRadius = diagonal * (0.8 + layer * 0.2);
+      // Fixed fog radius with slight variation per layer, capped at max
+      const fogRadius = Math.min(baseFogSize + layer * 50, maxFogSize);
 
       const fogGradient = ctx.createRadialGradient(
         fogCenterX, fogCenterY, 0,
