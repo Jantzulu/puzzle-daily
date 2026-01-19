@@ -3177,8 +3177,10 @@ function drawPuzzleVignette(
   offsetX: number,
   offsetY: number
 ) {
-  const vignetteSize = 24; // How far the vignette extends inward from outer edge
+  // Vignette sizes proportional to border thickness for consistent appearance
   const vignetteOpacity = 0.6; // Maximum darkness at outer edges
+  const verticalVignetteSize = BORDER_SIZE * 0.6; // For top/bottom walls (48 * 0.6 = ~29px)
+  const horizontalVignetteSize = SIDE_BORDER_SIZE * 1.2; // For left/right walls (16 * 1.2 = ~19px)
 
   ctx.save();
 
@@ -3212,54 +3214,54 @@ function drawPuzzleVignette(
         case 'top': {
           // Top wall extends upward from the tile
           const wallTop = py - BORDER_SIZE;
-          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE + vignetteSize);
+          ctx.rect(px, wallTop, TILE_SIZE, BORDER_SIZE + verticalVignetteSize);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallTop + vignetteSize);
+          const gradient = ctx.createLinearGradient(0, wallTop, 0, wallTop + verticalVignetteSize);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallTop, TILE_SIZE, vignetteSize);
+          ctx.fillRect(px, wallTop, TILE_SIZE, verticalVignetteSize);
           break;
         }
         case 'bottom': {
           // Bottom wall extends downward from the tile (outer edges use BORDER_SIZE)
           const wallTop = py + TILE_SIZE;
           const wallBottom = wallTop + BORDER_SIZE;
-          ctx.rect(px, wallTop - vignetteSize, TILE_SIZE, BORDER_SIZE + vignetteSize);
+          ctx.rect(px, wallTop - verticalVignetteSize, TILE_SIZE, BORDER_SIZE + verticalVignetteSize);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallBottom - vignetteSize);
+          const gradient = ctx.createLinearGradient(0, wallBottom, 0, wallBottom - verticalVignetteSize);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(px, wallBottom - vignetteSize, TILE_SIZE, vignetteSize);
+          ctx.fillRect(px, wallBottom - verticalVignetteSize, TILE_SIZE, verticalVignetteSize);
           break;
         }
         case 'left': {
           // Left wall extends to the left of the tile
           const wallLeft = px - SIDE_BORDER_SIZE;
-          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE + vignetteSize, TILE_SIZE);
+          ctx.rect(wallLeft, py, SIDE_BORDER_SIZE + horizontalVignetteSize, TILE_SIZE);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(wallLeft, 0, wallLeft + vignetteSize, 0);
+          const gradient = ctx.createLinearGradient(wallLeft, 0, wallLeft + horizontalVignetteSize, 0);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(wallLeft, py, vignetteSize, TILE_SIZE);
+          ctx.fillRect(wallLeft, py, horizontalVignetteSize, TILE_SIZE);
           break;
         }
         case 'right': {
           // Right wall extends to the right of the tile
           const wallRight = px + TILE_SIZE + SIDE_BORDER_SIZE;
-          ctx.rect(px + TILE_SIZE - vignetteSize, py, SIDE_BORDER_SIZE + vignetteSize, TILE_SIZE);
+          ctx.rect(px + TILE_SIZE - horizontalVignetteSize, py, SIDE_BORDER_SIZE + horizontalVignetteSize, TILE_SIZE);
           ctx.clip();
 
-          const gradient = ctx.createLinearGradient(wallRight, 0, wallRight - vignetteSize, 0);
+          const gradient = ctx.createLinearGradient(wallRight, 0, wallRight - horizontalVignetteSize, 0);
           gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
           gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
           ctx.fillStyle = gradient;
-          ctx.fillRect(wallRight - vignetteSize, py, vignetteSize, TILE_SIZE);
+          ctx.fillRect(wallRight - horizontalVignetteSize, py, horizontalVignetteSize, TILE_SIZE);
           break;
         }
       }
@@ -3282,41 +3284,44 @@ function drawPuzzleVignette(
       let cornerX: number, cornerY: number;
       let clipX: number, clipY: number, clipW: number, clipH: number;
 
+      // Use average of both vignette sizes for corner radius
+      const cornerVignetteRadius = (horizontalVignetteSize + verticalVignetteSize) / 2;
+
       switch (type) {
         case 'convex-tl': {
           cornerX = px - SIDE_BORDER_SIZE;
           cornerY = py - BORDER_SIZE;
           clipX = cornerX;
           clipY = cornerY;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = BORDER_SIZE + vignetteSize;
+          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
+          clipH = BORDER_SIZE + verticalVignetteSize;
           break;
         }
         case 'convex-tr': {
           cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
           cornerY = py - BORDER_SIZE;
-          clipX = px + TILE_SIZE - vignetteSize;
+          clipX = px + TILE_SIZE - horizontalVignetteSize;
           clipY = cornerY;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = BORDER_SIZE + vignetteSize;
+          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
+          clipH = BORDER_SIZE + verticalVignetteSize;
           break;
         }
         case 'convex-bl': {
           cornerX = px - SIDE_BORDER_SIZE;
           cornerY = py + TILE_SIZE + BORDER_SIZE;
           clipX = cornerX;
-          clipY = py + TILE_SIZE - vignetteSize;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = BORDER_SIZE + vignetteSize;
+          clipY = py + TILE_SIZE - verticalVignetteSize;
+          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
+          clipH = BORDER_SIZE + verticalVignetteSize;
           break;
         }
         case 'convex-br': {
           cornerX = px + TILE_SIZE + SIDE_BORDER_SIZE;
           cornerY = py + TILE_SIZE + BORDER_SIZE;
-          clipX = px + TILE_SIZE - vignetteSize;
-          clipY = py + TILE_SIZE - vignetteSize;
-          clipW = SIDE_BORDER_SIZE + vignetteSize;
-          clipH = BORDER_SIZE + vignetteSize;
+          clipX = px + TILE_SIZE - horizontalVignetteSize;
+          clipY = py + TILE_SIZE - verticalVignetteSize;
+          clipW = SIDE_BORDER_SIZE + horizontalVignetteSize;
+          clipH = BORDER_SIZE + verticalVignetteSize;
           break;
         }
         default:
@@ -3331,7 +3336,7 @@ function drawPuzzleVignette(
       // Create radial gradient from the corner point
       const gradient = ctx.createRadialGradient(
         cornerX, cornerY, 0,
-        cornerX, cornerY, vignetteSize * 1.5
+        cornerX, cornerY, cornerVignetteRadius * 1.5
       );
       gradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
       gradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
@@ -3346,62 +3351,62 @@ function drawPuzzleVignette(
     // (areas not covered by per-tile edge vignettes because they're in void regions)
 
     // Top edge vignette (entire top of bounding box)
-    const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
+    const topGradient = ctx.createLinearGradient(0, 0, 0, verticalVignetteSize);
     topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = topGradient;
-    ctx.fillRect(0, 0, totalWidth, vignetteSize);
+    ctx.fillRect(0, 0, totalWidth, verticalVignetteSize);
 
     // Bottom edge vignette (entire bottom of bounding box)
-    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - vignetteSize);
+    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - verticalVignetteSize);
     bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = bottomGradient;
-    ctx.fillRect(0, totalHeight - vignetteSize, totalWidth, vignetteSize);
+    ctx.fillRect(0, totalHeight - verticalVignetteSize, totalWidth, verticalVignetteSize);
 
     // Left edge vignette (entire left of bounding box)
-    const leftGradient = ctx.createLinearGradient(0, 0, vignetteSize, 0);
+    const leftGradient = ctx.createLinearGradient(0, 0, horizontalVignetteSize, 0);
     leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = leftGradient;
-    ctx.fillRect(0, 0, vignetteSize, totalHeight);
+    ctx.fillRect(0, 0, horizontalVignetteSize, totalHeight);
 
     // Right edge vignette (entire right of bounding box)
-    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - vignetteSize, 0);
+    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - horizontalVignetteSize, 0);
     rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = rightGradient;
-    ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
+    ctx.fillRect(totalWidth - horizontalVignetteSize, 0, horizontalVignetteSize, totalHeight);
   } else {
     // Regular rectangular puzzle - apply edge vignettes to full borders
 
     // Top edge vignette (on the top border wall)
-    const topGradient = ctx.createLinearGradient(0, 0, 0, vignetteSize);
+    const topGradient = ctx.createLinearGradient(0, 0, 0, verticalVignetteSize);
     topGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     topGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = topGradient;
-    ctx.fillRect(0, 0, totalWidth, vignetteSize);
+    ctx.fillRect(0, 0, totalWidth, verticalVignetteSize);
 
     // Bottom edge vignette (on the bottom border wall)
-    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - vignetteSize);
+    const bottomGradient = ctx.createLinearGradient(0, totalHeight, 0, totalHeight - verticalVignetteSize);
     bottomGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     bottomGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = bottomGradient;
-    ctx.fillRect(0, totalHeight - vignetteSize, totalWidth, vignetteSize);
+    ctx.fillRect(0, totalHeight - verticalVignetteSize, totalWidth, verticalVignetteSize);
 
     // Left edge vignette (on the left border wall)
-    const leftGradient = ctx.createLinearGradient(0, 0, vignetteSize, 0);
+    const leftGradient = ctx.createLinearGradient(0, 0, horizontalVignetteSize, 0);
     leftGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     leftGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = leftGradient;
-    ctx.fillRect(0, 0, vignetteSize, totalHeight);
+    ctx.fillRect(0, 0, horizontalVignetteSize, totalHeight);
 
     // Right edge vignette (on the right border wall)
-    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - vignetteSize, 0);
+    const rightGradient = ctx.createLinearGradient(totalWidth, 0, totalWidth - horizontalVignetteSize, 0);
     rightGradient.addColorStop(0, `rgba(0, 0, 0, ${vignetteOpacity})`);
     rightGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = rightGradient;
-    ctx.fillRect(totalWidth - vignetteSize, 0, vignetteSize, totalHeight);
+    ctx.fillRect(totalWidth - horizontalVignetteSize, 0, horizontalVignetteSize, totalHeight);
   }
 
   // ==========================================
