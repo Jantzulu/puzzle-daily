@@ -3308,31 +3308,34 @@ function drawPuzzleVignette(
   };
 
   // --- FOG/MIST EFFECT ---
-  // Subtle animated fog that pools in corners and drifts slowly
-  const fogOpacity = 0.08; // Very subtle
+  // Subtle animated fog that drifts slowly across the board
+  const fogOpacity = 0.12; // Slightly more visible
   const fogSpeed = 0.0003; // Slow drift
 
   clipToPlayableTiles(() => {
     // Create multiple fog layers at different positions/speeds for depth
     for (let layer = 0; layer < 3; layer++) {
-      const layerOffset = layer * 1000;
-      const layerSpeed = fogSpeed * (1 + layer * 0.5);
-      const layerOpacity = fogOpacity * (1 - layer * 0.2);
+      const layerOffset = layer * 2000;
+      const layerSpeed = fogSpeed * (1 + layer * 0.3);
+      const layerOpacity = fogOpacity * (1 - layer * 0.15);
 
-      // Fog center drifts in a slow circular pattern
+      // Fog center drifts in a slow pattern, covering more area
       const fogCenterX = gameAreaX + gameAreaWidth / 2 +
-        Math.sin((timestamp + layerOffset) * layerSpeed) * gameAreaWidth * 0.3;
+        Math.sin((timestamp + layerOffset) * layerSpeed) * gameAreaWidth * 0.4;
       const fogCenterY = gameAreaY + gameAreaHeight / 2 +
-        Math.cos((timestamp + layerOffset) * layerSpeed * 0.7) * gameAreaHeight * 0.3;
+        Math.cos((timestamp + layerOffset) * layerSpeed * 0.7) * gameAreaHeight * 0.4;
 
-      const fogRadius = Math.max(gameAreaWidth, gameAreaHeight) * (0.6 + layer * 0.2);
+      // Make radius large enough to cover the entire game area from any drift position
+      const diagonal = Math.sqrt(gameAreaWidth * gameAreaWidth + gameAreaHeight * gameAreaHeight);
+      const fogRadius = diagonal * (0.8 + layer * 0.2);
 
       const fogGradient = ctx.createRadialGradient(
         fogCenterX, fogCenterY, 0,
         fogCenterX, fogCenterY, fogRadius
       );
       fogGradient.addColorStop(0, `rgba(0, 0, 0, ${layerOpacity})`);
-      fogGradient.addColorStop(0.5, `rgba(0, 0, 0, ${layerOpacity * 0.5})`);
+      fogGradient.addColorStop(0.4, `rgba(0, 0, 0, ${layerOpacity * 0.6})`);
+      fogGradient.addColorStop(0.7, `rgba(0, 0, 0, ${layerOpacity * 0.2})`);
       fogGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
 
       ctx.fillStyle = fogGradient;
@@ -3368,8 +3371,8 @@ function drawPuzzleVignette(
       const x = gameAreaX + ((baseX + driftX) % 1) * gameAreaWidth;
       const y = gameAreaY + ((baseY + driftY) % 1) * gameAreaHeight;
 
-      // Vary particle size slightly (smaller squares)
-      const size = 0.5 + (seed3 - Math.floor(seed3)) * 0.5; // 0.5 to 1px
+      // Vary particle size slightly (small squares)
+      const size = 1 + (seed3 - Math.floor(seed3)) * 1; // 1 to 2px
 
       // Slight twinkle effect
       const twinkle = 0.5 + Math.sin(timestamp * 0.002 + i * 0.5) * 0.5;
