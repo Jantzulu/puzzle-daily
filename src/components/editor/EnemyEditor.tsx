@@ -208,10 +208,17 @@ export const EnemyEditor: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={enemy.customSprite} size={40} />
+                          <SpriteThumbnail sprite={enemy.customSprite} size={40} previewType="entity" />
                         </div>
                         <div>
-                          <h3 className="font-bold">{enemy.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-bold">{enemy.name}</h3>
+                            {enemy.isBoss && (
+                              <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium">
+                                BOSS
+                              </span>
+                            )}
+                          </div>
                           <p className="text-xs text-stone-400">
                             HP: {enemy.health} • {enemy.behavior?.type || 'static'}
                           </p>
@@ -332,6 +339,14 @@ export const EnemyEditor: React.FC = () => {
                     {/* Properties */}
                     <div className="dungeon-panel p-4 rounded space-y-2">
                       <h3 className="text-lg font-bold mb-3">Properties</h3>
+                      <label className="flex items-center gap-2 p-2 rounded bg-blood-900/30 border border-blood-700/50">
+                        <input type="checkbox" checked={editing.isBoss || false}
+                          onChange={(e) => updateEnemy({ isBoss: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm font-medium text-blood-300">Boss Enemy</span>
+                      </label>
+                      <p className="text-xs text-stone-400 mb-2 ml-1">
+                        Boss enemies enable the "Defeat the Boss" win condition.
+                      </p>
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={editing.canOverlapEntities || false}
                           onChange={(e) => updateEnemy({ canOverlapEntities: e.target.checked })} className="w-4 h-4" />

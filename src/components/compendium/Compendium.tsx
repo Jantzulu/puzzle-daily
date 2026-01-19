@@ -5,6 +5,7 @@ import {
   getStatusEffectAssets,
   getCustomTileTypes,
   getCustomCollectibles,
+  getAllPuzzleSkins,
   type CustomCharacter,
   type CustomEnemy,
   type CustomTileType,
@@ -14,7 +15,7 @@ import {
 import type { StatusEffectAsset } from '../../types/game';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
-import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
+import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets, type PreviewType } from '../../utils/themeAssets';
 
 type TabId = 'characters' | 'enemies' | 'status_effects' | 'special_tiles' | 'items';
 
@@ -54,7 +55,7 @@ const CharacterCard: React.FC<CharacterCardProps> = ({ character, onClick, isSel
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">
           {character.customSprite ? (
-            <SpriteThumbnail sprite={character.customSprite} size={48} />
+            <SpriteThumbnail sprite={character.customSprite} size={48} previewType="entity" />
           ) : (
             <div className="w-12 h-12 bg-copper-800 rounded-pixel flex items-center justify-center text-2xl">
               ⚔️
@@ -96,7 +97,7 @@ const EnemyCard: React.FC<EnemyCardProps> = ({ enemy, onClick, isSelected }) => 
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">
           {enemy.customSprite ? (
-            <SpriteThumbnail sprite={enemy.customSprite} size={48} />
+            <SpriteThumbnail sprite={enemy.customSprite} size={48} previewType="entity" />
           ) : (
             <div className="w-12 h-12 bg-blood-800 rounded-pixel flex items-center justify-center text-2xl">
               👹
@@ -130,7 +131,7 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
 
   if (iconSprite.type === 'inline' && iconSprite.spriteData) {
     const spriteData = iconSprite.spriteData as CustomSprite;
-    return <SpriteThumbnail sprite={spriteData} size={size} />;
+    return <SpriteThumbnail sprite={spriteData} size={size} previewType="asset" />;
   }
 
   return (
@@ -173,6 +174,28 @@ interface TileCardProps {
 }
 
 const TileCard: React.FC<TileCardProps> = ({ tile, onClick, isSelected }) => {
+  // Get all skin variations for this tile
+  const skinVariations = useMemo(() => {
+    const skins = getAllPuzzleSkins();
+    const variations: { skinName: string; sprite: string }[] = [];
+
+    for (const skin of skins) {
+      if (skin.customTileSprites?.[tile.id]) {
+        const spriteEntry = skin.customTileSprites[tile.id];
+        // Handle both legacy string format and new on/off object format
+        const spriteData = typeof spriteEntry === 'string'
+          ? spriteEntry
+          : spriteEntry.onSprite;
+        if (spriteData) {
+          variations.push({ skinName: skin.name, sprite: spriteData });
+        }
+      }
+    }
+    return variations;
+  }, [tile.id]);
+
+  const hasVariations = tile.offStateSprite || skinVariations.length > 0;
+
   return (
     <div
       onClick={onClick}
@@ -185,7 +208,7 @@ const TileCard: React.FC<TileCardProps> = ({ tile, onClick, isSelected }) => {
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">
           {tile.customSprite ? (
-            <SpriteThumbnail sprite={tile.customSprite} size={48} />
+            <SpriteThumbnail sprite={tile.customSprite} size={48} previewType="asset" />
           ) : (
             <div className={`w-12 h-12 rounded-pixel flex items-center justify-center text-2xl ${
               tile.baseType === 'wall' ? 'bg-stone-600' : 'bg-stone-800'
@@ -205,6 +228,39 @@ const TileCard: React.FC<TileCardProps> = ({ tile, onClick, isSelected }) => {
           )}
         </div>
       </div>
+      {/* Show skin variations as small thumbnails */}
+      {hasVariations && (
+        <div className="mt-2 pt-2 border-t border-stone-700/50">
+          <div className="flex items-center gap-1 flex-wrap">
+            {tile.offStateSprite && (
+              <>
+                <span className="text-xs text-stone-500 mr-1">Off:</span>
+                <div className="relative mr-2" title="Off State">
+                  <img
+                    src={tile.offStateSprite.idleImageData || tile.offStateSprite.imageData}
+                    alt="Off state"
+                    className="w-6 h-6 object-contain rounded bg-stone-700/50"
+                  />
+                </div>
+              </>
+            )}
+            {skinVariations.length > 0 && (
+              <>
+                <span className="text-xs text-stone-500 mr-1">Overrides:</span>
+                {skinVariations.map((v, idx) => (
+                  <div key={idx} className="relative" title={v.skinName}>
+                    <img
+                      src={v.sprite}
+                      alt={v.skinName}
+                      className="w-6 h-6 object-contain rounded bg-stone-700/50"
+                    />
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -228,7 +284,7 @@ const ItemCard: React.FC<ItemCardProps> = ({ item, onClick, isSelected }) => {
       <div className="flex items-center gap-3">
         <div className="flex-shrink-0">
           {item.customSprite ? (
-            <SpriteThumbnail sprite={item.customSprite} size={48} />
+            <SpriteThumbnail sprite={item.customSprite} size={48} previewType="asset" />
           ) : (
             <div className="w-12 h-12 bg-parchment-700 rounded-pixel flex items-center justify-center text-2xl">
               💎
@@ -266,7 +322,7 @@ const CharacterDetail: React.FC<CharacterDetailProps> = ({ character }) => {
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">
           {character.customSprite ? (
-            <SpriteThumbnail sprite={character.customSprite} size={80} />
+            <SpriteThumbnail sprite={character.customSprite} size={80} previewType="entity" />
           ) : (
             <div className="w-20 h-20 bg-copper-800 rounded-pixel flex items-center justify-center text-4xl">
               ⚔️
@@ -322,7 +378,7 @@ const EnemyDetail: React.FC<EnemyDetailProps> = ({ enemy }) => {
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">
           {enemy.customSprite ? (
-            <SpriteThumbnail sprite={enemy.customSprite} size={80} />
+            <SpriteThumbnail sprite={enemy.customSprite} size={80} previewType="entity" />
           ) : (
             <div className="w-20 h-20 bg-blood-800 rounded-pixel flex items-center justify-center text-4xl">
               👹
@@ -458,13 +514,40 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
   // Check if there are any properties to show
   const hasProperties = tile.cadence?.enabled || tile.hideBehaviorIndicators;
 
+  // Get all skin variations for this tile
+  const skinVariations = useMemo(() => {
+    const skins = getAllPuzzleSkins();
+    const variations: { skinName: string; onSprite?: string; offSprite?: string }[] = [];
+
+    for (const skin of skins) {
+      if (skin.customTileSprites?.[tile.id]) {
+        const spriteEntry = skin.customTileSprites[tile.id];
+        // Handle both legacy string format and new on/off object format
+        if (typeof spriteEntry === 'string') {
+          variations.push({ skinName: skin.name, onSprite: spriteEntry });
+        } else {
+          if (spriteEntry.onSprite || spriteEntry.offSprite) {
+            variations.push({
+              skinName: skin.name,
+              onSprite: spriteEntry.onSprite,
+              offSprite: spriteEntry.offSprite
+            });
+          }
+        }
+      }
+    }
+    return variations;
+  }, [tile.id]);
+
+  const hasVariations = tile.offStateSprite || skinVariations.length > 0;
+
   return (
     <div className="space-y-4">
       {/* Header */}
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">
           {tile.customSprite ? (
-            <SpriteThumbnail sprite={tile.customSprite} size={80} />
+            <SpriteThumbnail sprite={tile.customSprite} size={80} previewType="asset" />
           ) : (
             <div className={`w-20 h-20 rounded-pixel flex items-center justify-center text-4xl ${
               tile.baseType === 'wall' ? 'bg-stone-600' : 'bg-stone-800'
@@ -516,6 +599,75 @@ const TileDetail: React.FC<TileDetailProps> = ({ tile }) => {
           </ul>
         </div>
       )}
+
+      {/* Cadence States - show on/off state sprites */}
+      {tile.offStateSprite && (
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-rust-400 mb-3">Cadence States</h3>
+          <div className="flex gap-4">
+            {tile.customSprite && (
+              <div className="flex flex-col items-center gap-1">
+                <div className="bg-stone-700/50 rounded p-1">
+                  <SpriteThumbnail sprite={tile.customSprite} size={48} previewType="asset" />
+                </div>
+                <span className="text-xs text-stone-400">On State</span>
+              </div>
+            )}
+            <div className="flex flex-col items-center gap-1">
+              <div className="bg-stone-700/50 rounded p-1">
+                <img
+                  src={tile.offStateSprite.idleImageData || tile.offStateSprite.imageData}
+                  alt="Off state"
+                  className="w-12 h-12 object-contain"
+                />
+              </div>
+              <span className="text-xs text-stone-400">Off State</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Skin Overrides - show how skins can replace the default sprite */}
+      {skinVariations.length > 0 && (
+        <div className="dungeon-panel-dark p-4">
+          <h3 className="text-sm font-semibold text-rust-400 mb-2">Skin Overrides</h3>
+          <p className="text-xs text-stone-500 mb-3">Puzzle skins can override this tile's appearance</p>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            {skinVariations.map((variation, idx) => (
+              <React.Fragment key={idx}>
+                {variation.onSprite && (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="bg-stone-700/50 rounded p-1">
+                      <img
+                        src={variation.onSprite}
+                        alt={`${variation.skinName}`}
+                        className="w-12 h-12 object-contain"
+                      />
+                    </div>
+                    <span className="text-xs text-stone-400 text-center truncate w-full" title={variation.skinName}>
+                      {variation.skinName}
+                    </span>
+                  </div>
+                )}
+                {variation.offSprite && (
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="bg-stone-700/50 rounded p-1">
+                      <img
+                        src={variation.offSprite}
+                        alt={`${variation.skinName} off state`}
+                        className="w-12 h-12 object-contain"
+                      />
+                    </div>
+                    <span className="text-xs text-stone-400 text-center truncate w-full" title={`${variation.skinName} (Off)`}>
+                      {variation.skinName} (Off)
+                    </span>
+                  </div>
+                )}
+              </React.Fragment>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 };
@@ -548,7 +700,7 @@ const ItemDetail: React.FC<ItemDetailProps> = ({ item }) => {
       <div className="flex items-start gap-4">
         <div className="flex-shrink-0">
           {item.customSprite ? (
-            <SpriteThumbnail sprite={item.customSprite} size={80} />
+            <SpriteThumbnail sprite={item.customSprite} size={80} previewType="asset" />
           ) : (
             <div className="w-20 h-20 bg-parchment-700 rounded-pixel flex items-center justify-center text-4xl">
               💎

@@ -238,6 +238,9 @@ export interface Enemy {
   blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
   contactDamage?: number; // Damage dealt when walking into characters (0 or undefined = no contact damage)
 
+  // Boss configuration
+  isBoss?: boolean; // If true, this enemy is a boss - enables 'defeat_boss' win condition
+
   // Melee priority
   hasMeleePriority?: boolean; // If true, this enemy attacks before characters in melee exchanges (default: false)
 
@@ -307,6 +310,7 @@ export interface PlacedCollectible {
  */
 export type WinConditionType =
   | 'defeat_all_enemies'    // All enemies must be defeated
+  | 'defeat_boss'           // All boss enemies must be defeated (enemies with isBoss: true)
   | 'collect_all'           // All collectibles must be collected
   | 'collect_keys'          // All collectibles with win_key effect must be collected
   | 'reach_goal'            // A character must reach the goal tile

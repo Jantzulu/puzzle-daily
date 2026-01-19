@@ -1,15 +1,17 @@
 import React, { useEffect, useRef } from 'react';
 import type { CustomSprite } from '../../utils/assetStorage';
 import { drawSprite } from './SpriteEditor';
-import { drawPreviewBackground } from '../../utils/themeAssets';
+import { drawPreviewBackground, type PreviewType } from '../../utils/themeAssets';
 
 interface SpriteThumbnailProps {
   sprite?: CustomSprite;
   size?: number;
   className?: string;
+  /** Type of preview background: 'entity' for heroes/enemies, 'asset' for tiles/items/enchantments */
+  previewType?: PreviewType;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '' }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
@@ -105,7 +107,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
                   sourceX, 0, frameWidth, frameHeight,
                   size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight
                 );
-              });
+              }, previewType);
 
               animationFrameId = requestAnimationFrame(animate);
             };
@@ -132,7 +134,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               }
 
               ctx.drawImage(img, size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight);
-            });
+            }, previewType);
           };
           img.onerror = () => {};
           img.src = imageData;
@@ -140,7 +142,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           // Draw sprite using shapes
           drawSprite(ctx, sprite, size / 2, size / 2, size);
         }
-      });
+      }, previewType);
     };
 
     renderThumbnail();
@@ -151,7 +153,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size]);
+  }, [sprite, size, previewType]);
 
   if (!sprite) {
     return (

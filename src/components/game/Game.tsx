@@ -12,7 +12,7 @@ import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { ItemsDisplay } from './ItemsDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { loadTileType, loadCollectible } from '../../utils/assetStorage';
+import { loadTileType, loadCollectible, loadEnemy } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
@@ -871,6 +871,15 @@ export const Game: React.FC = () => {
                       switch (wc.type) {
                         case 'defeat_all_enemies':
                           return 'Defeat all enemies';
+                        case 'defeat_boss':
+                          // Get boss names from placed enemies
+                          const bossNames = gameState.puzzle.enemies
+                            .map(e => loadEnemy(e.enemyId))
+                            .filter(enemy => enemy?.isBoss)
+                            .map(enemy => enemy!.name);
+                          if (bossNames.length === 0) return 'Defeat the boss';
+                          if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
+                          return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]}`;
                         case 'collect_all':
                           return 'Collect all treasure';
                         case 'reach_goal':

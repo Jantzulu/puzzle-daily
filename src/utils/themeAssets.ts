@@ -109,9 +109,20 @@ export interface ThemeAssets {
   colorButtonDangerBg?: string;   // Danger button background
   colorButtonDangerBorder?: string; // Danger button border
 
-  // Preview/thumbnail background
-  colorBgPreview?: string;        // Background for asset thumbnail previews
-  bgPreview?: string;             // Background image for asset thumbnail previews
+  // Preview/thumbnail backgrounds
+  // Entity previews (heroes, enemies) - typically shown on tile backgrounds
+  colorBgPreviewEntity?: string;        // Background color for hero/enemy previews
+  bgPreviewEntity?: string;             // Background image for hero/enemy previews (e.g., a tile sprite)
+  bgPreviewEntityTile?: boolean | string; // Tile (repeat) the entity preview background
+
+  // Other asset previews (tiles, items, enchantments, etc.)
+  colorBgPreviewAsset?: string;         // Background color for other asset previews
+  bgPreviewAsset?: string;              // Background image for other asset previews
+  bgPreviewAssetTile?: boolean | string; // Tile (repeat) the asset preview background
+
+  // Legacy/fallback (used if specific ones aren't set)
+  colorBgPreview?: string;        // Fallback background for asset thumbnail previews
+  bgPreview?: string;             // Fallback background image for asset thumbnail previews
   bgPreviewTile?: boolean | string; // Tile (repeat) the preview background image
 
   // === STYLE SETTINGS ===
@@ -191,9 +202,20 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorButtonPrimaryBorder: { label: 'Primary Button Border', description: 'Primary button border color', category: 'colors', inputType: 'color' },
   colorButtonDangerBg: { label: 'Danger Button Bg', description: 'Danger/warning button background', category: 'colors', inputType: 'color' },
   colorButtonDangerBorder: { label: 'Danger Button Border', description: 'Danger button border color', category: 'colors', inputType: 'color' },
-  colorBgPreview: { label: 'Preview Background', description: 'Background color for asset thumbnail previews', category: 'colors', inputType: 'color' },
-  bgPreview: { label: 'Preview Background Image', description: 'Background image for asset thumbnail previews (e.g., a tile sprite)', category: 'backgrounds', inputType: 'image' },
-  bgPreviewTile: { label: 'Tile Preview Background', description: 'Tile (repeat) the preview background image', category: 'backgrounds', inputType: 'toggle' },
+  // Entity preview backgrounds (heroes, enemies)
+  colorBgPreviewEntity: { label: 'Entity Preview Color', description: 'Background color for hero/enemy previews', category: 'colors', inputType: 'color' },
+  bgPreviewEntity: { label: 'Entity Preview Image', description: 'Background image for hero/enemy previews (e.g., a floor tile)', category: 'backgrounds', inputType: 'image' },
+  bgPreviewEntityTile: { label: 'Tile Entity Preview', description: 'Tile (repeat) the entity preview background', category: 'backgrounds', inputType: 'toggle' },
+
+  // Other asset preview backgrounds (tiles, items, enchantments)
+  colorBgPreviewAsset: { label: 'Asset Preview Color', description: 'Background color for tile/item/enchantment previews', category: 'colors', inputType: 'color' },
+  bgPreviewAsset: { label: 'Asset Preview Image', description: 'Background image for tile/item/enchantment previews', category: 'backgrounds', inputType: 'image' },
+  bgPreviewAssetTile: { label: 'Tile Asset Preview', description: 'Tile (repeat) the asset preview background', category: 'backgrounds', inputType: 'toggle' },
+
+  // Legacy/fallback preview backgrounds
+  colorBgPreview: { label: 'Preview Background (Fallback)', description: 'Default background color if specific ones not set', category: 'colors', inputType: 'color' },
+  bgPreview: { label: 'Preview Image (Fallback)', description: 'Default background image if specific ones not set', category: 'backgrounds', inputType: 'image' },
+  bgPreviewTile: { label: 'Tile Preview (Fallback)', description: 'Tile the fallback preview background', category: 'backgrounds', inputType: 'toggle' },
 
   // Style settings
   borderRadius: { label: 'Border Radius', description: 'Roundness of corners', category: 'styles', inputType: 'select' },
@@ -438,10 +460,31 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.colorButtonPrimaryBorder) properties['--theme-button-primary-border'] = assets.colorButtonPrimaryBorder;
   if (assets.colorButtonDangerBg) properties['--theme-button-danger-bg'] = assets.colorButtonDangerBg;
   if (assets.colorButtonDangerBorder) properties['--theme-button-danger-border'] = assets.colorButtonDangerBorder;
+  // Entity preview backgrounds (heroes, enemies)
+  if (assets.colorBgPreviewEntity) properties['--theme-bg-preview-entity'] = assets.colorBgPreviewEntity;
+  if (assets.bgPreviewEntity) properties['--asset-bg-preview-entity'] = `url(${assets.bgPreviewEntity})`;
+  if (assets.bgPreviewEntityTile === true || assets.bgPreviewEntityTile === 'true') {
+    properties['--asset-bg-preview-entity-repeat'] = 'repeat';
+    properties['--asset-bg-preview-entity-size'] = 'auto';
+  } else {
+    properties['--asset-bg-preview-entity-repeat'] = 'no-repeat';
+    properties['--asset-bg-preview-entity-size'] = 'cover';
+  }
+
+  // Asset preview backgrounds (tiles, items, enchantments)
+  if (assets.colorBgPreviewAsset) properties['--theme-bg-preview-asset'] = assets.colorBgPreviewAsset;
+  if (assets.bgPreviewAsset) properties['--asset-bg-preview-asset'] = `url(${assets.bgPreviewAsset})`;
+  if (assets.bgPreviewAssetTile === true || assets.bgPreviewAssetTile === 'true') {
+    properties['--asset-bg-preview-asset-repeat'] = 'repeat';
+    properties['--asset-bg-preview-asset-size'] = 'auto';
+  } else {
+    properties['--asset-bg-preview-asset-repeat'] = 'no-repeat';
+    properties['--asset-bg-preview-asset-size'] = 'cover';
+  }
+
+  // Fallback preview backgrounds
   if (assets.colorBgPreview) properties['--theme-bg-preview'] = assets.colorBgPreview;
   if (assets.bgPreview) properties['--asset-bg-preview'] = `url(${assets.bgPreview})`;
-
-  // Preview background tiling
   if (assets.bgPreviewTile === true || assets.bgPreviewTile === 'true') {
     properties['--asset-bg-preview-repeat'] = 'repeat';
     properties['--asset-bg-preview-size'] = 'auto';
@@ -536,6 +579,17 @@ const ALL_THEME_CSS_VARS = [
   '--theme-button-primary-border',
   '--theme-button-danger-bg',
   '--theme-button-danger-border',
+  // Entity preview backgrounds (heroes, enemies)
+  '--theme-bg-preview-entity',
+  '--asset-bg-preview-entity',
+  '--asset-bg-preview-entity-repeat',
+  '--asset-bg-preview-entity-size',
+  // Asset preview backgrounds (tiles, items, enchantments)
+  '--theme-bg-preview-asset',
+  '--asset-bg-preview-asset',
+  '--asset-bg-preview-asset-repeat',
+  '--asset-bg-preview-asset-size',
+  // Fallback preview backgrounds
   '--theme-bg-preview',
   '--asset-bg-preview',
   '--asset-bg-preview-repeat',
@@ -725,21 +779,55 @@ export async function uploadImageWithFallback(
 // CANVAS BACKGROUND DRAWING UTILITIES
 // ==========================================
 
-// Cache for preview background image
-let previewBgImageCache: { url: string; img: HTMLImageElement } | null = null;
+// Preview type for differentiating entity (heroes/enemies) vs asset (tiles/items/enchantments) backgrounds
+export type PreviewType = 'entity' | 'asset';
+
+// Cache for preview background images (keyed by type)
+const previewBgImageCache: Record<string, { url: string; img: HTMLImageElement }> = {};
 
 /**
  * Get the preview background color from theme settings
+ * @param type - Optional type: 'entity' for heroes/enemies, 'asset' for tiles/items/enchantments
  */
-export function getPreviewBgColor(): string {
-  return getComputedStyle(document.documentElement).getPropertyValue('--theme-bg-preview').trim() || '#15100a';
+export function getPreviewBgColor(type?: PreviewType): string {
+  const style = getComputedStyle(document.documentElement);
+
+  if (type === 'entity') {
+    // Try entity-specific, then fallback
+    const entityColor = style.getPropertyValue('--theme-bg-preview-entity').trim();
+    if (entityColor) return entityColor;
+  } else if (type === 'asset') {
+    // Try asset-specific, then fallback
+    const assetColor = style.getPropertyValue('--theme-bg-preview-asset').trim();
+    if (assetColor) return assetColor;
+  }
+
+  // Fallback to generic preview color or default
+  return style.getPropertyValue('--theme-bg-preview').trim() || '#15100a';
 }
 
 /**
  * Get the preview background image URL from theme settings (without the url() wrapper)
+ * @param type - Optional type: 'entity' for heroes/enemies, 'asset' for tiles/items/enchantments
  */
-export function getPreviewBgImageUrl(): string | null {
-  const cssValue = getComputedStyle(document.documentElement).getPropertyValue('--asset-bg-preview').trim();
+export function getPreviewBgImageUrl(type?: PreviewType): string | null {
+  const style = getComputedStyle(document.documentElement);
+
+  let cssValue = '';
+
+  if (type === 'entity') {
+    // Try entity-specific, then fallback
+    cssValue = style.getPropertyValue('--asset-bg-preview-entity').trim();
+  } else if (type === 'asset') {
+    // Try asset-specific, then fallback
+    cssValue = style.getPropertyValue('--asset-bg-preview-asset').trim();
+  }
+
+  // If no type-specific value, try fallback
+  if (!cssValue || cssValue === 'none') {
+    cssValue = style.getPropertyValue('--asset-bg-preview').trim();
+  }
+
   if (!cssValue || cssValue === 'none') return null;
 
   // Extract URL from url(...)
@@ -749,9 +837,21 @@ export function getPreviewBgImageUrl(): string | null {
 
 /**
  * Check if preview background should be tiled
+ * @param type - Optional type: 'entity' for heroes/enemies, 'asset' for tiles/items/enchantments
  */
-export function getPreviewBgTiled(): boolean {
-  const repeat = getComputedStyle(document.documentElement).getPropertyValue('--asset-bg-preview-repeat').trim();
+export function getPreviewBgTiled(type?: PreviewType): boolean {
+  const style = getComputedStyle(document.documentElement);
+
+  if (type === 'entity') {
+    const repeat = style.getPropertyValue('--asset-bg-preview-entity-repeat').trim();
+    if (repeat) return repeat === 'repeat';
+  } else if (type === 'asset') {
+    const repeat = style.getPropertyValue('--asset-bg-preview-asset-repeat').trim();
+    if (repeat) return repeat === 'repeat';
+  }
+
+  // Fallback
+  const repeat = style.getPropertyValue('--asset-bg-preview-repeat').trim();
   return repeat === 'repeat';
 }
 
@@ -763,16 +863,19 @@ export function getPreviewBgTiled(): boolean {
  * @param width - Canvas width
  * @param height - Canvas height
  * @param onComplete - Optional callback when background is drawn (needed for async image loading)
+ * @param type - Optional type: 'entity' for heroes/enemies, 'asset' for tiles/items/enchantments
  */
 export function drawPreviewBackground(
   ctx: CanvasRenderingContext2D,
   width: number,
   height: number,
-  onComplete?: () => void
+  onComplete?: () => void,
+  type?: PreviewType
 ): void {
-  const bgColor = getPreviewBgColor();
-  const bgImageUrl = getPreviewBgImageUrl();
-  const tiled = getPreviewBgTiled();
+  const bgColor = getPreviewBgColor(type);
+  const bgImageUrl = getPreviewBgImageUrl(type);
+  const tiled = getPreviewBgTiled(type);
+  const cacheKey = type || 'default';
 
   // Always draw the background color first (as fallback)
   ctx.fillStyle = bgColor;
@@ -785,8 +888,9 @@ export function drawPreviewBackground(
   }
 
   // Check if we have the image cached
-  if (previewBgImageCache && previewBgImageCache.url === bgImageUrl && previewBgImageCache.img.complete) {
-    drawBgImage(ctx, previewBgImageCache.img, width, height, tiled);
+  const cached = previewBgImageCache[cacheKey];
+  if (cached && cached.url === bgImageUrl && cached.img.complete) {
+    drawBgImage(ctx, cached.img, width, height, tiled);
     onComplete?.();
     return;
   }
@@ -794,7 +898,7 @@ export function drawPreviewBackground(
   // Load the background image
   const img = new Image();
   img.onload = () => {
-    previewBgImageCache = { url: bgImageUrl, img };
+    previewBgImageCache[cacheKey] = { url: bgImageUrl, img };
     drawBgImage(ctx, img, width, height, tiled);
     onComplete?.();
   };
@@ -832,5 +936,7 @@ function drawBgImage(
  * Clear the preview background image cache (call when theme changes)
  */
 export function clearPreviewBgCache(): void {
-  previewBgImageCache = null;
+  for (const key in previewBgImageCache) {
+    delete previewBgImageCache[key];
+  }
 }

@@ -3,7 +3,7 @@ import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } fro
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
-import { loadStatusEffectAsset, loadSpellAsset, loadCollectible } from '../utils/assetStorage';
+import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy } from '../utils/assetStorage';
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
@@ -1327,6 +1327,19 @@ export function checkVictoryConditions(gameState: GameState): boolean {
       case 'defeat_all_enemies':
         const allEnemiesDead = gameState.puzzle.enemies.every((e) => e.dead);
         if (!allEnemiesDead) return false;
+        break;
+
+      case 'defeat_boss':
+        // All boss enemies must be defeated
+        const bossEnemies = gameState.puzzle.enemies.filter(placedEnemy => {
+          const enemyData = loadEnemy(placedEnemy.enemyId);
+          return enemyData?.isBoss === true;
+        });
+        // If there are no bosses, this condition is vacuously true
+        if (bossEnemies.length > 0) {
+          const allBossesDead = bossEnemies.every(e => e.dead);
+          if (!allBossesDead) return false;
+        }
         break;
 
       case 'collect_all':

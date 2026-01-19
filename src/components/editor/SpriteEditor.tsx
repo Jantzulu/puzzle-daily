@@ -1,7 +1,10 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
-import { drawPreviewBackground, getPreviewBgColor } from '../../utils/themeAssets';
+import { drawPreviewBackground, getPreviewBgColor, type PreviewType } from '../../utils/themeAssets';
+
+// Preview type for character/enemy sprites (entities)
+const ENTITY_PREVIEW_TYPE: PreviewType = 'entity';
 
 // Global image cache for GIF animation support
 const globalImageCache = new Map<string, HTMLImageElement>();
@@ -289,7 +292,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       // Clear
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw preview background (color and/or image)
+      // Draw preview background (color and/or image) using entity type for heroes/enemies
       drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
         // Draw sprite based on mode after background is ready
         if (spriteMode === 'directional' && sprite.directionalSprites) {
@@ -317,7 +320,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   }
 
                   ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
-                });
+                }, ENTITY_PREVIEW_TYPE);
               };
               img.src = imageToShow;
             } else {
@@ -347,14 +350,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 }
 
                 ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
-              });
+              }, ENTITY_PREVIEW_TYPE);
             };
             img.src = simpleImageToShow;
           } else {
             drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
           }
         }
-      });
+      }, ENTITY_PREVIEW_TYPE);
     };
 
     renderPreview();

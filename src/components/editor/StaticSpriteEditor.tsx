@@ -1,6 +1,9 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, SpriteSheetConfig } from '../../utils/assetStorage';
-import { drawPreviewBackground } from '../../utils/themeAssets';
+import { drawPreviewBackground, type PreviewType } from '../../utils/themeAssets';
+
+// Preview type for static assets (tiles, items, enchantments)
+const ASSET_PREVIEW_TYPE: PreviewType = 'asset';
 
 interface StaticSpriteEditorProps {
   sprite: CustomSprite;
@@ -64,7 +67,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         ? (sprite.triggeredImageData || sprite.idleImageData || sprite.imageData)
         : (sprite.idleImageData || sprite.imageData);
 
-      // Draw preview background (color and/or image)
+      // Draw preview background (color and/or image) using asset type for static sprites
       drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
         if (spriteSheet?.imageData) {
           // Animated spritesheet
@@ -101,7 +104,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                 canvas.height / 2 - drawHeight / 2,
                 drawWidth, drawHeight
               );
-            });
+            }, ASSET_PREVIEW_TYPE);
           };
           img.src = spriteSheet.imageData;
           animationRef.current = requestAnimationFrame(render);
@@ -128,14 +131,14 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                 canvas.height / 2 - drawHeight / 2,
                 drawWidth, drawHeight
               );
-            });
+            }, ASSET_PREVIEW_TYPE);
           };
           img.src = imageData;
         } else {
           // Draw shape fallback
           drawShape(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
         }
-      });
+      }, ASSET_PREVIEW_TYPE);
     };
 
     render(0);

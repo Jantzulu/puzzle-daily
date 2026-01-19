@@ -18,7 +18,7 @@ import { playGameSound, playVictoryMusic, playDefeatMusic, stopMusic } from '../
 import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, type CustomObject, type CustomCollectible } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, type CustomObject, type CustomCollectible } from '../../utils/assetStorage';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -1589,26 +1589,33 @@ export const MapEditor: React.FC = () => {
                   <div className="flex items-center justify-center gap-1 mb-2">
                     {renderLivesHearts()}
                   </div>
-                  {/* Grid layout: 3 columns with Play button centered, test buttons vertically centered */}
+                  {/* Grid layout: Play button centered with test buttons on sides */}
                   <div className="grid grid-cols-3 gap-2 md:gap-3 items-center">
                     {/* Left column - Test Characters */}
                     <div className="flex justify-end">
                       <button
                         onClick={handleTestCharacters}
-                        className="px-2 py-1 md:px-3 md:py-2 bg-arcane-700 hover:bg-arcane-800 rounded font-medium transition text-xs md:text-sm"
+                        className="dungeon-btn-arcane text-xs md:text-sm px-2 py-1 md:px-3 md:py-2"
                         title="Test your characters without enemies for 5 turns"
                       >
-                        Test Characters
+                        Test Heroes
                       </button>
                     </div>
 
-                    {/* Center column - Play button */}
-                    <div className="flex justify-center">
+                    {/* Center column - Play and Step buttons */}
+                    <div className="flex flex-col items-center gap-2">
                       <button
                         onClick={handlePlay}
-                        className="px-8 py-3 bg-moss-600 hover:bg-moss-700 rounded-lg font-bold transition text-lg md:text-xl shadow-lg"
+                        className="dungeon-btn-success px-6 md:px-8 py-3 font-bold text-lg md:text-xl torch-glow"
                       >
                         Play
+                      </button>
+                      <button
+                        onClick={handleStep}
+                        className="dungeon-btn px-4 py-1 text-sm"
+                        title="Execute one turn at a time"
+                      >
+                        Step
                       </button>
                     </div>
 
@@ -1616,7 +1623,7 @@ export const MapEditor: React.FC = () => {
                     <div className="flex justify-start">
                       <button
                         onClick={handleTestEnemies}
-                        className="px-2 py-1 md:px-3 md:py-2 bg-blood-600 hover:bg-blood-700 rounded font-medium transition text-xs md:text-sm"
+                        className="dungeon-btn-danger text-xs md:text-sm px-2 py-1 md:px-3 md:py-2"
                         title="Watch enemies move without characters for 5 turns"
                       >
                         Test Enemies
@@ -1634,11 +1641,35 @@ export const MapEditor: React.FC = () => {
                     {renderLivesHearts()}
                   </div>
                   {/* Turn counter */}
-                  <div className="flex items-center gap-3 px-4 py-2 bg-stone-800 rounded-lg border border-stone-600">
+                  <div className="dungeon-panel flex items-center gap-3 px-4 py-2">
                     <span className="text-stone-400 text-sm font-medium">Turn</span>
-                    <span className="text-2xl font-bold text-yellow-400 min-w-[2ch] text-center">
-                      {gameState.currentTurn}
-                    </span>
+                    {(() => {
+                      const maxTurns = originalPlaytestPuzzle?.maxTurns;
+                      const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
+                      const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                      const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+
+                      return (
+                        <>
+                          <span className={`text-2xl font-bold min-w-[2ch] text-center ${
+                            isVeryNearLimit
+                              ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                              : isNearLimit
+                              ? 'text-rust-400'
+                              : 'text-copper-400 text-shadow-glow-copper'
+                          }`}>
+                            {gameState.currentTurn}
+                          </span>
+                          {maxTurns && (
+                            <span className={`text-sm ${
+                              isNearLimit ? 'text-blood-400' : 'text-stone-500'
+                            }`}>
+                              / {maxTurns}
+                            </span>
+                          )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
@@ -1650,24 +1681,24 @@ export const MapEditor: React.FC = () => {
                   <div className="flex items-center justify-center gap-1 mb-2">
                     {renderLivesHearts()}
                   </div>
-                  {/* Test mode turn counter - blue for characters, red for enemies */}
-                  <div className={`flex items-center gap-3 px-4 py-2 rounded-lg border ${
+                  {/* Test mode turn counter - arcane for characters, blood for enemies */}
+                  <div className={`flex items-center gap-3 px-4 py-2 rounded-pixel-lg border-2 ${
                     testMode === 'enemies'
-                      ? 'bg-red-900 border-red-600'
-                      : 'bg-indigo-900 border-indigo-600'
+                      ? 'bg-blood-900/80 border-blood-600'
+                      : 'bg-arcane-900/80 border-arcane-600'
                   }`}>
                     <span className={`text-sm font-medium ${
-                      testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                      testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
                     }`}>
-                      Testing {testMode === 'enemies' ? 'Enemies' : 'Characters'}
+                      Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
                     </span>
                     <span className={`text-2xl font-bold min-w-[2ch] text-center ${
-                      testMode === 'enemies' ? 'text-red-300' : 'text-indigo-300'
+                      testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
                     }`}>
                       {testTurnsRemaining}
                     </span>
                     <span className={`text-sm ${
-                      testMode === 'enemies' ? 'text-red-400' : 'text-indigo-400'
+                      testMode === 'enemies' ? 'text-blood-400' : 'text-arcane-400'
                     }`}>Turns Left</span>
                   </div>
                 </div>
@@ -1677,48 +1708,48 @@ export const MapEditor: React.FC = () => {
 
               {/* Victory Message with Score */}
               {gameState.gameStatus === 'victory' && puzzleScore && (
-                <div className="mt-4 p-4 bg-gradient-to-b from-green-700 to-green-800 rounded-lg text-center w-full max-w-md border border-green-500 shadow-lg">
+                <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
                   {/* Trophy and Rank */}
                   <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
-                  <h2 className="text-xl md:text-2xl font-bold text-green-100">
+                  <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
                     {getRankName(puzzleScore.rank)}
                   </h2>
 
                   {/* Stats for Gold trophy */}
                   {puzzleScore.rank === 'gold' && (
-                    <p className="text-sm text-green-200 mt-1">
-                      ({puzzleScore.stats.charactersUsed} char{puzzleScore.stats.charactersUsed !== 1 ? 's' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
+                    <p className="text-sm text-moss-300 mt-1">
+                      ({puzzleScore.stats.charactersUsed} hero{puzzleScore.stats.charactersUsed !== 1 ? 'es' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
                     </p>
                   )}
 
                   {/* Total Score */}
-                  <div className="mt-3 text-2xl font-bold text-yellow-300">
+                  <div className="mt-3 text-2xl font-bold text-copper-300 text-shadow-glow-copper">
                     {puzzleScore.totalPoints.toLocaleString()} pts
                   </div>
 
                   {/* Par Status */}
                   {originalPlaytestPuzzle && (
                     <div className="mt-2 flex justify-center gap-4 text-xs">
-                      <span className={puzzleScore.parMet.characters ? 'text-green-300' : 'text-stone-400'}>
-                        {puzzleScore.parMet.characters ? '✓' : '✗'} Char Par ({originalPlaytestPuzzle.parCharacters ?? '-'})
+                      <span className={puzzleScore.parMet.characters ? 'text-moss-300' : 'text-stone-500'}>
+                        {puzzleScore.parMet.characters ? '✓' : '✗'} Hero Par ({originalPlaytestPuzzle.parCharacters ?? '-'})
                       </span>
-                      <span className={puzzleScore.parMet.turns ? 'text-green-300' : 'text-stone-400'}>
+                      <span className={puzzleScore.parMet.turns ? 'text-moss-300' : 'text-stone-500'}>
                         {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({originalPlaytestPuzzle.parTurns ?? '-'})
                       </span>
                     </div>
                   )}
 
                   {/* Point Breakdown - Collapsible */}
-                  <details className="mt-3 text-left text-xs bg-green-900/50 rounded p-2">
-                    <summary className="cursor-pointer text-green-200 font-medium">Point Breakdown</summary>
-                    <div className="mt-2 space-y-1 text-green-100">
+                  <details className="mt-3 text-left text-xs bg-moss-900/50 rounded-pixel p-2 border border-moss-700">
+                    <summary className="cursor-pointer text-moss-200 font-medium">Point Breakdown</summary>
+                    <div className="mt-2 space-y-1 text-moss-100">
                       <div className="flex justify-between">
                         <span>Base:</span>
                         <span>+{puzzleScore.breakdown.basePoints}</span>
                       </div>
                       {puzzleScore.breakdown.characterBonus > 0 && (
                         <div className="flex justify-between">
-                          <span>Character Bonus:</span>
+                          <span>Hero Bonus:</span>
                           <span>+{puzzleScore.breakdown.characterBonus}</span>
                         </div>
                       )}
@@ -1745,7 +1776,7 @@ export const MapEditor: React.FC = () => {
 
                   {/* Completed Side Quests */}
                   {puzzleScore.completedSideQuests.length > 0 && originalPlaytestPuzzle && (
-                    <div className="mt-2 text-xs text-purple-300">
+                    <div className="mt-2 text-xs text-arcane-300">
                       Side Quests: {puzzleScore.completedSideQuests.map(qid => {
                         const quest = originalPlaytestPuzzle.sideQuests?.find(q => q.id === qid);
                         return quest?.title || qid;
@@ -1756,35 +1787,44 @@ export const MapEditor: React.FC = () => {
               )}
 
               {gameState.gameStatus === 'defeat' && (
-                <div className="mt-4 p-4 bg-red-700 rounded text-center w-full max-w-md">
-                  <h2 className="text-xl md:text-2xl font-bold">Defeat</h2>
-                  <p className="mt-2 text-sm md:text-base">Try again!</p>
+                <div className="defeat-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
+                  <h2 className="text-xl md:text-2xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">Defeat</h2>
+                  <p className="mt-2 text-sm md:text-base text-blood-300">Try again!</p>
                 </div>
               )}
 
               {/* Win Condition Display - below puzzle, above characters */}
               {gameState.gameStatus === 'setup' && (
-                <div className="mt-4 w-full max-w-md px-4 py-2 bg-stone-800/50 rounded-lg border border-stone-700">
-                  <div className="flex items-center justify-center gap-2 text-sm">
+                <div className="mt-4 w-full max-w-md px-4 py-2 dungeon-panel-dark">
+                  <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
                     <HelpButton sectionId="game_general" />
-                    <span className="text-stone-400">Goal:</span>
-                    <span className="text-yellow-300 font-medium">
+                    <span className="text-stone-400">Quest:</span>
+                    <span className="text-copper-300 font-medium">
                       {gameState.puzzle.winConditions.map((wc) => {
                         switch (wc.type) {
                           case 'defeat_all_enemies':
                             return 'Defeat all enemies';
+                          case 'defeat_boss':
+                            // Get boss names from placed enemies
+                            const bossNames = gameState.puzzle.enemies
+                              .map(e => loadEnemy(e.enemyId))
+                              .filter(enemy => enemy?.isBoss)
+                              .map(enemy => enemy!.name);
+                            if (bossNames.length === 0) return 'Defeat the boss';
+                            if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
+                            return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]}`;
                           case 'collect_all':
-                            return 'Collect all items';
+                            return 'Collect all treasure';
                           case 'reach_goal':
-                            return 'Reach the goal';
+                            return 'Reach the exit';
                           case 'survive_turns':
                             return `Survive ${wc.params?.turns ?? 10} turns`;
                           case 'win_in_turns':
                             return `Win within ${wc.params?.turns ?? 10} turns`;
                           case 'max_characters':
-                            return `Use at most ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''}`;
+                            return `Use at most ${wc.params?.characterCount ?? 1} hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
                           case 'characters_alive':
-                            return `Keep ${wc.params?.characterCount ?? 1} character${(wc.params?.characterCount ?? 1) > 1 ? 's' : ''} alive`;
+                            return `Keep ${wc.params?.characterCount ?? 1} hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
                           default:
                             return wc.type;
                         }
@@ -1794,21 +1834,21 @@ export const MapEditor: React.FC = () => {
                       <>
                         <span className="text-stone-600">|</span>
                         <span className="text-stone-400">Max Turns:</span>
-                        <span className="text-cyan-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                        <span className="text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                       </>
                     )}
                   </div>
 
                   {/* Side Quests Display */}
                   {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (
-                    <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-stone-700">
+                    <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-stone-700 flex-wrap">
                       <HelpButton sectionId="side_quests" />
-                      <span className="text-purple-400">Side Quests:</span>
-                      <span className="text-purple-300">
+                      <span className="text-arcane-400">Side Quests:</span>
+                      <span className="text-arcane-300">
                         {gameState.puzzle.sideQuests.map((q, i) => (
                           <span key={q.id}>
                             {i > 0 && ', '}
-                            {q.title} <span className="text-purple-500">(+{q.bonusPoints})</span>
+                            {q.title} <span className="text-arcane-500">(+{q.bonusPoints})</span>
                           </span>
                         ))}
                       </span>
@@ -1834,12 +1874,12 @@ export const MapEditor: React.FC = () => {
             {/* Sidebar */}
             <div className="w-full lg:w-80 space-y-4 md:space-y-6">
               {/* Playtest Controls Panel - exclusive to playtest */}
-              <div className="p-4 bg-stone-800 rounded">
+              <div className="dungeon-panel p-4">
                 <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold">Playtest Controls</h3>
+                  <h3 className="text-lg font-bold text-copper-400">Playtest Controls</h3>
                   <button
                     onClick={handleBackToEditor}
-                    className="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded text-sm font-medium transition"
+                    className="dungeon-btn px-3 py-1 text-sm"
                   >
                     ← Back to Editor
                   </button>
@@ -1849,7 +1889,7 @@ export const MapEditor: React.FC = () => {
                   {testMode === 'none' && gameState.gameStatus === 'running' && !isSimulating && (
                     <button
                       onClick={handlePlay}
-                      className="col-span-2 px-4 py-2 bg-moss-600 hover:bg-moss-700 rounded font-semibold transition"
+                      className="col-span-2 dungeon-btn-success px-4 py-2 font-semibold"
                     >
                       Resume
                     </button>
@@ -1858,7 +1898,8 @@ export const MapEditor: React.FC = () => {
                   {isSimulating && gameState.gameStatus === 'running' && testMode === 'none' && (
                     <button
                       onClick={handlePause}
-                      className="col-span-2 px-4 py-2 bg-yellow-600 hover:bg-yellow-700 rounded font-semibold transition"
+                      className="col-span-2 dungeon-btn px-4 py-2 font-semibold"
+                      style={{ backgroundColor: 'var(--theme-accent-danger, #c4915c)', borderColor: 'var(--theme-border-accent, #c4915c)' }}
                     >
                       Pause
                     </button>
@@ -1867,7 +1908,7 @@ export const MapEditor: React.FC = () => {
                   {gameState.gameStatus === 'running' && !isSimulating && testMode === 'none' && (
                     <button
                       onClick={handleStep}
-                      className="col-span-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold transition"
+                      className="col-span-2 dungeon-btn px-4 py-2 font-semibold"
                     >
                       Step
                     </button>
@@ -1877,14 +1918,15 @@ export const MapEditor: React.FC = () => {
                     <>
                       <button
                         onClick={handleReset}
-                        className="px-4 py-2 bg-blood-600 hover:bg-blood-700 rounded font-semibold transition"
+                        className="dungeon-btn-danger px-4 py-2 font-semibold"
                       >
                         Reset
                       </button>
 
                       <button
                         onClick={handleWipe}
-                        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 rounded font-semibold transition"
+                        className="dungeon-btn px-4 py-2 font-semibold"
+                        style={{ backgroundColor: '#c2410c', borderColor: '#ea580c' }}
                       >
                         Wipe
                       </button>
@@ -2715,6 +2757,7 @@ export const MapEditor: React.FC = () => {
                                 className="w-full px-2 py-1 bg-stone-600 rounded text-sm mb-1"
                               >
                                 <option value="defeat_all_enemies">Defeat All Enemies</option>
+                                <option value="defeat_boss">Defeat the Boss</option>
                                 <option value="collect_all">Collect All Items</option>
                                 <option value="collect_keys">Collect All Keys</option>
                                 <option value="reach_goal">Reach Goal Tile</option>
