@@ -381,9 +381,9 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
       </label>
       <p className="text-xs text-stone-500 mb-2">{config.description}</p>
 
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 flex-wrap">
         {/* Color picker */}
-        <div className="relative">
+        <div className="relative flex-shrink-0">
           <input
             type="color"
             value={value || defaultColor}
@@ -403,13 +403,13 @@ const ColorPicker: React.FC<ColorPickerProps> = ({ assetKey, value, onChange }) 
             }
           }}
           placeholder={defaultColor}
-          className="dungeon-input flex-1 text-sm font-mono"
+          className="dungeon-input flex-1 min-w-[80px] text-sm font-mono"
         />
 
         {/* Reset button - always visible */}
         <button
           onClick={handleReset}
-          className={`text-xs px-2 py-1 rounded transition-colors ${
+          className={`text-xs px-2 py-1 rounded transition-colors flex-shrink-0 ${
             isCustom
               ? 'bg-copper-700 hover:bg-copper-600 text-parchment-100'
               : 'bg-stone-700 text-stone-500 cursor-default'

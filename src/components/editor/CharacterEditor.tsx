@@ -246,7 +246,7 @@ export const CharacterEditor: React.FC = () => {
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
                         <div className="w-10 h-10 bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={char.customSprite} size={40} />
+                          <SpriteThumbnail sprite={char.customSprite} size={40} previewType="entity" />
                         </div>
                         <div>
                           <h3 className="font-bold text-parchment-200">{char.name}</h3>

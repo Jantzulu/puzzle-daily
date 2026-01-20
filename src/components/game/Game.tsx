@@ -895,11 +895,11 @@ export const Game: React.FC = () => {
 
             {/* Win Condition Display - below puzzle, visible during setup and gameplay */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && (
-              <div className="mt-2 w-full max-w-md px-4 py-2 dungeon-panel-dark">
-                <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
+              <div className="mt-2 w-full max-w-md px-4 py-3 dungeon-panel-dark">
+                <div className="flex items-center justify-center gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
-                  <span className="text-stone-400">Quest:</span>
-                  <span className="text-copper-300 font-medium">
+                  <span className="text-base font-semibold text-stone-400">Quest:</span>
+                  <span className="text-sm text-copper-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
                         case 'defeat_all_enemies': {
@@ -952,8 +952,8 @@ export const Game: React.FC = () => {
                   {gameState.puzzle.maxTurns && (
                     <>
                       <span className="text-stone-600">|</span>
-                      <span className="text-stone-400">Max Turns:</span>
-                      <span className="text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                      <span className="text-base font-semibold text-stone-400">Max Turns:</span>
+                      <span className="text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                     </>
                   )}
                 </div>
@@ -966,10 +966,10 @@ export const Game: React.FC = () => {
                     : [];
 
                   return (
-                    <div className="flex items-center justify-center gap-2 text-sm mt-2 pt-2 border-t border-stone-700 flex-wrap">
+                    <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
                       <HelpButton sectionId="side_quests" />
-                      <span className="text-arcane-400">Side Quests:</span>
-                      <span className="text-arcane-300">
+                      <span className="text-base font-semibold text-arcane-400">Side Quests:</span>
+                      <span className="text-sm text-arcane-300">
                         {gameState.puzzle.sideQuests.map((q, i) => {
                           const isCompleted = completedQuestIds.includes(q.id);
                           return (

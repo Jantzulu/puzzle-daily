@@ -2150,7 +2150,7 @@ export const MapEditor: React.FC = () => {
                         >
                           {char ? (
                             <>
-                              <SpriteThumbnail sprite={char.customSprite} size={48} />
+                              <SpriteThumbnail sprite={char.customSprite} size={48} previewType="entity" />
                               <span className="text-sm font-medium text-parchment-200 truncate w-full text-center mt-1">
                                 {char.name.length > 8 ? char.name.slice(0, 8) + '...' : char.name}
                               </span>
@@ -2386,7 +2386,7 @@ export const MapEditor: React.FC = () => {
                                 selectedEnemyId === enemy.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                               }`}
                             >
-                              <SpriteThumbnail sprite={enemy.customSprite} size={32} />
+                              <SpriteThumbnail sprite={enemy.customSprite} size={32} previewType="entity" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium truncate">{enemy.name}</div>
                                 <div className="text-xs text-stone-400">HP: {enemy.health}</div>
@@ -2445,7 +2445,7 @@ export const MapEditor: React.FC = () => {
                               selectedObjectId === obj.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                             }`}
                           >
-                            <SpriteThumbnail sprite={obj.customSprite} size={32} />
+                            <SpriteThumbnail sprite={obj.customSprite} size={32} previewType="asset" />
                             <div className="flex-1 min-w-0">
                               <div className="text-sm font-medium truncate">{obj.name}</div>
                               <div className="text-xs text-stone-400 capitalize">
@@ -2522,7 +2522,7 @@ export const MapEditor: React.FC = () => {
                             selectedCollectibleId === coll.id ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                           }`}
                         >
-                          <SpriteThumbnail sprite={coll.customSprite} size={32} />
+                          <SpriteThumbnail sprite={coll.customSprite} size={32} previewType="asset" />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{coll.name}</div>
                             <div className="text-xs text-stone-400">
@@ -2590,7 +2590,7 @@ export const MapEditor: React.FC = () => {
                                 }}
                                 className="w-4 h-4"
                               />
-                              <SpriteThumbnail sprite={char.customSprite} size={32} />
+                              <SpriteThumbnail sprite={char.customSprite} size={32} previewType="entity" />
                               <div className="flex-1 min-w-0">
                                 <div className="text-sm font-medium truncate">{char.name}</div>
                                 <div className="text-xs text-stone-400">HP: {char.health}</div>
