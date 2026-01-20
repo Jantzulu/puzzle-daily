@@ -4,14 +4,24 @@ import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
+import type { ThemeAssets } from '../../utils/themeAssets';
 
 interface EnemyDisplayProps {
   enemies: PlacedEnemy[];
   onTest?: () => void;
   showTestButton?: boolean;
+  themeAssets?: ThemeAssets;
 }
 
-export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false }) => {
+export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false, themeAssets = {} }) => {
+  // Determine button shape class
+  const getShapeClass = (shape?: string) => {
+    switch (shape) {
+      case 'rounded': return 'rounded-lg';
+      case 'pill': return 'rounded-full';
+      default: return 'rounded';
+    }
+  };
   // Filter to only show living enemies and get unique enemy types
   const livingEnemies = enemies.filter(e => !e.dead);
 
@@ -53,7 +63,14 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
           {showTestButton && onTest && (
             <button
               onClick={onTest}
-              className="px-2 py-1 text-xs bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100 rounded transition-colors flex items-center gap-1"
+              className={`px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
+                themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
+              } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
+              style={{
+                ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
+                ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
+              }}
               title="Watch enemies move without heroes for 5 turns"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">

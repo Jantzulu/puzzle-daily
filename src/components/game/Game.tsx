@@ -977,6 +977,7 @@ export const Game: React.FC = () => {
                   placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
                   onClearAll={testMode === 'none' ? handleWipe : undefined}
                   onTest={testMode === 'none' ? handleTestCharactersWithScroll : undefined}
+                  themeAssets={themeAssets}
                 />
               </div>
             )}
@@ -1023,6 +1024,7 @@ export const Game: React.FC = () => {
               enemies={gameState.puzzle.enemies}
               onTest={handleTestEnemiesWithScroll}
               showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+              themeAssets={themeAssets}
             />
 
             {/* Items Display - only shown if puzzle has items */}

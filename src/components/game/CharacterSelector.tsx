@@ -3,6 +3,7 @@ import { getCharacter } from '../../data/characters';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
+import type { ThemeAssets } from '../../utils/themeAssets';
 
 interface CharacterSelectorProps {
   availableCharacterIds: string[];
@@ -11,6 +12,7 @@ interface CharacterSelectorProps {
   placedCharacterIds?: string[];
   onClearAll?: () => void;
   onTest?: () => void;
+  themeAssets?: ThemeAssets;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -20,7 +22,16 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   placedCharacterIds = [],
   onClearAll,
   onTest,
+  themeAssets = {},
 }) => {
+  // Determine button shape class
+  const getShapeClass = (shape?: string) => {
+    switch (shape) {
+      case 'rounded': return 'rounded-lg';
+      case 'pill': return 'rounded-full';
+      default: return 'rounded';
+    }
+  };
   return (
     <div className="dungeon-panel p-4">
       {/* Header row */}
@@ -28,11 +39,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         {/* Left: Help + Title + Test button */}
         <div className="flex items-center gap-2">
           <HelpButton sectionId="characters" />
-          <h3 className="text-lg font-bold text-copper-400">Heroes</h3>
+          <h3 className="text-lg font-bold text-purple-400">Heroes</h3>
           {onTest && (
             <button
               onClick={onTest}
-              className="px-2 py-1 text-xs bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100 rounded transition-colors flex items-center gap-1"
+              className={`px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
+                themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
+              } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
+              style={{
+                ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
+                ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
+              }}
               title="Test your heroes without enemies for 5 turns"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
