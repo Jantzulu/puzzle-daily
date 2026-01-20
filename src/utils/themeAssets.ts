@@ -820,7 +820,7 @@ export async function uploadImageWithFallback(
 // Preview type for differentiating entity (heroes/enemies) vs asset (tiles/items/enchantments) backgrounds
 export type PreviewType = 'entity' | 'asset';
 
-// Cache for preview background images (keyed by type)
+// Legacy cache - no longer used, kept for clearPreviewBgCache compatibility
 const previewBgImageCache: Record<string, { url: string; img: HTMLImageElement }> = {};
 
 /**
@@ -913,7 +913,6 @@ export function drawPreviewBackground(
   const bgColor = getPreviewBgColor(type);
   const bgImageUrl = getPreviewBgImageUrl(type);
   const tiled = getPreviewBgTiled(type);
-  const cacheKey = type || 'default';
 
   // Always draw the background color first (as fallback)
   ctx.fillStyle = bgColor;
@@ -925,18 +924,9 @@ export function drawPreviewBackground(
     return;
   }
 
-  // Check if we have the image cached
-  const cached = previewBgImageCache[cacheKey];
-  if (cached && cached.url === bgImageUrl && cached.img.complete) {
-    drawBgImage(ctx, cached.img, width, height, tiled);
-    onComplete?.();
-    return;
-  }
-
-  // Use centralized image loader with caching
+  // Use centralized image loader with caching (handles CORS automatically)
   const img = loadImage(bgImageUrl);
   if (img && isImageReady(img)) {
-    previewBgImageCache[cacheKey] = { url: bgImageUrl, img };
     drawBgImage(ctx, img, width, height, tiled);
     onComplete?.();
   } else {
