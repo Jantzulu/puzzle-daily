@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { CustomSprite } from '../../utils/assetStorage';
 import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetStorage';
 import { drawSprite } from './SpriteEditor';
-import { drawPreviewBackground, type PreviewType } from '../../utils/themeAssets';
+import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { loadImage, isImageReady, subscribeToImageLoads } from '../../utils/imageLoader';
 
 interface SpriteThumbnailProps {
@@ -49,8 +49,30 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
     let animationFrameId: number | null = null;
 
+    // Helper to draw sprite frame
+    const drawSpriteFrame = (img: HTMLImageElement, frameIndex: number, frameCount: number, frameWidth: number, frameHeight: number) => {
+      ctx.clearRect(0, 0, size, size);
+      const maxSize = (sprite.size || 0.6) * size;
+      const frameAspectRatio = frameWidth / frameHeight;
+      let drawWidth = maxSize;
+      let drawHeight = maxSize;
+
+      if (frameAspectRatio > 1) {
+        drawHeight = maxSize / frameAspectRatio;
+      } else {
+        drawWidth = maxSize * frameAspectRatio;
+      }
+
+      const sourceX = frameIndex * frameWidth;
+      ctx.drawImage(
+        img,
+        sourceX, 0, frameWidth, frameHeight,
+        size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight
+      );
+    };
+
     const renderThumbnail = () => {
-      // Clear canvas first
+      // Clear canvas (background is handled by CSS on parent div)
       ctx.clearRect(0, 0, size, size);
 
       // Determine what to render based on sprite mode
@@ -77,90 +99,60 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       // Resolve sprite sheet source (supports both data and URL)
       const spriteSheetSrc = resolveSpriteSheetSource(spriteSheet);
 
-      // Draw preview background (color and/or image)
-      drawPreviewBackground(ctx, size, size, () => {
-        // Priority: sprite sheet > static image > shapes
-        if (spriteSheetSrc) {
-          // Use centralized image loader with caching
-          const img = loadImage(spriteSheetSrc);
-          if (img && isImageReady(img)) {
-            let frameIndex = 0;
-            const frameCount = spriteSheet.frameCount || 4;
-            const frameRate = spriteSheet.frameRate || 10;
-            const frameDuration = 1000 / frameRate;
-            let lastFrameTime = Date.now();
+      // Priority: sprite sheet > static image > shapes
+      if (spriteSheetSrc) {
+        // Use centralized image loader with caching
+        const img = loadImage(spriteSheetSrc);
+        if (img && isImageReady(img)) {
+          let frameIndex = 0;
+          const frameCount = spriteSheet.frameCount || 4;
+          const frameRate = spriteSheet.frameRate || 10;
+          const frameDuration = 1000 / frameRate;
+          let lastFrameTime = Date.now();
+          const frameWidth = spriteSheet.frameWidth || img.width / frameCount;
+          const frameHeight = spriteSheet.frameHeight || img.height;
 
-            const animate = () => {
-              const now = Date.now();
+          const animate = () => {
+            const now = Date.now();
 
-              // Update frame if enough time has passed
-              if (now - lastFrameTime >= frameDuration) {
-                frameIndex++;
-                if (frameIndex >= frameCount) {
-                  frameIndex = spriteSheet.loop !== false ? 0 : frameCount - 1;
-                }
-                lastFrameTime = now;
+            // Update frame if enough time has passed
+            if (now - lastFrameTime >= frameDuration) {
+              frameIndex++;
+              if (frameIndex >= frameCount) {
+                frameIndex = spriteSheet.loop !== false ? 0 : frameCount - 1;
               }
+              lastFrameTime = now;
+            }
 
-              // Redraw background then sprite frame
-              drawPreviewBackground(ctx, size, size, () => {
-                // Calculate frame dimensions
-                const frameWidth = spriteSheet.frameWidth || img.width / frameCount;
-                const frameHeight = spriteSheet.frameHeight || img.height;
+            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight);
+            animationFrameId = requestAnimationFrame(animate);
+          };
 
-                // Calculate display size preserving aspect ratio
-                const maxSize = (sprite.size || 0.6) * size;
-                const frameAspectRatio = frameWidth / frameHeight;
-                let drawWidth = maxSize;
-                let drawHeight = maxSize;
-
-                if (frameAspectRatio > 1) {
-                  drawHeight = maxSize / frameAspectRatio;
-                } else {
-                  drawWidth = maxSize * frameAspectRatio;
-                }
-
-                // Draw current frame
-                const sourceX = frameIndex * frameWidth;
-                ctx.drawImage(
-                  img,
-                  sourceX, 0, frameWidth, frameHeight,
-                  size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight
-                );
-              }, previewType);
-
-              animationFrameId = requestAnimationFrame(animate);
-            };
-
-            animate();
-          }
-          // If image not ready yet, the subscription will trigger re-render when it loads
-        } else if (imageSrc) {
-          // Use centralized image loader with caching
-          const img = loadImage(imageSrc);
-          if (img && isImageReady(img)) {
-            // Redraw background then sprite
-            drawPreviewBackground(ctx, size, size, () => {
-              const maxSize = (sprite.size || 0.6) * size;
-              const aspectRatio = img.width / img.height;
-              let drawWidth = maxSize;
-              let drawHeight = maxSize;
-
-              if (aspectRatio > 1) {
-                drawHeight = maxSize / aspectRatio;
-              } else {
-                drawWidth = maxSize * aspectRatio;
-              }
-
-              ctx.drawImage(img, size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight);
-            }, previewType);
-          }
-          // If image not ready yet, the subscription will trigger re-render when it loads
-        } else {
-          // Draw sprite using shapes
-          drawSprite(ctx, sprite, size / 2, size / 2, size);
+          animate();
         }
-      }, previewType);
+        // If image not ready yet, the subscription will trigger re-render when it loads
+      } else if (imageSrc) {
+        // Use centralized image loader with caching
+        const img = loadImage(imageSrc);
+        if (img && isImageReady(img)) {
+          const maxSize = (sprite.size || 0.6) * size;
+          const aspectRatio = img.width / img.height;
+          let drawWidth = maxSize;
+          let drawHeight = maxSize;
+
+          if (aspectRatio > 1) {
+            drawHeight = maxSize / aspectRatio;
+          } else {
+            drawWidth = maxSize * aspectRatio;
+          }
+
+          ctx.drawImage(img, size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight);
+        }
+        // If image not ready yet, the subscription will trigger re-render when it loads
+      } else {
+        // Draw sprite using shapes
+        drawSprite(ctx, sprite, size / 2, size / 2, size);
+      }
     };
 
     renderThumbnail();
@@ -184,11 +176,30 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     );
   }
 
+  // Use CSS background instead of canvas drawing to avoid CORS issues on mobile
+  const bgColor = getPreviewBgColor(previewType);
+  const bgImageUrl = getPreviewBgImageUrl(previewType);
+  const bgTiled = getPreviewBgTiled(previewType);
+
+  const backgroundStyle: React.CSSProperties = {
+    width: size,
+    height: size,
+    backgroundColor: bgColor,
+    ...(bgImageUrl && {
+      backgroundImage: `url(${bgImageUrl})`,
+      backgroundSize: bgTiled ? 'auto' : 'cover',
+      backgroundRepeat: bgTiled ? 'repeat' : 'no-repeat',
+      backgroundPosition: 'center',
+    }),
+  };
+
   return (
-    <canvas
-      ref={canvasRef}
-      className={`rounded ${className}`}
-      style={{ width: size, height: size }}
-    />
+    <div className={`rounded overflow-hidden ${className}`} style={backgroundStyle}>
+      <canvas
+        ref={canvasRef}
+        className="block"
+        style={{ width: size, height: size }}
+      />
+    </div>
   );
 };
