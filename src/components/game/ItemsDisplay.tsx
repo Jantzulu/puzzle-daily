@@ -139,9 +139,9 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
   return (
     <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold text-parchment-400">Items</h3>
+        <div className="flex items-center gap-2">
           <HelpButton sectionId="items" />
+          <h3 className="text-lg font-bold text-parchment-400">Items</h3>
         </div>
         <span className="text-sm text-stone-400">
           {itemsWithSources.length} type{itemsWithSources.length !== 1 ? 's' : ''}

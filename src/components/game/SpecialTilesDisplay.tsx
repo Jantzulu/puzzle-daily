@@ -214,9 +214,9 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   return (
     <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold text-rust-400">Dungeon Tiles</h3>
+        <div className="flex items-center gap-2">
           <HelpButton sectionId="special_tiles" />
+          <h3 className="text-lg font-bold text-rust-400">Dungeon Tiles</h3>
         </div>
         <span className="text-sm text-stone-400">
           {specialTiles.length} type{specialTiles.length !== 1 ? 's' : ''}
