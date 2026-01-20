@@ -620,74 +620,88 @@ export const Game: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center">
-            {/* Play button - above puzzle */}
-            {gameState.gameStatus === 'setup' && testMode === 'none' && (
-              <div className="mb-4 flex justify-center">
-                <button
-                  onClick={handlePlay}
-                  className={`px-6 md:px-8 py-2 md:py-2.5 font-bold text-base md:text-lg transition-all ${
-                    themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
-                  } ${
-                    themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
-                    themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
-                  }`}
-                  style={{
-                    ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                    ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                    ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
-                  }}
-                >
-                  {themeAssets.iconNavPlay || '\u2694'} Play
-                </button>
-              </div>
-            )}
-
-            {/* Fancy turn counter - shows during gameplay (not setup, not test mode) */}
-            {gameState.gameStatus !== 'setup' && testMode === 'none' && (
-              <div className="mb-4 flex flex-col items-center">
-                {/* Turn counter with concede button */}
-                <div className="flex items-center gap-3">
-                  <div className="dungeon-panel flex items-center gap-3 px-4 py-2">
-                    <span className="text-stone-400 text-sm font-medium">Turn</span>
-                    {(() => {
-                      const maxTurns = currentPuzzle.maxTurns;
-                      const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
-                      const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
-                      const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
-
-                      return (
-                        <>
-                          <span className={`text-2xl font-bold min-w-[2ch] text-center ${
-                            isVeryNearLimit
-                              ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
-                              : isNearLimit
-                              ? 'text-rust-400'
-                              : 'text-copper-400 text-shadow-glow-copper'
-                          }`}>
-                            {gameState.currentTurn}
-                          </span>
-                          {maxTurns && (
-                            <span className={`text-sm ${
-                              isNearLimit ? 'text-blood-400' : 'text-stone-500'
-                            }`}>
-                              / {maxTurns}
-                            </span>
-                          )}
-                        </>
-                      );
-                    })()}
-                  </div>
-                  {/* Concede button - only during running state */}
-                  {gameState.gameStatus === 'running' && (
-                    <button
-                      onClick={() => setShowConcedeConfirm(true)}
-                      className="dungeon-btn-danger text-xs px-2 py-1"
-                      title="Give up this attempt and lose a life"
-                    >
-                      Concede
-                    </button>
-                  )}
+            {/* Quest Display - above puzzle */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && testMode === 'none' && (
+              <div className="mb-4 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                  <HelpButton sectionId="game_general" />
+                  <span className="text-base md:text-lg font-semibold text-stone-400">Quest:</span>
+                  <span className="text-sm md:text-base text-copper-300 font-medium">
+                    {gameState.puzzle.winConditions.map((wc) => {
+                      switch (wc.type) {
+                        case 'defeat_all_enemies': {
+                          const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
+                          return `Defeat all Enemies (${enemyCount})`;
+                        }
+                        case 'defeat_boss': {
+                          const bossEnemies = gameState.puzzle.enemies
+                            .filter(e => {
+                              const enemy = loadEnemy(e.enemyId);
+                              return enemy?.isBoss && !e.dead;
+                            })
+                            .map(e => loadEnemy(e.enemyId)!);
+                          const bossCount = bossEnemies.length;
+                          const bossNames = bossEnemies.map(enemy => enemy.name);
+                          if (bossNames.length === 0) return 'Defeat the Boss';
+                          if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
+                          return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
+                        }
+                        case 'collect_all': {
+                          const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
+                          return `Collect all Items (${collectibleCount})`;
+                        }
+                        case 'collect_keys': {
+                          const keyCount = gameState.puzzle.collectibles.filter(c => {
+                            const collectible = loadCollectible(c.collectibleId);
+                            return collectible?.effect === 'win_key' && !c.collected;
+                          }).length;
+                          return `Collect all Keys (${keyCount})`;
+                        }
+                        case 'reach_goal':
+                          return 'Reach the Exit';
+                        case 'survive_turns':
+                          return `Survive ${wc.params?.turns ?? 10} Turns`;
+                        case 'win_in_turns':
+                          return `Win within ${wc.params?.turns ?? 10} Turns`;
+                        case 'max_characters':
+                          return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
+                        case 'characters_alive':
+                          return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
+                        default:
+                          return wc.type;
+                      }
+                    }).join(' & ')}
+                  </span>
                 </div>
+
+                {/* Side Quests Display */}
+                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
+                  const completedQuestIds = gameState.gameStatus === 'running'
+                    ? checkSideQuests(gameState)
+                    : [];
+
+                  return (
+                    <div className="flex items-center justify-center gap-1 md:gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
+                      <HelpButton sectionId="side_quests" />
+                      <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
+                      <span className="text-xs md:text-sm text-arcane-300">
+                        {gameState.puzzle.sideQuests.map((q, i) => {
+                          const isCompleted = completedQuestIds.includes(q.id);
+                          return (
+                            <span
+                              key={q.id}
+                              className={isCompleted ? 'text-moss-400' : ''}
+                            >
+                              {i > 0 && ', '}
+                              {isCompleted && '✓ '}
+                              {q.title} <span className={isCompleted ? 'text-moss-500' : 'text-arcane-500'}>(+{q.bonusPoints})</span>
+                            </span>
+                          );
+                        })}
+                      </span>
+                    </div>
+                  );
+                })()}
               </div>
             )}
 
@@ -860,110 +874,142 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Lives display - below puzzle */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
+            {/* Control Panel - below puzzle */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && testMode === 'none' && (
+              <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+                <div className="flex items-center justify-between">
+                  {/* Left: Lives */}
+                  <div className="flex items-center gap-1">
+                    <span className="text-stone-400 text-xs">Lives:</span>
+                    <div className="flex items-center gap-0.5">
+                      {(() => {
+                        const puzzleLives = currentPuzzle.lives ?? 3;
+                        const isUnlimitedLives = puzzleLives === 0;
+
+                        if (isUnlimitedLives) {
+                          return <span className="text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
+                        }
+
+                        const hearts = [];
+                        for (let i = 0; i < puzzleLives; i++) {
+                          const isFilled = i < livesRemaining;
+                          const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
+
+                          if (customIcon) {
+                            hearts.push(
+                              <img
+                                key={i}
+                                src={customIcon}
+                                alt={isFilled ? 'Life remaining' : 'Life lost'}
+                                title={isFilled ? 'Life remaining' : 'Life lost'}
+                                className="object-contain pixelated"
+                                style={{
+                                  width: '18px',
+                                  height: '20px',
+                                  opacity: isFilled ? 1 : 0.4
+                                }}
+                              />
+                            );
+                          } else {
+                            hearts.push(
+                              <span
+                                key={i}
+                                className={`text-sm ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+                                title={isFilled ? 'Life remaining' : 'Life lost'}
+                              >
+                                &#x2665;
+                              </span>
+                            );
+                          }
+                        }
+                        return hearts;
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Center: Play button OR Turn counter */}
+                  <div className="flex-1 flex justify-center">
+                    {gameState.gameStatus === 'setup' ? (
+                      <button
+                        onClick={handlePlay}
+                        className={`px-6 md:px-8 py-1.5 md:py-2 font-bold text-sm md:text-base transition-all ${
+                          themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                        } ${
+                          themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
+                          themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
+                        }`}
+                        style={{
+                          ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                          ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                        }}
+                      >
+                        {themeAssets.iconNavPlay || '\u2694'} Play
+                      </button>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-stone-400 text-xs font-medium">Turn</span>
+                        {(() => {
+                          const maxTurns = currentPuzzle.maxTurns;
+                          const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
+                          const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                          const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+
+                          return (
+                            <>
+                              <span className={`text-xl font-bold min-w-[2ch] text-center ${
+                                isVeryNearLimit
+                                  ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                                  : isNearLimit
+                                  ? 'text-rust-400'
+                                  : 'text-copper-400 text-shadow-glow-copper'
+                              }`}>
+                                {gameState.currentTurn}
+                              </span>
+                              {maxTurns && (
+                                <span className={`text-xs ${
+                                  isNearLimit ? 'text-blood-400' : 'text-stone-500'
+                                }`}>
+                                  / {maxTurns}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Max Turns OR Concede button */}
+                  <div className="flex items-center justify-end min-w-[70px]">
+                    {gameState.gameStatus === 'setup' ? (
+                      gameState.puzzle.maxTurns && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-stone-400 text-xs">Max:</span>
+                          <span className="text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                        </div>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => setShowConcedeConfirm(true)}
+                        className="dungeon-btn-danger text-xs px-2 py-1"
+                        title="Give up this attempt and lose a life"
+                      >
+                        Concede
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Lives display during test mode only */}
+            {testMode !== 'none' && (
               <div className="mt-3 flex items-center justify-center gap-2">
                 <span className="text-stone-400 text-sm">Lives:</span>
                 <div className="flex items-center gap-1">
                   {renderLivesHearts()}
                 </div>
-              </div>
-            )}
-
-            {/* Win Condition Display - below puzzle, visible during setup and gameplay */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && (
-              <div className="mt-2 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
-                <div className="flex items-center justify-center gap-1 md:gap-2 flex-wrap">
-                  <HelpButton sectionId="game_general" />
-                  <span className="text-sm md:text-base font-semibold text-stone-400">Quest:</span>
-                  <span className="text-xs md:text-sm text-copper-300 font-medium">
-                    {gameState.puzzle.winConditions.map((wc) => {
-                      switch (wc.type) {
-                        case 'defeat_all_enemies': {
-                          // Count all enemies that are still alive
-                          const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
-                          return `Defeat all Enemies (${enemyCount})`;
-                        }
-                        case 'defeat_boss': {
-                          // Get boss names from placed enemies
-                          const bossEnemies = gameState.puzzle.enemies
-                            .filter(e => {
-                              const enemy = loadEnemy(e.enemyId);
-                              return enemy?.isBoss && !e.dead;
-                            })
-                            .map(e => loadEnemy(e.enemyId)!);
-                          const bossCount = bossEnemies.length;
-                          const bossNames = bossEnemies.map(enemy => enemy.name);
-                          if (bossNames.length === 0) return 'Defeat the Boss';
-                          if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
-                          return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
-                        }
-                        case 'collect_all': {
-                          // Count collectibles that haven't been collected
-                          const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
-                          return `Collect all Items (${collectibleCount})`;
-                        }
-                        case 'collect_keys': {
-                          // Count key collectibles that haven't been collected
-                          const keyCount = gameState.puzzle.collectibles.filter(c => {
-                            const collectible = loadCollectible(c.collectibleId);
-                            return collectible?.effect === 'win_key' && !c.collected;
-                          }).length;
-                          return `Collect all Keys (${keyCount})`;
-                        }
-                        case 'reach_goal':
-                          return 'Reach the Exit';
-                        case 'survive_turns':
-                          return `Survive ${wc.params?.turns ?? 10} Turns`;
-                        case 'win_in_turns':
-                          return `Win within ${wc.params?.turns ?? 10} Turns`;
-                        case 'max_characters':
-                          return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
-                        case 'characters_alive':
-                          return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
-                        default:
-                          return wc.type;
-                      }
-                    }).join(' & ')}
-                  </span>
-                  {gameState.puzzle.maxTurns && (
-                    <>
-                      <span className="text-stone-600">|</span>
-                      <span className="text-sm md:text-base font-semibold text-stone-400">Max Turns:</span>
-                      <span className="text-xs md:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
-                    </>
-                  )}
-                </div>
-
-                {/* Side Quests Display - with dynamic completion status during gameplay */}
-                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
-                  // Check current completion status during gameplay
-                  const completedQuestIds = gameState.gameStatus === 'running'
-                    ? checkSideQuests(gameState)
-                    : [];
-
-                  return (
-                    <div className="flex items-center justify-center gap-1 md:gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
-                      <HelpButton sectionId="side_quests" />
-                      <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
-                      <span className="text-xs md:text-sm text-arcane-300">
-                        {gameState.puzzle.sideQuests.map((q, i) => {
-                          const isCompleted = completedQuestIds.includes(q.id);
-                          return (
-                            <span
-                              key={q.id}
-                              className={isCompleted ? 'text-moss-400' : ''}
-                            >
-                              {i > 0 && ', '}
-                              {isCompleted && '✓ '}
-                              {q.title} <span className={isCompleted ? 'text-moss-500' : 'text-arcane-500'}>(+{q.bonusPoints})</span>
-                            </span>
-                          );
-                        })}
-                      </span>
-                    </div>
-                  );
-                })()}
               </div>
             )}
 
