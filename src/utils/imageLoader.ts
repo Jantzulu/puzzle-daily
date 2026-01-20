@@ -104,11 +104,16 @@ export function loadImage(src: string, retry = false): HTMLImageElement | null {
 
   // Set crossOrigin BEFORE setting src for external URLs
   // This allows canvas operations (drawImage, createPattern) without tainting
+  let finalSrc = src;
   if (isExternal) {
     img.crossOrigin = 'anonymous';
+    // Add cache-buster to force fresh CORS request
+    // Browser may have cached non-CORS response from <img> tags
+    const separator = src.includes('?') ? '&' : '?';
+    finalSrc = `${src}${separator}_cors=1`;
   }
 
-  img.src = src;
+  img.src = finalSrc;
 
   return img;
 }
