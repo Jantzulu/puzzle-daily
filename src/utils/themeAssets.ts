@@ -14,6 +14,7 @@
  */
 
 import { supabase } from '../lib/supabase';
+import { safeLocalStorageSet } from './assetStorage';
 
 const STORAGE_KEY = 'theme_assets';
 const STORAGE_BUCKET = 'theme-assets';
@@ -290,7 +291,14 @@ export function saveThemeAssets(assets: ThemeAssets): { success: boolean; error?
       };
     }
 
-    localStorage.setItem(STORAGE_KEY, json);
+    // Use safeLocalStorageSet which verifies the save worked (important for mobile)
+    const saved = safeLocalStorageSet(STORAGE_KEY, json);
+    if (!saved) {
+      return {
+        success: false,
+        error: 'Storage is full or data is too large. Try removing some images or using smaller files.'
+      };
+    }
     return { success: true };
   } catch (e) {
     console.error('Failed to save theme assets:', e);
