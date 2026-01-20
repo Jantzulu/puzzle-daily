@@ -206,26 +206,32 @@ export interface DirectionalSpriteConfig {
 
   // Idle state (not moving) - for this specific direction
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
+  idleImageUrl?: string; // URL to idle image
   idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
 
   // Moving state (actively moving) - for this specific direction
   movingImageData?: string; // Base64 encoded GIF for moving state
+  movingImageUrl?: string; // URL to moving image
   movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
 
   // Death state - for this specific direction
   deathImageData?: string; // Base64 encoded PNG/GIF for death state
+  deathImageUrl?: string; // URL to death image
   deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
 
   // Casting state - when casting spell while stationary
   castingImageData?: string; // Base64 encoded PNG/GIF for casting state
+  castingImageUrl?: string; // URL to casting image
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
 
   // Deprecated - for backwards compatibility
   imageData?: string; // Will be used as idleImageData if idleImageData not set
+  imageUrl?: string; // URL alternative for backwards compat
 }
 
 export interface SpriteSheetConfig {
-  imageData: string; // Base64 encoded sprite sheet image
+  imageData?: string; // Base64 encoded sprite sheet image (optional if imageUrl provided)
+  imageUrl?: string; // URL to sprite sheet image (Supabase, CDN, etc.)
   frameCount: number; // Number of frames in the sheet
   frameWidth?: number; // Width of each frame (if not provided, calculated from image width / frameCount)
   frameHeight?: number; // Height of each frame (if not provided, uses full image height)
@@ -245,19 +251,25 @@ export interface CustomSprite {
   size?: number; // 0-1 scale
 
   // Simple mode images (same for all directions)
+  // Each image field has an optional URL alternative for external storage
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
+  idleImageUrl?: string; // URL to idle image (Supabase, CDN, etc.)
   movingImageData?: string; // Base64 encoded GIF for moving state
+  movingImageUrl?: string; // URL to moving image
   idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
   movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
   deathImageData?: string; // Base64 encoded PNG/GIF for death state
+  deathImageUrl?: string; // URL to death image
   deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
   castingImageData?: string; // Base64 encoded PNG/GIF for casting state
+  castingImageUrl?: string; // URL to casting image
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
 
   // Note: Corpse appearance is handled by the final frame of the Death sprite sheet
 
   // Deprecated - for backwards compatibility
   imageData?: string; // Will be used as idleImageData if idleImageData not set
+  imageUrl?: string; // URL alternative for backwards compat field
 
   // Directional sprites (different appearance per direction with idle/moving states)
   directionalSprites?: Partial<Record<SpriteDirection, DirectionalSpriteConfig>>;
@@ -266,6 +278,7 @@ export interface CustomSprite {
   // Triggered sprite (for static objects - alternate appearance when entity nearby)
   triggerType?: 'none' | 'character_nearby' | 'enemy_nearby' | 'any_entity_nearby';
   triggeredImageData?: string; // Base64 encoded PNG/GIF for triggered state
+  triggeredImageUrl?: string; // URL to triggered image
   triggeredSpriteSheet?: SpriteSheetConfig; // Sprite sheet for triggered animation
 
   createdAt: string;
@@ -1239,3 +1252,25 @@ export const saveHelpSection = (section: HelpContent): boolean => {
 export const getAllHelpSections = (): HelpContent[] => {
   return getHelpContent().sections;
 };
+
+// ==========================================
+// IMAGE URL RESOLUTION HELPERS
+// ==========================================
+
+/**
+ * Resolve image source from data or URL.
+ * Prefers base64 data if both are available (for offline capability).
+ * @returns The image source (data URL or external URL), or undefined if neither exists
+ */
+export function resolveImageSource(imageData?: string, imageUrl?: string): string | undefined {
+  return imageData || imageUrl;
+}
+
+/**
+ * Resolve sprite sheet image source.
+ * @returns The image source from the sprite sheet config, or undefined
+ */
+export function resolveSpriteSheetSource(config?: SpriteSheetConfig): string | undefined {
+  if (!config) return undefined;
+  return config.imageData || config.imageUrl;
+}

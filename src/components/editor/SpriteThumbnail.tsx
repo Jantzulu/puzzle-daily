@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import type { CustomSprite } from '../../utils/assetStorage';
+import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetStorage';
 import { drawSprite } from './SpriteEditor';
 import { drawPreviewBackground, type PreviewType } from '../../utils/themeAssets';
 
@@ -44,23 +45,32 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
       // Determine what to render based on sprite mode
       let spriteSheet = null;
-      let imageData = null;
+      let imageSrc: string | undefined = undefined;
 
       if (sprite.useDirectional && sprite.directionalSprites?.default) {
         // Directional mode - use default direction
         const defaultConfig = sprite.directionalSprites.default;
         spriteSheet = defaultConfig.idleSpriteSheet;
-        imageData = defaultConfig.idleImageData || defaultConfig.imageData;
+        imageSrc = resolveImageSource(
+          defaultConfig.idleImageData || defaultConfig.imageData,
+          defaultConfig.idleImageUrl || defaultConfig.imageUrl
+        );
       } else {
         // Simple mode
         spriteSheet = sprite.idleSpriteSheet;
-        imageData = sprite.idleImageData || sprite.imageData;
+        imageSrc = resolveImageSource(
+          sprite.idleImageData || sprite.imageData,
+          sprite.idleImageUrl || sprite.imageUrl
+        );
       }
+
+      // Resolve sprite sheet source (supports both data and URL)
+      const spriteSheetSrc = resolveSpriteSheetSource(spriteSheet);
 
       // Draw preview background (color and/or image)
       drawPreviewBackground(ctx, size, size, () => {
         // Priority: sprite sheet > static image > shapes
-        if (spriteSheet?.imageData) {
+        if (spriteSheetSrc) {
           // Render animated sprite sheet
           const img = new Image();
           img.onload = () => {
@@ -115,8 +125,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             animate();
           };
           img.onerror = () => {};
-          img.src = spriteSheet.imageData;
-        } else if (imageData) {
+          img.src = spriteSheetSrc;
+        } else if (imageSrc) {
           // Render static image
           const img = new Image();
           img.onload = () => {
@@ -137,7 +147,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             }, previewType);
           };
           img.onerror = () => {};
-          img.src = imageData;
+          img.src = imageSrc;
         } else {
           // Draw sprite using shapes
           drawSprite(ctx, sprite, size / 2, size / 2, size);
