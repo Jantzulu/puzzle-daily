@@ -73,10 +73,6 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         if (spriteSheetSrc) {
           // Render animated sprite sheet
           const img = new Image();
-          // Enable CORS for external URLs (required for canvas drawing)
-          if (spriteSheetSrc.startsWith('http')) {
-            img.crossOrigin = 'anonymous';
-          }
           img.onload = () => {
             let frameIndex = 0;
             const frameCount = spriteSheet.frameCount || 4;
@@ -133,10 +129,6 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         } else if (imageSrc) {
           // Render static image
           const img = new Image();
-          // Enable CORS for external URLs (required for canvas drawing)
-          if (imageSrc.startsWith('http')) {
-            img.crossOrigin = 'anonymous';
-          }
           img.onload = () => {
             // Redraw background then sprite
             drawPreviewBackground(ctx, size, size, () => {

@@ -63,10 +63,6 @@ export function loadImage(src: string): HTMLImageElement | null {
 
   // Create new image
   img = new Image();
-  // Enable CORS for external URLs (required for canvas drawing)
-  if (src.startsWith('http')) {
-    img.crossOrigin = 'anonymous';
-  }
   imageCache.set(src, img);
   loadingImages.add(src);
 

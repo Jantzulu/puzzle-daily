@@ -573,10 +573,6 @@ const SpriteSheetPreview: React.FC<SpriteSheetPreviewProps> = ({
     const img = new Image();
     // Resolve image source - prefer data, fall back to URL
     const imageSrc = spriteSheet.imageData || spriteSheet.imageUrl;
-    // Enable CORS for external URLs (required for canvas drawing)
-    if (imageSrc && imageSrc.startsWith('http')) {
-      img.crossOrigin = 'anonymous';
-    }
     img.onload = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 

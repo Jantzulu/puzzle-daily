@@ -934,10 +934,6 @@ export function drawPreviewBackground(
 
   // Load the background image
   const img = new Image();
-  // Enable CORS for external URLs (required for canvas drawing)
-  if (bgImageUrl.startsWith('http')) {
-    img.crossOrigin = 'anonymous';
-  }
   img.onload = () => {
     previewBgImageCache[cacheKey] = { url: bgImageUrl, img };
     drawBgImage(ctx, img, width, height, tiled);

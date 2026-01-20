@@ -63,10 +63,6 @@ function loadSpriteImage(src: string): HTMLImageElement {
 
   // Create new image
   img = new Image();
-  // Enable CORS for external URLs (required for canvas drawing)
-  if (src.startsWith('http')) {
-    img.crossOrigin = 'anonymous';
-  }
   globalImageCache.set(src, img);
   loadingSpriteImages.add(src);
 
@@ -332,10 +328,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             if (imageToShow) {
               // Load and draw image
               const img = new Image();
-              // Enable CORS for external URLs (required for canvas drawing)
-              if (imageToShow.startsWith('http')) {
-                img.crossOrigin = 'anonymous';
-              }
               img.onload = () => {
                 // Redraw background then sprite
                 drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
@@ -366,10 +358,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           const simpleImageToShow = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
           if (simpleImageToShow) {
             const img = new Image();
-            // Enable CORS for external URLs (required for canvas drawing)
-            if (simpleImageToShow.startsWith('http')) {
-              img.crossOrigin = 'anonymous';
-            }
             img.onload = () => {
               // Redraw background then sprite
               drawPreviewBackground(ctx, canvas.width, canvas.height, () => {

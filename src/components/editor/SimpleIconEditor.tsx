@@ -134,10 +134,6 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
     if (currentImage) {
       // Draw uploaded image or URL
       const img = new Image();
-      // Enable CORS for external URLs (required for canvas drawing)
-      if (currentImage.startsWith('http')) {
-        img.crossOrigin = 'anonymous';
-      }
       img.onload = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#1f2937';
