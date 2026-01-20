@@ -56,6 +56,9 @@ export const Game: React.FC = () => {
     puzzle: Puzzle;
   } | null>(null);
 
+  // Ref for scrolling to game board on mobile
+  const gameBoardRef = useRef<HTMLDivElement>(null);
+
   // Theme assets for custom icons
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>(() => loadThemeAssets());
 
@@ -534,6 +537,23 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
   };
 
+  // Scroll-aware test handlers for mobile (scrolls to game board)
+  const handleTestCharactersWithScroll = () => {
+    // On mobile (below lg breakpoint), scroll to game board
+    if (window.innerWidth < 1024 && gameBoardRef.current) {
+      gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    handleTestCharacters();
+  };
+
+  const handleTestEnemiesWithScroll = () => {
+    // On mobile (below lg breakpoint), scroll to game board
+    if (window.innerWidth < 1024 && gameBoardRef.current) {
+      gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    handleTestEnemies();
+  };
+
   // Render heart icons for lives (uses custom theme icons if available)
   const renderLivesHearts = () => {
     const puzzleLives = currentPuzzle.lives ?? 3;
@@ -594,7 +614,7 @@ export const Game: React.FC = () => {
       <div className="max-w-6xl mx-auto relative">
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board - The Dungeon */}
-          <div className="flex-1 flex flex-col items-center">
+          <div ref={gameBoardRef} className="flex-1 flex flex-col items-center">
             {/* Play button - above puzzle */}
             {gameState.gameStatus === 'setup' && testMode === 'none' && (
               <div className="mb-4 flex justify-center">
@@ -835,63 +855,12 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Lives display with Test buttons - below puzzle */}
+            {/* Lives display - below puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
-              <div className="mt-3 w-full max-w-md">
-                <div className="grid grid-cols-3 gap-2 items-center">
-                  {/* Left - Test Heroes (only in setup) */}
-                  <div className="flex justify-start">
-                    {gameState.gameStatus === 'setup' && testMode === 'none' && (
-                      <button
-                        onClick={handleTestCharacters}
-                        className={`text-xs px-2 py-1 transition-all ${
-                          themeAssets.actionButtonTestHeroesBg ? '' : 'dungeon-btn-arcane'
-                        } ${
-                          themeAssets.actionButtonTestHeroesShape === 'rounded' ? 'rounded-lg' :
-                          themeAssets.actionButtonTestHeroesShape === 'pill' ? 'rounded-full' : ''
-                        }`}
-                        style={{
-                          ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
-                          ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                          ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
-                        }}
-                        title="Test your characters without enemies for 5 turns"
-                      >
-                        Test Heroes
-                      </button>
-                    )}
-                  </div>
-
-                  {/* Center - Lives */}
-                  <div className="flex items-center justify-center gap-2">
-                    <span className="text-stone-400 text-sm">Lives:</span>
-                    <div className="flex items-center gap-1">
-                      {renderLivesHearts()}
-                    </div>
-                  </div>
-
-                  {/* Right - Test Enemies (only in setup) */}
-                  <div className="flex justify-end">
-                    {gameState.gameStatus === 'setup' && testMode === 'none' && (
-                      <button
-                        onClick={handleTestEnemies}
-                        className={`text-xs px-2 py-1 transition-all ${
-                          themeAssets.actionButtonTestEnemiesBg ? '' : 'dungeon-btn-danger'
-                        } ${
-                          themeAssets.actionButtonTestEnemiesShape === 'rounded' ? 'rounded-lg' :
-                          themeAssets.actionButtonTestEnemiesShape === 'pill' ? 'rounded-full' : ''
-                        }`}
-                        style={{
-                          ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
-                          ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                          ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
-                        }}
-                        title="Watch enemies move without characters for 5 turns"
-                      >
-                        Test Enemies
-                      </button>
-                    )}
-                  </div>
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <span className="text-stone-400 text-sm">Lives:</span>
+                <div className="flex items-center gap-1">
+                  {renderLivesHearts()}
                 </div>
               </div>
             )}
@@ -1002,6 +971,7 @@ export const Game: React.FC = () => {
                   onSelectCharacter={setSelectedCharacterId}
                   placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
                   onClearAll={handleWipe}
+                  onTest={handleTestCharactersWithScroll}
                 />
               </div>
             )}
@@ -1044,7 +1014,11 @@ export const Game: React.FC = () => {
 
 
             {/* Enemies Display */}
-            <EnemyDisplay enemies={gameState.puzzle.enemies} />
+            <EnemyDisplay
+              enemies={gameState.puzzle.enemies}
+              onTest={handleTestEnemiesWithScroll}
+              showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+            />
 
             {/* Items Display - only shown if puzzle has items */}
             <ItemsDisplay puzzle={gameState.puzzle} />

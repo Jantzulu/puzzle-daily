@@ -7,9 +7,11 @@ import { HelpButton } from './HelpOverlay';
 
 interface EnemyDisplayProps {
   enemies: PlacedEnemy[];
+  onTest?: () => void;
+  showTestButton?: boolean;
 }
 
-export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
+export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false }) => {
   // Filter to only show living enemies and get unique enemy types
   const livingEnemies = enemies.filter(e => !e.dead);
 
@@ -39,7 +41,8 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
 
   return (
     <div className="dungeon-panel p-4">
-      <div className="flex items-center justify-between mb-3">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-1">
         <div className="flex items-center gap-1">
           <h3 className="text-lg font-bold text-blood-400">Enemies</h3>
           <HelpButton sectionId="enemies" />
@@ -48,6 +51,19 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies }) => {
           {livingEnemies.length} remaining
         </span>
       </div>
+      {/* Action buttons row */}
+      {showTestButton && onTest && (
+        <div className="flex items-center justify-center mb-3">
+          <button
+            onClick={onTest}
+            className="px-2 py-0.5 text-xs text-blood-400 hover:text-blood-300 hover:bg-stone-700 rounded transition-colors flex items-center gap-1"
+            title="Watch enemies move without heroes for 5 turns"
+          >
+            <span>▶</span> Test
+          </button>
+        </div>
+      )}
+      {!showTestButton && <div className="mb-2" />}
 
       <div className="flex flex-wrap gap-2 justify-center">
         {uniqueEnemies.map(({ enemy, count }) => {
