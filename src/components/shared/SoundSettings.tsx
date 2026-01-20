@@ -4,9 +4,10 @@ import type { SoundSettings as SoundSettingsType } from '../../types/game';
 
 interface SoundSettingsProps {
   onClose?: () => void;
+  isMobile?: boolean;
 }
 
-export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose }) => {
+export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose, isMobile = false }) => {
   const [settings, setSettings] = useState<SoundSettingsType>(soundManager.getSettings());
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -108,7 +109,11 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose }) => {
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 top-full mt-2 w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-50">
+        <div className={`${
+          isMobile
+            ? 'fixed left-1/2 -translate-x-1/2 top-auto mt-2'
+            : 'absolute right-0 top-full mt-2'
+        } w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-50`}>
           <div className="p-3 border-b border-stone-700">
             <div className="flex items-center justify-between">
               <span className="text-parchment-100 font-medium">Sound Settings</span>

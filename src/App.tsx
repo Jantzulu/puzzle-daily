@@ -156,7 +156,7 @@ function Navigation() {
             <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
-            <SoundSettings />
+            <SoundSettings isMobile />
             <CloudSyncButton />
           </div>
         </div>
