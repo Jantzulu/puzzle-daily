@@ -92,6 +92,12 @@ export function loadImage(src: string, retry = false): HTMLImageElement | null {
     notifyImageLoaded();
   };
 
+  // Set crossOrigin BEFORE setting src for external URLs
+  // This allows canvas operations (drawImage, createPattern) without tainting
+  if (src.startsWith('http://') || src.startsWith('https://')) {
+    img.crossOrigin = 'anonymous';
+  }
+
   img.src = src;
 
   return img;
