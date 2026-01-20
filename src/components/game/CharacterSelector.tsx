@@ -23,10 +23,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 }) => {
   return (
     <div className="dungeon-panel p-4">
-      {/* Header row - stacks on mobile */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
         {/* Left: Help + Title + Test button */}
-        <div className="flex items-center gap-2 justify-center sm:justify-start">
+        <div className="flex items-center gap-2">
           <HelpButton sectionId="characters" />
           <h3 className="text-lg font-bold text-copper-400">Heroes</h3>
           {onTest && (
@@ -43,7 +43,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           )}
         </div>
         {/* Right: Count + Clear button */}
-        <div className="flex items-center gap-2 justify-center sm:justify-end">
+        <div className="flex items-center gap-2">
           <span className="text-sm text-stone-400">
             {placedCharacterIds.length} placed
           </span>
