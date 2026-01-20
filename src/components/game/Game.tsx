@@ -595,73 +595,25 @@ export const Game: React.FC = () => {
         <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
           {/* Game Board - The Dungeon */}
           <div className="flex-1 flex flex-col items-center">
-            {/* Play controls bar - above puzzle */}
+            {/* Play button - above puzzle */}
             {gameState.gameStatus === 'setup' && testMode === 'none' && (
-              <div className="mb-4">
-                {/* Grid layout: 3 columns with Play button centered, test buttons vertically centered */}
-                <div className="grid grid-cols-3 gap-4 md:gap-6 items-center">
-                  {/* Left column - Test Characters */}
-                  <div className="flex justify-end">
-                    <button
-                      onClick={handleTestCharacters}
-                      className={`text-xs md:text-sm px-2 py-1 md:px-3 md:py-2 transition-all ${
-                        themeAssets.actionButtonTestHeroesBg ? '' : 'dungeon-btn-arcane'
-                      } ${
-                        themeAssets.actionButtonTestHeroesShape === 'rounded' ? 'rounded-lg' :
-                        themeAssets.actionButtonTestHeroesShape === 'pill' ? 'rounded-full' : ''
-                      }`}
-                      style={{
-                        ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
-                        ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                        ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
-                      }}
-                      title="Test your characters without enemies for 5 turns"
-                    >
-                      Test Heroes
-                    </button>
-                  </div>
-
-                  {/* Center column - Play button */}
-                  <div className="flex justify-center">
-                    <button
-                      onClick={handlePlay}
-                      className={`px-6 md:px-8 py-3 font-bold text-lg md:text-xl transition-all ${
-                        themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
-                      } ${
-                        themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
-                        themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
-                      }`}
-                      style={{
-                        ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                        ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                        ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
-                      }}
-                    >
-                      {themeAssets.iconNavPlay || '\u2694'} Play
-                    </button>
-                  </div>
-
-                  {/* Right column - Test Enemies */}
-                  <div className="flex justify-start">
-                    <button
-                      onClick={handleTestEnemies}
-                      className={`text-xs md:text-sm px-2 py-1 md:px-3 md:py-2 transition-all ${
-                        themeAssets.actionButtonTestEnemiesBg ? '' : 'dungeon-btn-danger'
-                      } ${
-                        themeAssets.actionButtonTestEnemiesShape === 'rounded' ? 'rounded-lg' :
-                        themeAssets.actionButtonTestEnemiesShape === 'pill' ? 'rounded-full' : ''
-                      }`}
-                      style={{
-                        ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
-                        ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                        ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
-                      }}
-                      title="Watch enemies move without characters for 5 turns"
-                    >
-                      Test Enemies
-                    </button>
-                  </div>
-                </div>
+              <div className="mb-4 flex justify-center">
+                <button
+                  onClick={handlePlay}
+                  className={`px-6 md:px-8 py-2 md:py-2.5 font-bold text-base md:text-lg transition-all ${
+                    themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                  } ${
+                    themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
+                    themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
+                  }`}
+                  style={{
+                    ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                    ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                    ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                  }}
+                >
+                  {themeAssets.iconNavPlay || '\u2694'} Play
+                </button>
               </div>
             )}
 
@@ -883,23 +835,74 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Lives display - below puzzle, between puzzle and quest */}
+            {/* Lives display with Test buttons - below puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
-              <div className="mt-3 flex items-center justify-center gap-2">
-                <span className="text-stone-400 text-sm">Lives:</span>
-                <div className="flex items-center gap-1">
-                  {renderLivesHearts()}
+              <div className="mt-3 w-full max-w-md">
+                <div className="grid grid-cols-3 gap-2 items-center">
+                  {/* Left - Test Heroes (only in setup) */}
+                  <div className="flex justify-start">
+                    {gameState.gameStatus === 'setup' && testMode === 'none' && (
+                      <button
+                        onClick={handleTestCharacters}
+                        className={`text-xs px-2 py-1 transition-all ${
+                          themeAssets.actionButtonTestHeroesBg ? '' : 'dungeon-btn-arcane'
+                        } ${
+                          themeAssets.actionButtonTestHeroesShape === 'rounded' ? 'rounded-lg' :
+                          themeAssets.actionButtonTestHeroesShape === 'pill' ? 'rounded-full' : ''
+                        }`}
+                        style={{
+                          ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
+                          ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
+                        }}
+                        title="Test your characters without enemies for 5 turns"
+                      >
+                        Test Heroes
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Center - Lives */}
+                  <div className="flex items-center justify-center gap-2">
+                    <span className="text-stone-400 text-sm">Lives:</span>
+                    <div className="flex items-center gap-1">
+                      {renderLivesHearts()}
+                    </div>
+                  </div>
+
+                  {/* Right - Test Enemies (only in setup) */}
+                  <div className="flex justify-end">
+                    {gameState.gameStatus === 'setup' && testMode === 'none' && (
+                      <button
+                        onClick={handleTestEnemies}
+                        className={`text-xs px-2 py-1 transition-all ${
+                          themeAssets.actionButtonTestEnemiesBg ? '' : 'dungeon-btn-danger'
+                        } ${
+                          themeAssets.actionButtonTestEnemiesShape === 'rounded' ? 'rounded-lg' :
+                          themeAssets.actionButtonTestEnemiesShape === 'pill' ? 'rounded-full' : ''
+                        }`}
+                        style={{
+                          ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
+                          ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
+                        }}
+                        title="Watch enemies move without characters for 5 turns"
+                      >
+                        Test Enemies
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
 
             {/* Win Condition Display - below puzzle, visible during setup and gameplay */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && (
-              <div className="mt-2 w-full max-w-md px-4 py-3 dungeon-panel-dark">
-                <div className="flex items-center justify-center gap-2 flex-wrap">
+              <div className="mt-2 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+                <div className="flex items-center justify-center gap-1 md:gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
-                  <span className="text-base font-semibold text-stone-400">Quest:</span>
-                  <span className="text-sm text-copper-300 font-medium">
+                  <span className="text-sm md:text-base font-semibold text-stone-400">Quest:</span>
+                  <span className="text-xs md:text-sm text-copper-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
                         case 'defeat_all_enemies': {
@@ -952,8 +955,8 @@ export const Game: React.FC = () => {
                   {gameState.puzzle.maxTurns && (
                     <>
                       <span className="text-stone-600">|</span>
-                      <span className="text-base font-semibold text-stone-400">Max Turns:</span>
-                      <span className="text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                      <span className="text-sm md:text-base font-semibold text-stone-400">Max Turns:</span>
+                      <span className="text-xs md:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                     </>
                   )}
                 </div>
@@ -966,10 +969,10 @@ export const Game: React.FC = () => {
                     : [];
 
                   return (
-                    <div className="flex items-center justify-center gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
+                    <div className="flex items-center justify-center gap-1 md:gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
                       <HelpButton sectionId="side_quests" />
-                      <span className="text-base font-semibold text-arcane-400">Side Quests:</span>
-                      <span className="text-sm text-arcane-300">
+                      <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
+                      <span className="text-xs md:text-sm text-arcane-300">
                         {gameState.puzzle.sideQuests.map((q, i) => {
                           const isCompleted = completedQuestIds.includes(q.id);
                           return (
