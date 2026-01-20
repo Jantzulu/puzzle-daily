@@ -97,6 +97,12 @@ const SUBTITLE_SIZE_OPTIONS = [
   { value: 'x-large', label: 'Extra Large (1.25x)' },
 ];
 
+const BUTTON_SHAPE_OPTIONS = [
+  { value: 'default', label: 'Default' },
+  { value: 'rounded', label: 'Rounded' },
+  { value: 'pill', label: 'Pill' },
+];
+
 interface ToggleSwitchProps {
   assetKey: ThemeAssetKey;
   value?: string | boolean;
@@ -465,6 +471,12 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
     case 'siteSubtitleSize':
       options = SUBTITLE_SIZE_OPTIONS;
       defaultValue = 'small';
+      break;
+    case 'actionButtonPlayShape':
+    case 'actionButtonTestHeroesShape':
+    case 'actionButtonTestEnemiesShape':
+      options = BUTTON_SHAPE_OPTIONS;
+      defaultValue = 'default';
       break;
   }
 
