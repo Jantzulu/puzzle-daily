@@ -53,10 +53,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
           {showTestButton && onTest && (
             <button
               onClick={onTest}
-              className="px-2 py-0.5 text-xs dungeon-btn-danger rounded transition-colors flex items-center gap-1"
+              className="px-2 py-1 text-xs bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100 rounded transition-colors flex items-center gap-1"
               title="Watch enemies move without heroes for 5 turns"
             >
-              <span>▶</span> Test
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              Test
             </button>
           )}
         </div>

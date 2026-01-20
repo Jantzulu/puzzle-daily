@@ -23,24 +23,27 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 }) => {
   return (
     <div className="dungeon-panel p-4">
-      {/* Header row */}
-      <div className="flex items-center justify-between mb-3">
+      {/* Header row - stacks on mobile */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
         {/* Left: Help + Title + Test button */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center sm:justify-start">
           <HelpButton sectionId="characters" />
           <h3 className="text-lg font-bold text-copper-400">Available Heroes</h3>
           {onTest && (
             <button
               onClick={onTest}
-              className="px-2 py-0.5 text-xs dungeon-btn-arcane rounded transition-colors flex items-center gap-1"
+              className="px-2 py-1 text-xs bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100 rounded transition-colors flex items-center gap-1"
               title="Test your heroes without enemies for 5 turns"
             >
-              <span>▶</span> Test
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              Test
             </button>
           )}
         </div>
         {/* Right: Count + Clear button */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 justify-center sm:justify-end">
           <span className="text-sm text-stone-400">
             {placedCharacterIds.length} placed
           </span>
