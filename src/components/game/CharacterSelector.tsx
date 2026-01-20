@@ -28,7 +28,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         {/* Left: Help + Title + Test button */}
         <div className="flex items-center gap-2 justify-center sm:justify-start">
           <HelpButton sectionId="characters" />
-          <h3 className="text-lg font-bold text-copper-400">Available Heroes</h3>
+          <h3 className="text-lg font-bold text-copper-400">Heroes</h3>
           {onTest && (
             <button
               onClick={onTest}

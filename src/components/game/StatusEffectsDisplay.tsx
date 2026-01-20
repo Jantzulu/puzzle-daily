@@ -181,18 +181,18 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
   if (iconSprite.type === 'stored' && iconSprite.spriteId) {
     return (
       <div
-        className="rounded-pixel bg-arcane-800 flex items-center justify-center"
+        className="rounded-pixel bg-mystic-800 flex items-center justify-center"
         style={{ width: size, height: size }}
       >
-        <span className="text-xs text-arcane-400">?</span>
+        <span className="text-xs text-mystic-400">?</span>
       </div>
     );
   }
 
-  // Fallback - arcane placeholder
+  // Fallback - mystic placeholder
   return (
     <div
-      className="rounded-pixel bg-arcane-800"
+      className="rounded-pixel bg-mystic-800"
       style={{ width: size, height: size }}
     />
   );
@@ -209,9 +209,9 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   return (
     <div className="dungeon-panel p-4">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold text-arcane-400">Enchantments</h3>
+        <div className="flex items-center gap-2">
           <HelpButton sectionId="status_effects" />
+          <h3 className="text-lg font-bold text-mystic-400">Enchantments</h3>
         </div>
         <span className="text-sm text-stone-400">
           {statusEffectsWithSources.length} possible
@@ -222,7 +222,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
         {statusEffectsWithSources.map(({ effect, sources }) => (
           <div
             key={effect.id}
-            className="p-2 bg-stone-800/80 rounded-pixel-md border border-arcane-900/30"
+            className="p-2 bg-stone-800/80 rounded-pixel-md border border-mystic-900/30"
           >
             <div className="flex items-start gap-3">
               {/* Icon */}
@@ -232,7 +232,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
 
               {/* Name and description */}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-arcane-300">
+                <div className="text-sm font-medium text-mystic-300">
                   {effect.name}
                 </div>
                 <div className="text-xs text-stone-400">
