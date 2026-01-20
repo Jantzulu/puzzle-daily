@@ -598,17 +598,23 @@ export const Game: React.FC = () => {
             {/* Play controls bar - above puzzle */}
             {gameState.gameStatus === 'setup' && testMode === 'none' && (
               <div className="mb-4">
-                {/* Lives display - centered above the button row */}
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  {renderLivesHearts()}
-                </div>
                 {/* Grid layout: 3 columns with Play button centered, test buttons vertically centered */}
-                <div className="grid grid-cols-3 gap-2 md:gap-3 items-center">
+                <div className="grid grid-cols-3 gap-4 md:gap-6 items-center">
                   {/* Left column - Test Characters */}
                   <div className="flex justify-end">
                     <button
                       onClick={handleTestCharacters}
-                      className="dungeon-btn-arcane text-xs md:text-sm px-2 py-1 md:px-3 md:py-2"
+                      className={`text-xs md:text-sm px-2 py-1 md:px-3 md:py-2 transition-all ${
+                        themeAssets.actionButtonTestHeroesBg ? '' : 'dungeon-btn-arcane'
+                      } ${
+                        themeAssets.actionButtonTestHeroesShape === 'rounded' ? 'rounded-lg' :
+                        themeAssets.actionButtonTestHeroesShape === 'pill' ? 'rounded-full' : ''
+                      }`}
+                      style={{
+                        ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
+                        ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                        ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
+                      }}
                       title="Test your characters without enemies for 5 turns"
                     >
                       Test Heroes
@@ -619,7 +625,17 @@ export const Game: React.FC = () => {
                   <div className="flex justify-center">
                     <button
                       onClick={handlePlay}
-                      className="dungeon-btn-success px-6 md:px-8 py-3 font-bold text-lg md:text-xl torch-glow"
+                      className={`px-6 md:px-8 py-3 font-bold text-lg md:text-xl transition-all ${
+                        themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                      } ${
+                        themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
+                        themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
+                      }`}
+                      style={{
+                        ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                        ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                        ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                      }}
                     >
                       {themeAssets.iconNavPlay || '\u2694'} Play
                     </button>
@@ -629,7 +645,17 @@ export const Game: React.FC = () => {
                   <div className="flex justify-start">
                     <button
                       onClick={handleTestEnemies}
-                      className="dungeon-btn-danger text-xs md:text-sm px-2 py-1 md:px-3 md:py-2"
+                      className={`text-xs md:text-sm px-2 py-1 md:px-3 md:py-2 transition-all ${
+                        themeAssets.actionButtonTestEnemiesBg ? '' : 'dungeon-btn-danger'
+                      } ${
+                        themeAssets.actionButtonTestEnemiesShape === 'rounded' ? 'rounded-lg' :
+                        themeAssets.actionButtonTestEnemiesShape === 'pill' ? 'rounded-full' : ''
+                      }`}
+                      style={{
+                        ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
+                        ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                        ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
+                      }}
                       title="Watch enemies move without characters for 5 turns"
                     >
                       Test Enemies
@@ -639,13 +665,9 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Fancy turn counter and lives display - shows during gameplay (not setup, not test mode) */}
+            {/* Fancy turn counter - shows during gameplay (not setup, not test mode) */}
             {gameState.gameStatus !== 'setup' && testMode === 'none' && (
               <div className="mb-4 flex flex-col items-center">
-                {/* Lives display */}
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  {renderLivesHearts()}
-                </div>
                 {/* Turn counter with concede button */}
                 <div className="flex items-center gap-3">
                   <div className="dungeon-panel flex items-center gap-3 px-4 py-2">
@@ -695,10 +717,6 @@ export const Game: React.FC = () => {
             {/* Test mode indicator - above puzzle */}
             {testMode !== 'none' && (
               <div className="mb-4 flex flex-col items-center">
-                {/* Lives display during test mode */}
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  {renderLivesHearts()}
-                </div>
                 {/* Test mode turn counter - arcane for characters, blood for enemies */}
                 <div className={`flex items-center gap-3 px-4 py-2 rounded-pixel-lg border-2 ${
                   testMode === 'enemies'
@@ -865,9 +883,19 @@ export const Game: React.FC = () => {
               </div>
             )}
 
+            {/* Lives display - below puzzle, between puzzle and quest */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
+              <div className="mt-3 flex items-center justify-center gap-2">
+                <span className="text-stone-400 text-sm">Lives:</span>
+                <div className="flex items-center gap-1">
+                  {renderLivesHearts()}
+                </div>
+              </div>
+            )}
+
             {/* Win Condition Display - below puzzle, visible during setup and gameplay */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && (
-              <div className="mt-4 w-full max-w-md px-4 py-2 dungeon-panel-dark">
+              <div className="mt-2 w-full max-w-md px-4 py-2 dungeon-panel-dark">
                 <div className="flex items-center justify-center gap-2 text-sm flex-wrap">
                   <HelpButton sectionId="game_general" />
                   <span className="text-stone-400">Quest:</span>

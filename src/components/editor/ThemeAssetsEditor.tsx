@@ -659,6 +659,7 @@ export const ThemeAssetsEditor: React.FC = () => {
     icons: 'Icons',
     effects: 'Effects',
     colors: 'Colors',
+    actionButtons: 'Action Buttons',
     styles: 'Styles',
   };
 
@@ -670,6 +671,7 @@ export const ThemeAssetsEditor: React.FC = () => {
     icons: '⚔️',
     effects: '✨',
     colors: '🎨',
+    actionButtons: '▶️',
     styles: '⚙️',
   };
 

@@ -47,20 +47,20 @@ function Navigation() {
     >
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 md:gap-3">
           {/* Custom logo or default torch icon */}
           {themeAssets.logo ? (
             <img
               src={themeAssets.logo}
               alt={themeAssets.logoAlt || 'Logo'}
-              className="h-8 md:h-10 w-auto object-contain flex-shrink-0"
+              className="h-10 md:h-12 w-auto object-contain flex-shrink-0"
             />
           ) : (
-            <span className="text-copper-400 text-xl md:text-2xl animate-flicker flex-shrink-0">&#128293;</span>
+            <span className="text-copper-400 text-2xl md:text-3xl animate-flicker flex-shrink-0">&#128293;</span>
           )}
           {/* Title and subtitle - stacked vertically */}
-          <div className="flex flex-col leading-none">
-            <h1 className="text-sm xs:text-base md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap">
+          <div className="flex flex-col leading-tight">
+            <h1 className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap">
               {themeAssets.siteTitle || 'Puzzle Daily'}
             </h1>
             {themeAssets.siteSubtitle && (
@@ -70,11 +70,11 @@ function Navigation() {
                   color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
                   fontSize: (() => {
                     const sizeMap: Record<string, string> = {
-                      'x-small': '0.6rem',
-                      'small': '0.7rem',
-                      'medium': '0.8rem',
-                      'large': '0.9rem',
-                      'x-large': '1rem',
+                      'x-small': '0.65rem',
+                      'small': '0.75rem',
+                      'medium': '0.85rem',
+                      'large': '0.95rem',
+                      'x-large': '1.05rem',
                     };
                     return sizeMap[themeAssets.siteSubtitleSize || 'small'] || sizeMap['small'];
                   })()

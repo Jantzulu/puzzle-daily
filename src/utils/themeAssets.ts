@@ -110,6 +110,20 @@ export interface ThemeAssets {
   colorButtonDangerBg?: string;   // Danger button background
   colorButtonDangerBorder?: string; // Danger button border
 
+  // Game Action Buttons (Test Heroes / Play / Test Enemies)
+  actionButtonPlayBg?: string;        // Play button background color
+  actionButtonPlayBorder?: string;    // Play button border color
+  actionButtonPlayText?: string;      // Play button text color
+  actionButtonPlayShape?: string;     // Play button shape (default, rounded, pill)
+  actionButtonTestHeroesBg?: string;  // Test Heroes button background color
+  actionButtonTestHeroesBorder?: string; // Test Heroes button border color
+  actionButtonTestHeroesText?: string; // Test Heroes button text color
+  actionButtonTestHeroesShape?: string; // Test Heroes button shape
+  actionButtonTestEnemiesBg?: string; // Test Enemies button background color
+  actionButtonTestEnemiesBorder?: string; // Test Enemies button border color
+  actionButtonTestEnemiesText?: string; // Test Enemies button text color
+  actionButtonTestEnemiesShape?: string; // Test Enemies button shape
+
   // Preview/thumbnail backgrounds
   // Entity previews (heroes, enemies) - typically shown on tile backgrounds
   colorBgPreviewEntity?: string;        // Background color for hero/enemy previews
@@ -204,6 +218,19 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorButtonPrimaryBorder: { label: 'Primary Button Border', description: 'Primary button border color', category: 'colors', inputType: 'color' },
   colorButtonDangerBg: { label: 'Danger Button Bg', description: 'Danger/warning button background', category: 'colors', inputType: 'color' },
   colorButtonDangerBorder: { label: 'Danger Button Border', description: 'Danger button border color', category: 'colors', inputType: 'color' },
+  // Game Action Buttons (Test Heroes / Play / Test Enemies)
+  actionButtonPlayBg: { label: 'Play Button Background', description: 'Background color for the Play button', category: 'actionButtons', inputType: 'color' },
+  actionButtonPlayBorder: { label: 'Play Button Border', description: 'Border color for the Play button', category: 'actionButtons', inputType: 'color' },
+  actionButtonPlayText: { label: 'Play Button Text', description: 'Text color for the Play button', category: 'actionButtons', inputType: 'color' },
+  actionButtonPlayShape: { label: 'Play Button Shape', description: 'Shape of the Play button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
+  actionButtonTestHeroesBg: { label: 'Test Heroes Background', description: 'Background color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
+  actionButtonTestHeroesBorder: { label: 'Test Heroes Border', description: 'Border color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
+  actionButtonTestHeroesText: { label: 'Test Heroes Text', description: 'Text color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
+  actionButtonTestHeroesShape: { label: 'Test Heroes Shape', description: 'Shape of the Test Heroes button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
+  actionButtonTestEnemiesBg: { label: 'Test Enemies Background', description: 'Background color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
+  actionButtonTestEnemiesBorder: { label: 'Test Enemies Border', description: 'Border color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
+  actionButtonTestEnemiesText: { label: 'Test Enemies Text', description: 'Text color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
+  actionButtonTestEnemiesShape: { label: 'Test Enemies Shape', description: 'Shape of the Test Enemies button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
   // Entity preview backgrounds (heroes, enemies)
   colorBgPreviewEntity: { label: 'Entity Preview Color', description: 'Background color for hero/enemy previews', category: 'colors', inputType: 'color' },
   bgPreviewEntity: { label: 'Entity Preview Image', description: 'Background image for hero/enemy previews (e.g., a floor tile)', category: 'backgrounds', inputType: 'image' },
@@ -229,7 +256,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   fontSizeHeading: { label: 'Heading Size', description: 'Size of headings and titles', category: 'styles', inputType: 'select' },
 };
 
-export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'styles'] as const;
+export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'actionButtons', 'styles'] as const;
 export type AssetCategory = typeof ASSET_CATEGORIES[number];
 
 /**
