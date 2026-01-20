@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, SpriteSheetConfig } from '../../utils/assetStorage';
-import { drawPreviewBackground, type PreviewType } from '../../utils/themeAssets';
+import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 // Preview type for static assets (tiles, items, enchantments)
@@ -79,6 +79,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
     let lastFrameTime = 0;
 
     const render = (timestamp: number) => {
+      // Clear (background is handled by CSS on parent div)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       // Determine which sprite data to show based on preview mode
@@ -91,78 +92,71 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       // Resolve sprite sheet image source
       const spriteSheetSrc = spriteSheet?.imageData || spriteSheet?.imageUrl;
 
-      // Draw preview background (color and/or image) using asset type for static sprites
-      drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
-        if (spriteSheetSrc) {
-          // Animated spritesheet
-          const img = new Image();
-          img.onload = () => {
-            const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
-            const frameHeight = spriteSheet.frameHeight || img.naturalHeight;
+      if (spriteSheetSrc) {
+        // Animated spritesheet
+        const img = new Image();
+        img.onload = () => {
+          const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
+          const frameHeight = spriteSheet.frameHeight || img.naturalHeight;
 
-            // Update frame based on frame rate
-            const frameDuration = 1000 / spriteSheet.frameRate;
-            if (timestamp - lastFrameTime >= frameDuration) {
-              frameIndex = (frameIndex + 1) % spriteSheet.frameCount;
-              lastFrameTime = timestamp;
-            }
+          // Update frame based on frame rate
+          const frameDuration = 1000 / spriteSheet.frameRate;
+          if (timestamp - lastFrameTime >= frameDuration) {
+            frameIndex = (frameIndex + 1) % spriteSheet.frameCount;
+            lastFrameTime = timestamp;
+          }
 
-            // Calculate display size
-            const maxSize = (sprite.size || 0.8) * canvas.width;
-            const aspectRatio = frameWidth / frameHeight;
-            let drawWidth = maxSize;
-            let drawHeight = maxSize;
+          // Calculate display size
+          const maxSize = (sprite.size || 0.8) * canvas.width;
+          const aspectRatio = frameWidth / frameHeight;
+          let drawWidth = maxSize;
+          let drawHeight = maxSize;
 
-            if (aspectRatio > 1) {
-              drawHeight = maxSize / aspectRatio;
-            } else {
-              drawWidth = maxSize * aspectRatio;
-            }
+          if (aspectRatio > 1) {
+            drawHeight = maxSize / aspectRatio;
+          } else {
+            drawWidth = maxSize * aspectRatio;
+          }
 
-            // Redraw background then sprite frame
-            drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
-              ctx.drawImage(
-                img,
-                frameIndex * frameWidth, 0, frameWidth, frameHeight,
-                canvas.width / 2 - drawWidth / 2,
-                canvas.height / 2 - drawHeight / 2,
-                drawWidth, drawHeight
-              );
-            }, ASSET_PREVIEW_TYPE);
-          };
-          img.src = spriteSheetSrc;
-          animationRef.current = requestAnimationFrame(render);
-        } else if (imageData) {
-          // Static image
-          const img = new Image();
-          img.onload = () => {
-            const maxSize = (sprite.size || 0.8) * canvas.width;
-            const aspectRatio = img.width / img.height;
-            let drawWidth = maxSize;
-            let drawHeight = maxSize;
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(
+            img,
+            frameIndex * frameWidth, 0, frameWidth, frameHeight,
+            canvas.width / 2 - drawWidth / 2,
+            canvas.height / 2 - drawHeight / 2,
+            drawWidth, drawHeight
+          );
+        };
+        img.src = spriteSheetSrc;
+        animationRef.current = requestAnimationFrame(render);
+      } else if (imageData) {
+        // Static image
+        const img = new Image();
+        img.onload = () => {
+          const maxSize = (sprite.size || 0.8) * canvas.width;
+          const aspectRatio = img.width / img.height;
+          let drawWidth = maxSize;
+          let drawHeight = maxSize;
 
-            if (aspectRatio > 1) {
-              drawHeight = maxSize / aspectRatio;
-            } else {
-              drawWidth = maxSize * aspectRatio;
-            }
+          if (aspectRatio > 1) {
+            drawHeight = maxSize / aspectRatio;
+          } else {
+            drawWidth = maxSize * aspectRatio;
+          }
 
-            // Redraw background then sprite
-            drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
-              ctx.drawImage(
-                img,
-                canvas.width / 2 - drawWidth / 2,
-                canvas.height / 2 - drawHeight / 2,
-                drawWidth, drawHeight
-              );
-            }, ASSET_PREVIEW_TYPE);
-          };
-          img.src = imageData;
-        } else {
-          // Draw shape fallback
-          drawShape(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
-        }
-      }, ASSET_PREVIEW_TYPE);
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.drawImage(
+            img,
+            canvas.width / 2 - drawWidth / 2,
+            canvas.height / 2 - drawHeight / 2,
+            drawWidth, drawHeight
+          );
+        };
+        img.src = imageData;
+      } else {
+        // Draw shape fallback
+        drawShape(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
+      }
     };
 
     render(0);
@@ -378,12 +372,27 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
     <div className="space-y-4">
       {/* Preview */}
       <div className="flex flex-col items-center gap-2">
-        <canvas
-          ref={canvasRef}
-          width={size}
-          height={size}
-          className="border border-stone-600 rounded sprite-preview-bg"
-        />
+        <div
+          className="border border-stone-600 rounded overflow-hidden"
+          style={{
+            width: size,
+            height: size,
+            backgroundColor: getPreviewBgColor(ASSET_PREVIEW_TYPE),
+            ...(getPreviewBgImageUrl(ASSET_PREVIEW_TYPE) && {
+              backgroundImage: `url(${getPreviewBgImageUrl(ASSET_PREVIEW_TYPE)})`,
+              backgroundSize: getPreviewBgTiled(ASSET_PREVIEW_TYPE) ? 'auto' : 'cover',
+              backgroundRepeat: getPreviewBgTiled(ASSET_PREVIEW_TYPE) ? 'repeat' : 'no-repeat',
+              backgroundPosition: 'center',
+            }),
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            width={size}
+            height={size}
+            className="block"
+          />
+        </div>
         {hasTriggeredSprite && (
           <div className="flex gap-2">
             <button

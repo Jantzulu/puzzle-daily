@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
-import { drawPreviewBackground, getPreviewBgColor, type PreviewType } from '../../utils/themeAssets';
+import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 // Preview type for character/enemy sprites (entities)
@@ -325,76 +325,65 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!ctx) return;
 
     const renderPreview = () => {
-      // Clear
+      // Clear (background is handled by CSS on parent div)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw preview background (color and/or image) using entity type for heroes/enemies
-      drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
-        // Draw sprite based on mode after background is ready
-        if (spriteMode === 'directional' && sprite.directionalSprites) {
-          const dirSprite = sprite.directionalSprites[selectedDirection] || sprite.directionalSprites['default'];
-          if (dirSprite) {
-            // Check for image data OR URL
-            const imageToShow = dirSprite.idleImageData || dirSprite.idleImageUrl || dirSprite.imageData || dirSprite.imageUrl;
-            if (imageToShow) {
-              // Load and draw image
-              const img = new Image();
-              img.onload = () => {
-                // Redraw background then sprite
-                drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
-                  // Preserve aspect ratio
-                  const maxSize = (dirSprite.size || 0.6) * canvas.width;
-                  const aspectRatio = img.width / img.height;
-                  let drawWidth = maxSize;
-                  let drawHeight = maxSize;
-
-                  if (aspectRatio > 1) {
-                    // Wider than tall
-                    drawHeight = maxSize / aspectRatio;
-                  } else {
-                    // Taller than wide
-                    drawWidth = maxSize * aspectRatio;
-                  }
-
-                  ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
-                }, ENTITY_PREVIEW_TYPE);
-              };
-              img.src = imageToShow;
-            } else {
-              drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
-            }
-          }
-        } else {
-          // Simple mode - check for image data OR URL
-          const simpleImageToShow = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
-          if (simpleImageToShow) {
+      // Draw sprite based on mode
+      if (spriteMode === 'directional' && sprite.directionalSprites) {
+        const dirSprite = sprite.directionalSprites[selectedDirection] || sprite.directionalSprites['default'];
+        if (dirSprite) {
+          // Check for image data OR URL
+          const imageToShow = dirSprite.idleImageData || dirSprite.idleImageUrl || dirSprite.imageData || dirSprite.imageUrl;
+          if (imageToShow) {
+            // Load and draw image
             const img = new Image();
             img.onload = () => {
-              // Redraw background then sprite
-              drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
-                // Preserve aspect ratio
-                const maxSize = (sprite.size || 0.6) * canvas.width;
-                const aspectRatio = img.width / img.height;
-                let drawWidth = maxSize;
-                let drawHeight = maxSize;
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              // Preserve aspect ratio
+              const maxSize = (dirSprite.size || 0.6) * canvas.width;
+              const aspectRatio = img.width / img.height;
+              let drawWidth = maxSize;
+              let drawHeight = maxSize;
 
-                if (aspectRatio > 1) {
-                  // Wider than tall
-                  drawHeight = maxSize / aspectRatio;
-                } else {
-                  // Taller than wide
-                  drawWidth = maxSize * aspectRatio;
-                }
+              if (aspectRatio > 1) {
+                drawHeight = maxSize / aspectRatio;
+              } else {
+                drawWidth = maxSize * aspectRatio;
+              }
 
-                ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
-              }, ENTITY_PREVIEW_TYPE);
+              ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
             };
-            img.src = simpleImageToShow;
+            img.src = imageToShow;
           } else {
-            drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
+            drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
           }
         }
-      }, ENTITY_PREVIEW_TYPE);
+      } else {
+        // Simple mode - check for image data OR URL
+        const simpleImageToShow = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
+        if (simpleImageToShow) {
+          const img = new Image();
+          img.onload = () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            // Preserve aspect ratio
+            const maxSize = (sprite.size || 0.6) * canvas.width;
+            const aspectRatio = img.width / img.height;
+            let drawWidth = maxSize;
+            let drawHeight = maxSize;
+
+            if (aspectRatio > 1) {
+              drawHeight = maxSize / aspectRatio;
+            } else {
+              drawWidth = maxSize * aspectRatio;
+            }
+
+            ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
+          };
+          img.src = simpleImageToShow;
+        } else {
+          drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
+        }
+      }
     };
 
     renderPreview();
@@ -2685,12 +2674,27 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         <label className="block text-sm font-bold mb-2">
           Preview ({DIRECTIONS.find(d => d.key === selectedDirection)?.label})
         </label>
-        <canvas
-          ref={canvasRef}
-          width={size}
-          height={size}
-          className="border-2 border-stone-600 rounded sprite-preview-bg"
-        />
+        <div
+          className="border-2 border-stone-600 rounded overflow-hidden"
+          style={{
+            width: size,
+            height: size,
+            backgroundColor: getPreviewBgColor(ENTITY_PREVIEW_TYPE),
+            ...(getPreviewBgImageUrl(ENTITY_PREVIEW_TYPE) && {
+              backgroundImage: `url(${getPreviewBgImageUrl(ENTITY_PREVIEW_TYPE)})`,
+              backgroundSize: getPreviewBgTiled(ENTITY_PREVIEW_TYPE) ? 'auto' : 'cover',
+              backgroundRepeat: getPreviewBgTiled(ENTITY_PREVIEW_TYPE) ? 'repeat' : 'no-repeat',
+              backgroundPosition: 'center',
+            }),
+          }}
+        >
+          <canvas
+            ref={canvasRef}
+            width={size}
+            height={size}
+            className="block"
+          />
+        </div>
       </div>
 
       <div>
