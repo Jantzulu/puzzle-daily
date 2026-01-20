@@ -33,7 +33,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
   if (uniqueEnemies.length === 0) {
     return (
       <div className="dungeon-panel p-4">
-        <h3 className="text-lg font-bold mb-2 text-blood-400">Enemies</h3>
+        <div className="flex items-center gap-2 mb-2">
+          <HelpButton sectionId="enemies" />
+          <h3 className="text-lg font-bold text-blood-400">Enemies</h3>
+        </div>
         <p className="text-sm text-stone-500 text-center">No enemies remaining</p>
       </div>
     );
@@ -42,28 +45,26 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
   return (
     <div className="dungeon-panel p-4">
       {/* Header row */}
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold text-blood-400">Enemies</h3>
+      <div className="flex items-center justify-between mb-3">
+        {/* Left: Help + Title + Test button */}
+        <div className="flex items-center gap-2">
           <HelpButton sectionId="enemies" />
+          <h3 className="text-lg font-bold text-blood-400">Enemies</h3>
+          {showTestButton && onTest && (
+            <button
+              onClick={onTest}
+              className="px-2 py-0.5 text-xs dungeon-btn-danger rounded transition-colors flex items-center gap-1"
+              title="Watch enemies move without heroes for 5 turns"
+            >
+              <span>▶</span> Test
+            </button>
+          )}
         </div>
+        {/* Right: Count */}
         <span className="text-sm text-stone-400">
           {livingEnemies.length} remaining
         </span>
       </div>
-      {/* Action buttons row */}
-      {showTestButton && onTest && (
-        <div className="flex items-center justify-center mb-3">
-          <button
-            onClick={onTest}
-            className="px-2 py-0.5 text-xs text-blood-400 hover:text-blood-300 hover:bg-stone-700 rounded transition-colors flex items-center gap-1"
-            title="Watch enemies move without heroes for 5 turns"
-          >
-            <span>▶</span> Test
-          </button>
-        </div>
-      )}
-      {!showTestButton && <div className="mb-2" />}
 
       <div className="flex flex-wrap gap-2 justify-center">
         {uniqueEnemies.map(({ enemy, count }) => {

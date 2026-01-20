@@ -23,38 +23,39 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 }) => {
   return (
     <div className="dungeon-panel p-4">
-      {/* Header row - matches EnemyDisplay layout */}
-      <div className="flex items-center justify-between mb-1">
-        <div className="flex items-center gap-1">
-          <h3 className="text-lg font-bold text-copper-400">Available Heroes</h3>
+      {/* Header row */}
+      <div className="flex items-center justify-between mb-3">
+        {/* Left: Help + Title + Test button */}
+        <div className="flex items-center gap-2">
           <HelpButton sectionId="characters" />
+          <h3 className="text-lg font-bold text-copper-400">Available Heroes</h3>
+          {onTest && (
+            <button
+              onClick={onTest}
+              className="px-2 py-0.5 text-xs dungeon-btn-arcane rounded transition-colors flex items-center gap-1"
+              title="Test your heroes without enemies for 5 turns"
+            >
+              <span>▶</span> Test
+            </button>
+          )}
         </div>
-        <span className="text-sm text-stone-400">
-          {placedCharacterIds.length} placed
-        </span>
-      </div>
-      {/* Action buttons row */}
-      <div className="flex items-center justify-center gap-2 mb-3">
-        {onTest && (
-          <button
-            onClick={onTest}
-            className="px-2 py-0.5 text-xs text-arcane-400 hover:text-arcane-300 hover:bg-stone-700 rounded transition-colors flex items-center gap-1"
-            title="Test your heroes without enemies for 5 turns"
-          >
-            <span>▶</span> Test
-          </button>
-        )}
-        {onClearAll && placedCharacterIds.length > 0 && (
-          <button
-            onClick={onClearAll}
-            className="p-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
-            title="Remove all placed heroes"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-            </svg>
-          </button>
-        )}
+        {/* Right: Count + Clear button */}
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-stone-400">
+            {placedCharacterIds.length} placed
+          </span>
+          {onClearAll && placedCharacterIds.length > 0 && (
+            <button
+              onClick={onClearAll}
+              className="p-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
+              title="Remove all placed heroes"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
 
       <div className="flex flex-wrap gap-2 justify-center">
