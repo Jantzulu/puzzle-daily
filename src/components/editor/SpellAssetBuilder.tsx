@@ -571,6 +571,12 @@ const SpriteSheetPreview: React.FC<SpriteSheetPreviewProps> = ({
     if (!ctx) return;
 
     const img = new Image();
+    // Resolve image source - prefer data, fall back to URL
+    const imageSrc = spriteSheet.imageData || spriteSheet.imageUrl;
+    // Enable CORS for external URLs (required for canvas drawing)
+    if (imageSrc && imageSrc.startsWith('http')) {
+      img.crossOrigin = 'anonymous';
+    }
     img.onload = () => {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -606,8 +612,6 @@ const SpriteSheetPreview: React.FC<SpriteSheetPreviewProps> = ({
 
       ctx.restore();
     };
-    // Resolve image source - prefer data, fall back to URL
-    const imageSrc = spriteSheet.imageData || spriteSheet.imageUrl;
     if (imageSrc) {
       img.src = imageSrc;
     }

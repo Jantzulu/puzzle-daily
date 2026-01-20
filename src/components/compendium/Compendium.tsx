@@ -27,11 +27,11 @@ interface TabConfig {
 }
 
 const TABS: TabConfig[] = [
-  { id: 'characters', label: 'HEROES', defaultIcon: '⚔️', themeIconKey: 'iconTabHeroes' },
-  { id: 'enemies', label: 'ENEMIES', defaultIcon: '👹', themeIconKey: 'iconTabEnemies' },
-  { id: 'status_effects', label: 'ENCHANTMENTS', defaultIcon: '✨', themeIconKey: 'iconTabEnchantments' },
-  { id: 'special_tiles', label: 'DUNGEON TILES', defaultIcon: '🧱', themeIconKey: 'iconTabTiles' },
-  { id: 'items', label: 'ITEMS', defaultIcon: '💎', themeIconKey: 'iconTabItems' },
+  { id: 'characters', label: 'Heroes', defaultIcon: '⚔️', themeIconKey: 'iconTabHeroes' },
+  { id: 'enemies', label: 'Enemies', defaultIcon: '👹', themeIconKey: 'iconTabEnemies' },
+  { id: 'status_effects', label: 'Enchantments', defaultIcon: '✨', themeIconKey: 'iconTabEnchantments' },
+  { id: 'special_tiles', label: 'Dungeon Tiles', defaultIcon: '🧱', themeIconKey: 'iconTabTiles' },
+  { id: 'items', label: 'Items', defaultIcon: '💎', themeIconKey: 'iconTabItems' },
 ];
 
 // ============ TILE SPRITE PREVIEW COMPONENT ============
@@ -898,8 +898,8 @@ export const Compendium: React.FC = () => {
       <div className="max-w-7xl mx-auto p-4 md:p-6">
         {/* Header */}
         <div className="mb-6">
-          <h1 className="text-4xl md:text-5xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">Compendium</h1>
-          <p className="text-stone-400">Browse all dungeon elements - heroes, enemies, enchantments, tiles, and items.</p>
+          <h1 className="text-5xl md:text-6xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">Compendium</h1>
+          <p className="text-stone-400">Browse all Dungeon elements - Heroes, Enemies, Enchantments, Tiles, and Items.</p>
         </div>
 
         {/* Search */}

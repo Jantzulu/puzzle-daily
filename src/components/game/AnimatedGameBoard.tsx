@@ -2248,6 +2248,10 @@ function loadBossIcon(): HTMLImageElement | null {
 
   bossIconLoading = true;
   const img = new Image();
+  // Enable CORS for external URLs (required for canvas drawing)
+  if (iconUrl.startsWith('http')) {
+    img.crossOrigin = 'anonymous';
+  }
   img.onload = () => {
     bossIconImage = img;
     bossIconLoading = false;

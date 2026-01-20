@@ -85,6 +85,10 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         if (spriteSheetSrc) {
           // Animated spritesheet
           const img = new Image();
+          // Enable CORS for external URLs (required for canvas drawing)
+          if (spriteSheetSrc.startsWith('http')) {
+            img.crossOrigin = 'anonymous';
+          }
           img.onload = () => {
             const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
             const frameHeight = spriteSheet.frameHeight || img.naturalHeight;
@@ -124,6 +128,10 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         } else if (imageData) {
           // Static image
           const img = new Image();
+          // Enable CORS for external URLs (required for canvas drawing)
+          if (typeof imageData === 'string' && imageData.startsWith('http')) {
+            img.crossOrigin = 'anonymous';
+          }
           img.onload = () => {
             const maxSize = (sprite.size || 0.8) * canvas.width;
             const aspectRatio = img.width / img.height;
