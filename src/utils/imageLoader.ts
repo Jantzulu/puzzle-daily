@@ -48,6 +48,8 @@ function notifyImageLoaded() {
 export function loadImage(src: string, retry = false): HTMLImageElement | null {
   if (!src) return null;
 
+  const isExternal = src.startsWith('http://') || src.startsWith('https://');
+
   // If retry requested and image previously failed, clear it from cache
   if (retry && failedImages.has(src)) {
     failedImages.delete(src);
@@ -56,23 +58,31 @@ export function loadImage(src: string, retry = false): HTMLImageElement | null {
 
   let img = imageCache.get(src);
   if (img) {
-    // Image exists in cache - check if it's still loading
-    if (!img.complete && !loadingImages.has(src)) {
-      // Image in cache but not complete and no handler - re-attach handler
-      loadingImages.add(src);
-      img.onload = () => {
-        loadingImages.delete(src);
-        failedImages.delete(src);
-        notifyImageLoaded();
-      };
-      img.onerror = () => {
-        loadingImages.delete(src);
-        failedImages.add(src);
-        // Also notify on error so components can show fallback
-        notifyImageLoaded();
-      };
+    // Check if cached image needs CORS but doesn't have it set
+    // This can happen if image was cached before CORS fix
+    if (isExternal && img.crossOrigin !== 'anonymous') {
+      // Clear from cache and reload with CORS
+      imageCache.delete(src);
+      img = undefined;
+    } else {
+      // Image exists in cache - check if it's still loading
+      if (!img.complete && !loadingImages.has(src)) {
+        // Image in cache but not complete and no handler - re-attach handler
+        loadingImages.add(src);
+        img.onload = () => {
+          loadingImages.delete(src);
+          failedImages.delete(src);
+          notifyImageLoaded();
+        };
+        img.onerror = () => {
+          loadingImages.delete(src);
+          failedImages.add(src);
+          // Also notify on error so components can show fallback
+          notifyImageLoaded();
+        };
+      }
+      return img;
     }
-    return img;
   }
 
   // Create new image
@@ -94,7 +104,7 @@ export function loadImage(src: string, retry = false): HTMLImageElement | null {
 
   // Set crossOrigin BEFORE setting src for external URLs
   // This allows canvas operations (drawImage, createPattern) without tainting
-  if (src.startsWith('http://') || src.startsWith('https://')) {
+  if (isExternal) {
     img.crossOrigin = 'anonymous';
   }
 
