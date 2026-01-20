@@ -539,6 +539,11 @@ export const Game: React.FC = () => {
 
   // Scroll-aware test handlers for mobile (scrolls to game board)
   const handleTestCharactersWithScroll = () => {
+    // Don't scroll if no heroes placed (will show error modal instead)
+    if (gameState.placedCharacters.length === 0) {
+      handleTestCharacters(); // This will show the warning modal
+      return;
+    }
     // On mobile (below lg breakpoint), scroll to game board
     if (window.innerWidth < 1024 && gameBoardRef.current) {
       gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -962,16 +967,16 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Character Selector - below puzzle */}
-            {gameState.gameStatus === 'setup' && (
+            {/* Character Selector - below puzzle (also visible during test mode) */}
+            {(gameState.gameStatus === 'setup' || testMode !== 'none') && (
               <div className="mt-3 w-full max-w-md">
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
-                  selectedCharacterId={selectedCharacterId}
-                  onSelectCharacter={setSelectedCharacterId}
+                  selectedCharacterId={testMode === 'none' ? selectedCharacterId : null}
+                  onSelectCharacter={testMode === 'none' ? setSelectedCharacterId : () => {}}
                   placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
-                  onClearAll={handleWipe}
-                  onTest={handleTestCharactersWithScroll}
+                  onClearAll={testMode === 'none' ? handleWipe : undefined}
+                  onTest={testMode === 'none' ? handleTestCharactersWithScroll : undefined}
                 />
               </div>
             )}

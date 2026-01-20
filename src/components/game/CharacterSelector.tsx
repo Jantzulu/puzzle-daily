@@ -23,12 +23,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 }) => {
   return (
     <div className="dungeon-panel p-4">
-      {/* Header row */}
-      <div className="flex items-center justify-center gap-2 mb-1 flex-wrap">
-        <HelpButton sectionId="characters" />
-        <h3 className="text-lg font-bold text-copper-400">Available Heroes</h3>
+      {/* Header row - matches EnemyDisplay layout */}
+      <div className="flex items-center justify-between mb-1">
+        <div className="flex items-center gap-1">
+          <h3 className="text-lg font-bold text-copper-400">Available Heroes</h3>
+          <HelpButton sectionId="characters" />
+        </div>
         <span className="text-sm text-stone-400">
-          ({placedCharacterIds.length} Placed)
+          {placedCharacterIds.length} placed
         </span>
       </div>
       {/* Action buttons row */}
