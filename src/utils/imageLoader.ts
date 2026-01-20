@@ -12,6 +12,9 @@ const imageCache = new Map<string, HTMLImageElement>();
 // Set of images currently loading (to avoid duplicate onload handlers)
 const loadingImages = new Set<string>();
 
+// Set of images that failed to load (for retry logic)
+const failedImages = new Set<string>();
+
 // Flag to schedule a single notification on next frame (for batching)
 let pendingNotification = false;
 
@@ -40,9 +43,16 @@ function notifyImageLoaded() {
 /**
  * Load an image with caching and load notification.
  * When the image finishes loading, all subscribers are notified.
+ * Failed images can be retried by passing retry=true.
  */
-export function loadImage(src: string): HTMLImageElement | null {
+export function loadImage(src: string, retry = false): HTMLImageElement | null {
   if (!src) return null;
+
+  // If retry requested and image previously failed, clear it from cache
+  if (retry && failedImages.has(src)) {
+    failedImages.delete(src);
+    imageCache.delete(src);
+  }
 
   let img = imageCache.get(src);
   if (img) {
@@ -52,10 +62,14 @@ export function loadImage(src: string): HTMLImageElement | null {
       loadingImages.add(src);
       img.onload = () => {
         loadingImages.delete(src);
+        failedImages.delete(src);
         notifyImageLoaded();
       };
       img.onerror = () => {
         loadingImages.delete(src);
+        failedImages.add(src);
+        // Also notify on error so components can show fallback
+        notifyImageLoaded();
       };
     }
     return img;
@@ -68,15 +82,33 @@ export function loadImage(src: string): HTMLImageElement | null {
 
   img.onload = () => {
     loadingImages.delete(src);
+    failedImages.delete(src);
     notifyImageLoaded();
   };
   img.onerror = () => {
     loadingImages.delete(src);
+    failedImages.add(src);
+    // Also notify on error so components can show fallback or retry
+    notifyImageLoaded();
   };
 
   img.src = src;
 
   return img;
+}
+
+/**
+ * Check if an image previously failed to load.
+ */
+export function isImageFailed(src: string): boolean {
+  return failedImages.has(src);
+}
+
+/**
+ * Retry loading a failed image.
+ */
+export function retryImage(src: string): HTMLImageElement | null {
+  return loadImage(src, true);
 }
 
 /**
@@ -99,4 +131,5 @@ export function getCacheSize(): number {
 export function clearImageCache(): void {
   imageCache.clear();
   loadingImages.clear();
+  failedImages.clear();
 }
