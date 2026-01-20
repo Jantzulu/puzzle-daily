@@ -257,7 +257,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   // Always use directional mode - 'default' direction serves as universal fallback
   const spriteMode = 'directional' as const;
   // Trigger re-render when background images load
-  const [, setRenderTrigger] = useState(0);
+  const [renderTrigger, setRenderTrigger] = useState(0);
 
   // Subscribe to image load events to re-render when background images finish loading
   useEffect(() => {
@@ -398,7 +398,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     };
 
     renderPreview();
-  }, [sprite, selectedDirection, spriteMode]);
+  }, [sprite, selectedDirection, spriteMode, renderTrigger]);
 
   // Mode change function removed - always using directional mode now
 

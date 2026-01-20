@@ -15,7 +15,7 @@ interface SpriteThumbnailProps {
 
 export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [, setRenderTrigger] = useState(0);
+  const [renderTrigger, setRenderTrigger] = useState(0);
 
   useEffect(() => {
     // Subscribe to image load events to re-render when images finish loading
@@ -171,7 +171,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size, previewType]);
+  }, [sprite, size, previewType, renderTrigger]);
 
   if (!sprite) {
     return (

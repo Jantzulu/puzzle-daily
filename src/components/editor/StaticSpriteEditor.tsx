@@ -47,7 +47,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
   const [previewMode, setPreviewMode] = useState<'default' | 'triggered'>('default');
   const animationRef = useRef<number>();
   // Trigger re-render when background images load
-  const [, setRenderTrigger] = useState(0);
+  const [renderTrigger, setRenderTrigger] = useState(0);
 
   // Subscribe to image load events to re-render when background images finish loading
   useEffect(() => {
@@ -172,7 +172,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [sprite, previewMode]);
+  }, [sprite, previewMode, renderTrigger]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>, isTriggered: boolean = false) => {
     const file = e.target.files?.[0];
