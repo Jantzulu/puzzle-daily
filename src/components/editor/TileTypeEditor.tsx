@@ -391,6 +391,12 @@ export const TileTypeEditor: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
 
+  // URL input states for sprite uploads
+  const [showSpriteUrl, setShowSpriteUrl] = useState(false);
+  const [spriteUrlInput, setSpriteUrlInput] = useState('');
+  const [showOffSpriteUrl, setShowOffSpriteUrl] = useState(false);
+  const [offSpriteUrlInput, setOffSpriteUrlInput] = useState('');
+
   // Filter tile types based on folder and search term
   const folderFilteredTileTypes = useFilteredAssets(tileTypes, selectedFolderId);
   const filteredTileTypes = folderFilteredTileTypes.filter(tileType =>
@@ -518,6 +524,38 @@ export const TileTypeEditor: React.FC = () => {
     setEditing({ ...editing, offStateSprite: undefined });
   };
 
+  // URL setter for main sprite
+  const setSpriteUrl = (url: string) => {
+    if (!editing) return;
+    setEditing({
+      ...editing,
+      customSprite: {
+        id: 'sprite_' + Date.now(),
+        name: editing.name + ' Sprite',
+        type: 'image',
+        idleImageUrl: url,
+        idleImageData: undefined,
+        createdAt: new Date().toISOString(),
+      },
+    });
+  };
+
+  // URL setter for off state sprite
+  const setOffSpriteUrl = (url: string) => {
+    if (!editing) return;
+    setEditing({
+      ...editing,
+      offStateSprite: {
+        id: 'sprite_off_' + Date.now(),
+        name: editing.name + ' Off Sprite',
+        type: 'image',
+        idleImageUrl: url,
+        idleImageData: undefined,
+        createdAt: new Date().toISOString(),
+      },
+    });
+  };
+
   const handleFolderChange = (tileTypeId: string, folderId: string | undefined) => {
     const tileType = tileTypes.find(t => t.id === tileTypeId);
     if (tileType) {
@@ -598,9 +636,9 @@ export const TileTypeEditor: React.FC = () => {
                       <div className="flex items-center gap-2">
                         {/* Preview thumbnail */}
                         <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          {tileType.customSprite?.idleImageData ? (
+                          {(tileType.customSprite?.idleImageData || tileType.customSprite?.idleImageUrl) ? (
                             <img
-                              src={tileType.customSprite.idleImageData}
+                              src={tileType.customSprite.idleImageData || tileType.customSprite.idleImageUrl}
                               alt=""
                               className="w-full h-full object-cover"
                             />
@@ -951,36 +989,85 @@ export const TileTypeEditor: React.FC = () => {
                     Upload a custom sprite for this tile type. If not set, a default visual will be used based on behaviors.
                   </p>
 
-                  {editing.customSprite?.idleImageData ? (
-                    <div className="relative inline-block">
-                      <img
-                        src={editing.customSprite.idleImageData}
-                        alt="Tile sprite"
-                        className="w-24 h-24 object-contain bg-stone-600 rounded"
-                      />
-                      <button
-                        onClick={handleSpriteRemove}
-                        className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
-                      >
-                        ✕
-                      </button>
+                  {(editing.customSprite?.idleImageData || editing.customSprite?.idleImageUrl) ? (
+                    <div className="space-y-2">
+                      <div className="relative inline-block">
+                        <img
+                          src={editing.customSprite.idleImageData || editing.customSprite.idleImageUrl}
+                          alt="Tile sprite"
+                          className="w-24 h-24 object-contain bg-stone-600 rounded"
+                        />
+                        <button
+                          onClick={handleSpriteRemove}
+                          className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="text-xs text-stone-400">
+                        {editing.customSprite.idleImageUrl && !editing.customSprite.idleImageData
+                          ? '✓ Using URL'
+                          : '✓ Image uploaded'}
+                      </p>
                     </div>
                   ) : (
-                    <label className="block cursor-pointer">
-                      <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
-                        <span>+ Upload Sprite</span>
-                        <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
-                      </div>
-                      <input
-                        type="file"
-                        accept="image/*"
-                        onChange={e => {
-                          const file = e.target.files?.[0];
-                          if (file) handleSpriteUpload(file);
-                        }}
-                        className="hidden"
-                      />
-                    </label>
+                    <div className="space-y-2">
+                      <label className="block cursor-pointer">
+                        <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
+                          <span>+ Upload Sprite</span>
+                          <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
+                        </div>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          onChange={e => {
+                            const file = e.target.files?.[0];
+                            if (file) handleSpriteUpload(file);
+                          }}
+                          className="hidden"
+                        />
+                      </label>
+
+                      {/* URL Input Toggle */}
+                      <button
+                        type="button"
+                        onClick={() => setShowSpriteUrl(!showSpriteUrl)}
+                        className="text-xs text-arcane-400 hover:text-arcane-300"
+                      >
+                        {showSpriteUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+                      </button>
+
+                      {/* URL Input */}
+                      {showSpriteUrl && (
+                        <div className="flex gap-2">
+                          <input
+                            type="url"
+                            value={spriteUrlInput}
+                            onChange={(e) => setSpriteUrlInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && spriteUrlInput.trim()) {
+                                setSpriteUrl(spriteUrlInput.trim());
+                                setSpriteUrlInput('');
+                              }
+                            }}
+                            placeholder="https://your-storage.com/sprite.png"
+                            className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (spriteUrlInput.trim()) {
+                                setSpriteUrl(spriteUrlInput.trim());
+                                setSpriteUrlInput('');
+                              }
+                            }}
+                            className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                          >
+                            Set
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   )}
 
                   {/* Hide Behavior Indicators Option */}
@@ -1008,36 +1095,85 @@ export const TileTypeEditor: React.FC = () => {
                       Sprite shown when tile is in "off" state. If not set, the on state sprite will be used (or greyed out).
                     </p>
 
-                    {editing.offStateSprite?.idleImageData ? (
-                      <div className="relative inline-block">
-                        <img
-                          src={editing.offStateSprite.idleImageData}
-                          alt="Off state sprite"
-                          className="w-24 h-24 object-contain bg-stone-600 rounded"
-                        />
-                        <button
-                          onClick={handleOffStateSpriteRemove}
-                          className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
-                        >
-                          ✕
-                        </button>
+                    {(editing.offStateSprite?.idleImageData || editing.offStateSprite?.idleImageUrl) ? (
+                      <div className="space-y-2">
+                        <div className="relative inline-block">
+                          <img
+                            src={editing.offStateSprite.idleImageData || editing.offStateSprite.idleImageUrl}
+                            alt="Off state sprite"
+                            className="w-24 h-24 object-contain bg-stone-600 rounded"
+                          />
+                          <button
+                            onClick={handleOffStateSpriteRemove}
+                            className="absolute top-0 right-0 px-2 py-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                        <p className="text-xs text-stone-400">
+                          {editing.offStateSprite.idleImageUrl && !editing.offStateSprite.idleImageData
+                            ? '✓ Using URL'
+                            : '✓ Image uploaded'}
+                        </p>
                       </div>
                     ) : (
-                      <label className="block cursor-pointer">
-                        <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
-                          <span>+ Upload Off State Sprite</span>
-                          <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
-                        </div>
-                        <input
-                          type="file"
-                          accept="image/*"
-                          onChange={e => {
-                            const file = e.target.files?.[0];
-                            if (file) handleOffStateSpriteUpload(file);
-                          }}
-                          className="hidden"
-                        />
-                      </label>
+                      <div className="space-y-2">
+                        <label className="block cursor-pointer">
+                          <div className="w-full h-24 border-2 border-dashed border-stone-500 rounded flex flex-col items-center justify-center text-stone-400 hover:border-stone-400">
+                            <span>+ Upload Off State Sprite</span>
+                            <span className="text-xs text-stone-500 mt-1">48x48 recommended</span>
+                          </div>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            onChange={e => {
+                              const file = e.target.files?.[0];
+                              if (file) handleOffStateSpriteUpload(file);
+                            }}
+                            className="hidden"
+                          />
+                        </label>
+
+                        {/* URL Input Toggle */}
+                        <button
+                          type="button"
+                          onClick={() => setShowOffSpriteUrl(!showOffSpriteUrl)}
+                          className="text-xs text-arcane-400 hover:text-arcane-300"
+                        >
+                          {showOffSpriteUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+                        </button>
+
+                        {/* URL Input */}
+                        {showOffSpriteUrl && (
+                          <div className="flex gap-2">
+                            <input
+                              type="url"
+                              value={offSpriteUrlInput}
+                              onChange={(e) => setOffSpriteUrlInput(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter' && offSpriteUrlInput.trim()) {
+                                  setOffSpriteUrl(offSpriteUrlInput.trim());
+                                  setOffSpriteUrlInput('');
+                                }
+                              }}
+                              placeholder="https://your-storage.com/sprite.png"
+                              className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (offSpriteUrlInput.trim()) {
+                                  setOffSpriteUrl(offSpriteUrlInput.trim());
+                                  setOffSpriteUrlInput('');
+                                }
+                              }}
+                              className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                            >
+                              Set
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     )}
                   </div>
                 )}

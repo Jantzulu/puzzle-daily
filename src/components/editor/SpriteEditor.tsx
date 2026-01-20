@@ -98,14 +98,18 @@ function drawSpriteSheet(
   displayHeight: number,
   now: number
 ): void {
+  // Resolve image source from data or URL
+  const imageSrc = sheet.imageData || sheet.imageUrl;
+  if (!imageSrc) return;
+
   // Get or create cached image with load notification
-  const img = loadSpriteImage(sheet.imageData);
+  const img = loadSpriteImage(imageSrc);
 
   // Wait for image to load
   if (!img.complete || img.naturalWidth === 0) return;
 
   // Get or initialize animation state
-  const stateKey = sheet.imageData;
+  const stateKey = imageSrc;
   let state = spriteSheetStates.get(stateKey);
   if (!state) {
     state = { currentFrame: 0, lastFrameTime: now };
@@ -169,8 +173,12 @@ function drawSpriteSheetFromStartTime(
   startTime: number,
   now: number = Date.now()
 ): void {
+  // Resolve image source from data or URL
+  const imageSrc = sheet.imageData || sheet.imageUrl;
+  if (!imageSrc) return;
+
   // Get or create cached image with load notification
-  const img = loadSpriteImage(sheet.imageData);
+  const img = loadSpriteImage(imageSrc);
 
   // Wait for image to load
   if (!img.complete || img.naturalWidth === 0) return;
@@ -247,6 +255,23 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
   // Always use directional mode - 'default' direction serves as universal fallback
   const spriteMode = 'directional' as const;
+  // URL input states
+  const [showIdleImageUrl, setShowIdleImageUrl] = useState(false);
+  const [idleImageUrlInput, setIdleImageUrlInput] = useState('');
+  const [showIdleSpriteSheetUrl, setShowIdleSpriteSheetUrl] = useState(false);
+  const [idleSpriteSheetUrlInput, setIdleSpriteSheetUrlInput] = useState('');
+  const [showMovingImageUrl, setShowMovingImageUrl] = useState(false);
+  const [movingImageUrlInput, setMovingImageUrlInput] = useState('');
+  const [showMovingSpriteSheetUrl, setShowMovingSpriteSheetUrl] = useState(false);
+  const [movingSpriteSheetUrlInput, setMovingSpriteSheetUrlInput] = useState('');
+  const [showDeathImageUrl, setShowDeathImageUrl] = useState(false);
+  const [deathImageUrlInput, setDeathImageUrlInput] = useState('');
+  const [showDeathSpriteSheetUrl, setShowDeathSpriteSheetUrl] = useState(false);
+  const [deathSpriteSheetUrlInput, setDeathSpriteSheetUrlInput] = useState('');
+  const [showCastingImageUrl, setShowCastingImageUrl] = useState(false);
+  const [castingImageUrlInput, setCastingImageUrlInput] = useState('');
+  const [showCastingSpriteSheetUrl, setShowCastingSpriteSheetUrl] = useState(false);
+  const [castingSpriteSheetUrlInput, setCastingSpriteSheetUrlInput] = useState('');
 
   // Auto-migrate simple mode sprites to directional mode on first render
   useEffect(() => {
@@ -561,7 +586,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { imageData, idleImageData, ...rest } = currentConfig;
+        const { imageData, idleImageData, idleImageUrl, imageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -571,8 +596,39 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { imageData, idleImageData, ...rest } = sprite;
+      const { imageData, idleImageData, idleImageUrl, imageUrl, ...rest } = sprite;
       onChange({ ...rest, type: 'simple' });
+    }
+  };
+
+  // URL setter for idle image
+  const setIdleImageUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(dirSprites[selectedDirection] || {}),
+            idleImageUrl: url,
+            imageUrl: url, // Backwards compat
+            // Clear base64 data when setting URL
+            idleImageData: undefined,
+            imageData: undefined,
+          },
+        },
+      });
+    } else {
+      onChange({
+        ...sprite,
+        type: 'image',
+        idleImageUrl: url,
+        imageUrl: url, // Backwards compat
+        // Clear base64 data when setting URL
+        idleImageData: undefined,
+        imageData: undefined,
+      });
     }
   };
 
@@ -581,7 +637,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { movingImageData, ...rest } = currentConfig;
+        const { movingImageData, movingImageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -591,8 +647,228 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { movingImageData, ...rest } = sprite;
+      const { movingImageData, movingImageUrl, ...rest } = sprite;
       onChange({ ...rest });
+    }
+  };
+
+  // URL setter for moving image
+  const setMovingImageUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(dirSprites[selectedDirection] || {}),
+            movingImageUrl: url,
+            movingImageData: undefined,
+          },
+        },
+      });
+    } else {
+      onChange({
+        ...sprite,
+        movingImageUrl: url,
+        movingImageData: undefined,
+      });
+    }
+  };
+
+  // URL setter for idle sprite sheet
+  const setIdleSpriteSheetUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      const existingSheet = currentConfig?.idleSpriteSheet;
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(currentConfig || {}),
+            idleSpriteSheet: {
+              imageUrl: url,
+              imageData: undefined,
+              frameCount: existingSheet?.frameCount || 4,
+              frameRate: existingSheet?.frameRate || 10,
+              loop: existingSheet?.loop ?? true,
+            },
+          },
+        },
+      });
+    } else {
+      const existingSheet = sprite.idleSpriteSheet;
+      onChange({
+        ...sprite,
+        idleSpriteSheet: {
+          imageUrl: url,
+          imageData: undefined,
+          frameCount: existingSheet?.frameCount || 4,
+          frameRate: existingSheet?.frameRate || 10,
+          loop: existingSheet?.loop ?? true,
+        },
+      });
+    }
+  };
+
+  // URL setter for moving sprite sheet
+  const setMovingSpriteSheetUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      const existingSheet = currentConfig?.movingSpriteSheet;
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(currentConfig || {}),
+            movingSpriteSheet: {
+              imageUrl: url,
+              imageData: undefined,
+              frameCount: existingSheet?.frameCount || 4,
+              frameRate: existingSheet?.frameRate || 10,
+              loop: existingSheet?.loop ?? true,
+            },
+          },
+        },
+      });
+    } else {
+      const existingSheet = sprite.movingSpriteSheet;
+      onChange({
+        ...sprite,
+        movingSpriteSheet: {
+          imageUrl: url,
+          imageData: undefined,
+          frameCount: existingSheet?.frameCount || 4,
+          frameRate: existingSheet?.frameRate || 10,
+          loop: existingSheet?.loop ?? true,
+        },
+      });
+    }
+  };
+
+  // URL setter for death image
+  const setDeathImageUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(dirSprites[selectedDirection] || {}),
+            deathImageUrl: url,
+            deathImageData: undefined,
+          },
+        },
+      });
+    } else {
+      onChange({
+        ...sprite,
+        deathImageUrl: url,
+        deathImageData: undefined,
+      });
+    }
+  };
+
+  // URL setter for death sprite sheet
+  const setDeathSpriteSheetUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      const existingSheet = currentConfig?.deathSpriteSheet;
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(currentConfig || {}),
+            deathSpriteSheet: {
+              imageUrl: url,
+              imageData: undefined,
+              frameCount: existingSheet?.frameCount || 4,
+              frameRate: existingSheet?.frameRate || 10,
+              loop: existingSheet?.loop ?? false,
+            },
+          },
+        },
+      });
+    } else {
+      const existingSheet = sprite.deathSpriteSheet;
+      onChange({
+        ...sprite,
+        deathSpriteSheet: {
+          imageUrl: url,
+          imageData: undefined,
+          frameCount: existingSheet?.frameCount || 4,
+          frameRate: existingSheet?.frameRate || 10,
+          loop: existingSheet?.loop ?? false,
+        },
+      });
+    }
+  };
+
+  // URL setter for casting image
+  const setCastingImageUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(dirSprites[selectedDirection] || {}),
+            castingImageUrl: url,
+            castingImageData: undefined,
+          },
+        },
+      });
+    } else {
+      onChange({
+        ...sprite,
+        castingImageUrl: url,
+        castingImageData: undefined,
+      });
+    }
+  };
+
+  // URL setter for casting sprite sheet
+  const setCastingSpriteSheetUrl = (url: string) => {
+    if (spriteMode === 'directional') {
+      const dirSprites = sprite.directionalSprites || {};
+      const currentConfig = dirSprites[selectedDirection];
+      const existingSheet = currentConfig?.castingSpriteSheet;
+      onChange({
+        ...sprite,
+        directionalSprites: {
+          ...dirSprites,
+          [selectedDirection]: {
+            ...(currentConfig || {}),
+            castingSpriteSheet: {
+              imageUrl: url,
+              imageData: undefined,
+              frameCount: existingSheet?.frameCount || 4,
+              frameRate: existingSheet?.frameRate || 10,
+              loop: existingSheet?.loop ?? false,
+            },
+          },
+        },
+      });
+    } else {
+      const existingSheet = sprite.castingSpriteSheet;
+      onChange({
+        ...sprite,
+        castingSpriteSheet: {
+          imageUrl: url,
+          imageData: undefined,
+          frameCount: existingSheet?.frameCount || 4,
+          frameRate: existingSheet?.frameRate || 10,
+          loop: existingSheet?.loop ?? false,
+        },
+      });
     }
   };
 
@@ -783,20 +1059,20 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   };
 
   const hasIdleSpriteSheet = spriteMode === 'directional'
-    ? sprite.directionalSprites?.[selectedDirection]?.idleSpriteSheet
-    : sprite.idleSpriteSheet;
+    ? (sprite.directionalSprites?.[selectedDirection]?.idleSpriteSheet?.imageData || sprite.directionalSprites?.[selectedDirection]?.idleSpriteSheet?.imageUrl)
+    : (sprite.idleSpriteSheet?.imageData || sprite.idleSpriteSheet?.imageUrl);
 
   const hasMovingSpriteSheet = spriteMode === 'directional'
-    ? sprite.directionalSprites?.[selectedDirection]?.movingSpriteSheet
-    : sprite.movingSpriteSheet;
+    ? (sprite.directionalSprites?.[selectedDirection]?.movingSpriteSheet?.imageData || sprite.directionalSprites?.[selectedDirection]?.movingSpriteSheet?.imageUrl)
+    : (sprite.movingSpriteSheet?.imageData || sprite.movingSpriteSheet?.imageUrl);
 
   const hasIdleImage = spriteMode === 'directional'
-    ? (sprite.directionalSprites?.[selectedDirection]?.idleImageData || sprite.directionalSprites?.[selectedDirection]?.imageData)
-    : (sprite.idleImageData || sprite.imageData);
+    ? (sprite.directionalSprites?.[selectedDirection]?.idleImageData || sprite.directionalSprites?.[selectedDirection]?.imageData || sprite.directionalSprites?.[selectedDirection]?.idleImageUrl || sprite.directionalSprites?.[selectedDirection]?.imageUrl)
+    : (sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl);
 
   const hasMovingImage = spriteMode === 'directional'
-    ? sprite.directionalSprites?.[selectedDirection]?.movingImageData
-    : sprite.movingImageData;
+    ? (sprite.directionalSprites?.[selectedDirection]?.movingImageData || sprite.directionalSprites?.[selectedDirection]?.movingImageUrl)
+    : (sprite.movingImageData || sprite.movingImageUrl);
 
   // Death sprite handlers
   const handleDeathImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -933,7 +1209,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { deathImageData, ...rest } = currentConfig;
+        const { deathImageData, deathImageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -943,18 +1219,18 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { deathImageData, ...rest } = sprite;
+      const { deathImageData, deathImageUrl, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
 
   const hasDeathSpriteSheet = spriteMode === 'directional'
-    ? sprite.directionalSprites?.[selectedDirection]?.deathSpriteSheet
-    : sprite.deathSpriteSheet;
+    ? (sprite.directionalSprites?.[selectedDirection]?.deathSpriteSheet?.imageData || sprite.directionalSprites?.[selectedDirection]?.deathSpriteSheet?.imageUrl)
+    : (sprite.deathSpriteSheet?.imageData || sprite.deathSpriteSheet?.imageUrl);
 
   const hasDeathImage = spriteMode === 'directional'
-    ? sprite.directionalSprites?.[selectedDirection]?.deathImageData
-    : sprite.deathImageData;
+    ? (sprite.directionalSprites?.[selectedDirection]?.deathImageData || sprite.directionalSprites?.[selectedDirection]?.deathImageUrl)
+    : (sprite.deathImageData || sprite.deathImageUrl);
 
   // Casting sprite handlers
   const handleCastingImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1091,7 +1367,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { castingImageData, ...rest } = currentConfig;
+        const { castingImageData, castingImageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -1101,18 +1377,18 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { castingImageData, ...rest } = sprite;
+      const { castingImageData, castingImageUrl, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
 
   const hasCastingSpriteSheet = spriteMode === 'directional'
-    ? sprite.directionalSprites?.[selectedDirection]?.castingSpriteSheet
-    : sprite.castingSpriteSheet;
+    ? (sprite.directionalSprites?.[selectedDirection]?.castingSpriteSheet?.imageData || sprite.directionalSprites?.[selectedDirection]?.castingSpriteSheet?.imageUrl)
+    : (sprite.castingSpriteSheet?.imageData || sprite.castingSpriteSheet?.imageUrl);
 
   const hasCastingImage = spriteMode === 'directional'
-    ? sprite.directionalSprites?.[selectedDirection]?.castingImageData
-    : sprite.castingImageData;
+    ? (sprite.directionalSprites?.[selectedDirection]?.castingImageData || sprite.directionalSprites?.[selectedDirection]?.castingImageUrl)
+    : (sprite.castingImageData || sprite.castingImageUrl);
 
   return (
     <div className="space-y-4">
@@ -1205,20 +1481,61 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               <div className="flex gap-2 items-start">
                 <input
                   type="file"
-                  accept="image/png,image/jpg,image/jpeg"
+                  accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
                   onChange={handleIdleImageUpload}
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasIdleImage && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={sprite.idleImageData || sprite.imageData}
+                      src={sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl}
                       alt="Static image"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showIdleImageUrl ? '▼ Hide URL input' : '▶ Or use image URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showIdleImageUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={idleImageUrlInput}
+                    onChange={(e) => setIdleImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && idleImageUrlInput.trim()) {
+                        setIdleImageUrl(idleImageUrlInput.trim());
+                        setIdleImageUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/sprite.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (idleImageUrlInput.trim()) {
+                        setIdleImageUrl(idleImageUrlInput.trim());
+                        setIdleImageUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasIdleImage && (
                 <button
                   onClick={clearIdleImage}
@@ -1228,7 +1545,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </button>
               )}
               <p className="text-xs text-stone-400">
-                {hasIdleImage ? '✓ Static image uploaded' : 'No static image - using shapes/colors'}
+                {hasIdleImage
+                  ? (sprite.idleImageUrl || sprite.imageUrl) && !(sprite.idleImageData || sprite.imageData)
+                    ? '✓ Using URL'
+                    : '✓ Static image uploaded'
+                  : 'No static image - using shapes/colors'}
               </p>
             </div>
           </div>
@@ -1535,13 +1856,54 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 {hasIdleSpriteSheet && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.idleSpriteSheet?.imageData}
+                      src={currentConfig.idleSpriteSheet?.imageData || currentConfig.idleSpriteSheet?.imageUrl}
                       alt="Idle sprite sheet"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowIdleSpriteSheetUrl(!showIdleSpriteSheetUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showIdleSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showIdleSpriteSheetUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={idleSpriteSheetUrlInput}
+                    onChange={(e) => setIdleSpriteSheetUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && idleSpriteSheetUrlInput.trim()) {
+                        setIdleSpriteSheetUrl(idleSpriteSheetUrlInput.trim());
+                        setIdleSpriteSheetUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/spritesheet.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (idleSpriteSheetUrlInput.trim()) {
+                        setIdleSpriteSheetUrl(idleSpriteSheetUrlInput.trim());
+                        setIdleSpriteSheetUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasIdleSpriteSheet && (
                 <>
                   <div className="grid grid-cols-2 gap-2">
@@ -1586,7 +1948,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </>
               )}
               <p className="text-xs text-stone-400">
-                {hasIdleSpriteSheet ? '✓ Idle sprite sheet configured' : 'No sprite sheet - use static image below'}
+                {hasIdleSpriteSheet
+                  ? currentConfig.idleSpriteSheet?.imageUrl && !currentConfig.idleSpriteSheet?.imageData
+                    ? '✓ Using URL'
+                    : '✓ Idle sprite sheet configured'
+                  : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-purple-400">
                 💡 Sprite sheets should be horizontal strips with frames of equal width
@@ -1603,20 +1969,61 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               <div className="flex gap-2 items-start">
                 <input
                   type="file"
-                  accept="image/png,image/jpg,image/jpeg"
+                  accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
                   onChange={handleIdleImageUpload}
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasIdleImage && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.idleImageData || currentConfig.imageData}
+                      src={currentConfig.idleImageData || currentConfig.imageData || currentConfig.idleImageUrl || currentConfig.imageUrl}
                       alt="Idle static"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showIdleImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showIdleImageUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={idleImageUrlInput}
+                    onChange={(e) => setIdleImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && idleImageUrlInput.trim()) {
+                        setIdleImageUrl(idleImageUrlInput.trim());
+                        setIdleImageUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/sprite.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (idleImageUrlInput.trim()) {
+                        setIdleImageUrl(idleImageUrlInput.trim());
+                        setIdleImageUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasIdleImage && (
                 <button
                   onClick={clearIdleImage}
@@ -1626,7 +2033,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </button>
               )}
               <p className="text-xs text-stone-400">
-                {hasIdleImage ? '✓ Idle image uploaded' : 'No idle image - using shapes/colors'}
+                {hasIdleImage
+                  ? (currentConfig.idleImageUrl || currentConfig.imageUrl) && !(currentConfig.idleImageData || currentConfig.imageData)
+                    ? '✓ Using URL'
+                    : '✓ Idle image uploaded'
+                  : 'No idle image - using shapes/colors'}
               </p>
             </div>
           </div>
@@ -1647,13 +2058,54 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 {hasMovingSpriteSheet && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-purple-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.movingSpriteSheet?.imageData}
+                      src={currentConfig.movingSpriteSheet?.imageData || currentConfig.movingSpriteSheet?.imageUrl}
                       alt="Moving sprite sheet"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowMovingSpriteSheetUrl(!showMovingSpriteSheetUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showMovingSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showMovingSpriteSheetUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={movingSpriteSheetUrlInput}
+                    onChange={(e) => setMovingSpriteSheetUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && movingSpriteSheetUrlInput.trim()) {
+                        setMovingSpriteSheetUrl(movingSpriteSheetUrlInput.trim());
+                        setMovingSpriteSheetUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/spritesheet.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (movingSpriteSheetUrlInput.trim()) {
+                        setMovingSpriteSheetUrl(movingSpriteSheetUrlInput.trim());
+                        setMovingSpriteSheetUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasMovingSpriteSheet && (
                 <>
                   <div className="grid grid-cols-2 gap-2">
@@ -1698,7 +2150,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </>
               )}
               <p className="text-xs text-stone-400">
-                {hasMovingSpriteSheet ? '✓ Moving sprite sheet configured' : 'No sprite sheet - use static image below'}
+                {hasMovingSpriteSheet
+                  ? currentConfig.movingSpriteSheet?.imageUrl && !currentConfig.movingSpriteSheet?.imageData
+                    ? '✓ Using URL'
+                    : '✓ Moving sprite sheet configured'
+                  : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-purple-400">
                 💡 Sprite sheets should be horizontal strips with frames of equal width
@@ -1715,20 +2171,61 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               <div className="flex gap-2 items-start">
                 <input
                   type="file"
-                  accept="image/png,image/jpg,image/jpeg"
+                  accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
                   onChange={handleMovingImageUpload}
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasMovingImage && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.movingImageData}
+                      src={currentConfig.movingImageData || currentConfig.movingImageUrl}
                       alt="Moving static"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowMovingImageUrl(!showMovingImageUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showMovingImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showMovingImageUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={movingImageUrlInput}
+                    onChange={(e) => setMovingImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && movingImageUrlInput.trim()) {
+                        setMovingImageUrl(movingImageUrlInput.trim());
+                        setMovingImageUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/sprite.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (movingImageUrlInput.trim()) {
+                        setMovingImageUrl(movingImageUrlInput.trim());
+                        setMovingImageUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasMovingImage && (
                 <button
                   onClick={clearMovingImage}
@@ -1738,7 +2235,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </button>
               )}
               <p className="text-xs text-stone-400">
-                {hasMovingImage ? '✓ Moving image uploaded' : 'No moving image - will use idle image'}
+                {hasMovingImage
+                  ? currentConfig.movingImageUrl && !currentConfig.movingImageData
+                    ? '✓ Using URL'
+                    : '✓ Moving image uploaded'
+                  : 'No moving image - will use idle image'}
               </p>
             </div>
           </div>
@@ -1767,13 +2268,54 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 {hasDeathSpriteSheet && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.deathSpriteSheet?.imageData}
+                      src={currentConfig.deathSpriteSheet?.imageData || currentConfig.deathSpriteSheet?.imageUrl}
                       alt="Death sprite sheet"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowDeathSpriteSheetUrl(!showDeathSpriteSheetUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showDeathSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showDeathSpriteSheetUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={deathSpriteSheetUrlInput}
+                    onChange={(e) => setDeathSpriteSheetUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && deathSpriteSheetUrlInput.trim()) {
+                        setDeathSpriteSheetUrl(deathSpriteSheetUrlInput.trim());
+                        setDeathSpriteSheetUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/spritesheet.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (deathSpriteSheetUrlInput.trim()) {
+                        setDeathSpriteSheetUrl(deathSpriteSheetUrlInput.trim());
+                        setDeathSpriteSheetUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasDeathSpriteSheet && (
                 <>
                   <div className="grid grid-cols-2 gap-2">
@@ -1818,7 +2360,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </>
               )}
               <p className="text-xs text-stone-400">
-                {hasDeathSpriteSheet ? '✓ Death sprite sheet configured' : 'No sprite sheet - use static image below'}
+                {hasDeathSpriteSheet
+                  ? currentConfig.deathSpriteSheet?.imageUrl && !currentConfig.deathSpriteSheet?.imageData
+                    ? '✓ Using URL'
+                    : '✓ Death sprite sheet configured'
+                  : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-red-400">
                 💀 Death animation plays when character/enemy reaches 0 HP
@@ -1835,20 +2381,61 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               <div className="flex gap-2 items-start">
                 <input
                   type="file"
-                  accept="image/png,image/jpg,image/jpeg"
+                  accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
                   onChange={handleDeathImageUpload}
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasDeathImage && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.deathImageData}
+                      src={currentConfig.deathImageData || currentConfig.deathImageUrl}
                       alt="Death static"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowDeathImageUrl(!showDeathImageUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showDeathImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showDeathImageUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={deathImageUrlInput}
+                    onChange={(e) => setDeathImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && deathImageUrlInput.trim()) {
+                        setDeathImageUrl(deathImageUrlInput.trim());
+                        setDeathImageUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/sprite.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (deathImageUrlInput.trim()) {
+                        setDeathImageUrl(deathImageUrlInput.trim());
+                        setDeathImageUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasDeathImage && (
                 <button
                   onClick={clearDeathImage}
@@ -1858,7 +2445,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </button>
               )}
               <p className="text-xs text-stone-400">
-                {hasDeathImage ? '✓ Death image uploaded' : 'No death image - will show X overlay'}
+                {hasDeathImage
+                  ? currentConfig.deathImageUrl && !currentConfig.deathImageData
+                    ? '✓ Using URL'
+                    : '✓ Death image uploaded'
+                  : 'No death image - will show X overlay'}
               </p>
             </div>
           </div>
@@ -1887,13 +2478,54 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 {hasCastingSpriteSheet && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-yellow-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.castingSpriteSheet?.imageData}
+                      src={currentConfig.castingSpriteSheet?.imageData || currentConfig.castingSpriteSheet?.imageUrl}
                       alt="Casting sprite sheet"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowCastingSpriteSheetUrl(!showCastingSpriteSheetUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showCastingSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showCastingSpriteSheetUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={castingSpriteSheetUrlInput}
+                    onChange={(e) => setCastingSpriteSheetUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && castingSpriteSheetUrlInput.trim()) {
+                        setCastingSpriteSheetUrl(castingSpriteSheetUrlInput.trim());
+                        setCastingSpriteSheetUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/spritesheet.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (castingSpriteSheetUrlInput.trim()) {
+                        setCastingSpriteSheetUrl(castingSpriteSheetUrlInput.trim());
+                        setCastingSpriteSheetUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasCastingSpriteSheet && (
                 <>
                   <div className="grid grid-cols-2 gap-2">
@@ -1938,7 +2570,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </>
               )}
               <p className="text-xs text-stone-400">
-                {hasCastingSpriteSheet ? '✓ Casting sprite sheet configured' : 'No sprite sheet - use static image below'}
+                {hasCastingSpriteSheet
+                  ? currentConfig.castingSpriteSheet?.imageUrl && !currentConfig.castingSpriteSheet?.imageData
+                    ? '✓ Using URL'
+                    : '✓ Casting sprite sheet configured'
+                  : 'No sprite sheet - use static image below'}
               </p>
               <p className="text-xs text-yellow-400">
                 ✨ Casting animation plays when character/enemy casts spell while stationary
@@ -1955,20 +2591,61 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               <div className="flex gap-2 items-start">
                 <input
                   type="file"
-                  accept="image/png,image/jpg,image/jpeg"
+                  accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
                   onChange={handleCastingImageUpload}
                   className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
                 />
                 {hasCastingImage && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
                     <img
-                      src={currentConfig.castingImageData}
+                      src={currentConfig.castingImageData || currentConfig.castingImageUrl}
                       alt="Casting static"
                       className="max-w-full max-h-full object-contain"
                     />
                   </div>
                 )}
               </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowCastingImageUrl(!showCastingImageUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showCastingImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showCastingImageUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={castingImageUrlInput}
+                    onChange={(e) => setCastingImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && castingImageUrlInput.trim()) {
+                        setCastingImageUrl(castingImageUrlInput.trim());
+                        setCastingImageUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/sprite.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (castingImageUrlInput.trim()) {
+                        setCastingImageUrl(castingImageUrlInput.trim());
+                        setCastingImageUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
               {hasCastingImage && (
                 <button
                   onClick={clearCastingImage}
@@ -1978,7 +2655,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </button>
               )}
               <p className="text-xs text-stone-400">
-                {hasCastingImage ? '✓ Casting image uploaded' : 'No casting image - will use idle sprite'}
+                {hasCastingImage
+                  ? currentConfig.castingImageUrl && !currentConfig.castingImageData
+                    ? '✓ Using URL'
+                    : '✓ Casting image uploaded'
+                  : 'No casting image - will use idle sprite'}
               </p>
             </div>
           </div>
@@ -2102,15 +2783,15 @@ function drawSpriteConfig(
     return;
   }
 
-  // Check for uploaded image (PNG/GIF)
+  // Check for uploaded image (PNG/GIF) or URL
   // Priority: moving > casting > idle
   let imageToUse: string | undefined;
-  if (isMoving && config.movingImageData) {
-    imageToUse = config.movingImageData;
-  } else if (isCasting && !isMoving && config.castingImageData) {
-    imageToUse = config.castingImageData;
+  if (isMoving && (config.movingImageData || config.movingImageUrl)) {
+    imageToUse = config.movingImageData || config.movingImageUrl;
+  } else if (isCasting && !isMoving && (config.castingImageData || config.castingImageUrl)) {
+    imageToUse = config.castingImageData || config.castingImageUrl;
   } else {
-    imageToUse = config.idleImageData || config.imageData;
+    imageToUse = config.idleImageData || config.imageData || config.idleImageUrl || config.imageUrl;
   }
 
   if (imageToUse) {

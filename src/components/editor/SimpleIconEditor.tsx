@@ -1,4 +1,4 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState } from 'react';
 import type { SpriteReference } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
 
@@ -100,12 +100,18 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // URL input state
+  const [showImageUrl, setShowImageUrl] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState('');
+
   // Extract current values from sprite
   const spriteData = sprite.spriteData as CustomSprite | undefined;
   const currentShape = (spriteData?.shape || 'circle') as ShapeOption;
   const currentColor = spriteData?.primaryColor || '#ffffff';
   const currentSecondaryColor = spriteData?.secondaryColor || '#000000';
   const currentImageData = spriteData?.imageData || spriteData?.idleImageData;
+  const currentImageUrl = spriteData?.imageUrl || spriteData?.idleImageUrl;
+  const currentImage = currentImageData || currentImageUrl;
   const currentScale = spriteData?.size || 0.8;
 
   // Draw preview
@@ -125,8 +131,8 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
     const centerY = canvas.height / 2;
     const radius = canvas.width * 0.35;
 
-    if (currentImageData) {
-      // Draw uploaded image
+    if (currentImage) {
+      // Draw uploaded image or URL
       const img = new Image();
       img.onload = () => {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -143,12 +149,12 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
           imgSize
         );
       };
-      img.src = currentImageData;
+      img.src = currentImage;
     } else {
       // Draw shape
       drawShape(ctx, currentShape, centerX, centerY, radius, currentColor, currentSecondaryColor);
     }
-  }, [currentShape, currentColor, currentSecondaryColor, currentImageData, currentScale]);
+  }, [currentShape, currentColor, currentSecondaryColor, currentImage, currentScale]);
 
   // Update sprite data helper
   const updateSpriteData = (updates: Partial<CustomSprite>) => {
@@ -248,6 +254,19 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
       type: 'simple',
       imageData: undefined,
       idleImageData: undefined,
+      imageUrl: undefined,
+      idleImageUrl: undefined,
+    });
+  };
+
+  // URL setter for image
+  const setImageUrl = (url: string) => {
+    updateSpriteData({
+      type: 'image',
+      imageUrl: url,
+      idleImageUrl: url,
+      imageData: undefined,
+      idleImageData: undefined,
     });
   };
 
@@ -267,33 +286,82 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
       {/* Image upload */}
       <div>
         <label className="block text-sm font-medium mb-2">Custom Image</label>
-        <div className="flex gap-2">
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/*"
-            onChange={handleImageUpload}
-            className="hidden"
-          />
-          <button
-            onClick={() => fileInputRef.current?.click()}
-            className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
-          >
-            Upload Image
-          </button>
-          {currentImageData && (
+        <div className="space-y-2">
+          <div className="flex gap-2">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleImageUpload}
+              className="hidden"
+            />
             <button
-              onClick={clearImage}
-              className="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-700"
+              onClick={() => fileInputRef.current?.click()}
+              className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
             >
-              Clear
+              Upload Image
             </button>
+            {currentImage && (
+              <button
+                onClick={clearImage}
+                className="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-700"
+              >
+                Clear
+              </button>
+            )}
+          </div>
+
+          {/* URL Input Toggle */}
+          <button
+            type="button"
+            onClick={() => setShowImageUrl(!showImageUrl)}
+            className="text-xs text-arcane-400 hover:text-arcane-300"
+          >
+            {showImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+          </button>
+
+          {/* URL Input */}
+          {showImageUrl && (
+            <div className="flex gap-2">
+              <input
+                type="url"
+                value={imageUrlInput}
+                onChange={(e) => setImageUrlInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && imageUrlInput.trim()) {
+                    setImageUrl(imageUrlInput.trim());
+                    setImageUrlInput('');
+                  }
+                }}
+                placeholder="https://your-storage.com/icon.png"
+                className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (imageUrlInput.trim()) {
+                    setImageUrl(imageUrlInput.trim());
+                    setImageUrlInput('');
+                  }
+                }}
+                className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+              >
+                Set
+              </button>
+            </div>
+          )}
+
+          {/* Status indicator */}
+          {currentImage && (
+            <p className="text-xs text-stone-400">
+              {currentImageUrl && !currentImageData ? '✓ Using URL' : '✓ Image uploaded'}
+            </p>
           )}
         </div>
       </div>
 
       {/* Scale slider (only shown when image is uploaded) */}
-      {currentImageData && (
+      {currentImage && (
         <div>
           <label className="block text-sm font-medium mb-2">
             Scale: {Math.round(currentScale * 100)}%
@@ -315,7 +383,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
       )}
 
       {/* Shape selector (only shown if no image) */}
-      {!currentImageData && (
+      {!currentImage && (
         <>
           <div>
             <label className="block text-sm font-medium mb-2">Shape</label>

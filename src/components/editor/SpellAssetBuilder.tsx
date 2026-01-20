@@ -76,13 +76,19 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
   // Determine current mode based on sprite data - only used for initial state
   const getCurrentMode = (): SpellSpriteMode => {
     if (spriteData.spriteSheet) return 'spritesheet';
-    if (spriteData.idleImageData) return 'image';
+    if (spriteData.idleImageData || spriteData.idleImageUrl) return 'image';
     if (spriteData.type === 'spritesheet') return 'spritesheet';
     if (spriteData.type === 'image') return 'image';
     return 'shape';
   };
 
   const [mode, setMode] = useState<SpellSpriteMode>(getCurrentMode);
+
+  // URL input states
+  const [showImageUrl, setShowImageUrl] = useState(false);
+  const [imageUrlInput, setImageUrlInput] = useState(spriteData.idleImageUrl || '');
+  const [showSpriteSheetUrl, setShowSpriteSheetUrl] = useState(false);
+  const [spriteSheetUrlInput, setSpriteSheetUrlInput] = useState(spriteData.spriteSheet?.imageUrl || '');
 
   // Only sync mode from external data when the spriteRef ID changes (editing different spell)
   // This prevents the jitter when mode is changed but no file uploaded yet
@@ -113,10 +119,31 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           ...spriteData,
           type: 'image',
           idleImageData: imageData,
+          idleImageUrl: undefined, // Clear URL when uploading file
         }
       });
+      setImageUrlInput('');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImageUrlSubmit = () => {
+    const trimmed = imageUrlInput.trim();
+    if (!trimmed) return;
+    try {
+      new URL(trimmed);
+      onChange({
+        type: 'inline',
+        spriteData: {
+          ...spriteData,
+          type: 'image',
+          idleImageUrl: trimmed,
+          idleImageData: undefined, // Clear data when using URL
+        }
+      });
+    } catch {
+      alert('Please enter a valid URL');
+    }
   };
 
   const handleSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -128,6 +155,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
       const imageData = event.target?.result as string;
       const spriteSheetConfig: SpriteSheetConfig = {
         imageData,
+        imageUrl: undefined, // Clear URL when uploading file
         frameCount: 4,
         frameRate: 10,
         loop: true,
@@ -140,8 +168,36 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
           spriteSheet: spriteSheetConfig,
         }
       });
+      setSpriteSheetUrlInput('');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleSpriteSheetUrlSubmit = () => {
+    const trimmed = spriteSheetUrlInput.trim();
+    if (!trimmed) return;
+    try {
+      new URL(trimmed);
+      const existingSheet = spriteData.spriteSheet || {};
+      const spriteSheetConfig: SpriteSheetConfig = {
+        ...existingSheet,
+        imageUrl: trimmed,
+        imageData: undefined, // Clear data when using URL
+        frameCount: existingSheet.frameCount || 4,
+        frameRate: existingSheet.frameRate || 10,
+        loop: existingSheet.loop !== false,
+      };
+      onChange({
+        type: 'inline',
+        spriteData: {
+          ...spriteData,
+          type: 'spritesheet',
+          spriteSheet: spriteSheetConfig,
+        }
+      });
+    } catch {
+      alert('Please enter a valid URL');
+    }
   };
 
   const handleSpriteSheetConfigChange = (field: keyof SpriteSheetConfig, value: number | boolean) => {
@@ -253,19 +309,54 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               onChange={handleImageUpload}
               className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-parchment-100 ${colors.fileHover}`}
             />
-            {spriteData.idleImageData && (
+
+            {/* URL Input Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowImageUrl(!showImageUrl)}
+              className="mt-2 text-xs text-arcane-400 hover:text-arcane-300"
+            >
+              {showImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+            </button>
+
+            {showImageUrl && (
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="url"
+                  value={imageUrlInput}
+                  onChange={(e) => setImageUrlInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleImageUrlSubmit()}
+                  placeholder="https://your-storage.com/sprite.png"
+                  className="flex-1 px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100 placeholder:text-stone-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleImageUrlSubmit}
+                  className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
+                >
+                  Set
+                </button>
+              </div>
+            )}
+
+            {(spriteData.idleImageData || spriteData.idleImageUrl) && (
               <div className="mt-2 p-2 dungeon-panel rounded flex items-center justify-center">
                 <img
-                  src={spriteData.idleImageData}
+                  src={spriteData.idleImageData || spriteData.idleImageUrl}
                   alt="Preview"
                   className="max-h-16 pixelated"
                 />
               </div>
             )}
+            {(spriteData.idleImageData || spriteData.idleImageUrl) && (
+              <p className="text-xs text-stone-400 mt-1">
+                {spriteData.idleImageUrl && !spriteData.idleImageData ? '✓ Using URL' : '✓ Image uploaded'}
+              </p>
+            )}
           </div>
 
           {/* Directional Preview */}
-          {showDirectionalPreview && spriteData.idleImageData && (
+          {showDirectionalPreview && (spriteData.idleImageData || spriteData.idleImageUrl) && (
             <div>
               <label className="block text-xs text-stone-400 mb-2">Directional Preview</label>
               <div className="grid grid-cols-4 gap-2 dungeon-panel p-3 rounded">
@@ -283,7 +374,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                     <span className="text-xs text-stone-400 font-bold">{label}</span>
                     <div className="w-12 h-12 flex items-center justify-center bg-stone-700 rounded">
                       <img
-                        src={spriteData.idleImageData}
+                        src={spriteData.idleImageData || spriteData.idleImageUrl}
                         alt={`${label} direction`}
                         className="max-w-10 max-h-10 pixelated"
                         style={{
@@ -315,18 +406,50 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               onChange={handleSpriteSheetUpload}
               className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-parchment-100 ${colors.fileHover}`}
             />
+
+            {/* URL Input Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowSpriteSheetUrl(!showSpriteSheetUrl)}
+              className="mt-2 text-xs text-arcane-400 hover:text-arcane-300"
+            >
+              {showSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+            </button>
+
+            {showSpriteSheetUrl && (
+              <div className="flex gap-2 mt-2">
+                <input
+                  type="url"
+                  value={spriteSheetUrlInput}
+                  onChange={(e) => setSpriteSheetUrlInput(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit()}
+                  placeholder="https://your-storage.com/spritesheet.png"
+                  className="flex-1 px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100 placeholder:text-stone-500"
+                />
+                <button
+                  type="button"
+                  onClick={handleSpriteSheetUrlSubmit}
+                  className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
+                >
+                  Set
+                </button>
+              </div>
+            )}
           </div>
 
-          {spriteData.spriteSheet && (
+          {spriteData.spriteSheet && (spriteData.spriteSheet.imageData || spriteData.spriteSheet.imageUrl) && (
             <>
               {/* Sprite Sheet Preview */}
               <div className="p-2 dungeon-panel rounded">
                 <img
-                  src={spriteData.spriteSheet.imageData}
+                  src={spriteData.spriteSheet.imageData || spriteData.spriteSheet.imageUrl}
                   alt="Sprite sheet preview"
                   className="max-h-16 pixelated mx-auto"
                 />
               </div>
+              <p className="text-xs text-stone-400">
+                {spriteData.spriteSheet.imageUrl && !spriteData.spriteSheet.imageData ? '✓ Using URL' : '✓ Image uploaded'}
+              </p>
 
               {/* Sprite Sheet Configuration */}
               <div className="grid grid-cols-2 gap-3">
@@ -483,7 +606,11 @@ const SpriteSheetPreview: React.FC<SpriteSheetPreviewProps> = ({
 
       ctx.restore();
     };
-    img.src = spriteSheet.imageData;
+    // Resolve image source - prefer data, fall back to URL
+    const imageSrc = spriteSheet.imageData || spriteSheet.imageUrl;
+    if (imageSrc) {
+      img.src = imageSrc;
+    }
   }, [spriteSheet, currentFrame, rotation, mirror, size]);
 
   return (
@@ -514,6 +641,12 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
 
+  // Thumbnail URL state
+  const [showThumbnailUrl, setShowThumbnailUrl] = useState(false);
+  const [thumbnailUrlInput, setThumbnailUrlInput] = useState(
+    editedSpell.thumbnailIcon?.startsWith('http') ? editedSpell.thumbnailIcon : ''
+  );
+
   const handleThumbnailUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -527,8 +660,20 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
     reader.onload = (event) => {
       const thumbnailIcon = event.target?.result as string;
       setEditedSpell({ ...editedSpell, thumbnailIcon });
+      setThumbnailUrlInput('');
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleThumbnailUrlSubmit = () => {
+    const trimmed = thumbnailUrlInput.trim();
+    if (!trimmed) return;
+    try {
+      new URL(trimmed);
+      setEditedSpell({ ...editedSpell, thumbnailIcon: trimmed });
+    } catch {
+      alert('Please enter a valid URL');
+    }
   };
 
   const toggleDirection = (dir: Direction) => {
@@ -683,7 +828,10 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       className="w-12 h-12 object-contain bg-stone-900 rounded border border-stone-600"
                     />
                     <button
-                      onClick={() => setEditedSpell({ ...editedSpell, thumbnailIcon: '' })}
+                      onClick={() => {
+                        setEditedSpell({ ...editedSpell, thumbnailIcon: '' });
+                        setThumbnailUrlInput('');
+                      }}
                       className="text-red-400 hover:text-red-300 text-sm"
                     >
                       Remove
@@ -691,7 +839,43 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   </div>
                 )}
               </div>
-              <p className="text-xs text-stone-400 mt-1">Upload a small icon to represent this spell in the library</p>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowThumbnailUrl(!showThumbnailUrl)}
+                className="mt-2 text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showThumbnailUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {showThumbnailUrl && (
+                <div className="flex gap-2 mt-2">
+                  <input
+                    type="url"
+                    value={thumbnailUrlInput}
+                    onChange={(e) => setThumbnailUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleThumbnailUrlSubmit()}
+                    placeholder="https://your-storage.com/icon.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleThumbnailUrlSubmit}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
+              <p className="text-xs text-stone-400 mt-1">
+                {editedSpell.thumbnailIcon?.startsWith('http')
+                  ? '✓ Using URL'
+                  : editedSpell.thumbnailIcon
+                    ? '✓ Image uploaded'
+                    : 'Upload a small icon to represent this spell in the library'}
+              </p>
             </div>
           </div>
 

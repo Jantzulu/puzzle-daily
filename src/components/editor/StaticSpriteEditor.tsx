@@ -46,6 +46,16 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
   const [previewMode, setPreviewMode] = useState<'default' | 'triggered'>('default');
   const animationRef = useRef<number>();
 
+  // URL input states
+  const [showDefaultImageUrl, setShowDefaultImageUrl] = useState(false);
+  const [defaultImageUrlInput, setDefaultImageUrlInput] = useState(sprite.idleImageUrl || sprite.imageUrl || '');
+  const [showDefaultSpriteSheetUrl, setShowDefaultSpriteSheetUrl] = useState(false);
+  const [defaultSpriteSheetUrlInput, setDefaultSpriteSheetUrlInput] = useState(sprite.idleSpriteSheet?.imageUrl || '');
+  const [showTriggeredImageUrl, setShowTriggeredImageUrl] = useState(false);
+  const [triggeredImageUrlInput, setTriggeredImageUrlInput] = useState(sprite.triggeredImageUrl || '');
+  const [showTriggeredSpriteSheetUrl, setShowTriggeredSpriteSheetUrl] = useState(false);
+  const [triggeredSpriteSheetUrlInput, setTriggeredSpriteSheetUrlInput] = useState(sprite.triggeredSpriteSheet?.imageUrl || '');
+
   // Draw preview with animation support
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -64,12 +74,15 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       const showTriggered = previewMode === 'triggered';
       const spriteSheet = showTriggered ? sprite.triggeredSpriteSheet : sprite.idleSpriteSheet;
       const imageData = showTriggered
-        ? (sprite.triggeredImageData || sprite.idleImageData || sprite.imageData)
-        : (sprite.idleImageData || sprite.imageData);
+        ? (sprite.triggeredImageData || sprite.triggeredImageUrl || sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl)
+        : (sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl);
+
+      // Resolve sprite sheet image source
+      const spriteSheetSrc = spriteSheet?.imageData || spriteSheet?.imageUrl;
 
       // Draw preview background (color and/or image) using asset type for static sprites
       drawPreviewBackground(ctx, canvas.width, canvas.height, () => {
-        if (spriteSheet?.imageData) {
+        if (spriteSheetSrc) {
           // Animated spritesheet
           const img = new Image();
           img.onload = () => {
@@ -106,7 +119,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
               );
             }, ASSET_PREVIEW_TYPE);
           };
-          img.src = spriteSheet.imageData;
+          img.src = spriteSheetSrc;
           animationRef.current = requestAnimationFrame(render);
         } else if (imageData) {
           // Static image
@@ -166,17 +179,48 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         onChange({
           ...sprite,
           triggeredImageData: imageData,
+          triggeredImageUrl: undefined, // Clear URL when uploading file
         });
+        setTriggeredImageUrlInput('');
       } else {
         onChange({
           ...sprite,
           type: 'image',
           idleImageData: imageData,
+          idleImageUrl: undefined, // Clear URL when uploading file
           imageData: imageData,
+          imageUrl: undefined,
         });
+        setDefaultImageUrlInput('');
       }
     };
     reader.readAsDataURL(file);
+  };
+
+  const handleImageUrlSubmit = (isTriggered: boolean = false) => {
+    const trimmed = isTriggered ? triggeredImageUrlInput.trim() : defaultImageUrlInput.trim();
+    if (!trimmed) return;
+    try {
+      new URL(trimmed);
+      if (isTriggered) {
+        onChange({
+          ...sprite,
+          triggeredImageUrl: trimmed,
+          triggeredImageData: undefined, // Clear data when using URL
+        });
+      } else {
+        onChange({
+          ...sprite,
+          type: 'image',
+          idleImageUrl: trimmed,
+          idleImageData: undefined, // Clear data when using URL
+          imageUrl: trimmed,
+          imageData: undefined,
+        });
+      }
+    } catch {
+      alert('Please enter a valid URL');
+    }
   };
 
   const handleSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>, isTriggered: boolean = false) => {
@@ -193,9 +237,42 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       const imageData = event.target?.result as string;
       const spriteSheetConfig: SpriteSheetConfig = {
         imageData,
+        imageUrl: undefined, // Clear URL when uploading file
         frameCount: 4,
         frameRate: 8,
         loop: true,
+      };
+
+      if (isTriggered) {
+        onChange({
+          ...sprite,
+          triggeredSpriteSheet: spriteSheetConfig,
+        });
+        setTriggeredSpriteSheetUrlInput('');
+      } else {
+        onChange({
+          ...sprite,
+          idleSpriteSheet: spriteSheetConfig,
+        });
+        setDefaultSpriteSheetUrlInput('');
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSpriteSheetUrlSubmit = (isTriggered: boolean = false) => {
+    const trimmed = isTriggered ? triggeredSpriteSheetUrlInput.trim() : defaultSpriteSheetUrlInput.trim();
+    if (!trimmed) return;
+    try {
+      new URL(trimmed);
+      const existingSheet = isTriggered ? sprite.triggeredSpriteSheet : sprite.idleSpriteSheet;
+      const spriteSheetConfig: SpriteSheetConfig = {
+        ...(existingSheet || {}),
+        imageUrl: trimmed,
+        imageData: undefined, // Clear data when using URL
+        frameCount: existingSheet?.frameCount || 4,
+        frameRate: existingSheet?.frameRate || 8,
+        loop: existingSheet?.loop !== false,
       };
 
       if (isTriggered) {
@@ -209,8 +286,9 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           idleSpriteSheet: spriteSheetConfig,
         });
       }
-    };
-    reader.readAsDataURL(file);
+    } catch {
+      alert('Please enter a valid URL');
+    }
   };
 
   const clearImage = (isTriggered: boolean = false) => {
@@ -218,14 +296,19 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
       onChange({
         ...sprite,
         triggeredImageData: undefined,
+        triggeredImageUrl: undefined,
       });
+      setTriggeredImageUrlInput('');
     } else {
       onChange({
         ...sprite,
         type: 'simple',
         idleImageData: undefined,
+        idleImageUrl: undefined,
         imageData: undefined,
+        imageUrl: undefined,
       });
+      setDefaultImageUrlInput('');
     }
   };
 
@@ -235,11 +318,13 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         ...sprite,
         triggeredSpriteSheet: undefined,
       });
+      setTriggeredSpriteSheetUrlInput('');
     } else {
       onChange({
         ...sprite,
         idleSpriteSheet: undefined,
       });
+      setDefaultSpriteSheetUrlInput('');
     }
   };
 
@@ -272,10 +357,10 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
     onChange({ ...sprite, triggerType: triggerType as CustomSprite['triggerType'] });
   };
 
-  const hasDefaultImage = sprite.idleImageData || sprite.imageData;
-  const hasDefaultSpriteSheet = sprite.idleSpriteSheet?.imageData;
-  const hasTriggeredImage = sprite.triggeredImageData;
-  const hasTriggeredSpriteSheet = sprite.triggeredSpriteSheet?.imageData;
+  const hasDefaultImage = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
+  const hasDefaultSpriteSheet = sprite.idleSpriteSheet?.imageData || sprite.idleSpriteSheet?.imageUrl;
+  const hasTriggeredImage = sprite.triggeredImageData || sprite.triggeredImageUrl;
+  const hasTriggeredSpriteSheet = sprite.triggeredSpriteSheet?.imageData || sprite.triggeredSpriteSheet?.imageUrl;
   const hasTriggeredSprite = hasTriggeredImage || hasTriggeredSpriteSheet;
 
   return (
@@ -314,27 +399,61 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         <div className="mb-3">
           <label className="text-xs text-stone-400 block mb-1">Static Image</label>
           {hasDefaultImage ? (
-            <div className="flex items-center gap-2">
-              <span className="text-sm text-green-400">Image set</span>
-              <button
-                onClick={() => clearImage(false)}
-                className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-              >
-                Remove
-              </button>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-green-400">
+                  {(sprite.idleImageUrl || sprite.imageUrl) && !(sprite.idleImageData || sprite.imageData)
+                    ? '✓ Using URL'
+                    : '✓ Image set'}
+                </span>
+                <button
+                  onClick={() => clearImage(false)}
+                  className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  Remove
+                </button>
+              </div>
             </div>
           ) : (
-            <label className="block cursor-pointer">
-              <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
-                Upload Image
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleImageUpload(e, false)}
-                className="hidden"
-              />
-            </label>
+            <>
+              <label className="block cursor-pointer">
+                <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
+                  Upload Image
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleImageUpload(e, false)}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowDefaultImageUrl(!showDefaultImageUrl)}
+                className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showDefaultImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+              {showDefaultImageUrl && (
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="url"
+                    value={defaultImageUrlInput}
+                    onChange={(e) => setDefaultImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleImageUrlSubmit(false)}
+                    placeholder="https://..."
+                    className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleImageUrlSubmit(false)}
+                    className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -344,7 +463,11 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
           {hasDefaultSpriteSheet ? (
             <div className="space-y-2">
               <div className="flex items-center gap-2">
-                <span className="text-sm text-green-400">Spritesheet set</span>
+                <span className="text-sm text-green-400">
+                  {sprite.idleSpriteSheet?.imageUrl && !sprite.idleSpriteSheet?.imageData
+                    ? '✓ Using URL'
+                    : '✓ Spritesheet set'}
+                </span>
                 <button
                   onClick={() => clearSpriteSheet(false)}
                   className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
@@ -378,17 +501,45 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
               </div>
             </div>
           ) : (
-            <label className="block cursor-pointer">
-              <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
-                Upload Spritesheet
-              </div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => handleSpriteSheetUpload(e, false)}
-                className="hidden"
-              />
-            </label>
+            <>
+              <label className="block cursor-pointer">
+                <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
+                  Upload Spritesheet
+                </div>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => handleSpriteSheetUpload(e, false)}
+                  className="hidden"
+                />
+              </label>
+              <button
+                type="button"
+                onClick={() => setShowDefaultSpriteSheetUrl(!showDefaultSpriteSheetUrl)}
+                className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showDefaultSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+              {showDefaultSpriteSheetUrl && (
+                <div className="flex gap-2 mt-1">
+                  <input
+                    type="url"
+                    value={defaultSpriteSheetUrlInput}
+                    onChange={(e) => setDefaultSpriteSheetUrlInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit(false)}
+                    placeholder="https://..."
+                    className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => handleSpriteSheetUrlSubmit(false)}
+                    className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+            </>
           )}
         </div>
         <p className="text-xs text-stone-500 mt-2">
@@ -423,27 +574,61 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
             <div className="mb-3">
               <label className="text-xs text-stone-400 block mb-1">Triggered Static Image</label>
               {hasTriggeredImage ? (
-                <div className="flex items-center gap-2">
-                  <span className="text-sm text-green-400">Image set</span>
-                  <button
-                    onClick={() => clearImage(true)}
-                    className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                  >
-                    Remove
-                  </button>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-green-400">
+                      {sprite.triggeredImageUrl && !sprite.triggeredImageData
+                        ? '✓ Using URL'
+                        : '✓ Image set'}
+                    </span>
+                    <button
+                      onClick={() => clearImage(true)}
+                      className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                    >
+                      Remove
+                    </button>
+                  </div>
                 </div>
               ) : (
-                <label className="block cursor-pointer">
-                  <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
-                    Upload Image
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleImageUpload(e, true)}
-                    className="hidden"
-                  />
-                </label>
+                <>
+                  <label className="block cursor-pointer">
+                    <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
+                      Upload Image
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleImageUpload(e, true)}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTriggeredImageUrl(!showTriggeredImageUrl)}
+                    className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
+                  >
+                    {showTriggeredImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+                  </button>
+                  {showTriggeredImageUrl && (
+                    <div className="flex gap-2 mt-1">
+                      <input
+                        type="url"
+                        value={triggeredImageUrlInput}
+                        onChange={(e) => setTriggeredImageUrlInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleImageUrlSubmit(true)}
+                        placeholder="https://..."
+                        className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleImageUrlSubmit(true)}
+                        className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
+                      >
+                        Set
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
@@ -453,7 +638,11 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
               {hasTriggeredSpriteSheet ? (
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-green-400">Spritesheet set</span>
+                    <span className="text-sm text-green-400">
+                      {sprite.triggeredSpriteSheet?.imageUrl && !sprite.triggeredSpriteSheet?.imageData
+                        ? '✓ Using URL'
+                        : '✓ Spritesheet set'}
+                    </span>
                     <button
                       onClick={() => clearSpriteSheet(true)}
                       className="px-2 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
@@ -487,17 +676,45 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                   </div>
                 </div>
               ) : (
-                <label className="block cursor-pointer">
-                  <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
-                    Upload Spritesheet
-                  </div>
-                  <input
-                    type="file"
-                    accept="image/*"
-                    onChange={(e) => handleSpriteSheetUpload(e, true)}
-                    className="hidden"
-                  />
-                </label>
+                <>
+                  <label className="block cursor-pointer">
+                    <div className="px-3 py-2 bg-stone-600 rounded text-sm text-center hover:bg-stone-500">
+                      Upload Spritesheet
+                    </div>
+                    <input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => handleSpriteSheetUpload(e, true)}
+                      className="hidden"
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setShowTriggeredSpriteSheetUrl(!showTriggeredSpriteSheetUrl)}
+                    className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
+                  >
+                    {showTriggeredSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+                  </button>
+                  {showTriggeredSpriteSheetUrl && (
+                    <div className="flex gap-2 mt-1">
+                      <input
+                        type="url"
+                        value={triggeredSpriteSheetUrlInput}
+                        onChange={(e) => setTriggeredSpriteSheetUrlInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit(true)}
+                        placeholder="https://..."
+                        className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => handleSpriteSheetUrlSubmit(true)}
+                        className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
+                      >
+                        Set
+                      </button>
+                    </div>
+                  )}
+                </>
               )}
             </div>
           </>

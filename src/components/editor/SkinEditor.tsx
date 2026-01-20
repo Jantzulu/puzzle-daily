@@ -57,6 +57,10 @@ export const SkinEditor: React.FC = () => {
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
 
+  // URL input states - track which slot is showing URL input and the current input value
+  const [showUrlInput, setShowUrlInput] = useState<string | null>(null);
+  const [urlInputValue, setUrlInputValue] = useState('');
+
   // Refresh custom tile types when component mounts or skin changes
   useEffect(() => {
     setCustomTileTypes(getCustomTileTypes());
@@ -144,6 +148,20 @@ export const SkinEditor: React.FC = () => {
     });
   };
 
+  // URL setter for border sprites (URLs work directly in img src)
+  const setBorderSpriteUrl = (key: keyof CustomBorderSprites, url: string) => {
+    if (!editingSkin) return;
+    setEditingSkin({
+      ...editingSkin,
+      borderSprites: {
+        ...editingSkin.borderSprites,
+        [key]: url,
+      },
+    });
+    setShowUrlInput(null);
+    setUrlInputValue('');
+  };
+
   const handleTileSpriteUpload = async (key: keyof TileSprites, file: File) => {
     if (!editingSkin) return;
     const base64 = await fileToBase64(file);
@@ -164,6 +182,20 @@ export const SkinEditor: React.FC = () => {
       ...editingSkin,
       tileSprites: newTileSprites,
     });
+  };
+
+  // URL setter for tile sprites
+  const setTileSpriteUrl = (key: keyof TileSprites, url: string) => {
+    if (!editingSkin) return;
+    setEditingSkin({
+      ...editingSkin,
+      tileSprites: {
+        ...editingSkin.tileSprites,
+        [key]: url,
+      },
+    });
+    setShowUrlInput(null);
+    setUrlInputValue('');
   };
 
   const handleCustomTileSpriteUpload = async (tileTypeId: string, file: File, spriteType: 'on' | 'off' = 'on') => {
@@ -239,6 +271,45 @@ export const SkinEditor: React.FC = () => {
         customTileSprites: newCustomTileSprites,
       });
     }
+  };
+
+  // URL setter for custom tile sprites
+  const setCustomTileSpriteUrl = (tileTypeId: string, url: string, spriteType: 'on' | 'off' = 'on') => {
+    if (!editingSkin) return;
+
+    // Check if this tile type has cadence enabled
+    const tileType = customTileTypes.find(t => t.id === tileTypeId);
+    const hasCadence = tileType?.cadence?.enabled;
+
+    if (hasCadence) {
+      // Use object format for cadenced tiles
+      const existing = editingSkin.customTileSprites?.[tileTypeId];
+      const existingObj = typeof existing === 'string'
+        ? { onSprite: existing }
+        : (existing || {});
+
+      setEditingSkin({
+        ...editingSkin,
+        customTileSprites: {
+          ...editingSkin.customTileSprites,
+          [tileTypeId]: {
+            ...existingObj,
+            [spriteType === 'on' ? 'onSprite' : 'offSprite']: url,
+          },
+        },
+      });
+    } else {
+      // Use simple string format for non-cadenced tiles
+      setEditingSkin({
+        ...editingSkin,
+        customTileSprites: {
+          ...editingSkin.customTileSprites,
+          [tileTypeId]: url,
+        },
+      });
+    }
+    setShowUrlInput(null);
+    setUrlInputValue('');
   };
 
   const handleFolderChange = (skinId: string, folderId: string | undefined) => {
@@ -450,42 +521,90 @@ export const SkinEditor: React.FC = () => {
                         <div className="text-xs text-stone-500 mb-2">{size}</div>
 
                         {editingSkin.borderSprites[key] ? (
-                          <div className="relative">
-                            <img
-                              src={editingSkin.borderSprites[key]}
-                              alt={label}
-                              className="w-full h-12 object-contain bg-stone-600 rounded"
-                            />
-                            {!isBuiltIn && (
-                              <button
-                                onClick={() => handleBorderSpriteRemove(key)}
-                                className="absolute top-0 right-0 px-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
-                              >
-                                ✕
-                              </button>
+                          <div className="space-y-1">
+                            <div className="relative">
+                              <img
+                                src={editingSkin.borderSprites[key]}
+                                alt={label}
+                                className="w-full h-12 object-contain bg-stone-600 rounded"
+                              />
+                              {!isBuiltIn && (
+                                <button
+                                  onClick={() => handleBorderSpriteRemove(key)}
+                                  className="absolute top-0 right-0 px-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                            {editingSkin.borderSprites[key]?.startsWith('http') && (
+                              <p className="text-[10px] text-stone-400">✓ URL</p>
                             )}
                           </div>
                         ) : (
-                          <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                            <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
-                              isBuiltIn
-                                ? 'border-stone-600 text-stone-600'
-                                : 'border-stone-500 text-stone-400 hover:border-stone-400'
-                            }`}>
-                              {isBuiltIn ? 'N/A' : '+ Upload'}
-                            </div>
+                          <div className="space-y-1">
+                            <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                              <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
+                                isBuiltIn
+                                  ? 'border-stone-600 text-stone-600'
+                                  : 'border-stone-500 text-stone-400 hover:border-stone-400'
+                              }`}>
+                                {isBuiltIn ? 'N/A' : '+ Upload'}
+                              </div>
+                              {!isBuiltIn && (
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleBorderSpriteUpload(key, file);
+                                  }}
+                                />
+                              )}
+                            </label>
                             {!isBuiltIn && (
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleBorderSpriteUpload(key, file);
-                                }}
-                              />
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowUrlInput(showUrlInput === `border_${key}` ? null : `border_${key}`);
+                                    setUrlInputValue('');
+                                  }}
+                                  className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                >
+                                  {showUrlInput === `border_${key}` ? '▼ Hide' : '▶ URL'}
+                                </button>
+                                {showUrlInput === `border_${key}` && (
+                                  <div className="flex gap-1">
+                                    <input
+                                      type="url"
+                                      value={urlInputValue}
+                                      onChange={(e) => setUrlInputValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && urlInputValue.trim()) {
+                                          setBorderSpriteUrl(key, urlInputValue.trim());
+                                        }
+                                      }}
+                                      placeholder="https://..."
+                                      className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (urlInputValue.trim()) {
+                                          setBorderSpriteUrl(key, urlInputValue.trim());
+                                        }
+                                      }}
+                                      className="px-1 py-0.5 bg-arcane-700 hover:bg-arcane-600 rounded text-[10px]"
+                                    >
+                                      Set
+                                    </button>
+                                  </div>
+                                )}
+                              </>
                             )}
-                          </label>
+                          </div>
                         )}
                       </div>
                     ))}
@@ -505,42 +624,90 @@ export const SkinEditor: React.FC = () => {
                         <div className="text-xs text-stone-400 mb-2">{description}</div>
 
                         {editingSkin.tileSprites?.[key] ? (
-                          <div className="relative">
-                            <img
-                              src={editingSkin.tileSprites[key]}
-                              alt={label}
-                              className="w-full h-12 object-contain bg-stone-600 rounded"
-                            />
-                            {!isBuiltIn && (
-                              <button
-                                onClick={() => handleTileSpriteRemove(key)}
-                                className="absolute top-0 right-0 px-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
-                              >
-                                ✕
-                              </button>
+                          <div className="space-y-1">
+                            <div className="relative">
+                              <img
+                                src={editingSkin.tileSprites[key]}
+                                alt={label}
+                                className="w-full h-12 object-contain bg-stone-600 rounded"
+                              />
+                              {!isBuiltIn && (
+                                <button
+                                  onClick={() => handleTileSpriteRemove(key)}
+                                  className="absolute top-0 right-0 px-1 bg-blood-700 rounded text-xs hover:bg-blood-600"
+                                >
+                                  ✕
+                                </button>
+                              )}
+                            </div>
+                            {editingSkin.tileSprites[key]?.startsWith('http') && (
+                              <p className="text-[10px] text-stone-400">✓ URL</p>
                             )}
                           </div>
                         ) : (
-                          <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
-                            <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
-                              isBuiltIn
-                                ? 'border-stone-600 text-stone-600'
-                                : 'border-stone-500 text-stone-400 hover:border-stone-400'
-                            }`}>
-                              {isBuiltIn ? 'Default' : '+ Upload'}
-                            </div>
+                          <div className="space-y-1">
+                            <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'}`}>
+                              <div className={`w-full h-12 border-2 border-dashed rounded flex items-center justify-center text-xs ${
+                                isBuiltIn
+                                  ? 'border-stone-600 text-stone-600'
+                                  : 'border-stone-500 text-stone-400 hover:border-stone-400'
+                              }`}>
+                                {isBuiltIn ? 'Default' : '+ Upload'}
+                              </div>
+                              {!isBuiltIn && (
+                                <input
+                                  type="file"
+                                  accept="image/*"
+                                  className="hidden"
+                                  onChange={(e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) handleTileSpriteUpload(key, file);
+                                  }}
+                                />
+                              )}
+                            </label>
                             {!isBuiltIn && (
-                              <input
-                                type="file"
-                                accept="image/*"
-                                className="hidden"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) handleTileSpriteUpload(key, file);
-                                }}
-                              />
+                              <>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowUrlInput(showUrlInput === `tile_${key}` ? null : `tile_${key}`);
+                                    setUrlInputValue('');
+                                  }}
+                                  className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                >
+                                  {showUrlInput === `tile_${key}` ? '▼ Hide' : '▶ URL'}
+                                </button>
+                                {showUrlInput === `tile_${key}` && (
+                                  <div className="flex gap-1">
+                                    <input
+                                      type="url"
+                                      value={urlInputValue}
+                                      onChange={(e) => setUrlInputValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && urlInputValue.trim()) {
+                                          setTileSpriteUrl(key, urlInputValue.trim());
+                                        }
+                                      }}
+                                      placeholder="https://..."
+                                      className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (urlInputValue.trim()) {
+                                          setTileSpriteUrl(key, urlInputValue.trim());
+                                        }
+                                      }}
+                                      className="px-1 py-0.5 bg-arcane-700 hover:bg-arcane-600 rounded text-[10px]"
+                                    >
+                                      Set
+                                    </button>
+                                  </div>
+                                )}
+                              </>
                             )}
-                          </label>
+                          </div>
                         )}
                       </div>
                     ))}
