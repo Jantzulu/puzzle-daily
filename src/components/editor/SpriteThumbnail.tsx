@@ -1,8 +1,9 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { CustomSprite } from '../../utils/assetStorage';
 import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetStorage';
 import { drawSprite } from './SpriteEditor';
 import { drawPreviewBackground, type PreviewType } from '../../utils/themeAssets';
+import { loadImage, isImageReady, subscribeToImageLoads } from '../../utils/imageLoader';
 
 interface SpriteThumbnailProps {
   sprite?: CustomSprite;
@@ -14,6 +15,15 @@ interface SpriteThumbnailProps {
 
 export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [, setRenderTrigger] = useState(0);
+
+  useEffect(() => {
+    // Subscribe to image load events to re-render when images finish loading
+    const unsubscribe = subscribeToImageLoads(() => {
+      setRenderTrigger(prev => prev + 1);
+    });
+    return unsubscribe;
+  }, []);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -39,7 +49,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
     let animationFrameId: number | null = null;
 
-    const renderThumbnail = async () => {
+    const renderThumbnail = () => {
       // Clear canvas first
       ctx.clearRect(0, 0, size, size);
 
@@ -71,9 +81,9 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       drawPreviewBackground(ctx, size, size, () => {
         // Priority: sprite sheet > static image > shapes
         if (spriteSheetSrc) {
-          // Render animated sprite sheet
-          const img = new Image();
-          img.onload = () => {
+          // Use centralized image loader with caching
+          const img = loadImage(spriteSheetSrc);
+          if (img && isImageReady(img)) {
             let frameIndex = 0;
             const frameCount = spriteSheet.frameCount || 4;
             const frameRate = spriteSheet.frameRate || 10;
@@ -123,13 +133,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             };
 
             animate();
-          };
-          img.onerror = () => {};
-          img.src = spriteSheetSrc;
+          }
+          // If image not ready yet, the subscription will trigger re-render when it loads
         } else if (imageSrc) {
-          // Render static image
-          const img = new Image();
-          img.onload = () => {
+          // Use centralized image loader with caching
+          const img = loadImage(imageSrc);
+          if (img && isImageReady(img)) {
             // Redraw background then sprite
             drawPreviewBackground(ctx, size, size, () => {
               const maxSize = (sprite.size || 0.6) * size;
@@ -145,9 +154,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
               ctx.drawImage(img, size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight);
             }, previewType);
-          };
-          img.onerror = () => {};
-          img.src = imageSrc;
+          }
+          // If image not ready yet, the subscription will trigger re-render when it loads
         } else {
           // Draw sprite using shapes
           drawSprite(ctx, sprite, size / 2, size / 2, size);

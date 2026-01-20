@@ -15,6 +15,7 @@
 
 import { supabase } from '../lib/supabase';
 import { safeLocalStorageSet } from './assetStorage';
+import { loadImage, isImageReady, subscribeToImageLoads } from './imageLoader';
 
 const STORAGE_KEY = 'theme_assets';
 const STORAGE_BUCKET = 'theme-assets';
@@ -932,18 +933,17 @@ export function drawPreviewBackground(
     return;
   }
 
-  // Load the background image
-  const img = new Image();
-  img.onload = () => {
+  // Use centralized image loader with caching
+  const img = loadImage(bgImageUrl);
+  if (img && isImageReady(img)) {
     previewBgImageCache[cacheKey] = { url: bgImageUrl, img };
     drawBgImage(ctx, img, width, height, tiled);
     onComplete?.();
-  };
-  img.onerror = () => {
-    // Failed to load, just use the color background
+  } else {
+    // Image not ready yet - just call onComplete with color background
+    // The caller should subscribe to image load events to re-render when ready
     onComplete?.();
-  };
-  img.src = bgImageUrl;
+  }
 }
 
 /**

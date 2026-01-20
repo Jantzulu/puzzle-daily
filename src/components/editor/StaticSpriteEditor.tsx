@@ -1,6 +1,7 @@
 import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, SpriteSheetConfig } from '../../utils/assetStorage';
 import { drawPreviewBackground, type PreviewType } from '../../utils/themeAssets';
+import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 // Preview type for static assets (tiles, items, enchantments)
 const ASSET_PREVIEW_TYPE: PreviewType = 'asset';
@@ -45,6 +46,16 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [previewMode, setPreviewMode] = useState<'default' | 'triggered'>('default');
   const animationRef = useRef<number>();
+  // Trigger re-render when background images load
+  const [, setRenderTrigger] = useState(0);
+
+  // Subscribe to image load events to re-render when background images finish loading
+  useEffect(() => {
+    const unsubscribe = subscribeToImageLoads(() => {
+      setRenderTrigger(prev => prev + 1);
+    });
+    return unsubscribe;
+  }, []);
 
   // URL input states
   const [showDefaultImageUrl, setShowDefaultImageUrl] = useState(false);

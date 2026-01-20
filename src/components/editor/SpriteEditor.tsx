@@ -2,6 +2,7 @@ import React, { useRef, useEffect, useState } from 'react';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
 import { drawPreviewBackground, getPreviewBgColor, type PreviewType } from '../../utils/themeAssets';
+import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 // Preview type for character/enemy sprites (entities)
 const ENTITY_PREVIEW_TYPE: PreviewType = 'entity';
@@ -255,6 +256,16 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
   // Always use directional mode - 'default' direction serves as universal fallback
   const spriteMode = 'directional' as const;
+  // Trigger re-render when background images load
+  const [, setRenderTrigger] = useState(0);
+
+  // Subscribe to image load events to re-render when background images finish loading
+  useEffect(() => {
+    const unsubscribe = subscribeToImageLoads(() => {
+      setRenderTrigger(prev => prev + 1);
+    });
+    return unsubscribe;
+  }, []);
   // URL input states
   const [showIdleImageUrl, setShowIdleImageUrl] = useState(false);
   const [idleImageUrlInput, setIdleImageUrlInput] = useState('');
