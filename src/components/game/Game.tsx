@@ -877,7 +877,7 @@ export const Game: React.FC = () => {
             {/* Control Panel - below puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && testMode === 'none' && (
               <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
-                <div className="flex items-center justify-between">
+                <div className="relative flex items-center justify-between">
                   {/* Left: Lives */}
                   <div className="flex items-center gap-1">
                     <span className="text-stone-400 text-xs">Lives:</span>
@@ -902,11 +902,12 @@ export const Game: React.FC = () => {
                                 src={customIcon}
                                 alt={isFilled ? 'Life remaining' : 'Life lost'}
                                 title={isFilled ? 'Life remaining' : 'Life lost'}
-                                className="object-contain pixelated"
+                                className="object-contain"
                                 style={{
                                   width: '18px',
                                   height: '20px',
-                                  opacity: isFilled ? 1 : 0.4
+                                  opacity: isFilled ? 1 : 0.4,
+                                  imageRendering: 'pixelated'
                                 }}
                               />
                             );
@@ -927,8 +928,8 @@ export const Game: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Center: Play button OR Turn counter */}
-                  <div className="flex-1 flex justify-center">
+                  {/* Center: Play button OR Turn counter - absolutely positioned for true centering */}
+                  <div className="absolute left-1/2 -translate-x-1/2">
                     {gameState.gameStatus === 'setup' ? (
                       <button
                         onClick={handlePlay}
@@ -985,7 +986,7 @@ export const Game: React.FC = () => {
                     {gameState.gameStatus === 'setup' ? (
                       gameState.puzzle.maxTurns && (
                         <div className="flex items-center gap-1">
-                          <span className="text-stone-400 text-xs">Max:</span>
+                          <span className="text-stone-400 text-xs">Max Turns:</span>
                           <span className="text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                         </div>
                       )
