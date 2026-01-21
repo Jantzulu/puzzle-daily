@@ -125,6 +125,10 @@ export interface ThemeAssets {
   actionButtonTestEnemiesBorder?: string; // Test Enemies button border color
   actionButtonTestEnemiesText?: string; // Test Enemies button text color
   actionButtonTestEnemiesShape?: string; // Test Enemies button shape
+  actionButtonConcedeBg?: string; // Concede button background color
+  actionButtonConcedeBorder?: string; // Concede button border color
+  actionButtonConcedeText?: string; // Concede button text color
+  actionButtonConcedeShape?: string; // Concede button shape
 
   // Preview/thumbnail backgrounds
   // Entity previews (heroes, enemies) - typically shown on tile backgrounds
@@ -233,6 +237,10 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   actionButtonTestEnemiesBorder: { label: 'Test Enemies Border', description: 'Border color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
   actionButtonTestEnemiesText: { label: 'Test Enemies Text', description: 'Text color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
   actionButtonTestEnemiesShape: { label: 'Test Enemies Shape', description: 'Shape of the Test Enemies button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
+  actionButtonConcedeBg: { label: 'Concede Background', description: 'Background color for the Concede button', category: 'actionButtons', inputType: 'color' },
+  actionButtonConcedeBorder: { label: 'Concede Border', description: 'Border color for the Concede button', category: 'actionButtons', inputType: 'color' },
+  actionButtonConcedeText: { label: 'Concede Text', description: 'Text color for the Concede button', category: 'actionButtons', inputType: 'color' },
+  actionButtonConcedeShape: { label: 'Concede Shape', description: 'Shape of the Concede button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
   // Entity preview backgrounds (heroes, enemies)
   colorBgPreviewEntity: { label: 'Entity Preview Color', description: 'Background color for hero/enemy previews', category: 'colors', inputType: 'color' },
   bgPreviewEntity: { label: 'Entity Preview Image', description: 'Background image for hero/enemy previews (e.g., a floor tile)', category: 'backgrounds', inputType: 'image' },

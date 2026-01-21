@@ -997,7 +997,17 @@ export const Game: React.FC = () => {
                     ) : (
                       <button
                         onClick={() => setShowConcedeConfirm(true)}
-                        className="dungeon-btn-danger text-xs px-2 py-1"
+                        className={`text-xs px-2 py-1 ${
+                          themeAssets.actionButtonConcedeBg ? '' : 'dungeon-btn-danger'
+                        } ${
+                          themeAssets.actionButtonConcedeShape === 'rounded' ? 'rounded-lg' :
+                          themeAssets.actionButtonConcedeShape === 'pill' ? 'rounded-full' : ''
+                        }`}
+                        style={{
+                          ...(themeAssets.actionButtonConcedeBg && { backgroundColor: themeAssets.actionButtonConcedeBg }),
+                          ...(themeAssets.actionButtonConcedeBorder && { borderColor: themeAssets.actionButtonConcedeBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                          ...(themeAssets.actionButtonConcedeText && { color: themeAssets.actionButtonConcedeText }),
+                        }}
                         title="Give up this attempt and lose a life"
                       >
                         Concede
