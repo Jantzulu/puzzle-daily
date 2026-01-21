@@ -896,6 +896,7 @@ export const Game: React.FC = () => {
                           const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
 
                           if (customIcon) {
+                            // Use native 1x size (14x16) for crisp pixel art - no scaling artifacts
                             hearts.push(
                               <img
                                 key={i}
@@ -904,8 +905,8 @@ export const Game: React.FC = () => {
                                 title={isFilled ? 'Life remaining' : 'Life lost'}
                                 className="object-contain"
                                 style={{
-                                  width: '18px',
-                                  height: '20px',
+                                  width: '14px',
+                                  height: '16px',
                                   opacity: isFilled ? 1 : 0.4,
                                   imageRendering: 'pixelated'
                                 }}
@@ -933,7 +934,7 @@ export const Game: React.FC = () => {
                     {gameState.gameStatus === 'setup' ? (
                       <button
                         onClick={handlePlay}
-                        className={`px-6 md:px-8 py-1.5 md:py-2 font-bold text-sm md:text-base transition-all ${
+                        className={`px-5 md:px-6 py-1 font-bold text-sm transition-all ${
                           themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
                         } ${
                           themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
