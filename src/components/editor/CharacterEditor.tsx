@@ -969,6 +969,111 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                   </label>
                 )}
               </div>
+
+              {/* Direction Override - only show when not auto-targeting */}
+              {!action.autoTargetNearestEnemy && !action.autoTargetNearestCharacter && (
+                <div className="dungeon-panel p-2 rounded space-y-2">
+                  <div className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 text-xs">
+                      <input
+                        type="checkbox"
+                        checked={action.useRelativeOverride !== undefined || action.directionOverride !== undefined || action.relativeDirectionOverride !== undefined}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            onUpdate({
+                              ...action,
+                              useRelativeOverride: true,
+                              relativeDirectionOverride: ['forward'],
+                              directionOverride: undefined
+                            });
+                          } else {
+                            onUpdate({
+                              ...action,
+                              useRelativeOverride: undefined,
+                              relativeDirectionOverride: undefined,
+                              directionOverride: undefined
+                            });
+                          }
+                        }}
+                        className="w-3 h-3"
+                      />
+                      Override Direction
+                    </label>
+                  </div>
+
+                  {(action.useRelativeOverride !== undefined || action.directionOverride !== undefined || action.relativeDirectionOverride !== undefined) && (
+                    <>
+                      <div className="flex items-center gap-2">
+                        <label className="text-xs text-stone-400">Mode:</label>
+                        <select
+                          value={action.useRelativeOverride ? 'relative' : 'absolute'}
+                          onChange={(e) => {
+                            const isRelative = e.target.value === 'relative';
+                            onUpdate({
+                              ...action,
+                              useRelativeOverride: isRelative,
+                              relativeDirectionOverride: isRelative ? ['forward'] : undefined,
+                              directionOverride: isRelative ? undefined : [Direction.NORTH]
+                            });
+                          }}
+                          className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+                        >
+                          <option value="relative">Relative (to facing)</option>
+                          <option value="absolute">Absolute (fixed)</option>
+                        </select>
+                      </div>
+
+                      {action.useRelativeOverride ? (
+                        <div className="grid grid-cols-4 gap-1">
+                          {(['forward', 'forward_left', 'forward_right', 'left', 'right', 'backward_left', 'backward_right', 'backward'] as RelativeDirection[]).map(dir => (
+                            <label key={dir} className="flex items-center gap-1 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={(action.relativeDirectionOverride || []).includes(dir)}
+                                onChange={(e) => {
+                                  const current = action.relativeDirectionOverride || [];
+                                  const updated = e.target.checked
+                                    ? [...current, dir]
+                                    : current.filter(d => d !== dir);
+                                  onUpdate({
+                                    ...action,
+                                    relativeDirectionOverride: updated.length > 0 ? updated : ['forward']
+                                  });
+                                }}
+                                className="w-3 h-3"
+                              />
+                              {dir.replace(/_/g, ' ')}
+                            </label>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-1">
+                          {Object.values(Direction).map(dir => (
+                            <label key={dir} className="flex items-center gap-1 text-xs">
+                              <input
+                                type="checkbox"
+                                checked={(action.directionOverride || []).includes(dir)}
+                                onChange={(e) => {
+                                  const current = action.directionOverride || [];
+                                  const updated = e.target.checked
+                                    ? [...current, dir]
+                                    : current.filter(d => d !== dir);
+                                  onUpdate({
+                                    ...action,
+                                    directionOverride: updated.length > 0 ? updated : [Direction.NORTH]
+                                  });
+                                }}
+                                className="w-3 h-3"
+                              />
+                              {dir}
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              )}
             </>
           )}
         </div>
