@@ -2669,7 +2669,7 @@ function drawDirectionIndicator(
   direction: Direction,
   isBoss: boolean = false
 ) {
-  const arrowSize = 4; // Small arrow
+  const arrowSize = 3; // Small arrow
   const barWidth = 30;
   const barHeight = 5;
   const bossIconSize = 7;
