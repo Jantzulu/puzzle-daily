@@ -1319,6 +1319,7 @@ function executeSpell(
   // Check for auto-targeting (enemies targeting characters OR characters targeting enemies)
   if (action.autoTargetNearestCharacter) {
     // Used by enemies to target characters
+    console.log('[SPELL DEBUG] Caster position:', character.x, character.y, 'characterId:', character.characterId);
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
     const nearestCharacters = findNearestCharacters(character, gameState, maxTargets, targetMode);
