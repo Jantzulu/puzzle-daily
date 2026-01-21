@@ -2270,7 +2270,7 @@ function drawHealthBar(
   now: number = Date.now(),
   isBoss: boolean = false
 ) {
-  const barWidth = 32; // Fixed total width of the health bar (including border)
+  const barWidth = 30; // Fixed total width of the health bar (including border)
   const barHeight = 5; // Total height including 1px border on each side (3px inner + 2px border)
   const innerHeight = 3; // Height of the colored bar inside the border
 
@@ -2669,8 +2669,8 @@ function drawDirectionIndicator(
   direction: Direction,
   isBoss: boolean = false
 ) {
-  const arrowSize = 5; // Small arrow
-  const barWidth = 32;
+  const arrowSize = 4; // Small arrow
+  const barWidth = 30;
   const barHeight = 5;
   const bossIconSize = 7;
   const bossIconGap = 2;
