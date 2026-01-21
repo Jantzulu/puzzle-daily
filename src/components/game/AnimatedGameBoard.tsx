@@ -2138,15 +2138,15 @@ function drawEnemy(
   }
 
   if (!enemy.dead) {
-    // Only draw direction arrow if enemy has movement actions in their behavior
-    if (enemyData && enemyHasMovementActions(enemyData.behavior)) {
-      drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing || Direction.SOUTH);
-    }
-
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
     drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.statusEffects, now, isBoss);
+
+    // Draw direction indicator next to health bar if enemy has movement actions
+    if (enemyData && enemyHasMovementActions(enemyData.behavior)) {
+      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss);
+    }
 
     // Draw status effect icons above health bar
     drawStatusEffectIcons(ctx, px, py, enemy.statusEffects);
@@ -2647,76 +2647,72 @@ function drawCharacter(
   }
 
   if (!character.dead) {
-    // Only draw direction arrow if character has movement actions in their behavior
-    if (charData && hasMovementActions(charData.behavior || [])) {
-      drawDirectionArrow(ctx, px + TILE_SIZE / 2, py + TILE_SIZE / 2, facing);
-    }
-
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
     drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.statusEffects, now);
+
+    // Draw direction indicator next to health bar if character has movement actions
+    if (charData && hasMovementActions(charData.behavior || [])) {
+      drawDirectionIndicator(ctx, px, py, facing, false);
+    }
 
     // Draw status effect icons above health bar
     drawStatusEffectIcons(ctx, px, py, character.statusEffects);
   }
 }
 
-function drawDirectionArrow(
+// Draw direction indicator next to health bar (small arrow showing movement direction)
+function drawDirectionIndicator(
   ctx: CanvasRenderingContext2D,
-  cx: number,
-  cy: number,
-  direction: Direction
+  px: number,
+  py: number,
+  direction: Direction,
+  isBoss: boolean = false
 ) {
-  const arrowSize = 8;
-  const diagonalOffset = arrowSize * 0.7; // For diagonal arrows
-  ctx.fillStyle = 'white';
+  const arrowSize = 5; // Small arrow
+  const barWidth = 32;
+  const barHeight = 5;
+  const bossIconSize = 7;
+  const bossIconGap = 2;
+
+  // Calculate position to the right of the health bar
+  const totalBarWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
+  const barStartX = px + (TILE_SIZE - totalBarWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
+  const barEndX = barStartX + barWidth;
+
+  // Position arrow to the right of health bar, vertically centered with it
+  const indicatorX = barEndX + 3; // 3px gap from health bar
+  const indicatorY = py + 2 + barHeight / 2; // Centered with health bar (py + 2 is where bar starts)
+
+  // Draw arrow rotated based on direction
+  ctx.save();
+  ctx.translate(indicatorX, indicatorY);
+
+  // Rotate based on direction (0 = East/right, rotating clockwise)
+  const rotationAngles: Record<Direction, number> = {
+    [Direction.EAST]: 0,
+    [Direction.SOUTHEAST]: Math.PI / 4,
+    [Direction.SOUTH]: Math.PI / 2,
+    [Direction.SOUTHWEST]: (3 * Math.PI) / 4,
+    [Direction.WEST]: Math.PI,
+    [Direction.NORTHWEST]: (-3 * Math.PI) / 4,
+    [Direction.NORTH]: -Math.PI / 2,
+    [Direction.NORTHEAST]: -Math.PI / 4,
+  };
+
+  ctx.rotate(rotationAngles[direction] || 0);
+
+  // Draw a simple arrow pointing right (will be rotated)
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.beginPath();
-
-  switch (direction) {
-    case Direction.NORTH:
-      ctx.moveTo(cx, cy - arrowSize);
-      ctx.lineTo(cx - arrowSize / 2, cy);
-      ctx.lineTo(cx + arrowSize / 2, cy);
-      break;
-    case Direction.NORTHEAST:
-      ctx.moveTo(cx + diagonalOffset, cy - diagonalOffset);
-      ctx.lineTo(cx - diagonalOffset / 2, cy - diagonalOffset / 2);
-      ctx.lineTo(cx + diagonalOffset / 2, cy + diagonalOffset / 2);
-      break;
-    case Direction.EAST:
-      ctx.moveTo(cx + arrowSize, cy);
-      ctx.lineTo(cx, cy - arrowSize / 2);
-      ctx.lineTo(cx, cy + arrowSize / 2);
-      break;
-    case Direction.SOUTHEAST:
-      ctx.moveTo(cx + diagonalOffset, cy + diagonalOffset);
-      ctx.lineTo(cx + diagonalOffset / 2, cy - diagonalOffset / 2);
-      ctx.lineTo(cx - diagonalOffset / 2, cy + diagonalOffset / 2);
-      break;
-    case Direction.SOUTH:
-      ctx.moveTo(cx, cy + arrowSize);
-      ctx.lineTo(cx - arrowSize / 2, cy);
-      ctx.lineTo(cx + arrowSize / 2, cy);
-      break;
-    case Direction.SOUTHWEST:
-      ctx.moveTo(cx - diagonalOffset, cy + diagonalOffset);
-      ctx.lineTo(cx + diagonalOffset / 2, cy + diagonalOffset / 2);
-      ctx.lineTo(cx - diagonalOffset / 2, cy - diagonalOffset / 2);
-      break;
-    case Direction.WEST:
-      ctx.moveTo(cx - arrowSize, cy);
-      ctx.lineTo(cx, cy - arrowSize / 2);
-      ctx.lineTo(cx, cy + arrowSize / 2);
-      break;
-    case Direction.NORTHWEST:
-      ctx.moveTo(cx - diagonalOffset, cy - diagonalOffset);
-      ctx.lineTo(cx - diagonalOffset / 2, cy + diagonalOffset / 2);
-      ctx.lineTo(cx + diagonalOffset / 2, cy - diagonalOffset / 2);
-      break;
-  }
-
+  // Arrow shape: triangle pointing right
+  ctx.moveTo(arrowSize, 0); // Tip
+  ctx.lineTo(-arrowSize / 2, -arrowSize / 2); // Top left
+  ctx.lineTo(-arrowSize / 2, arrowSize / 2); // Bottom left
   ctx.closePath();
   ctx.fill();
+
+  ctx.restore();
 }
 
 function drawCollectible(
