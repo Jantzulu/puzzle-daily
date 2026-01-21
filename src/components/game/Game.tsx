@@ -875,7 +875,7 @@ export const Game: React.FC = () => {
             )}
 
             {/* Control Panel - below puzzle */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && testMode === 'none' && (
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
               <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="relative flex items-center justify-between">
                   {/* Left: Lives */}
@@ -931,19 +931,22 @@ export const Game: React.FC = () => {
 
                   {/* Center: Play button OR Turn counter - absolutely positioned for true centering */}
                   <div className="absolute left-1/2 -translate-x-1/2">
-                    {gameState.gameStatus === 'setup' ? (
+                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       <button
-                        onClick={handlePlay}
+                        onClick={testMode === 'none' ? handlePlay : undefined}
+                        disabled={testMode !== 'none'}
                         className={`px-5 md:px-6 py-1 font-bold text-sm transition-all ${
-                          themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                          testMode !== 'none'
+                            ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                            : themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
                         } ${
                           themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
                           themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
                         }`}
                         style={{
-                          ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                          ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                          ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                          ...(testMode === 'none' && themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                          ...(testMode === 'none' && themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(testMode === 'none' && themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
                         }}
                       >
                         {themeAssets.iconNavPlay || '\u2694'} Play
@@ -984,7 +987,7 @@ export const Game: React.FC = () => {
 
                   {/* Right: Max Turns OR Concede button */}
                   <div className="flex items-center justify-end min-w-[70px]">
-                    {gameState.gameStatus === 'setup' ? (
+                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       gameState.puzzle.maxTurns && (
                         <div className="flex items-center gap-1">
                           <span className="text-stone-400 text-xs">Max Turns:</span>
@@ -1001,16 +1004,6 @@ export const Game: React.FC = () => {
                       </button>
                     )}
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Lives display during test mode only */}
-            {testMode !== 'none' && (
-              <div className="mt-3 flex items-center justify-center gap-2">
-                <span className="text-stone-400 text-sm">Lives:</span>
-                <div className="flex items-center gap-1">
-                  {renderLivesHearts()}
                 </div>
               </div>
             )}
