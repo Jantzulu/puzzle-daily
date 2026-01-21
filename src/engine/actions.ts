@@ -2340,8 +2340,9 @@ function findNearestEnemies(
 }
 
 /**
- * Find the nearest living characters to an entity (used by enemies), up to maxTargets
+ * Find the nearest living characters to an entity, up to maxTargets
  * Returns array of {character, direction} sorted by distance (closest first)
+ * Excludes the casting entity itself if it's a character
  */
 function findNearestCharacters(
   entity: PlacedCharacter,
@@ -2349,7 +2350,8 @@ function findNearestCharacters(
   maxTargets: number = 1,
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
 ): Array<{ character: PlacedCharacter; direction: Direction; distance: number }> {
-  const livingCharacters = gameState.placedCharacters.filter(c => !c.dead);
+  // Exclude the casting entity itself (important when a character targets other characters)
+  const livingCharacters = gameState.placedCharacters.filter(c => !c.dead && c !== entity);
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
