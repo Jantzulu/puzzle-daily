@@ -2706,9 +2706,10 @@ function drawDirectionIndicator(
   ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
   ctx.beginPath();
   // Arrow shape: triangle pointing right
+  const baseHalfWidth = arrowSize / 2 + 0.5; // Make base 1px wider
   ctx.moveTo(arrowSize, 0); // Tip
-  ctx.lineTo(-arrowSize / 2, -arrowSize / 2); // Top left
-  ctx.lineTo(-arrowSize / 2, arrowSize / 2); // Bottom left
+  ctx.lineTo(-arrowSize / 2, -baseHalfWidth); // Top left
+  ctx.lineTo(-arrowSize / 2, baseHalfWidth); // Bottom left
   ctx.closePath();
   ctx.fill();
 
