@@ -475,6 +475,7 @@ const StyleSelector: React.FC<StyleSelectorProps> = ({ assetKey, value, onChange
     case 'actionButtonPlayShape':
     case 'actionButtonTestHeroesShape':
     case 'actionButtonTestEnemiesShape':
+    case 'actionButtonConcedeShape':
       options = BUTTON_SHAPE_OPTIONS;
       defaultValue = 'default';
       break;
