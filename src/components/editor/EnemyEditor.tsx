@@ -9,6 +9,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { RichTextEditor } from './RichTextEditor';
+import { DirectionCompass } from './DirectionCompass';
 
 const ACTION_TYPES = Object.values(ActionType).filter(
   type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
@@ -853,7 +854,7 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
 
                   {(action.useRelativeOverride !== undefined || action.directionOverride !== undefined || action.relativeDirectionOverride !== undefined) && (
                     <>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 mb-2">
                         <label className="text-xs text-stone-400">Mode:</label>
                         <select
                           value={action.useRelativeOverride ? 'relative' : 'absolute'}
@@ -873,62 +874,27 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
                         </select>
                       </div>
 
-                      {action.useRelativeOverride ? (
-                        <div className="grid grid-cols-4 gap-1">
-                          {([
-                            { dir: 'forward' as RelativeDirection, label: '0° (Forward)' },
-                            { dir: 'forward_right' as RelativeDirection, label: '45°' },
-                            { dir: 'right' as RelativeDirection, label: '90° (Right)' },
-                            { dir: 'backward_right' as RelativeDirection, label: '135°' },
-                            { dir: 'backward' as RelativeDirection, label: '180° (Back)' },
-                            { dir: 'backward_left' as RelativeDirection, label: '225°' },
-                            { dir: 'left' as RelativeDirection, label: '270° (Left)' },
-                            { dir: 'forward_left' as RelativeDirection, label: '315°' },
-                          ]).map(({ dir, label }) => (
-                            <label key={dir} className="flex items-center gap-1 text-xs">
-                              <input
-                                type="checkbox"
-                                checked={(action.relativeDirectionOverride || []).includes(dir)}
-                                onChange={(e) => {
-                                  const current = action.relativeDirectionOverride || [];
-                                  const updated = e.target.checked
-                                    ? [...current, dir]
-                                    : current.filter(d => d !== dir);
-                                  onUpdate({
-                                    ...action,
-                                    relativeDirectionOverride: updated.length > 0 ? updated : ['forward']
-                                  });
-                                }}
-                                className="w-3 h-3"
-                              />
-                              {label}
-                            </label>
-                          ))}
-                        </div>
-                      ) : (
-                        <div className="grid grid-cols-4 gap-1">
-                          {Object.values(Direction).map(dir => (
-                            <label key={dir} className="flex items-center gap-1 text-xs">
-                              <input
-                                type="checkbox"
-                                checked={(action.directionOverride || []).includes(dir)}
-                                onChange={(e) => {
-                                  const current = action.directionOverride || [];
-                                  const updated = e.target.checked
-                                    ? [...current, dir]
-                                    : current.filter(d => d !== dir);
-                                  onUpdate({
-                                    ...action,
-                                    directionOverride: updated.length > 0 ? updated : [Direction.NORTH]
-                                  });
-                                }}
-                                className="w-3 h-3"
-                              />
-                              {dir}
-                            </label>
-                          ))}
-                        </div>
-                      )}
+                      <DirectionCompass
+                        mode={action.useRelativeOverride ? 'relative' : 'absolute'}
+                        selectedDirections={
+                          action.useRelativeOverride
+                            ? (action.relativeDirectionOverride || ['forward'])
+                            : (action.directionOverride || [Direction.NORTH])
+                        }
+                        onChange={(dirs) => {
+                          if (action.useRelativeOverride) {
+                            onUpdate({
+                              ...action,
+                              relativeDirectionOverride: dirs as RelativeDirection[]
+                            });
+                          } else {
+                            onUpdate({
+                              ...action,
+                              directionOverride: dirs as Direction[]
+                            });
+                          }
+                        }}
+                      />
                     </>
                   )}
                 </div>
