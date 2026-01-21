@@ -1313,9 +1313,11 @@ function executeSpell(
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
     const nearestCharacters = findNearestCharacters(character, gameState, maxTargets, targetMode);
+    console.log('[SPELL DEBUG] autoTargetNearestCharacter, found:', nearestCharacters.length, 'targets');
 
     if (nearestCharacters.length > 0) {
       castDirections = nearestCharacters.map(target => target.direction);
+      console.log('[SPELL DEBUG] castDirections set to:', castDirections);
       // Store target info for homing
       if (action.homing) {
         homingTargets = nearestCharacters.map(target => ({
@@ -1325,6 +1327,7 @@ function executeSpell(
         }));
       }
     } else {
+      console.log('[SPELL DEBUG] No characters found, returning early');
       return;
     }
   } else if (action.autoTargetNearestEnemy) {
@@ -1332,9 +1335,11 @@ function executeSpell(
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
     const nearestEnemies = findNearestEnemies(character, gameState, maxTargets, targetMode);
+    console.log('[SPELL DEBUG] autoTargetNearestEnemy, found:', nearestEnemies.length, 'targets');
 
     if (nearestEnemies.length > 0) {
       castDirections = nearestEnemies.map(target => target.direction);
+      console.log('[SPELL DEBUG] castDirections set to:', castDirections);
       // Store target info for homing
       if (action.homing) {
         homingTargets = nearestEnemies.map(target => ({
@@ -1344,6 +1349,7 @@ function executeSpell(
         }));
       }
     } else {
+      console.log('[SPELL DEBUG] No enemies found, returning early');
       return;
     }
   } else if (action.useRelativeOverride && action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0) {
@@ -1380,9 +1386,14 @@ function executeSpell(
   }
 
   // Execute spell for each direction based on template type
+  console.log('[SPELL DEBUG] Final castDirections:', castDirections, 'action flags:', {
+    autoTargetNearestEnemy: action.autoTargetNearestEnemy,
+    autoTargetNearestCharacter: action.autoTargetNearestCharacter
+  });
   for (let i = 0; i < castDirections.length; i++) {
     const direction = castDirections[i];
     const homingTarget = homingTargets?.[i];
+    console.log('[SPELL DEBUG] Executing spell in direction:', direction);
     executeSpellInDirection(character, spell, direction, gameState, homingTarget);
   }
 
