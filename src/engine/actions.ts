@@ -2300,8 +2300,9 @@ function spawnCollectiblePickupParticle(
 // ==========================================
 
 /**
- * Find the nearest living enemies to a character, up to maxTargets
+ * Find the nearest living enemies to an entity, up to maxTargets
  * Returns array of {enemy, direction} sorted by distance (closest first)
+ * Excludes the entity itself if it's an enemy (when an enemy targets other enemies)
  */
 function findNearestEnemies(
   character: PlacedCharacter,
@@ -2309,7 +2310,8 @@ function findNearestEnemies(
   maxTargets: number = 1,
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
 ): Array<{ enemy: any; direction: Direction; distance: number }> {
-  const livingEnemies = gameState.puzzle.enemies.filter(e => !e.dead);
+  // Exclude the entity itself if it's an enemy (important when an enemy targets other enemies)
+  const livingEnemies = gameState.puzzle.enemies.filter(e => !e.dead && e.enemyId !== character.characterId);
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
