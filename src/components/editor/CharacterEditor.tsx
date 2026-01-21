@@ -903,23 +903,41 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                     />
                   )}
                   {action.trigger?.mode === 'on_event' && (
-                    <select
-                      value={action.trigger.event || 'enemy_adjacent'}
-                      onChange={(e) => onUpdate({
-                        ...action,
-                        trigger: { ...action.trigger!, event: e.target.value as any }
-                      })}
-                      className="w-full px-2 py-1 bg-stone-600 rounded text-xs"
-                    >
-                      <option value="enemy_adjacent">Enemy Adjacent</option>
-                      <option value="enemy_in_range">Enemy in Range</option>
-                      <option value="contact_with_enemy">Overlap with Enemy</option>
-                      <option value="character_adjacent">Character Adjacent</option>
-                      <option value="character_in_range">Character in Range</option>
-                      <option value="contact_with_character">Overlap with Character</option>
-                      <option value="wall_ahead">Wall Ahead</option>
-                      <option value="health_below_50">Health Below 50%</option>
-                    </select>
+                    <>
+                      <select
+                        value={action.trigger.event || 'enemy_adjacent'}
+                        onChange={(e) => onUpdate({
+                          ...action,
+                          trigger: { ...action.trigger!, event: e.target.value as any }
+                        })}
+                        className="w-full px-2 py-1 bg-stone-600 rounded text-xs"
+                      >
+                        <option value="enemy_adjacent">Enemy Adjacent</option>
+                        <option value="enemy_in_range">Enemy in Range</option>
+                        <option value="contact_with_enemy">Overlap with Enemy</option>
+                        <option value="character_adjacent">Character Adjacent</option>
+                        <option value="character_in_range">Character in Range</option>
+                        <option value="contact_with_character">Overlap with Character</option>
+                        <option value="wall_ahead">Wall Ahead</option>
+                        <option value="health_below_50">Health Below 50%</option>
+                      </select>
+                      {(action.trigger.event === 'enemy_in_range' || action.trigger.event === 'character_in_range') && (
+                        <div className="flex items-center gap-2 mt-1">
+                          <label className="text-xs text-stone-400">Range (tiles):</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="10"
+                            value={action.trigger.eventRange || 2}
+                            onChange={(e) => onUpdate({
+                              ...action,
+                              trigger: { ...action.trigger!, eventRange: parseInt(e.target.value) || 2 }
+                            })}
+                            className="w-16 px-2 py-1 bg-stone-600 rounded text-xs"
+                          />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
