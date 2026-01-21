@@ -13,6 +13,7 @@ interface CharacterSelectorProps {
   onClearAll?: () => void;
   onTest?: () => void;
   themeAssets?: ThemeAssets;
+  disabled?: boolean;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -23,6 +24,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onClearAll,
   onTest,
   themeAssets = {},
+  disabled = false,
 }) => {
   // Determine button shape class
   const getShapeClass = (shape?: string) => {
@@ -33,14 +35,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
   return (
-    <div className="dungeon-panel p-4">
+    <div className={`dungeon-panel p-4 ${disabled ? 'opacity-60' : ''}`}>
       {/* Header row */}
       <div className="flex items-center justify-between mb-3">
         {/* Left: Help + Title + Test button */}
         <div className="flex items-center gap-2">
           <HelpButton sectionId="characters" />
           <h3 className="text-lg font-bold text-purple-400">Heroes</h3>
-          {onTest && (
+          {onTest && !disabled && (
             <button
               onClick={onTest}
               className={`px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
@@ -65,7 +67,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <span className="text-sm text-stone-400">
             {placedCharacterIds.length} placed
           </span>
-          {onClearAll && placedCharacterIds.length > 0 && (
+          {onClearAll && placedCharacterIds.length > 0 && !disabled && (
             <button
               onClick={onClearAll}
               className="p-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
@@ -91,13 +93,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           return (
             <div
               key={charId}
-              onClick={() => !isPlaced && onSelectCharacter(isSelected ? null : charId)}
-              className={`rounded-pixel-md p-2 transition-all cursor-pointer flex flex-col items-center border-2 min-w-[80px] ${
-                isPlaced
+              onClick={() => !disabled && !isPlaced && onSelectCharacter(isSelected ? null : charId)}
+              className={`rounded-pixel-md p-2 transition-all flex flex-col items-center border-2 min-w-[80px] ${
+                disabled
+                  ? 'bg-stone-800/80 border-stone-600 cursor-default'
+                  : isPlaced
                   ? 'bg-stone-900/80 border-dashed border-stone-600 opacity-60 cursor-not-allowed'
                   : isSelected
-                  ? 'bg-copper-800/80 border-copper-500 shadow-torch'
-                  : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700 hover:border-copper-600'
+                  ? 'bg-copper-800/80 border-copper-500 shadow-torch cursor-pointer'
+                  : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700 hover:border-copper-600 cursor-pointer'
               }`}
             >
               {/* HP display - above sprite */}

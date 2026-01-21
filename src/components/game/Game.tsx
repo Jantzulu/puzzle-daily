@@ -1014,17 +1014,18 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Character Selector - below puzzle (also visible during test mode) */}
-            {(gameState.gameStatus === 'setup' || testMode !== 'none') && (
+            {/* Character Selector - below puzzle (visible during setup, running, and test mode) */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
               <div className="mt-3 w-full max-w-md">
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
-                  selectedCharacterId={testMode === 'none' ? selectedCharacterId : null}
-                  onSelectCharacter={testMode === 'none' ? setSelectedCharacterId : () => {}}
+                  selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
+                  onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
                   placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
-                  onClearAll={testMode === 'none' ? handleWipe : undefined}
-                  onTest={testMode === 'none' ? handleTestCharactersWithScroll : undefined}
+                  onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
+                  onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
                   themeAssets={themeAssets}
+                  disabled={gameState.gameStatus === 'running' || testMode !== 'none'}
                 />
               </div>
             )}
