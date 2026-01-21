@@ -75,17 +75,17 @@ export const DirectionCompass: React.FC<DirectionCompassProps> = ({
   const isSelected = (dir: RelativeDirection | Direction) => selectedDirections.includes(dir);
 
   return (
-    <div className="relative w-32 h-32 mx-auto">
+    <div className="relative w-20 h-20 mx-auto flex-shrink-0">
       {/* Center indicator showing facing direction */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 rounded-full bg-stone-700 border-2 border-stone-500 flex items-center justify-center">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-stone-700 border border-stone-500 flex items-center justify-center">
         {mode === 'relative' ? (
           // Arrow pointing up to indicate "forward"
-          <svg className="w-4 h-4 text-copper-400" viewBox="0 0 24 24" fill="currentColor">
+          <svg className="w-2.5 h-2.5 text-copper-400" viewBox="0 0 24 24" fill="currentColor">
             <path d="M12 4l-8 8h5v8h6v-8h5z" />
           </svg>
         ) : (
           // Compass rose for absolute
-          <span className="text-xs text-copper-400 font-bold">N</span>
+          <span className="text-[8px] text-copper-400 font-bold">N</span>
         )}
       </div>
 
@@ -99,9 +99,9 @@ export const DirectionCompass: React.FC<DirectionCompassProps> = ({
             key={dir}
             onClick={() => toggleDirection(dir)}
             title={label}
-            className={`absolute w-7 h-7 -ml-3.5 -mt-3.5 rounded-full text-xs font-bold transition-all
+            className={`absolute w-5 h-5 -ml-2.5 -mt-2.5 rounded-full text-[9px] font-bold transition-all
               ${selected
-                ? 'bg-arcane-600 text-white border-2 border-arcane-400 shadow-lg scale-110'
+                ? 'bg-arcane-600 text-white border border-arcane-400 shadow-lg scale-110'
                 : 'bg-stone-600 text-stone-300 border border-stone-500 hover:bg-stone-500 hover:scale-105'
               }`}
             style={{
@@ -117,23 +117,16 @@ export const DirectionCompass: React.FC<DirectionCompassProps> = ({
       {/* Connecting lines (decorative) */}
       <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 100 100">
         {/* Cardinal direction lines */}
-        <line x1="50" y1="50" x2="50" y2="12" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
-        <line x1="50" y1="50" x2="88" y2="50" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
-        <line x1="50" y1="50" x2="50" y2="88" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
-        <line x1="50" y1="50" x2="12" y2="50" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
+        <line x1="50" y1="50" x2="50" y2="15" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
+        <line x1="50" y1="50" x2="85" y2="50" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
+        <line x1="50" y1="50" x2="50" y2="85" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
+        <line x1="50" y1="50" x2="15" y2="50" stroke="currentColor" strokeWidth="1" className="text-stone-600" />
         {/* Diagonal direction lines */}
-        <line x1="50" y1="50" x2="77" y2="23" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
-        <line x1="50" y1="50" x2="77" y2="77" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
-        <line x1="50" y1="50" x2="23" y2="77" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
-        <line x1="50" y1="50" x2="23" y2="23" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
+        <line x1="50" y1="50" x2="75" y2="25" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
+        <line x1="50" y1="50" x2="75" y2="75" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
+        <line x1="50" y1="50" x2="25" y2="75" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
+        <line x1="50" y1="50" x2="25" y2="25" stroke="currentColor" strokeWidth="0.5" className="text-stone-700" />
       </svg>
-
-      {/* "Facing" label for relative mode */}
-      {mode === 'relative' && (
-        <div className="absolute -top-5 left-1/2 -translate-x-1/2 text-xs text-stone-400 whitespace-nowrap">
-          Facing
-        </div>
-      )}
     </div>
   );
 };
