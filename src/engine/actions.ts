@@ -647,6 +647,19 @@ function moveCharacter(
         }
       }
     }
+
+    // Check for dead character with behavesLikeWallDead
+    if (!willHitWall) {
+      const deadWallChar = gameState.placedCharacters.find(
+        (c) => c.x === firstX && c.y === firstY && c.dead
+      );
+      if (deadWallChar) {
+        const deadWallCharData = getCharacter(deadWallChar.characterId);
+        if (deadWallCharData?.behavesLikeWallDead) {
+          willHitWall = true;
+        }
+      }
+    }
   }
 
   // If we'll hit a wall immediately, handle collision NOW (don't waste a turn)
@@ -964,11 +977,64 @@ function moveCharacter(
     const nextX = updatedChar.x + nextDx;
     const nextY = updatedChar.y + nextDy;
 
-    const willHitWallNext =
+    let willHitWallNext =
       !isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height) ||
       gameState.puzzle.tiles[nextY]?.[nextX] === null ||
       gameState.puzzle.tiles[nextY]?.[nextX] === undefined ||
       gameState.puzzle.tiles[nextY]?.[nextX]?.type === TileType.WALL;
+
+    // Also check for entities that behave like walls
+    if (!willHitWallNext && isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height)) {
+      // Check for living character with behavesLikeWall
+      const wallCharNext = gameState.placedCharacters.find(
+        (c) => c.x === nextX && c.y === nextY && !c.dead && c !== updatedChar
+      );
+      if (wallCharNext) {
+        const wallCharData = getCharacter(wallCharNext.characterId);
+        if (wallCharData?.behavesLikeWall) {
+          willHitWallNext = true;
+        }
+      }
+
+      // Check for living enemy with behavesLikeWall
+      if (!willHitWallNext) {
+        const wallEnemyNext = gameState.puzzle.enemies.find(
+          (e) => e.x === nextX && e.y === nextY && !e.dead
+        );
+        if (wallEnemyNext) {
+          const wallEnemyData = getEnemy(wallEnemyNext.enemyId);
+          if (wallEnemyData?.behavesLikeWall) {
+            willHitWallNext = true;
+          }
+        }
+      }
+
+      // Check for dead enemy with behavesLikeWallDead
+      if (!willHitWallNext) {
+        const deadWallEnemyNext = gameState.puzzle.enemies.find(
+          (e) => e.x === nextX && e.y === nextY && e.dead
+        );
+        if (deadWallEnemyNext) {
+          const deadWallEnemyData = getEnemy(deadWallEnemyNext.enemyId);
+          if (deadWallEnemyData?.behavesLikeWallDead) {
+            willHitWallNext = true;
+          }
+        }
+      }
+
+      // Check for dead character with behavesLikeWallDead
+      if (!willHitWallNext) {
+        const deadWallCharNext = gameState.placedCharacters.find(
+          (c) => c.x === nextX && c.y === nextY && c.dead
+        );
+        if (deadWallCharNext) {
+          const deadWallCharData = getCharacter(deadWallCharNext.characterId);
+          if (deadWallCharData?.behavesLikeWallDead) {
+            willHitWallNext = true;
+          }
+        }
+      }
+    }
 
     if (willHitWallNext) {
       // Turn now to avoid wasting next turn
