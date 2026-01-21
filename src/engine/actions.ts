@@ -2382,11 +2382,15 @@ function findNearestCharacters(
   const diagonalDirections: Direction[] = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST];
 
   // Calculate distance and direction to each character
-  const charactersWithDistance = livingCharacters.map(char => ({
-    character: char,
-    distance: calculateDistance(entity.x, entity.y, char.x, char.y),
-    direction: calculateDirectionTo(entity.x, entity.y, char.x, char.y),
-  }));
+  const charactersWithDistance = livingCharacters.map(char => {
+    const direction = calculateDirectionTo(entity.x, entity.y, char.x, char.y);
+    console.log('[SPELL DEBUG] findNearestCharacters: entity at', entity.x, entity.y, 'target at', char.x, char.y, 'direction:', direction);
+    return {
+      character: char,
+      distance: calculateDistance(entity.x, entity.y, char.x, char.y),
+      direction,
+    };
+  });
 
   // Filter by directional mode
   let filteredCharacters = charactersWithDistance;
