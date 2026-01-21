@@ -1271,6 +1271,15 @@ function executeSpell(
   action: CharacterAction,
   gameState: GameState
 ): void {
+  console.log('[SPELL DEBUG] executeSpell called with action:', JSON.stringify({
+    type: action.type,
+    spellId: action.spellId,
+    autoTargetNearestEnemy: action.autoTargetNearestEnemy,
+    autoTargetNearestCharacter: action.autoTargetNearestCharacter,
+    directionOverride: action.directionOverride,
+    relativeDirectionOverride: action.relativeDirectionOverride,
+  }));
+
   // Load spell from library
   if (!action.spellId) {
     console.warn('Spell ID not found in action');
