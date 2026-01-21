@@ -875,7 +875,16 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
 
                       {action.useRelativeOverride ? (
                         <div className="grid grid-cols-4 gap-1">
-                          {(['forward', 'forward_left', 'forward_right', 'left', 'right', 'backward_left', 'backward_right', 'backward'] as RelativeDirection[]).map(dir => (
+                          {([
+                            { dir: 'forward' as RelativeDirection, label: '0° (Forward)' },
+                            { dir: 'forward_right' as RelativeDirection, label: '45°' },
+                            { dir: 'right' as RelativeDirection, label: '90° (Right)' },
+                            { dir: 'backward_right' as RelativeDirection, label: '135°' },
+                            { dir: 'backward' as RelativeDirection, label: '180° (Back)' },
+                            { dir: 'backward_left' as RelativeDirection, label: '225°' },
+                            { dir: 'left' as RelativeDirection, label: '270° (Left)' },
+                            { dir: 'forward_left' as RelativeDirection, label: '315°' },
+                          ]).map(({ dir, label }) => (
                             <label key={dir} className="flex items-center gap-1 text-xs">
                               <input
                                 type="checkbox"
@@ -892,7 +901,7 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
                                 }}
                                 className="w-3 h-3"
                               />
-                              {dir.replace(/_/g, ' ')}
+                              {label}
                             </label>
                           ))}
                         </div>
