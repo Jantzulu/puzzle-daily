@@ -130,6 +130,19 @@ export interface ThemeAssets {
   actionButtonConcedeText?: string; // Concede button text color
   actionButtonConcedeShape?: string; // Concede button shape
 
+  // Concede Confirmation Modal
+  concedeModalOverlayBg?: string;    // Overlay background color (default: black/70%)
+  concedeModalPanelBg?: string;      // Panel background color
+  concedeModalPanelBorder?: string;  // Panel border color
+  concedeModalTitleText?: string;    // Title text color
+  concedeModalMessageText?: string;  // Message text color
+  concedeModalCancelBg?: string;     // Cancel button background
+  concedeModalCancelBorder?: string; // Cancel button border
+  concedeModalCancelText?: string;   // Cancel button text
+  concedeModalConfirmBg?: string;    // Confirm button background
+  concedeModalConfirmBorder?: string; // Confirm button border
+  concedeModalConfirmText?: string;  // Confirm button text
+
   // Preview/thumbnail backgrounds
   // Entity previews (heroes, enemies) - typically shown on tile backgrounds
   colorBgPreviewEntity?: string;        // Background color for hero/enemy previews
@@ -241,6 +254,18 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   actionButtonConcedeBorder: { label: 'Concede Border', description: 'Border color for the Concede button', category: 'actionButtons', inputType: 'color' },
   actionButtonConcedeText: { label: 'Concede Text', description: 'Text color for the Concede button', category: 'actionButtons', inputType: 'color' },
   actionButtonConcedeShape: { label: 'Concede Shape', description: 'Shape of the Concede button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
+  // Concede Confirmation Modal
+  concedeModalOverlayBg: { label: 'Overlay Background', description: 'Background color for the darkened overlay behind the modal', category: 'concedeModal', inputType: 'color' },
+  concedeModalPanelBg: { label: 'Panel Background', description: 'Background color for the modal panel', category: 'concedeModal', inputType: 'color' },
+  concedeModalPanelBorder: { label: 'Panel Border', description: 'Border color for the modal panel', category: 'concedeModal', inputType: 'color' },
+  concedeModalTitleText: { label: 'Title Text', description: 'Color for the "Concede?" title text', category: 'concedeModal', inputType: 'color' },
+  concedeModalMessageText: { label: 'Message Text', description: 'Color for the message text', category: 'concedeModal', inputType: 'color' },
+  concedeModalCancelBg: { label: 'Cancel Button Bg', description: 'Background color for the Cancel button', category: 'concedeModal', inputType: 'color' },
+  concedeModalCancelBorder: { label: 'Cancel Button Border', description: 'Border color for the Cancel button', category: 'concedeModal', inputType: 'color' },
+  concedeModalCancelText: { label: 'Cancel Button Text', description: 'Text color for the Cancel button', category: 'concedeModal', inputType: 'color' },
+  concedeModalConfirmBg: { label: 'Confirm Button Bg', description: 'Background color for the Concede button', category: 'concedeModal', inputType: 'color' },
+  concedeModalConfirmBorder: { label: 'Confirm Button Border', description: 'Border color for the Concede button', category: 'concedeModal', inputType: 'color' },
+  concedeModalConfirmText: { label: 'Confirm Button Text', description: 'Text color for the Concede button', category: 'concedeModal', inputType: 'color' },
   // Entity preview backgrounds (heroes, enemies)
   colorBgPreviewEntity: { label: 'Entity Preview Color', description: 'Background color for hero/enemy previews', category: 'colors', inputType: 'color' },
   bgPreviewEntity: { label: 'Entity Preview Image', description: 'Background image for hero/enemy previews (e.g., a floor tile)', category: 'backgrounds', inputType: 'image' },
@@ -266,7 +291,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   fontSizeHeading: { label: 'Heading Size', description: 'Size of headings and titles', category: 'styles', inputType: 'select' },
 };
 
-export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'actionButtons', 'styles'] as const;
+export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'actionButtons', 'concedeModal', 'styles'] as const;
 export type AssetCategory = typeof ASSET_CATEGORIES[number];
 
 /**

@@ -848,24 +848,59 @@ export const Game: React.FC = () => {
 
             {/* Concede Confirmation Popup */}
             {showConcedeConfirm && (
-              <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-                <div className="defeat-panel p-6 rounded-pixel-lg text-center max-w-sm mx-4">
-                  <h3 className="text-xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
+              <div
+                className="fixed inset-0 flex items-center justify-center z-50"
+                style={{
+                  backgroundColor: themeAssets.concedeModalOverlayBg || 'rgba(0, 0, 0, 0.7)',
+                }}
+              >
+                <div
+                  className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${
+                    themeAssets.concedeModalPanelBg ? '' : 'defeat-panel'
+                  }`}
+                  style={{
+                    ...(themeAssets.concedeModalPanelBg && { backgroundColor: themeAssets.concedeModalPanelBg }),
+                    ...(themeAssets.concedeModalPanelBorder && { borderColor: themeAssets.concedeModalPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                  }}
+                >
+                  <h3
+                    className={`text-xl font-bold font-medieval ${
+                      themeAssets.concedeModalTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
+                    }`}
+                    style={{
+                      ...(themeAssets.concedeModalTitleText && { color: themeAssets.concedeModalTitleText }),
+                    }}
+                  >
                     Concede?
                   </h3>
-                  <p className="mt-2 text-blood-300">
+                  <p
+                    className={`mt-2 ${themeAssets.concedeModalMessageText ? '' : 'text-blood-300'}`}
+                    style={{
+                      ...(themeAssets.concedeModalMessageText && { color: themeAssets.concedeModalMessageText }),
+                    }}
+                  >
                     You will lose a life and return to setup.
                   </p>
                   <div className="mt-4 flex gap-3 justify-center">
                     <button
                       onClick={() => setShowConcedeConfirm(false)}
-                      className="dungeon-btn px-4 py-2"
+                      className={`px-4 py-2 ${themeAssets.concedeModalCancelBg ? 'rounded-pixel' : 'dungeon-btn'}`}
+                      style={{
+                        ...(themeAssets.concedeModalCancelBg && { backgroundColor: themeAssets.concedeModalCancelBg }),
+                        ...(themeAssets.concedeModalCancelBorder && { borderColor: themeAssets.concedeModalCancelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                        ...(themeAssets.concedeModalCancelText && { color: themeAssets.concedeModalCancelText }),
+                      }}
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleConcede}
-                      className="dungeon-btn-danger px-4 py-2"
+                      className={`px-4 py-2 ${themeAssets.concedeModalConfirmBg ? 'rounded-pixel' : 'dungeon-btn-danger'}`}
+                      style={{
+                        ...(themeAssets.concedeModalConfirmBg && { backgroundColor: themeAssets.concedeModalConfirmBg }),
+                        ...(themeAssets.concedeModalConfirmBorder && { borderColor: themeAssets.concedeModalConfirmBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                        ...(themeAssets.concedeModalConfirmText && { color: themeAssets.concedeModalConfirmText }),
+                      }}
                     >
                       Concede
                     </button>
