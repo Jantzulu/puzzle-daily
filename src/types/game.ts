@@ -196,6 +196,10 @@ export interface CharacterAction {
   autoTargetMode?: 'omnidirectional' | 'cardinal' | 'diagonal'; // Directional constraints for auto-targeting (default: omnidirectional)
   maxTargets?: number;              // Maximum number of targets to attack/heal (for multi-target spells)
   homing?: boolean;                 // If true with auto-targeting, projectile tracks target and guarantees hit
+
+  // Self-targeting configuration
+  targetSelf?: boolean;             // Also target self in addition to other targets
+  targetSelfOnly?: boolean;         // Only target self (ignores other targeting)
 }
 
 export interface Character {
@@ -619,6 +623,8 @@ export enum StatusEffectType {
   DISARMED = 'disarmed',  // Can't cast melee spells
   BURN = 'burn',          // Damage over time (fire variant)
   BLEED = 'bleed',        // Damage over time (physical variant)
+  POLYMORPH = 'polymorph', // Replaces entity sprite temporarily
+  STEALTH = 'stealth',    // Reduced opacity, can't be auto-targeted by opposing team
 }
 
 /**
@@ -943,6 +949,12 @@ export interface StatusEffectAsset {
 
   // Visual overrides (for Shield type)
   healthBarColor?: string;        // Color to use for health bar when this effect is active
+
+  // Polymorph configuration
+  polymorphSprite?: SpriteReference;  // Sprite to replace entity with during polymorph
+
+  // Stealth configuration
+  stealthOpacity?: number;        // Opacity when stealthed (0-1, default 0.5)
 
   // Metadata
   createdAt: string;

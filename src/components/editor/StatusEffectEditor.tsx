@@ -47,6 +47,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [iconSprite, setIconSprite] = useState<SpriteReference>(effect?.iconSprite || defaultIconSprite);
   const [editingIcon, setEditingIcon] = useState(false);
   const [healthBarColor, setHealthBarColor] = useState(effect?.healthBarColor || '#22d3ee');
+  const [stealthOpacity, setStealthOpacity] = useState(effect?.stealthOpacity ?? 0.5);
 
   const isBuiltIn = effect?.isBuiltIn ?? false;
 
@@ -73,6 +74,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       stackingBehavior,
       maxStacks: stackingBehavior === 'stack' ? maxStacks : undefined,
       healthBarColor: type === StatusEffectType.SHIELD ? healthBarColor : undefined,
+      stealthOpacity: type === StatusEffectType.STEALTH ? stealthOpacity : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       isBuiltIn: false, // Never save as built-in when editing
       folderId: effect?.folderId,
@@ -171,6 +173,24 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         setPreventsMovement(false);
         setPreventsAllActions(false);
         break;
+      case StatusEffectType.POLYMORPH:
+        setDefaultValue(0);
+        setProcessAtTurnStart(true);
+        setRemovedOnDamage(true); // By default, polymorph is broken by damage
+        setPreventsMelee(false);
+        setPreventsRanged(false);
+        setPreventsMovement(false);
+        setPreventsAllActions(true); // Polymorph prevents actions like sleep
+        break;
+      case StatusEffectType.STEALTH:
+        setDefaultValue(0);
+        setProcessAtTurnStart(true);
+        setRemovedOnDamage(false);
+        setPreventsMelee(false);
+        setPreventsRanged(false);
+        setPreventsMovement(false);
+        setPreventsAllActions(false);
+        break;
     }
   };
 
@@ -188,6 +208,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       case StatusEffectType.DISARMED: return '#9ca3af';
       case StatusEffectType.SHIELD: return '#22d3ee'; // Cyan for shield
       case StatusEffectType.HASTE: return '#fbbf24'; // Amber/gold for haste
+      case StatusEffectType.POLYMORPH: return '#ff69b4'; // Pink for polymorph
+      case StatusEffectType.STEALTH: return '#4a5568'; // Gray for stealth
       default: return '#ffffff';
     }
   };
@@ -326,6 +348,37 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               </div>
               <p className="text-xs text-stone-400 mt-1">
                 Color applied to health bar when shielded (fill and border)
+              </p>
+            </div>
+          )}
+
+          {/* Stealth Opacity - only for Stealth type */}
+          {type === StatusEffectType.STEALTH && (
+            <div>
+              <label className="block text-sm font-medium mb-1">Stealth Opacity</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={stealthOpacity}
+                  onChange={(e) => setStealthOpacity(parseFloat(e.target.value))}
+                  disabled={isBuiltIn}
+                  className="flex-1"
+                />
+                <span className="text-xs text-stone-400 font-mono w-12 text-right">
+                  {Math.round(stealthOpacity * 100)}%
+                </span>
+              </div>
+              <div
+                className="mt-2 h-8 rounded border border-stone-600 flex items-center justify-center"
+                style={{ backgroundColor: `rgba(74, 85, 104, ${stealthOpacity})` }}
+              >
+                <span className="text-xs text-stone-300">Preview</span>
+              </div>
+              <p className="text-xs text-stone-400 mt-1">
+                Entity sprite opacity when stealthed. Cannot be auto-targeted by opposing team.
               </p>
             </div>
           )}

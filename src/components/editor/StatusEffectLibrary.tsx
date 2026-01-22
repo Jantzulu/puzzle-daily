@@ -18,6 +18,8 @@ function getEffectTypeColor(type: StatusEffectType): string {
     case StatusEffectType.SLOW: return 'bg-arcane-700';
     case StatusEffectType.SILENCED: return 'bg-purple-600';
     case StatusEffectType.DISARMED: return 'bg-stone-600';
+    case StatusEffectType.POLYMORPH: return 'bg-pink-600';
+    case StatusEffectType.STEALTH: return 'bg-gray-600';
     default: return 'bg-stone-600';
   }
 }

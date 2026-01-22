@@ -974,18 +974,72 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                 </label>
                 {/* Homing option - only available when auto-targeting is enabled */}
                 {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
-                  <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
-                    <input
-                      type="checkbox"
-                      checked={action.homing || false}
-                      onChange={(e) => onUpdate({
-                        ...action,
-                        homing: e.target.checked
-                      })}
-                      className="w-3 h-3"
-                    />
-                    Homing (guaranteed hit)
-                  </label>
+                  <>
+                    <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
+                      <input
+                        type="checkbox"
+                        checked={action.homing || false}
+                        onChange={(e) => onUpdate({
+                          ...action,
+                          homing: e.target.checked
+                        })}
+                        className="w-3 h-3"
+                      />
+                      Homing (guaranteed hit)
+                    </label>
+                    <label className="flex items-center gap-2 text-xs ml-4">
+                      Max Targets:
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={action.maxTargets || 1}
+                        onChange={(e) => onUpdate({
+                          ...action,
+                          maxTargets: parseInt(e.target.value) || 1
+                        })}
+                        className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs"
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+
+              {/* Self-targeting options */}
+              <div className="dungeon-panel p-2 rounded space-y-1">
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={action.targetSelf || false}
+                    onChange={(e) => onUpdate({
+                      ...action,
+                      targetSelf: e.target.checked,
+                      targetSelfOnly: e.target.checked ? false : action.targetSelfOnly
+                    })}
+                    className="w-3 h-3"
+                    disabled={action.targetSelfOnly}
+                  />
+                  Also Target Self
+                </label>
+                <label className="flex items-center gap-2 text-xs">
+                  <input
+                    type="checkbox"
+                    checked={action.targetSelfOnly || false}
+                    onChange={(e) => onUpdate({
+                      ...action,
+                      targetSelfOnly: e.target.checked,
+                      targetSelf: e.target.checked ? false : action.targetSelf
+                    })}
+                    className="w-3 h-3"
+                  />
+                  Target Self Only
+                </label>
+                {(action.targetSelf || action.targetSelfOnly) && (
+                  <p className="text-xs text-stone-400 ml-5">
+                    {action.targetSelfOnly
+                      ? 'Spell only affects the caster'
+                      : 'Spell affects caster in addition to targets'}
+                  </p>
                 )}
               </div>
 

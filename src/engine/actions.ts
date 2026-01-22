@@ -1379,6 +1379,24 @@ function executeSpell(
     );
   }
 
+  // Handle self-targeting (only targets self)
+  if (action.targetSelfOnly) {
+    applySpellToSelf(character, spell, gameState);
+    // Set cooldown and return (don't execute in other directions)
+    if (spell.cooldown && spell.cooldown > 0 && action.spellId) {
+      if (!character.spellCooldowns) {
+        character.spellCooldowns = {};
+      }
+      character.spellCooldowns[action.spellId] = spell.cooldown + 1;
+    }
+    return;
+  }
+
+  // Handle self-targeting in addition to other targets
+  if (action.targetSelf) {
+    applySpellToSelf(character, spell, gameState);
+  }
+
   // Execute spell for each direction based on template type
   for (let i = 0; i < castDirections.length; i++) {
     const direction = castDirections[i];
@@ -1945,6 +1963,80 @@ function spawnParticle(
 }
 
 // ==========================================
+// SELF-TARGETING SPELL APPLICATION
+// ==========================================
+
+/**
+ * Apply spell effects directly to the caster (self-targeting)
+ */
+function applySpellToSelf(
+  character: PlacedCharacter,
+  spell: SpellAsset,
+  gameState: GameState
+): void {
+  // Determine if this is an enemy caster
+  const isEnemy = 'enemyId' in character;
+
+  // Apply healing to self
+  if (spell.healing && spell.healing > 0) {
+    const maxHealth = character.health + character.damageTaken;
+    character.damageTaken = Math.max(0, character.damageTaken - spell.healing);
+
+    // Spawn healing visual effect
+    if (spell.sprites.healingEffect || spell.sprites.damageEffect) {
+      spawnParticle(
+        character.x,
+        character.y,
+        spell.sprites.healingEffect || spell.sprites.damageEffect,
+        300,
+        gameState,
+        character.facing
+      );
+    }
+  }
+
+  // Apply damage to self (for self-harm spells)
+  if (spell.damage && spell.damage > 0) {
+    applyDamageToEntity(character, spell.damage);
+
+    // Spawn damage visual effect
+    if (spell.sprites.damageEffect) {
+      spawnParticle(
+        character.x,
+        character.y,
+        spell.sprites.damageEffect,
+        300,
+        gameState,
+        character.facing
+      );
+    }
+  }
+
+  // Apply status effect to self
+  if (spell.appliesStatusEffect && !character.dead) {
+    applyStatusEffectFromSpell(
+      character,
+      spell,
+      character.characterId || (character as any).enemyId,
+      isEnemy,
+      gameState.currentTurn
+    );
+  }
+
+  // Spawn cast effect on self
+  if (spell.sprites.castEffect) {
+    spawnParticle(
+      character.x,
+      character.y,
+      spell.sprites.castEffect,
+      300,
+      gameState,
+      character.facing
+    );
+  }
+}
+
+// ==========================================
 // STATUS EFFECT APPLICATION
 // ==========================================
 
@@ -2300,9 +2392,18 @@ function spawnCollectiblePickupParticle(
 // ==========================================
 
 /**
+ * Check if an entity has an active stealth effect
+ */
+function isEntityStealthed(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(e => e.type === StatusEffectType.STEALTH);
+}
+
+/**
  * Find the nearest living enemies to an entity, up to maxTargets
  * Returns array of {enemy, direction} sorted by distance (closest first)
  * Excludes the entity itself if it's an enemy (when an enemy targets other enemies)
+ * Stealthed enemies are excluded when a character (hero) is targeting them
  */
 function findNearestEnemies(
   character: PlacedCharacter,
@@ -2310,8 +2411,18 @@ function findNearestEnemies(
   maxTargets: number = 1,
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
 ): Array<{ enemy: any; direction: Direction; distance: number }> {
+  // Check if the caster is an enemy (enemies can see other stealthed enemies)
+  const casterIsEnemy = 'enemyId' in character;
+
   // Exclude the entity itself if it's an enemy (important when an enemy targets other enemies)
-  const livingEnemies = gameState.puzzle.enemies.filter(e => !e.dead && e.enemyId !== character.characterId);
+  // Also exclude stealthed enemies if caster is a character (hero)
+  const livingEnemies = gameState.puzzle.enemies.filter(e => {
+    if (e.dead) return false;
+    if (e.enemyId === character.characterId) return false;
+    // Characters cannot auto-target stealthed enemies, but enemies can target stealthed enemies
+    if (!casterIsEnemy && isEntityStealthed(e)) return false;
+    return true;
+  });
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
@@ -2345,6 +2456,7 @@ function findNearestEnemies(
  * Find the nearest living characters to an entity, up to maxTargets
  * Returns array of {character, direction} sorted by distance (closest first)
  * Excludes the casting entity itself if it's a character
+ * Stealthed characters are excluded when an enemy is targeting them
  */
 function findNearestCharacters(
   entity: PlacedCharacter,
@@ -2352,9 +2464,19 @@ function findNearestCharacters(
   maxTargets: number = 1,
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
 ): Array<{ character: PlacedCharacter; direction: Direction; distance: number }> {
+  // Check if the caster is an enemy (characters can see other stealthed characters)
+  const casterIsEnemy = 'enemyId' in entity;
+
   // Exclude the casting entity itself (important when a character targets other characters)
   // Must compare by characterId, not object reference, because entity may be a shallow copy
-  const livingCharacters = gameState.placedCharacters.filter(c => !c.dead && c.characterId !== entity.characterId);
+  // Also exclude stealthed characters if caster is an enemy
+  const livingCharacters = gameState.placedCharacters.filter(c => {
+    if (c.dead) return false;
+    if (c.characterId === entity.characterId) return false;
+    // Enemies cannot auto-target stealthed characters, but characters can target stealthed characters
+    if (casterIsEnemy && isEntityStealthed(c)) return false;
+    return true;
+  });
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];

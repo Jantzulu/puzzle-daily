@@ -862,6 +862,33 @@ export const getBuiltInStatusEffects = (): StatusEffectAsset[] => {
       createdAt: '2024-01-01T00:00:00.000Z',
       isBuiltIn: true,
     },
+    {
+      id: 'builtin_polymorph',
+      name: 'Polymorph',
+      description: 'Transformed - cannot act (broken by damage)',
+      type: 'polymorph' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'star', primaryColor: '#ff69b4', type: 'simple' } },
+      defaultDuration: 3,
+      processAtTurnStart: true,
+      preventsAllActions: true,
+      removedOnDamage: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_stealth',
+      name: 'Stealth',
+      description: 'Hidden - cannot be auto-targeted by opposing team',
+      type: 'stealth' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'diamond', primaryColor: '#4a5568', type: 'simple' } },
+      defaultDuration: 3,
+      processAtTurnStart: true,
+      stealthOpacity: 0.5,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
   ];
 };
 

@@ -2064,6 +2064,24 @@ function getDirectionArrow(direction?: string): string {
   }
 }
 
+/**
+ * Get stealth opacity for an entity (1.0 if not stealthed)
+ */
+function getStealthOpacity(entity: PlacedCharacter | PlacedEnemy): number {
+  if (!entity.statusEffects) return 1.0;
+
+  for (const effect of entity.statusEffects) {
+    if (effect.type === StatusEffectType.STEALTH) {
+      const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
+      if (effectAsset?.stealthOpacity !== undefined) {
+        return effectAsset.stealthOpacity;
+      }
+      return 0.5; // Default stealth opacity
+    }
+  }
+  return 1.0;
+}
+
 function drawEnemy(
   ctx: CanvasRenderingContext2D,
   enemy: PlacedEnemy,
@@ -2090,6 +2108,13 @@ function drawEnemy(
   // Check if this enemy has a custom sprite
   const enemyData = getEnemy(enemy.enemyId) as CustomEnemy | undefined;
   const hasCustomSprite = enemyData && 'customSprite' in enemyData && enemyData.customSprite;
+
+  // Apply stealth opacity for living enemies
+  const stealthOpacity = !enemy.dead ? getStealthOpacity(enemy) : 1.0;
+  const originalAlpha = ctx.globalAlpha;
+  if (stealthOpacity < 1.0) {
+    ctx.globalAlpha = stealthOpacity;
+  }
 
   if (hasCustomSprite && enemyData.customSprite) {
     if (!enemy.dead) {
@@ -2136,6 +2161,9 @@ function drawEnemy(
       drawDeadX(ctx, px, py);
     }
   }
+
+  // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
+  ctx.globalAlpha = originalAlpha;
 
   if (!enemy.dead) {
     // Draw health bar above the enemy
@@ -2494,6 +2522,10 @@ function getDefaultEffectColor(type: StatusEffectType): string {
       return '#8b5cf6'; // purple
     case StatusEffectType.DISARMED:
       return '#9ca3af'; // gray
+    case StatusEffectType.POLYMORPH:
+      return '#ff69b4'; // pink
+    case StatusEffectType.STEALTH:
+      return '#4a5568'; // gray
     default:
       return '#ffffff'; // white
   }
@@ -2579,6 +2611,13 @@ function drawCharacter(
   const charData = getCharacter(character.characterId) as CustomCharacter | undefined;
   const hasCustomSprite = charData && 'customSprite' in charData && charData.customSprite;
 
+  // Apply stealth opacity for living characters
+  const stealthOpacity = !character.dead ? getStealthOpacity(character) : 1.0;
+  const originalAlpha = ctx.globalAlpha;
+  if (stealthOpacity < 1.0) {
+    ctx.globalAlpha = stealthOpacity;
+  }
+
   if (hasCustomSprite && charData.customSprite) {
     if (!character.dead) {
       // Living character - draw custom sprite with directional support and idle/moving/casting state
@@ -2645,6 +2684,9 @@ function drawCharacter(
       drawDeadX(ctx, px, py);
     }
   }
+
+  // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
+  ctx.globalAlpha = originalAlpha;
 
   if (!character.dead) {
     // Draw health bar above the character

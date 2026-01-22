@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { MapEditor } from './components/editor/MapEditor';
@@ -7,6 +7,89 @@ import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets } from './utils/themeAssets';
+
+// Animated Logo component that supports sprite sheets
+function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
+  src: string;
+  alt: string;
+  frameCount: number;
+  frameRate: number;
+  className?: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+
+    let animationFrameId: number | null = null;
+    let frameIndex = 0;
+    let lastFrameTime = Date.now();
+    const frameDuration = 1000 / frameRate;
+
+    img.onload = () => {
+      // Calculate frame dimensions (horizontal sprite sheet)
+      const frameWidth = img.width / frameCount;
+      const frameHeight = img.height;
+
+      // Set canvas size to single frame size
+      canvas.width = frameWidth;
+      canvas.height = frameHeight;
+      setDimensions({ width: frameWidth, height: frameHeight });
+
+      const animate = () => {
+        const now = Date.now();
+
+        // Update frame if enough time has passed
+        if (now - lastFrameTime >= frameDuration) {
+          frameIndex = (frameIndex + 1) % frameCount;
+          lastFrameTime = now;
+        }
+
+        // Clear and draw current frame
+        ctx.clearRect(0, 0, frameWidth, frameHeight);
+        ctx.drawImage(
+          img,
+          frameIndex * frameWidth, 0, frameWidth, frameHeight,
+          0, 0, frameWidth, frameHeight
+        );
+
+        animationFrameId = requestAnimationFrame(animate);
+      };
+
+      animate();
+    };
+
+    img.src = src;
+
+    return () => {
+      if (animationFrameId !== null) {
+        cancelAnimationFrame(animationFrameId);
+      }
+    };
+  }, [src, frameCount, frameRate]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={dimensions ? {
+        width: 'auto',
+        height: '100%',
+        maxHeight: '48px',
+        imageRendering: 'pixelated'
+      } : undefined}
+      aria-label={alt}
+    />
+  );
+}
 
 function Navigation() {
   const location = useLocation();
@@ -50,11 +133,22 @@ function Navigation() {
         <div className="flex items-center gap-2 md:gap-3">
           {/* Custom logo or default torch icon */}
           {themeAssets.logo ? (
-            <img
-              src={themeAssets.logo}
-              alt={themeAssets.logoAlt || 'Logo'}
-              className="h-10 md:h-12 w-auto object-contain flex-shrink-0"
-            />
+            // Check if this is an animated sprite sheet
+            (themeAssets.logoFrameCount && themeAssets.logoFrameCount > 1) ? (
+              <AnimatedLogo
+                src={themeAssets.logo}
+                alt={themeAssets.logoAlt || 'Logo'}
+                frameCount={themeAssets.logoFrameCount}
+                frameRate={themeAssets.logoFrameRate || 10}
+                className="h-10 md:h-12 flex-shrink-0"
+              />
+            ) : (
+              <img
+                src={themeAssets.logo}
+                alt={themeAssets.logoAlt || 'Logo'}
+                className="h-10 md:h-12 w-auto object-contain flex-shrink-0"
+              />
+            )
           ) : (
             <span className="text-copper-400 text-2xl md:text-3xl animate-flicker flex-shrink-0">&#128293;</span>
           )}

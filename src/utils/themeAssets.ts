@@ -24,6 +24,8 @@ export interface ThemeAssets {
   // Branding
   logo?: string; // data URL or external URL
   logoAlt?: string; // Alt text for logo
+  logoFrameCount?: number; // Number of frames in logo sprite sheet (default: 1 = static image)
+  logoFrameRate?: number; // Frames per second for animated logo (default: 10)
   siteTitle?: string; // Site title (default: "Puzzle Daily")
   siteSubtitle?: string; // Secondary title shown next to main title
   siteSubtitleColor?: string; // Subtitle text color
@@ -174,8 +176,10 @@ export type ThemeAssetKey = keyof ThemeAssets;
 // Asset metadata for the editor UI
 export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; description: string; category: string; inputType?: 'image' | 'text' | 'color' | 'select' | 'toggle' }> = {
   // Branding
-  logo: { label: 'Logo', description: 'Logo image shown in navbar (recommended: PNG with transparency, ~32-48px height)', category: 'branding', inputType: 'image' },
+  logo: { label: 'Logo', description: 'Logo image shown in navbar. For animated logos, use a horizontal sprite sheet.', category: 'branding', inputType: 'image' },
   logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding', inputType: 'text' },
+  logoFrameCount: { label: 'Logo Frame Count', description: 'Number of frames in logo sprite sheet (1 = static image)', category: 'branding', inputType: 'text' },
+  logoFrameRate: { label: 'Logo Frame Rate', description: 'Frames per second for animated logo (default: 10)', category: 'branding', inputType: 'text' },
   siteTitle: { label: 'Site Title', description: 'Title shown in navbar (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
   siteSubtitle: { label: 'Site Subtitle', description: 'Secondary title shown next to main title (e.g., "The Daily Dungeon Puzzle")', category: 'branding', inputType: 'text' },
   siteSubtitleColor: { label: 'Subtitle Color', description: 'Color for the subtitle text', category: 'branding', inputType: 'color' },

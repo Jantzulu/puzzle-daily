@@ -264,6 +264,7 @@ function processEntityStatusEffects(
     // Check if this effect should process at this timing
     const shouldProcessAtStart = effect.type === StatusEffectType.STUN ||
                                   effect.type === StatusEffectType.SLEEP ||
+                                  effect.type === StatusEffectType.POLYMORPH ||
                                   effect.type === StatusEffectType.SLOW ||
                                   effect.type === StatusEffectType.SILENCED ||
                                   effect.type === StatusEffectType.DISARMED ||
@@ -334,8 +335,13 @@ export function canEntityAct(entity: PlacedCharacter | PlacedEnemy): { allowed: 
     // Check for action-preventing effects
     if (effectAsset?.preventsAllActions ||
         effect.type === StatusEffectType.STUN ||
-        effect.type === StatusEffectType.SLEEP) {
-      return { allowed: false, reason: effect.type === StatusEffectType.SLEEP ? 'Asleep' : 'Stunned' };
+        effect.type === StatusEffectType.SLEEP ||
+        effect.type === StatusEffectType.POLYMORPH) {
+      const reasonMap: Record<string, string> = {
+        [StatusEffectType.SLEEP]: 'Asleep',
+        [StatusEffectType.POLYMORPH]: 'Polymorphed',
+      };
+      return { allowed: false, reason: reasonMap[effect.type] || 'Stunned' };
     }
   }
 
@@ -421,25 +427,36 @@ export function hasHasteBonus(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
- * Remove sleep effects from an entity (called when entity takes damage)
+ * Remove effects that are broken by damage (sleep, polymorph, etc.)
+ * Called when entity takes damage
  */
-export function wakeFromSleep(entity: PlacedCharacter | PlacedEnemy): void {
+export function removeEffectsOnDamage(entity: PlacedCharacter | PlacedEnemy): void {
   if (!entity.statusEffects) return;
 
-  const sleepEffects = entity.statusEffects.filter(e => e.type === StatusEffectType.SLEEP);
-
-  if (sleepEffects.length > 0) {
-    entity.statusEffects = entity.statusEffects.filter(e => {
-      if (e.type === StatusEffectType.SLEEP) {
-        return false;
-      }
+  entity.statusEffects = entity.statusEffects.filter(e => {
+    // Sleep and Polymorph are always removed by damage (built-in behavior)
+    if (e.type === StatusEffectType.SLEEP || e.type === StatusEffectType.POLYMORPH) {
       const effectAsset = loadStatusEffectAsset(e.statusAssetId);
-      if (effectAsset?.removedOnDamage) {
-        return false;
+      // Check if the asset explicitly disables removal on damage
+      if (effectAsset?.removedOnDamage === false) {
+        return true;
       }
-      return true;
-    });
-  }
+      return false;
+    }
+    // For other effects, check the removedOnDamage flag
+    const effectAsset = loadStatusEffectAsset(e.statusAssetId);
+    if (effectAsset?.removedOnDamage) {
+      return false;
+    }
+    return true;
+  });
+}
+
+/**
+ * @deprecated Use removeEffectsOnDamage instead
+ */
+export function wakeFromSleep(entity: PlacedCharacter | PlacedEnemy): void {
+  removeEffectsOnDamage(entity);
 }
 
 // ==========================================
