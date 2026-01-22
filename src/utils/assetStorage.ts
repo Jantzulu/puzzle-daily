@@ -1302,3 +1302,62 @@ export function resolveSpriteSheetSource(config?: SpriteSheetConfig): string | u
   if (!config) return undefined;
   return config.imageData || config.imageUrl;
 }
+
+/**
+ * Extract all image URLs from a CustomSprite for preloading.
+ * This includes all states (idle, moving, death, casting, triggered)
+ * and all directional variants.
+ */
+export function extractSpriteImageUrls(sprite: CustomSprite | undefined): string[] {
+  if (!sprite) return [];
+
+  const urls: string[] = [];
+
+  const addIfExists = (data?: string, url?: string, sheet?: SpriteSheetConfig) => {
+    const resolved = data || url;
+    if (resolved) urls.push(resolved);
+    if (sheet) {
+      const sheetSrc = sheet.imageData || sheet.imageUrl;
+      if (sheetSrc) urls.push(sheetSrc);
+    }
+  };
+
+  // Simple/non-directional sprites
+  addIfExists(sprite.imageData, sprite.imageUrl); // Legacy
+  addIfExists(sprite.idleImageData, sprite.idleImageUrl, sprite.idleSpriteSheet);
+  addIfExists(sprite.movingImageData, sprite.movingImageUrl, sprite.movingSpriteSheet);
+  addIfExists(sprite.deathImageData, sprite.deathImageUrl, sprite.deathSpriteSheet);
+  addIfExists(sprite.castingImageData, sprite.castingImageUrl, sprite.castingSpriteSheet);
+  addIfExists(sprite.triggeredImageData, sprite.triggeredImageUrl, sprite.triggeredSpriteSheet);
+
+  // Directional sprites
+  if (sprite.directionalSprites) {
+    for (const dir of Object.values(sprite.directionalSprites)) {
+      if (dir) {
+        addIfExists(dir.imageData, dir.imageUrl); // Legacy
+        addIfExists(dir.idleImageData, dir.idleImageUrl, dir.idleSpriteSheet);
+        addIfExists(dir.movingImageData, dir.movingImageUrl, dir.movingSpriteSheet);
+        addIfExists(dir.deathImageData, dir.deathImageUrl, dir.deathSpriteSheet);
+        addIfExists(dir.castingImageData, dir.castingImageUrl, dir.castingSpriteSheet);
+      }
+    }
+  }
+
+  return urls;
+}
+
+/**
+ * Extract image URLs from a SpriteReference (used by spells).
+ * If the sprite is inline, extracts URLs from the CustomSprite data.
+ */
+export function extractSpriteReferenceUrls(ref: { type: 'stored' | 'inline'; spriteId?: string; spriteData?: CustomSprite } | undefined): string[] {
+  if (!ref) return [];
+
+  if (ref.type === 'inline' && ref.spriteData) {
+    return extractSpriteImageUrls(ref.spriteData);
+  }
+
+  // For stored sprites, we'd need to load the sprite first
+  // This is handled separately if needed
+  return [];
+}

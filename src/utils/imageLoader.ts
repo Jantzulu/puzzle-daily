@@ -154,3 +154,84 @@ export function clearImageCache(): void {
   loadingImages.clear();
   failedImages.clear();
 }
+
+// ==========================================
+// BACKGROUND PRELOADING
+// ==========================================
+
+// Queue of URLs waiting to be preloaded
+const preloadQueue: string[] = [];
+let preloadingActive = false;
+
+/**
+ * Preload an image in the background with low priority.
+ * This doesn't block or delay anything - just ensures the image
+ * is cached for when it's needed later.
+ */
+export function preloadImage(src: string): void {
+  if (!src) return;
+
+  // Skip if already cached or queued
+  if (imageCache.has(src) || preloadQueue.includes(src)) return;
+
+  preloadQueue.push(src);
+  processPreloadQueue();
+}
+
+/**
+ * Preload multiple images in the background.
+ */
+export function preloadImages(urls: string[]): void {
+  for (const url of urls) {
+    preloadImage(url);
+  }
+}
+
+/**
+ * Process the preload queue using requestIdleCallback for low priority.
+ * Falls back to setTimeout on browsers without requestIdleCallback.
+ */
+function processPreloadQueue(): void {
+  if (preloadingActive || preloadQueue.length === 0) return;
+
+  preloadingActive = true;
+
+  const processNext = () => {
+    if (preloadQueue.length === 0) {
+      preloadingActive = false;
+      return;
+    }
+
+    // Load one image
+    const src = preloadQueue.shift()!;
+    if (!imageCache.has(src)) {
+      loadImage(src);
+    }
+
+    // Schedule next with low priority
+    if (preloadQueue.length > 0) {
+      if ('requestIdleCallback' in window) {
+        (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(processNext);
+      } else {
+        // Fallback: use setTimeout with a small delay
+        setTimeout(processNext, 10);
+      }
+    } else {
+      preloadingActive = false;
+    }
+  };
+
+  // Start processing with low priority
+  if ('requestIdleCallback' in window) {
+    (window as unknown as { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(processNext);
+  } else {
+    setTimeout(processNext, 10);
+  }
+}
+
+/**
+ * Get the number of images waiting to be preloaded.
+ */
+export function getPreloadQueueSize(): number {
+  return preloadQueue.length;
+}

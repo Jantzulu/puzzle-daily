@@ -3,6 +3,7 @@ import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore } fro
 import { Direction } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
+import { getEnemy } from '../../data/enemies';
 import { initializeGameState, executeTurn, checkVictoryConditions } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
@@ -12,11 +13,12 @@ import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { ItemsDisplay } from './ItemsDisplay';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { loadTileType, loadCollectible, loadEnemy } from '../../utils/assetStorage';
+import { loadTileType, loadCollectible, loadEnemy, loadObject, loadPuzzleSkin, loadSpellAsset, extractSpriteImageUrls, extractSpriteReferenceUrls } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
+import { preloadImages } from '../../utils/imageLoader';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -95,6 +97,133 @@ export const Game: React.FC = () => {
   useEffect(() => {
     playBackgroundMusic(currentPuzzle.backgroundMusicId);
   }, [currentPuzzle.id, currentPuzzle.backgroundMusicId]);
+
+  // Preload sprite assets in the background when puzzle changes
+  // This ensures all directional sprites, animation frames, etc. are cached
+  // before they're needed during gameplay
+  useEffect(() => {
+    const urlsToPreload: string[] = [];
+
+    // Helper to preload spell sprites
+    const preloadSpellSprites = (spellId: string) => {
+      const spell = loadSpellAsset(spellId);
+      if (spell) {
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.projectileSprite));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.aoeEffectSprite));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.hitEffectSprite));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.healingEffectSprite));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.persistVisualSprite));
+      }
+    };
+
+    // Preload character sprites (all available characters for this puzzle)
+    for (const charId of currentPuzzle.availableCharacters) {
+      const charData = getCharacter(charId);
+      if (charData?.customSprite) {
+        urlsToPreload.push(...extractSpriteImageUrls(charData.customSprite));
+      }
+      // Preload spell sprites from character behaviors
+      if (charData?.behavior) {
+        for (const action of charData.behavior) {
+          if (action.spellId) {
+            preloadSpellSprites(action.spellId);
+          }
+        }
+      }
+    }
+
+    // Preload enemy sprites
+    for (const enemy of currentPuzzle.enemies) {
+      const enemyData = getEnemy(enemy.enemyId);
+      if (enemyData?.customSprite) {
+        urlsToPreload.push(...extractSpriteImageUrls(enemyData.customSprite));
+      }
+      // Preload spell sprites from enemy behaviors
+      const pattern = enemyData?.behavior?.pattern;
+      if (pattern) {
+        for (const action of pattern) {
+          if (action.spellId) {
+            preloadSpellSprites(action.spellId);
+          }
+        }
+      }
+    }
+
+    // Preload custom tile sprites
+    for (const row of currentPuzzle.tiles) {
+      for (const tile of row) {
+        if (tile?.customType) {
+          const tileData = loadTileType(tile.customType);
+          if (tileData?.customSprite) {
+            urlsToPreload.push(...extractSpriteImageUrls(tileData.customSprite));
+          }
+          if (tileData?.offStateSprite) {
+            urlsToPreload.push(...extractSpriteImageUrls(tileData.offStateSprite));
+          }
+        }
+      }
+    }
+
+    // Preload collectible sprites
+    for (const collectible of currentPuzzle.collectibles) {
+      if (collectible.collectibleId) {
+        const collectibleData = loadCollectible(collectible.collectibleId);
+        if (collectibleData?.customSprite) {
+          urlsToPreload.push(...extractSpriteImageUrls(collectibleData.customSprite));
+        }
+      }
+    }
+
+    // Preload object sprites
+    if (currentPuzzle.objects) {
+      for (const obj of currentPuzzle.objects) {
+        if (obj.objectId) {
+          const objectData = loadObject(obj.objectId);
+          if (objectData?.customSprite) {
+            urlsToPreload.push(...extractSpriteImageUrls(objectData.customSprite));
+          }
+        }
+      }
+    }
+
+    // Preload skin sprites (border and tile sprites)
+    if (currentPuzzle.skinId) {
+      const skin = loadPuzzleSkin(currentPuzzle.skinId);
+      if (skin) {
+        // Border sprites
+        if (skin.borderSprites) {
+          const borderSprites = skin.borderSprites;
+          const borderKeys = ['topLeft', 'top', 'topRight', 'left', 'right', 'bottomLeft', 'bottom', 'bottomRight'] as const;
+          for (const key of borderKeys) {
+            if (borderSprites[key]) urlsToPreload.push(borderSprites[key]);
+          }
+        }
+        // Tile sprites
+        if (skin.tileSprites) {
+          const { floor, wall, void: voidSprite } = skin.tileSprites;
+          if (floor) urlsToPreload.push(floor);
+          if (wall) urlsToPreload.push(wall);
+          if (voidSprite) urlsToPreload.push(voidSprite);
+        }
+        // Custom tile sprites
+        if (skin.customTileSprites) {
+          for (const value of Object.values(skin.customTileSprites)) {
+            if (typeof value === 'string') {
+              urlsToPreload.push(value);
+            } else if (value) {
+              if (value.onSprite) urlsToPreload.push(value.onSprite);
+              if (value.offSprite) urlsToPreload.push(value.offSprite);
+            }
+          }
+        }
+      }
+    }
+
+    // Trigger background preloading
+    if (urlsToPreload.length > 0) {
+      preloadImages(urlsToPreload);
+    }
+  }, [currentPuzzle.id]);
 
   // Simulation loop
   useEffect(() => {

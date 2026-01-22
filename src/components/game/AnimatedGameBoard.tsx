@@ -2487,24 +2487,7 @@ function drawStatusEffectIcons(
       ctx.fillStyle = getDefaultEffectColor(effect.type);
       drawEffectShape(ctx, iconX, iconY, iconSize, 'circle');
     }
-
-    // Draw stack count if > 1
-    if (effect.currentStacks && effect.currentStacks > 1) {
-      ctx.fillStyle = '#fff';
-      ctx.font = 'bold 6px Arial';
-      ctx.textAlign = 'right';
-      ctx.fillText(effect.currentStacks.toString(), iconX + iconSize, iconY + iconSize);
-    }
   });
-
-  // Draw overflow indicator if there are more effects
-  if (hasOverflow) {
-    const overflowX = startX + maxIconsVisible * (iconSize + iconSpacing);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 6px Arial';
-    ctx.textAlign = 'left';
-    ctx.fillText(`+${statusEffects.length - maxIconsVisible}`, overflowX, startY + iconSize - 1);
-  }
 }
 
 // Get default color for status effect type
