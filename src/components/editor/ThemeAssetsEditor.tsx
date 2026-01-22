@@ -673,6 +673,7 @@ export const ThemeAssetsEditor: React.FC = () => {
     effects: 'Effects',
     colors: 'Colors',
     actionButtons: 'Action Buttons',
+    concedeModal: 'Concede Overlay',
     styles: 'Styles',
   };
 
@@ -685,6 +686,7 @@ export const ThemeAssetsEditor: React.FC = () => {
     effects: '✨',
     colors: '🎨',
     actionButtons: '▶️',
+    concedeModal: '🏳️',
     styles: '⚙️',
   };
 

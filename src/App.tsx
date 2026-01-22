@@ -80,12 +80,13 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
     <canvas
       ref={canvasRef}
       className={className}
-      style={dimensions ? {
-        width: 'auto',
-        height: '100%',
+      style={{
+        width: dimensions ? `${dimensions.width * (48 / dimensions.height)}px` : 'auto',
+        height: '48px',
         maxHeight: '48px',
-        imageRendering: 'pixelated'
-      } : undefined}
+        imageRendering: 'pixelated',
+        display: 'block'
+      }}
       aria-label={alt}
     />
   );
