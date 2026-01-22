@@ -2324,14 +2324,6 @@ export const MapEditor: React.FC = () => {
                   >
                     Wipe
                   </button>
-
-                  <button
-                    onClick={handleTestEnemies}
-                    className="dungeon-btn-danger px-4 py-2 text-sm font-semibold"
-                    title="Watch enemies move without characters for 5 turns"
-                  >
-                    Test Enemies
-                  </button>
                 </div>
               </div>
 
