@@ -2139,7 +2139,8 @@ function applyDamageToEntity(
   // Check for shield effects and absorb damage
   if (target.statusEffects) {
     for (const effect of target.statusEffects) {
-      if (effect.type === StatusEffectType.SHIELD && remainingDamage > 0) {
+      // Check both enum and string to handle JSON parsing type coercion
+      if ((effect.type === StatusEffectType.SHIELD || effect.type === 'shield') && remainingDamage > 0) {
         const shieldAmount = effect.value ?? 0;
 
         if (shieldAmount <= 0) {
@@ -2161,7 +2162,7 @@ function applyDamageToEntity(
 
     // Remove depleted shields
     target.statusEffects = target.statusEffects.filter(
-      e => !(e.type === StatusEffectType.SHIELD && e.duration <= 0 && (e.value ?? 0) <= 0)
+      e => !((e.type === StatusEffectType.SHIELD || e.type === 'shield') && e.duration <= 0 && (e.value ?? 0) <= 0)
     );
   }
 

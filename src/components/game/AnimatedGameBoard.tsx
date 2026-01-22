@@ -2350,7 +2350,8 @@ function drawHealthBar(
   }
 
   // Check if entity has a shield effect and get custom color
-  const shieldEffect = statusEffects?.find(e => e.type === StatusEffectType.SHIELD);
+  // Compare with both enum value and string to handle any type coercion issues from JSON parsing
+  const shieldEffect = statusEffects?.find(e => e.type === StatusEffectType.SHIELD || e.type === 'shield');
   const hasShield = !!shieldEffect;
 
   // Get custom shield color from the status effect asset, or use default cyan

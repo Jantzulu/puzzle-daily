@@ -819,6 +819,7 @@ export const getBuiltInStatusEffects = (): StatusEffectAsset[] => {
       processAtTurnStart: false,
       stackingBehavior: 'stack',
       maxStacks: 3,
+      healthBarColor: '#22d3ee', // Cyan color for shielded health bar
       createdAt: '2024-01-01T00:00:00.000Z',
       isBuiltIn: true,
     },
