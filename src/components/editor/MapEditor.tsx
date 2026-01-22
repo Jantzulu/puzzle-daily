@@ -2139,25 +2139,57 @@ export const MapEditor: React.FC = () => {
               {showConcedeConfirm && (
                 <div
                   className="fixed inset-0 flex items-center justify-center z-50"
-                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+                  style={{
+                    backgroundColor: themeAssets.concedeModalOverlayBg || 'rgba(0, 0, 0, 0.7)',
+                  }}
                 >
-                  <div className="defeat-panel p-6 rounded-pixel-lg text-center max-w-sm mx-4">
-                    <h3 className="text-xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
+                  <div
+                    className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${
+                      themeAssets.concedeModalPanelBg ? '' : 'defeat-panel'
+                    }`}
+                    style={{
+                      ...(themeAssets.concedeModalPanelBg && { backgroundColor: themeAssets.concedeModalPanelBg }),
+                      ...(themeAssets.concedeModalPanelBorder && { borderColor: themeAssets.concedeModalPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                    }}
+                  >
+                    <h3
+                      className={`text-xl font-bold font-medieval ${
+                        themeAssets.concedeModalTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
+                      }`}
+                      style={{
+                        ...(themeAssets.concedeModalTitleText && { color: themeAssets.concedeModalTitleText }),
+                      }}
+                    >
                       Concede?
                     </h3>
-                    <p className="mt-2 text-blood-300">
+                    <p
+                      className={`mt-2 ${themeAssets.concedeModalMessageText ? '' : 'text-blood-300'}`}
+                      style={{
+                        ...(themeAssets.concedeModalMessageText && { color: themeAssets.concedeModalMessageText }),
+                      }}
+                    >
                       You will lose a life and return to setup.
                     </p>
                     <div className="mt-4 flex gap-3 justify-center">
                       <button
                         onClick={() => setShowConcedeConfirm(false)}
-                        className="dungeon-btn px-4 py-2"
+                        className={`px-4 py-2 ${themeAssets.concedeModalCancelBg ? 'rounded-pixel' : 'dungeon-btn'}`}
+                        style={{
+                          ...(themeAssets.concedeModalCancelBg && { backgroundColor: themeAssets.concedeModalCancelBg }),
+                          ...(themeAssets.concedeModalCancelBorder && { borderColor: themeAssets.concedeModalCancelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(themeAssets.concedeModalCancelText && { color: themeAssets.concedeModalCancelText }),
+                        }}
                       >
                         Cancel
                       </button>
                       <button
                         onClick={handleConcedePlaytest}
-                        className="dungeon-btn-danger px-4 py-2"
+                        className={`px-4 py-2 ${themeAssets.concedeModalConfirmBg ? 'rounded-pixel' : 'dungeon-btn-danger'}`}
+                        style={{
+                          ...(themeAssets.concedeModalConfirmBg && { backgroundColor: themeAssets.concedeModalConfirmBg }),
+                          ...(themeAssets.concedeModalConfirmBorder && { borderColor: themeAssets.concedeModalConfirmBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(themeAssets.concedeModalConfirmText && { color: themeAssets.concedeModalConfirmText }),
+                        }}
                       >
                         Concede
                       </button>
@@ -2187,8 +2219,16 @@ export const MapEditor: React.FC = () => {
                           className={`px-5 md:px-6 py-1 font-bold text-sm transition-all ${
                             testMode !== 'none'
                               ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
-                              : 'dungeon-btn-success torch-glow'
+                              : themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                          } ${
+                            themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
+                            themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
                           }`}
+                          style={{
+                            ...(testMode === 'none' && themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                            ...(testMode === 'none' && themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                            ...(testMode === 'none' && themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                          }}
                         >
                           ⚔ Play
                         </button>
@@ -2238,7 +2278,17 @@ export const MapEditor: React.FC = () => {
                       ) : (
                         <button
                           onClick={() => setShowConcedeConfirm(true)}
-                          className="text-xs px-2 py-1 dungeon-btn-danger"
+                          className={`text-xs px-2 py-1 ${
+                            themeAssets.actionButtonConcedeBg ? '' : 'dungeon-btn-danger'
+                          } ${
+                            themeAssets.actionButtonConcedeShape === 'rounded' ? 'rounded-lg' :
+                            themeAssets.actionButtonConcedeShape === 'pill' ? 'rounded-full' : ''
+                          }`}
+                          style={{
+                            ...(themeAssets.actionButtonConcedeBg && { backgroundColor: themeAssets.actionButtonConcedeBg }),
+                            ...(themeAssets.actionButtonConcedeBorder && { borderColor: themeAssets.actionButtonConcedeBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                            ...(themeAssets.actionButtonConcedeText && { color: themeAssets.actionButtonConcedeText }),
+                          }}
                           title="Give up this attempt and lose a life"
                         >
                           Concede
