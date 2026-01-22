@@ -1972,9 +1972,22 @@ export function updateProjectiles(gameState: GameState): void {
             } else {
               // Apply single-target healing
               const healing = proj.attackData.healing ?? 0;
-              const charData = getCharacter(hitAlly.characterId);
-              const maxHealth = charData?.health ?? hitAlly.currentHealth;
-              hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
+              if (healing > 0) {
+                const charData = getCharacter(hitAlly.characterId);
+                const maxHealth = charData?.health ?? hitAlly.currentHealth;
+                hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
+              }
+
+              // Apply status effect (shield, regen, etc.) if spell has one
+              if (proj.spellAssetId && !hitAlly.dead) {
+                applyStatusEffectFromProjectile(
+                  hitAlly,
+                  proj.spellAssetId,
+                  proj.sourceCharacterId || 'unknown',
+                  false,
+                  gameState.currentTurn
+                );
+              }
 
               // Spawn healing effect (prefer healing sprite, fallback to hit effect)
               const healSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
@@ -2456,9 +2469,16 @@ function updateProjectilesHeadless(gameState: GameState): void {
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
               } else {
                 const healing = proj.attackData.healing ?? 0;
-                const charData = getCharacter(hitAlly.characterId);
-                const maxHealth = charData?.health ?? hitAlly.currentHealth;
-                hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
+                if (healing > 0) {
+                  const charData = getCharacter(hitAlly.characterId);
+                  const maxHealth = charData?.health ?? hitAlly.currentHealth;
+                  hitAlly.currentHealth = Math.min(hitAlly.currentHealth + healing, maxHealth);
+                }
+                // Apply status effect (shield, regen, etc.) if spell has one
+                if (proj.spellAssetId && !hitAlly.dead) {
+                  applyStatusEffectFromProjectile(hitAlly, proj.spellAssetId,
+                    proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+                }
               }
               hitSomething = true;
               if (!canPierce) shouldRemove = true;
