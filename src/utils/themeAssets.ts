@@ -178,8 +178,8 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   // Branding
   logo: { label: 'Logo', description: 'Logo image shown in navbar. For animated logos, use a horizontal sprite sheet.', category: 'branding', inputType: 'image' },
   logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding', inputType: 'text' },
-  logoFrameCount: { label: 'Logo Frame Count', description: 'Number of frames in logo sprite sheet (1 = static image)', category: 'branding', inputType: 'text' },
-  logoFrameRate: { label: 'Logo Frame Rate', description: 'Frames per second for animated logo (default: 10)', category: 'branding', inputType: 'text' },
+  logoFrameCount: { label: 'Logo Frame Count', description: 'REQUIRED for animation: total number of frames in sprite sheet (e.g., 8)', category: 'branding', inputType: 'text' },
+  logoFrameRate: { label: 'Logo Frame Rate', description: 'Animation speed in frames per second (default: 10)', category: 'branding', inputType: 'text' },
   siteTitle: { label: 'Site Title', description: 'Title shown in navbar (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
   siteSubtitle: { label: 'Site Subtitle', description: 'Secondary title shown next to main title (e.g., "The Daily Dungeon Puzzle")', category: 'branding', inputType: 'text' },
   siteSubtitleColor: { label: 'Subtitle Color', description: 'Color for the subtitle text', category: 'branding', inputType: 'color' },
