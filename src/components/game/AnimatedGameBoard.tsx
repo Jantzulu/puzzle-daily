@@ -2433,6 +2433,11 @@ function drawStatusEffectIcons(
   py: number,
   statusEffects: StatusEffectInstance[] | undefined
 ) {
+  // Debug: log what effects we're trying to draw (throttled)
+  if (statusEffects && statusEffects.length > 0 && Date.now() % 2000 < 20) {
+    console.log('[DrawIcons] Drawing icons for effects:', statusEffects.map(e => ({ type: e.type, id: e.statusAssetId })));
+  }
+
   if (!statusEffects || statusEffects.length === 0) return;
 
   const iconSize = 8;

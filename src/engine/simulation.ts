@@ -606,17 +606,29 @@ function applyStatusEffectFromProjectile(
   sourceIsEnemy: boolean,
   currentTurn: number
 ): void {
+  console.log('[StatusEffect] applyStatusEffectFromProjectile called with spellAssetId:', spellAssetId);
+
   const spell = loadSpellAsset(spellAssetId);
-  if (!spell?.appliesStatusEffect) return;
+  if (!spell?.appliesStatusEffect) {
+    console.log('[StatusEffect] Spell has no appliesStatusEffect:', spell?.name);
+    return;
+  }
 
   const effectConfig = spell.appliesStatusEffect;
-  if (!effectConfig.statusAssetId) return;
+  console.log('[StatusEffect] Effect config:', effectConfig);
+
+  if (!effectConfig.statusAssetId) {
+    console.log('[StatusEffect] No statusAssetId in config');
+    return;
+  }
 
   const effectAsset = loadStatusEffectAsset(effectConfig.statusAssetId);
   if (!effectAsset) {
     console.warn(`Status effect asset not found: ${effectConfig.statusAssetId}`);
     return;
   }
+
+  console.log('[StatusEffect] Found effect asset:', effectAsset.name, 'type:', effectAsset.type);
 
   // Check apply chance
   const applyChance = effectConfig.applyChance ?? 1;
@@ -680,6 +692,7 @@ function applyStatusEffectFromProjectile(
   };
 
   target.statusEffects.push(newEffect);
+  console.log('[StatusEffect] Applied effect to target:', newEffect.type, 'target now has', target.statusEffects.length, 'effects');
 }
 
 /**
