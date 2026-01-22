@@ -3,7 +3,7 @@ import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } fro
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
-import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy } from '../utils/assetStorage';
+import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter } from '../utils/assetStorage';
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
@@ -2334,6 +2334,36 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 applyStatusEffectFromProjectile(char, proj.spellAssetId,
                   proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
               }
+            }
+          } else if (proj.sourceCharacterId && !proj.targetIsEnemy) {
+            // Character's homing projectile hitting friendly character (buff/heal spell)
+            const char = targetEntity as PlacedCharacter;
+            // Apply healing if spell has healing value (friendly fire damage is NOT applied)
+            const healing = proj.attackData.healing ?? 0;
+            if (healing > 0) {
+              const charData = getCharacter(char.characterId) || loadCharacter(char.characterId);
+              const maxHealth = charData?.health || char.currentHealth;
+              char.currentHealth = Math.min(char.currentHealth + healing, maxHealth);
+            }
+            // Apply status effect (shield, regen, etc.) if spell has one
+            if (proj.spellAssetId && !char.dead) {
+              applyStatusEffectFromProjectile(char, proj.spellAssetId,
+                proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+            }
+          } else if (proj.sourceEnemyId && proj.targetIsEnemy) {
+            // Enemy's homing projectile hitting friendly enemy (buff/heal spell)
+            const enemy = targetEntity as PlacedEnemy;
+            // Apply healing if spell has healing value (friendly fire damage is NOT applied)
+            const healing = proj.attackData.healing ?? 0;
+            if (healing > 0) {
+              const enemyData = loadEnemy(enemy.enemyId) || { health: enemy.currentHealth };
+              const maxHealth = enemyData?.health || enemy.currentHealth;
+              enemy.currentHealth = Math.min(enemy.currentHealth + healing, maxHealth);
+            }
+            // Apply status effect (shield, regen, etc.) if spell has one
+            if (proj.spellAssetId && !enemy.dead) {
+              applyStatusEffectFromProjectile(enemy, proj.spellAssetId,
+                proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
             }
           }
           shouldRemove = true;
