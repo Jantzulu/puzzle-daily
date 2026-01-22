@@ -2527,6 +2527,10 @@ function getDefaultEffectColor(type: StatusEffectType): string {
       return '#ff69b4'; // pink
     case StatusEffectType.STEALTH:
       return '#4a5568'; // gray
+    case StatusEffectType.SHIELD:
+      return '#22d3ee'; // cyan
+    case StatusEffectType.HASTE:
+      return '#fbbf24'; // amber
     default:
       return '#ffffff'; // white
   }
