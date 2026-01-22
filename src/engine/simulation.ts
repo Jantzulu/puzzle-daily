@@ -1927,8 +1927,9 @@ export function updateProjectiles(gameState: GameState): void {
     }
 
     // Check collision based on who fired the projectile
-    // Healing projectiles hit allies, damage projectiles hit enemies
-    const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
+    // Healing/buff projectiles hit allies, damage projectiles hit enemies
+    // A projectile is considered "friendly" if healing is defined (even if 0 for status-effect-only spells)
+    const isHealingProjectile = proj.attackData.healing !== undefined;
 
     // Use newTiles for entity collision checks (only tiles we haven't checked yet)
     // This prevents hitting the same entity multiple times per frame
@@ -2298,7 +2299,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
       continue;
     }
 
-    const isHealingProjectile = (proj.attackData.healing ?? 0) > 0;
+    // A projectile is considered "friendly" if healing is defined (even if 0 for status-effect-only spells)
+    const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
     const tilesPerTurn = proj.speed || 4; // Speed is now directly tiles per turn
 
