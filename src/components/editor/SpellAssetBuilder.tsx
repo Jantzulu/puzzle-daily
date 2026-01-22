@@ -1046,11 +1046,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   type="button"
                   onClick={() => setEditedSpell({
                     ...editedSpell,
-                    damage: editedSpell.healing || editedSpell.damage || 1,
+                    damage: editedSpell.healing ?? editedSpell.damage ?? 0,
                     healing: undefined
                   })}
                   className={`flex-1 px-4 py-2 rounded transition-colors ${
-                    !editedSpell.healing
+                    editedSpell.healing === undefined
                       ? 'bg-red-600 text-parchment-100'
                       : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
@@ -1061,11 +1061,11 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   type="button"
                   onClick={() => setEditedSpell({
                     ...editedSpell,
-                    healing: editedSpell.damage || editedSpell.healing || 1,
+                    healing: editedSpell.damage ?? editedSpell.healing ?? 0,
                     damage: undefined
                   })}
                   className={`flex-1 px-4 py-2 rounded transition-colors ${
-                    editedSpell.healing
+                    editedSpell.healing !== undefined
                       ? 'bg-green-600 text-parchment-100'
                       : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
                   }`}
@@ -1078,16 +1078,16 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             {/* Damage or Healing Amount */}
             <div>
               <label className="block text-sm font-medium mb-1">
-                {editedSpell.healing ? 'Healing Amount *' : 'Damage Amount *'}
+                {editedSpell.healing !== undefined ? 'Healing Amount' : 'Damage Amount *'}
               </label>
               <input
                 type="number"
                 min="0"
                 max="100"
-                value={editedSpell.healing || editedSpell.damage || 0}
+                value={editedSpell.healing ?? editedSpell.damage ?? 0}
                 onChange={(e) => {
                   const value = parseInt(e.target.value) || 0;
-                  if (editedSpell.healing) {
+                  if (editedSpell.healing !== undefined) {
                     setEditedSpell({ ...editedSpell, healing: value });
                   } else {
                     setEditedSpell({ ...editedSpell, damage: value });
@@ -1096,8 +1096,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               />
               <p className="text-xs text-stone-400 mt-1">
-                {editedSpell.healing
-                  ? 'HP restored to allies (same team only)'
+                {editedSpell.healing !== undefined
+                  ? 'HP restored to allies (0 for status-effect-only spells)'
                   : 'HP removed from enemies'
                 }
               </p>
@@ -1537,7 +1537,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
 
             {/* Healing Effect Visual - only show for healing spells */}
-            {editedSpell.healing && (
+            {editedSpell.healing !== undefined && (
               <SpellSpriteEditor
                 label="Healing Effect (on heal)"
                 spriteRef={editedSpell.sprites?.healingEffect}
@@ -1552,7 +1552,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
 
             {/* Damage Effect Visual - only show for damage spells (last in order) */}
-            {!editedSpell.healing && (
+            {editedSpell.healing === undefined && (
               <SpellSpriteEditor
                 label="Damage Effect (on hit)"
                 spriteRef={editedSpell.sprites?.damageEffect}
