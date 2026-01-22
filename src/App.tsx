@@ -17,7 +17,9 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   className?: string;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [dimensions, setDimensions] = useState<{ width: number; height: number } | null>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const frameIndexRef = useRef(0);
+  const lastFrameTimeRef = useRef(Date.now());
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -28,36 +30,40 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
 
     const img = new Image();
     img.crossOrigin = 'anonymous';
+    imageRef.current = img;
 
     let animationFrameId: number | null = null;
-    let frameIndex = 0;
-    let lastFrameTime = Date.now();
     const frameDuration = 1000 / frameRate;
 
     img.onload = () => {
       // Calculate frame dimensions (horizontal sprite sheet)
-      const frameWidth = img.width / frameCount;
+      const frameWidth = Math.floor(img.width / frameCount);
       const frameHeight = img.height;
 
       // Set canvas size to single frame size
       canvas.width = frameWidth;
       canvas.height = frameHeight;
-      setDimensions({ width: frameWidth, height: frameHeight });
+
+      // Scale canvas display size to fit height while maintaining aspect ratio
+      const displayHeight = 48;
+      const displayWidth = frameWidth * (displayHeight / frameHeight);
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
 
       const animate = () => {
         const now = Date.now();
 
         // Update frame if enough time has passed
-        if (now - lastFrameTime >= frameDuration) {
-          frameIndex = (frameIndex + 1) % frameCount;
-          lastFrameTime = now;
+        if (now - lastFrameTimeRef.current >= frameDuration) {
+          frameIndexRef.current = (frameIndexRef.current + 1) % frameCount;
+          lastFrameTimeRef.current = now;
         }
 
         // Clear and draw current frame
         ctx.clearRect(0, 0, frameWidth, frameHeight);
         ctx.drawImage(
           img,
-          frameIndex * frameWidth, 0, frameWidth, frameHeight,
+          frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight,
           0, 0, frameWidth, frameHeight
         );
 
@@ -81,9 +87,6 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
       ref={canvasRef}
       className={className}
       style={{
-        width: dimensions ? `${dimensions.width * (48 / dimensions.height)}px` : 'auto',
-        height: '48px',
-        maxHeight: '48px',
         imageRendering: 'pixelated',
         display: 'block'
       }}
@@ -134,13 +137,13 @@ function Navigation() {
         <div className="flex items-center gap-2 md:gap-3">
           {/* Custom logo or default torch icon */}
           {themeAssets.logo ? (
-            // Check if this is an animated sprite sheet
-            (themeAssets.logoFrameCount && themeAssets.logoFrameCount > 1) ? (
+            // Check if this is an animated sprite sheet (parse as number since it may be stored as string)
+            (Number(themeAssets.logoFrameCount) > 1) ? (
               <AnimatedLogo
                 src={themeAssets.logo}
                 alt={themeAssets.logoAlt || 'Logo'}
-                frameCount={themeAssets.logoFrameCount}
-                frameRate={themeAssets.logoFrameRate || 10}
+                frameCount={Number(themeAssets.logoFrameCount)}
+                frameRate={Number(themeAssets.logoFrameRate) || 10}
                 className="h-10 md:h-12 flex-shrink-0"
               />
             ) : (
