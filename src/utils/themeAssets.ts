@@ -20,12 +20,21 @@ import { loadImage, isImageReady, subscribeToImageLoads } from './imageLoader';
 const STORAGE_KEY = 'theme_assets';
 const STORAGE_BUCKET = 'theme-assets';
 
+// Logo variant for random logo selection
+export interface LogoVariant {
+  image: string;        // data URL or external URL
+  frameCount: number;   // Number of frames in sprite sheet
+  frameRate?: number;   // Frames per second (default: 10)
+}
+
 export interface ThemeAssets {
   // Branding
   logo?: string; // data URL or external URL
   logoAlt?: string; // Alt text for logo
   logoFrameCount?: number; // Number of frames in logo sprite sheet (default: 1 = static image)
   logoFrameRate?: number; // Frames per second for animated logo (default: 10)
+  logoVariants?: LogoVariant[]; // Additional logo variants for random selection
+  logoRandomize?: boolean; // Enable random logo selection from variants
   siteTitle?: string; // Site title (default: "Puzzle Daily")
   siteSubtitle?: string; // Secondary title shown next to main title
   siteSubtitleColor?: string; // Subtitle text color
@@ -180,6 +189,8 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   logoAlt: { label: 'Logo Alt Text', description: 'Alternative text for accessibility', category: 'branding', inputType: 'text' },
   logoFrameCount: { label: 'Logo Frame Count', description: 'REQUIRED for animation: total number of frames in sprite sheet (e.g., 8)', category: 'branding', inputType: 'text' },
   logoFrameRate: { label: 'Logo Frame Rate', description: 'Animation speed in frames per second (default: 10)', category: 'branding', inputType: 'text' },
+  logoVariants: { label: 'Logo Variants', description: 'Additional logo sprite sheets for random selection (managed via Logo Variants editor below)', category: 'branding' },
+  logoRandomize: { label: 'Randomize Logo', description: 'Randomly select logo from variants on each visit', category: 'branding', inputType: 'toggle' },
   siteTitle: { label: 'Site Title', description: 'Title shown in navbar (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
   siteSubtitle: { label: 'Site Subtitle', description: 'Secondary title shown next to main title (e.g., "The Daily Dungeon Puzzle")', category: 'branding', inputType: 'text' },
   siteSubtitleColor: { label: 'Subtitle Color', description: 'Color for the subtitle text', category: 'branding', inputType: 'color' },

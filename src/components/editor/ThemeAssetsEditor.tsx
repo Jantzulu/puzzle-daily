@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   loadThemeAssets,
+  saveThemeAssets,
   setThemeAsset,
   deleteThemeAsset,
   compressImage,
@@ -15,6 +16,7 @@ import {
   type ThemeAssets,
   type ThemeAssetKey,
   type AssetCategory,
+  type LogoVariant,
 } from '../../utils/themeAssets';
 
 // Default dungeon theme colors for reset functionality
@@ -102,6 +104,163 @@ const BUTTON_SHAPE_OPTIONS = [
   { value: 'rounded', label: 'Rounded' },
   { value: 'pill', label: 'Pill' },
 ];
+
+interface LogoVariantsEditorProps {
+  variants: LogoVariant[];
+  onChange: (variants: LogoVariant[]) => void;
+  onError?: (error: string) => void;
+}
+
+const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onChange, onError }) => {
+  const [isUploading, setIsUploading] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const handleAddVariant = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setIsUploading(true);
+    try {
+      // Compress the image (logo-sized)
+      const dataUrl = await compressImage(file, 128, 64, 0.85);
+
+      // Upload to Supabase Storage (falls back to data URL if upload fails)
+      const result = await uploadImageWithFallback('logo_variant', dataUrl);
+
+      if (result.error && !result.isStorageUrl) {
+        console.warn('Using local storage fallback:', result.error);
+      }
+
+      // Add new variant with default settings
+      const newVariant: LogoVariant = {
+        image: result.url,
+        frameCount: 1, // User must set this manually if animated
+        frameRate: 10,
+      };
+
+      onChange([...variants, newVariant]);
+    } catch (err) {
+      console.error('Failed to upload variant:', err);
+      onError?.('Failed to process image. Try a smaller file.');
+    } finally {
+      setIsUploading(false);
+      if (inputRef.current) {
+        inputRef.current.value = '';
+      }
+    }
+  };
+
+  const handleUpdateVariant = (index: number, updates: Partial<LogoVariant>) => {
+    const newVariants = [...variants];
+    newVariants[index] = { ...newVariants[index], ...updates };
+    onChange(newVariants);
+  };
+
+  const handleRemoveVariant = async (index: number) => {
+    const variant = variants[index];
+    // Delete from storage if it's a Supabase URL
+    if (variant.image && isSupabaseStorageUrl(variant.image)) {
+      await deleteThemeImageFromStorage(variant.image);
+    }
+    const newVariants = variants.filter((_, i) => i !== index);
+    onChange(newVariants);
+  };
+
+  return (
+    <div className="dungeon-panel-dark p-3">
+      <label className="block text-sm font-medium text-copper-400 mb-1">Logo Variants</label>
+      <p className="text-xs text-stone-500 mb-3">
+        Add additional logo sprite sheets for random selection. When "Randomize Logo" is enabled,
+        a random logo will be chosen from the main logo and these variants on each visit.
+      </p>
+
+      {/* Existing variants */}
+      {variants.length > 0 && (
+        <div className="space-y-3 mb-3">
+          {variants.map((variant, index) => (
+            <div key={index} className="bg-stone-800/50 rounded p-2 border border-stone-700">
+              <div className="flex items-start gap-3">
+                {/* Preview */}
+                <div className="flex-shrink-0 w-16 h-12 rounded border border-stone-600 overflow-hidden sprite-preview-bg flex items-center justify-center">
+                  {variant.image ? (
+                    <img
+                      src={variant.image}
+                      alt={`Variant ${index + 1}`}
+                      className="max-w-full max-h-full object-contain pixelated"
+                    />
+                  ) : (
+                    <span className="text-stone-500 text-xs">No image</span>
+                  )}
+                </div>
+
+                {/* Settings */}
+                <div className="flex-1 space-y-2">
+                  <div className="flex gap-2">
+                    <div className="flex-1">
+                      <label className="text-xs text-stone-400">Frame Count</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={variant.frameCount || 1}
+                        onChange={(e) => handleUpdateVariant(index, { frameCount: parseInt(e.target.value) || 1 })}
+                        className="dungeon-input w-full text-sm"
+                        placeholder="1"
+                      />
+                    </div>
+                    <div className="flex-1">
+                      <label className="text-xs text-stone-400">Frame Rate</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="60"
+                        value={variant.frameRate || 10}
+                        onChange={(e) => handleUpdateVariant(index, { frameRate: parseInt(e.target.value) || 10 })}
+                        className="dungeon-input w-full text-sm"
+                        placeholder="10"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Remove button */}
+                <button
+                  onClick={() => handleRemoveVariant(index)}
+                  className="dungeon-btn-danger text-xs px-2 py-1 flex-shrink-0"
+                  title="Remove variant"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Add new variant button */}
+      <button
+        onClick={() => inputRef.current?.click()}
+        disabled={isUploading}
+        className="dungeon-btn text-sm w-full"
+      >
+        {isUploading ? 'Uploading...' : '+ Add Logo Variant'}
+      </button>
+
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/*"
+        onChange={handleAddVariant}
+        className="hidden"
+      />
+
+      {variants.length === 0 && (
+        <p className="text-xs text-stone-500 mt-2 text-center">
+          No variants yet. Add sprite sheets to enable random logo selection.
+        </p>
+      )}
+    </div>
+  );
+};
 
 interface ToggleSwitchProps {
   assetKey: ThemeAssetKey;
@@ -690,8 +849,34 @@ export const ThemeAssetsEditor: React.FC = () => {
     styles: '⚙️',
   };
 
+  // Handler for logo variants (stored as array, not string)
+  const handleLogoVariantsChange = (variants: LogoVariant[]) => {
+    setError(null);
+    const currentAssets = loadThemeAssets();
+    if (variants.length > 0) {
+      currentAssets.logoVariants = variants;
+    } else {
+      delete currentAssets.logoVariants;
+    }
+    saveThemeAssets(currentAssets);
+    setAssets(loadThemeAssets());
+    notifyThemeAssetsChanged();
+  };
+
   const renderAssetControl = (key: ThemeAssetKey) => {
     const config = THEME_ASSET_CONFIG[key];
+
+    // Special handling for logo variants (array type)
+    if (key === 'logoVariants') {
+      return (
+        <LogoVariantsEditor
+          key={key}
+          variants={assets.logoVariants || []}
+          onChange={handleLogoVariantsChange}
+          onError={handleError}
+        />
+      );
+    }
 
     if (config.inputType === 'color') {
       return (

@@ -6,7 +6,55 @@ import { AssetManager } from './components/editor/AssetManager';
 import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
-import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets } from './utils/themeAssets';
+import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
+
+// Get a random logo from variants (selected once per session)
+let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
+
+function getRandomLogo(themeAssets: ThemeAssets): { image: string; frameCount: number; frameRate: number } | null {
+  // If randomization is disabled or no variants, return null
+  if (!themeAssets.logoRandomize) return null;
+
+  // Build array of all available logos (main logo + variants)
+  const allLogos: { image: string; frameCount: number; frameRate: number }[] = [];
+
+  // Add main logo if it exists
+  if (themeAssets.logo) {
+    allLogos.push({
+      image: themeAssets.logo,
+      frameCount: Number(themeAssets.logoFrameCount) || 1,
+      frameRate: Number(themeAssets.logoFrameRate) || 10,
+    });
+  }
+
+  // Add variants
+  if (themeAssets.logoVariants && themeAssets.logoVariants.length > 0) {
+    for (const variant of themeAssets.logoVariants) {
+      if (variant.image) {
+        allLogos.push({
+          image: variant.image,
+          frameCount: variant.frameCount || 1,
+          frameRate: variant.frameRate || 10,
+        });
+      }
+    }
+  }
+
+  // Need at least 2 logos for randomization to make sense
+  if (allLogos.length < 2) return null;
+
+  // Use cached selection if available (persists for the session)
+  if (cachedRandomLogo) {
+    // Verify the cached logo is still in the list
+    const stillExists = allLogos.some(l => l.image === cachedRandomLogo!.image);
+    if (stillExists) return cachedRandomLogo;
+  }
+
+  // Select a random logo
+  const randomIndex = Math.floor(Math.random() * allLogos.length);
+  cachedRandomLogo = allLogos[randomIndex];
+  return cachedRandomLogo;
+}
 
 // Animated Logo component that supports sprite sheets
 function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
@@ -136,26 +184,40 @@ function Navigation() {
         {/* Logo/Title */}
         <div className="flex items-center gap-2 md:gap-3">
           {/* Custom logo or default torch icon */}
-          {themeAssets.logo ? (
-            // Check if this is an animated sprite sheet (parse as number since it may be stored as string)
-            (Number(themeAssets.logoFrameCount) > 1) ? (
-              <AnimatedLogo
-                src={themeAssets.logo}
-                alt={themeAssets.logoAlt || 'Logo'}
-                frameCount={Number(themeAssets.logoFrameCount)}
-                frameRate={Number(themeAssets.logoFrameRate) || 10}
-                className="h-10 md:h-12 flex-shrink-0"
-              />
-            ) : (
-              <img
-                src={themeAssets.logo}
-                alt={themeAssets.logoAlt || 'Logo'}
-                className="h-10 md:h-12 w-auto object-contain flex-shrink-0"
-              />
-            )
-          ) : (
-            <span className="text-copper-400 text-2xl md:text-3xl animate-flicker flex-shrink-0">&#128293;</span>
-          )}
+          {(() => {
+            // Check for randomized logo first
+            const randomLogo = getRandomLogo(themeAssets);
+            const logoSrc = randomLogo?.image || themeAssets.logo;
+            const logoFrameCount = randomLogo?.frameCount || Number(themeAssets.logoFrameCount) || 1;
+            const logoFrameRate = randomLogo?.frameRate || Number(themeAssets.logoFrameRate) || 10;
+
+            if (logoSrc) {
+              // Check if this is an animated sprite sheet
+              if (logoFrameCount > 1) {
+                return (
+                  <AnimatedLogo
+                    src={logoSrc}
+                    alt={themeAssets.logoAlt || 'Logo'}
+                    frameCount={logoFrameCount}
+                    frameRate={logoFrameRate}
+                    className="h-10 md:h-12 flex-shrink-0"
+                  />
+                );
+              } else {
+                return (
+                  <img
+                    src={logoSrc}
+                    alt={themeAssets.logoAlt || 'Logo'}
+                    className="h-10 md:h-12 w-auto object-contain flex-shrink-0"
+                  />
+                );
+              }
+            } else {
+              return (
+                <span className="text-copper-400 text-2xl md:text-3xl animate-flicker flex-shrink-0">&#128293;</span>
+              );
+            }
+          })()}
           {/* Title and subtitle - stacked vertically */}
           <div className="flex flex-col leading-tight">
             <h1 className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap">
