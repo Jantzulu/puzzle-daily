@@ -177,11 +177,14 @@ function distance(x1: number, y1: number, x2: number, y2: number): number {
 // ==========================================
 
 /**
- * Check if two void regions would touch only at a diagonal corner.
- * This creates rendering issues where walls don't connect properly.
- * Returns true if they have a diagonal-only adjacency (bad).
+ * Check if two void regions have problematic adjacency.
+ * Problems include:
+ * 1. Diagonal corner touching (corners meet but no edge overlap)
+ * 2. Edge sharing with only 1 tile overlap (creates concave corner rendering issues)
+ *
+ * Returns true if adjacency is problematic (bad).
  */
-function hasDiagonalOnlyAdjacency(
+function hasProblematicAdjacency(
   r1: { x: number; y: number; width: number; height: number },
   r2: { x: number; y: number; width: number; height: number }
 ): boolean {
@@ -209,12 +212,49 @@ function hasDiagonalOnlyAdjacency(
     r1Left === r2Right && r1Top === r2Bottom,
   ];
 
-  return corners.some(c => c);
+  if (corners.some(c => c)) {
+    return true; // Pure diagonal touching is bad
+  }
+
+  // Check for horizontal adjacency (r1 left of r2 or r2 left of r1)
+  // and verify overlap is at least 2 tiles
+  if (r1Right === r2Left || r2Right === r1Left) {
+    // They share a vertical edge
+    // Calculate vertical overlap
+    const overlapTop = Math.max(r1Top, r2Top);
+    const overlapBottom = Math.min(r1Bottom, r2Bottom);
+    const verticalOverlap = overlapBottom - overlapTop;
+
+    // If they have ANY vertical overlap but less than 2 tiles, it's problematic
+    if (verticalOverlap > 0 && verticalOverlap < 2) {
+      return true;
+    }
+  }
+
+  // Check for vertical adjacency (r1 above r2 or r2 above r1)
+  // and verify overlap is at least 2 tiles
+  if (r1Bottom === r2Top || r2Bottom === r1Top) {
+    // They share a horizontal edge
+    // Calculate horizontal overlap
+    const overlapLeft = Math.max(r1Left, r2Left);
+    const overlapRight = Math.min(r1Right, r2Right);
+    const horizontalOverlap = overlapRight - overlapLeft;
+
+    // If they have ANY horizontal overlap but less than 2 tiles, it's problematic
+    if (horizontalOverlap > 0 && horizontalOverlap < 2) {
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /**
  * Check if a new void region conflicts with existing voids.
- * Conflicts include: overlapping, or diagonal-only adjacency.
+ * Conflicts include:
+ * - Overlapping regions
+ * - Diagonal-only adjacency (corner touching)
+ * - Edge sharing with less than 2 tiles overlap (causes wall rendering issues)
  */
 function voidConflictsWithExisting(
   newVoid: { x: number; y: number; width: number; height: number },
@@ -230,8 +270,8 @@ function voidConflictsWithExisting(
 
     if (overlaps) return true;
 
-    // Check for diagonal-only adjacency (corner touching)
-    if (hasDiagonalOnlyAdjacency(newVoid, existing)) return true;
+    // Check for problematic adjacency (diagonal corner or insufficient edge overlap)
+    if (hasProblematicAdjacency(newVoid, existing)) return true;
   }
 
   return false;
