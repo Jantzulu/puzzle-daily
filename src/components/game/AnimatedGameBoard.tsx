@@ -2169,6 +2169,11 @@ function drawEnemy(
   // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
   ctx.globalAlpha = originalAlpha;
 
+  // Draw status effect overlays (e.g., shield bubble) on top of the entity
+  if (!enemy.dead) {
+    drawStatusEffectOverlays(ctx, px, py, enemy.statusEffects, now);
+  }
+
   if (!enemy.dead) {
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
@@ -2583,6 +2588,61 @@ function drawEffectShape(
   }
 }
 
+// Draw status effect overlay sprites on an entity (e.g., shield bubble for deflect)
+function drawStatusEffectOverlays(
+  ctx: CanvasRenderingContext2D,
+  px: number,
+  py: number,
+  statusEffects: StatusEffectInstance[] | undefined,
+  now: number = Date.now()
+) {
+  if (!statusEffects || statusEffects.length === 0) return;
+
+  // Draw overlays for each status effect that has one
+  for (const effect of statusEffects) {
+    const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
+    if (!effectAsset?.overlaySprite?.spriteData) continue;
+
+    const spriteData = effectAsset.overlaySprite.spriteData;
+    const opacity = effectAsset.overlayOpacity ?? 0.5;
+
+    // Save context state
+    ctx.save();
+    ctx.globalAlpha = opacity;
+
+    // Draw centered on the tile
+    const centerX = px + TILE_SIZE / 2;
+    const centerY = py + TILE_SIZE / 2;
+
+    // Check if it's a spritesheet with animation
+    if (spriteData.idleSpriteSheet || spriteData.spriteSheet) {
+      // Use the drawSprite function for animated spritesheets
+      drawSprite(ctx, spriteData, centerX, centerY, TILE_SIZE, undefined, false, now, false);
+    } else if (spriteData.imageData || spriteData.idleImageData) {
+      // Static image - draw directly
+      const imgData = spriteData.imageData || spriteData.idleImageData;
+      const img = loadImage(imgData);
+      if (img.complete) {
+        ctx.drawImage(
+          img,
+          px,
+          py,
+          TILE_SIZE,
+          TILE_SIZE
+        );
+      }
+    } else if (spriteData.shape) {
+      // Simple shape sprite - draw scaled to tile
+      ctx.fillStyle = spriteData.primaryColor || '#ffffff';
+      const size = TILE_SIZE * 0.9;
+      const offset = (TILE_SIZE - size) / 2;
+      drawEffectShape(ctx, px + offset, py + offset, size, spriteData.shape);
+    }
+
+    ctx.restore();
+  }
+}
+
 function drawCharacter(
   ctx: CanvasRenderingContext2D,
   character: PlacedCharacter,
@@ -2684,6 +2744,11 @@ function drawCharacter(
 
   // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
   ctx.globalAlpha = originalAlpha;
+
+  // Draw status effect overlays (e.g., shield bubble) on top of the entity
+  if (!character.dead) {
+    drawStatusEffectOverlays(ctx, px, py, character.statusEffects, now);
+  }
 
   if (!character.dead) {
     // Draw health bar above the character

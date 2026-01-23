@@ -1,23 +1,24 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: January 18, 2026
+Last Updated: January 22, 2026
 
 ## Project Overview
 
-**Puzzle Daily** is a React/TypeScript puzzle game with a medieval dungeon theme. It features:
+**Puzzle Daily** is a sophisticated React/TypeScript puzzle game development platform with a medieval dungeon theme. It features:
 - Turn-based puzzle gameplay with characters and enemies
-- A map editor for creating puzzles
-- An asset manager for custom sprites, tiles, enemies, characters, spells, etc.
+- A full-featured map editor for creating puzzles with playtest mode
+- A comprehensive asset manager for custom sprites, tiles, enemies, characters, spells, status effects, etc.
 - A compendium for viewing all game content
-- Cloud sync with Supabase
-- Comprehensive theming system
+- Cloud sync with Supabase (draft vs. live asset tiers)
+- Extensive theming system with 50+ customizable properties
 
 ## Tech Stack
 
-- **Frontend**: React 18 + TypeScript + Vite
-- **Styling**: Tailwind CSS + custom CSS variables for theming
+- **Frontend**: React 19 + TypeScript + Vite 7
+- **Styling**: Tailwind CSS with custom dungeon-themed palette + CSS variables for theming
+- **Canvas Rendering**: Pixi.js 8 for 2D animations
 - **Backend**: Supabase (PostgreSQL)
-- **Hosting**: GitHub Pages (likely) or similar
+- **Hosting**: Netlify
 - **Repository**: https://github.com/Jantzulu/puzzle-daily.git
 
 ## Key Directories
@@ -29,22 +30,180 @@ puzzle-game/
 │   │   ├── game/           # Game components (Game.tsx, AnimatedGameBoard.tsx)
 │   │   ├── editor/         # Map editor, asset editors, theme editor
 │   │   ├── compendium/     # Compendium views
-│   │   └── shared/         # Shared components
+│   │   └── shared/         # Shared components (SoundSettings, Tooltips, etc.)
 │   ├── utils/
 │   │   ├── themeAssets.ts  # Theme system - CSS variables, storage
 │   │   ├── cloudSync.ts    # Supabase sync logic
 │   │   ├── assetStorage.ts # Local storage for assets
-│   │   └── puzzleStorage.ts
+│   │   ├── puzzleStorage.ts
+│   │   ├── soundManager.ts # Audio playback
+│   │   └── imageLoader.ts  # Image URL validation
 │   ├── services/
 │   │   └── supabaseService.ts  # Supabase API calls
 │   ├── data/               # Built-in characters, enemies, tiles
 │   ├── engine/             # Game simulation logic
-│   ├── types/              # TypeScript types
+│   │   ├── simulation.ts   # Turn-based game engine
+│   │   ├── actions.ts      # Player/AI actions and damage
+│   │   ├── puzzleSolver.ts # Solution finder
+│   │   └── scoring.ts      # Score calculation
+│   ├── types/
+│   │   └── game.ts         # All TypeScript type definitions
 │   └── lib/
 │       └── supabase.ts     # Supabase client config
+├── docs/                   # Architecture documentation
 ├── index.html
 ├── tailwind.config.js
 └── package.json
+```
+
+## Game Engine Architecture
+
+### Core Systems (src/engine/)
+
+**simulation.ts** - Turn-based game engine:
+- Character/enemy movement and AI
+- Combat, damage calculation, and deflect mechanics
+- Special tile effects (teleports, damage, ice, pressure plates)
+- Status effect processing (poison, burn, shield, deflect, etc.)
+- Win/loss condition checking
+- Boss enemy system
+- Lives/attempt system
+- Projectile system with animations
+
+**actions.ts** - Action execution:
+- `applyDamageToEntity()` - Handles damage with source tracking for deflect
+- `applyDamageToEntityNoDeflect()` - Prevents infinite deflect loops
+- Melee, ranged, and AOE attack execution
+- Spell casting (resurrect, heal, damage, status effects)
+- Movement actions
+
+### Key Game Concepts
+
+**Tile Types**:
+- Standard: empty, wall, goal, teleport
+- Custom tile types with behaviors: damage, teleport, direction_change, ice, pressure_plate
+
+**Cadence System**: Tiles can toggle on/off in patterns
+```typescript
+interface CadenceConfig {
+  enabled: boolean;
+  pattern: 'alternating' | 'interval' | 'custom';
+  onTurns?: number;
+  offTurns?: number;
+  customPattern?: boolean[];
+  startState: 'on' | 'off';
+}
+```
+
+**Pressure Plates**: Can trigger wall toggles, enemy spawns/despawns, teleports
+
+**Win Conditions**:
+- `defeat_all_enemies`
+- `defeat_boss` - All boss enemies must be defeated
+- `collect_all`
+- `reach_goal`
+- `survive_turns`
+- `win_in_turns`
+- `max_characters`
+- `characters_alive`
+
+**Status Effect Types** (StatusEffectType enum):
+- POISON, BURN, BLEED - Damage over time
+- REGEN - Healing over time
+- STUN, SLEEP - Prevents actions
+- SLOW - Movement restriction
+- SILENCED - Prevents ranged/spells
+- DISARMED - Prevents melee
+- POLYMORPH - Transformation
+- STEALTH - Reduced visibility, can't be auto-targeted
+- SHIELD - Damage absorption with health bar color change
+- HASTE - Extra actions
+- DEFLECT - Reflects spell damage back to caster
+
+## Status Effect System
+
+### StatusEffectAsset Interface
+```typescript
+interface StatusEffectAsset {
+  id: string;
+  name: string;
+  description?: string;
+  type: StatusEffectType;
+  iconSprite?: SpriteReference;
+  defaultDuration: number;
+  defaultValue?: number;           // Damage/heal per turn, or shield amount
+  processAtTurnStart?: boolean;
+  removedOnDamage?: boolean;       // For Sleep
+  preventsMelee?: boolean;
+  preventsRanged?: boolean;
+  preventsMovement?: boolean;
+  preventsAllActions?: boolean;
+  stackingBehavior: 'refresh' | 'stack' | 'replace' | 'highest';
+  maxStacks?: number;
+  healthBarColor?: string;         // For Shield type
+  stealthOpacity?: number;         // For Stealth type
+  overlaySprite?: SpriteReference; // Sprite overlay on entity (e.g., shield bubble)
+  overlayOpacity?: number;         // Opacity of overlay (0-1, default 0.5)
+}
+```
+
+### Deflect System (New)
+- Added `DEFLECT` to StatusEffectType enum
+- When entity with DEFLECT takes spell damage, damage reflects to caster
+- Source tracking added to `applyDamageToEntity()` for deflect logic
+- Separate `applyDamageToEntityNoDeflect()` prevents infinite loops
+- Works with projectiles via `applyProjectileDamageWithDeflect()` in simulation.ts
+
+### Visual Overlay System (New)
+- Status effects can have an `overlaySprite` that renders on top of entities
+- Supports static images and animated spritesheets
+- Configurable opacity via `overlayOpacity`
+- Rendered in `drawStatusEffectOverlays()` in AnimatedGameBoard.tsx
+
+## Spell System
+
+### SpellAsset Interface
+```typescript
+interface SpellAsset {
+  id: string;
+  name: string;
+  description?: string;
+  projectileSprite?: SpriteReference;
+  impactSprite?: SpriteReference;
+  damage?: number;
+  healing?: number;
+  range?: number;
+  aoeRadius?: number;
+  projectileSpeed?: number;
+  projectilePierces?: boolean;
+  statusEffects?: SpellStatusEffect[];
+  // Resurrect spells
+  isResurrect?: boolean;
+  resurrectHealthPercent?: number;
+  resurrectMaxUses?: number;
+}
+```
+
+### Spell Templates in SpellAssetBuilder
+- Fire (damage projectile)
+- Ice (slow effect)
+- Lightning (piercing)
+- Heal (ally healing)
+- Buff (status effect)
+- Debuff (enemy status effect)
+- AOE (area damage)
+- Resurrect (revive dead allies)
+
+### Auto-Targeting System (CharacterAction)
+```typescript
+interface CharacterAction {
+  // ... other fields
+  autoTargetNearestEnemy?: boolean;      // Auto-target closest enemy
+  autoTargetNearestCharacter?: boolean;  // Auto-target closest ally
+  autoTargetNearestDeadAlly?: boolean;   // Auto-target dead ally for resurrect
+  autoTargetRange?: number;              // Max range for auto-targeting (0 = unlimited)
+  autoTargetMaxTargets?: number;         // Max number of auto-targets
+}
 ```
 
 ## Theme System
@@ -52,110 +211,92 @@ puzzle-game/
 The app has a comprehensive theming system in `src/utils/themeAssets.ts`:
 
 ### Key Theme Properties
-- **Branding**: logo, logoAlt, siteTitle, siteSubtitle, siteSubtitleColor, siteSubtitleSize, navLabelPlay/Compendium/Editor/Assets
+- **Branding**: logo, logoAlt, siteTitle, siteSubtitle, navLabels
 - **Navigation Icons**: iconNavPlay, iconNavCompendium, iconNavEditor, iconNavAssets
 - **Compendium Tab Icons**: iconTabHeroes, iconTabEnemies, iconTabEnchantments, iconTabTiles, iconTabItems
 - **Backgrounds**: bgMain, bgPanel, bgGameArea, bgNavbar
 - **Preview Backgrounds** (separate for entities vs assets):
   - `colorBgPreviewEntity` / `bgPreviewEntity` - For heroes/enemies
   - `colorBgPreviewAsset` / `bgPreviewAsset` - For tiles/items/enchantments
-  - `colorBgPreview` / `bgPreview` - Fallback for both
-- **Colors**: colorBgPrimary, colorBgSecondary, colorTextPrimary, colorTextSecondary, colorButtonBg, colorButtonBorder, colorButtonPrimaryBg, colorButtonPrimaryBorder, etc.
-- **Styles**: borderRadius, borderWidth, shadowIntensity, fontFamily, fontFamilyHeading, fontSizeBody, fontSizeHeading
+- **Panel Colors**: Defeat panel, Game Over panel, Concede modal (all customizable)
+- **Styles**: borderRadius, borderWidth, shadowIntensity, fonts
 
 ### How Theming Works
-1. Theme settings are stored in localStorage under `theme_assets`
-2. `applyThemeAssets()` converts theme values to CSS custom properties (e.g., `--theme-button-bg`)
-3. CSS in `src/index.css` uses these variables with fallbacks
-4. Components use Tailwind classes that are overridden by CSS variable rules
-
-### Preview Background System
-- `PreviewType` = 'entity' | 'asset' - differentiates hero/enemy previews from tile/item previews
-- `drawPreviewBackground()` function draws backgrounds on canvas with support for:
-  - Solid colors
-  - Background images (tiled or stretched)
-  - Type-specific backgrounds (entity vs asset)
-- CSS variables: `--theme-bg-preview-entity`, `--asset-bg-preview-entity`, `--theme-bg-preview-asset`, `--asset-bg-preview-asset`
+1. Theme settings stored in localStorage under `theme_assets`
+2. `applyThemeAssets()` converts values to CSS custom properties
+3. CSS in `src/index.css` uses variables with fallbacks
+4. Components use Tailwind classes overridden by CSS variable rules
 
 ### Theme Editor
 Located at `src/components/editor/ThemeAssetsEditor.tsx` - accessible via Assets > Theme tab
 
-## Recent Work (This Session - January 18, 2026)
+## Data Storage & Cloud Sync
 
-### 1. Boss Enemy System
-**Files**: `src/types/game.ts`, `src/components/editor/EnemyEditor.tsx`, `src/engine/simulation.ts`
+### Local Storage (src/utils/)
+- **assetStorage.ts** - Manages local asset definitions
+- **puzzleStorage.ts** - Manages local puzzle definitions
+- **editorState.ts** - Persists editor UI state
+- **historyManager.ts** - Undo/redo support
 
-Added boss variant for enemies:
-- Added `isBoss?: boolean` property to Enemy interface
-- Added boss toggle checkbox in EnemyEditor with special blood-themed styling
-- Added "BOSS" badge display in enemy list
-- Bosses enable the "Defeat the Boss" win condition
+### Cloud Sync (src/utils/cloudSync.ts)
+- Supabase integration for collaborative puzzle creation
+- Two-tier system:
+  - `assets_draft`, `puzzles_draft` - Editor work
+  - `assets_live`, `puzzles_live` - Published for player app (future)
 
-### 2. "Defeat the Boss" Win Condition
-**Files**: `src/types/game.ts`, `src/engine/simulation.ts`, `src/components/editor/MapEditor.tsx`
+## Key Component Files
 
-New win condition type:
-- Added `defeat_boss` to `WinConditionType` union
-- Implemented victory check in `checkVictoryConditions()` - checks all enemies with `isBoss: true` are defeated
-- Added option to win condition dropdown in MapEditor
+| File | Size | Purpose |
+|------|------|---------|
+| `AnimatedGameBoard.tsx` | ~3200 lines | Canvas-based game rendering, entity drawing, overlays |
+| `MapEditor.tsx` | ~3000+ lines | Puzzle creation with embedded playtest mode |
+| `Game.tsx` | Medium | Main game logic and state management |
+| `simulation.ts` | Large | Turn-based game engine |
+| `actions.ts` | Large | Action execution, damage, spells |
+| `themeAssets.ts` | Large | Theme system with 50+ properties |
+| `StatusEffectEditor.tsx` | Medium | Status effect configuration with overlay sprite UI |
+| `SpellAssetBuilder.tsx` | Medium | Spell creation with templates |
+| `CharacterEditor.tsx` | Medium | Character abilities, auto-targeting config |
 
-### 3. Dynamic Boss Name in Goal Text
-**Files**: `src/components/game/Game.tsx`, `src/components/editor/MapEditor.tsx`
+## Recent Work (January 22, 2026 Session)
 
-Goal text shows boss names dynamically:
-- Added `loadEnemy` import to both files
-- Win condition display now shows "Defeat [Boss Name]" populated from placed enemies
-- Handles multiple bosses: "Defeat Dragon & Lich"
-- Falls back to "Defeat the boss" if no boss enemies found
+### Deflect Status Effect
+Added a new status effect type that reflects spell damage back to caster:
 
-### 4. Tile Skin Variations in Compendium
-**File**: `src/components/compendium/Compendium.tsx`
+1. **Type Definition**: Added `DEFLECT = 'deflect'` to StatusEffectType enum
+2. **Source Tracking**: Modified `applyDamageToEntity()` to accept optional `source` parameter
+3. **Deflect Logic**: When entity with DEFLECT takes damage, damage is applied to source instead
+4. **Loop Prevention**: Created `applyDamageToEntityNoDeflect()` to prevent infinite reflection
+5. **Projectile Support**: Added `hasDeflect()` and `applyProjectileDamageWithDeflect()` helpers
 
-Shows all sprite variations for tiles:
-- **TileCard**: Small thumbnails showing off-state sprite and skin override sprites
-- **TileDetail**: Two separate sections:
-  - "Cadence States" - On/Off state sprites for tiles with cadence
-  - "Skin Overrides" - How puzzle skins can replace the tile's default appearance
-- Added `getAllPuzzleSkins` import to gather skin variations
+### Visual Overlay System for Status Effects
+Added ability to display overlay sprites on entities with status effects:
 
-### 5. Playtest Mode Styling Improvements
-**File**: `src/components/editor/MapEditor.tsx`
+1. **Type Support**: Added `overlaySprite` and `overlayOpacity` to StatusEffectAsset
+2. **Rendering**: Added `drawStatusEffectOverlays()` in AnimatedGameBoard.tsx
+3. **Editor UI**: Added overlay sprite configuration in StatusEffectEditor.tsx with:
+   - Preview thumbnail
+   - Add/Edit/Remove buttons
+   - Opacity slider (10%-100%)
+   - SimpleIconEditor modal for sprite editing
 
-Updated playtest mode to match Game page styling:
-- Changed CSS classes to dungeon-themed classes (`dungeon-btn-success`, `dungeon-panel-dark`, etc.)
-- Updated victory/defeat panels with `victory-panel` and `defeat-panel` classes
-- Added Step button to setup mode controls (was only in running mode)
-- Updated turn counter to show max turns with themed styling
+### Auto-Target Range for Spells
+Added configurable range limit for auto-targeting:
 
-### 6. Separate Preview Backgrounds for Entities vs Assets
-**Files**: `src/utils/themeAssets.ts`, `src/components/editor/SpriteThumbnail.tsx`, `src/components/editor/SpriteEditor.tsx`, `src/components/editor/StaticSpriteEditor.tsx`, `src/components/compendium/Compendium.tsx`
+1. Added `autoTargetRange` to CharacterAction interface
+2. Updated `findNearestEnemies`, `findNearestCharacters`, `findNearestDeadAllies` to accept maxRange
+3. Added Max Range input field in CharacterEditor UI
 
-Theme system now supports separate preview backgrounds:
-- `PreviewType` = 'entity' | 'asset'
-- SpriteThumbnail accepts `previewType` prop
-- Compendium uses 'entity' for characters/enemies, 'asset' for tiles/items/enchantments
-- CSS variables for entity-specific and asset-specific backgrounds
-
-## Previous Session Work
-
-### Fixed Fuzzy Graphics on Mobile (High-DPI Support)
-**File**: `src/components/game/AnimatedGameBoard.tsx`
-
-Canvas now accounts for `devicePixelRatio` for sharp rendering on Retina/mobile displays.
-
-### Added Navigation Label Customization
-Theme properties for nav button labels: `navLabelPlay`, `navLabelCompendium`, `navLabelEditor`, `navLabelAssets`
-
-### Fixed Nav Button Theming
-Added `.nav-link-btn` and `.nav-link-active` CSS rules using theme variables.
-
-### Animation Jitter Fix
-Fixed entity flashing at destination before animating by using refs for synchronous position access.
+### Resurrect Spell Feature (Previous Session)
+- Added resurrect spell template to SpellAssetBuilder
+- Added `autoTargetNearestDeadAlly` option for characters
+- Resurrect restores dead allies with configurable health percent
+- Can limit uses per game via `resurrectMaxUses`
 
 ## Supabase Configuration
 
 - **URL**: `https://rmkxayrfodctnqhsiphw.supabase.co`
-- **Tables**: `puzzles_draft`, `assets_draft`, `daily_schedule`, `puzzles_live`
+- **Tables**: `puzzles_draft`, `assets_draft`, `daily_schedule`, `puzzles_live`, `assets_live`
 - **Asset Types**: tile_type, enemy, character, object, skin, spell, status_effect, folder, collectible_type, collectible, hidden_assets, sound, global_sound_config, help_content, theme_settings
 
 ## Common Commands
@@ -165,7 +306,7 @@ Fixed entity flashing at destination before animating by using refs for synchron
 cd "C:/Users/jantz/Desktop/Claude/puzzle-game"
 npm run dev
 
-# Build
+# Build (always run before committing to catch errors)
 npm run build
 
 # Git
@@ -177,16 +318,21 @@ git add -A && git commit -m "message" && git push
 ### Enemy (src/types/game.ts)
 ```typescript
 interface Enemy {
-  // ... existing properties
-  isBoss?: boolean;  // If true, enables 'defeat_boss' win condition
+  id: string;
+  name: string;
+  health: number;
+  attackDamage?: number;
+  behavior?: EnemyBehavior;
+  isBoss?: boolean;  // Enables 'defeat_boss' win condition
+  customSprite?: CustomSprite;
 }
 ```
 
-### WinConditionType (src/types/game.ts)
+### WinConditionType
 ```typescript
 type WinConditionType =
   | 'defeat_all_enemies'
-  | 'defeat_boss'        // All boss enemies must be defeated
+  | 'defeat_boss'
   | 'collect_all'
   | 'reach_goal'
   | 'survive_turns'
@@ -195,15 +341,12 @@ type WinConditionType =
   | 'characters_alive';
 ```
 
-### PuzzleSkin Tile Sprites (src/types/game.ts)
+### SpriteReference
 ```typescript
-interface PuzzleSkin {
-  customTileSprites?: {
-    [customTileTypeId: string]: string | {
-      onSprite?: string;   // Base64 sprite for on state
-      offSprite?: string;  // Base64 sprite for off state
-    };
-  };
+interface SpriteReference {
+  type: 'stored' | 'inline';
+  spriteId?: string;           // ID from asset storage
+  spriteData?: CustomSprite;   // Inline sprite data
 }
 ```
 
@@ -218,38 +361,31 @@ Key CSS variables used throughout the app:
 - `--theme-button-danger-bg`, `--theme-button-danger-border`
 - `--theme-border-radius`, `--theme-border-width`
 - `--theme-font-family`, `--theme-font-family-heading`
-- `--theme-bg-preview-entity`, `--asset-bg-preview-entity` (hero/enemy previews)
-- `--theme-bg-preview-asset`, `--asset-bg-preview-asset` (tile/item previews)
-- `--theme-bg-preview`, `--asset-bg-preview` (fallback)
-
-## Key Component Files
-
-- **Game Board**: `src/components/game/AnimatedGameBoard.tsx` (large file, ~3200 lines)
-- **Game Logic**: `src/components/game/Game.tsx`
-- **Theme Editor**: `src/components/editor/ThemeAssetsEditor.tsx`
-- **Enemy Editor**: `src/components/editor/EnemyEditor.tsx`
-- **Map Editor**: `src/components/editor/MapEditor.tsx` (large file, includes playtest mode)
-- **Simulation Engine**: `src/engine/simulation.ts`
-- **Cloud Sync**: `src/utils/cloudSync.ts`
-- **Theme Utilities**: `src/utils/themeAssets.ts`
-- **Asset Storage**: `src/utils/assetStorage.ts`
-- **Compendium**: `src/components/compendium/Compendium.tsx`
-- **Main App/Nav**: `src/App.tsx`
-- **Styles**: `src/index.css`
+- `--theme-bg-preview-entity`, `--asset-bg-preview-entity`
+- `--theme-bg-preview-asset`, `--asset-bg-preview-asset`
 
 ## User Preferences
 
-- Uses Windows with Git Bash
+- Uses Windows with Git Bash (use powershell for npm commands)
 - Project is at `C:\Users\jantz\Desktop\Claude\puzzle-game`
 - Prefers commits with descriptive messages
 - Testing on iPhone 15 Pro for mobile
+- Appreciates detailed explanations of implementation
 
 ## Tips for New Claude Instance
 
-1. The AnimatedGameBoard.tsx and MapEditor.tsx files are very large - use offset/limit when reading
-2. Theme changes require both updating themeAssets.ts (TypeScript types + config) AND index.css (CSS variable usage)
-3. Always run `npm run build` to verify no errors before committing
-4. The user is actively developing and testing, so quick iteration is expected
-5. Boss enemies use `isBoss: true` flag and enable the `defeat_boss` win condition
-6. Puzzle skins can override tile sprites - check `customTileSprites` in PuzzleSkin interface
-7. Preview backgrounds differentiate between 'entity' (heroes/enemies) and 'asset' (tiles/items) types
+1. **Large Files**: AnimatedGameBoard.tsx and MapEditor.tsx are very large - use offset/limit when reading
+2. **Theme Changes**: Require both updating themeAssets.ts (types + config) AND index.css (CSS variable usage)
+3. **Build Verification**: Always run `npm run build` to verify no errors before committing
+4. **Powershell for npm**: Use `powershell.exe -ExecutionPolicy Bypass -Command "cd 'path'; npm run build"` for build commands
+5. **Boss Enemies**: Use `isBoss: true` flag and enable the `defeat_boss` win condition
+6. **Status Effects**: Check StatusEffectAsset interface for all configurable properties including new overlay system
+7. **Damage Tracking**: All damage functions now support optional `source` parameter for deflect mechanics
+8. **Preview Backgrounds**: Differentiate between 'entity' (heroes/enemies) and 'asset' (tiles/items) types
+9. **Spell Targeting**: Auto-targeting has separate flags for enemies, allies, and dead allies with optional range limit
+
+## Architecture Documentation
+
+Additional docs in the `docs/` folder:
+- **PLAYER_APP_ARCHITECTURE.md** - Future player-facing app design with on-demand asset fetching
+- **PLAYER_APP_VISION.md** - Comprehensive vision including daily puzzle system, monetization, security requirements

@@ -33,6 +33,7 @@ import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 import { solvePuzzle, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
 import { WarningModal } from '../shared/WarningModal';
+import GeneratorDialog from './GeneratorDialog';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -392,6 +393,9 @@ export const MapEditor: React.FC = () => {
     isOpen: false,
     message: '',
   });
+
+  // Generator dialog state
+  const [showGenerator, setShowGenerator] = useState(false);
 
   // Local input state for grid size (allows typing without immediate validation)
   const [widthInput, setWidthInput] = useState(String(state.gridWidth));
@@ -1331,6 +1335,40 @@ export const MapEditor: React.FC = () => {
       collectibles: [],
       placedObjects: [],
     }));
+  };
+
+  // Handle loading a generated puzzle into the editor
+  const handleGeneratedPuzzle = (puzzle: Puzzle) => {
+    // Push current state to history before loading
+    pushToHistory();
+
+    // Clear any cached state
+    clearCachedEditorState();
+
+    // Load the generated puzzle into editor state
+    setState(prev => ({
+      ...prev,
+      gridWidth: puzzle.width,
+      gridHeight: puzzle.height,
+      tiles: puzzle.tiles,
+      enemies: puzzle.enemies,
+      collectibles: puzzle.collectibles,
+      placedObjects: puzzle.placedObjects || [],
+      availableCharacters: puzzle.availableCharacters,
+      winConditions: puzzle.winConditions,
+      maxCharacters: puzzle.maxCharacters,
+      maxTurns: puzzle.maxTurns,
+      lives: puzzle.lives,
+      parCharacters: puzzle.parCharacters,
+      parTurns: puzzle.parTurns,
+      puzzleName: puzzle.name,
+      puzzleId: puzzle.id,
+      skinId: puzzle.skinId,
+    }));
+
+    // Update input fields for grid size
+    setWidthInput(String(puzzle.width));
+    setHeightInput(String(puzzle.height));
   };
 
   const handleValidate = async () => {
@@ -3188,6 +3226,13 @@ export const MapEditor: React.FC = () => {
                 >
                   {isValidating ? 'Validating...' : 'Validate Puzzle'}
                 </button>
+                <button
+                  onClick={() => setShowGenerator(true)}
+                  className="w-full px-4 py-2 bg-amber-600 rounded hover:bg-amber-700"
+                  title="Generate a new random puzzle"
+                >
+                  Generate Puzzle
+                </button>
               </div>
 
               {/* Puzzle Info - Below Actions */}
@@ -3840,6 +3885,16 @@ export const MapEditor: React.FC = () => {
         onClose={() => setWarningModal({ isOpen: false, message: '' })}
         title="Hold On!"
         message={warningModal.message}
+      />
+
+      {/* Generator Dialog */}
+      <GeneratorDialog
+        isOpen={showGenerator}
+        onClose={() => setShowGenerator(false)}
+        onGenerate={handleGeneratedPuzzle}
+        availableCharacters={allCharacters}
+        availableEnemies={allEnemies}
+        customTileTypes={customTileTypes}
       />
     </div>
   );

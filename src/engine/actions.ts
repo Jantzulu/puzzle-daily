@@ -1740,7 +1740,7 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        applyDamageToEntity(targetChar, damage, gameState);
+        applyDamageToEntity(targetChar, damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
@@ -1758,7 +1758,7 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        applyDamageToEntity(enemy, damage, gameState);
+        applyDamageToEntity(enemy, damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !enemy.dead) {
@@ -1795,7 +1795,7 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        applyDamageToEntity(targetChar, damage, gameState);
+        applyDamageToEntity(targetChar, damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
@@ -1813,7 +1813,7 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        applyDamageToEntity(enemy, damage, gameState);
+        applyDamageToEntity(enemy, damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !enemy.dead) {
@@ -1914,7 +1914,7 @@ export function executeAOEAttack(
           );
 
           if (distance <= radius) {
-            applyDamageToEntity(target, damage, gameState);
+            applyDamageToEntity(target, damage, gameState, character);
 
             // Apply status effect if spell has one configured
             if (spell && !target.dead) {
@@ -1936,7 +1936,7 @@ export function executeAOEAttack(
           );
 
           if (distance <= radius) {
-            applyDamageToEntity(enemy, damage, gameState);
+            applyDamageToEntity(enemy, damage, gameState, character);
 
             // Apply status effect if spell has one configured
             if (spell && !enemy.dead) {
@@ -2228,9 +2228,24 @@ function applyStatusEffectFromSpell(
 function applyDamageToEntity(
   target: PlacedCharacter | PlacedEnemy,
   damage: number,
-  gameState: GameState
+  gameState: GameState,
+  source?: PlacedCharacter | PlacedEnemy  // Who dealt the damage (for deflect)
 ): void {
   let remainingDamage = damage;
+
+  // Check for deflect effect - reflects damage back to source
+  if (source && target.statusEffects) {
+    const hasDeflect = target.statusEffects.some(
+      e => e.type === StatusEffectType.DEFLECT || e.type === 'deflect'
+    );
+
+    if (hasDeflect && remainingDamage > 0) {
+      // Deflect all damage back to source (don't recurse - source can't deflect reflected damage)
+      applyDamageToEntityNoDeflect(source, remainingDamage, gameState);
+      // Target takes no damage
+      return;
+    }
+  }
 
   // Check for shield effects and absorb damage
   if (target.statusEffects) {
@@ -2272,6 +2287,64 @@ function applyDamageToEntity(
 
   if (target.currentHealth <= 0) {
     // Create a PlacedCharacter-like object for death triggers
+    const entityForTriggers: PlacedCharacter = {
+      characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
+      x: target.x,
+      y: target.y,
+      facing: target.facing || 'right',
+      currentHealth: target.currentHealth,
+      actionIndex: (target as PlacedCharacter).actionIndex || (target as PlacedEnemy).actionIndex || 0,
+      active: (target as PlacedCharacter).active ?? (target as PlacedEnemy).active ?? true,
+      dead: false,
+      parallelTrackers: target.parallelTrackers,
+      statusEffects: target.statusEffects,
+      spellCooldowns: target.spellCooldowns,
+    };
+    executeDeathTriggers(entityForTriggers, gameState);
+    target.dead = true;
+  }
+}
+
+/**
+ * Apply damage without checking deflect (used for reflected damage to prevent infinite loops)
+ */
+function applyDamageToEntityNoDeflect(
+  target: PlacedCharacter | PlacedEnemy,
+  damage: number,
+  gameState: GameState
+): void {
+  let remainingDamage = damage;
+
+  // Check for shield effects and absorb damage
+  if (target.statusEffects) {
+    for (const effect of target.statusEffects) {
+      if ((effect.type === StatusEffectType.SHIELD || effect.type === 'shield') && remainingDamage > 0) {
+        const shieldAmount = effect.value ?? 0;
+
+        if (shieldAmount <= 0) {
+          remainingDamage = 0;
+        } else if (shieldAmount >= remainingDamage) {
+          effect.value = shieldAmount - remainingDamage;
+          remainingDamage = 0;
+        } else {
+          remainingDamage -= shieldAmount;
+          effect.value = 0;
+          effect.duration = 0;
+        }
+      }
+    }
+
+    target.statusEffects = target.statusEffects.filter(
+      e => !((e.type === StatusEffectType.SHIELD || e.type === 'shield') && e.duration <= 0 && (e.value ?? 0) <= 0)
+    );
+  }
+
+  if (remainingDamage > 0) {
+    target.currentHealth -= remainingDamage;
+    wakeFromSleep(target);
+  }
+
+  if (target.currentHealth <= 0) {
     const entityForTriggers: PlacedCharacter = {
       characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
       x: target.x,

@@ -7,6 +7,56 @@ import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, load
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
+ * Check if an entity has the deflect status effect
+ */
+function hasDeflect(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(
+    e => e.type === StatusEffectType.DEFLECT || e.type === 'deflect'
+  );
+}
+
+/**
+ * Apply damage with deflect checking for projectiles
+ * Returns true if damage was deflected (and applied to source instead)
+ */
+function applyProjectileDamageWithDeflect(
+  target: PlacedCharacter | PlacedEnemy,
+  damage: number,
+  sourceCharacterId: string | undefined,
+  sourceEnemyId: string | undefined,
+  gameState: GameState
+): boolean {
+  // Check for deflect
+  if (hasDeflect(target)) {
+    // Find the source entity to reflect damage back to
+    let sourceEntity: PlacedCharacter | PlacedEnemy | undefined;
+
+    if (sourceCharacterId) {
+      sourceEntity = gameState.placedCharacters.find(c => c.characterId === sourceCharacterId && !c.dead);
+    } else if (sourceEnemyId) {
+      sourceEntity = gameState.puzzle.enemies.find(e => e.enemyId === sourceEnemyId && !e.dead);
+    }
+
+    if (sourceEntity) {
+      // Apply damage to source (without deflect check to prevent loops)
+      sourceEntity.currentHealth -= damage;
+      wakeFromSleep(sourceEntity);
+
+      if (sourceEntity.currentHealth <= 0) {
+        markEntityAsDead(sourceEntity, gameState);
+        // Handle death drop
+        handleEntityDeathDrop(sourceEntity, 'enemyId' in sourceEntity, gameState);
+      }
+
+      return true; // Damage was deflected
+    }
+  }
+
+  return false; // No deflect, apply damage normally
+}
+
+/**
  * Floor a number with epsilon tolerance to handle floating point issues
  * Math.floor(-0.0000001) would give -1, but we want 0
  */
@@ -2081,17 +2131,28 @@ export function updateProjectiles(gameState: GameState): void {
                 proj.spellAssetId
               );
             } else {
-              // Apply single-target damage
+              // Apply single-target damage (with deflect check)
               const damage = proj.attackData.damage ?? 1;
-              hitEnemy.currentHealth -= damage;
+              const wasDeflected = applyProjectileDamageWithDeflect(
+                hitEnemy,
+                damage,
+                proj.sourceCharacterId,
+                proj.sourceEnemyId,
+                gameState
+              );
 
-              // Wake from sleep if sleeping
-              wakeFromSleep(hitEnemy);
+              if (!wasDeflected) {
+                // Only apply damage if not deflected
+                hitEnemy.currentHealth -= damage;
 
-              if (hitEnemy.currentHealth <= 0) {
-                markEntityAsDead(hitEnemy, gameState);
-                // Handle death drop
-                handleEntityDeathDrop(hitEnemy, true, gameState);
+                // Wake from sleep if sleeping
+                wakeFromSleep(hitEnemy);
+
+                if (hitEnemy.currentHealth <= 0) {
+                  markEntityAsDead(hitEnemy, gameState);
+                  // Handle death drop
+                  handleEntityDeathDrop(hitEnemy, true, gameState);
+                }
               }
 
               // Apply status effect if projectile has a spell with one configured
@@ -2222,17 +2283,28 @@ export function updateProjectiles(gameState: GameState): void {
                 proj.spellAssetId
               );
             } else {
-              // Apply single-target damage
+              // Apply single-target damage (with deflect check)
               const damage = proj.attackData.damage ?? 1;
-              hitCharacter.currentHealth -= damage;
+              const wasDeflected = applyProjectileDamageWithDeflect(
+                hitCharacter,
+                damage,
+                proj.sourceCharacterId,
+                proj.sourceEnemyId,
+                gameState
+              );
 
-              // Wake from sleep if sleeping
-              wakeFromSleep(hitCharacter);
+              if (!wasDeflected) {
+                // Only apply damage if not deflected
+                hitCharacter.currentHealth -= damage;
 
-              if (hitCharacter.currentHealth <= 0) {
-                markEntityAsDead(hitCharacter, gameState);
-                // Handle death drop
-                handleEntityDeathDrop(hitCharacter, false, gameState);
+                // Wake from sleep if sleeping
+                wakeFromSleep(hitCharacter);
+
+                if (hitCharacter.currentHealth <= 0) {
+                  markEntityAsDead(hitCharacter, gameState);
+                  // Handle death drop
+                  handleEntityDeathDrop(hitCharacter, false, gameState);
+                }
               }
 
               // Apply status effect if projectile has a spell with one configured
@@ -2369,11 +2441,15 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             } else {
               const damage = proj.attackData.damage ?? 0;
-              enemy.currentHealth -= damage;
-              wakeFromSleep(enemy);
-              if (enemy.currentHealth <= 0) {
-                markEntityAsDead(enemy, gameState);
-                handleEntityDeathDrop(enemy, true, gameState);
+              const wasDeflected = applyProjectileDamageWithDeflect(
+                enemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
+              if (!wasDeflected) {
+                enemy.currentHealth -= damage;
+                wakeFromSleep(enemy);
+                if (enemy.currentHealth <= 0) {
+                  markEntityAsDead(enemy, gameState);
+                  handleEntityDeathDrop(enemy, true, gameState);
+                }
               }
               if (proj.spellAssetId && !enemy.dead) {
                 applyStatusEffectFromProjectile(enemy, proj.spellAssetId,
@@ -2388,11 +2464,15 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             } else {
               const damage = proj.attackData.damage ?? 0;
-              char.currentHealth -= damage;
-              wakeFromSleep(char);
-              if (char.currentHealth <= 0) {
-                markEntityAsDead(char, gameState);
-                handleEntityDeathDrop(char, false, gameState);
+              const wasDeflected = applyProjectileDamageWithDeflect(
+                char, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
+              if (!wasDeflected) {
+                char.currentHealth -= damage;
+                wakeFromSleep(char);
+                if (char.currentHealth <= 0) {
+                  markEntityAsDead(char, gameState);
+                  handleEntityDeathDrop(char, false, gameState);
+                }
               }
               if (proj.spellAssetId && !char.dead) {
                 applyStatusEffectFromProjectile(char, proj.spellAssetId,
@@ -2552,11 +2632,15 @@ function updateProjectilesHeadless(gameState: GameState): void {
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
               } else {
                 const damage = proj.attackData.damage ?? 0;
-                hitEnemy.currentHealth -= damage;
-                wakeFromSleep(hitEnemy);
-                if (hitEnemy.currentHealth <= 0) {
-                  markEntityAsDead(hitEnemy, gameState);
-                  handleEntityDeathDrop(hitEnemy, true, gameState);
+                const wasDeflected = applyProjectileDamageWithDeflect(
+                  hitEnemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
+                if (!wasDeflected) {
+                  hitEnemy.currentHealth -= damage;
+                  wakeFromSleep(hitEnemy);
+                  if (hitEnemy.currentHealth <= 0) {
+                    markEntityAsDead(hitEnemy, gameState);
+                    handleEntityDeathDrop(hitEnemy, true, gameState);
+                  }
                 }
                 if (proj.spellAssetId && !hitEnemy.dead) {
                   applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
@@ -2614,11 +2698,15 @@ function updateProjectilesHeadless(gameState: GameState): void {
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
               } else {
                 const damage = proj.attackData.damage ?? 0;
-                hitChar.currentHealth -= damage;
-                wakeFromSleep(hitChar);
-                if (hitChar.currentHealth <= 0) {
-                  markEntityAsDead(hitChar, gameState);
-                  handleEntityDeathDrop(hitChar, false, gameState);
+                const wasDeflected = applyProjectileDamageWithDeflect(
+                  hitChar, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
+                if (!wasDeflected) {
+                  hitChar.currentHealth -= damage;
+                  wakeFromSleep(hitChar);
+                  if (hitChar.currentHealth <= 0) {
+                    markEntityAsDead(hitChar, gameState);
+                    handleEntityDeathDrop(hitChar, false, gameState);
+                  }
                 }
                 if (proj.spellAssetId && !hitChar.dead) {
                   applyStatusEffectFromProjectile(hitChar, proj.spellAssetId,

@@ -48,6 +48,9 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [editingIcon, setEditingIcon] = useState(false);
   const [healthBarColor, setHealthBarColor] = useState(effect?.healthBarColor || '#22d3ee');
   const [stealthOpacity, setStealthOpacity] = useState(effect?.stealthOpacity ?? 0.5);
+  const [overlaySprite, setOverlaySprite] = useState<SpriteReference | undefined>(effect?.overlaySprite);
+  const [overlayOpacity, setOverlayOpacity] = useState(effect?.overlayOpacity ?? 0.5);
+  const [editingOverlay, setEditingOverlay] = useState(false);
 
   const isBuiltIn = effect?.isBuiltIn ?? false;
 
@@ -75,6 +78,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       maxStacks: stackingBehavior === 'stack' ? maxStacks : undefined,
       healthBarColor: type === StatusEffectType.SHIELD ? healthBarColor : undefined,
       stealthOpacity: type === StatusEffectType.STEALTH ? stealthOpacity : undefined,
+      overlaySprite: overlaySprite,
+      overlayOpacity: overlaySprite ? overlayOpacity : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       isBuiltIn: false, // Never save as built-in when editing
       folderId: effect?.folderId,
@@ -436,6 +441,65 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             </div>
           </div>
 
+          {/* Overlay Sprite Section */}
+          <div>
+            <label className="block text-sm font-medium mb-2">Overlay Sprite (optional)</label>
+            <p className="text-xs text-stone-400 mb-2">
+              Sprite displayed on top of entities with this effect (e.g., shield bubble)
+            </p>
+            <div className="flex items-center gap-4">
+              <div
+                className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-blue-500"
+                onClick={() => !isBuiltIn && setEditingOverlay(true)}
+                style={{ opacity: overlaySprite ? overlayOpacity : 0.3 }}
+              >
+                {overlaySprite?.spriteData ? (
+                  <SpriteThumbnail sprite={overlaySprite.spriteData} size={48} />
+                ) : (
+                  <span className="text-xs text-stone-500 text-center">No<br/>Overlay</span>
+                )}
+              </div>
+              <div className="flex flex-col gap-2">
+                {!isBuiltIn && (
+                  <button
+                    onClick={() => setEditingOverlay(true)}
+                    className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
+                  >
+                    {overlaySprite ? 'Edit Overlay' : 'Add Overlay'}
+                  </button>
+                )}
+                {overlaySprite && !isBuiltIn && (
+                  <button
+                    onClick={() => setOverlaySprite(undefined)}
+                    className="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-700"
+                  >
+                    Remove
+                  </button>
+                )}
+              </div>
+            </div>
+            {overlaySprite && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium mb-1">Overlay Opacity</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="0.1"
+                    max="1"
+                    step="0.1"
+                    value={overlayOpacity}
+                    onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))}
+                    disabled={isBuiltIn}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-stone-400 font-mono w-12 text-right">
+                    {Math.round(overlayOpacity * 100)}%
+                  </span>
+                </div>
+              </div>
+            )}
+          </div>
+
           <div className="space-y-3">
             <label className="block text-sm font-medium">Behavior Settings</label>
 
@@ -550,6 +614,42 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             <div className="flex justify-end mt-4">
               <button
                 onClick={() => setEditingIcon(false)}
+                className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Overlay Sprite Editor Modal */}
+      {editingOverlay && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-stone-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
+            <h3 className="text-lg font-bold mb-4">Edit Overlay Sprite</h3>
+            <p className="text-sm text-stone-400 mb-4">
+              This sprite will be drawn over entities with this status effect.
+              Supports static images and animated spritesheets.
+            </p>
+            <SimpleIconEditor
+              sprite={overlaySprite || {
+                type: 'inline',
+                spriteData: {
+                  id: `overlay_${Date.now()}`,
+                  name: 'Overlay',
+                  type: 'simple',
+                  shape: 'circle',
+                  primaryColor: '#22d3ee',
+                  createdAt: new Date().toISOString(),
+                },
+              }}
+              onChange={(sprite) => setOverlaySprite(sprite)}
+              size={96}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setEditingOverlay(false)}
                 className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
               >
                 Done

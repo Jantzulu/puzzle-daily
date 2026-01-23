@@ -630,6 +630,7 @@ export enum StatusEffectType {
   BLEED = 'bleed',        // Damage over time (physical variant)
   POLYMORPH = 'polymorph', // Replaces entity sprite temporarily
   STEALTH = 'stealth',    // Reduced opacity, can't be auto-targeted by opposing team
+  DEFLECT = 'deflect',    // Reflects spell damage back to caster
 }
 
 /**
@@ -967,6 +968,10 @@ export interface StatusEffectAsset {
 
   // Stealth configuration
   stealthOpacity?: number;        // Opacity when stealthed (0-1, default 0.5)
+
+  // Overlay sprite - renders on top of entity at reduced opacity (for shields, deflect, etc.)
+  overlaySprite?: SpriteReference;  // Sprite to overlay on entity (supports spritesheets)
+  overlayOpacity?: number;          // Opacity of overlay (0-1, default 0.5)
 
   // Metadata
   createdAt: string;
