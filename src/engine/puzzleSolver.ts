@@ -387,6 +387,132 @@ export function solvePuzzle(
 }
 
 /**
+ * Async version of solvePuzzle that yields to the browser periodically
+ * Use this for puzzle generation to prevent browser freezing
+ */
+export async function solvePuzzleAsync(
+  puzzle: Puzzle,
+  options: {
+    maxSimulationTurns?: number;
+    maxCombinations?: number;
+    findFastest?: boolean;
+    yieldEvery?: number; // Yield to browser every N combinations (default: 50)
+  } = {}
+): Promise<SolverResult> {
+  const startTime = performance.now();
+  const maxTurns = options.maxSimulationTurns ?? 200;
+  const maxCombinations = options.maxCombinations ?? 100000;
+  const findFastest = options.findFastest ?? false; // Default to false for async (faster)
+  const yieldEvery = options.yieldEvery ?? 50;
+
+  // Find valid placement tiles
+  const validTiles = findValidPlacementTiles(puzzle);
+
+  if (validTiles.length === 0) {
+    return {
+      solvable: false,
+      minCharactersNeeded: null,
+      solutionFound: null,
+      totalCombinationsTested: 0,
+      searchTimeMs: performance.now() - startTime,
+      error: 'No valid tiles for character placement',
+    };
+  }
+
+  const availableCharacters = puzzle.availableCharacters;
+
+  if (availableCharacters.length === 0) {
+    return {
+      solvable: false,
+      minCharactersNeeded: null,
+      solutionFound: null,
+      totalCombinationsTested: 0,
+      searchTimeMs: performance.now() - startTime,
+      error: 'No available characters',
+    };
+  }
+
+  let totalTested = 0;
+  let bestSolution: PlacementSolution | null = null;
+  let foundMinChars: number | null = null;
+
+  const maxChars = Math.min(puzzle.maxCharacters, availableCharacters.length);
+
+  for (let numChars = 1; numChars <= maxChars; numChars++) {
+    if (foundMinChars !== null && numChars > foundMinChars) {
+      break;
+    }
+
+    for (const charCombo of combinations(availableCharacters, numChars)) {
+      for (const placements of generatePlacements(charCombo, validTiles)) {
+        totalTested++;
+
+        // Yield to browser periodically
+        if (totalTested % yieldEvery === 0) {
+          await new Promise(resolve => setTimeout(resolve, 0));
+        }
+
+        if (totalTested > maxCombinations) {
+          return {
+            solvable: bestSolution !== null,
+            minCharactersNeeded: foundMinChars,
+            solutionFound: bestSolution,
+            totalCombinationsTested: totalTested,
+            searchTimeMs: performance.now() - startTime,
+            error: `Search limit reached (${maxCombinations} combinations)`,
+          };
+        }
+
+        const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
+
+        if (result === 'victory') {
+          if (foundMinChars === null) {
+            foundMinChars = numChars;
+          }
+
+          if (!bestSolution || (turns + 1) < bestSolution.turnsToWin) {
+            bestSolution = {
+              placements,
+              turnsToWin: turns + 1,
+            };
+          }
+
+          // If not finding fastest, return immediately
+          if (!findFastest) {
+            return {
+              solvable: true,
+              minCharactersNeeded: numChars,
+              solutionFound: bestSolution,
+              totalCombinationsTested: totalTested,
+              searchTimeMs: performance.now() - startTime,
+            };
+          }
+        }
+      }
+    }
+
+    // If we found a solution at this character count, return it
+    if (foundMinChars !== null && foundMinChars === numChars) {
+      return {
+        solvable: true,
+        minCharactersNeeded: foundMinChars,
+        solutionFound: bestSolution,
+        totalCombinationsTested: totalTested,
+        searchTimeMs: performance.now() - startTime,
+      };
+    }
+  }
+
+  return {
+    solvable: false,
+    minCharactersNeeded: null,
+    solutionFound: null,
+    totalCombinationsTested: totalTested,
+    searchTimeMs: performance.now() - startTime,
+  };
+}
+
+/**
  * Quick check if a puzzle has any chance of being solvable
  * (basic sanity checks before running full solver)
  */

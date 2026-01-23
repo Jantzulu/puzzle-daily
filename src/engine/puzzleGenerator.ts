@@ -1,7 +1,7 @@
 // Puzzle Generator - Creates solvable puzzles based on user-specified parameters
 // Uses the puzzle solver to validate generated puzzles
 
-import { solvePuzzle, quickValidate, type SolverResult } from './puzzleSolver';
+import { solvePuzzleAsync, quickValidate, type SolverResult } from './puzzleSolver';
 import { getEnemy } from '../data/enemies';
 import { loadTileType } from '../utils/assetStorage';
 import type {
@@ -940,10 +940,12 @@ export async function generatePuzzle(
     // not find the absolute optimal solution
     const maxCombos = getMaxCombinationsForDifficulty(params.difficulty, enemies.length);
 
-    const validation = solvePuzzle(puzzle, {
-      maxSimulationTurns: Math.min(params.maxTurns || 100, 100), // Cap at 100 turns for speed
+    // Use async solver that yields to browser to prevent freezing
+    const validation = await solvePuzzleAsync(puzzle, {
+      maxSimulationTurns: Math.min(params.maxTurns || 100, 50), // Cap at 50 turns for speed
       maxCombinations: maxCombos,
       findFastest: false, // Don't search for fastest - just find ANY solution
+      yieldEvery: 20, // Yield frequently to keep UI responsive
     });
 
     if (validation.solvable) {
