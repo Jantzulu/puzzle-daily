@@ -484,6 +484,7 @@ export interface Puzzle {
   availableCharacters: string[];
   winConditions: WinCondition[];
   maxCharacters: number;
+  maxPlaceableCharacters?: number; // Max heroes player can place (if different from maxCharacters)
   maxTurns?: number; // Optional turn limit to prevent infinite loops
   lives?: number; // Number of attempts allowed (default: 3, 0 = unlimited)
   borderConfig?: BorderConfig; // Optional border decoration (legacy, use skinId instead)

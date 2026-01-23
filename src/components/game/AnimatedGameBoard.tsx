@@ -536,7 +536,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
     const newActivations: TileActivation[] = [];
-    const now = Date.now();
+    const now = performance.now();
 
     gameState.placedCharacters.forEach((char, idx) => {
       const prevChar = prevCharactersRef.current[idx];
@@ -631,7 +631,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
     const newActivations: TileActivation[] = [];
-    const now = Date.now();
+    const now = performance.now();
 
     gameState.puzzle.enemies.forEach((enemy, idx) => {
       const prevEnemy = prevEnemiesRef.current[idx];
@@ -723,7 +723,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Detect character deaths and trigger death animations
   useEffect(() => {
-    const now = Date.now();
+    const now = performance.now();
     const newDeathAnimations = new Map(characterDeathAnimations);
     let hasChanges = false;
 
@@ -760,7 +760,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Detect enemy deaths and trigger death animations
   useEffect(() => {
-    const now = Date.now();
+    const now = performance.now();
     const newDeathAnimations = new Map(enemyDeathAnimations);
     let hasChanges = false;
 
@@ -881,7 +881,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         });
       }
 
-      const now = Date.now();
+      // Use performance.now() for consistent timing throughout the frame
+      // This is compatible with the startTime values set in useEffect hooks
+      const now = performance.now();
 
       // Draw collectibles
       gameState.puzzle.collectibles.forEach((collectible) => {
@@ -1093,7 +1095,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Schedule cleanup for next frame
         setTimeout(() => {
           setTileActivations(prev => {
-            const currentTime = Date.now();
+            const currentTime = performance.now();
             return prev.filter(a => {
               const durationMs = a.activationSprite.durationMs || 800;
               return currentTime - a.startTime < durationMs;

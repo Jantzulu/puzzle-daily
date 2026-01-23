@@ -317,10 +317,10 @@ export const Game: React.FC = () => {
               } else {
                 // Life lost - play sound
                 playGameSound('life_lost');
-                // Auto-reset after a short delay to show defeat message
+                // Auto-reset after a delay to show defeat message (3 seconds)
                 setTimeout(() => {
                   handleAutoReset();
-                }, 1500);
+                }, 3000);
               }
             }
           }
@@ -398,6 +398,13 @@ export const Game: React.FC = () => {
       if (alreadyPlaced) {
         playGameSound('error');
         return; // Can't place duplicate character types
+      }
+
+      // Check if at max placeable characters
+      const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
+      if (gameState.placedCharacters.length >= maxPlaceable) {
+        playGameSound('error');
+        return; // Can't place more than max allowed
       }
 
       const charData = getCharacter(selectedCharacterId);
@@ -860,9 +867,125 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
+            {/* Game board with overlay container for loss/victory panels */}
+            <div className="relative w-full max-w-md">
+              <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
 
-            {/* Victory/Defeat Message */}
+              {/* Defeat Overlay - appears on top of the game board */}
+              {gameState.gameStatus === 'defeat' && !showGameOver && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center z-10"
+                  style={{
+                    backgroundColor: themeAssets.defeatPanelOverlayBg || 'rgba(0, 0, 0, 0.75)',
+                  }}
+                >
+                  <div
+                    className={`p-4 rounded-pixel-lg text-center max-w-[90%] ${
+                      themeAssets.defeatPanelBg ? '' : 'defeat-panel'
+                    }`}
+                    style={{
+                      ...(themeAssets.defeatPanelBg && { backgroundColor: themeAssets.defeatPanelBg }),
+                      ...(themeAssets.defeatPanelBorder && { borderColor: themeAssets.defeatPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                    }}
+                  >
+                    <h2
+                      className={`text-xl md:text-2xl font-bold font-medieval ${
+                        themeAssets.defeatPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
+                      }`}
+                      style={{
+                        ...(themeAssets.defeatPanelTitleText && { color: themeAssets.defeatPanelTitleText }),
+                      }}
+                    >
+                      {defeatReason === 'turns' ? 'Out of Time!' : 'Defeat'}
+                    </h2>
+                    <p
+                      className={`mt-1 text-sm ${themeAssets.defeatPanelMessageText ? '' : 'text-blood-400'}`}
+                      style={{
+                        ...(themeAssets.defeatPanelMessageText && { color: themeAssets.defeatPanelMessageText }),
+                      }}
+                    >
+                      {defeatReason === 'turns'
+                        ? 'You ran out of turns before completing the objective.'
+                        : 'Your heroes have fallen in battle.'}
+                    </p>
+                    {(currentPuzzle.lives ?? 3) > 0 && (
+                      <p
+                        className={`mt-2 text-sm md:text-base ${themeAssets.defeatPanelSubText ? '' : 'text-blood-300'}`}
+                        style={{
+                          ...(themeAssets.defeatPanelSubText && { color: themeAssets.defeatPanelSubText }),
+                        }}
+                      >
+                        Lives remaining: {livesRemaining - 1} - Returning to setup...
+                      </p>
+                    )}
+                    {(currentPuzzle.lives ?? 3) === 0 && (
+                      <p
+                        className={`mt-2 text-sm md:text-base ${themeAssets.defeatPanelSubText ? '' : 'text-blood-300'}`}
+                        style={{
+                          ...(themeAssets.defeatPanelSubText && { color: themeAssets.defeatPanelSubText }),
+                        }}
+                      >
+                        Try again!
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Game Over Overlay */}
+              {showGameOver && (
+                <div
+                  className="absolute inset-0 flex items-center justify-center z-10"
+                  style={{
+                    backgroundColor: themeAssets.gameOverPanelOverlayBg || 'rgba(0, 0, 0, 0.8)',
+                  }}
+                >
+                  <div
+                    className={`p-6 rounded-pixel-lg text-center max-w-[90%] ${
+                      themeAssets.gameOverPanelBg ? '' : 'defeat-panel'
+                    }`}
+                    style={{
+                      ...(themeAssets.gameOverPanelBg && { backgroundColor: themeAssets.gameOverPanelBg }),
+                      ...(themeAssets.gameOverPanelBorder && { borderColor: themeAssets.gameOverPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                    }}
+                  >
+                    <h2
+                      className={`text-2xl md:text-3xl font-bold font-medieval ${
+                        themeAssets.gameOverPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
+                      }`}
+                      style={{
+                        ...(themeAssets.gameOverPanelTitleText && { color: themeAssets.gameOverPanelTitleText }),
+                      }}
+                    >
+                      Game Over
+                    </h2>
+                    <p
+                      className={`mt-2 text-lg ${themeAssets.gameOverPanelMessageText ? '' : 'text-blood-300'}`}
+                      style={{
+                        ...(themeAssets.gameOverPanelMessageText && { color: themeAssets.gameOverPanelMessageText }),
+                      }}
+                    >
+                      No lives remaining!
+                    </p>
+                    <button
+                      onClick={handleRestartPuzzle}
+                      className={`mt-4 px-6 py-3 font-bold text-lg ${
+                        themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
+                      }`}
+                      style={{
+                        ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
+                        ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                        ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
+                      }}
+                    >
+                      Try Again
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Victory Message - still below the game board */}
             {gameState.gameStatus === 'victory' && puzzleScore && (
               <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
                 {/* Trophy and Rank */}
@@ -937,41 +1060,6 @@ export const Game: React.FC = () => {
                     }).join(', ')}
                   </div>
                 )}
-              </div>
-            )}
-
-            {gameState.gameStatus === 'defeat' && !showGameOver && (
-              <div className="defeat-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
-                <h2 className="text-xl md:text-2xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
-                  {defeatReason === 'turns' ? 'Out of Time!' : 'Defeat'}
-                </h2>
-                <p className="mt-1 text-sm text-blood-400">
-                  {defeatReason === 'turns'
-                    ? 'You ran out of turns before completing the objective.'
-                    : 'Your heroes have fallen in battle.'}
-                </p>
-                {(currentPuzzle.lives ?? 3) > 0 && (
-                  <p className="mt-2 text-sm md:text-base text-blood-300">
-                    Lives remaining: {livesRemaining - 1} - Returning to setup...
-                  </p>
-                )}
-                {(currentPuzzle.lives ?? 3) === 0 && (
-                  <p className="mt-2 text-sm md:text-base text-blood-300">Try again!</p>
-                )}
-              </div>
-            )}
-
-            {/* Game Over Overlay */}
-            {showGameOver && (
-              <div className="defeat-panel mt-4 p-6 rounded-pixel-lg text-center w-full max-w-md">
-                <h2 className="text-2xl md:text-3xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">Game Over</h2>
-                <p className="mt-2 text-lg text-blood-300">No lives remaining!</p>
-                <button
-                  onClick={handleRestartPuzzle}
-                  className="dungeon-btn-danger mt-4 px-6 py-3 font-bold text-lg"
-                >
-                  Try Again
-                </button>
               </div>
             )}
 
@@ -1190,6 +1278,7 @@ export const Game: React.FC = () => {
                   selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
                   onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
                   placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                  maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
                   onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
                   onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
                   themeAssets={themeAssets}

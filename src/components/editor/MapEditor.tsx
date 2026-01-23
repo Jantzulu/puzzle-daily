@@ -276,6 +276,7 @@ interface EditorState {
   puzzleName: string;
   puzzleId: string;
   maxCharacters: number;
+  maxPlaceableCharacters?: number; // Max heroes player can place (if different from maxCharacters)
   maxTurns?: number;
   lives?: number; // Number of attempts (0 = unlimited, default: 3)
   availableCharacters: string[];
@@ -603,6 +604,7 @@ export const MapEditor: React.FC = () => {
         puzzleName: state.puzzleName,
         puzzleId: state.puzzleId,
         maxCharacters: state.maxCharacters,
+        maxPlaceableCharacters: state.maxPlaceableCharacters,
         maxTurns: state.maxTurns,
         lives: state.lives,
         availableCharacters: state.availableCharacters,
@@ -816,11 +818,11 @@ export const MapEditor: React.FC = () => {
                 setShowGameOver(true);
                 playDefeatMusic();
               } else {
-                // Life lost - play sound and auto-reset after delay
+                // Life lost - play sound and auto-reset after delay (3 seconds)
                 playGameSound('life_lost');
                 setTimeout(() => {
                   handleAutoResetPlaytest();
-                }, 1500);
+                }, 3000);
               }
             }
           }
@@ -1150,6 +1152,7 @@ export const MapEditor: React.FC = () => {
       availableCharacters: state.availableCharacters,
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
+      maxPlaceableCharacters: state.maxPlaceableCharacters,
       maxTurns: state.maxTurns,
       lives: state.lives,
       borderConfig,
@@ -1229,6 +1232,7 @@ export const MapEditor: React.FC = () => {
       puzzleName: puzzle.name,
       puzzleId: puzzle.id,
       maxCharacters: puzzle.maxCharacters,
+      maxPlaceableCharacters: puzzle.maxPlaceableCharacters,
       maxTurns: puzzle.maxTurns,
       lives: puzzle.lives ?? 3,
       availableCharacters: puzzle.availableCharacters,
@@ -1293,6 +1297,7 @@ export const MapEditor: React.FC = () => {
         puzzleName: puzzle.name,
         puzzleId: puzzle.id,
         maxCharacters: puzzle.maxCharacters,
+        maxPlaceableCharacters: puzzle.maxPlaceableCharacters,
         maxTurns: puzzle.maxTurns,
         lives: puzzle.lives ?? 3,
         availableCharacters: puzzle.availableCharacters,
@@ -1347,6 +1352,7 @@ export const MapEditor: React.FC = () => {
       availableCharacters: state.availableCharacters,
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
+      maxPlaceableCharacters: state.maxPlaceableCharacters,
       maxTurns: state.maxTurns,
       lives: state.lives,
       skinId: state.skinId,
@@ -1468,6 +1474,7 @@ export const MapEditor: React.FC = () => {
       availableCharacters: state.availableCharacters,
       winConditions: state.winConditions,
       maxCharacters: state.maxCharacters,
+      maxPlaceableCharacters: state.maxPlaceableCharacters,
       maxTurns: state.maxTurns,
       lives: state.lives,
       borderConfig,
@@ -1570,6 +1577,13 @@ export const MapEditor: React.FC = () => {
     // Check if this character type is already placed (only one of each allowed)
     const alreadyPlaced = gameState.placedCharacters.some((c) => c.characterId === selectedCharacterId);
     if (alreadyPlaced) {
+      playGameSound('error');
+      return;
+    }
+
+    // Check if at max placeable characters
+    const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
+    if (gameState.placedCharacters.length >= maxPlaceable) {
       playGameSound('error');
       return;
     }
@@ -2023,9 +2037,125 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
-              <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} isEditor={true} />
+              {/* Game board with overlay container for loss panels */}
+              <div className="relative w-full max-w-md">
+                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} isEditor={true} />
 
-              {/* Victory Message with Score */}
+                {/* Defeat Overlay - appears on top of the game board */}
+                {gameState.gameStatus === 'defeat' && !showGameOver && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center z-10"
+                    style={{
+                      backgroundColor: themeAssets.defeatPanelOverlayBg || 'rgba(0, 0, 0, 0.75)',
+                    }}
+                  >
+                    <div
+                      className={`p-4 rounded-pixel-lg text-center max-w-[90%] ${
+                        themeAssets.defeatPanelBg ? '' : 'defeat-panel'
+                      }`}
+                      style={{
+                        ...(themeAssets.defeatPanelBg && { backgroundColor: themeAssets.defeatPanelBg }),
+                        ...(themeAssets.defeatPanelBorder && { borderColor: themeAssets.defeatPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                      }}
+                    >
+                      <h2
+                        className={`text-xl md:text-2xl font-bold font-medieval ${
+                          themeAssets.defeatPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
+                        }`}
+                        style={{
+                          ...(themeAssets.defeatPanelTitleText && { color: themeAssets.defeatPanelTitleText }),
+                        }}
+                      >
+                        {defeatReason === 'turns' ? 'Out of Time!' : 'Defeat'}
+                      </h2>
+                      <p
+                        className={`mt-1 text-sm ${themeAssets.defeatPanelMessageText ? '' : 'text-blood-400'}`}
+                        style={{
+                          ...(themeAssets.defeatPanelMessageText && { color: themeAssets.defeatPanelMessageText }),
+                        }}
+                      >
+                        {defeatReason === 'turns'
+                          ? 'You ran out of turns before completing the objective.'
+                          : 'Your heroes have fallen in battle.'}
+                      </p>
+                      {originalPlaytestPuzzle && (originalPlaytestPuzzle.lives ?? 3) > 0 && (
+                        <p
+                          className={`mt-2 text-sm md:text-base ${themeAssets.defeatPanelSubText ? '' : 'text-blood-300'}`}
+                          style={{
+                            ...(themeAssets.defeatPanelSubText && { color: themeAssets.defeatPanelSubText }),
+                          }}
+                        >
+                          Lives remaining: {livesRemaining - 1} - Returning to setup...
+                        </p>
+                      )}
+                      {originalPlaytestPuzzle && (originalPlaytestPuzzle.lives ?? 3) === 0 && (
+                        <p
+                          className={`mt-2 text-sm md:text-base ${themeAssets.defeatPanelSubText ? '' : 'text-blood-300'}`}
+                          style={{
+                            ...(themeAssets.defeatPanelSubText && { color: themeAssets.defeatPanelSubText }),
+                          }}
+                        >
+                          Try again!
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Game Over Overlay */}
+                {showGameOver && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center z-10"
+                    style={{
+                      backgroundColor: themeAssets.gameOverPanelOverlayBg || 'rgba(0, 0, 0, 0.8)',
+                    }}
+                  >
+                    <div
+                      className={`p-6 rounded-pixel-lg text-center max-w-[90%] ${
+                        themeAssets.gameOverPanelBg ? '' : 'defeat-panel'
+                      }`}
+                      style={{
+                        ...(themeAssets.gameOverPanelBg && { backgroundColor: themeAssets.gameOverPanelBg }),
+                        ...(themeAssets.gameOverPanelBorder && { borderColor: themeAssets.gameOverPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                      }}
+                    >
+                      <h2
+                        className={`text-2xl md:text-3xl font-bold font-medieval ${
+                          themeAssets.gameOverPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
+                        }`}
+                        style={{
+                          ...(themeAssets.gameOverPanelTitleText && { color: themeAssets.gameOverPanelTitleText }),
+                        }}
+                      >
+                        Game Over
+                      </h2>
+                      <p
+                        className={`mt-2 text-lg ${themeAssets.gameOverPanelMessageText ? '' : 'text-blood-300'}`}
+                        style={{
+                          ...(themeAssets.gameOverPanelMessageText && { color: themeAssets.gameOverPanelMessageText }),
+                        }}
+                      >
+                        No lives remaining!
+                      </p>
+                      <button
+                        onClick={handleRestartPlaytest}
+                        className={`mt-4 px-6 py-3 font-bold text-lg ${
+                          themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
+                        }`}
+                        style={{
+                          ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
+                          ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
+                        }}
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Victory Message with Score - still below the game board */}
               {gameState.gameStatus === 'victory' && puzzleScore && (
                 <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
                   <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
@@ -2096,42 +2226,6 @@ export const MapEditor: React.FC = () => {
                       }).join(', ')}
                     </div>
                   )}
-                </div>
-              )}
-
-              {/* Defeat Message */}
-              {gameState.gameStatus === 'defeat' && !showGameOver && (
-                <div className="defeat-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
-                  <h2 className="text-xl md:text-2xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
-                    {defeatReason === 'turns' ? 'Out of Time!' : 'Defeat'}
-                  </h2>
-                  <p className="mt-1 text-sm text-blood-400">
-                    {defeatReason === 'turns'
-                      ? 'You ran out of turns before completing the objective.'
-                      : 'Your heroes have fallen in battle.'}
-                  </p>
-                  {originalPlaytestPuzzle && (originalPlaytestPuzzle.lives ?? 3) > 0 && (
-                    <p className="mt-2 text-sm md:text-base text-blood-300">
-                      Lives remaining: {livesRemaining - 1} - Returning to setup...
-                    </p>
-                  )}
-                  {originalPlaytestPuzzle && (originalPlaytestPuzzle.lives ?? 3) === 0 && (
-                    <p className="mt-2 text-sm md:text-base text-blood-300">Try again!</p>
-                  )}
-                </div>
-              )}
-
-              {/* Game Over Overlay */}
-              {showGameOver && (
-                <div className="defeat-panel mt-4 p-6 rounded-pixel-lg text-center w-full max-w-md">
-                  <h2 className="text-2xl md:text-3xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">Game Over</h2>
-                  <p className="mt-2 text-lg text-blood-300">No lives remaining!</p>
-                  <button
-                    onClick={handleRestartPlaytest}
-                    className="dungeon-btn-danger mt-4 px-6 py-3 font-bold text-lg"
-                  >
-                    Try Again
-                  </button>
                 </div>
               )}
 
@@ -2307,6 +2401,7 @@ export const MapEditor: React.FC = () => {
                     selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
                     onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
                     placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                    maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
                     onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
                     onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharacters : undefined}
                     themeAssets={themeAssets}
@@ -3163,9 +3258,9 @@ export const MapEditor: React.FC = () => {
                       ))}
                     </select>
                   </div>
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-2 gap-2">
                     <div>
-                      <label className="block text-sm mb-1">Max Chars</label>
+                      <label className="block text-sm mb-1">Available Heroes</label>
                       <input
                         type="number"
                         min="1"
@@ -3173,8 +3268,30 @@ export const MapEditor: React.FC = () => {
                         value={state.maxCharacters}
                         onChange={(e) => setState(prev => ({ ...prev, maxCharacters: Number(e.target.value) }))}
                         className="w-full px-3 py-2 bg-stone-700 rounded"
+                        title="Max heroes in the pool (solver uses this)"
                       />
                     </div>
+                    <div>
+                      <label className="block text-sm mb-1">Max Placeable</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={state.maxCharacters}
+                        value={state.maxPlaceableCharacters ?? state.maxCharacters}
+                        onChange={(e) => {
+                          const val = Number(e.target.value);
+                          setState(prev => ({
+                            ...prev,
+                            maxPlaceableCharacters: val === prev.maxCharacters ? undefined : val
+                          }));
+                        }}
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
+                        title="Max heroes player can place (can be less than available)"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-xs text-stone-400 mt-1">Player can place up to {state.maxPlaceableCharacters ?? state.maxCharacters} of {state.maxCharacters} available heroes</p>
+                  <div className="grid grid-cols-2 gap-2 mt-2">
                     <div>
                       <label className="block text-sm mb-1">Max Turns</label>
                       <input

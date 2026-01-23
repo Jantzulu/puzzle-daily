@@ -10,6 +10,7 @@ interface CharacterSelectorProps {
   selectedCharacterId: string | null;
   onSelectCharacter: (id: string | null) => void;
   placedCharacterIds?: string[];
+  maxPlaceable?: number; // Max heroes player can place (defaults to availableCharacterIds.length)
   onClearAll?: () => void;
   onTest?: () => void;
   themeAssets?: ThemeAssets;
@@ -21,11 +22,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   selectedCharacterId,
   onSelectCharacter,
   placedCharacterIds = [],
+  maxPlaceable,
   onClearAll,
   onTest,
   themeAssets = {},
   disabled = false,
 }) => {
+  // If maxPlaceable not specified, default to number of available characters
+  const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
+  const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
   // Determine button shape class
   const getShapeClass = (shape?: string) => {
     switch (shape) {
@@ -64,8 +69,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </div>
         {/* Right: Count + Clear button */}
         <div className="flex items-center gap-2">
-          <span className="text-sm text-stone-400">
-            {placedCharacterIds.length} placed
+          <span className={`text-sm ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
+            {placedCharacterIds.length}/{effectiveMaxPlaceable} placed
           </span>
           {onClearAll && placedCharacterIds.length > 0 && !disabled && (
             <button
@@ -89,16 +94,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           const isSelected = selectedCharacterId === charId;
           const isPlaced = placedCharacterIds.includes(charId);
           const hasTooltipSteps = character.tooltipSteps && character.tooltipSteps.length > 0;
+          // Can't select if disabled, already placed, or at max and not already selected
+          const cannotSelect = disabled || isPlaced || (isAtMaxPlaced && !isSelected);
 
           return (
             <div
               key={charId}
-              onClick={() => !disabled && !isPlaced && onSelectCharacter(isSelected ? null : charId)}
+              onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
               className={`rounded-pixel-md p-2 transition-all flex flex-col items-center border-2 min-w-[80px] ${
                 disabled
                   ? 'bg-stone-800/80 border-stone-600 cursor-default'
                   : isPlaced
                   ? 'bg-stone-900/80 border-dashed border-stone-600 opacity-60 cursor-not-allowed'
+                  : isAtMaxPlaced && !isSelected
+                  ? 'bg-stone-800/80 border-stone-600 opacity-50 cursor-not-allowed'
                   : isSelected
                   ? 'bg-copper-800/80 border-copper-500 shadow-torch cursor-pointer'
                   : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700 hover:border-copper-600 cursor-pointer'

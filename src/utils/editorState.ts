@@ -20,6 +20,7 @@ export interface EditorPuzzleState {
   puzzleName: string;
   puzzleId: string;
   maxCharacters: number;
+  maxPlaceableCharacters?: number;
   maxTurns?: number;
   lives?: number;
   availableCharacters: string[];

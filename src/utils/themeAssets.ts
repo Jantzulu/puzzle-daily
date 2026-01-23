@@ -154,6 +154,24 @@ export interface ThemeAssets {
   concedeModalConfirmBorder?: string; // Confirm button border
   concedeModalConfirmText?: string;  // Confirm button text
 
+  // Defeat Panel (loss of life overlay)
+  defeatPanelOverlayBg?: string;     // Overlay background color (default: black/75%)
+  defeatPanelBg?: string;            // Panel background color
+  defeatPanelBorder?: string;        // Panel border color
+  defeatPanelTitleText?: string;     // Title text color (e.g., "Defeat" or "Out of Time!")
+  defeatPanelMessageText?: string;   // Message text color
+  defeatPanelSubText?: string;       // Sub-text color (lives remaining message)
+
+  // Game Over Panel (all lives lost)
+  gameOverPanelOverlayBg?: string;   // Overlay background color (default: black/80%)
+  gameOverPanelBg?: string;          // Panel background color
+  gameOverPanelBorder?: string;      // Panel border color
+  gameOverPanelTitleText?: string;   // Title text color ("Game Over")
+  gameOverPanelMessageText?: string; // Message text color
+  gameOverPanelButtonBg?: string;    // Try Again button background
+  gameOverPanelButtonBorder?: string; // Try Again button border
+  gameOverPanelButtonText?: string;  // Try Again button text color
+
   // Preview/thumbnail backgrounds
   // Entity previews (heroes, enemies) - typically shown on tile backgrounds
   colorBgPreviewEntity?: string;        // Background color for hero/enemy previews
@@ -281,6 +299,22 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   concedeModalConfirmBg: { label: 'Confirm Button Bg', description: 'Background color for the Concede button', category: 'concedeModal', inputType: 'color' },
   concedeModalConfirmBorder: { label: 'Confirm Button Border', description: 'Border color for the Concede button', category: 'concedeModal', inputType: 'color' },
   concedeModalConfirmText: { label: 'Confirm Button Text', description: 'Text color for the Concede button', category: 'concedeModal', inputType: 'color' },
+  // Defeat Panel (loss of life overlay)
+  defeatPanelOverlayBg: { label: 'Overlay Background', description: 'Background color for the darkened overlay behind the defeat panel', category: 'defeatPanel', inputType: 'color' },
+  defeatPanelBg: { label: 'Panel Background', description: 'Background color for the defeat panel', category: 'defeatPanel', inputType: 'color' },
+  defeatPanelBorder: { label: 'Panel Border', description: 'Border color for the defeat panel', category: 'defeatPanel', inputType: 'color' },
+  defeatPanelTitleText: { label: 'Title Text', description: 'Color for the "Defeat" or "Out of Time!" title', category: 'defeatPanel', inputType: 'color' },
+  defeatPanelMessageText: { label: 'Message Text', description: 'Color for the defeat message text', category: 'defeatPanel', inputType: 'color' },
+  defeatPanelSubText: { label: 'Sub-Text', description: 'Color for lives remaining and other sub-text', category: 'defeatPanel', inputType: 'color' },
+  // Game Over Panel (all lives lost)
+  gameOverPanelOverlayBg: { label: 'Overlay Background', description: 'Background color for the darkened overlay behind the game over panel', category: 'gameOverPanel', inputType: 'color' },
+  gameOverPanelBg: { label: 'Panel Background', description: 'Background color for the game over panel', category: 'gameOverPanel', inputType: 'color' },
+  gameOverPanelBorder: { label: 'Panel Border', description: 'Border color for the game over panel', category: 'gameOverPanel', inputType: 'color' },
+  gameOverPanelTitleText: { label: 'Title Text', description: 'Color for the "Game Over" title', category: 'gameOverPanel', inputType: 'color' },
+  gameOverPanelMessageText: { label: 'Message Text', description: 'Color for the game over message', category: 'gameOverPanel', inputType: 'color' },
+  gameOverPanelButtonBg: { label: 'Button Background', description: 'Background color for the Try Again button', category: 'gameOverPanel', inputType: 'color' },
+  gameOverPanelButtonBorder: { label: 'Button Border', description: 'Border color for the Try Again button', category: 'gameOverPanel', inputType: 'color' },
+  gameOverPanelButtonText: { label: 'Button Text', description: 'Text color for the Try Again button', category: 'gameOverPanel', inputType: 'color' },
   // Entity preview backgrounds (heroes, enemies)
   colorBgPreviewEntity: { label: 'Entity Preview Color', description: 'Background color for hero/enemy previews', category: 'colors', inputType: 'color' },
   bgPreviewEntity: { label: 'Entity Preview Image', description: 'Background image for hero/enemy previews (e.g., a floor tile)', category: 'backgrounds', inputType: 'image' },
@@ -306,7 +340,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   fontSizeHeading: { label: 'Heading Size', description: 'Size of headings and titles', category: 'styles', inputType: 'select' },
 };
 
-export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'actionButtons', 'concedeModal', 'styles'] as const;
+export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'actionButtons', 'concedeModal', 'defeatPanel', 'gameOverPanel', 'styles'] as const;
 export type AssetCategory = typeof ASSET_CATEGORIES[number];
 
 /**
