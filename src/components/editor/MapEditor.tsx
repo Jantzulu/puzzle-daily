@@ -2078,26 +2078,6 @@ export const MapEditor: React.FC = () => {
                           ? 'You ran out of turns before completing the objective.'
                           : 'Your heroes have fallen in battle.'}
                       </p>
-                      {originalPlaytestPuzzle && (originalPlaytestPuzzle.lives ?? 3) > 0 && (
-                        <p
-                          className={`mt-2 text-sm md:text-base ${themeAssets.defeatPanelSubText ? '' : 'text-blood-300'}`}
-                          style={{
-                            ...(themeAssets.defeatPanelSubText && { color: themeAssets.defeatPanelSubText }),
-                          }}
-                        >
-                          Lives remaining: {livesRemaining - 1} - Returning to setup...
-                        </p>
-                      )}
-                      {originalPlaytestPuzzle && (originalPlaytestPuzzle.lives ?? 3) === 0 && (
-                        <p
-                          className={`mt-2 text-sm md:text-base ${themeAssets.defeatPanelSubText ? '' : 'text-blood-300'}`}
-                          style={{
-                            ...(themeAssets.defeatPanelSubText && { color: themeAssets.defeatPanelSubText }),
-                          }}
-                        >
-                          Try again!
-                        </p>
-                      )}
                     </div>
                   </div>
                 )}
