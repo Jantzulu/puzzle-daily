@@ -48,7 +48,9 @@ export interface GenerationParameters {
 
   // Special tile options
   enabledTileTypes: string[];       // Custom tile type IDs to potentially use
+  forceSpecialTiles?: boolean;      // If true, guarantee at least one special tile is placed
   enableVoidTiles: boolean;         // Allow non-rectangular shapes
+  forceVoidTiles?: boolean;         // If true, guarantee at least one void region is placed
 
   // Win conditions
   winConditions: WinCondition[];
@@ -389,18 +391,24 @@ function applyVoidRegion(tiles: TileOrNull[][], region: VoidRegion): void {
 
 function addVoidRegions(
   tiles: TileOrNull[][],
-  difficulty: DifficultyLevel
+  difficulty: DifficultyLevel,
+  forceVoid: boolean = false
 ): TileOrNull[][] {
   const height = tiles.length;
   const width = tiles[0].length;
 
   // Determine number of void regions based on difficulty
-  const voidCount = {
+  let voidCount = {
     easy: 0,
     medium: 0,
     hard: randomInt(1, 2),
     expert: randomInt(1, 3),
   }[difficulty];
+
+  // If force is enabled, guarantee at least 1 void region
+  if (forceVoid && voidCount === 0) {
+    voidCount = 1;
+  }
 
   if (voidCount === 0) return tiles;
 
@@ -1099,12 +1107,17 @@ function placeSpecialTiles(
   const result = deepCloneTiles(tiles);
 
   // Tile count based on difficulty
-  const tileCount = {
+  let tileCount = {
     easy: 0,
     medium: randomInt(1, 2),
     hard: randomInt(2, 4),
     expert: randomInt(3, 6),
   }[params.difficulty];
+
+  // If force is enabled, guarantee at least 1 special tile (or 2 for teleporters which need pairs)
+  if (params.forceSpecialTiles && tileCount === 0) {
+    tileCount = 2; // Use 2 to allow for teleporter pairs
+  }
 
   if (tileCount === 0) return result;
 
@@ -1231,7 +1244,7 @@ function generateLayout(params: GenerationParameters): TileOrNull[][] {
 
   // Step 2: Add void regions if enabled
   if (params.enableVoidTiles) {
-    tiles = addVoidRegions(tiles, params.difficulty);
+    tiles = addVoidRegions(tiles, params.difficulty, params.forceVoidTiles);
   }
 
   // Step 3: Add walls based on difficulty

@@ -43,7 +43,9 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
   );
   const [enemyConfigs, setEnemyConfigs] = useState<EnemyConfig[]>([]);
   const [enableVoidTiles, setEnableVoidTiles] = useState(false);
+  const [forceVoidTiles, setForceVoidTiles] = useState(false);
   const [selectedTileTypes, setSelectedTileTypes] = useState<string[]>([]);
+  const [forceSpecialTiles, setForceSpecialTiles] = useState(false);
   const [winCondition, setWinCondition] = useState<'defeat_all_enemies' | 'defeat_boss'>('defeat_all_enemies');
 
   // Generation state
@@ -122,7 +124,9 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
       enemyTypes: enemyConfigs,
       difficulty,
       enabledTileTypes: selectedTileTypes,
+      forceSpecialTiles,
       enableVoidTiles,
+      forceVoidTiles,
       winConditions: [{ type: winCondition }] as WinCondition[],
       maxTurns: 200,
       lives: 3,
@@ -160,8 +164,8 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
     setProgress(null);
   }, [
     width, height, selectedCharacters, maxCharacters, enemyConfigs,
-    difficulty, selectedTileTypes, enableVoidTiles, winCondition,
-    onGenerate, onClose
+    difficulty, selectedTileTypes, forceSpecialTiles, enableVoidTiles,
+    forceVoidTiles, winCondition, onGenerate, onClose
   ]);
 
   if (!isOpen) return null;
@@ -366,20 +370,48 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
           <div className="border-t border-stone-600 pt-4">
             <label className="block text-sm font-medium text-parchment-300 mb-2">Special Options</label>
             <div className="space-y-3">
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={enableVoidTiles}
-                  onChange={e => setEnableVoidTiles(e.target.checked)}
-                  disabled={isGenerating}
-                  className="text-amber-500 disabled:opacity-50"
-                />
-                <span className="text-sm text-parchment-100">Enable Void Tiles (non-rectangular shapes)</span>
-              </label>
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={enableVoidTiles}
+                    onChange={e => setEnableVoidTiles(e.target.checked)}
+                    disabled={isGenerating}
+                    className="text-amber-500 disabled:opacity-50"
+                  />
+                  <span className="text-sm text-parchment-100">Enable Void Tiles</span>
+                </label>
+                {enableVoidTiles && (
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={forceVoidTiles}
+                      onChange={e => setForceVoidTiles(e.target.checked)}
+                      disabled={isGenerating}
+                      className="text-amber-500 disabled:opacity-50"
+                    />
+                    <span className="text-xs text-stone-400">Force (guarantee placement)</span>
+                  </label>
+                )}
+              </div>
 
               {customTileTypes.length > 0 && (
                 <div>
-                  <label className="block text-xs text-stone-400 mb-1">Special Tile Types</label>
+                  <div className="flex items-center gap-4 mb-1">
+                    <label className="block text-xs text-stone-400">Special Tile Types</label>
+                    {selectedTileTypes.length > 0 && (
+                      <label className="flex items-center gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={forceSpecialTiles}
+                          onChange={e => setForceSpecialTiles(e.target.checked)}
+                          disabled={isGenerating}
+                          className="text-amber-500 disabled:opacity-50"
+                        />
+                        <span className="text-xs text-stone-400">Force (guarantee placement)</span>
+                      </label>
+                    )}
+                  </div>
                   <div className="flex flex-wrap gap-2">
                     {customTileTypes.slice(0, 10).map(tileType => (
                       <button
