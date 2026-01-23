@@ -974,7 +974,7 @@ function buildPuzzle(
     availableCharacters: params.availableCharacters,
     winConditions: params.winConditions,
     maxCharacters: params.maxCharacters,
-    maxTurns: params.maxTurns || 200,
+    maxTurns: Math.min(params.maxTurns || 100, 100), // Hard cap at 100 turns
     lives: params.lives ?? 3,
     skinId: params.skinId || 'builtin_dungeon',
   };
@@ -1156,7 +1156,7 @@ export function getDifficultyPreset(difficulty: DifficultyLevel): Partial<Genera
       maxCharacters: 3,
       enableVoidTiles: false,
       enabledTileTypes: [],
-      maxTurns: 150,
+      maxTurns: 100,
     },
     hard: {
       width: 10,
@@ -1164,7 +1164,7 @@ export function getDifficultyPreset(difficulty: DifficultyLevel): Partial<Genera
       maxCharacters: 3,
       enableVoidTiles: true,
       enabledTileTypes: [],
-      maxTurns: 200,
+      maxTurns: 100,
     },
     expert: {
       width: 12,
@@ -1172,7 +1172,7 @@ export function getDifficultyPreset(difficulty: DifficultyLevel): Partial<Genera
       maxCharacters: 4,
       enableVoidTiles: true,
       enabledTileTypes: [],
-      maxTurns: 200,
+      maxTurns: 100,
     },
   };
 
