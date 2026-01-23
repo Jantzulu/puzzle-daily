@@ -160,7 +160,7 @@ export type ExecutionMode = 'sequential' | 'parallel' | 'parallel_with_previous'
 
 export type TriggerMode = 'interval' | 'on_event';
 
-export type TriggerEvent = 'enemy_adjacent' | 'enemy_in_range' | 'contact_with_enemy' | 'wall_ahead' | 'health_below_50' | 'character_adjacent' | 'character_in_range' | 'contact_with_character';
+export type TriggerEvent = 'enemy_adjacent' | 'enemy_in_range' | 'contact_with_enemy' | 'wall_ahead' | 'health_below_50' | 'character_adjacent' | 'character_in_range' | 'contact_with_character' | 'on_death';
 
 export interface TriggerConfig {
   mode: TriggerMode;

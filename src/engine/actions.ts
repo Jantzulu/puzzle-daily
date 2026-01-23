@@ -368,6 +368,8 @@ function processDamageBehavior(
   updatedChar.currentHealth -= damage;
 
   if (updatedChar.currentHealth <= 0) {
+    // Execute death triggers before marking as dead
+    executeDeathTriggers(updatedChar, gameState);
     updatedChar.dead = true;
   }
 
@@ -905,6 +907,7 @@ function moveCharacter(
           // Enemy attacks first (enemy has priority)
           updatedChar.currentHealth -= enemyContactDamage;
           if (updatedChar.currentHealth <= 0) {
+            executeDeathTriggers(updatedChar, gameState);
             updatedChar.dead = true;
           }
 
@@ -912,6 +915,21 @@ function moveCharacter(
           if (!updatedChar.dead) {
             enemyAtTarget.currentHealth -= charContactDamage;
             if (enemyAtTarget.currentHealth <= 0) {
+              // Create a PlacedCharacter-like object for death triggers
+              const enemyForTriggers: PlacedCharacter = {
+                characterId: enemyAtTarget.enemyId,
+                x: enemyAtTarget.x,
+                y: enemyAtTarget.y,
+                facing: enemyAtTarget.facing || 'right',
+                currentHealth: enemyAtTarget.currentHealth,
+                actionIndex: enemyAtTarget.actionIndex || 0,
+                active: enemyAtTarget.active || true,
+                dead: false,
+                parallelTrackers: enemyAtTarget.parallelTrackers,
+                statusEffects: enemyAtTarget.statusEffects,
+                spellCooldowns: enemyAtTarget.spellCooldowns,
+              };
+              executeDeathTriggers(enemyForTriggers, gameState);
               enemyAtTarget.dead = true;
             }
           }
@@ -919,6 +937,21 @@ function moveCharacter(
           // Character attacks first (default - player initiative)
           enemyAtTarget.currentHealth -= charContactDamage;
           if (enemyAtTarget.currentHealth <= 0) {
+            // Create a PlacedCharacter-like object for death triggers
+            const enemyForTriggers: PlacedCharacter = {
+              characterId: enemyAtTarget.enemyId,
+              x: enemyAtTarget.x,
+              y: enemyAtTarget.y,
+              facing: enemyAtTarget.facing || 'right',
+              currentHealth: enemyAtTarget.currentHealth,
+              actionIndex: enemyAtTarget.actionIndex || 0,
+              active: enemyAtTarget.active || true,
+              dead: false,
+              parallelTrackers: enemyAtTarget.parallelTrackers,
+              statusEffects: enemyAtTarget.statusEffects,
+              spellCooldowns: enemyAtTarget.spellCooldowns,
+            };
+            executeDeathTriggers(enemyForTriggers, gameState);
             enemyAtTarget.dead = true;
           }
 
@@ -926,6 +959,7 @@ function moveCharacter(
           if (!enemyAtTarget.dead) {
             updatedChar.currentHealth -= enemyContactDamage;
             if (updatedChar.currentHealth <= 0) {
+              executeDeathTriggers(updatedChar, gameState);
               updatedChar.dead = true;
             }
           }
@@ -935,6 +969,21 @@ function moveCharacter(
         const charContactDamage = charData.contactDamage ?? 0;
         enemyAtTarget.currentHealth -= charContactDamage;
         if (enemyAtTarget.currentHealth <= 0) {
+          // Create a PlacedCharacter-like object for death triggers
+          const enemyForTriggers: PlacedCharacter = {
+            characterId: enemyAtTarget.enemyId,
+            x: enemyAtTarget.x,
+            y: enemyAtTarget.y,
+            facing: enemyAtTarget.facing || 'right',
+            currentHealth: enemyAtTarget.currentHealth,
+            actionIndex: enemyAtTarget.actionIndex || 0,
+            active: enemyAtTarget.active || true,
+            dead: false,
+            parallelTrackers: enemyAtTarget.parallelTrackers,
+            statusEffects: enemyAtTarget.statusEffects,
+            spellCooldowns: enemyAtTarget.spellCooldowns,
+          };
+          executeDeathTriggers(enemyForTriggers, gameState);
           enemyAtTarget.dead = true;
         }
       }
@@ -1092,6 +1141,21 @@ function attackInDirection(
     if (enemy) {
       enemy.currentHealth -= charData.attackDamage;
       if (enemy.currentHealth <= 0) {
+        // Create a PlacedCharacter-like object for death triggers
+        const enemyForTriggers: PlacedCharacter = {
+          characterId: enemy.enemyId,
+          x: enemy.x,
+          y: enemy.y,
+          facing: enemy.facing || 'right',
+          currentHealth: enemy.currentHealth,
+          actionIndex: enemy.actionIndex || 0,
+          active: enemy.active || true,
+          dead: false,
+          parallelTrackers: enemy.parallelTrackers,
+          statusEffects: enemy.statusEffects,
+          spellCooldowns: enemy.spellCooldowns,
+        };
+        executeDeathTriggers(enemyForTriggers, gameState);
         enemy.dead = true;
       }
       // Ranged attacks hit first enemy and stop
@@ -1645,7 +1709,7 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        applyDamageToEntity(targetChar, damage);
+        applyDamageToEntity(targetChar, damage, gameState);
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
@@ -1663,7 +1727,7 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        applyDamageToEntity(enemy, damage);
+        applyDamageToEntity(enemy, damage, gameState);
 
         // Apply status effect if spell has one configured
         if (spell && !enemy.dead) {
@@ -1700,7 +1764,7 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        applyDamageToEntity(targetChar, damage);
+        applyDamageToEntity(targetChar, damage, gameState);
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
@@ -1718,7 +1782,7 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        applyDamageToEntity(enemy, damage);
+        applyDamageToEntity(enemy, damage, gameState);
 
         // Apply status effect if spell has one configured
         if (spell && !enemy.dead) {
@@ -1819,7 +1883,7 @@ export function executeAOEAttack(
           );
 
           if (distance <= radius) {
-            applyDamageToEntity(target, damage);
+            applyDamageToEntity(target, damage, gameState);
 
             // Apply status effect if spell has one configured
             if (spell && !target.dead) {
@@ -1841,7 +1905,7 @@ export function executeAOEAttack(
           );
 
           if (distance <= radius) {
-            applyDamageToEntity(enemy, damage);
+            applyDamageToEntity(enemy, damage, gameState);
 
             // Apply status effect if spell has one configured
             if (spell && !enemy.dead) {
@@ -1997,7 +2061,7 @@ function applySpellToSelf(
 
   // Apply damage to self (for self-harm spells)
   if (spell.damage && spell.damage > 0) {
-    applyDamageToEntity(character, spell.damage);
+    applyDamageToEntity(character, spell.damage, gameState);
 
     // Spawn damage visual effect
     if (spell.sprites.damageEffect) {
@@ -2132,7 +2196,8 @@ function applyStatusEffectFromSpell(
  */
 function applyDamageToEntity(
   target: PlacedCharacter | PlacedEnemy,
-  damage: number
+  damage: number,
+  gameState: GameState
 ): void {
   let remainingDamage = damage;
 
@@ -2175,6 +2240,21 @@ function applyDamageToEntity(
   }
 
   if (target.currentHealth <= 0) {
+    // Create a PlacedCharacter-like object for death triggers
+    const entityForTriggers: PlacedCharacter = {
+      characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
+      x: target.x,
+      y: target.y,
+      facing: target.facing || 'right',
+      currentHealth: target.currentHealth,
+      actionIndex: (target as PlacedCharacter).actionIndex || (target as PlacedEnemy).actionIndex || 0,
+      active: (target as PlacedCharacter).active ?? (target as PlacedEnemy).active ?? true,
+      dead: false,
+      parallelTrackers: target.parallelTrackers,
+      statusEffects: target.statusEffects,
+      spellCooldowns: target.spellCooldowns,
+    };
+    executeDeathTriggers(entityForTriggers, gameState);
     target.dead = true;
   }
 }
@@ -2280,6 +2360,21 @@ function applyCollectibleEffect(
       entity.currentHealth -= effect.amount ?? 0;
       wakeFromSleep(entity);
       if (entity.currentHealth <= 0) {
+        // Create a PlacedCharacter-like object for death triggers
+        const entityForTriggers: PlacedCharacter = {
+          characterId: (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId,
+          x: entity.x,
+          y: entity.y,
+          facing: entity.facing || 'right',
+          currentHealth: entity.currentHealth,
+          actionIndex: (entity as PlacedCharacter).actionIndex || (entity as PlacedEnemy).actionIndex || 0,
+          active: (entity as PlacedCharacter).active ?? (entity as PlacedEnemy).active ?? true,
+          dead: false,
+          parallelTrackers: entity.parallelTrackers,
+          statusEffects: entity.statusEffects,
+          spellCooldowns: entity.spellCooldowns,
+        };
+        executeDeathTriggers(entityForTriggers, gameState);
         entity.dead = true;
       }
       break;
@@ -2591,6 +2686,12 @@ export function checkTriggerCondition(
       if (!charData) return false;
       return character.currentHealth < charData.health * 0.5;
 
+    case 'on_death':
+      // Death trigger is handled specially via executeDeathTriggers()
+      // This condition returns false because death triggers are only fired
+      // at the moment of death, not during normal trigger evaluation
+      return false;
+
     default:
       console.warn(`Unknown trigger event: ${event}`);
       return false;
@@ -2658,4 +2759,46 @@ export function evaluateTriggers(
       }
     }
   });
+}
+
+/**
+ * Execute death triggers for an entity that is about to die
+ * This should be called BEFORE the entity is marked as dead, so the spell can still execute
+ * Returns true if any death triggers were executed
+ */
+export function executeDeathTriggers(
+  character: PlacedCharacter,
+  gameState: GameState
+): boolean {
+  // Try to get character data first, then fall back to enemy data
+  const charData = getCharacter(character.characterId);
+  const enemyData = !charData ? getEnemy(character.characterId) : null;
+
+  // Get the behavior array from character or enemy
+  let behaviorActions: CharacterAction[] | undefined;
+
+  if (charData?.behavior) {
+    behaviorActions = charData.behavior;
+  } else if (enemyData?.behavior?.pattern) {
+    behaviorActions = enemyData.behavior.pattern;
+  }
+
+  if (!behaviorActions) {
+    return false;
+  }
+
+  let triggeredAny = false;
+
+  // Check each action for on_death triggers
+  behaviorActions.forEach((action: CharacterAction) => {
+    if (action.trigger?.mode === 'on_event' && action.trigger.event === 'on_death') {
+      // Execute the death trigger action
+      // The entity is still alive at this point, so the spell can execute properly
+      const updatedCharacter = executeAction(character, action, gameState);
+      Object.assign(character, updatedCharacter);
+      triggeredAny = true;
+    }
+  });
+
+  return triggeredAny;
 }

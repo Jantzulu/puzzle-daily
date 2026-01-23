@@ -2,7 +2,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter } from '../utils/assetStorage';
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
@@ -146,6 +146,36 @@ function computeTilePathWithWallLookahead(
 }
 
 /**
+ * Mark an entity as dead, executing death triggers BEFORE setting the dead flag
+ * This ensures on_death spell triggers fire while the entity is still "alive"
+ */
+function markEntityAsDead(
+  entity: PlacedCharacter | PlacedEnemy,
+  gameState: GameState
+): void {
+  // Execute death triggers BEFORE marking as dead
+  // Create a compatible PlacedCharacter-like object for the trigger system
+  const entityForTriggers: PlacedCharacter = {
+    characterId: (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId,
+    x: entity.x,
+    y: entity.y,
+    facing: entity.facing || 'right',
+    currentHealth: entity.currentHealth,
+    actionIndex: (entity as PlacedCharacter).actionIndex || 0,
+    active: (entity as PlacedCharacter).active ?? (entity as PlacedEnemy).active ?? true,
+    dead: false, // Still alive for trigger execution
+    parallelTrackers: entity.parallelTrackers,
+    statusEffects: entity.statusEffects,
+    spellCooldowns: entity.spellCooldowns,
+  };
+
+  executeDeathTriggers(entityForTriggers, gameState);
+
+  // Now mark as dead
+  entity.dead = true;
+}
+
+/**
  * Initialize parallel action trackers for a character
  */
 function initializeParallelTrackers(character: PlacedCharacter, charData: any): void {
@@ -244,12 +274,14 @@ function getEntityMaxHealth(entity: PlacedCharacter | PlacedEnemy): number {
  * @param entity - PlacedCharacter or PlacedEnemy
  * @param timing - 'start' or 'end' of turn
  * @param currentTurn - Current turn number
+ * @param gameState - Game state for death trigger execution
  * @returns Updated entity with effects processed
  */
 function processEntityStatusEffects(
   entity: PlacedCharacter | PlacedEnemy,
   timing: 'start' | 'end',
-  currentTurn: number
+  currentTurn: number,
+  gameState: GameState
 ): PlacedCharacter | PlacedEnemy {
   if (!entity.statusEffects || entity.statusEffects.length === 0) {
     return entity;
@@ -285,7 +317,7 @@ function processEntityStatusEffects(
         updatedEntity.currentHealth -= damage * stacks;
 
         if (updatedEntity.currentHealth <= 0) {
-          updatedEntity.dead = true;
+          markEntityAsDead(updatedEntity, gameState);
         }
         break;
 
@@ -706,7 +738,8 @@ function processAllStatusEffectsTurnStart(gameState: GameState): void {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
         'start',
-        gameState.currentTurn
+        gameState.currentTurn,
+        gameState
       ) as PlacedCharacter;
 
       // Check if entity died from DOT and handle death drop
@@ -723,7 +756,8 @@ function processAllStatusEffectsTurnStart(gameState: GameState): void {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
         'start',
-        gameState.currentTurn
+        gameState.currentTurn,
+        gameState
       ) as PlacedEnemy;
 
       // Check if entity died from DOT and handle death drop
@@ -745,7 +779,8 @@ function processAllStatusEffectsTurnEnd(gameState: GameState): void {
       gameState.placedCharacters[i] = processEntityStatusEffects(
         gameState.placedCharacters[i],
         'end',
-        gameState.currentTurn
+        gameState.currentTurn,
+        gameState
       ) as PlacedCharacter;
 
       // Check if entity died from DOT and handle death drop
@@ -762,7 +797,8 @@ function processAllStatusEffectsTurnEnd(gameState: GameState): void {
       gameState.puzzle.enemies[i] = processEntityStatusEffects(
         gameState.puzzle.enemies[i],
         'end',
-        gameState.currentTurn
+        gameState.currentTurn,
+        gameState
       ) as PlacedEnemy;
 
       // Check if entity died from DOT and handle death drop
@@ -2053,7 +2089,7 @@ export function updateProjectiles(gameState: GameState): void {
               wakeFromSleep(hitEnemy);
 
               if (hitEnemy.currentHealth <= 0) {
-                hitEnemy.dead = true;
+                markEntityAsDead(hitEnemy, gameState);
                 // Handle death drop
                 handleEntityDeathDrop(hitEnemy, true, gameState);
               }
@@ -2194,7 +2230,7 @@ export function updateProjectiles(gameState: GameState): void {
               wakeFromSleep(hitCharacter);
 
               if (hitCharacter.currentHealth <= 0) {
-                hitCharacter.dead = true;
+                markEntityAsDead(hitCharacter, gameState);
                 // Handle death drop
                 handleEntityDeathDrop(hitCharacter, false, gameState);
               }
@@ -2336,7 +2372,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               enemy.currentHealth -= damage;
               wakeFromSleep(enemy);
               if (enemy.currentHealth <= 0) {
-                enemy.dead = true;
+                markEntityAsDead(enemy, gameState);
                 handleEntityDeathDrop(enemy, true, gameState);
               }
               if (proj.spellAssetId && !enemy.dead) {
@@ -2355,7 +2391,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               char.currentHealth -= damage;
               wakeFromSleep(char);
               if (char.currentHealth <= 0) {
-                char.dead = true;
+                markEntityAsDead(char, gameState);
                 handleEntityDeathDrop(char, false, gameState);
               }
               if (proj.spellAssetId && !char.dead) {
@@ -2519,7 +2555,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 hitEnemy.currentHealth -= damage;
                 wakeFromSleep(hitEnemy);
                 if (hitEnemy.currentHealth <= 0) {
-                  hitEnemy.dead = true;
+                  markEntityAsDead(hitEnemy, gameState);
                   handleEntityDeathDrop(hitEnemy, true, gameState);
                 }
                 if (proj.spellAssetId && !hitEnemy.dead) {
@@ -2581,7 +2617,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 hitChar.currentHealth -= damage;
                 wakeFromSleep(hitChar);
                 if (hitChar.currentHealth <= 0) {
-                  hitChar.dead = true;
+                  markEntityAsDead(hitChar, gameState);
                   handleEntityDeathDrop(hitChar, false, gameState);
                 }
                 if (proj.spellAssetId && !hitChar.dead) {
@@ -2731,7 +2767,7 @@ function processPersistentAreaEffects(gameState: GameState): void {
       if (distance <= effect.radius) {
         enemy.currentHealth -= effect.damagePerTurn;
         if (enemy.currentHealth <= 0) {
-          enemy.dead = true;
+          markEntityAsDead(enemy, gameState);
           handleEntityDeathDrop(enemy, true, gameState);
         }
       }

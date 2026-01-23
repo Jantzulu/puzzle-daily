@@ -920,6 +920,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                         <option value="contact_with_character">Overlap with Character</option>
                         <option value="wall_ahead">Wall Ahead</option>
                         <option value="health_below_50">Health Below 50%</option>
+                        <option value="on_death">On Death</option>
                       </select>
                       {(action.trigger.event === 'enemy_in_range' || action.trigger.event === 'character_in_range') && (
                         <div className="flex items-center gap-2 mt-1">

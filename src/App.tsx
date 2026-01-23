@@ -213,9 +213,8 @@ function Navigation() {
                 );
               }
             } else {
-              return (
-                <span className="text-copper-400 text-2xl md:text-3xl animate-flicker flex-shrink-0">&#128293;</span>
-              );
+              // No placeholder - show nothing while logo loads
+              return null;
             }
           })()}
           {/* Title and subtitle - stacked vertically */}
