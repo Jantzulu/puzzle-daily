@@ -1765,27 +1765,8 @@ export function updateProjectiles(gameState: GameState): void {
       }
     }
 
-    // For non-homing projectiles that reached max range, deactivate
-    // (Homing projectiles should continue to collision check even when "at target")
-    if (reachedTarget && !proj.isHoming) {
-      // Projectile reached target/max range
-      // Check if this should explode into AOE
-      if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-        triggerAOEExplosion(
-          proj.x,
-          proj.y,
-          proj.attackData,
-          proj.sourceCharacterId,
-          proj.sourceEnemyId,
-          gameState,
-          proj.spellAssetId
-        );
-      }
-
-      proj.active = false;
-      projectilesToRemove.push(proj.id);
-      continue;
-    }
+    // Track if non-homing projectile reached max range (will deactivate after collision check)
+    const shouldDeactivateAtEnd = reachedTarget && !proj.isHoming;
 
     // Update position before collision check
     proj.x = newX;
@@ -2344,6 +2325,25 @@ export function updateProjectiles(gameState: GameState): void {
 
     // For homing projectiles that reached target but didn't hit anything, deactivate
     if (reachedTarget && proj.isHoming) {
+      proj.active = false;
+      projectilesToRemove.push(proj.id);
+    }
+
+    // For non-homing projectiles that reached max range, deactivate after collision check
+    // This ensures projectiles can hit enemies on their final tile before disappearing
+    if (shouldDeactivateAtEnd && !entityHitAndStopped) {
+      // Trigger AOE at final position if configured
+      if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+        triggerAOEExplosion(
+          proj.x,
+          proj.y,
+          proj.attackData,
+          proj.sourceCharacterId,
+          proj.sourceEnemyId,
+          gameState,
+          proj.spellAssetId
+        );
+      }
       proj.active = false;
       projectilesToRemove.push(proj.id);
     }
