@@ -757,7 +757,7 @@ export const Game: React.FC = () => {
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center">
             {/* Quest Display - above puzzle */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running') && testMode === 'none' && (
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat') && testMode === 'none' && (
               <div className="mb-4 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
@@ -1127,7 +1127,7 @@ export const Game: React.FC = () => {
             )}
 
             {/* Control Panel - below puzzle */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="relative flex items-center justify-between">
                   {/* Left: Lives */}
@@ -1270,8 +1270,8 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Character Selector - below puzzle (visible during setup, running, and test mode) */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || testMode !== 'none') && (
+            {/* Character Selector - below puzzle (visible during setup, running, defeat, and test mode) */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mt-3 w-full max-w-md">
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
@@ -1282,7 +1282,7 @@ export const Game: React.FC = () => {
                   onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
                   onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
                   themeAssets={themeAssets}
-                  disabled={gameState.gameStatus === 'running' || testMode !== 'none'}
+                  disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                 />
               </div>
             )}
