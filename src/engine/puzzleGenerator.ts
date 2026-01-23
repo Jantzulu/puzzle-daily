@@ -31,6 +31,11 @@ export interface EnemyConfig {
   placement?: EnemyPlacementStrategy;
 }
 
+export interface CollectibleConfig {
+  collectibleId: string;
+  count: number;
+}
+
 export interface GenerationParameters {
   // Map dimensions
   width: number;                    // 5-20
@@ -42,6 +47,9 @@ export interface GenerationParameters {
 
   // Enemy configuration
   enemyTypes: EnemyConfig[];        // Which enemies and how many
+
+  // Collectible/Item configuration
+  collectibleTypes?: CollectibleConfig[];  // Which items and how many
 
   // Difficulty
   difficulty: DifficultyLevel;
@@ -835,6 +843,60 @@ function placeEnemies(
 }
 
 // ==========================================
+// COLLECTIBLE PLACEMENT
+// ==========================================
+
+function placeCollectibles(
+  tiles: TileOrNull[][],
+  enemies: PlacedEnemy[],
+  params: GenerationParameters
+): PlacedCollectible[] {
+  if (!params.collectibleTypes || params.collectibleTypes.length === 0) {
+    return [];
+  }
+
+  const collectibles: PlacedCollectible[] = [];
+  const occupiedTiles = new Set<string>();
+
+  // Mark enemy positions as occupied
+  for (const enemy of enemies) {
+    occupiedTiles.add(`${enemy.x},${enemy.y}`);
+  }
+
+  // Get all valid empty tiles
+  const validTiles: { x: number; y: number }[] = [];
+  for (let y = 0; y < tiles.length; y++) {
+    for (let x = 0; x < (tiles[y]?.length || 0); x++) {
+      const tile = tiles[y][x];
+      if (tile && tile.type === ('empty' as TileType) && !occupiedTiles.has(`${x},${y}`)) {
+        validTiles.push({ x, y });
+      }
+    }
+  }
+
+  // Shuffle for random placement
+  const shuffledTiles = shuffleArray([...validTiles]);
+  let tileIndex = 0;
+
+  // Place collectibles based on config
+  for (const config of params.collectibleTypes) {
+    for (let i = 0; i < config.count && tileIndex < shuffledTiles.length; i++) {
+      const pos = shuffledTiles[tileIndex];
+      tileIndex++;
+
+      collectibles.push({
+        collectibleId: config.collectibleId,
+        x: pos.x,
+        y: pos.y,
+      });
+      occupiedTiles.add(`${pos.x},${pos.y}`);
+    }
+  }
+
+  return collectibles;
+}
+
+// ==========================================
 // TELEPORTER PLACEMENT HELPERS
 // ==========================================
 
@@ -1323,14 +1385,17 @@ export async function generatePuzzle(
     // Step 2: Place enemies
     const enemies = placeEnemies(tiles, params);
 
-    // Step 3: Add special tiles
+    // Step 3: Place collectibles/items
+    const collectibles = placeCollectibles(tiles, enemies, params);
+
+    // Step 4: Add special tiles
     const tilesWithSpecial = placeSpecialTiles(tiles, enemies, params);
 
-    // Step 4: Build layout candidate
+    // Step 5: Build layout candidate
     const layout: LayoutCandidate = {
       tiles: tilesWithSpecial,
       enemies,
-      collectibles: [],
+      collectibles,
     };
 
     // Step 5: Build puzzle object

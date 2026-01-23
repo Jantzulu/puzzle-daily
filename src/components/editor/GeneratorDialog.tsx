@@ -9,10 +9,12 @@ import {
   type GenerationResult,
   type DifficultyLevel,
   type EnemyConfig,
+  type CollectibleConfig,
 } from '../../engine/puzzleGenerator';
 import type { Puzzle, WinCondition, CustomTileType } from '../../types/game';
 import type { CharacterWithSprite } from '../../data/characters';
 import type { EnemyWithSprite } from '../../data/enemies';
+import type { CustomCollectible } from '../../utils/assetStorage';
 
 interface GeneratorDialogProps {
   isOpen: boolean;
@@ -21,6 +23,7 @@ interface GeneratorDialogProps {
   availableCharacters: CharacterWithSprite[];
   availableEnemies: EnemyWithSprite[];
   customTileTypes: CustomTileType[];
+  availableCollectibles: CustomCollectible[];
 }
 
 const DIFFICULTY_LEVELS: DifficultyLevel[] = ['easy', 'medium', 'hard', 'expert'];
@@ -32,6 +35,7 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
   availableCharacters,
   availableEnemies,
   customTileTypes,
+  availableCollectibles,
 }) => {
   // Generation parameters state
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
@@ -42,6 +46,7 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
     availableCharacters.slice(0, 1).map(c => c.id)
   );
   const [enemyConfigs, setEnemyConfigs] = useState<EnemyConfig[]>([]);
+  const [collectibleConfigs, setCollectibleConfigs] = useState<CollectibleConfig[]>([]);
   const [enableVoidTiles, setEnableVoidTiles] = useState(false);
   const [forceVoidTiles, setForceVoidTiles] = useState(false);
   const [selectedTileTypes, setSelectedTileTypes] = useState<string[]>([]);
@@ -97,6 +102,30 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
     setEnemyConfigs(prev => prev.filter((_, i) => i !== index));
   }, []);
 
+  // Add collectible config
+  const addCollectibleConfig = useCallback(() => {
+    if (availableCollectibles.length > 0) {
+      setCollectibleConfigs(prev => [
+        ...prev,
+        { collectibleId: availableCollectibles[0].id, count: 1 },
+      ]);
+    }
+  }, [availableCollectibles]);
+
+  // Update collectible config
+  const updateCollectibleConfig = useCallback((index: number, updates: Partial<CollectibleConfig>) => {
+    setCollectibleConfigs(prev => {
+      const newConfigs = [...prev];
+      newConfigs[index] = { ...newConfigs[index], ...updates };
+      return newConfigs;
+    });
+  }, []);
+
+  // Remove collectible config
+  const removeCollectibleConfig = useCallback((index: number) => {
+    setCollectibleConfigs(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
   // Toggle special tile type
   const toggleTileType = useCallback((tileId: string) => {
     setSelectedTileTypes(prev =>
@@ -122,6 +151,7 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
       availableCharacters: selectedCharacters,
       maxCharacters: effectiveMaxCharacters,
       enemyTypes: enemyConfigs,
+      collectibleTypes: collectibleConfigs,
       difficulty,
       enabledTileTypes: selectedTileTypes,
       forceSpecialTiles,
@@ -164,8 +194,8 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
     setProgress(null);
   }, [
     width, height, selectedCharacters, maxCharacters, enemyConfigs,
-    difficulty, selectedTileTypes, forceSpecialTiles, enableVoidTiles,
-    forceVoidTiles, winCondition, onGenerate, onClose
+    collectibleConfigs, difficulty, selectedTileTypes, forceSpecialTiles,
+    enableVoidTiles, forceVoidTiles, winCondition, onGenerate, onClose
   ]);
 
   if (!isOpen) return null;
@@ -338,6 +368,60 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
               + Add Enemy
             </button>
           </div>
+
+          {/* Collectibles/Items */}
+          {availableCollectibles.length > 0 && (
+            <div>
+              <label className="block text-sm font-medium text-parchment-300 mb-2">
+                Items ({collectibleConfigs.reduce((sum, c) => sum + c.count, 0)} total)
+              </label>
+              <div className="space-y-2 max-h-32 overflow-y-auto bg-stone-700/50 p-2 rounded">
+                {collectibleConfigs.map((config, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <select
+                      value={config.collectibleId}
+                      onChange={e => updateCollectibleConfig(index, { collectibleId: e.target.value })}
+                      disabled={isGenerating}
+                      className="flex-1 px-2 py-1 bg-stone-600 border border-stone-500 rounded text-sm text-parchment-100
+                        disabled:opacity-50"
+                    >
+                      {availableCollectibles.map(collectible => (
+                        <option key={collectible.id} value={collectible.id}>{collectible.name}</option>
+                      ))}
+                    </select>
+                    <input
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={config.count}
+                      onChange={e => updateCollectibleConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
+                      disabled={isGenerating}
+                      className="w-16 px-2 py-1 bg-stone-600 border border-stone-500 rounded text-sm text-parchment-100
+                        disabled:opacity-50"
+                    />
+                    <button
+                      onClick={() => removeCollectibleConfig(index)}
+                      disabled={isGenerating}
+                      className="px-2 py-1 bg-red-600 hover:bg-red-700 rounded text-sm disabled:opacity-50"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+                {collectibleConfigs.length === 0 && (
+                  <div className="text-stone-500 text-sm text-center py-2">No items added</div>
+                )}
+              </div>
+              <button
+                onClick={addCollectibleConfig}
+                disabled={isGenerating}
+                className="mt-2 px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm text-parchment-100
+                  disabled:opacity-50"
+              >
+                + Add Item
+              </button>
+            </div>
+          )}
 
           {/* Win Condition */}
           <div>

@@ -3911,6 +3911,7 @@ export const MapEditor: React.FC = () => {
         availableCharacters={allCharacters}
         availableEnemies={allEnemies}
         customTileTypes={customTileTypes}
+        availableCollectibles={allCollectibles}
       />
     </div>
   );
