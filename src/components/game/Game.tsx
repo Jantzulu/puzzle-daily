@@ -393,6 +393,13 @@ export const Game: React.FC = () => {
         return; // Can't place on occupied tile
       }
 
+      // Check if another character is already on this tile
+      const tileHasCharacter = gameState.placedCharacters.some((c) => c.x === x && c.y === y && !c.dead);
+      if (tileHasCharacter) {
+        playGameSound('error');
+        return; // Can't place on tile occupied by another character
+      }
+
       // Check if this character type is already placed (only one of each allowed)
       const alreadyPlaced = gameState.placedCharacters.some((c) => c.characterId === selectedCharacterId);
       if (alreadyPlaced) {

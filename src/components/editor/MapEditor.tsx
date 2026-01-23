@@ -3805,10 +3805,16 @@ export const MapEditor: React.FC = () => {
                                   }
                                 >
                                   {placement && (
-                                    <div className="absolute inset-0 bg-green-500 rounded-full m-0.5 flex items-center justify-center">
-                                      <span className="text-parchment-100 font-bold" style={{ fontSize: Math.max(8, cellSize - 8) }}>
-                                        {directionArrows[placement.facing] || '•'}
-                                      </span>
+                                    <div className="absolute inset-0 m-0.5 flex items-center justify-center overflow-hidden rounded">
+                                      {charData?.customSprite ? (
+                                        <SpriteThumbnail sprite={charData.customSprite} size={cellSize - 2} previewType="entity" />
+                                      ) : (
+                                        <div className="w-full h-full bg-green-500 rounded-full flex items-center justify-center">
+                                          <span className="text-parchment-100 font-bold" style={{ fontSize: Math.max(8, cellSize - 8) }}>
+                                            {directionArrows[placement.facing] || '•'}
+                                          </span>
+                                        </div>
+                                      )}
                                     </div>
                                   )}
                                   {enemy && !placement && (
@@ -3853,11 +3859,17 @@ export const MapEditor: React.FC = () => {
                           };
                           return (
                             <div key={i} className="flex items-center gap-2">
-                              <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center text-parchment-100 text-xs font-bold">
-                                {directionArrows[p.facing]}
-                              </div>
+                              {charData?.customSprite ? (
+                                <div className="w-5 h-5 flex-shrink-0">
+                                  <SpriteThumbnail sprite={charData.customSprite} size={20} previewType="entity" />
+                                </div>
+                              ) : (
+                                <div className="w-5 h-5 bg-green-500 rounded-full flex items-center justify-center text-parchment-100 text-xs font-bold flex-shrink-0">
+                                  {directionArrows[p.facing]}
+                                </div>
+                              )}
                               <span className="text-parchment-100">{charData?.name || p.characterId}</span>
-                              <span className="text-stone-500">at column {p.x + 1}, row {p.y + 1}</span>
+                              <span className="text-stone-500">at ({p.x + 1}, {p.y + 1}) facing {p.facing}</span>
                             </div>
                           );
                         })}
