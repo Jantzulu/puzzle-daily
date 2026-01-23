@@ -96,6 +96,26 @@ type TileOrNull = Tile | null;
 // UTILITY FUNCTIONS
 // ==========================================
 
+/**
+ * Get appropriate max combinations limit based on difficulty and enemy count
+ * Lower limits = faster generation but may miss some solvable puzzles
+ * Higher limits = slower but more thorough search
+ */
+function getMaxCombinationsForDifficulty(difficulty: DifficultyLevel, enemyCount: number): number {
+  // Base limits by difficulty
+  const baseLimits: Record<DifficultyLevel, number> = {
+    easy: 2000,
+    medium: 3000,
+    hard: 4000,
+    expert: 5000,
+  };
+
+  // Reduce limit as enemy count increases (more enemies = harder to solve = longer search)
+  const enemyMultiplier = Math.max(0.5, 1 - (enemyCount - 1) * 0.15);
+
+  return Math.floor(baseLimits[difficulty] * enemyMultiplier);
+}
+
 function randomInt(min: number, max: number): number {
   return Math.floor(Math.random() * (max - min + 1)) + min;
 }
@@ -867,12 +887,18 @@ export async function generatePuzzle(
   }
 
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    // Yield to UI before each attempt
+    await new Promise(resolve => setTimeout(resolve, 10));
+
     options.progressCallback?.({
       attempt,
       maxAttempts,
       phase: 'generating',
       message: `Generating layout (attempt ${attempt}/${maxAttempts})...`,
     });
+
+    // Yield again after callback
+    await new Promise(resolve => setTimeout(resolve, 10));
 
     // Step 1: Generate base layout
     const tiles = generateLayout(params);
@@ -908,11 +934,16 @@ export async function generatePuzzle(
     });
 
     // Use setTimeout to allow UI updates (async yield)
-    await new Promise(resolve => setTimeout(resolve, 10));
+    await new Promise(resolve => setTimeout(resolve, 50));
+
+    // Use much lower limits for generation - we just need to know if it's solvable
+    // not find the absolute optimal solution
+    const maxCombos = getMaxCombinationsForDifficulty(params.difficulty, enemies.length);
 
     const validation = solvePuzzle(puzzle, {
-      maxSimulationTurns: params.maxTurns || 200,
-      maxCombinations: 25000,
+      maxSimulationTurns: Math.min(params.maxTurns || 100, 100), // Cap at 100 turns for speed
+      maxCombinations: maxCombos,
+      findFastest: false, // Don't search for fastest - just find ANY solution
     });
 
     if (validation.solvable) {
