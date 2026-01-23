@@ -827,6 +827,263 @@ function placeEnemies(
 }
 
 // ==========================================
+// TELEPORTER PLACEMENT HELPERS
+// ==========================================
+
+type TileOrNull = Tile | null;
+
+interface TileCoord {
+  x: number;
+  y: number;
+}
+
+/**
+ * Calculate walking distance from a start tile to all reachable tiles using BFS
+ * Returns a map of "x,y" -> distance (number of moves)
+ */
+function calculateWalkingDistances(
+  tiles: TileOrNull[][],
+  start: TileCoord,
+  enemies: PlacedEnemy[]
+): Map<string, number> {
+  const distances = new Map<string, number>();
+  const height = tiles.length;
+  const width = tiles[0]?.length || 0;
+  const enemyPositions = new Set(enemies.map(e => `${e.x},${e.y}`));
+
+  const queue: { x: number; y: number; dist: number }[] = [{ x: start.x, y: start.y, dist: 0 }];
+  distances.set(`${start.x},${start.y}`, 0);
+
+  // Cardinal directions only (most characters move cardinally)
+  const dirs = [
+    { dx: 0, dy: -1 }, // north
+    { dx: 0, dy: 1 },  // south
+    { dx: -1, dy: 0 }, // west
+    { dx: 1, dy: 0 },  // east
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+
+    for (const dir of dirs) {
+      const nx = current.x + dir.dx;
+      const ny = current.y + dir.dy;
+      const key = `${nx},${ny}`;
+
+      // Skip if out of bounds
+      if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+
+      // Skip if already visited
+      if (distances.has(key)) continue;
+
+      // Skip if not walkable (null, wall, or enemy)
+      const tile = tiles[ny]?.[nx];
+      if (!tile || tile.type === ('wall' as TileType)) continue;
+      if (enemyPositions.has(key)) continue;
+
+      distances.set(key, current.dist + 1);
+      queue.push({ x: nx, y: ny, dist: current.dist + 1 });
+    }
+  }
+
+  return distances;
+}
+
+/**
+ * Calculate Euclidean distance between two points
+ */
+function euclideanDistance(a: TileCoord, b: TileCoord): number {
+  return Math.sqrt(Math.pow(a.x - b.x, 2) + Math.pow(a.y - b.y, 2));
+}
+
+/**
+ * Check if a tile is near an enemy (within specified range)
+ */
+function isNearEnemy(pos: TileCoord, enemies: PlacedEnemy[], range: number): boolean {
+  return enemies.some(e => euclideanDistance(pos, { x: e.x, y: e.y }) <= range);
+}
+
+/**
+ * Check if a tile is in a "corner" or hard-to-reach area
+ * (surrounded by walls on 2+ sides)
+ */
+function isCornerOrEdge(pos: TileCoord, tiles: TileOrNull[][]): boolean {
+  const height = tiles.length;
+  const width = tiles[0]?.length || 0;
+
+  let wallCount = 0;
+  const dirs = [
+    { dx: 0, dy: -1 }, { dx: 0, dy: 1 },
+    { dx: -1, dy: 0 }, { dx: 1, dy: 0 },
+  ];
+
+  for (const dir of dirs) {
+    const nx = pos.x + dir.dx;
+    const ny = pos.y + dir.dy;
+
+    // Out of bounds or wall counts as blocked
+    if (nx < 0 || nx >= width || ny < 0 || ny >= height) {
+      wallCount++;
+    } else {
+      const tile = tiles[ny]?.[nx];
+      if (!tile || tile.type === ('wall' as TileType)) {
+        wallCount++;
+      }
+    }
+  }
+
+  return wallCount >= 2;
+}
+
+interface TeleporterPairCandidate {
+  tile1: TileCoord;
+  tile2: TileCoord;
+  score: number;
+  walkingDistance: number;
+  directDistance: number;
+}
+
+/**
+ * Find strategic positions for teleporter pairs
+ * Returns pairs of coordinates sorted by strategic value
+ */
+function findStrategicTeleporterPositions(
+  tiles: TileOrNull[][],
+  enemies: PlacedEnemy[],
+  validTiles: TileCoord[],
+  maxPairs: number = 2
+): TeleporterPairCandidate[] {
+  if (validTiles.length < 4) return []; // Need at least 4 tiles for meaningful teleporters
+
+  const candidates: TeleporterPairCandidate[] = [];
+  const height = tiles.length;
+  const width = tiles[0]?.length || 0;
+  const mapSize = Math.max(width, height);
+
+  // Pre-calculate walking distances from each tile
+  const distanceCache = new Map<string, Map<string, number>>();
+
+  // Only calculate distances for a subset of tiles to keep it fast
+  const sampleTiles = validTiles.length > 20
+    ? shuffleArray([...validTiles]).slice(0, 20)
+    : validTiles;
+
+  for (const tile of sampleTiles) {
+    const key = `${tile.x},${tile.y}`;
+    distanceCache.set(key, calculateWalkingDistances(tiles, tile, enemies));
+  }
+
+  // Evaluate pairs of tiles
+  for (let i = 0; i < sampleTiles.length; i++) {
+    for (let j = i + 1; j < sampleTiles.length; j++) {
+      const tile1 = sampleTiles[i];
+      const tile2 = sampleTiles[j];
+
+      const key1 = `${tile1.x},${tile1.y}`;
+      const key2 = `${tile2.x},${tile2.y}`;
+
+      // Get walking distance between them
+      const distances1 = distanceCache.get(key1);
+      const walkingDistance = distances1?.get(key2) ?? Infinity;
+
+      // If unreachable by walking, teleporter is very valuable!
+      // If reachable, check if teleporter saves significant distance
+      const directDistance = euclideanDistance(tile1, tile2);
+
+      // Skip if tiles are too close (teleporter not useful)
+      if (directDistance < 3) continue;
+
+      // Calculate strategic score with randomization
+      // The score has a strategic component and a random component
+      // This ensures placements are generally good but not always "optimal"
+      let strategicScore = 0;
+
+      // High walking distance = more valuable teleporter
+      if (walkingDistance === Infinity) {
+        // Connects otherwise unreachable areas - very valuable!
+        strategicScore += 100;
+      } else {
+        // Saves moves - value based on moves saved
+        const movesSaved = walkingDistance - 1; // Teleporting takes 1 move
+        strategicScore += movesSaved * 5;
+      }
+
+      // Bonus if near enemies (tactical positioning)
+      // But not TOO close (that makes it too obvious)
+      const nearEnemy1 = isNearEnemy(tile1, enemies, 4);
+      const nearEnemy2 = isNearEnemy(tile2, enemies, 4);
+      const veryNearEnemy1 = isNearEnemy(tile1, enemies, 2);
+      const veryNearEnemy2 = isNearEnemy(tile2, enemies, 2);
+
+      // Near enemies is good, but very near is sometimes too obvious
+      if (nearEnemy1 && !veryNearEnemy1) strategicScore += 15;
+      else if (veryNearEnemy1) strategicScore += 8; // Still useful but maybe too obvious
+      if (nearEnemy2 && !veryNearEnemy2) strategicScore += 15;
+      else if (veryNearEnemy2) strategicScore += 8;
+
+      // Bonus for corner/edge positions (hard to reach otherwise)
+      if (isCornerOrEdge(tile1, tiles)) strategicScore += 10;
+      if (isCornerOrEdge(tile2, tiles)) strategicScore += 10;
+
+      // Slight bonus for moderate distances (not too close, not at opposite corners)
+      const idealDistanceRatio = directDistance / mapSize;
+      if (idealDistanceRatio > 0.3 && idealDistanceRatio < 0.7) {
+        strategicScore += 5;
+      }
+
+      // Add randomness to make placements less predictable
+      // Random factor is 0-40% of the strategic score (or 10-30 base points)
+      const randomFactor = Math.random() * Math.max(strategicScore * 0.4, 30);
+
+      // Final score combines strategy and randomness
+      const score = strategicScore + randomFactor;
+
+      // Lower minimum threshold to allow more variety
+      if (strategicScore > 5 || (strategicScore > 0 && Math.random() < 0.3)) {
+        candidates.push({
+          tile1,
+          tile2,
+          score,
+          walkingDistance,
+          directDistance,
+        });
+      }
+    }
+  }
+
+  // Sort by score (highest first, but randomness means not always "best" picks)
+  candidates.sort((a, b) => b.score - a.score);
+
+  // Sometimes skip the top candidate to add variety
+  // This prevents always picking the "most obvious" strategic spot
+  const selectedPairs: TeleporterPairCandidate[] = [];
+  const usedTiles = new Set<string>();
+  let skipCount = 0;
+  const maxSkips = Math.floor(Math.random() * 3); // Skip 0-2 top candidates randomly
+
+  for (const candidate of candidates) {
+    const key1 = `${candidate.tile1.x},${candidate.tile1.y}`;
+    const key2 = `${candidate.tile2.x},${candidate.tile2.y}`;
+
+    if (!usedTiles.has(key1) && !usedTiles.has(key2)) {
+      // Randomly skip some top candidates to add variety
+      if (skipCount < maxSkips && Math.random() < 0.4) {
+        skipCount++;
+        continue;
+      }
+
+      selectedPairs.push(candidate);
+      usedTiles.add(key1);
+      usedTiles.add(key2);
+
+      if (selectedPairs.length >= maxPairs) break;
+    }
+  }
+
+  return selectedPairs;
+}
+
+// ==========================================
 // SPECIAL TILE PLACEMENT
 // ==========================================
 
@@ -853,7 +1110,7 @@ function placeSpecialTiles(
 
   // Get valid tiles (empty, not occupied by enemy)
   const occupiedSet = new Set(enemies.map(e => `${e.x},${e.y}`));
-  const validTiles: {x: number, y: number}[] = [];
+  const validTiles: TileCoord[] = [];
 
   for (let y = 0; y < result.length; y++) {
     for (let x = 0; x < result[y].length; x++) {
@@ -864,72 +1121,101 @@ function placeSpecialTiles(
     }
   }
 
-  const shuffledTiles = shuffleArray(validTiles);
-  const shuffledTypes = shuffleArray(params.enabledTileTypes);
+  // Separate teleport tile types from non-teleport types
+  const teleportTileTypes: string[] = [];
+  const nonTeleportTileTypes: string[] = [];
 
-  // Track teleport pairs - each teleport tile type can only be used once (for one pair)
-  const teleportPairs: Map<string, {x: number, y: number}[]> = new Map();
-  const completedTeleportTypes = new Set<string>(); // Track which teleport types already have a pair
+  for (const tileTypeId of params.enabledTileTypes) {
+    const customTile = loadTileType(tileTypeId);
+    if (!customTile) continue;
+
+    const hasTeleport = customTile.behaviors?.some(b => b.type === 'teleport');
+    if (hasTeleport) {
+      teleportTileTypes.push(tileTypeId);
+    } else {
+      nonTeleportTileTypes.push(tileTypeId);
+    }
+  }
 
   let tilesPlaced = 0;
-  let tileIndex = 0;
+  const usedTiles = new Set<string>();
 
-  while (tilesPlaced < tileCount && tileIndex < shuffledTiles.length) {
-    const pos = shuffledTiles[tileIndex];
-    tileIndex++;
+  // STRATEGIC TELEPORTER PLACEMENT
+  // Place teleporters first using smart positioning
+  if (teleportTileTypes.length > 0) {
+    // Determine how many teleporter pairs to place (max 1-2 based on difficulty)
+    const maxTeleporterPairs = {
+      easy: 0,
+      medium: 1,
+      hard: 1,
+      expert: 2,
+    }[params.difficulty];
 
-    // Find a suitable tile type to place
-    let placed = false;
-    for (let typeAttempt = 0; typeAttempt < shuffledTypes.length && !placed; typeAttempt++) {
-      const tileTypeId = shuffledTypes[(tilesPlaced + typeAttempt) % shuffledTypes.length];
-      const customTile = loadTileType(tileTypeId);
+    // How many pairs can we actually place?
+    const teleporterPairsToPlace = Math.min(
+      maxTeleporterPairs,
+      teleportTileTypes.length,
+      Math.floor((tileCount - tilesPlaced) / 2)
+    );
 
-      if (!customTile) continue;
+    if (teleporterPairsToPlace > 0) {
+      // Find strategic positions for teleporters
+      const strategicPairs = findStrategicTeleporterPositions(
+        result,
+        enemies,
+        validTiles.filter(t => !usedTiles.has(`${t.x},${t.y}`)),
+        teleporterPairsToPlace
+      );
 
-      // Check if this is a teleport tile
-      const hasTeleport = customTile.behaviors?.some(b => b.type === 'teleport');
+      // Place teleporter pairs at strategic positions
+      const shuffledTeleportTypes = shuffleArray([...teleportTileTypes]);
 
-      if (hasTeleport) {
-        // Skip if we already completed a pair for this teleport type
-        if (completedTeleportTypes.has(tileTypeId)) {
-          continue;
-        }
+      for (let i = 0; i < strategicPairs.length && i < shuffledTeleportTypes.length; i++) {
+        const pair = strategicPairs[i];
+        const tileTypeId = shuffledTeleportTypes[i];
+        const groupId = `gen_teleport_${Date.now()}_${Math.random().toString(36).substr(2, 5)}_${i}`;
 
-        // Need to place teleports in pairs
-        if (!teleportPairs.has(tileTypeId)) {
-          teleportPairs.set(tileTypeId, []);
-        }
-        teleportPairs.get(tileTypeId)!.push(pos);
-
-        // Only apply if we have a pair
-        if (teleportPairs.get(tileTypeId)!.length >= 2) {
-          const pair = teleportPairs.get(tileTypeId)!;
-          const groupId = `gen_teleport_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
-
-          for (const p of pair) {
-            result[p.y][p.x] = {
-              ...result[p.y][p.x]!,
-              customTileTypeId: tileTypeId,
-              teleportGroupId: groupId,
-            };
-          }
-          teleportPairs.delete(tileTypeId);
-          completedTeleportTypes.add(tileTypeId); // Mark this type as complete
-          tilesPlaced += 2; // Count both tiles in the pair
-        }
-        placed = true;
-      } else {
-        // Non-teleport tile, just place it
-        result[pos.y][pos.x] = {
-          ...result[pos.y][pos.x]!,
+        // Place first tile of pair
+        result[pair.tile1.y][pair.tile1.x] = {
+          ...result[pair.tile1.y][pair.tile1.x]!,
           customTileTypeId: tileTypeId,
+          teleportGroupId: groupId,
         };
-        tilesPlaced++;
-        placed = true;
+        usedTiles.add(`${pair.tile1.x},${pair.tile1.y}`);
+
+        // Place second tile of pair
+        result[pair.tile2.y][pair.tile2.x] = {
+          ...result[pair.tile2.y][pair.tile2.x]!,
+          customTileTypeId: tileTypeId,
+          teleportGroupId: groupId,
+        };
+        usedTiles.add(`${pair.tile2.x},${pair.tile2.y}`);
+
+        tilesPlaced += 2;
       }
     }
+  }
 
-    // If no suitable tile type found (e.g., all are completed teleport types), skip position
+  // PLACE NON-TELEPORT SPECIAL TILES
+  // Use remaining tile count for non-teleport special tiles
+  if (nonTeleportTileTypes.length > 0 && tilesPlaced < tileCount) {
+    const shuffledTypes = shuffleArray([...nonTeleportTileTypes]);
+    const availableTiles = validTiles.filter(t => !usedTiles.has(`${t.x},${t.y}`));
+    const shuffledTiles = shuffleArray(availableTiles);
+
+    let typeIndex = 0;
+    for (const pos of shuffledTiles) {
+      if (tilesPlaced >= tileCount) break;
+
+      const tileTypeId = shuffledTypes[typeIndex % shuffledTypes.length];
+      result[pos.y][pos.x] = {
+        ...result[pos.y][pos.x]!,
+        customTileTypeId: tileTypeId,
+      };
+      usedTiles.add(`${pos.x},${pos.y}`);
+      tilesPlaced++;
+      typeIndex++;
+    }
   }
 
   return result;
