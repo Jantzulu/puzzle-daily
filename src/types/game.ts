@@ -195,6 +195,7 @@ export interface CharacterAction {
   autoTargetNearestCharacter?: boolean; // Override spell direction to aim at closest character (for enemies or healing)
   autoTargetNearestDeadAlly?: boolean; // Target nearest dead ally (for resurrect spells)
   autoTargetMode?: 'omnidirectional' | 'cardinal' | 'diagonal'; // Directional constraints for auto-targeting (default: omnidirectional)
+  autoTargetRange?: number;         // Maximum range for auto-targeting (0 = unlimited, overrides spell range)
   maxTargets?: number;              // Maximum number of targets to attack/heal (for multi-target spells)
   homing?: boolean;                 // If true with auto-targeting, projectile tracks target and guarantees hit
 

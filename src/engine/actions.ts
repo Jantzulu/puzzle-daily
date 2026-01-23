@@ -1405,7 +1405,8 @@ function executeSpell(
     // Used by enemies to target characters
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
-    const nearestCharacters = findNearestCharacters(character, gameState, maxTargets, targetMode);
+    const maxRange = action.autoTargetRange || 0;  // 0 = unlimited
+    const nearestCharacters = findNearestCharacters(character, gameState, maxTargets, targetMode, maxRange);
 
     if (nearestCharacters.length > 0) {
       castDirections = nearestCharacters.map(target => target.direction);
@@ -1424,7 +1425,8 @@ function executeSpell(
     // Used by characters to target enemies
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
-    const nearestEnemies = findNearestEnemies(character, gameState, maxTargets, targetMode);
+    const maxRange = action.autoTargetRange || 0;  // 0 = unlimited
+    const nearestEnemies = findNearestEnemies(character, gameState, maxTargets, targetMode, maxRange);
 
     if (nearestEnemies.length > 0) {
       castDirections = nearestEnemies.map(target => target.direction);
@@ -2534,7 +2536,8 @@ function findNearestEnemies(
   character: PlacedCharacter,
   gameState: GameState,
   maxTargets: number = 1,
-  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
+  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
+  maxRange: number = 0  // 0 = unlimited
 ): Array<{ enemy: any; direction: Direction; distance: number }> {
   // Check if the caster is an enemy (enemies can see other stealthed enemies)
   const casterIsEnemy = 'enemyId' in character;
@@ -2565,9 +2568,14 @@ function findNearestEnemies(
   // Filter by directional mode
   let filteredEnemies = enemiesWithDistance;
   if (mode === 'cardinal') {
-    filteredEnemies = enemiesWithDistance.filter(e => cardinalDirections.includes(e.direction));
+    filteredEnemies = filteredEnemies.filter(e => cardinalDirections.includes(e.direction));
   } else if (mode === 'diagonal') {
-    filteredEnemies = enemiesWithDistance.filter(e => diagonalDirections.includes(e.direction));
+    filteredEnemies = filteredEnemies.filter(e => diagonalDirections.includes(e.direction));
+  }
+
+  // Filter by max range if specified
+  if (maxRange > 0) {
+    filteredEnemies = filteredEnemies.filter(e => e.distance <= maxRange);
   }
 
   // Sort by distance (closest first)
@@ -2587,7 +2595,8 @@ function findNearestCharacters(
   entity: PlacedCharacter,
   gameState: GameState,
   maxTargets: number = 1,
-  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
+  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
+  maxRange: number = 0  // 0 = unlimited
 ): Array<{ character: PlacedCharacter; direction: Direction; distance: number }> {
   // Check if the caster is an enemy (characters can see other stealthed characters)
   const casterIsEnemy = 'enemyId' in entity;
@@ -2619,9 +2628,14 @@ function findNearestCharacters(
   // Filter by directional mode
   let filteredCharacters = charactersWithDistance;
   if (mode === 'cardinal') {
-    filteredCharacters = charactersWithDistance.filter(c => cardinalDirections.includes(c.direction));
+    filteredCharacters = filteredCharacters.filter(c => cardinalDirections.includes(c.direction));
   } else if (mode === 'diagonal') {
-    filteredCharacters = charactersWithDistance.filter(c => diagonalDirections.includes(c.direction));
+    filteredCharacters = filteredCharacters.filter(c => diagonalDirections.includes(c.direction));
+  }
+
+  // Filter by max range if specified
+  if (maxRange > 0) {
+    filteredCharacters = filteredCharacters.filter(c => c.distance <= maxRange);
   }
 
   // Sort by distance (closest first)
@@ -2640,7 +2654,8 @@ function findNearestDeadAllies(
   caster: PlacedCharacter,
   gameState: GameState,
   maxTargets: number = 1,
-  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
+  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
+  maxRange: number = 0  // 0 = unlimited
 ): Array<{ entity: PlacedCharacter | PlacedEnemy; direction: Direction; distance: number; isEnemy: boolean }> {
   // Check if the caster is an enemy
   const casterIsEnemy = 'enemyId' in caster;
@@ -2675,9 +2690,14 @@ function findNearestDeadAllies(
   // Filter by directional mode
   let filteredAllies = alliesWithDistance;
   if (mode === 'cardinal') {
-    filteredAllies = alliesWithDistance.filter(a => cardinalDirections.includes(a.direction));
+    filteredAllies = filteredAllies.filter(a => cardinalDirections.includes(a.direction));
   } else if (mode === 'diagonal') {
-    filteredAllies = alliesWithDistance.filter(a => diagonalDirections.includes(a.direction));
+    filteredAllies = filteredAllies.filter(a => diagonalDirections.includes(a.direction));
+  }
+
+  // Filter by max range if specified
+  if (maxRange > 0) {
+    filteredAllies = filteredAllies.filter(a => a.distance <= maxRange);
   }
 
   // Sort by distance (closest first)
@@ -2699,7 +2719,8 @@ function executeResurrect(
   // Find dead allies to resurrect
   const maxTargets = action.maxTargets || 1;
   const targetMode = action.autoTargetMode || 'omnidirectional';
-  const nearestDeadAllies = findNearestDeadAllies(caster, gameState, maxTargets, targetMode);
+  const maxRange = action.autoTargetRange || 0;  // 0 = unlimited
+  const nearestDeadAllies = findNearestDeadAllies(caster, gameState, maxTargets, targetMode, maxRange);
 
   if (nearestDeadAllies.length === 0) {
     // No dead allies to resurrect

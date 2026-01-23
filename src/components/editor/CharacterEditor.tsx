@@ -1007,20 +1007,37 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                 )}
                 {/* Max targets - available for all auto-targeting modes */}
                 {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter || action.autoTargetNearestDeadAlly) && (
-                  <label className="flex items-center gap-2 text-xs ml-4">
-                    Max Targets:
-                    <input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={action.maxTargets || 1}
-                      onChange={(e) => onUpdate({
-                        ...action,
-                        maxTargets: parseInt(e.target.value) || 1
-                      })}
-                      className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs"
-                    />
-                  </label>
+                  <>
+                    <label className="flex items-center gap-2 text-xs ml-4">
+                      Max Targets:
+                      <input
+                        type="number"
+                        min={1}
+                        max={10}
+                        value={action.maxTargets || 1}
+                        onChange={(e) => onUpdate({
+                          ...action,
+                          maxTargets: parseInt(e.target.value) || 1
+                        })}
+                        className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs"
+                      />
+                    </label>
+                    <label className="flex items-center gap-2 text-xs ml-4">
+                      Max Range:
+                      <input
+                        type="number"
+                        min={0}
+                        max={20}
+                        value={action.autoTargetRange || 0}
+                        onChange={(e) => onUpdate({
+                          ...action,
+                          autoTargetRange: parseInt(e.target.value) || 0
+                        })}
+                        className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs"
+                      />
+                      <span className="text-stone-500">(0 = unlimited)</span>
+                    </label>
+                  </>
                 )}
               </div>
 
