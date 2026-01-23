@@ -176,6 +176,67 @@ function distance(x1: number, y1: number, x2: number, y2: number): number {
 // VOID REGION GENERATION
 // ==========================================
 
+/**
+ * Check if two void regions would touch only at a diagonal corner.
+ * This creates rendering issues where walls don't connect properly.
+ * Returns true if they have a diagonal-only adjacency (bad).
+ */
+function hasDiagonalOnlyAdjacency(
+  r1: { x: number; y: number; width: number; height: number },
+  r2: { x: number; y: number; width: number; height: number }
+): boolean {
+  // Get the edges of each rectangle
+  const r1Left = r1.x;
+  const r1Right = r1.x + r1.width;
+  const r1Top = r1.y;
+  const r1Bottom = r1.y + r1.height;
+
+  const r2Left = r2.x;
+  const r2Right = r2.x + r2.width;
+  const r2Top = r2.y;
+  const r2Bottom = r2.y + r2.height;
+
+  // Check for diagonal corner touching:
+  // This happens when corners touch but edges don't overlap
+  const corners = [
+    // r1's bottom-right touches r2's top-left
+    r1Right === r2Left && r1Bottom === r2Top,
+    // r1's bottom-left touches r2's top-right
+    r1Left === r2Right && r1Bottom === r2Top,
+    // r1's top-right touches r2's bottom-left
+    r1Right === r2Left && r1Top === r2Bottom,
+    // r1's top-left touches r2's bottom-right
+    r1Left === r2Right && r1Top === r2Bottom,
+  ];
+
+  return corners.some(c => c);
+}
+
+/**
+ * Check if a new void region conflicts with existing voids.
+ * Conflicts include: overlapping, or diagonal-only adjacency.
+ */
+function voidConflictsWithExisting(
+  newVoid: { x: number; y: number; width: number; height: number },
+  existingVoids: VoidRegion[]
+): boolean {
+  for (const existing of existingVoids) {
+    // Check for overlap
+    const overlaps =
+      newVoid.x < existing.x + existing.width &&
+      newVoid.x + newVoid.width > existing.x &&
+      newVoid.y < existing.y + existing.height &&
+      newVoid.y + newVoid.height > existing.y;
+
+    if (overlaps) return true;
+
+    // Check for diagonal-only adjacency (corner touching)
+    if (hasDiagonalOnlyAdjacency(newVoid, existing)) return true;
+  }
+
+  return false;
+}
+
 function generateInteriorVoid(
   gridWidth: number,
   gridHeight: number,
@@ -201,19 +262,15 @@ function generateInteriorVoid(
     return null;
   }
 
-  // Try to find a non-overlapping position
+  // Try to find a position that doesn't conflict with existing voids
   for (let attempt = 0; attempt < 10; attempt++) {
     const x = randomInt(1, maxX);
     const y = randomInt(1, maxY);
 
-    // Check for overlap with existing voids
-    const overlaps = existingVoids.some(v =>
-      x < v.x + v.width && x + voidWidth > v.x &&
-      y < v.y + v.height && y + voidHeight > v.y
-    );
+    const candidate = { x, y, width: voidWidth, height: voidHeight };
 
-    if (!overlaps) {
-      return { x, y, width: voidWidth, height: voidHeight, isEdge: false };
+    if (!voidConflictsWithExisting(candidate, existingVoids)) {
+      return { ...candidate, isEdge: false };
     }
   }
 
@@ -274,13 +331,12 @@ function generateEdgeVoid(
   region.width = Math.min(region.width, gridWidth - region.x);
   region.height = Math.min(region.height, gridHeight - region.y);
 
-  // Check for overlap
-  const overlaps = existingVoids.some(v =>
-    region.x < v.x + v.width && region.x + region.width > v.x &&
-    region.y < v.y + v.height && region.y + region.height > v.y
-  );
+  // Check for conflicts (overlap or diagonal adjacency)
+  if (voidConflictsWithExisting(region, existingVoids)) {
+    return null;
+  }
 
-  return overlaps ? null : region;
+  return region;
 }
 
 function applyVoidRegion(tiles: TileOrNull[][], region: VoidRegion): void {

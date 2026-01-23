@@ -31,7 +31,7 @@ import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
-import { solvePuzzle, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
+import { solvePuzzleAsync, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
 import { WarningModal } from '../shared/WarningModal';
 import GeneratorDialog from './GeneratorDialog';
 
@@ -1411,13 +1411,14 @@ export const MapEditor: React.FC = () => {
       return;
     }
 
-    // Run full solver (with timeout to avoid blocking UI)
-    // Use setTimeout to allow UI to update before computation
-    setTimeout(() => {
+    // Run full solver asynchronously to avoid blocking UI
+    const runValidation = async () => {
       try {
-        const result = solvePuzzle(puzzleForValidation, {
+        // Use async solver that yields to browser periodically
+        const result = await solvePuzzleAsync(puzzleForValidation, {
           maxSimulationTurns: state.maxTurns || 200,
-          maxCombinations: 50000, // Limit to prevent browser freezing
+          maxCombinations: 50000,
+          yieldEvery: 50, // Yield every 50 combinations to keep UI responsive
         });
         setValidationResult(result);
 
@@ -1440,7 +1441,10 @@ export const MapEditor: React.FC = () => {
         });
       }
       setIsValidating(false);
-    }, 50);
+    };
+
+    // Start async validation
+    runValidation();
   };
 
   const handleResize = (width: number, height: number) => {
