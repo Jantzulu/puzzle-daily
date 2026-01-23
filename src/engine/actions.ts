@@ -770,32 +770,26 @@ function moveCharacter(
       }
 
       // Check if the target tile is being vacated (train-like movement)
-      // Only allow if the other character is moving in the SAME direction (following),
-      // NOT if they're moving toward us (head-on collision)
       const targetKey = `${Math.floor(newX)},${Math.floor(newY)}`;
       if (gameState.tilesBeingVacated?.has(targetKey)) {
-        // Check if the other character is moving in the same direction (train following)
-        // or a different direction (potential head-on collision)
+        // Check if the other character is trying to move into OUR current tile (swap attempt)
+        // This would cause them to pass through each other, which we want to prevent
+        const ourCurrentKey = `${Math.floor(updatedChar.x)},${Math.floor(updatedChar.y)}`;
         const otherCharData = getCharacter(otherCharacter.characterId);
-        const otherFacing = otherCharacter.facing;
-        const movingDirection = updatedChar.facing; // Direction we're trying to move
 
-        // For train behavior, the other character should be moving AWAY from us
-        // (same direction as us, or perpendicular - not toward us)
-        const oppositeDirections: Record<string, string> = {
-          north: 'south', south: 'north', east: 'west', west: 'east',
-          northeast: 'southwest', southwest: 'northeast',
-          northwest: 'southeast', southeast: 'northwest',
-        };
+        // Calculate where the other character would move to based on their facing
+        const otherOffset = getDirectionOffset(otherCharacter.facing);
+        const otherTargetX = Math.floor(otherCharacter.x + otherOffset.dx);
+        const otherTargetY = Math.floor(otherCharacter.y + otherOffset.dy);
+        const otherTargetKey = `${otherTargetX},${otherTargetY}`;
 
-        // If the other character is facing toward us (opposite direction), don't allow
-        // This prevents head-on collision where both try to swap tiles
-        if (otherFacing === oppositeDirections[movingDirection]) {
-          // Head-on collision - both characters trying to move through each other
-          return updatedChar; // Block the move
+        // If the other character is trying to move into our tile, block (swap attempt)
+        if (otherTargetKey === ourCurrentKey) {
+          // Both trying to swap tiles - block this move
+          return updatedChar;
         }
 
-        // The character at this tile is moving away - allow the move (train behavior)
+        // The character at this tile is moving away (not toward us) - allow train behavior
         updatedChar.x = newX;
         updatedChar.y = newY;
         continue;
@@ -905,24 +899,22 @@ function moveCharacter(
         // Check if the target tile is being vacated (train-like movement)
         const targetKey = `${Math.floor(newX)},${Math.floor(newY)}`;
         if (gameState.tilesBeingVacated?.has(targetKey)) {
-          // Check if the other enemy is moving in the same direction (train following)
-          // or a different direction (potential head-on collision)
-          const otherFacing = enemyAtTarget.facing;
-          const movingDirection = updatedChar.facing;
+          // Check if the other enemy is trying to move into OUR current tile (swap attempt)
+          const ourCurrentKey = `${Math.floor(updatedChar.x)},${Math.floor(updatedChar.y)}`;
 
-          const oppositeDirections: Record<string, string> = {
-            north: 'south', south: 'north', east: 'west', west: 'east',
-            northeast: 'southwest', southwest: 'northeast',
-            northwest: 'southeast', southeast: 'northwest',
-          };
+          // Calculate where the other enemy would move to based on their facing
+          const otherOffset = getDirectionOffset(enemyAtTarget.facing);
+          const otherTargetX = Math.floor(enemyAtTarget.x + otherOffset.dx);
+          const otherTargetY = Math.floor(enemyAtTarget.y + otherOffset.dy);
+          const otherTargetKey = `${otherTargetX},${otherTargetY}`;
 
-          // If the other enemy is facing toward us (opposite direction), don't allow
-          if (otherFacing === oppositeDirections[movingDirection]) {
-            // Head-on collision - both trying to move through each other
-            return updatedChar; // Block the move
+          // If the other enemy is trying to move into our tile, block (swap attempt)
+          if (otherTargetKey === ourCurrentKey) {
+            // Both trying to swap tiles - block this move
+            return updatedChar;
           }
 
-          // The enemy at this tile is moving away - allow the move (train behavior)
+          // The enemy at this tile is moving away (not toward us) - allow train behavior
           updatedChar.x = newX;
           updatedChar.y = newY;
           continue;
