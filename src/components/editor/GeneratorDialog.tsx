@@ -110,11 +110,15 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
     setError(null);
     setResult(null);
 
+    // Use the number of selected characters as maxCharacters
+    // (player should be able to use all characters they selected)
+    const effectiveMaxCharacters = Math.max(maxCharacters, selectedCharacters.length);
+
     const params: GenerationParameters = {
       width,
       height,
       availableCharacters: selectedCharacters,
-      maxCharacters,
+      maxCharacters: effectiveMaxCharacters,
       enemyTypes: enemyConfigs,
       difficulty,
       enabledTileTypes: selectedTileTypes,
