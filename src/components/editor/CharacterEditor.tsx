@@ -953,6 +953,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                       ...action,
                       autoTargetNearestEnemy: e.target.checked,
                       autoTargetNearestCharacter: false,
+                      autoTargetNearestDeadAlly: false,
                       homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3"
@@ -967,42 +968,59 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
                       ...action,
                       autoTargetNearestCharacter: e.target.checked,
                       autoTargetNearestEnemy: false,
+                      autoTargetNearestDeadAlly: false,
                       homing: e.target.checked ? action.homing : false
                     })}
                     className="w-3 h-3"
                   />
                   Auto-Target Character
                 </label>
-                {/* Homing option - only available when auto-targeting is enabled */}
+                <label className="flex items-center gap-2 text-xs text-green-300">
+                  <input
+                    type="checkbox"
+                    checked={action.autoTargetNearestDeadAlly || false}
+                    onChange={(e) => onUpdate({
+                      ...action,
+                      autoTargetNearestDeadAlly: e.target.checked,
+                      autoTargetNearestEnemy: false,
+                      autoTargetNearestCharacter: false,
+                      homing: false
+                    })}
+                    className="w-3 h-3"
+                  />
+                  Auto-Target Dead Ally (Resurrect)
+                </label>
+                {/* Homing option - only available when auto-targeting enemy/character (not for dead ally) */}
                 {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
-                  <>
-                    <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
-                      <input
-                        type="checkbox"
-                        checked={action.homing || false}
-                        onChange={(e) => onUpdate({
-                          ...action,
-                          homing: e.target.checked
-                        })}
-                        className="w-3 h-3"
-                      />
-                      Homing (guaranteed hit)
-                    </label>
-                    <label className="flex items-center gap-2 text-xs ml-4">
-                      Max Targets:
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={action.maxTargets || 1}
-                        onChange={(e) => onUpdate({
-                          ...action,
-                          maxTargets: parseInt(e.target.value) || 1
-                        })}
-                        className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs"
-                      />
-                    </label>
-                  </>
+                  <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
+                    <input
+                      type="checkbox"
+                      checked={action.homing || false}
+                      onChange={(e) => onUpdate({
+                        ...action,
+                        homing: e.target.checked
+                      })}
+                      className="w-3 h-3"
+                    />
+                    Homing (guaranteed hit)
+                  </label>
+                )}
+                {/* Max targets - available for all auto-targeting modes */}
+                {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter || action.autoTargetNearestDeadAlly) && (
+                  <label className="flex items-center gap-2 text-xs ml-4">
+                    Max Targets:
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={action.maxTargets || 1}
+                      onChange={(e) => onUpdate({
+                        ...action,
+                        maxTargets: parseInt(e.target.value) || 1
+                      })}
+                      className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs"
+                    />
+                  </label>
                 )}
               </div>
 
@@ -1045,7 +1063,7 @@ const BehaviorActionRow: React.FC<BehaviorActionRowProps> = ({
               </div>
 
               {/* Direction Override - only show when not auto-targeting */}
-              {!action.autoTargetNearestEnemy && !action.autoTargetNearestCharacter && (
+              {!action.autoTargetNearestEnemy && !action.autoTargetNearestCharacter && !action.autoTargetNearestDeadAlly && (
                 <div className="dungeon-panel p-2 rounded space-y-2">
                   <div className="flex items-center gap-2">
                     <label className="flex items-center gap-2 text-xs">

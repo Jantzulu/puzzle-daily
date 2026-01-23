@@ -737,6 +737,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateNeedsRadius = editedSpell.templateType === 'aoe';
   const templateNeedsProjectileSettings = templateNeedsRange;
   const templateIsMelee = editedSpell.templateType === 'melee';
+  const templateIsResurrect = editedSpell.templateType === 'resurrect';
 
   return (
     <div className="space-y-6">
@@ -933,12 +934,24 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <div className="font-semibold">AOE</div>
                   <div className="text-xs text-stone-400">Area of effect</div>
                 </button>
+
+                <button
+                  onClick={() => setEditedSpell({ ...editedSpell, templateType: 'resurrect' as SpellTemplate })}
+                  className={`p-3 rounded border-2 transition-colors ${
+                    editedSpell.templateType === 'resurrect'
+                      ? 'border-green-500 bg-green-900'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
+                  }`}
+                >
+                  <div className="font-semibold">Resurrect</div>
+                  <div className="text-xs text-stone-400">Revive dead ally</div>
+                </button>
               </div>
             </div>
           </div>
 
-          {/* Direction Configuration - Hidden for self-centered AOE */}
-          {!(templateNeedsRadius && editedSpell.aoeCenteredOnCaster) && (
+          {/* Direction Configuration - Hidden for self-centered AOE and Resurrect */}
+          {!(templateNeedsRadius && editedSpell.aoeCenteredOnCaster) && !templateIsResurrect && (
             <div className="space-y-4">
               <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Direction Configuration</h3>
 
@@ -1038,70 +1051,109 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           <div className="space-y-4">
             <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Combat Stats</h3>
 
-            {/* Damage vs Healing Toggle */}
-            <div>
-              <label className="block text-sm font-medium mb-2">Effect Type</label>
-              <div className="flex gap-2 mb-3">
-                <button
-                  type="button"
-                  onClick={() => setEditedSpell({
-                    ...editedSpell,
-                    damage: editedSpell.healing ?? editedSpell.damage ?? 0,
-                    healing: undefined
-                  })}
-                  className={`flex-1 px-4 py-2 rounded transition-colors ${
-                    editedSpell.healing === undefined
-                      ? 'bg-red-600 text-parchment-100'
-                      : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-                  }`}
-                >
-                  💥 Damage
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setEditedSpell({
-                    ...editedSpell,
-                    healing: editedSpell.damage ?? editedSpell.healing ?? 0,
-                    damage: undefined
-                  })}
-                  className={`flex-1 px-4 py-2 rounded transition-colors ${
-                    editedSpell.healing !== undefined
-                      ? 'bg-green-600 text-parchment-100'
-                      : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-                  }`}
-                >
-                  💚 Healing
-                </button>
-              </div>
-            </div>
+            {/* Resurrect-specific options */}
+            {templateIsResurrect && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Health Restored (%)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="100"
+                    value={editedSpell.resurrectHealthPercent ?? 100}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, resurrectHealthPercent: parseInt(e.target.value) || 100 })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    Percentage of max health restored when resurrected (100 = full health)
+                  </p>
+                </div>
 
-            {/* Damage or Healing Amount */}
-            <div>
-              <label className="block text-sm font-medium mb-1">
-                {editedSpell.healing !== undefined ? 'Healing Amount' : 'Damage Amount *'}
-              </label>
-              <input
-                type="number"
-                min="0"
-                max="100"
-                value={editedSpell.healing ?? editedSpell.damage ?? 0}
-                onChange={(e) => {
-                  const value = parseInt(e.target.value) || 0;
-                  if (editedSpell.healing !== undefined) {
-                    setEditedSpell({ ...editedSpell, healing: value });
-                  } else {
-                    setEditedSpell({ ...editedSpell, damage: value });
+                <div>
+                  <label className="block text-sm font-medium mb-1">Max Uses Per Game</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="99"
+                    value={editedSpell.maxUsesPerGame ?? 0}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, maxUsesPerGame: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    Maximum times this spell can be cast per game (0 = unlimited)
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Damage vs Healing Toggle - hidden for resurrect */}
+            {!templateIsResurrect && (
+              <div>
+                <label className="block text-sm font-medium mb-2">Effect Type</label>
+                <div className="flex gap-2 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => setEditedSpell({
+                      ...editedSpell,
+                      damage: editedSpell.healing ?? editedSpell.damage ?? 0,
+                      healing: undefined
+                    })}
+                    className={`flex-1 px-4 py-2 rounded transition-colors ${
+                      editedSpell.healing === undefined
+                        ? 'bg-red-600 text-parchment-100'
+                        : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+                    }`}
+                  >
+                    💥 Damage
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setEditedSpell({
+                      ...editedSpell,
+                      healing: editedSpell.damage ?? editedSpell.healing ?? 0,
+                      damage: undefined
+                    })}
+                    className={`flex-1 px-4 py-2 rounded transition-colors ${
+                      editedSpell.healing !== undefined
+                        ? 'bg-green-600 text-parchment-100'
+                        : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+                    }`}
+                  >
+                    💚 Healing
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Damage or Healing Amount - hidden for resurrect */}
+            {!templateIsResurrect && (
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {editedSpell.healing !== undefined ? 'Healing Amount' : 'Damage Amount *'}
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={editedSpell.healing ?? editedSpell.damage ?? 0}
+                  onChange={(e) => {
+                    const value = parseInt(e.target.value) || 0;
+                    if (editedSpell.healing !== undefined) {
+                      setEditedSpell({ ...editedSpell, healing: value });
+                    } else {
+                      setEditedSpell({ ...editedSpell, damage: value });
+                    }
+                  }}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  {editedSpell.healing !== undefined
+                    ? 'HP restored to allies (0 for status-effect-only spells)'
+                    : 'HP removed from enemies'
                   }
-                }}
-                className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
-              />
-              <p className="text-xs text-stone-400 mt-1">
-                {editedSpell.healing !== undefined
-                  ? 'HP restored to allies (0 for status-effect-only spells)'
-                  : 'HP removed from enemies'
-                }
-              </p>
-            </div>
+                </p>
+              </div>
+            )}
 
             {/* Cooldown */}
             <div>

@@ -193,6 +193,7 @@ export interface CharacterAction {
   // Auto-targeting configuration
   autoTargetNearestEnemy?: boolean; // Override spell direction to aim at closest enemy
   autoTargetNearestCharacter?: boolean; // Override spell direction to aim at closest character (for enemies or healing)
+  autoTargetNearestDeadAlly?: boolean; // Target nearest dead ally (for resurrect spells)
   autoTargetMode?: 'omnidirectional' | 'cardinal' | 'diagonal'; // Directional constraints for auto-targeting (default: omnidirectional)
   maxTargets?: number;              // Maximum number of targets to attack/heal (for multi-target spells)
   homing?: boolean;                 // If true with auto-targeting, projectile tracks target and guarantees hit
@@ -280,6 +281,7 @@ export interface PlacedEnemy {
   castingEndTime?: number; // Timestamp when casting state should end
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
+  spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
 }
 
 export interface PlacedObject {
@@ -518,6 +520,7 @@ export interface PlacedCharacter {
   castingEndTime?: number; // Timestamp when casting state should end
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
+  spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
@@ -812,6 +815,7 @@ export enum SpellTemplate {
   RANGE_LINEAR = 'range_linear', // Projectile in straight line
   MAGIC_LINEAR = 'magic_linear', // Magic projectile (different visuals)
   AOE = 'aoe',                   // Area of effect
+  RESURRECT = 'resurrect',       // Bring dead ally back to life
 }
 
 /**
@@ -902,6 +906,12 @@ export interface SpellAsset {
 
   // Cooldown
   cooldown?: number;              // Turns before spell can be used again (0 = no cooldown)
+
+  // Max uses per game (for powerful spells like resurrect)
+  maxUsesPerGame?: number;        // Maximum times this spell can be cast in a single game (0 = unlimited)
+
+  // Resurrect-specific settings (for RESURRECT template)
+  resurrectHealthPercent?: number; // Percent of max health to restore (0-100, default 100)
 
   // Sound configuration
   castSound?: string;             // Sound asset ID to play when spell is cast

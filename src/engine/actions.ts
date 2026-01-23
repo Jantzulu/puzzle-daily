@@ -1353,10 +1353,39 @@ function executeSpell(
     return;
   }
 
+  // Check if spell has reached max uses per game
+  if (spell.maxUsesPerGame && spell.maxUsesPerGame > 0) {
+    const currentUses = character.spellUseCounts?.[action.spellId] || 0;
+    if (currentUses >= spell.maxUsesPerGame) {
+      // Spell has been used the maximum number of times this game
+      return;
+    }
+  }
+
   // Check if entity can cast this type of spell (Silenced/Disarmed check)
-  const castCheck = canEntityCastSpell(character, spell.template);
+  const castCheck = canEntityCastSpell(character, spell.templateType);
   if (!castCheck.allowed) {
     // Entity is silenced or disarmed - cannot cast this spell
+    return;
+  }
+
+  // Handle RESURRECT spells specially - they don't use directions
+  if (spell.templateType === SpellTemplate.RESURRECT) {
+    executeResurrect(character, spell, action, gameState);
+    // Track usage
+    if (spell.maxUsesPerGame && spell.maxUsesPerGame > 0 && action.spellId) {
+      if (!character.spellUseCounts) {
+        character.spellUseCounts = {};
+      }
+      character.spellUseCounts[action.spellId] = (character.spellUseCounts[action.spellId] || 0) + 1;
+    }
+    // Set cooldown if spell has one
+    if (spell.cooldown && spell.cooldown > 0 && action.spellId) {
+      if (!character.spellCooldowns) {
+        character.spellCooldowns = {};
+      }
+      character.spellCooldowns[action.spellId] = spell.cooldown + 1;
+    }
     return;
   }
 
@@ -2600,6 +2629,115 @@ function findNearestCharacters(
 
   // Return up to maxTargets
   return filteredCharacters.slice(0, maxTargets);
+}
+
+/**
+ * Find the nearest dead allies to an entity, up to maxTargets
+ * Characters find dead characters, enemies find dead enemies
+ * Returns array of {entity, direction, distance} sorted by distance (closest first)
+ */
+function findNearestDeadAllies(
+  caster: PlacedCharacter,
+  gameState: GameState,
+  maxTargets: number = 1,
+  mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional'
+): Array<{ entity: PlacedCharacter | PlacedEnemy; direction: Direction; distance: number; isEnemy: boolean }> {
+  // Check if the caster is an enemy
+  const casterIsEnemy = 'enemyId' in caster;
+
+  // Get dead allies (same team as caster)
+  let deadAllies: Array<{ entity: PlacedCharacter | PlacedEnemy; isEnemy: boolean }> = [];
+
+  if (casterIsEnemy) {
+    // Enemy caster targets dead enemies
+    const deadEnemies = gameState.puzzle.enemies.filter(e => e.dead && e.enemyId !== caster.characterId);
+    deadAllies = deadEnemies.map(e => ({ entity: e as any, isEnemy: true }));
+  } else {
+    // Character caster targets dead characters
+    const deadChars = gameState.placedCharacters.filter(c => c.dead && c.characterId !== caster.characterId);
+    deadAllies = deadChars.map(c => ({ entity: c, isEnemy: false }));
+  }
+
+  // Cardinal directions: N, S, E, W
+  const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
+
+  // Diagonal directions: NE, SE, SW, NW
+  const diagonalDirections: Direction[] = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST];
+
+  // Calculate distance and direction to each dead ally
+  const alliesWithDistance = deadAllies.map(ally => ({
+    entity: ally.entity,
+    isEnemy: ally.isEnemy,
+    distance: calculateDistance(caster.x, caster.y, ally.entity.x, ally.entity.y),
+    direction: calculateDirectionTo(caster.x, caster.y, ally.entity.x, ally.entity.y),
+  }));
+
+  // Filter by directional mode
+  let filteredAllies = alliesWithDistance;
+  if (mode === 'cardinal') {
+    filteredAllies = alliesWithDistance.filter(a => cardinalDirections.includes(a.direction));
+  } else if (mode === 'diagonal') {
+    filteredAllies = alliesWithDistance.filter(a => diagonalDirections.includes(a.direction));
+  }
+
+  // Sort by distance (closest first)
+  filteredAllies.sort((a, b) => a.distance - b.distance);
+
+  // Return up to maxTargets
+  return filteredAllies.slice(0, maxTargets);
+}
+
+/**
+ * Execute resurrect spell - bring a dead ally back to life
+ */
+function executeResurrect(
+  caster: PlacedCharacter,
+  spell: SpellAsset,
+  action: CharacterAction,
+  gameState: GameState
+): void {
+  // Find dead allies to resurrect
+  const maxTargets = action.maxTargets || 1;
+  const targetMode = action.autoTargetMode || 'omnidirectional';
+  const nearestDeadAllies = findNearestDeadAllies(caster, gameState, maxTargets, targetMode);
+
+  if (nearestDeadAllies.length === 0) {
+    // No dead allies to resurrect
+    return;
+  }
+
+  // Process each target
+  for (const target of nearestDeadAllies) {
+    const entity = target.entity;
+
+    // Get max health for the entity
+    let maxHealth: number;
+    if (target.isEnemy) {
+      const enemyData = getEnemy((entity as PlacedEnemy).enemyId);
+      maxHealth = enemyData?.health || entity.currentHealth || 1;
+    } else {
+      const charData = getCharacter((entity as PlacedCharacter).characterId);
+      maxHealth = charData?.health || entity.currentHealth || 1;
+    }
+
+    // Calculate restored health (default 100%)
+    const healthPercent = spell.resurrectHealthPercent ?? 100;
+    const restoredHealth = Math.max(1, Math.floor(maxHealth * (healthPercent / 100)));
+
+    // Resurrect the entity
+    entity.dead = false;
+    entity.currentHealth = restoredHealth;
+
+    // Spawn visual effect on resurrected entity
+    if (spell.sprites.damageEffect) {
+      spawnParticle(entity.x, entity.y, spell.sprites.damageEffect, 500, gameState);
+    }
+
+    // Spawn cast effect on caster
+    if (spell.sprites.castEffect) {
+      spawnParticle(caster.x, caster.y, spell.sprites.castEffect, 300, gameState);
+    }
+  }
 }
 
 // ==========================================
