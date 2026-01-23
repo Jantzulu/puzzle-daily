@@ -2038,7 +2038,7 @@ export const MapEditor: React.FC = () => {
               )}
 
               {/* Game board with overlay container for loss panels */}
-              <div className="relative w-full max-w-md">
+              <div className="relative">
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} isEditor={true} />
 
                 {/* Defeat Overlay - appears on top of the game board */}
