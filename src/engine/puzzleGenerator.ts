@@ -867,47 +867,69 @@ function placeSpecialTiles(
   const shuffledTiles = shuffleArray(validTiles);
   const shuffledTypes = shuffleArray(params.enabledTileTypes);
 
-  // Track teleport pairs
+  // Track teleport pairs - each teleport tile type can only be used once (for one pair)
   const teleportPairs: Map<string, {x: number, y: number}[]> = new Map();
+  const completedTeleportTypes = new Set<string>(); // Track which teleport types already have a pair
 
-  for (let i = 0; i < tileCount && i < shuffledTiles.length; i++) {
-    const pos = shuffledTiles[i];
-    const tileTypeId = shuffledTypes[i % shuffledTypes.length];
-    const customTile = loadTileType(tileTypeId);
+  let tilesPlaced = 0;
+  let tileIndex = 0;
 
-    if (!customTile) continue;
+  while (tilesPlaced < tileCount && tileIndex < shuffledTiles.length) {
+    const pos = shuffledTiles[tileIndex];
+    tileIndex++;
 
-    // Check if this is a teleport tile
-    const hasTeleport = customTile.behaviors?.some(b => b.type === 'teleport');
+    // Find a suitable tile type to place
+    let placed = false;
+    for (let typeAttempt = 0; typeAttempt < shuffledTypes.length && !placed; typeAttempt++) {
+      const tileTypeId = shuffledTypes[(tilesPlaced + typeAttempt) % shuffledTypes.length];
+      const customTile = loadTileType(tileTypeId);
 
-    if (hasTeleport) {
-      // Need to place teleports in pairs
-      if (!teleportPairs.has(tileTypeId)) {
-        teleportPairs.set(tileTypeId, []);
-      }
-      teleportPairs.get(tileTypeId)!.push(pos);
+      if (!customTile) continue;
 
-      // Only apply if we have a pair
-      if (teleportPairs.get(tileTypeId)!.length >= 2) {
-        const pair = teleportPairs.get(tileTypeId)!;
-        const groupId = `gen_teleport_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+      // Check if this is a teleport tile
+      const hasTeleport = customTile.behaviors?.some(b => b.type === 'teleport');
 
-        for (const p of pair) {
-          result[p.y][p.x] = {
-            ...result[p.y][p.x]!,
-            customTileTypeId: tileTypeId,
-            teleportGroupId: groupId,
-          };
+      if (hasTeleport) {
+        // Skip if we already completed a pair for this teleport type
+        if (completedTeleportTypes.has(tileTypeId)) {
+          continue;
         }
-        teleportPairs.delete(tileTypeId);
+
+        // Need to place teleports in pairs
+        if (!teleportPairs.has(tileTypeId)) {
+          teleportPairs.set(tileTypeId, []);
+        }
+        teleportPairs.get(tileTypeId)!.push(pos);
+
+        // Only apply if we have a pair
+        if (teleportPairs.get(tileTypeId)!.length >= 2) {
+          const pair = teleportPairs.get(tileTypeId)!;
+          const groupId = `gen_teleport_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`;
+
+          for (const p of pair) {
+            result[p.y][p.x] = {
+              ...result[p.y][p.x]!,
+              customTileTypeId: tileTypeId,
+              teleportGroupId: groupId,
+            };
+          }
+          teleportPairs.delete(tileTypeId);
+          completedTeleportTypes.add(tileTypeId); // Mark this type as complete
+          tilesPlaced += 2; // Count both tiles in the pair
+        }
+        placed = true;
+      } else {
+        // Non-teleport tile, just place it
+        result[pos.y][pos.x] = {
+          ...result[pos.y][pos.x]!,
+          customTileTypeId: tileTypeId,
+        };
+        tilesPlaced++;
+        placed = true;
       }
-    } else {
-      // Non-teleport tile, just place it
-      result[pos.y][pos.x] = {
-        ...result[pos.y][pos.x]!,
-        customTileTypeId: tileTypeId,
-      };
     }
+
+    // If no suitable tile type found (e.g., all are completed teleport types), skip position
   }
 
   return result;

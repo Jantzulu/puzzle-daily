@@ -558,6 +558,46 @@ export function quickValidate(puzzle: Puzzle): { valid: boolean; issues: string[
     }
   }
 
+  // Check teleport tiles are in valid pairs (exactly 2 per group)
+  const teleportGroups = new Map<string, number>();
+  for (const row of puzzle.tiles) {
+    for (const tile of row) {
+      if (!tile) continue;
+
+      // Check tile's teleportGroupId
+      if (tile.teleportGroupId) {
+        teleportGroups.set(
+          tile.teleportGroupId,
+          (teleportGroups.get(tile.teleportGroupId) || 0) + 1
+        );
+      }
+
+      // Also check custom tile type's teleport behavior
+      if (tile.customTileTypeId) {
+        const customTile = loadTileType(tile.customTileTypeId);
+        if (customTile) {
+          const teleportBehavior = customTile.behaviors?.find(b => b.type === 'teleport');
+          if (teleportBehavior?.teleportGroupId && !tile.teleportGroupId) {
+            // Only count if tile doesn't have its own override
+            teleportGroups.set(
+              teleportBehavior.teleportGroupId,
+              (teleportGroups.get(teleportBehavior.teleportGroupId) || 0) + 1
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Validate each teleport group has exactly 2 tiles
+  for (const [groupId, count] of teleportGroups) {
+    if (count === 1) {
+      issues.push(`Teleport group "${groupId}" has only 1 tile (needs exactly 2)`);
+    } else if (count > 2) {
+      issues.push(`Teleport group "${groupId}" has ${count} tiles (should have exactly 2)`);
+    }
+  }
+
   return {
     valid: issues.length === 0,
     issues,
