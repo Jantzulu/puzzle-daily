@@ -536,7 +536,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
     const newActivations: TileActivation[] = [];
-    const now = performance.now();
+    const now = Date.now();
 
     gameState.placedCharacters.forEach((char, idx) => {
       const prevChar = prevCharactersRef.current[idx];
@@ -631,7 +631,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
     const newActivations: TileActivation[] = [];
-    const now = performance.now();
+    const now = Date.now();
 
     gameState.puzzle.enemies.forEach((enemy, idx) => {
       const prevEnemy = prevEnemiesRef.current[idx];
@@ -723,7 +723,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Detect character deaths and trigger death animations
   useEffect(() => {
-    const now = performance.now();
+    const now = Date.now();
     const newDeathAnimations = new Map(characterDeathAnimations);
     let hasChanges = false;
 
@@ -760,7 +760,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Detect enemy deaths and trigger death animations
   useEffect(() => {
-    const now = performance.now();
+    const now = Date.now();
     const newDeathAnimations = new Map(enemyDeathAnimations);
     let hasChanges = false;
 
@@ -881,9 +881,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         });
       }
 
-      // Use performance.now() for consistent timing throughout the frame
-      // This is compatible with the startTime values set in useEffect hooks
-      const now = performance.now();
+      // Use Date.now() for everything - particles, projectiles, collectibles, and entity
+      // rendering all use Date.now() for their startTime values
+      // The entity movement animations in useEffect hooks also use performance.now(), but
+      // they track their own separate timing and don't rely on this 'now' variable
+      const now = Date.now();
 
       // Draw collectibles
       gameState.puzzle.collectibles.forEach((collectible) => {
@@ -1095,7 +1097,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         // Schedule cleanup for next frame
         setTimeout(() => {
           setTileActivations(prev => {
-            const currentTime = performance.now();
+            const currentTime = Date.now();
             return prev.filter(a => {
               const durationMs = a.activationSprite.durationMs || 800;
               return currentTime - a.startTime < durationMs;
