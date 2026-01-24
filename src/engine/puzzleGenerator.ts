@@ -112,16 +112,17 @@ type TileOrNull = Tile | null;
  * Higher limits = slower but more thorough search
  */
 function getMaxCombinationsForDifficulty(difficulty: DifficultyLevel, enemyCount: number): number {
-  // Base limits by difficulty
+  // Base limits by difficulty - increased for better coverage
   const baseLimits: Record<DifficultyLevel, number> = {
-    easy: 2000,
-    medium: 3000,
-    hard: 4000,
-    expert: 5000,
+    easy: 5000,
+    medium: 8000,
+    hard: 12000,
+    expert: 15000,
   };
 
   // Reduce limit as enemy count increases (more enemies = harder to solve = longer search)
-  const enemyMultiplier = Math.max(0.5, 1 - (enemyCount - 1) * 0.15);
+  // But don't reduce too much - we need thorough search for complex puzzles
+  const enemyMultiplier = Math.max(0.6, 1 - (enemyCount - 1) * 0.1);
 
   return Math.floor(baseLimits[difficulty] * enemyMultiplier);
 }
@@ -671,6 +672,179 @@ function findConnectedRegions(tiles: TileOrNull[][]): Set<string>[] {
   }
 
   return regions;
+}
+
+/**
+ * Get the teleport group ID for a tile (either direct or via custom tile type behavior)
+ */
+function getTileportGroupId(tile: Tile | null): string | null {
+  if (!tile) return null;
+
+  // Check direct teleportGroupId on tile
+  if (tile.teleportGroupId) {
+    return tile.teleportGroupId;
+  }
+
+  // Check custom tile type for teleport behavior
+  if (tile.customTileTypeId) {
+    const tileType = loadTileType(tile.customTileTypeId);
+    if (tileType?.behaviors) {
+      const teleportBehavior = tileType.behaviors.find(b => b.type === 'teleport');
+      if (teleportBehavior?.teleportGroupId) {
+        return teleportBehavior.teleportGroupId;
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Find all teleporter connections in the tile grid
+ * Returns a map of teleport group ID -> list of tile positions
+ */
+function findTeleporterConnections(tiles: TileOrNull[][]): Map<string, Array<{x: number, y: number}>> {
+  const teleportGroups = new Map<string, Array<{x: number, y: number}>>();
+
+  for (let y = 0; y < tiles.length; y++) {
+    for (let x = 0; x < tiles[0].length; x++) {
+      const groupId = getTileportGroupId(tiles[y][x]);
+      if (groupId) {
+        if (!teleportGroups.has(groupId)) {
+          teleportGroups.set(groupId, []);
+        }
+        teleportGroups.get(groupId)!.push({ x, y });
+      }
+    }
+  }
+
+  return teleportGroups;
+}
+
+/**
+ * Merge regions that are connected via teleporters
+ */
+function mergeRegionsViaTeleporters(
+  regions: Set<string>[],
+  teleportConnections: Map<string, Array<{x: number, y: number}>>
+): Set<string>[] {
+  if (regions.length <= 1 || teleportConnections.size === 0) {
+    return regions;
+  }
+
+  // Create a union-find structure for merging regions
+  const regionIndex = new Map<string, number>(); // tile key -> region index
+  regions.forEach((region, idx) => {
+    for (const key of region) {
+      regionIndex.set(key, idx);
+    }
+  });
+
+  // Track which regions should be merged (using array indices)
+  const mergeParent = regions.map((_, i) => i);
+
+  function findRoot(i: number): number {
+    if (mergeParent[i] !== i) {
+      mergeParent[i] = findRoot(mergeParent[i]);
+    }
+    return mergeParent[i];
+  }
+
+  function union(i: number, j: number): void {
+    const rootI = findRoot(i);
+    const rootJ = findRoot(j);
+    if (rootI !== rootJ) {
+      mergeParent[rootI] = rootJ;
+    }
+  }
+
+  // For each teleport group, merge all regions that contain teleporter tiles from that group
+  for (const [, positions] of teleportConnections) {
+    if (positions.length < 2) continue; // Need at least 2 tiles to form a connection
+
+    // Find which regions these teleporter tiles belong to
+    const regionIndices = new Set<number>();
+    for (const pos of positions) {
+      const key = `${pos.x},${pos.y}`;
+      const regIdx = regionIndex.get(key);
+      if (regIdx !== undefined) {
+        regionIndices.add(regIdx);
+      }
+    }
+
+    // Merge all these regions together
+    const indices = Array.from(regionIndices);
+    for (let i = 1; i < indices.length; i++) {
+      union(indices[0], indices[i]);
+    }
+  }
+
+  // Build merged regions based on union-find results
+  const mergedRegionsMap = new Map<number, Set<string>>();
+  for (let i = 0; i < regions.length; i++) {
+    const root = findRoot(i);
+    if (!mergedRegionsMap.has(root)) {
+      mergedRegionsMap.set(root, new Set());
+    }
+    for (const key of regions[i]) {
+      mergedRegionsMap.get(root)!.add(key);
+    }
+  }
+
+  return Array.from(mergedRegionsMap.values());
+}
+
+/**
+ * Check if all enemies are reachable from valid spawn positions
+ * Uses BFS to verify path exists through empty tiles
+ * Also considers teleporter connections between regions
+ */
+function areEnemiesReachable(
+  tiles: TileOrNull[][],
+  enemies: PlacedEnemy[]
+): boolean {
+  if (enemies.length === 0) return true;
+
+  // Find connected regions via flood fill (walkable tiles)
+  const regions = findConnectedRegions(tiles);
+  if (regions.length === 0) return false;
+
+  // Find teleporter connections
+  const teleportConnections = findTeleporterConnections(tiles);
+
+  // Merge regions that are connected via teleporters
+  const mergedRegions = mergeRegionsViaTeleporters(regions, teleportConnections);
+
+  // Find the main connected region (largest one after merging)
+  const mainRegion = mergedRegions.reduce((a, b) => a.size >= b.size ? a : b);
+
+  // Check if all enemies are in the main region (including teleporter-connected areas)
+  for (const enemy of enemies) {
+    const enemyKey = `${Math.floor(enemy.x)},${Math.floor(enemy.y)}`;
+    if (!mainRegion.has(enemyKey)) {
+      return false;
+    }
+  }
+
+  // Also check that the main region has at least some spawn-worthy tiles
+  // (tiles not occupied by enemies and not in corners)
+  const height = tiles.length;
+  const width = tiles[0].length;
+  const enemyPositions = new Set(enemies.map(e => `${Math.floor(e.x)},${Math.floor(e.y)}`));
+
+  let validSpawnTiles = 0;
+  for (const key of mainRegion) {
+    if (enemyPositions.has(key)) continue;
+
+    const [x, y] = key.split(',').map(Number);
+    // Prefer not in corners
+    const isCorner = (x === 0 || x === width - 1) && (y === 0 || y === height - 1);
+    if (!isCorner) {
+      validSpawnTiles++;
+    }
+  }
+
+  return validSpawnTiles >= 3; // Need at least 3 valid spawn positions
 }
 
 function connectRegions(
@@ -1352,7 +1526,7 @@ export async function generatePuzzle(
   } = {}
 ): Promise<GenerationResult> {
   const startTime = performance.now();
-  const maxAttempts = options.maxAttempts ?? 10;
+  const maxAttempts = options.maxAttempts ?? 15; // Increased from 10 for better success rate
 
   // Validate parameters
   const validationErrors = validateGenerationParams(params);
@@ -1384,6 +1558,11 @@ export async function generatePuzzle(
 
     // Step 2: Place enemies
     const enemies = placeEnemies(tiles, params);
+
+    // Step 2.5: Check if enemies are reachable - if not, retry
+    if (enemies.length > 0 && !areEnemiesReachable(tiles, enemies)) {
+      continue; // Try again with different layout
+    }
 
     // Step 3: Place collectibles/items
     const collectibles = placeCollectibles(tiles, enemies, params);
@@ -1423,11 +1602,19 @@ export async function generatePuzzle(
     const maxCombos = getMaxCombinationsForDifficulty(params.difficulty, enemies.length);
 
     // Use async solver that yields to browser to prevent freezing
+    // Increase turn limit for harder difficulties
+    const turnLimit = {
+      easy: 30,
+      medium: 40,
+      hard: 60,
+      expert: 80,
+    }[params.difficulty];
+
     const validation = await solvePuzzleAsync(puzzle, {
-      maxSimulationTurns: Math.min(params.maxTurns || 100, 50), // Cap at 50 turns for speed
+      maxSimulationTurns: Math.min(params.maxTurns || 100, turnLimit),
       maxCombinations: maxCombos,
       findFastest: false, // Don't search for fastest - just find ANY solution
-      yieldEvery: 20, // Yield frequently to keep UI responsive
+      yieldEvery: 50, // Yield less frequently for better performance
     });
 
     if (validation.solvable) {

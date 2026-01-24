@@ -196,6 +196,24 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         setPreventsMovement(false);
         setPreventsAllActions(false);
         break;
+      case StatusEffectType.DEFLECT:
+        setDefaultValue(0);
+        setProcessAtTurnStart(true);
+        setRemovedOnDamage(false);
+        setPreventsMelee(false);
+        setPreventsRanged(false);
+        setPreventsMovement(false);
+        setPreventsAllActions(false);
+        break;
+      case StatusEffectType.INVULNERABLE:
+        setDefaultValue(0);
+        setProcessAtTurnStart(true);
+        setRemovedOnDamage(false);
+        setPreventsMelee(false);
+        setPreventsRanged(false);
+        setPreventsMovement(false);
+        setPreventsAllActions(false);
+        break;
     }
   };
 
@@ -215,6 +233,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       case StatusEffectType.HASTE: return '#fbbf24'; // Amber/gold for haste
       case StatusEffectType.POLYMORPH: return '#ff69b4'; // Pink for polymorph
       case StatusEffectType.STEALTH: return '#4a5568'; // Gray for stealth
+      case StatusEffectType.DEFLECT: return '#a855f7'; // Purple for deflect
+      case StatusEffectType.INVULNERABLE: return '#fcd34d'; // Gold for invulnerable
       default: return '#ffffff';
     }
   };

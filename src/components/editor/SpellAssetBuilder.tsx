@@ -738,6 +738,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateNeedsProjectileSettings = templateNeedsRange;
   const templateIsMelee = editedSpell.templateType === 'melee';
   const templateIsResurrect = editedSpell.templateType === 'resurrect';
+  const templateIsPush = editedSpell.templateType === 'push';
 
   return (
     <div className="space-y-6">
@@ -946,6 +947,18 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <div className="font-semibold">Resurrect</div>
                   <div className="text-xs text-stone-400">Revive dead ally</div>
                 </button>
+
+                <button
+                  onClick={() => setEditedSpell({ ...editedSpell, templateType: 'push' as SpellTemplate })}
+                  className={`p-3 rounded border-2 transition-colors ${
+                    editedSpell.templateType === 'push'
+                      ? 'border-amber-500 bg-amber-900'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
+                  }`}
+                >
+                  <div className="font-semibold">Push</div>
+                  <div className="text-xs text-stone-400">Push target away</div>
+                </button>
               </div>
             </div>
           </div>
@@ -1086,8 +1099,74 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </>
             )}
 
-            {/* Damage vs Healing Toggle - hidden for resurrect */}
-            {!templateIsResurrect && (
+            {/* Push-specific options */}
+            {templateIsPush && (
+              <>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Range (tiles)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={editedSpell.range ?? 1}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, range: parseInt(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    How far to look for targets to push
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Push Distance (tiles)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="10"
+                    value={editedSpell.pushDistance ?? 1}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, pushDistance: parseInt(e.target.value) || 1 })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    How many tiles to push the target
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Push Direction</label>
+                  <select
+                    value={editedSpell.pushDirection ?? 'away'}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, pushDirection: e.target.value as 'away' | 'toward' | 'spell_direction' })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  >
+                    <option value="away">Away from caster</option>
+                    <option value="toward">Toward caster</option>
+                    <option value="spell_direction">Same as spell direction</option>
+                  </select>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Direction the target will be pushed
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Damage (optional)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="99"
+                    value={editedSpell.damage ?? 0}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, damage: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    Optional damage dealt when pushing (0 = no damage)
+                  </p>
+                </div>
+              </>
+            )}
+
+            {/* Damage vs Healing Toggle - hidden for resurrect and push */}
+            {!templateIsResurrect && !templateIsPush && (
               <div>
                 <label className="block text-sm font-medium mb-2">Effect Type</label>
                 <div className="flex gap-2 mb-3">
@@ -1125,8 +1204,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </div>
             )}
 
-            {/* Damage or Healing Amount - hidden for resurrect */}
-            {!templateIsResurrect && (
+            {/* Damage or Healing Amount - hidden for resurrect and push */}
+            {!templateIsResurrect && !templateIsPush && (
               <div>
                 <label className="block text-sm font-medium mb-1">
                   {editedSpell.healing !== undefined ? 'Healing Amount' : 'Damage Amount *'}

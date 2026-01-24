@@ -47,11 +47,12 @@ export interface CadenceConfig {
 }
 
 export interface PressurePlateEffect {
-  type: 'toggle_wall' | 'spawn_enemy' | 'despawn_enemy' | 'trigger_teleport';
+  type: 'toggle_wall' | 'spawn_enemy' | 'despawn_enemy' | 'trigger_teleport' | 'toggle_trigger_group';
   targetX?: number;
   targetY?: number;
   targetEnemyId?: string;  // For spawn/despawn
   stayPressed?: boolean;   // Require standing on plate vs. step once
+  targetTriggerGroupId?: string;  // For toggle_trigger_group - which group of tiles to toggle
 }
 
 export interface TeleportSpriteConfig {
@@ -95,6 +96,7 @@ export interface TileBehaviorConfig {
 export interface TileRuntimeState {
   damagedEntities?: Set<string>;  // For damageOnce tracking
   pressurePlateActive?: boolean;
+  overrideState?: 'on' | 'off';   // Override cadence-based on/off state (for trigger groups)
 }
 
 export interface Tile {
@@ -103,6 +105,7 @@ export interface Tile {
   type: TileType;
   customTileTypeId?: string;  // Reference to CustomTileType
   teleportGroupId?: string;   // Which teleport group this tile belongs to
+  triggerGroupId?: string;    // For pressure plate trigger groups - tiles with same ID toggle together
   content?: TileContent;
 }
 
@@ -631,6 +634,7 @@ export enum StatusEffectType {
   POLYMORPH = 'polymorph', // Replaces entity sprite temporarily
   STEALTH = 'stealth',    // Reduced opacity, can't be auto-targeted by opposing team
   DEFLECT = 'deflect',    // Reflects spell damage back to caster
+  INVULNERABLE = 'invulnerable', // Immune to all damage from enemies
 }
 
 /**
@@ -818,6 +822,7 @@ export enum SpellTemplate {
   MAGIC_LINEAR = 'magic_linear', // Magic projectile (different visuals)
   AOE = 'aoe',                   // Area of effect
   RESURRECT = 'resurrect',       // Bring dead ally back to life
+  PUSH = 'push',                 // Push target entity in a direction
 }
 
 /**
@@ -914,6 +919,10 @@ export interface SpellAsset {
 
   // Resurrect-specific settings (for RESURRECT template)
   resurrectHealthPercent?: number; // Percent of max health to restore (0-100, default 100)
+
+  // Push-specific settings (for PUSH template)
+  pushDistance?: number;          // How many tiles to push target (default: 1)
+  pushDirection?: 'away' | 'toward' | 'spell_direction'; // Direction to push: away from caster, toward caster, or same as spell direction (default: away)
 
   // Sound configuration
   castSound?: string;             // Sound asset ID to play when spell is cast

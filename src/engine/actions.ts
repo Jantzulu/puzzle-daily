@@ -280,6 +280,26 @@ export function isTileActiveOnTurn(cadence: CadenceConfig, turn: number): boolea
 }
 
 /**
+ * Check if a tile is active, considering both cadence AND override state from trigger groups
+ * This is the preferred function to use when checking tile active state in gameplay
+ */
+export function isTileActive(tile: Tile, gameState: GameState): boolean {
+  // Check for override state from pressure plate trigger groups
+  const tileState = gameState.tileStates?.get(`${tile.x},${tile.y}`);
+  if (tileState?.overrideState) {
+    return tileState.overrideState === 'on';
+  }
+
+  // No override - check cadence
+  if (!tile.customTileTypeId) return true;
+
+  const customTileType = loadTileType(tile.customTileTypeId);
+  if (!customTileType?.cadence?.enabled) return true;
+
+  return isTileActiveOnTurn(customTileType.cadence, gameState.currentTurn);
+}
+
+/**
  * Process all tile behaviors when a character steps on a tile
  * Returns the updated character (may have moved due to teleport/ice)
  */
@@ -298,12 +318,9 @@ function processTileBehaviors(
     return character;
   }
 
-  // Check if tile type has cadence and if currently inactive
-  if (tileType.cadence?.enabled) {
-    const isActive = isTileActiveOnTurn(tileType.cadence, gameState.currentTurn);
-    if (!isActive) {
-      return character; // Skip ALL behaviors this turn - tile is "off"
-    }
+  // Check if tile is currently inactive (due to cadence or trigger group override)
+  if (!isTileActive(tile, gameState)) {
+    return character; // Skip ALL behaviors this turn - tile is "off"
   }
 
   let updatedChar = { ...character };
@@ -580,6 +597,45 @@ function processPressurePlateBehavior(
 
       case 'trigger_teleport':
         // Could trigger a teleport effect at target location
+        break;
+
+      case 'toggle_trigger_group':
+        // Toggle all tiles in the same trigger group between on/off states
+        if (effect.targetTriggerGroupId) {
+          const groupId = effect.targetTriggerGroupId;
+          // Find all tiles with this trigger group ID
+          for (let y = 0; y < gameState.puzzle.tiles.length; y++) {
+            const row = gameState.puzzle.tiles[y];
+            if (!row) continue;
+            for (let x = 0; x < row.length; x++) {
+              const targetTile = row[x];
+              if (targetTile && targetTile.triggerGroupId === groupId) {
+                const targetTileState = getTileState(gameState, x, y);
+                // Toggle the override state
+                if (targetTileState.overrideState === 'on') {
+                  targetTileState.overrideState = 'off';
+                } else if (targetTileState.overrideState === 'off') {
+                  targetTileState.overrideState = 'on';
+                } else {
+                  // No override yet - determine current state and toggle to opposite
+                  // Check if tile has cadence by looking up its custom tile type
+                  const customTileType = targetTile.customTileTypeId
+                    ? loadTileType(targetTile.customTileTypeId)
+                    : null;
+                  const cadence = customTileType?.cadence;
+                  if (cadence?.enabled) {
+                    // Has cadence - toggle opposite of current cadence state
+                    const currentlyOn = isTileActiveOnTurn(cadence, gameState.currentTurn);
+                    targetTileState.overrideState = currentlyOn ? 'off' : 'on';
+                  } else {
+                    // No cadence - assume starts 'on', toggle to 'off'
+                    targetTileState.overrideState = 'off';
+                  }
+                }
+              }
+            }
+          }
+        }
         break;
     }
   }
@@ -1615,6 +1671,11 @@ function executeSpellInDirection(
       }
       break;
 
+    case SpellTemplate.PUSH:
+      // Push spell - push entities in a direction
+      executePushSpell(character, spell, direction, gameState);
+      break;
+
     default:
       console.warn(`Spell template not yet implemented: ${spell.templateType}`);
   }
@@ -2255,6 +2316,16 @@ function applyStatusEffectFromSpell(
 }
 
 /**
+ * Check if an entity is invulnerable (has INVULNERABLE status effect)
+ */
+function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(
+    e => e.type === StatusEffectType.INVULNERABLE || e.type === 'invulnerable'
+  );
+}
+
+/**
  * Helper to apply damage and handle sleep wake-up and shield absorption
  */
 function applyDamageToEntity(
@@ -2263,6 +2334,11 @@ function applyDamageToEntity(
   gameState: GameState,
   source?: PlacedCharacter | PlacedEnemy  // Who dealt the damage (for deflect)
 ): void {
+  // Check for invulnerability - if invulnerable, take no damage
+  if (isInvulnerable(target)) {
+    return;
+  }
+
   let remainingDamage = damage;
 
   // Check for deflect effect - reflects damage back to source
@@ -2345,6 +2421,11 @@ function applyDamageToEntityNoDeflect(
   damage: number,
   gameState: GameState
 ): void {
+  // Check for invulnerability - if invulnerable, take no damage
+  if (isInvulnerable(target)) {
+    return;
+  }
+
   let remainingDamage = damage;
 
   // Check for shield effects and absorb damage
@@ -2810,6 +2891,166 @@ function findNearestDeadAllies(
 
   // Return up to maxTargets
   return filteredAllies.slice(0, maxTargets);
+}
+
+/**
+ * Execute push spell - push entities in the spell direction
+ * The push direction can be 'away' (from caster), 'toward' (to caster), or 'spell_direction' (same as spell cast direction)
+ */
+function executePushSpell(
+  caster: PlacedCharacter,
+  spell: SpellAsset,
+  castDirection: Direction,
+  gameState: GameState
+): void {
+  const range = spell.range || 1; // How far to look for targets
+  const pushDistance = spell.pushDistance || 1;
+  const pushDirectionMode = spell.pushDirection || 'away';
+
+  // Get direction offset for finding targets
+  const offset = getDirectionOffset(castDirection);
+
+  // Find all entities in range along the spell direction
+  const entitiesToPush: Array<{ entity: PlacedCharacter | PlacedEnemy; x: number; y: number; isEnemy: boolean }> = [];
+
+  // Check each tile in the spell direction up to range
+  for (let i = 1; i <= range; i++) {
+    const checkX = Math.floor(caster.x + offset.dx * i);
+    const checkY = Math.floor(caster.y + offset.dy * i);
+
+    // Check bounds
+    if (!isInBounds(checkX, checkY, gameState.puzzle.tiles)) break;
+
+    // Check for wall
+    const tile = gameState.puzzle.tiles[checkY]?.[checkX];
+    if (!tile || tile.type === TileType.WALL) break;
+
+    // Check for enemies at this position
+    for (const enemy of gameState.puzzle.enemies) {
+      if (enemy.dead) continue;
+      if (Math.floor(enemy.x) === checkX && Math.floor(enemy.y) === checkY) {
+        entitiesToPush.push({ entity: enemy, x: enemy.x, y: enemy.y, isEnemy: true });
+      }
+    }
+
+    // Check for characters at this position (if spell can push allies)
+    for (const char of gameState.placedCharacters) {
+      if (char.dead) continue;
+      if (char.characterId === caster.characterId) continue; // Don't push self
+      if (Math.floor(char.x) === checkX && Math.floor(char.y) === checkY) {
+        entitiesToPush.push({ entity: char, x: char.x, y: char.y, isEnemy: false });
+      }
+    }
+  }
+
+  // No entities to push
+  if (entitiesToPush.length === 0) return;
+
+  // Spawn cast effect on caster
+  if (spell.sprites.castEffect) {
+    spawnParticle(caster.x, caster.y, spell.sprites.castEffect, 300, gameState);
+  }
+
+  // Push each entity
+  for (const targetInfo of entitiesToPush) {
+    const target = targetInfo.entity;
+
+    // Determine push direction
+    let pushDirOffset: { dx: number; dy: number };
+    if (pushDirectionMode === 'away') {
+      // Push away from caster
+      const dx = target.x - caster.x;
+      const dy = target.y - caster.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len === 0) {
+        pushDirOffset = getDirectionOffset(castDirection); // Fall back to cast direction
+      } else {
+        // Normalize and round to nearest cardinal/diagonal
+        pushDirOffset = { dx: Math.sign(dx), dy: Math.sign(dy) };
+      }
+    } else if (pushDirectionMode === 'toward') {
+      // Push toward caster
+      const dx = caster.x - target.x;
+      const dy = caster.y - target.y;
+      const len = Math.sqrt(dx * dx + dy * dy);
+      if (len === 0) {
+        pushDirOffset = getDirectionOffset(turnAround(castDirection));
+      } else {
+        pushDirOffset = { dx: Math.sign(dx), dy: Math.sign(dy) };
+      }
+    } else {
+      // spell_direction - push in same direction as spell was cast
+      pushDirOffset = getDirectionOffset(castDirection);
+    }
+
+    // Calculate final position after push
+    let finalX = target.x;
+    let finalY = target.y;
+    let tilesActuallyPushed = 0;
+
+    for (let i = 0; i < pushDistance; i++) {
+      const nextX = finalX + pushDirOffset.dx;
+      const nextY = finalY + pushDirOffset.dy;
+
+      // Check bounds
+      if (!isInBounds(Math.floor(nextX), Math.floor(nextY), gameState.puzzle.tiles)) break;
+
+      // Check for wall
+      const nextTile = gameState.puzzle.tiles[Math.floor(nextY)]?.[Math.floor(nextX)];
+      if (!nextTile || nextTile.type === TileType.WALL) break;
+
+      // Check for void
+      if (nextTile === null) break;
+
+      // Check for other entities at this position (can't push into occupied tile)
+      let tileOccupied = false;
+      for (const enemy of gameState.puzzle.enemies) {
+        if (enemy.dead || enemy === target) continue;
+        if (Math.floor(enemy.x) === Math.floor(nextX) && Math.floor(enemy.y) === Math.floor(nextY)) {
+          tileOccupied = true;
+          break;
+        }
+      }
+      if (!tileOccupied) {
+        for (const char of gameState.placedCharacters) {
+          if (char.dead || char === target) continue;
+          if (Math.floor(char.x) === Math.floor(nextX) && Math.floor(char.y) === Math.floor(nextY)) {
+            tileOccupied = true;
+            break;
+          }
+        }
+      }
+      if (tileOccupied) break;
+
+      finalX = nextX;
+      finalY = nextY;
+      tilesActuallyPushed++;
+    }
+
+    // Apply push (move entity to final position)
+    if (tilesActuallyPushed > 0) {
+      target.x = finalX;
+      target.y = finalY;
+
+      // Spawn visual effect on pushed entity
+      if (spell.sprites.damageEffect) {
+        spawnParticle(finalX, finalY, spell.sprites.damageEffect, 400, gameState);
+      }
+
+      // Apply damage if spell has damage
+      if (spell.damage && spell.damage > 0) {
+        target.currentHealth -= spell.damage;
+        if (target.currentHealth <= 0) {
+          target.currentHealth = 0;
+          target.dead = true;
+        }
+        // Wake from sleep if damaged
+        if (target.statusEffects) {
+          wakeFromSleep(target);
+        }
+      }
+    }
+  }
 }
 
 /**

@@ -245,11 +245,20 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
             <div>
               <label className="block text-sm font-medium text-parchment-300 mb-1">Width</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min={4}
                 max={20}
                 value={width}
-                onChange={e => setWidth(Math.max(4, Math.min(20, parseInt(e.target.value) || 4)))}
+                onChange={e => {
+                  const val = parseInt(e.target.value) || 4;
+                  setWidth(Math.max(4, Math.min(20, val)));
+                }}
+                onBlur={e => {
+                  const val = parseInt(e.target.value) || 4;
+                  setWidth(Math.max(4, Math.min(20, val)));
+                }}
                 disabled={isGenerating}
                 className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded text-parchment-100
                   focus:outline-none focus:border-amber-500 disabled:opacity-50"
@@ -258,11 +267,20 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
             <div>
               <label className="block text-sm font-medium text-parchment-300 mb-1">Height</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
                 min={4}
                 max={20}
                 value={height}
-                onChange={e => setHeight(Math.max(4, Math.min(20, parseInt(e.target.value) || 4)))}
+                onChange={e => {
+                  const val = parseInt(e.target.value) || 4;
+                  setHeight(Math.max(4, Math.min(20, val)));
+                }}
+                onBlur={e => {
+                  const val = parseInt(e.target.value) || 4;
+                  setHeight(Math.max(4, Math.min(20, val)));
+                }}
                 disabled={isGenerating}
                 className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded text-parchment-100
                   focus:outline-none focus:border-amber-500 disabled:opacity-50"
@@ -326,14 +344,17 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
                     ))}
                   </select>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     min={1}
                     max={10}
                     value={config.count}
                     onChange={e => updateEnemyConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
+                    onBlur={e => updateEnemyConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
                     disabled={isGenerating}
                     className="w-16 px-2 py-1 bg-stone-600 border border-stone-500 rounded text-sm text-parchment-100
-                      disabled:opacity-50"
+                      disabled:opacity-50 text-center"
                   />
                   <select
                     value={config.placement || 'random'}
@@ -390,14 +411,17 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
                       ))}
                     </select>
                     <input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      pattern="[0-9]*"
                       min={1}
                       max={20}
                       value={config.count}
                       onChange={e => updateCollectibleConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
+                      onBlur={e => updateCollectibleConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
                       disabled={isGenerating}
                       className="w-16 px-2 py-1 bg-stone-600 border border-stone-500 rounded text-sm text-parchment-100
-                        disabled:opacity-50"
+                        disabled:opacity-50 text-center"
                     />
                     <button
                       onClick={() => removeCollectibleConfig(index)}

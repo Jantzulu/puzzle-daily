@@ -45,7 +45,11 @@ const PRESSURE_PLATE_EFFECTS: { type: PressurePlateEffect['type']; label: string
   { type: 'spawn_enemy', label: 'Spawn Enemy', description: 'Activate a dormant enemy' },
   { type: 'despawn_enemy', label: 'Despawn Enemy', description: 'Remove an enemy' },
   { type: 'trigger_teleport', label: 'Trigger Teleport', description: 'Activate a teleport' },
+  { type: 'toggle_trigger_group', label: 'Toggle Trigger Group', description: 'Toggle on/off state of all tiles in a group' },
 ];
+
+// Trigger group labels (1-9 for simplicity, can extend)
+const TRIGGER_GROUPS = ['1', '2', '3', '4', '5', '6', '7', '8', '9'];
 
 // Cadence pattern options
 const CADENCE_PATTERNS: { value: CadencePattern; label: string; description: string }[] = [
@@ -327,6 +331,25 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                     }}
                     className="w-16 bg-stone-500 rounded px-2 py-1"
                   />
+                </div>
+              )}
+              {effect.type === 'toggle_trigger_group' && (
+                <div className="mt-1">
+                  <label className="text-xs text-stone-400">Trigger Group</label>
+                  <select
+                    value={effect.targetTriggerGroupId || ''}
+                    onChange={e => {
+                      const newEffects = [...(behavior.pressurePlateEffects || [])];
+                      newEffects[idx] = { ...effect, targetTriggerGroupId: e.target.value };
+                      onChange({ ...behavior, pressurePlateEffects: newEffects });
+                    }}
+                    className="w-full bg-stone-500 rounded px-2 py-1 mt-1"
+                  >
+                    <option value="">Select group...</option>
+                    {TRIGGER_GROUPS.map(group => (
+                      <option key={group} value={group}>Group {group}</option>
+                    ))}
+                  </select>
                 </div>
               )}
               <label className="flex items-center text-xs text-stone-300 mt-1">

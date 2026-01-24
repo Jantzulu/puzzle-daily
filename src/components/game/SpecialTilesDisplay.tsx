@@ -22,6 +22,8 @@ interface SpecialTileInfo {
   preventPlacement: boolean;
   // Wall behavior
   behavesLikeWall: boolean;
+  // Trigger group - tiles with this have their on/off controlled by pressure plates
+  triggerGroupId?: string;
 }
 
 /**
@@ -57,6 +59,7 @@ function getBehaviorDescription(behaviors: TileBehaviorConfig[]): string {
               case 'spawn_enemy': return 'spawns enemies';
               case 'despawn_enemy': return 'removes enemies';
               case 'trigger_teleport': return 'triggers teleport';
+              case 'toggle_trigger_group': return `toggles group ${e.targetTriggerGroupId || '?'}`;
               default: return e.type;
             }
           });
@@ -77,12 +80,25 @@ function getBehaviorDescription(behaviors: TileBehaviorConfig[]): string {
 function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
   const seenTileIds = new Set<string>();
   const specialTiles: SpecialTileInfo[] = [];
+  // Track trigger groups per tile type
+  const triggerGroupsByTileType = new Map<string, string>();
 
   // Load the puzzle's skin for custom tile sprites
   const skin = puzzle.skinId ? loadPuzzleSkin(puzzle.skinId) : null;
   const customTileSprites = skin?.customTileSprites;
 
-  // Scan all tiles in the puzzle grid
+  // First pass: collect trigger group info for each tile type
+  for (const row of puzzle.tiles) {
+    for (const tile of row) {
+      if (!tile?.customTileTypeId || !tile.triggerGroupId) continue;
+      // Store the trigger group for this tile type (first one found wins)
+      if (!triggerGroupsByTileType.has(tile.customTileTypeId)) {
+        triggerGroupsByTileType.set(tile.customTileTypeId, tile.triggerGroupId);
+      }
+    }
+  }
+
+  // Second pass: build special tile info
   for (const row of puzzle.tiles) {
     for (const tile of row) {
       if (!tile?.customTileTypeId) continue;
@@ -117,6 +133,7 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
       const defaultSprite = tileType.customSprite || null;
       const offStateSprite = tileType.offStateSprite || null;
       const hasCadence = tileType.cadence?.enabled || false;
+      const triggerGroupId = triggerGroupsByTileType.get(tile.customTileTypeId);
 
       specialTiles.push({
         tileType,
@@ -128,6 +145,7 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
         skinOffSpriteUrl,
         preventPlacement,
         behavesLikeWall,
+        triggerGroupId,
       });
     }
   }
@@ -255,9 +273,12 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
               <div className="flex-1 min-w-0">
                 <div className="text-sm font-medium text-parchment-200 flex items-center gap-2 flex-wrap">
                   {info.tileType.name}
-                  {info.hasCadence && (
+                  {/* Show different icons based on trigger type */}
+                  {info.triggerGroupId ? (
+                    <span className="text-amber-400 text-xs" title={`Triggered by pressure plate (Group ${info.triggerGroupId})`}>⚡</span>
+                  ) : info.hasCadence ? (
                     <span className="text-copper-400 text-xs" title="Has on/off cadence">⟳</span>
-                  )}
+                  ) : null}
                 </div>
                 {/* Use tile's description if available, otherwise generate from behaviors */}
                 <div className="text-xs text-stone-400">
@@ -275,12 +296,16 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                     Cannot place heroes on this tile
                   </div>
                 )}
-                {/* Show cadence info if applicable */}
-                {info.hasCadence && info.cadence && (
+                {/* Show trigger group info OR cadence info, but not both */}
+                {info.triggerGroupId ? (
+                  <div className="text-xs text-amber-400/70 mt-0.5">
+                    Triggered by pressure plate (Group {info.triggerGroupId})
+                  </div>
+                ) : info.hasCadence && info.cadence ? (
                   <div className="text-xs text-copper-400/70 mt-0.5">
                     {getCadenceDescription(info.cadence)}
                   </div>
-                )}
+                ) : null}
               </div>
             </div>
           </div>

@@ -859,7 +859,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         for (let x = 0; x < gameState.puzzle.width; x++) {
           const tile = gameState.puzzle.tiles[y][x];
           if (tile) {
-            drawTile(ctx, x, y, tile.type, tileSprites, tile, customTileSprites, isEditor, gameState.currentTurn);
+            drawTile(ctx, x, y, tile.type, tileSprites, tile, customTileSprites, isEditor, gameState.currentTurn, gameState.tileStates);
           } else {
             // Draw void/null tile
             drawVoidTile(ctx, x, y);
@@ -1830,7 +1830,7 @@ function drawVoidTile(_ctx: CanvasRenderingContext2D, _x: number, _y: number) {
   // This allows the page background or parent element to show through.
 }
 
-function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null, customTileSprites?: { [customTileTypeId: string]: string | { onSprite?: string; offSprite?: string } }, isEditor: boolean = false, currentTurn: number = 0) {
+function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null, customTileSprites?: { [customTileTypeId: string]: string | { onSprite?: string; offSprite?: string } }, isEditor: boolean = false, currentTurn: number = 0, tileStates?: Map<string, import('../../types/game').TileRuntimeState>) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
@@ -1840,9 +1840,14 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     customTileType = loadTileType(tile.customTileTypeId);
   }
 
-  // Determine if tile is in on or off state (for cadence)
+  // Determine if tile is in on or off state (considering both cadence and trigger group overrides)
   let isOnState = true;
-  if (customTileType?.cadence?.enabled) {
+  // First check for override state from pressure plate trigger groups
+  const tileState = tileStates?.get(`${x},${y}`);
+  if (tileState?.overrideState) {
+    isOnState = tileState.overrideState === 'on';
+  } else if (customTileType?.cadence?.enabled) {
+    // No override - fall back to cadence
     isOnState = isTileActiveOnTurn(customTileType.cadence, currentTurn);
   }
 

@@ -572,6 +572,7 @@ export const MapEditor: React.FC = () => {
   // Custom tile types state
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [selectedCustomTileTypeId, setSelectedCustomTileTypeId] = useState<string | null>(null);
+  const [selectedTriggerGroupId, setSelectedTriggerGroupId] = useState<string>(''); // For pressure plate trigger groups
 
   // Enemy/Character/Object/Collectible selection
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
@@ -1102,11 +1103,19 @@ export const MapEditor: React.FC = () => {
             teleportGroupId = teleportBehavior.teleportGroupId || 'A';
           }
 
+          // For tiles with on/off states, assign trigger group if selected
+          let triggerGroupId: string | undefined;
+          const hasOnOffStates = tileType.cadence?.enabled || tileType.offStateSprite;
+          if (hasOnOffStates && selectedTriggerGroupId) {
+            triggerGroupId = selectedTriggerGroupId;
+          }
+
           newTiles[y][x] = {
             x, y,
             type: baseTileType,
             customTileTypeId: selectedCustomTileTypeId,
             teleportGroupId,
+            triggerGroupId,
           };
         }
 
@@ -2909,6 +2918,32 @@ export const MapEditor: React.FC = () => {
                     ) : filteredTileTypes.length === 0 && (
                       <p className="text-xs text-stone-400 mt-2">No tiles in this folder.</p>
                     )}
+
+                    {/* Trigger Group Selector - Shows when a tile with on/off states is selected */}
+                    {selectedCustomTileTypeId && (() => {
+                      const tileType = loadTileType(selectedCustomTileTypeId);
+                      // Show trigger group selector if tile has on/off states (cadence or offStateSprite)
+                      const hasOnOffStates = tileType?.cadence?.enabled || tileType?.offStateSprite;
+                      if (!hasOnOffStates) return null;
+                      return (
+                        <div className="mt-3 p-2 bg-stone-700 rounded">
+                          <label className="text-sm text-stone-300 block mb-1">Trigger Group (optional)</label>
+                          <p className="text-xs text-stone-400 mb-2">
+                            Assign to a group to control this tile's on/off state with pressure plates
+                          </p>
+                          <select
+                            value={selectedTriggerGroupId}
+                            onChange={e => setSelectedTriggerGroupId(e.target.value)}
+                            className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
+                          >
+                            <option value="">None (uses cadence)</option>
+                            {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(group => (
+                              <option key={group} value={group}>Group {group}</option>
+                            ))}
+                          </select>
+                        </div>
+                      );
+                    })()}
                   </div>
                 </div>
               )}

@@ -17,8 +17,18 @@ function hasDeflect(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
+ * Check if an entity is invulnerable (has INVULNERABLE status effect)
+ */
+function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(
+    e => e.type === StatusEffectType.INVULNERABLE || e.type === 'invulnerable'
+  );
+}
+
+/**
  * Apply damage with deflect checking for projectiles
- * Returns true if damage was deflected (and applied to source instead)
+ * Returns true if damage was deflected (and applied to source instead) OR if target is invulnerable
  */
 function applyProjectileDamageWithDeflect(
   target: PlacedCharacter | PlacedEnemy,
@@ -27,6 +37,11 @@ function applyProjectileDamageWithDeflect(
   sourceEnemyId: string | undefined,
   gameState: GameState
 ): boolean {
+  // Check for invulnerability - if invulnerable, take no damage
+  if (isInvulnerable(target)) {
+    return true; // Treat as "absorbed" - no damage applied
+  }
+
   // Check for deflect
   if (hasDeflect(target)) {
     // Find the source entity to reflect damage back to
