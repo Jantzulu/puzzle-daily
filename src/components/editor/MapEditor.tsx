@@ -1105,7 +1105,7 @@ export const MapEditor: React.FC = () => {
 
           // For tiles with on/off states, assign trigger group if selected
           let triggerGroupId: string | undefined;
-          const hasOnOffStates = tileType.cadence?.enabled || tileType.offStateSprite;
+          const hasOnOffStates = tileType.cadence?.enabled || tileType.canBeTriggered || tileType.offStateSprite;
           if (hasOnOffStates && selectedTriggerGroupId) {
             triggerGroupId = selectedTriggerGroupId;
           }
@@ -2978,8 +2978,8 @@ export const MapEditor: React.FC = () => {
                     {/* Trigger Group Selector - Shows when a tile with on/off states is selected */}
                     {selectedCustomTileTypeId && (() => {
                       const tileType = loadTileType(selectedCustomTileTypeId);
-                      // Show trigger group selector if tile has on/off states (cadence or offStateSprite)
-                      const hasOnOffStates = tileType?.cadence?.enabled || tileType?.offStateSprite;
+                      // Show trigger group selector if tile has on/off states (cadence, canBeTriggered, or offStateSprite)
+                      const hasOnOffStates = tileType?.cadence?.enabled || tileType?.canBeTriggered || tileType?.offStateSprite;
                       if (!hasOnOffStates) return null;
                       return (
                         <div className="mt-3 p-2 bg-stone-700 rounded">
