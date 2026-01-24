@@ -2943,22 +2943,38 @@ function executePushSpell(
   // Find all entities in range along the spell direction
   const entitiesToPush: Array<{ entity: PlacedCharacter | PlacedEnemy; x: number; y: number; isEnemy: boolean }> = [];
 
+  // Log all entity positions for debugging
+  console.log('[PUSH SPELL] All enemies:', gameState.puzzle.enemies.map(e => ({ id: e.enemyId, x: e.x, y: e.y, dead: e.dead })));
+  console.log('[PUSH SPELL] All characters:', gameState.placedCharacters.map(c => ({ id: c.characterId, x: c.x, y: c.y, dead: c.dead })));
+
   // Check each tile in the spell direction up to range
   for (let i = 1; i <= range; i++) {
     const checkX = Math.floor(caster.x + offset.dx * i);
     const checkY = Math.floor(caster.y + offset.dy * i);
 
+    console.log(`[PUSH SPELL] Checking tile at (${checkX}, ${checkY}) - step ${i} of range ${range}`);
+
     // Check bounds
-    if (!isInBounds(checkX, checkY, gameState.puzzle.tiles)) break;
+    if (!isInBounds(checkX, checkY, gameState.puzzle.tiles)) {
+      console.log('[PUSH SPELL] Out of bounds, stopping');
+      break;
+    }
 
     // Check for wall (including custom wall tiles)
     const tile = gameState.puzzle.tiles[checkY]?.[checkX];
-    if (isTileWall(tile)) break;
+    if (isTileWall(tile)) {
+      console.log('[PUSH SPELL] Hit wall, stopping');
+      break;
+    }
 
     // Check for enemies at this position
     for (const enemy of gameState.puzzle.enemies) {
       if (enemy.dead) continue;
-      if (Math.floor(enemy.x) === checkX && Math.floor(enemy.y) === checkY) {
+      const enemyTileX = Math.floor(enemy.x);
+      const enemyTileY = Math.floor(enemy.y);
+      console.log(`[PUSH SPELL] Comparing enemy ${enemy.enemyId} at tile (${enemyTileX}, ${enemyTileY}) vs check (${checkX}, ${checkY})`);
+      if (enemyTileX === checkX && enemyTileY === checkY) {
+        console.log('[PUSH SPELL] Found enemy to push!');
         entitiesToPush.push({ entity: enemy, x: enemy.x, y: enemy.y, isEnemy: true });
       }
     }
@@ -2967,7 +2983,11 @@ function executePushSpell(
     for (const char of gameState.placedCharacters) {
       if (char.dead) continue;
       if (char.characterId === caster.characterId) continue; // Don't push self
-      if (Math.floor(char.x) === checkX && Math.floor(char.y) === checkY) {
+      const charTileX = Math.floor(char.x);
+      const charTileY = Math.floor(char.y);
+      console.log(`[PUSH SPELL] Comparing character ${char.characterId} at tile (${charTileX}, ${charTileY}) vs check (${checkX}, ${checkY})`);
+      if (charTileX === checkX && charTileY === checkY) {
+        console.log('[PUSH SPELL] Found character to push!');
         entitiesToPush.push({ entity: char, x: char.x, y: char.y, isEnemy: false });
       }
     }
