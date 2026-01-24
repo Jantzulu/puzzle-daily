@@ -1673,6 +1673,7 @@ function executeSpellInDirection(
 
     case SpellTemplate.PUSH:
       // Push spell - push entities in a direction
+      console.log('[PUSH SPELL] Case matched, calling executePushSpell with direction:', direction);
       executePushSpell(character, spell, direction, gameState);
       break;
 
@@ -2907,8 +2908,37 @@ function executePushSpell(
   const pushDistance = spell.pushDistance || 1;
   const pushDirectionMode = spell.pushDirection || 'away';
 
+  console.log('[PUSH SPELL] Executing:', {
+    caster: caster.characterId,
+    casterPos: { x: caster.x, y: caster.y },
+    castDirection,
+    range,
+    pushDistance,
+    pushDirectionMode,
+  });
+
   // Get direction offset for finding targets
   const offset = getDirectionOffset(castDirection);
+  console.log('[PUSH SPELL] Direction offset:', offset);
+
+  // Helper to check if a tile acts as a wall (including custom tiles with baseType='wall')
+  const isTileWall = (tile: Tile | null | undefined): boolean => {
+    if (!tile) return true; // void/null is treated as wall
+    if (tile.type === TileType.WALL) return true;
+
+    // Check for custom tile with wall base type
+    if (tile.customTileTypeId) {
+      const customType = loadTileType(tile.customTileTypeId);
+      if (customType?.baseType === 'wall') {
+        // If it has cadence, check if it's currently "on" (acting as wall)
+        if (customType.cadence?.enabled) {
+          return isTileActive(tile, gameState);
+        }
+        return true;
+      }
+    }
+    return false;
+  };
 
   // Find all entities in range along the spell direction
   const entitiesToPush: Array<{ entity: PlacedCharacter | PlacedEnemy; x: number; y: number; isEnemy: boolean }> = [];
@@ -2921,9 +2951,9 @@ function executePushSpell(
     // Check bounds
     if (!isInBounds(checkX, checkY, gameState.puzzle.tiles)) break;
 
-    // Check for wall
+    // Check for wall (including custom wall tiles)
     const tile = gameState.puzzle.tiles[checkY]?.[checkX];
-    if (!tile || tile.type === TileType.WALL) break;
+    if (isTileWall(tile)) break;
 
     // Check for enemies at this position
     for (const enemy of gameState.puzzle.enemies) {
@@ -2943,8 +2973,13 @@ function executePushSpell(
     }
   }
 
+  console.log('[PUSH SPELL] Entities found to push:', entitiesToPush.length, entitiesToPush.map(e => ({ id: e.isEnemy ? (e.entity as PlacedEnemy).enemyId : (e.entity as PlacedCharacter).characterId, pos: { x: e.x, y: e.y } })));
+
   // No entities to push
-  if (entitiesToPush.length === 0) return;
+  if (entitiesToPush.length === 0) {
+    console.log('[PUSH SPELL] No entities found in range - returning early');
+    return;
+  }
 
   // Spawn cast effect on caster
   if (spell.sprites.castEffect) {
@@ -2995,12 +3030,9 @@ function executePushSpell(
       // Check bounds
       if (!isInBounds(Math.floor(nextX), Math.floor(nextY), gameState.puzzle.tiles)) break;
 
-      // Check for wall
+      // Check for wall (including custom wall tiles)
       const nextTile = gameState.puzzle.tiles[Math.floor(nextY)]?.[Math.floor(nextX)];
-      if (!nextTile || nextTile.type === TileType.WALL) break;
-
-      // Check for void
-      if (nextTile === null) break;
+      if (isTileWall(nextTile)) break;
 
       // Check for other entities at this position (can't push into occupied tile)
       let tileOccupied = false;
@@ -3027,10 +3059,13 @@ function executePushSpell(
       tilesActuallyPushed++;
     }
 
+    console.log('[PUSH SPELL] Push calculation:', { target: targetInfo.isEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId, originalPos: { x: targetInfo.x, y: targetInfo.y }, finalPos: { x: finalX, y: finalY }, tilesActuallyPushed });
+
     // Apply push (move entity to final position)
     if (tilesActuallyPushed > 0) {
       target.x = finalX;
       target.y = finalY;
+      console.log('[PUSH SPELL] Moved entity to:', { x: target.x, y: target.y });
 
       // Spawn visual effect on pushed entity
       if (spell.sprites.damageEffect) {
