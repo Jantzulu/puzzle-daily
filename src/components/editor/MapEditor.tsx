@@ -1714,6 +1714,34 @@ export const MapEditor: React.FC = () => {
     setPuzzleScore(null);
   };
 
+  // Show solution from validation - auto-places characters according to solver's solution
+  const handleShowSolution = () => {
+    if (!gameState || !validationResult?.solutionFound || gameState.gameStatus !== 'setup') return;
+
+    const newPlacedCharacters: PlacedCharacter[] = [];
+    for (const placement of validationResult.solutionFound.placements) {
+      const charData = getCharacter(placement.characterId);
+      if (!charData) continue;
+
+      newPlacedCharacters.push({
+        characterId: placement.characterId,
+        x: placement.x,
+        y: placement.y,
+        facing: placement.facing,
+        currentHealth: charData.health,
+        actionIndex: 0,
+        active: true,
+        dead: false,
+      });
+    }
+
+    setGameState((prev) => prev ? ({
+      ...prev,
+      placedCharacters: newPlacedCharacters,
+    }) : null);
+    playGameSound('character_placed');
+  };
+
   // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
   const handleAutoResetPlaytest = useCallback(() => {
     if (!originalPlaytestPuzzle) return;
@@ -2500,6 +2528,18 @@ export const MapEditor: React.FC = () => {
                   >
                     Wipe
                   </button>
+
+                  {/* Show Solution button - only available during setup if validation solution exists */}
+                  {gameState.gameStatus === 'setup' && validationResult?.solutionFound && (
+                    <button
+                      onClick={handleShowSolution}
+                      className="col-span-2 dungeon-btn px-4 py-2 font-semibold"
+                      style={{ backgroundColor: '#166534', borderColor: '#22c55e' }}
+                      title={`Auto-place ${validationResult.solutionFound.placements.length} character(s) to solve in ${validationResult.solutionFound.turnsToWin} turns`}
+                    >
+                      Show Solution ({validationResult.solutionFound.turnsToWin} turns)
+                    </button>
+                  )}
                 </div>
               </div>
 
