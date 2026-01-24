@@ -2529,16 +2529,32 @@ export const MapEditor: React.FC = () => {
                     Wipe
                   </button>
 
-                  {/* Show Solution button - only available during setup if validation solution exists */}
-                  {gameState.gameStatus === 'setup' && validationResult?.solutionFound && (
-                    <button
-                      onClick={handleShowSolution}
-                      className="col-span-2 dungeon-btn px-4 py-2 font-semibold"
-                      style={{ backgroundColor: '#166534', borderColor: '#22c55e' }}
-                      title={`Auto-place ${validationResult.solutionFound.placements.length} character(s) to solve in ${validationResult.solutionFound.turnsToWin} turns`}
-                    >
-                      Show Solution ({validationResult.solutionFound.turnsToWin} turns)
-                    </button>
+                  {/* Show Solution - displays placements if validation found a solution */}
+                  {validationResult?.solutionFound && (
+                    <div className="col-span-2 mt-2 p-2 bg-stone-900/50 rounded border border-moss-700/50">
+                      <div className="text-xs text-moss-400 font-semibold mb-1">
+                        Solution ({validationResult.solutionFound.turnsToWin} turns):
+                      </div>
+                      <div className="text-xs text-stone-300 space-y-0.5">
+                        {validationResult.solutionFound.placements.map((p, i) => {
+                          const charData = getCharacter(p.characterId);
+                          return (
+                            <div key={i}>
+                              {charData?.name || p.characterId} @ ({p.x}, {p.y}) facing {p.facing}
+                            </div>
+                          );
+                        })}
+                      </div>
+                      {gameState.gameStatus === 'setup' && (
+                        <button
+                          onClick={handleShowSolution}
+                          className="mt-2 w-full dungeon-btn px-2 py-1 text-xs"
+                          style={{ backgroundColor: '#166534', borderColor: '#22c55e' }}
+                        >
+                          Auto-place
+                        </button>
+                      )}
+                    </div>
                   )}
                 </div>
               </div>

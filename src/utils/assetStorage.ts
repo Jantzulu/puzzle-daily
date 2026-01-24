@@ -309,6 +309,7 @@ export interface CustomTileType {
   customSprite?: CustomSprite;
   offStateSprite?: CustomSprite;    // Sprite when tile is in "off" state (for cadence)
   cadence?: CadenceConfig;          // Optional cadence configuration (on/off toggle)
+  canBeTriggered?: boolean;         // Can be toggled on/off by pressure plates (via trigger groups)
   hideBehaviorIndicators?: boolean;  // Hide default behavior overlays (purple teleport, blue ice, etc.)
   preventPlacement?: boolean;        // Prevent characters from being placed here during setup (but allow walking)
   isCustom: boolean;

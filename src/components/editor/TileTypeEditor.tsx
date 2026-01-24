@@ -1001,12 +1001,31 @@ export const TileTypeEditor: React.FC = () => {
                       </div>
                     </div>
                   )}
+
+                  {/* Trigger Group option - alternative to cadence */}
+                  {!editing.cadence?.enabled && (
+                    <div className="mt-4 pt-4 border-t border-stone-600">
+                      <label className="flex items-center text-sm text-stone-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editing.canBeTriggered || false}
+                          onChange={e => setEditing({ ...editing, canBeTriggered: e.target.checked })}
+                          className="mr-2"
+                        />
+                        Can be triggered by pressure plates
+                      </label>
+                      <p className="text-xs text-stone-500 mt-1 ml-5">
+                        When enabled, this tile's on/off state can be controlled by pressure plates
+                        using trigger groups (set in the map editor).
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 {/* Tile Sprite */}
                 <div className="dungeon-panel p-4 rounded">
                   <h3 className="text-lg font-bold mb-4">
-                    {editing.cadence?.enabled ? 'On State Sprite' : 'Tile Sprite'}
+                    {(editing.cadence?.enabled || editing.canBeTriggered) ? 'On State Sprite' : 'Tile Sprite'}
                   </h3>
                   <p className="text-sm text-stone-400 mb-4">
                     Upload a custom sprite for this tile type. If not set, a default visual will be used based on behaviors.
@@ -1110,8 +1129,8 @@ export const TileTypeEditor: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Off State Sprite (only shown when cadence is enabled) */}
-                {editing.cadence?.enabled && (
+                {/* Off State Sprite (shown when cadence or trigger enabled) */}
+                {(editing.cadence?.enabled || editing.canBeTriggered) && (
                   <div className="dungeon-panel p-4 rounded">
                     <h3 className="text-lg font-bold mb-4">Off State Sprite</h3>
                     <p className="text-sm text-stone-400 mb-4">
