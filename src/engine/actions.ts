@@ -2955,7 +2955,7 @@ function executePushSpell(
     console.log(`[PUSH SPELL] Checking tile at (${checkX}, ${checkY}) - step ${i} of range ${range}`);
 
     // Check bounds
-    if (!isInBounds(checkX, checkY, gameState.puzzle.tiles)) {
+    if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
       console.log('[PUSH SPELL] Out of bounds, stopping');
       break;
     }
@@ -3048,7 +3048,7 @@ function executePushSpell(
       const nextY = finalY + pushDirOffset.dy;
 
       // Check bounds
-      if (!isInBounds(Math.floor(nextX), Math.floor(nextY), gameState.puzzle.tiles)) break;
+      if (!isInBounds(Math.floor(nextX), Math.floor(nextY), gameState.puzzle.width, gameState.puzzle.height)) break;
 
       // Check for wall (including custom wall tiles)
       const nextTile = gameState.puzzle.tiles[Math.floor(nextY)]?.[Math.floor(nextX)];
