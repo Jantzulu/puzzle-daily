@@ -600,9 +600,11 @@ function processPressurePlateBehavior(
         break;
 
       case 'toggle_trigger_group':
-        // Toggle all tiles in the same trigger group between on/off states
+        // Toggle or set all tiles in the same trigger group
         if (effect.targetTriggerGroupId) {
           const groupId = effect.targetTriggerGroupId;
+          const isHoldMode = effect.triggerMode === 'hold';
+
           // Find all tiles with this trigger group ID
           for (let y = 0; y < gameState.puzzle.tiles.length; y++) {
             const row = gameState.puzzle.tiles[y];
@@ -611,25 +613,32 @@ function processPressurePlateBehavior(
               const targetTile = row[x];
               if (targetTile && targetTile.triggerGroupId === groupId) {
                 const targetTileState = getTileState(gameState, x, y);
-                // Toggle the override state
-                if (targetTileState.overrideState === 'on') {
-                  targetTileState.overrideState = 'off';
-                } else if (targetTileState.overrideState === 'off') {
+
+                if (isHoldMode) {
+                  // Hold mode: simply set to 'on' while standing on plate
+                  // (gets reset to 'off' at start of next turn by resetHeldTriggerGroups)
                   targetTileState.overrideState = 'on';
                 } else {
-                  // No override yet - determine current state and toggle to opposite
-                  // Check if tile has cadence by looking up its custom tile type
-                  const customTileType = targetTile.customTileTypeId
-                    ? loadTileType(targetTile.customTileTypeId)
-                    : null;
-                  const cadence = customTileType?.cadence;
-                  if (cadence?.enabled) {
-                    // Has cadence - toggle opposite of current cadence state
-                    const currentlyOn = isTileActiveOnTurn(cadence, gameState.currentTurn);
-                    targetTileState.overrideState = currentlyOn ? 'off' : 'on';
-                  } else {
-                    // No cadence - assume starts 'on', toggle to 'off'
+                  // Toggle mode: flip the state
+                  if (targetTileState.overrideState === 'on') {
                     targetTileState.overrideState = 'off';
+                  } else if (targetTileState.overrideState === 'off') {
+                    targetTileState.overrideState = 'on';
+                  } else {
+                    // No override yet - determine current state and toggle to opposite
+                    // Check if tile has cadence by looking up its custom tile type
+                    const customTileType = targetTile.customTileTypeId
+                      ? loadTileType(targetTile.customTileTypeId)
+                      : null;
+                    const cadence = customTileType?.cadence;
+                    if (cadence?.enabled) {
+                      // Has cadence - toggle opposite of current cadence state
+                      const currentlyOn = isTileActiveOnTurn(cadence, gameState.currentTurn);
+                      targetTileState.overrideState = currentlyOn ? 'off' : 'on';
+                    } else {
+                      // No cadence - assume starts 'on', toggle to 'off'
+                      targetTileState.overrideState = 'off';
+                    }
                   }
                 }
               }

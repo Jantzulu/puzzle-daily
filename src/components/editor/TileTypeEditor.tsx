@@ -334,22 +334,39 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                 </div>
               )}
               {effect.type === 'toggle_trigger_group' && (
-                <div className="mt-1">
-                  <label className="text-xs text-stone-400">Trigger Group</label>
-                  <select
-                    value={effect.targetTriggerGroupId || ''}
-                    onChange={e => {
-                      const newEffects = [...(behavior.pressurePlateEffects || [])];
-                      newEffects[idx] = { ...effect, targetTriggerGroupId: e.target.value };
-                      onChange({ ...behavior, pressurePlateEffects: newEffects });
-                    }}
-                    className="w-full bg-stone-500 rounded px-2 py-1 mt-1"
-                  >
-                    <option value="">Select group...</option>
-                    {TRIGGER_GROUPS.map(group => (
-                      <option key={group} value={group}>Group {group}</option>
-                    ))}
-                  </select>
+                <div className="mt-1 space-y-2">
+                  <div>
+                    <label className="text-xs text-stone-400">Trigger Group</label>
+                    <select
+                      value={effect.targetTriggerGroupId || ''}
+                      onChange={e => {
+                        const newEffects = [...(behavior.pressurePlateEffects || [])];
+                        newEffects[idx] = { ...effect, targetTriggerGroupId: e.target.value };
+                        onChange({ ...behavior, pressurePlateEffects: newEffects });
+                      }}
+                      className="w-full bg-stone-500 rounded px-2 py-1 mt-1"
+                    >
+                      <option value="">Select group...</option>
+                      {TRIGGER_GROUPS.map(group => (
+                        <option key={group} value={group}>Group {group}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-stone-400">Mode</label>
+                    <select
+                      value={effect.triggerMode || 'toggle'}
+                      onChange={e => {
+                        const newEffects = [...(behavior.pressurePlateEffects || [])];
+                        newEffects[idx] = { ...effect, triggerMode: e.target.value as 'toggle' | 'hold' };
+                        onChange({ ...behavior, pressurePlateEffects: newEffects });
+                      }}
+                      className="w-full bg-stone-500 rounded px-2 py-1 mt-1"
+                    >
+                      <option value="toggle">Toggle (flip on step)</option>
+                      <option value="hold">Hold (active while stood on)</option>
+                    </select>
+                  </div>
                 </div>
               )}
               <label className="flex items-center text-xs text-stone-300 mt-1">

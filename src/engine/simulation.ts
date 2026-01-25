@@ -3,7 +3,7 @@ import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } fro
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers } from './actions';
-import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter } from '../utils/assetStorage';
+import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
 /**
@@ -902,6 +902,64 @@ function decrementSpellCooldowns(gameState: GameState): void {
 }
 
 /**
+ * Reset trigger groups that are controlled by "hold" mode pressure plates.
+ * This resets them to 'off' at the start of each turn; they'll be set to 'on'
+ * if an entity is standing on the pressure plate when it's processed.
+ */
+function resetHeldTriggerGroups(gameState: GameState): void {
+  // Find all pressure plates with hold mode and collect their trigger group IDs
+  const heldTriggerGroups = new Set<string>();
+
+  for (let y = 0; y < gameState.puzzle.tiles.length; y++) {
+    const row = gameState.puzzle.tiles[y];
+    if (!row) continue;
+    for (let x = 0; x < row.length; x++) {
+      const tile = row[x];
+      if (!tile?.customTileTypeId) continue;
+
+      const tileType = loadTileType(tile.customTileTypeId);
+      if (!tileType) continue;
+
+      // Check if this tile has a pressure plate behavior with hold mode
+      for (const behavior of tileType.behaviors) {
+        if (behavior.type !== 'pressure_plate') continue;
+        if (!behavior.pressurePlateEffects) continue;
+
+        for (const effect of behavior.pressurePlateEffects) {
+          if (effect.type === 'toggle_trigger_group' &&
+              effect.triggerMode === 'hold' &&
+              effect.targetTriggerGroupId) {
+            heldTriggerGroups.add(effect.targetTriggerGroupId);
+          }
+        }
+      }
+    }
+  }
+
+  // Reset all tiles in held trigger groups to 'off'
+  if (heldTriggerGroups.size === 0) return;
+
+  for (let y = 0; y < gameState.puzzle.tiles.length; y++) {
+    const row = gameState.puzzle.tiles[y];
+    if (!row) continue;
+    for (let x = 0; x < row.length; x++) {
+      const tile = row[x];
+      if (tile && tile.triggerGroupId && heldTriggerGroups.has(tile.triggerGroupId)) {
+        // Get or create tile runtime state and set to 'off'
+        if (!gameState.tileStates) {
+          gameState.tileStates = {};
+        }
+        const key = `${x},${y}`;
+        if (!gameState.tileStates[key]) {
+          gameState.tileStates[key] = {};
+        }
+        gameState.tileStates[key].overrideState = 'off';
+      }
+    }
+  }
+}
+
+/**
  * Execute one turn of the simulation
  * Modifies gameState in place and returns it
  */
@@ -911,6 +969,10 @@ export function executeTurn(gameState: GameState): GameState {
   }
 
   gameState.currentTurn++;
+
+  // Reset held trigger groups at the start of each turn
+  // They will be reactivated if entities are standing on hold-mode pressure plates
+  resetHeldTriggerGroups(gameState);
 
   // Snapshot entity positions at start of turn (for same-turn projectile hit detection)
   // This allows projectiles fired this turn to hit entities at their pre-move positions

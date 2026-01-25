@@ -53,6 +53,7 @@ export interface PressurePlateEffect {
   targetEnemyId?: string;  // For spawn/despawn
   stayPressed?: boolean;   // Require standing on plate vs. step once
   targetTriggerGroupId?: string;  // For toggle_trigger_group - which group of tiles to toggle
+  triggerMode?: 'toggle' | 'hold';  // 'toggle' = flip on step (default), 'hold' = only active while stood on
 }
 
 export interface TeleportSpriteConfig {
