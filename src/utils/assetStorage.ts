@@ -891,6 +891,30 @@ export const getBuiltInStatusEffects = (): StatusEffectAsset[] => {
       createdAt: '2024-01-01T00:00:00.000Z',
       isBuiltIn: true,
     },
+    {
+      id: 'builtin_deflect',
+      name: 'Deflect',
+      description: 'Reflects spell damage back to caster',
+      type: 'deflect' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'diamond', primaryColor: '#a855f7', type: 'simple' } },
+      defaultDuration: 2,
+      processAtTurnStart: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
+    {
+      id: 'builtin_invulnerable',
+      name: 'Invulnerable',
+      description: 'Immune to all damage from enemies',
+      type: 'invulnerable' as StatusEffectType,
+      iconSprite: { type: 'inline', spriteData: { shape: 'star', primaryColor: '#fcd34d', type: 'simple' } },
+      defaultDuration: 1,
+      processAtTurnStart: true,
+      stackingBehavior: 'refresh',
+      createdAt: '2024-01-01T00:00:00.000Z',
+      isBuiltIn: true,
+    },
   ];
 };
 

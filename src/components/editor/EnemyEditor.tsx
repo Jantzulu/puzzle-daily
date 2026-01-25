@@ -378,6 +378,11 @@ export const EnemyEditor: React.FC = () => {
                           onChange={(e) => updateEnemy({ hasMeleePriority: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Has Melee Priority</span>
                       </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.immuneToPush || false}
+                          onChange={(e) => updateEnemy({ immuneToPush: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Immune to Push</span>
+                      </label>
                     </div>
 
                     {/* Sound Effects */}

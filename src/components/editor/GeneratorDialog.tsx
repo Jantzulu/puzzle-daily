@@ -41,6 +41,8 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
   const [difficulty, setDifficulty] = useState<DifficultyLevel>('medium');
   const [width, setWidth] = useState(8);
   const [height, setHeight] = useState(8);
+  const [widthInput, setWidthInput] = useState('8');
+  const [heightInput, setHeightInput] = useState('8');
   const [maxCharacters, setMaxCharacters] = useState(3);
   const [selectedCharacters, setSelectedCharacters] = useState<string[]>(
     availableCharacters.slice(0, 1).map(c => c.id)
@@ -63,8 +65,14 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
   const applyDifficultyPreset = useCallback((level: DifficultyLevel) => {
     setDifficulty(level);
     const preset = getDifficultyPreset(level);
-    if (preset.width) setWidth(preset.width);
-    if (preset.height) setHeight(preset.height);
+    if (preset.width) {
+      setWidth(preset.width);
+      setWidthInput(String(preset.width));
+    }
+    if (preset.height) {
+      setHeight(preset.height);
+      setHeightInput(String(preset.height));
+    }
     if (preset.maxCharacters) setMaxCharacters(preset.maxCharacters);
     setEnableVoidTiles(preset.enableVoidTiles ?? false);
   }, []);
@@ -248,16 +256,19 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                min={4}
-                max={20}
-                value={width}
-                onChange={e => {
-                  const val = parseInt(e.target.value) || 4;
-                  setWidth(Math.max(4, Math.min(20, val)));
+                value={widthInput}
+                onChange={e => setWidthInput(e.target.value)}
+                onBlur={() => {
+                  const val = parseInt(widthInput, 10);
+                  if (!isNaN(val) && val >= 4 && val <= 20) {
+                    setWidth(val);
+                    setWidthInput(String(val));
+                  } else {
+                    setWidthInput(String(width));
+                  }
                 }}
-                onBlur={e => {
-                  const val = parseInt(e.target.value) || 4;
-                  setWidth(Math.max(4, Math.min(20, val)));
+                onKeyDown={e => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                 }}
                 disabled={isGenerating}
                 className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded text-parchment-100
@@ -270,16 +281,19 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
-                min={4}
-                max={20}
-                value={height}
-                onChange={e => {
-                  const val = parseInt(e.target.value) || 4;
-                  setHeight(Math.max(4, Math.min(20, val)));
+                value={heightInput}
+                onChange={e => setHeightInput(e.target.value)}
+                onBlur={() => {
+                  const val = parseInt(heightInput, 10);
+                  if (!isNaN(val) && val >= 4 && val <= 20) {
+                    setHeight(val);
+                    setHeightInput(String(val));
+                  } else {
+                    setHeightInput(String(height));
+                  }
                 }}
-                onBlur={e => {
-                  const val = parseInt(e.target.value) || 4;
-                  setHeight(Math.max(4, Math.min(20, val)));
+                onKeyDown={e => {
+                  if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
                 }}
                 disabled={isGenerating}
                 className="w-full px-3 py-2 bg-stone-700 border border-stone-600 rounded text-parchment-100

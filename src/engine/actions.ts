@@ -2983,6 +2983,12 @@ function executePushSpell(
       const enemyTileY = Math.floor(enemy.y);
       console.log(`[PUSH SPELL] Comparing enemy ${enemy.enemyId} at tile (${enemyTileX}, ${enemyTileY}) vs check (${checkX}, ${checkY})`);
       if (enemyTileX === checkX && enemyTileY === checkY) {
+        // Check if enemy is immune to push
+        const enemyData = getEnemy(enemy.enemyId);
+        if (enemyData?.immuneToPush) {
+          console.log('[PUSH SPELL] Enemy is immune to push, skipping');
+          continue;
+        }
         console.log('[PUSH SPELL] Found enemy to push!');
         entitiesToPush.push({ entity: enemy, x: enemy.x, y: enemy.y, isEnemy: true });
       }
@@ -2996,6 +3002,12 @@ function executePushSpell(
       const charTileY = Math.floor(char.y);
       console.log(`[PUSH SPELL] Comparing character ${char.characterId} at tile (${charTileX}, ${charTileY}) vs check (${checkX}, ${checkY})`);
       if (charTileX === checkX && charTileY === checkY) {
+        // Check if character is immune to push
+        const charData = getCharacter(char.characterId);
+        if (charData?.immuneToPush) {
+          console.log('[PUSH SPELL] Character is immune to push, skipping');
+          continue;
+        }
         console.log('[PUSH SPELL] Found character to push!');
         entitiesToPush.push({ entity: char, x: char.x, y: char.y, isEnemy: false });
       }

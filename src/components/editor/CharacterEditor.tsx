@@ -444,6 +444,15 @@ export const CharacterEditor: React.FC = () => {
                         />
                         <span className="text-sm">Blocks Movement (Dead)</span>
                       </label>
+                      <label className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={editing.immuneToPush || false}
+                          onChange={(e) => updateCharacter({ immuneToPush: e.target.checked })}
+                          className="w-4 h-4"
+                        />
+                        <span className="text-sm">Immune to Push</span>
+                      </label>
                     </div>
 
                     {/* Sound Effects */}
