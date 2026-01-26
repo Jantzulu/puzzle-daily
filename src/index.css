@@ -458,7 +458,6 @@ html body.theme-font-active,
 
 /* Theme-aware dungeon panels */
 .dungeon-panel {
-  position: relative;
   background-color: var(--theme-bg-secondary, #2a2118);
   background-image: var(--asset-bg-panel, none);
   background-repeat: var(--asset-bg-panel-repeat, no-repeat);
@@ -467,34 +466,6 @@ html body.theme-font-active,
   border-color: var(--theme-border-primary, #5a4a35);
   border-radius: var(--theme-border-radius, 4px);
   border-width: var(--theme-border-width, 2px);
-}
-
-/* Metallic shine on panel borders */
-.dungeon-panel::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: var(--theme-border-width, 2px);
-  background: linear-gradient(
-    135deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(255, 255, 255, 0.25) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-attachment: fixed;
-  background-size: 100vw 100vh;
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
 }
 
 .dungeon-panel-dark {
@@ -517,38 +488,9 @@ html body.theme-font-active,
 }
 
 .dungeon-btn-primary {
-  position: relative;
   background-color: var(--theme-button-primary-bg, var(--theme-accent-primary, #8c5c37));
   border-color: var(--theme-button-primary-border, var(--theme-border-accent, #c4915c));
   border-radius: var(--theme-border-radius, 3px);
-}
-
-/* Metallic shine on primary button borders */
-.dungeon-btn-primary::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: var(--theme-border-width, 2px);
-  background: linear-gradient(
-    135deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(255, 255, 255, 0.35) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-attachment: fixed;
-  background-size: 100vw 100vh;
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
 }
 
 .dungeon-btn-primary:hover {
@@ -708,38 +650,3 @@ html body.theme-font-active,
   }
 }
 
-/* ============================================
-   METALLIC BORDER SHINE
-   Scroll-responsive shine effect on borders
-   Uses background-attachment: fixed for viewport-relative positioning
-   ============================================ */
-.metallic-border {
-  position: relative;
-}
-
-.metallic-border::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  padding: var(--theme-border-width, 2px);
-  background: linear-gradient(
-    135deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(255, 255, 255, 0.4) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-attachment: fixed;
-  background-size: 100vw 100vh;
-  -webkit-mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  -webkit-mask-composite: xor;
-  mask:
-    linear-gradient(#fff 0 0) content-box,
-    linear-gradient(#fff 0 0);
-  mask-composite: exclude;
-  pointer-events: none;
-}
