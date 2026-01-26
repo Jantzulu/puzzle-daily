@@ -636,8 +636,14 @@ html body.theme-font-active,
 @keyframes shimmer-sweep {
   0% {
     background-position: 200% center;
+    opacity: 1;
+  }
+  90% {
+    background-position: -50% center;
+    opacity: 1;
   }
   100% {
     background-position: -100% center;
+    opacity: 0;
   }
 }
