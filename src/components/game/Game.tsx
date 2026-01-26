@@ -781,8 +781,8 @@ export const Game: React.FC = () => {
               <div className="mb-4 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
-                  <span key={shimmerKey} className="shimmer-text text-base md:text-lg font-semibold text-stone-400">Quest:</span>
-                  <span key={`wc-${shimmerKey}`} className="shimmer-text text-sm md:text-base text-copper-300 font-medium">
+                  <span key={shimmerKey} className="shimmer-text text-base md:text-lg font-semibold" style={{ '--shimmer-color': 'var(--theme-text-secondary, #a8a29e)' } as React.CSSProperties}>Quest:</span>
+                  <span key={`wc-${shimmerKey}`} className="shimmer-text text-sm md:text-base font-medium" style={{ '--shimmer-color': 'var(--theme-text-heading, #fdba74)' } as React.CSSProperties}>
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
                         case 'defeat_all_enemies': {
