@@ -76,6 +76,19 @@ export const Game: React.FC = () => {
     message: '',
   });
 
+  // Shimmer animation key for Quest text - triggers on puzzle change
+  const [shimmerKey, setShimmerKey] = useState(0);
+  const prevPuzzleIdForShimmerRef = useRef<string | null>(null);
+
+  // Trigger shimmer animation when puzzle changes
+  useEffect(() => {
+    const currentPuzzleId = currentPuzzle.id;
+    if (prevPuzzleIdForShimmerRef.current !== null && prevPuzzleIdForShimmerRef.current !== currentPuzzleId) {
+      setShimmerKey(k => k + 1);
+    }
+    prevPuzzleIdForShimmerRef.current = currentPuzzleId;
+  }, [currentPuzzle.id]);
+
   // Reload saved puzzles when component mounts or when returning from editor
   useEffect(() => {
     const handleFocus = () => {
@@ -768,7 +781,17 @@ export const Game: React.FC = () => {
               <div className="mb-4 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
-                  <span className="text-base md:text-lg font-semibold text-stone-400">Quest:</span>
+                  <span
+                    key={shimmerKey}
+                    className="text-base md:text-lg font-semibold animate-shimmer-text"
+                    style={{
+                      background: 'linear-gradient(90deg, #78716c 0%, #78716c 35%, #d6d3d1 50%, #78716c 65%, #78716c 100%)',
+                      backgroundSize: '200% 100%',
+                      WebkitBackgroundClip: 'text',
+                      backgroundClip: 'text',
+                      WebkitTextFillColor: 'transparent',
+                    }}
+                  >Quest:</span>
                   <span className="text-sm md:text-base text-copper-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {

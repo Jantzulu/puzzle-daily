@@ -148,7 +148,8 @@ export default {
         'torch-glow': 'torch-glow 2s ease-in-out infinite',
         'pulse-slow': 'pulse 3s ease-in-out infinite',
         'float': 'float 3s ease-in-out infinite',
-        'fade-in-board': 'fade-in-board 0.6s ease-out forwards',
+        'fade-in-board': 'fade-in-board 1.2s ease-out forwards',
+        'shimmer-text': 'shimmer-text 1.2s ease-out forwards',
       },
       keyframes: {
         flicker: {
@@ -171,6 +172,14 @@ export default {
         'fade-in-board': {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
+        },
+        'shimmer-text': {
+          '0%': {
+            backgroundPosition: '-200% center',
+          },
+          '100%': {
+            backgroundPosition: '200% center',
+          },
         },
       },
       // Border radius for pixelated feel
