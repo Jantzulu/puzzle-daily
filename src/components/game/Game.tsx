@@ -1274,7 +1274,7 @@ export const Game: React.FC = () => {
 
             {/* Character Selector - below puzzle (visible during setup, running, defeat, and test mode) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mt-3 w-full max-w-md">
+              <div className="lg:mt-3 w-full max-w-md">
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
                   selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
