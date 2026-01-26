@@ -55,7 +55,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
   return (
     <div className="dungeon-panel p-4">
       {/* Header row */}
-      <div className="flex items-center justify-between mb-2 lg:mb-3">
+      <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title + Test button (desktop only) */}
         <div className="flex items-center gap-2">
           <HelpButton sectionId="enemies" />
@@ -81,18 +81,11 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
             </button>
           )}
         </div>
-        {/* Right: Count indicator */}
-        <span className="text-sm text-stone-400">
-          {livingEnemies.length} remaining
-        </span>
-      </div>
-
-      {/* Test button - centered row on mobile only */}
-      {showTestButton && onTest && (
-        <div className="flex lg:hidden justify-center mb-3">
+        {/* Center: Test button (mobile only - absolutely positioned) */}
+        {showTestButton && onTest && (
           <button
             onClick={onTest}
-            className={`px-3 py-1.5 text-xs transition-colors flex items-center gap-1 ${
+            className={`lg:hidden absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
               themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
             } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
             style={{
@@ -107,8 +100,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
             </svg>
             Test
           </button>
-        </div>
-      )}
+        )}
+        {/* Right: Count indicator */}
+        <span className="text-sm text-stone-400">
+          {livingEnemies.length} remaining
+        </span>
+      </div>
 
       <div className="flex flex-wrap gap-2 justify-center">
         {uniqueEnemies.map(({ enemy, count }) => {
