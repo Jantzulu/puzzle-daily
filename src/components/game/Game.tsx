@@ -1276,10 +1276,10 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="w-full lg:w-80 space-y-4 md:space-y-6">
-            {/* Puzzle Selector */}
+          <div className="w-full lg:w-80 space-y-4 md:space-y-6 flex flex-col">
+            {/* Puzzle Selector - moves to bottom on mobile */}
             {allPuzzles.length > 0 && (
-              <div className="dungeon-panel p-4">
+              <div className="dungeon-panel p-4 order-last lg:order-first">
                 <label className="block text-sm font-bold mb-2 text-copper-400">
                   Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
                 </label>
