@@ -602,3 +602,42 @@ html body.theme-font-active,
   border-color: var(--theme-button-primary-border, #c4915c) !important;
   color: var(--theme-text-primary, #f5f0e6) !important;
 }
+
+/* ============================================
+   SHIMMER ANIMATION
+   Sweeping metallic highlight that preserves text colors
+   ============================================ */
+.shimmer-text {
+  position: relative;
+  display: inline-block;
+}
+
+.shimmer-text::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0) 35%,
+    rgba(255, 255, 255, 0.4) 50%,
+    rgba(255, 255, 255, 0) 65%,
+    transparent 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer-sweep 1.2s ease-out forwards;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+}
+
+@keyframes shimmer-sweep {
+  0% {
+    background-position: 200% center;
+  }
+  100% {
+    background-position: -100% center;
+  }
+}

@@ -783,7 +783,7 @@ export const Game: React.FC = () => {
                   <HelpButton sectionId="game_general" />
                   <span
                     key={shimmerKey}
-                    className="animate-shimmer-sweep flex items-center gap-2 flex-wrap justify-center"
+                    className="shimmer-text flex items-center gap-2 flex-wrap justify-center"
                   >
                     <span className="text-base md:text-lg font-semibold text-stone-400">Quest:</span>
                     <span className="text-sm md:text-base text-copper-300 font-medium">
