@@ -149,7 +149,7 @@ export default {
         'pulse-slow': 'pulse 3s ease-in-out infinite',
         'float': 'float 3s ease-in-out infinite',
         'fade-in-board': 'fade-in-board 1.2s ease-out forwards',
-        'shimmer-text': 'shimmer-text 1.2s ease-out forwards',
+        'shimmer-sweep': 'shimmer-sweep 1.2s ease-out forwards',
       },
       keyframes: {
         flicker: {
@@ -173,12 +173,12 @@ export default {
           '0%': { opacity: '0' },
           '100%': { opacity: '1' },
         },
-        'shimmer-text': {
-          '0%': {
-            backgroundPosition: '-200% center',
+        'shimmer-sweep': {
+          '0%, 100%': {
+            filter: 'brightness(1)',
           },
-          '100%': {
-            backgroundPosition: '200% center',
+          '50%': {
+            filter: 'brightness(1.5)',
           },
         },
       },

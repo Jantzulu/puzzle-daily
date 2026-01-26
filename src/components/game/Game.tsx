@@ -783,16 +783,10 @@ export const Game: React.FC = () => {
                   <HelpButton sectionId="game_general" />
                   <span
                     key={shimmerKey}
-                    className="text-base md:text-lg font-semibold animate-shimmer-text"
-                    style={{
-                      background: 'linear-gradient(90deg, #78716c 0%, #78716c 35%, #d6d3d1 50%, #78716c 65%, #78716c 100%)',
-                      backgroundSize: '200% 100%',
-                      WebkitBackgroundClip: 'text',
-                      backgroundClip: 'text',
-                      WebkitTextFillColor: 'transparent',
-                    }}
-                  >Quest:</span>
-                  <span className="text-sm md:text-base text-copper-300 font-medium">
+                    className="animate-shimmer-sweep flex items-center gap-2 flex-wrap justify-center"
+                  >
+                    <span className="text-base md:text-lg font-semibold text-stone-400">Quest:</span>
+                    <span className="text-sm md:text-base text-copper-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
                         case 'defeat_all_enemies': {
@@ -837,6 +831,7 @@ export const Game: React.FC = () => {
                           return wc.type;
                       }
                     }).join(' & ')}
+                    </span>
                   </span>
                 </div>
 
