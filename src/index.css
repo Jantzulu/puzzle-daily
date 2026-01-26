@@ -605,31 +605,47 @@ html body.theme-font-active,
 
 /* ============================================
    SHIMMER ANIMATION
-   Sweeping metallic highlight clipped to text only
-   Pass --shimmer-color via inline style to set the base text color
+   Sweeping metallic highlight across entire container
+   Children retain their individual colors
    ============================================ */
-.shimmer-text {
-  --shimmer-color: currentColor;
+.shimmer-container {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.shimmer-container::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: linear-gradient(
     90deg,
-    var(--shimmer-color) 0%,
-    var(--shimmer-color) 40%,
-    #fff 50%,
-    var(--shimmer-color) 60%,
-    var(--shimmer-color) 100%
+    transparent 0%,
+    transparent 40%,
+    rgba(255, 255, 255, 0.4) 50%,
+    transparent 60%,
+    transparent 100%
   );
   background-size: 250% 100%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
   animation: shimmer-sweep 1.2s ease-out forwards;
+  pointer-events: none;
+  mix-blend-mode: overlay;
 }
 
 @keyframes shimmer-sweep {
   0% {
     background-position: 200% center;
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
   }
   100% {
     background-position: -50% center;
+    opacity: 0;
   }
 }
