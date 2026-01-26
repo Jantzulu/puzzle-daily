@@ -148,6 +148,7 @@ export default {
         'torch-glow': 'torch-glow 2s ease-in-out infinite',
         'pulse-slow': 'pulse 3s ease-in-out infinite',
         'float': 'float 3s ease-in-out infinite',
+        'fade-in-board': 'fade-in-board 0.6s ease-out forwards',
       },
       keyframes: {
         flicker: {
@@ -166,6 +167,10 @@ export default {
         float: {
           '0%, 100%': { transform: 'translateY(0)' },
           '50%': { transform: 'translateY(-4px)' },
+        },
+        'fade-in-board': {
+          '0%': { opacity: '0' },
+          '100%': { opacity: '1' },
         },
       },
       // Border radius for pixelated feel

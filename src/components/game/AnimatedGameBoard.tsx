@@ -506,6 +506,18 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Track tile activations (e.g., teleport tile effects)
   const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
 
+  // Fade-in animation when puzzle changes
+  const [fadeKey, setFadeKey] = useState(0);
+  const prevPuzzleIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    const currentPuzzleId = gameState.puzzle.id;
+    if (prevPuzzleIdRef.current !== null && prevPuzzleIdRef.current !== currentPuzzleId) {
+      // Puzzle changed - trigger fade-in by incrementing key
+      setFadeKey(k => k + 1);
+    }
+    prevPuzzleIdRef.current = currentPuzzleId;
+  }, [gameState.puzzle.id]);
+
   // Force re-render when images finish loading
   const [, forceUpdate] = useState(0);
   useEffect(() => {
@@ -1209,6 +1221,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   return (
     <div
+      key={fadeKey}
+      className="animate-fade-in-board"
       style={{
         width: scaledWidth,
         height: scaledHeight,
