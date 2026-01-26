@@ -334,6 +334,31 @@ function App() {
     return unsubscribe;
   }, []);
 
+  // Track scroll position for metallic border shine effect
+  useEffect(() => {
+    const updateScrollPosition = () => {
+      // Normalize scroll to 0-1 range based on page height
+      const scrollY = window.scrollY;
+      const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
+      const scrollPercent = maxScroll > 0 ? scrollY / maxScroll : 0;
+
+      // Update CSS custom property
+      document.documentElement.style.setProperty('--scroll-percent', scrollPercent.toString());
+    };
+
+    // Initial update
+    updateScrollPosition();
+
+    // Listen to scroll events with passive flag for performance
+    window.addEventListener('scroll', updateScrollPosition, { passive: true });
+    window.addEventListener('resize', updateScrollPosition, { passive: true });
+
+    return () => {
+      window.removeEventListener('scroll', updateScrollPosition);
+      window.removeEventListener('resize', updateScrollPosition);
+    };
+  }, []);
+
   return (
     <BrowserRouter>
       <div className="min-h-screen theme-root">

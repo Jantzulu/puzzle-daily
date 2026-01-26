@@ -650,3 +650,43 @@ html body.theme-font-active,
   }
 }
 
+/* ============================================
+   METALLIC BORDER SHINE (JavaScript-driven)
+   Uses --scroll-percent CSS variable set by App.tsx
+   Creates a moving highlight on borders based on scroll position
+   ============================================ */
+:root {
+  --scroll-percent: 0;
+}
+
+/* Metallic shine on primary buttons using box-shadow */
+.dungeon-btn-primary {
+  --shine-offset: calc(var(--scroll-percent) * 200% - 100%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,0.2),
+    inset -1px -1px 0 rgba(0,0,0,0.3),
+    0 0 8px rgba(212, 165, 116, 0.2),
+    0 2px 4px rgba(0,0,0,0.3),
+    inset var(--shine-offset) 0 20px -10px rgba(255, 255, 255, 0.15);
+}
+
+.dungeon-btn-primary:hover {
+  --shine-offset: calc(var(--scroll-percent) * 200% - 100%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,0.25),
+    inset -1px -1px 0 rgba(0,0,0,0.25),
+    0 0 15px rgba(212, 165, 116, 0.4),
+    0 2px 4px rgba(0,0,0,0.3),
+    inset var(--shine-offset) 0 25px -10px rgba(255, 255, 255, 0.25);
+}
+
+/* Metallic shine on panels */
+.dungeon-panel {
+  --shine-offset: calc(var(--scroll-percent) * 200% - 100%);
+  box-shadow:
+    inset 1px 1px 0 rgba(255,255,255,0.05),
+    inset -1px -1px 0 rgba(0,0,0,0.3),
+    0 4px 8px rgba(0,0,0,0.4),
+    inset var(--shine-offset) 0 30px -15px rgba(255, 255, 255, 0.08);
+}
+
