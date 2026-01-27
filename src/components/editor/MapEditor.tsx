@@ -311,7 +311,7 @@ const createDefaultEditorState = (): EditorState => ({
   maxCharacters: 3,
   maxTurns: 100,
   lives: 3,
-  availableCharacters: ['knight_01'],
+  availableCharacters: [],
   winConditions: [{ type: 'defeat_all_enemies' }],
   skinId: 'builtin_dungeon', // Default skin
 
@@ -1281,7 +1281,7 @@ export const MapEditor: React.FC = () => {
       maxCharacters: 3,
       maxTurns: 100,
       lives: 3,
-      availableCharacters: ['knight_01'],
+      availableCharacters: [],
       winConditions: [{ type: 'defeat_all_enemies' }],
       skinId: 'builtin_dungeon',
       parCharacters: undefined,
@@ -2740,9 +2740,9 @@ export const MapEditor: React.FC = () => {
               />
             </div>
 
-            {/* Selected Characters - Shows selected available characters with sprites */}
+            {/* Selected Heroes - Shows selected available heroes with sprites */}
             <div className="bg-stone-800 p-4 rounded" style={{ maxWidth: scaledCanvasWidth }}>
-              <h2 className="text-lg font-bold mb-3">Selected Characters</h2>
+              <h2 className="text-lg font-bold mb-3">Selected Heroes</h2>
               {state.availableCharacters.length === 0 ? (
                 <p className="text-sm text-stone-400">No characters selected</p>
               ) : (
@@ -2851,7 +2851,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    Chars
+                    Heroes
                   </button>
                 </div>
               </div>
@@ -3199,11 +3199,11 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
-              {/* Available Characters - Shows when Characters tool is selected */}
+              {/* Available Heroes - Shows when Heroes tool is selected */}
               {state.selectedTool === 'characters' && (
                 <div className="bg-stone-800 p-4 rounded">
-                  <h2 className="text-lg font-bold mb-3">Available Characters</h2>
-                  <p className="text-xs text-stone-400 mb-3">Select which characters players can use</p>
+                  <h2 className="text-lg font-bold mb-3">Available Heroes</h2>
+                  <p className="text-xs text-stone-400 mb-3">Select which heroes players can use</p>
                   <FolderDropdown
                     category="characters"
                     selectedFolderId={characterFolderId}
@@ -3224,12 +3224,22 @@ export const MapEditor: React.FC = () => {
                                 type="checkbox"
                                 checked={state.availableCharacters.includes(char.id)}
                                 onChange={(e) => {
-                                  setState(prev => ({
-                                    ...prev,
-                                    availableCharacters: e.target.checked
+                                  setState(prev => {
+                                    const newAvailable = e.target.checked
                                       ? [...prev.availableCharacters, char.id]
-                                      : prev.availableCharacters.filter(id => id !== char.id)
-                                  }));
+                                      : prev.availableCharacters.filter(id => id !== char.id);
+
+                                    // Auto-increase maxCharacters if selecting more heroes (up to cap of 5)
+                                    const newMaxCharacters = e.target.checked && newAvailable.length > prev.maxCharacters
+                                      ? Math.min(newAvailable.length, 5)
+                                      : prev.maxCharacters;
+
+                                    return {
+                                      ...prev,
+                                      availableCharacters: newAvailable,
+                                      maxCharacters: newMaxCharacters,
+                                    };
+                                  });
                                 }}
                                 className="w-4 h-4"
                               />
