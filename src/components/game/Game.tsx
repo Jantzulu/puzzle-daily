@@ -1291,7 +1291,7 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Sidebar */}
-          <div className="w-full lg:w-80 space-y-4 md:space-y-6 flex flex-col">
+          <div className="w-full lg:w-80 flex flex-col gap-4 md:gap-6">
             {/* Puzzle Selector - moves to bottom on mobile */}
             {allPuzzles.length > 0 && (
               <div className="dungeon-panel p-4 order-last lg:order-first">
@@ -1327,14 +1327,12 @@ export const Game: React.FC = () => {
 
 
             {/* Enemies Display */}
-            <div className="-mt-4 lg:mt-0">
-              <EnemyDisplay
-                enemies={gameState.puzzle.enemies}
-                onTest={handleTestEnemiesWithScroll}
-                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-                themeAssets={themeAssets}
-              />
-            </div>
+            <EnemyDisplay
+              enemies={gameState.puzzle.enemies}
+              onTest={handleTestEnemiesWithScroll}
+              showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+              themeAssets={themeAssets}
+            />
 
             {/* Items Display - only shown if puzzle has items */}
             <ItemsDisplay puzzle={gameState.puzzle} />
