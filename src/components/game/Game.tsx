@@ -762,6 +762,10 @@ export const Game: React.FC = () => {
     return hearts;
   };
 
+  // Determine if panels should be dimmed (during play or test mode)
+  const isPanelsDimmed = gameState.gameStatus === 'running' || testMode !== 'none';
+  const dimmedPanelClass = isPanelsDimmed ? 'opacity-50 pointer-events-none' : '';
+
   return (
     <div className="min-h-screen theme-root text-parchment-200 p-4 md:p-8 relative">
       {/* Underground cave background effect - positioned below nav bar */}
@@ -1130,7 +1134,7 @@ export const Game: React.FC = () => {
 
             {/* Control Panel - below puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+              <div className={`mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark transition-opacity ${dimmedPanelClass}`}>
                 <div className="relative flex items-center justify-between">
                   {/* Left: Lives */}
                   <div className="flex items-center gap-1">
@@ -1274,7 +1278,7 @@ export const Game: React.FC = () => {
 
             {/* Character Selector - below puzzle (visible during setup, running, defeat, and test mode) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mt-4 lg:mt-3 w-full max-w-md">
+              <div className={`mt-4 lg:mt-3 w-full max-w-md transition-opacity ${dimmedPanelClass}`}>
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
                   selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
@@ -1294,7 +1298,7 @@ export const Game: React.FC = () => {
           <div className="w-full lg:w-80 flex flex-col gap-4 md:gap-6">
             {/* Puzzle Selector - moves to bottom on mobile */}
             {allPuzzles.length > 0 && (
-              <div className="dungeon-panel p-4 order-last lg:order-first">
+              <div className={`dungeon-panel p-4 order-last lg:order-first transition-opacity ${dimmedPanelClass}`}>
                 <label className="block text-sm font-bold mb-2 text-copper-400">
                   Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
                 </label>
@@ -1327,21 +1331,29 @@ export const Game: React.FC = () => {
 
 
             {/* Enemies Display */}
-            <EnemyDisplay
-              enemies={gameState.puzzle.enemies}
-              onTest={handleTestEnemiesWithScroll}
-              showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-              themeAssets={themeAssets}
-            />
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <EnemyDisplay
+                enemies={gameState.puzzle.enemies}
+                onTest={handleTestEnemiesWithScroll}
+                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+                themeAssets={themeAssets}
+              />
+            </div>
 
             {/* Items Display - only shown if puzzle has items */}
-            <ItemsDisplay puzzle={gameState.puzzle} />
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <ItemsDisplay puzzle={gameState.puzzle} />
+            </div>
 
             {/* Status Effects Display - only shown if puzzle has status effects */}
-            <StatusEffectsDisplay puzzle={gameState.puzzle} />
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <StatusEffectsDisplay puzzle={gameState.puzzle} />
+            </div>
 
             {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
-            <SpecialTilesDisplay puzzle={gameState.puzzle} />
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <SpecialTilesDisplay puzzle={gameState.puzzle} />
+            </div>
           </div>
         </div>
       </div>
