@@ -3217,12 +3217,16 @@ export const MapEditor: React.FC = () => {
                     <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
                       {filteredCharacters.map(char => {
                         const spells = getAllSpells(char.behavior);
+                        const isSelected = state.availableCharacters.includes(char.id);
+                        const isAtCap = state.availableCharacters.length >= 5 && !isSelected;
+
                         return (
                           <ActionTooltip key={char.id} actions={char.behavior}>
-                            <label className="flex items-center gap-2 p-2 bg-stone-700 rounded hover:bg-stone-600 cursor-pointer">
+                            <label className={`flex items-center gap-2 p-2 bg-stone-700 rounded ${isAtCap ? 'opacity-50 cursor-not-allowed' : 'hover:bg-stone-600 cursor-pointer'}`}>
                               <input
                                 type="checkbox"
-                                checked={state.availableCharacters.includes(char.id)}
+                                checked={isSelected}
+                                disabled={isAtCap}
                                 onChange={(e) => {
                                   setState(prev => {
                                     const newAvailable = e.target.checked
