@@ -382,13 +382,9 @@ function processDamageBehavior(
   }
 
   const updatedChar = { ...character };
-  updatedChar.currentHealth -= damage;
 
-  if (updatedChar.currentHealth <= 0) {
-    // Execute death triggers before marking as dead
-    executeDeathTriggers(updatedChar, gameState);
-    updatedChar.dead = true;
-  }
+  // Use centralized damage function to respect shields
+  applyDamageToEntity(updatedChar, damage, gameState);
 
   return updatedChar;
 }
@@ -1002,87 +998,29 @@ function moveCharacter(
 
         if (enemyHasPriority) {
           // Enemy attacks first (enemy has priority)
-          updatedChar.currentHealth -= enemyContactDamage;
-          if (updatedChar.currentHealth <= 0) {
-            executeDeathTriggers(updatedChar, gameState);
-            updatedChar.dead = true;
-          }
+          // Use centralized damage to respect shields - enemy is source for deflect
+          applyDamageToEntity(updatedChar, enemyContactDamage, gameState, enemyAtTarget);
 
           // Character counterattacks ONLY if still alive
           if (!updatedChar.dead) {
-            enemyAtTarget.currentHealth -= charContactDamage;
-            if (enemyAtTarget.currentHealth <= 0) {
-              // Create a PlacedCharacter-like object for death triggers
-              const enemyForTriggers: PlacedCharacter = {
-                characterId: enemyAtTarget.enemyId,
-                x: enemyAtTarget.x,
-                y: enemyAtTarget.y,
-                facing: enemyAtTarget.facing || 'right',
-                currentHealth: enemyAtTarget.currentHealth,
-                actionIndex: enemyAtTarget.actionIndex || 0,
-                active: enemyAtTarget.active || true,
-                dead: false,
-                parallelTrackers: enemyAtTarget.parallelTrackers,
-                statusEffects: enemyAtTarget.statusEffects,
-                spellCooldowns: enemyAtTarget.spellCooldowns,
-              };
-              executeDeathTriggers(enemyForTriggers, gameState);
-              enemyAtTarget.dead = true;
-            }
+            // Use centralized damage to respect shields - character is source for deflect
+            applyDamageToEntity(enemyAtTarget, charContactDamage, gameState, updatedChar);
           }
         } else {
           // Character attacks first (default - player initiative)
-          enemyAtTarget.currentHealth -= charContactDamage;
-          if (enemyAtTarget.currentHealth <= 0) {
-            // Create a PlacedCharacter-like object for death triggers
-            const enemyForTriggers: PlacedCharacter = {
-              characterId: enemyAtTarget.enemyId,
-              x: enemyAtTarget.x,
-              y: enemyAtTarget.y,
-              facing: enemyAtTarget.facing || 'right',
-              currentHealth: enemyAtTarget.currentHealth,
-              actionIndex: enemyAtTarget.actionIndex || 0,
-              active: enemyAtTarget.active || true,
-              dead: false,
-              parallelTrackers: enemyAtTarget.parallelTrackers,
-              statusEffects: enemyAtTarget.statusEffects,
-              spellCooldowns: enemyAtTarget.spellCooldowns,
-            };
-            executeDeathTriggers(enemyForTriggers, gameState);
-            enemyAtTarget.dead = true;
-          }
+          // Use centralized damage to respect shields - character is source for deflect
+          applyDamageToEntity(enemyAtTarget, charContactDamage, gameState, updatedChar);
 
           // Enemy counterattacks ONLY if still alive
           if (!enemyAtTarget.dead) {
-            updatedChar.currentHealth -= enemyContactDamage;
-            if (updatedChar.currentHealth <= 0) {
-              executeDeathTriggers(updatedChar, gameState);
-              updatedChar.dead = true;
-            }
+            // Use centralized damage to respect shields - enemy is source for deflect
+            applyDamageToEntity(updatedChar, enemyContactDamage, gameState, enemyAtTarget);
           }
         }
       } else if (charData) {
         // Fallback: just character data available (shouldn't normally happen)
         const charContactDamage = charData.contactDamage ?? 0;
-        enemyAtTarget.currentHealth -= charContactDamage;
-        if (enemyAtTarget.currentHealth <= 0) {
-          // Create a PlacedCharacter-like object for death triggers
-          const enemyForTriggers: PlacedCharacter = {
-            characterId: enemyAtTarget.enemyId,
-            x: enemyAtTarget.x,
-            y: enemyAtTarget.y,
-            facing: enemyAtTarget.facing || 'right',
-            currentHealth: enemyAtTarget.currentHealth,
-            actionIndex: enemyAtTarget.actionIndex || 0,
-            active: enemyAtTarget.active || true,
-            dead: false,
-            parallelTrackers: enemyAtTarget.parallelTrackers,
-            statusEffects: enemyAtTarget.statusEffects,
-            spellCooldowns: enemyAtTarget.spellCooldowns,
-          };
-          executeDeathTriggers(enemyForTriggers, gameState);
-          enemyAtTarget.dead = true;
-        }
+        applyDamageToEntity(enemyAtTarget, charContactDamage, gameState, updatedChar);
       }
 
       // Only move into space if enemy is now dead
@@ -1236,25 +1174,8 @@ function attackInDirection(
     );
 
     if (enemy) {
-      enemy.currentHealth -= charData.attackDamage;
-      if (enemy.currentHealth <= 0) {
-        // Create a PlacedCharacter-like object for death triggers
-        const enemyForTriggers: PlacedCharacter = {
-          characterId: enemy.enemyId,
-          x: enemy.x,
-          y: enemy.y,
-          facing: enemy.facing || 'right',
-          currentHealth: enemy.currentHealth,
-          actionIndex: enemy.actionIndex || 0,
-          active: enemy.active || true,
-          dead: false,
-          parallelTrackers: enemy.parallelTrackers,
-          statusEffects: enemy.statusEffects,
-          spellCooldowns: enemy.spellCooldowns,
-        };
-        executeDeathTriggers(enemyForTriggers, gameState);
-        enemy.dead = true;
-      }
+      // Use centralized damage to respect shields - character is source for deflect
+      applyDamageToEntity(enemy, charData.attackDamage, gameState, character);
       // Ranged attacks hit first enemy and stop
       break;
     }
@@ -2336,9 +2257,11 @@ function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
- * Helper to apply damage and handle sleep wake-up and shield absorption
+ * Helper to apply damage and handle sleep wake-up and shield absorption.
+ * This is the centralized damage function - ALL damage should go through here
+ * to ensure shields, invulnerability, and deflect are properly checked.
  */
-function applyDamageToEntity(
+export function applyDamageToEntity(
   target: PlacedCharacter | PlacedEnemy,
   damage: number,
   gameState: GameState,
@@ -2424,9 +2347,10 @@ function applyDamageToEntity(
 }
 
 /**
- * Apply damage without checking deflect (used for reflected damage to prevent infinite loops)
+ * Apply damage without checking deflect (used for reflected damage to prevent infinite loops).
+ * Still checks shields and invulnerability.
  */
-function applyDamageToEntityNoDeflect(
+export function applyDamageToEntityNoDeflect(
   target: PlacedCharacter | PlacedEnemy,
   damage: number,
   gameState: GameState
@@ -2584,26 +2508,8 @@ function applyCollectibleEffect(
       break;
 
     case 'damage':
-      entity.currentHealth -= effect.amount ?? 0;
-      wakeFromSleep(entity);
-      if (entity.currentHealth <= 0) {
-        // Create a PlacedCharacter-like object for death triggers
-        const entityForTriggers: PlacedCharacter = {
-          characterId: (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId,
-          x: entity.x,
-          y: entity.y,
-          facing: entity.facing || 'right',
-          currentHealth: entity.currentHealth,
-          actionIndex: (entity as PlacedCharacter).actionIndex || (entity as PlacedEnemy).actionIndex || 0,
-          active: (entity as PlacedCharacter).active ?? (entity as PlacedEnemy).active ?? true,
-          dead: false,
-          parallelTrackers: entity.parallelTrackers,
-          statusEffects: entity.statusEffects,
-          spellCooldowns: entity.spellCooldowns,
-        };
-        executeDeathTriggers(entityForTriggers, gameState);
-        entity.dead = true;
-      }
+      // Use centralized damage to respect shields (no source for trigger damage)
+      applyDamageToEntityNoDeflect(entity, effect.amount ?? 0, gameState);
       break;
   }
 }
@@ -3113,17 +3019,9 @@ function executePushSpell(
         spawnParticle(finalX, finalY, spell.sprites.damageEffect, 400, gameState);
       }
 
-      // Apply damage if spell has damage
+      // Apply damage if spell has damage - use centralized damage for shields
       if (spell.damage && spell.damage > 0) {
-        target.currentHealth -= spell.damage;
-        if (target.currentHealth <= 0) {
-          target.currentHealth = 0;
-          target.dead = true;
-        }
-        // Wake from sleep if damaged
-        if (target.statusEffects) {
-          wakeFromSleep(target);
-        }
+        applyDamageToEntity(target, spell.damage, gameState, caster);
       }
     }
   }

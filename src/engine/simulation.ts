@@ -2,7 +2,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
@@ -27,7 +27,8 @@ function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
- * Apply damage with deflect checking for projectiles
+ * Apply damage with deflect checking for projectiles.
+ * Uses centralized damage function to respect shields.
  * Returns true if damage was deflected (and applied to source instead) OR if target is invulnerable
  */
 function applyProjectileDamageWithDeflect(
@@ -54,13 +55,11 @@ function applyProjectileDamageWithDeflect(
     }
 
     if (sourceEntity) {
-      // Apply damage to source (without deflect check to prevent loops)
-      sourceEntity.currentHealth -= damage;
-      wakeFromSleep(sourceEntity);
+      // Apply damage to source using centralized function (no deflect to prevent loops)
+      applyDamageToEntityNoDeflect(sourceEntity, damage, gameState);
 
-      if (sourceEntity.currentHealth <= 0) {
-        markEntityAsDead(sourceEntity, gameState);
-        // Handle death drop
+      // Handle death drop if entity died
+      if (sourceEntity.dead) {
         handleEntityDeathDrop(sourceEntity, 'enemyId' in sourceEntity, gameState);
       }
 
@@ -376,14 +375,11 @@ function processEntityStatusEffects(
       case StatusEffectType.POISON:
       case StatusEffectType.BURN:
       case StatusEffectType.BLEED:
-        // Damage over time
+        // Damage over time - use centralized damage to respect shields
         const damage = effect.value ?? effectAsset?.defaultValue ?? 1;
         const stacks = effect.currentStacks ?? 1;
-        updatedEntity.currentHealth -= damage * stacks;
-
-        if (updatedEntity.currentHealth <= 0) {
-          markEntityAsDead(updatedEntity, gameState);
-        }
+        // DOT effects have no source, so use NoDeflect version
+        applyDamageToEntityNoDeflect(updatedEntity, damage * stacks, gameState);
         break;
 
       case StatusEffectType.REGEN:
@@ -2200,15 +2196,11 @@ export function updateProjectiles(gameState: GameState): void {
               );
 
               if (!wasDeflected) {
-                // Only apply damage if not deflected
-                hitEnemy.currentHealth -= damage;
+                // Only apply damage if not deflected - use centralized damage for shields
+                applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
 
-                // Wake from sleep if sleeping
-                wakeFromSleep(hitEnemy);
-
-                if (hitEnemy.currentHealth <= 0) {
-                  markEntityAsDead(hitEnemy, gameState);
-                  // Handle death drop
+                // Handle death drop if died
+                if (hitEnemy.dead) {
                   handleEntityDeathDrop(hitEnemy, true, gameState);
                 }
               }
@@ -2352,15 +2344,11 @@ export function updateProjectiles(gameState: GameState): void {
               );
 
               if (!wasDeflected) {
-                // Only apply damage if not deflected
-                hitCharacter.currentHealth -= damage;
+                // Only apply damage if not deflected - use centralized damage for shields
+                applyDamageToEntityNoDeflect(hitCharacter, damage, gameState);
 
-                // Wake from sleep if sleeping
-                wakeFromSleep(hitCharacter);
-
-                if (hitCharacter.currentHealth <= 0) {
-                  markEntityAsDead(hitCharacter, gameState);
-                  // Handle death drop
+                // Handle death drop if died
+                if (hitCharacter.dead) {
                   handleEntityDeathDrop(hitCharacter, false, gameState);
                 }
               }
@@ -2521,10 +2509,9 @@ function updateProjectilesHeadless(gameState: GameState): void {
               const wasDeflected = applyProjectileDamageWithDeflect(
                 enemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
               if (!wasDeflected) {
-                enemy.currentHealth -= damage;
-                wakeFromSleep(enemy);
-                if (enemy.currentHealth <= 0) {
-                  markEntityAsDead(enemy, gameState);
+                // Use centralized damage for shields
+                applyDamageToEntityNoDeflect(enemy, damage, gameState);
+                if (enemy.dead) {
                   handleEntityDeathDrop(enemy, true, gameState);
                 }
               }
@@ -2544,10 +2531,9 @@ function updateProjectilesHeadless(gameState: GameState): void {
               const wasDeflected = applyProjectileDamageWithDeflect(
                 char, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
               if (!wasDeflected) {
-                char.currentHealth -= damage;
-                wakeFromSleep(char);
-                if (char.currentHealth <= 0) {
-                  markEntityAsDead(char, gameState);
+                // Use centralized damage for shields
+                applyDamageToEntityNoDeflect(char, damage, gameState);
+                if (char.dead) {
                   handleEntityDeathDrop(char, false, gameState);
                 }
               }
@@ -2712,10 +2698,9 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 const wasDeflected = applyProjectileDamageWithDeflect(
                   hitEnemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
                 if (!wasDeflected) {
-                  hitEnemy.currentHealth -= damage;
-                  wakeFromSleep(hitEnemy);
-                  if (hitEnemy.currentHealth <= 0) {
-                    markEntityAsDead(hitEnemy, gameState);
+                  // Use centralized damage for shields
+                  applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
+                  if (hitEnemy.dead) {
                     handleEntityDeathDrop(hitEnemy, true, gameState);
                   }
                 }
@@ -2778,10 +2763,9 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 const wasDeflected = applyProjectileDamageWithDeflect(
                   hitChar, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
                 if (!wasDeflected) {
-                  hitChar.currentHealth -= damage;
-                  wakeFromSleep(hitChar);
-                  if (hitChar.currentHealth <= 0) {
-                    markEntityAsDead(hitChar, gameState);
+                  // Use centralized damage for shields
+                  applyDamageToEntityNoDeflect(hitChar, damage, gameState);
+                  if (hitChar.dead) {
                     handleEntityDeathDrop(hitChar, false, gameState);
                   }
                 }
@@ -2930,9 +2914,9 @@ function processPersistentAreaEffects(gameState: GameState): void {
       );
 
       if (distance <= effect.radius) {
-        enemy.currentHealth -= effect.damagePerTurn;
-        if (enemy.currentHealth <= 0) {
-          markEntityAsDead(enemy, gameState);
+        // Use centralized damage for shields
+        applyDamageToEntityNoDeflect(enemy, effect.damagePerTurn, gameState);
+        if (enemy.dead) {
           handleEntityDeathDrop(enemy, true, gameState);
         }
       }

@@ -43,36 +43,16 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     <div className={`dungeon-panel p-4 ${disabled ? 'opacity-60' : ''}`}>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
-        {/* Left: Help + Title + Test button (desktop only) */}
+        {/* Left: Help + Title */}
         <div className="flex items-center gap-2">
           <HelpButton sectionId="characters" />
           <h3 className="text-lg font-bold text-purple-400">Heroes</h3>
-          {/* Test button - inline on desktop */}
-          {onTest && !disabled && (
-            <button
-              onClick={onTest}
-              className={`hidden lg:flex px-2 py-1 text-xs transition-colors items-center gap-1 ${
-                themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
-              } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
-              style={{
-                ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
-                ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
-              }}
-              title="Test your heroes without enemies for 5 turns"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              Test
-            </button>
-          )}
         </div>
-        {/* Center: Test button (mobile only - absolutely positioned) */}
+        {/* Center: Test button (centered on both mobile and desktop) */}
         {onTest && !disabled && (
           <button
             onClick={onTest}
-            className={`lg:hidden absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
+            className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
               themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
             } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
             style={{
