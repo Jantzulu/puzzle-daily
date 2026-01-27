@@ -1134,7 +1134,7 @@ export const Game: React.FC = () => {
 
             {/* Control Panel - below puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className={`mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark transition-opacity ${dimmedPanelClass}`}>
+              <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="relative flex items-center justify-between">
                   {/* Left: Lives */}
                   <div className="flex items-center gap-1">
