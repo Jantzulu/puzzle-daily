@@ -1327,12 +1327,14 @@ export const Game: React.FC = () => {
 
 
             {/* Enemies Display */}
-            <EnemyDisplay
-              enemies={gameState.puzzle.enemies}
-              onTest={handleTestEnemiesWithScroll}
-              showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-              themeAssets={themeAssets}
-            />
+            <div className="-mt-4 lg:mt-0">
+              <EnemyDisplay
+                enemies={gameState.puzzle.enemies}
+                onTest={handleTestEnemiesWithScroll}
+                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+                themeAssets={themeAssets}
+              />
+            </div>
 
             {/* Items Display - only shown if puzzle has items */}
             <ItemsDisplay puzzle={gameState.puzzle} />
