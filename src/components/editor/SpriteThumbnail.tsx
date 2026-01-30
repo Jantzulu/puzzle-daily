@@ -60,14 +60,15 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
     let animationFrameId: number | null = null;
 
-    // Helper to draw sprite frame with anchor/offset support
+    // Helper to draw sprite frame with anchor/offset/scale support
     const drawSpriteFrame = (
       img: HTMLImageElement, frameIndex: number, frameCount: number,
       frameWidth: number, frameHeight: number,
-      ax: number = 0.5, ay: number = 0.5, ox: number = 0, oy: number = 0
+      ax: number = 0.5, ay: number = 0.5, ox: number = 0, oy: number = 0,
+      sc: number = 1
     ) => {
       ctx.clearRect(0, 0, size, size);
-      const maxSize = (sprite.size || 0.6) * size;
+      const maxSize = (sprite.size || 0.6) * size * sc;
       const frameAspectRatio = frameWidth / frameHeight;
       let drawWidth = maxSize;
       let drawHeight = maxSize;
@@ -93,8 +94,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       // Determine what to render based on sprite mode
       let spriteSheet = null;
       let imageSrc: string | undefined = undefined;
-      // Anchor/offset for idle image (spritesheets have anchor built-in)
-      let imgAx = 0.5, imgAy = 0.5, imgOx = 0, imgOy = 0;
+      // Anchor/offset/scale for idle image (spritesheets have anchor+scale built-in)
+      let imgAx = 0.5, imgAy = 0.5, imgOx = 0, imgOy = 0, imgScale = 1;
 
       if (sprite.useDirectional && sprite.directionalSprites?.default) {
         // Directional mode - use default direction
@@ -108,6 +109,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         imgAy = defaultConfig.idleAnchorY ?? 0.5;
         imgOx = defaultConfig.idleOffsetX ?? 0;
         imgOy = defaultConfig.idleOffsetY ?? 0;
+        imgScale = defaultConfig.idleScale ?? 1;
       } else {
         // Simple mode
         spriteSheet = sprite.idleSpriteSheet;
@@ -119,6 +121,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         imgAy = sprite.idleAnchorY ?? 0.5;
         imgOx = sprite.idleOffsetX ?? 0;
         imgOy = sprite.idleOffsetY ?? 0;
+        imgScale = sprite.idleScale ?? 1;
       }
 
       // Resolve sprite sheet source (supports both data and URL)
@@ -126,11 +129,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
       // Priority: sprite sheet > static image > shapes
       if (spriteSheetSrc) {
-        // Anchor from spritesheet
+        // Anchor/scale from spritesheet
         const sheetAx = spriteSheet.anchorX ?? 0.5;
         const sheetAy = spriteSheet.anchorY ?? 0.5;
         const sheetOx = spriteSheet.offsetX ?? 0;
         const sheetOy = spriteSheet.offsetY ?? 0;
+        const sheetScale = spriteSheet.scale ?? 1;
 
         // Use centralized image loader with caching
         const img = loadImage(spriteSheetSrc);
@@ -155,7 +159,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               lastFrameTime = now;
             }
 
-            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy);
+            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy, sheetScale);
             animationFrameId = requestAnimationFrame(animate);
           };
 
@@ -166,7 +170,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         // Use centralized image loader with caching
         const img = loadImage(imageSrc);
         if (img && isImageReady(img)) {
-          const maxSize = (sprite.size || 0.6) * size;
+          const maxSize = (sprite.size || 0.6) * size * imgScale;
           const aspectRatio = img.width / img.height;
           let drawWidth = maxSize;
           let drawHeight = maxSize;

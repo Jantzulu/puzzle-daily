@@ -208,26 +208,30 @@ export interface DirectionalSpriteConfig {
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
   idleImageUrl?: string; // URL to idle image
   idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
-  // Anchor for idle image (spritesheets have anchor built-in)
+  // Anchor/scale for idle image (spritesheets have anchor+scale built-in)
   idleAnchorX?: number; idleAnchorY?: number; idleOffsetX?: number; idleOffsetY?: number;
+  idleScale?: number; // Per-image scale multiplier (default 1.0)
 
   // Moving state (actively moving) - for this specific direction
   movingImageData?: string; // Base64 encoded GIF for moving state
   movingImageUrl?: string; // URL to moving image
   movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
   movingAnchorX?: number; movingAnchorY?: number; movingOffsetX?: number; movingOffsetY?: number;
+  movingScale?: number;
 
   // Death state - for this specific direction
   deathImageData?: string; // Base64 encoded PNG/GIF for death state
   deathImageUrl?: string; // URL to death image
   deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
   deathAnchorX?: number; deathAnchorY?: number; deathOffsetX?: number; deathOffsetY?: number;
+  deathScale?: number;
 
   // Casting state - when casting spell while stationary
   castingImageData?: string; // Base64 encoded PNG/GIF for casting state
   castingImageUrl?: string; // URL to casting image
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
   castingAnchorX?: number; castingAnchorY?: number; castingOffsetX?: number; castingOffsetY?: number;
+  castingScale?: number;
 
   // Deprecated - for backwards compatibility
   imageData?: string; // Will be used as idleImageData if idleImageData not set
@@ -248,6 +252,7 @@ export interface SpriteSheetConfig {
   anchorY?: number; // 0=top, 0.5=center(default), 1=bottom
   offsetX?: number; // Pixel offset from anchor (positive = right)
   offsetY?: number; // Pixel offset from anchor (positive = down)
+  scale?: number; // Per-spritesheet scale multiplier (default 1.0, compounds with master size)
 }
 
 export interface CustomSprite {
@@ -266,23 +271,27 @@ export interface CustomSprite {
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
   idleImageUrl?: string; // URL to idle image (Supabase, CDN, etc.)
   idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
-  // Anchor for idle image (spritesheets have anchor built-in)
+  // Anchor/scale for idle image (spritesheets have anchor+scale built-in)
   idleAnchorX?: number; idleAnchorY?: number; idleOffsetX?: number; idleOffsetY?: number;
+  idleScale?: number;
 
   movingImageData?: string; // Base64 encoded GIF for moving state
   movingImageUrl?: string; // URL to moving image
   movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
   movingAnchorX?: number; movingAnchorY?: number; movingOffsetX?: number; movingOffsetY?: number;
+  movingScale?: number;
 
   deathImageData?: string; // Base64 encoded PNG/GIF for death state
   deathImageUrl?: string; // URL to death image
   deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
   deathAnchorX?: number; deathAnchorY?: number; deathOffsetX?: number; deathOffsetY?: number;
+  deathScale?: number;
 
   castingImageData?: string; // Base64 encoded PNG/GIF for casting state
   castingImageUrl?: string; // URL to casting image
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
   castingAnchorX?: number; castingAnchorY?: number; castingOffsetX?: number; castingOffsetY?: number;
+  castingScale?: number;
 
   // Note: Corpse appearance is handled by the final frame of the Death sprite sheet
 
