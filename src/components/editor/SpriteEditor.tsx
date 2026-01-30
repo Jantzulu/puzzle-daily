@@ -965,7 +965,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     reader.readAsDataURL(file);
   };
 
-  const handleIdleSpriteSheetConfigChange = (field: 'frameCount' | 'frameRate' | 'loop', value: number | boolean) => {
+  const handleIdleSpriteSheetConfigChange = (field: string, value: any) => {
     if (spriteMode === 'directional') {
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
@@ -996,7 +996,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     }
   };
 
-  const handleMovingSpriteSheetConfigChange = (field: 'frameCount' | 'frameRate' | 'loop', value: number | boolean) => {
+  const handleMovingSpriteSheetConfigChange = (field: string, value: any) => {
     if (spriteMode === 'directional') {
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
@@ -1398,6 +1398,69 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const hasCastingImage = spriteMode === 'directional'
     ? (sprite.directionalSprites?.[selectedDirection]?.castingImageData || sprite.directionalSprites?.[selectedDirection]?.castingImageUrl)
     : (sprite.castingImageData || sprite.castingImageUrl);
+
+  // Helper to render compact anchor point grid + offset sliders
+  const renderAnchorControls = (
+    anchorX: number = 0.5,
+    anchorY: number = 0.5,
+    offsetX: number = 0,
+    offsetY: number = 0,
+    onAnchorChange: (ax: number, ay: number) => void,
+    onOffsetChange: (field: 'offsetX' | 'offsetY', val: number) => void,
+  ) => {
+    const anchorPoints: { label: string; x: number; y: number }[] = [
+      { label: 'TL', x: 0, y: 0 }, { label: 'T', x: 0.5, y: 0 }, { label: 'TR', x: 1, y: 0 },
+      { label: 'L', x: 0, y: 0.5 }, { label: 'C', x: 0.5, y: 0.5 }, { label: 'R', x: 1, y: 0.5 },
+      { label: 'BL', x: 0, y: 1 }, { label: 'B', x: 0.5, y: 1 }, { label: 'BR', x: 1, y: 1 },
+    ];
+    return (
+      <div className="mt-2 p-2 bg-stone-800 rounded border border-stone-600">
+        <div className="text-[10px] text-stone-400 mb-1 font-bold">Anchor Point</div>
+        <div className="grid grid-cols-3 gap-0.5 w-fit mb-2">
+          {anchorPoints.map((pt) => (
+            <button
+              key={pt.label}
+              type="button"
+              onClick={() => onAnchorChange(pt.x, pt.y)}
+              className={`w-6 h-6 text-[9px] rounded border ${
+                anchorX === pt.x && anchorY === pt.y
+                  ? 'bg-arcane-600 border-arcane-400 text-white font-bold'
+                  : 'bg-stone-700 border-stone-600 text-stone-400 hover:bg-stone-600'
+              }`}
+            >
+              {pt.label}
+            </button>
+          ))}
+        </div>
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-stone-400 w-10">Off X</label>
+            <input
+              type="range"
+              min="-50"
+              max="50"
+              value={offsetX}
+              onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value))}
+              className="flex-1 h-3"
+            />
+            <span className="text-[10px] text-stone-300 w-6 text-right">{offsetX}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-stone-400 w-10">Off Y</label>
+            <input
+              type="range"
+              min="-50"
+              max="50"
+              value={offsetY}
+              onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value))}
+              className="flex-1 h-3"
+            />
+            <span className="text-[10px] text-stone-300 w-6 text-right">{offsetY}</span>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-4">
@@ -1849,8 +1912,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Sprites for when the unit is idle (not moving) or actively moving
             </p>
 
-          {/* Idle Sprite Sheet Upload */}
-          <div>
+          {/* Idle Sprite Sheet Upload - hidden when idle image is set */}
+          {!hasIdleImage && (<div>
             <label className="block text-sm font-bold mb-2">
               Idle Sprite Sheet (Not Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -1954,6 +2017,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   >
                     ✕ Clear Idle Sprite Sheet
                   </button>
+                  {renderAnchorControls(
+                    currentConfig.idleSpriteSheet?.anchorX ?? 0.5,
+                    currentConfig.idleSpriteSheet?.anchorY ?? 0.5,
+                    currentConfig.idleSpriteSheet?.offsetX ?? 0,
+                    currentConfig.idleSpriteSheet?.offsetY ?? 0,
+                    (ax, ay) => { handleIdleSpriteSheetConfigChange('anchorX', ax); handleIdleSpriteSheetConfigChange('anchorY', ay); },
+                    (field, val) => handleIdleSpriteSheetConfigChange(field, val),
+                  )}
                 </>
               )}
               <p className="text-xs text-stone-400">
@@ -1967,10 +2038,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 💡 Sprite sheets should be horizontal strips with frames of equal width
               </p>
             </div>
-          </div>
+          </div>)}
 
-          {/* Idle Image Upload */}
-          <div>
+          {/* Idle Image Upload - hidden when idle spritesheet is set */}
+          {!hasIdleSpriteSheet && (<div>
             <label className="block text-sm font-bold mb-2">
               Idle Image (Not Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2034,12 +2105,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               )}
 
               {hasIdleImage && (
+                <>
                 <button
                   onClick={clearIdleImage}
                   className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
                 >
                   ✕ Clear Idle Image
                 </button>
+                {renderAnchorControls(
+                  currentConfig.idleAnchorX ?? 0.5,
+                  currentConfig.idleAnchorY ?? 0.5,
+                  currentConfig.idleOffsetX ?? 0,
+                  currentConfig.idleOffsetY ?? 0,
+                  (ax, ay) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, idleAnchorX: ax, idleAnchorY: ay } } });
+                  },
+                  (field, val) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    const key = field === 'offsetX' ? 'idleOffsetX' : 'idleOffsetY';
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
+                  },
+                )}
+                </>
               )}
               <p className="text-xs text-stone-400">
                 {hasIdleImage
@@ -2049,10 +2137,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   : 'No idle image - using shapes/colors'}
               </p>
             </div>
-          </div>
+          </div>)}
 
-          {/* Moving Sprite Sheet Upload */}
-          <div>
+          {/* Moving Sprite Sheet Upload - hidden when moving image is set */}
+          {!hasMovingImage && (<div>
             <label className="block text-sm font-bold mb-2">
               Moving Sprite Sheet (While Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2156,6 +2244,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   >
                     ✕ Clear Moving Sprite Sheet
                   </button>
+                  {renderAnchorControls(
+                    currentConfig.movingSpriteSheet?.anchorX ?? 0.5,
+                    currentConfig.movingSpriteSheet?.anchorY ?? 0.5,
+                    currentConfig.movingSpriteSheet?.offsetX ?? 0,
+                    currentConfig.movingSpriteSheet?.offsetY ?? 0,
+                    (ax, ay) => { handleMovingSpriteSheetConfigChange('anchorX', ax); handleMovingSpriteSheetConfigChange('anchorY', ay); },
+                    (field, val) => handleMovingSpriteSheetConfigChange(field, val),
+                  )}
                 </>
               )}
               <p className="text-xs text-stone-400">
@@ -2169,10 +2265,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 💡 Sprite sheets should be horizontal strips with frames of equal width
               </p>
             </div>
-          </div>
+          </div>)}
 
-          {/* Moving Image Upload */}
-          <div>
+          {/* Moving Image Upload - hidden when moving spritesheet is set */}
+          {!hasMovingSpriteSheet && (<div>
             <label className="block text-sm font-bold mb-2">
               Moving Image (While Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2236,12 +2332,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               )}
 
               {hasMovingImage && (
+                <>
                 <button
                   onClick={clearMovingImage}
                   className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
                 >
                   ✕ Clear Moving Image
                 </button>
+                {renderAnchorControls(
+                  currentConfig.movingAnchorX ?? 0.5,
+                  currentConfig.movingAnchorY ?? 0.5,
+                  currentConfig.movingOffsetX ?? 0,
+                  currentConfig.movingOffsetY ?? 0,
+                  (ax, ay) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, movingAnchorX: ax, movingAnchorY: ay } } });
+                  },
+                  (field, val) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    const key = field === 'offsetX' ? 'movingOffsetX' : 'movingOffsetY';
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
+                  },
+                )}
+                </>
               )}
               <p className="text-xs text-stone-400">
                 {hasMovingImage
@@ -2251,7 +2364,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   : 'No moving image - will use idle image'}
               </p>
             </div>
-          </div>
+          </div>)}
           </div>
 
           {/* DEATH STATE */}
@@ -2261,8 +2374,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Animation that plays when the unit dies (before corpse appears)
             </p>
 
-          {/* Death Sprite Sheet Upload */}
-          <div>
+          {/* Death Sprite Sheet Upload - hidden when death image is set */}
+          {!hasDeathImage && (<div>
             <label className="block text-sm font-bold mb-2">
               Death Sprite Sheet (On Death - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2366,6 +2479,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   >
                     ✕ Clear Death Sprite Sheet
                   </button>
+                  {renderAnchorControls(
+                    currentConfig.deathSpriteSheet?.anchorX ?? 0.5,
+                    currentConfig.deathSpriteSheet?.anchorY ?? 0.5,
+                    currentConfig.deathSpriteSheet?.offsetX ?? 0,
+                    currentConfig.deathSpriteSheet?.offsetY ?? 0,
+                    (ax, ay) => { handleDeathSpriteSheetConfigChange('anchorX', ax); handleDeathSpriteSheetConfigChange('anchorY', ay); },
+                    (field, val) => handleDeathSpriteSheetConfigChange(field, val),
+                  )}
                 </>
               )}
               <p className="text-xs text-stone-400">
@@ -2379,10 +2500,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 💀 Death animation plays when character/enemy reaches 0 HP
               </p>
             </div>
-          </div>
+          </div>)}
 
-          {/* Death Image Upload */}
-          <div>
+          {/* Death Image Upload - hidden when death spritesheet is set */}
+          {!hasDeathSpriteSheet && (<div>
             <label className="block text-sm font-bold mb-2">
               Death Image (On Death - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2446,12 +2567,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               )}
 
               {hasDeathImage && (
+                <>
                 <button
                   onClick={clearDeathImage}
                   className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
                 >
                   ✕ Clear Death Image
                 </button>
+                {renderAnchorControls(
+                  currentConfig.deathAnchorX ?? 0.5,
+                  currentConfig.deathAnchorY ?? 0.5,
+                  currentConfig.deathOffsetX ?? 0,
+                  currentConfig.deathOffsetY ?? 0,
+                  (ax, ay) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, deathAnchorX: ax, deathAnchorY: ay } } });
+                  },
+                  (field, val) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    const key = field === 'offsetX' ? 'deathOffsetX' : 'deathOffsetY';
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
+                  },
+                )}
+                </>
               )}
               <p className="text-xs text-stone-400">
                 {hasDeathImage
@@ -2461,7 +2599,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   : 'No death image - will show X overlay'}
               </p>
             </div>
-          </div>
+          </div>)}
           </div>
 
           {/* CASTING STATE */}
@@ -2471,8 +2609,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Animation when casting a spell while stationary (moving animation has priority)
             </p>
 
-          {/* Casting Sprite Sheet Upload - Directional */}
-          <div>
+          {/* Casting Sprite Sheet Upload - hidden when casting image is set */}
+          {!hasCastingImage && (<div>
             <label className="block text-sm font-bold mb-2">
               Casting Sprite Sheet (Casting Spell - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2576,6 +2714,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   >
                     ✕ Clear Casting Sprite Sheet
                   </button>
+                  {renderAnchorControls(
+                    currentConfig.castingSpriteSheet?.anchorX ?? 0.5,
+                    currentConfig.castingSpriteSheet?.anchorY ?? 0.5,
+                    currentConfig.castingSpriteSheet?.offsetX ?? 0,
+                    currentConfig.castingSpriteSheet?.offsetY ?? 0,
+                    (ax, ay) => { handleCastingSpriteSheetConfigChange('anchorX', ax); handleCastingSpriteSheetConfigChange('anchorY', ay); },
+                    (field, val) => handleCastingSpriteSheetConfigChange(field, val),
+                  )}
                 </>
               )}
               <p className="text-xs text-stone-400">
@@ -2589,10 +2735,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 ✨ Casting animation plays when character/enemy casts spell while stationary
               </p>
             </div>
-          </div>
+          </div>)}
 
-          {/* Casting Image Upload - Directional */}
-          <div>
+          {/* Casting Image Upload - hidden when casting spritesheet is set */}
+          {!hasCastingSpriteSheet && (<div>
             <label className="block text-sm font-bold mb-2">
               Casting Image (Casting Spell - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2656,12 +2802,29 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               )}
 
               {hasCastingImage && (
+                <>
                 <button
                   onClick={clearCastingImage}
                   className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
                 >
                   ✕ Clear Casting Image
                 </button>
+                {renderAnchorControls(
+                  currentConfig.castingAnchorX ?? 0.5,
+                  currentConfig.castingAnchorY ?? 0.5,
+                  currentConfig.castingOffsetX ?? 0,
+                  currentConfig.castingOffsetY ?? 0,
+                  (ax, ay) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, castingAnchorX: ax, castingAnchorY: ay } } });
+                  },
+                  (field, val) => {
+                    const dirSprites = sprite.directionalSprites || {};
+                    const key = field === 'offsetX' ? 'castingOffsetX' : 'castingOffsetY';
+                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
+                  },
+                )}
+                </>
               )}
               <p className="text-xs text-stone-400">
                 {hasCastingImage
@@ -2671,7 +2834,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   : 'No casting image - will use idle sprite'}
               </p>
             </div>
-          </div>
+          </div>)}
           </div>
         </>
       )}
@@ -2778,123 +2941,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         )}
       </div>
 
-      {/* Anchor Point & Offset */}
-      <div>
-        <label className="block text-sm font-bold mb-2">Anchor Point</label>
-        <div className="flex items-start gap-4">
-          {/* 3x3 Anchor Grid */}
-          <div className="grid grid-cols-3 gap-1">
-            {[
-              { x: 0, y: 0, label: 'TL' }, { x: 0.5, y: 0, label: 'TC' }, { x: 1, y: 0, label: 'TR' },
-              { x: 0, y: 0.5, label: 'ML' }, { x: 0.5, y: 0.5, label: 'C' }, { x: 1, y: 0.5, label: 'MR' },
-              { x: 0, y: 1, label: 'BL' }, { x: 0.5, y: 1, label: 'BC' }, { x: 1, y: 1, label: 'BR' },
-            ].map(({ x, y, label }) => {
-              const currentAx = spriteMode === 'directional'
-                ? (sprite.directionalSprites?.[selectedDirection]?.anchorX ?? 0.5)
-                : (sprite.anchorX ?? 0.5);
-              const currentAy = spriteMode === 'directional'
-                ? (sprite.directionalSprites?.[selectedDirection]?.anchorY ?? 0.5)
-                : (sprite.anchorY ?? 0.5);
-              const isActive = currentAx === x && currentAy === y;
-              return (
-                <button
-                  key={label}
-                  onClick={() => {
-                    if (spriteMode === 'directional') {
-                      const dirSprites = sprite.directionalSprites || {};
-                      const config = dirSprites[selectedDirection] || {};
-                      onChange({
-                        ...sprite,
-                        directionalSprites: {
-                          ...dirSprites,
-                          [selectedDirection]: { ...config, anchorX: x, anchorY: y },
-                        },
-                      });
-                    } else {
-                      onChange({ ...sprite, anchorX: x, anchorY: y });
-                    }
-                  }}
-                  className={`w-7 h-7 text-[10px] rounded ${
-                    isActive ? 'bg-blue-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
-                  }`}
-                  title={`Anchor: ${label}`}
-                >
-                  {label}
-                </button>
-              );
-            })}
-          </div>
-          {/* Offset sliders */}
-          <div className="flex-1 space-y-1">
-            <div>
-              <label className="block text-xs text-stone-400">
-                X Offset: {spriteMode === 'directional'
-                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetX ?? 0)
-                  : (sprite.offsetX ?? 0)}px
-              </label>
-              <input
-                type="range"
-                min="-16"
-                max="16"
-                step="1"
-                value={spriteMode === 'directional'
-                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetX ?? 0)
-                  : (sprite.offsetX ?? 0)}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (spriteMode === 'directional') {
-                    const dirSprites = sprite.directionalSprites || {};
-                    const config = dirSprites[selectedDirection] || {};
-                    onChange({
-                      ...sprite,
-                      directionalSprites: {
-                        ...dirSprites,
-                        [selectedDirection]: { ...config, offsetX: val === 0 ? undefined : val },
-                      },
-                    });
-                  } else {
-                    onChange({ ...sprite, offsetX: val === 0 ? undefined : val });
-                  }
-                }}
-                className="w-full"
-              />
-            </div>
-            <div>
-              <label className="block text-xs text-stone-400">
-                Y Offset: {spriteMode === 'directional'
-                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetY ?? 0)
-                  : (sprite.offsetY ?? 0)}px
-              </label>
-              <input
-                type="range"
-                min="-16"
-                max="16"
-                step="1"
-                value={spriteMode === 'directional'
-                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetY ?? 0)
-                  : (sprite.offsetY ?? 0)}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value);
-                  if (spriteMode === 'directional') {
-                    const dirSprites = sprite.directionalSprites || {};
-                    const config = dirSprites[selectedDirection] || {};
-                    onChange({
-                      ...sprite,
-                      directionalSprites: {
-                        ...dirSprites,
-                        [selectedDirection]: { ...config, offsetY: val === 0 ? undefined : val },
-                      },
-                    });
-                  } else {
-                    onChange({ ...sprite, offsetY: val === 0 ? undefined : val });
-                  }
-                }}
-                className="w-full"
-              />
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Anchor Point & Offset are now per-spritesheet/per-image, shown near each upload area */}
     </div>
   );
 };
@@ -2910,21 +2957,28 @@ function drawSpriteConfig(
   now: number = Date.now(),
   isCasting: boolean = false
 ) {
-  const ax = config.anchorX ?? 0.5;
-  const ay = config.anchorY ?? 0.5;
-  const ox = config.offsetX ?? 0;
-  const oy = config.offsetY ?? 0;
+  // Determine active state and resolve anchor from the appropriate source
+  // For spritesheets: anchor lives on SpriteSheetConfig
+  // For images: anchor lives as per-state fields on the config
 
   // Priority: moving > casting > idle
   // Check for sprite sheet first (highest priority for animation)
   let spriteSheet = isMoving ? config.movingSpriteSheet : null;
+  let activeState: 'moving' | 'casting' | 'idle' = isMoving ? 'moving' : 'idle';
   if (!spriteSheet && isCasting && !isMoving) {
     spriteSheet = config.castingSpriteSheet;
+    activeState = 'casting';
   }
   if (!spriteSheet) {
     spriteSheet = config.idleSpriteSheet;
+    activeState = spriteSheet ? (isMoving ? 'moving' : isCasting ? 'casting' : 'idle') : activeState;
   }
   if (spriteSheet) {
+    // Anchor from spritesheet itself
+    const ax = spriteSheet.anchorX ?? 0.5;
+    const ay = spriteSheet.anchorY ?? 0.5;
+    const ox = spriteSheet.offsetX ?? 0;
+    const oy = spriteSheet.offsetY ?? 0;
     const maxSize = (config.size || 0.6) * tileSize;
     drawSpriteSheet(ctx, spriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy);
     return;
@@ -2933,15 +2987,25 @@ function drawSpriteConfig(
   // Check for uploaded image (PNG/GIF) or URL
   // Priority: moving > casting > idle
   let imageToUse: string | undefined;
+  let imageState: 'idle' | 'moving' | 'casting' = 'idle';
   if (isMoving && (config.movingImageData || config.movingImageUrl)) {
     imageToUse = config.movingImageData || config.movingImageUrl;
+    imageState = 'moving';
   } else if (isCasting && !isMoving && (config.castingImageData || config.castingImageUrl)) {
     imageToUse = config.castingImageData || config.castingImageUrl;
+    imageState = 'casting';
   } else {
     imageToUse = config.idleImageData || config.imageData || config.idleImageUrl || config.imageUrl;
+    imageState = 'idle';
   }
 
   if (imageToUse) {
+    // Anchor from per-state image fields
+    const ax = (imageState === 'moving' ? config.movingAnchorX : imageState === 'casting' ? config.castingAnchorX : config.idleAnchorX) ?? 0.5;
+    const ay = (imageState === 'moving' ? config.movingAnchorY : imageState === 'casting' ? config.castingAnchorY : config.idleAnchorY) ?? 0.5;
+    const ox = (imageState === 'moving' ? config.movingOffsetX : imageState === 'casting' ? config.castingOffsetX : config.idleOffsetX) ?? 0;
+    const oy = (imageState === 'moving' ? config.movingOffsetY : imageState === 'casting' ? config.castingOffsetY : config.idleOffsetY) ?? 0;
+
     // Use cached image with load notification for GIF animation support
     const img = loadSpriteImage(imageToUse);
 
@@ -3035,11 +3099,6 @@ export function drawSprite(
   now: number = Date.now(),
   isCasting: boolean = false
 ) {
-  const ax = sprite.anchorX ?? 0.5;
-  const ay = sprite.anchorY ?? 0.5;
-  const ox = sprite.offsetX ?? 0;
-  const oy = sprite.offsetY ?? 0;
-
   // Check if we should use directional sprites
   if (sprite.useDirectional && sprite.directionalSprites) {
     // If direction is provided, use it; otherwise use 'default'
@@ -3062,6 +3121,11 @@ export function drawSprite(
     simpleSpriteSheet = sprite.idleSpriteSheet;
   }
   if (simpleSpriteSheet) {
+    // Anchor from spritesheet itself
+    const ax = simpleSpriteSheet.anchorX ?? 0.5;
+    const ay = simpleSpriteSheet.anchorY ?? 0.5;
+    const ox = simpleSpriteSheet.offsetX ?? 0;
+    const oy = simpleSpriteSheet.offsetY ?? 0;
     const maxSize = (sprite.size || 0.6) * tileSize;
     drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy);
     return;
@@ -3070,15 +3134,25 @@ export function drawSprite(
   // Check for simple image sprite (PNG/GIF)
   // Priority: moving > casting > idle
   let spriteImageToUse: string | undefined;
+  let imgState: 'idle' | 'moving' | 'casting' = 'idle';
   if (isMoving && sprite.movingImageData) {
     spriteImageToUse = sprite.movingImageData;
+    imgState = 'moving';
   } else if (isCasting && !isMoving && sprite.castingImageData) {
     spriteImageToUse = sprite.castingImageData;
+    imgState = 'casting';
   } else {
     spriteImageToUse = sprite.idleImageData || sprite.imageData;
+    imgState = 'idle';
   }
 
   if (spriteImageToUse) {
+    // Anchor from per-state image fields
+    const ax = (imgState === 'moving' ? sprite.movingAnchorX : imgState === 'casting' ? sprite.castingAnchorX : sprite.idleAnchorX) ?? 0.5;
+    const ay = (imgState === 'moving' ? sprite.movingAnchorY : imgState === 'casting' ? sprite.castingAnchorY : sprite.idleAnchorY) ?? 0.5;
+    const ox = (imgState === 'moving' ? sprite.movingOffsetX : imgState === 'casting' ? sprite.castingOffsetX : sprite.idleOffsetX) ?? 0;
+    const oy = (imgState === 'moving' ? sprite.movingOffsetY : imgState === 'casting' ? sprite.castingOffsetY : sprite.idleOffsetY) ?? 0;
+
     // Use cached image with load notification for GIF animation support
     const img = loadSpriteImage(spriteImageToUse);
 
@@ -3225,13 +3299,12 @@ export function drawDeathSprite(
     const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
 
     if (dirConfig) {
-      const dax = dirConfig.anchorX ?? 0.5;
-      const day = dirConfig.anchorY ?? 0.5;
-      const dox = dirConfig.offsetX ?? 0;
-      const doy = dirConfig.offsetY ?? 0;
-
       // Check for death sprite sheet
       if (dirConfig.deathSpriteSheet) {
+        const dax = dirConfig.deathSpriteSheet.anchorX ?? 0.5;
+        const day = dirConfig.deathSpriteSheet.anchorY ?? 0.5;
+        const dox = dirConfig.deathSpriteSheet.offsetX ?? 0;
+        const doy = dirConfig.deathSpriteSheet.offsetY ?? 0;
         // Force loop=false for death animations so they stop on final frame
         const deathSheet = { ...dirConfig.deathSpriteSheet, loop: false };
         drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now, dax, day, dox, doy);
@@ -3239,19 +3312,22 @@ export function drawDeathSprite(
       }
       // Check for death image
       if (dirConfig.deathImageData) {
+        const dax = dirConfig.deathAnchorX ?? 0.5;
+        const day = dirConfig.deathAnchorY ?? 0.5;
+        const dox = dirConfig.deathOffsetX ?? 0;
+        const doy = dirConfig.deathOffsetY ?? 0;
         drawImage(ctx, dirConfig.deathImageData, centerX, centerY, maxSize, dax, day, dox, doy);
         return true;
       }
     }
   }
 
-  const ax = sprite.anchorX ?? 0.5;
-  const ay = sprite.anchorY ?? 0.5;
-  const ox = sprite.offsetX ?? 0;
-  const oy = sprite.offsetY ?? 0;
-
   // Check for simple mode death sprite sheet
   if (sprite.deathSpriteSheet) {
+    const ax = sprite.deathSpriteSheet.anchorX ?? 0.5;
+    const ay = sprite.deathSpriteSheet.anchorY ?? 0.5;
+    const ox = sprite.deathSpriteSheet.offsetX ?? 0;
+    const oy = sprite.deathSpriteSheet.offsetY ?? 0;
     // Force loop=false for death animations so they stop on final frame
     const deathSheet = { ...sprite.deathSpriteSheet, loop: false };
     drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now, ax, ay, ox, oy);
@@ -3260,6 +3336,10 @@ export function drawDeathSprite(
 
   // Check for simple mode death image
   if (sprite.deathImageData) {
+    const ax = sprite.deathAnchorX ?? 0.5;
+    const ay = sprite.deathAnchorY ?? 0.5;
+    const ox = sprite.deathOffsetX ?? 0;
+    const oy = sprite.deathOffsetY ?? 0;
     drawImage(ctx, sprite.deathImageData, centerX, centerY, maxSize, ax, ay, ox, oy);
     return true;
   }
