@@ -833,6 +833,8 @@ export const ThemeAssetsEditor: React.FC = () => {
     colors: 'Colors',
     actionButtons: 'Action Buttons',
     concedeModal: 'Concede Overlay',
+    defeatPanel: 'Defeat Panel',
+    gameOverPanel: 'Game Over Panel',
     styles: 'Styles',
   };
 
@@ -846,6 +848,8 @@ export const ThemeAssetsEditor: React.FC = () => {
     colors: '🎨',
     actionButtons: '▶️',
     concedeModal: '🏳️',
+    defeatPanel: '💀',
+    gameOverPanel: '🏁',
     styles: '⚙️',
   };
 
