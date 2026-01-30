@@ -336,60 +336,121 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       // Clear (background is handled by CSS on parent div)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+      // Draw tile boundary guide (dashed outline)
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+      ctx.restore();
+
+      // Draw center crosshair
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.setLineDash([2, 4]);
+      ctx.beginPath();
+      ctx.moveTo(canvas.width / 2, 0);
+      ctx.lineTo(canvas.width / 2, canvas.height);
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.stroke();
+      ctx.restore();
+
+      // Helper to draw an image with anchor/offset applied
+      const drawImageWithAnchor = (
+        img: HTMLImageElement,
+        sizeScale: number,
+        ax: number, ay: number, ox: number, oy: number
+      ) => {
+        const maxSize = sizeScale * canvas.width;
+        const aspectRatio = img.width / img.height;
+        let drawWidth = maxSize;
+        let drawHeight = maxSize;
+        if (aspectRatio > 1) {
+          drawHeight = maxSize / aspectRatio;
+        } else {
+          drawWidth = maxSize * aspectRatio;
+        }
+        ctx.drawImage(img, canvas.width / 2 - drawWidth * ax + ox, canvas.height / 2 - drawHeight * ay + oy, drawWidth, drawHeight);
+      };
+
       // Draw sprite based on mode
       if (spriteMode === 'directional' && sprite.directionalSprites) {
         const dirSprite = sprite.directionalSprites[selectedDirection] || sprite.directionalSprites['default'];
         if (dirSprite) {
-          // Check for image data OR URL
-          const imageToShow = dirSprite.idleImageData || dirSprite.idleImageUrl || dirSprite.imageData || dirSprite.imageUrl;
-          if (imageToShow) {
-            // Load and draw image
-            const img = new Image();
-            img.onload = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              // Preserve aspect ratio
-              const maxSize = (dirSprite.size || 0.6) * canvas.width;
-              const aspectRatio = img.width / img.height;
-              let drawWidth = maxSize;
-              let drawHeight = maxSize;
-
-              if (aspectRatio > 1) {
-                drawHeight = maxSize / aspectRatio;
-              } else {
-                drawWidth = maxSize * aspectRatio;
-              }
-
-              ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
-            };
-            img.src = imageToShow;
-          } else {
+          // Check for sprite sheet first
+          if (dirSprite.idleSpriteSheet && (dirSprite.idleSpriteSheet.imageData || dirSprite.idleSpriteSheet.imageUrl)) {
             drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
+          } else {
+            // Check for image data OR URL
+            const imageToShow = dirSprite.idleImageData || dirSprite.idleImageUrl || dirSprite.imageData || dirSprite.imageUrl;
+            if (imageToShow) {
+              const ax = dirSprite.idleAnchorX ?? 0.5;
+              const ay = dirSprite.idleAnchorY ?? 0.5;
+              const ox = dirSprite.idleOffsetX ?? 0;
+              const oy = dirSprite.idleOffsetY ?? 0;
+              const img = new Image();
+              img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                // Redraw guides
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+                ctx.setLineDash([4, 4]);
+                ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+                ctx.restore();
+                ctx.save();
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+                ctx.setLineDash([2, 4]);
+                ctx.beginPath();
+                ctx.moveTo(canvas.width / 2, 0);
+                ctx.lineTo(canvas.width / 2, canvas.height);
+                ctx.moveTo(0, canvas.height / 2);
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+                ctx.restore();
+                drawImageWithAnchor(img, dirSprite.size || 0.6, ax, ay, ox, oy);
+              };
+              img.src = imageToShow;
+            } else {
+              drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
+            }
           }
         }
       } else {
-        // Simple mode - check for image data OR URL
-        const simpleImageToShow = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
-        if (simpleImageToShow) {
-          const img = new Image();
-          img.onload = () => {
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            // Preserve aspect ratio
-            const maxSize = (sprite.size || 0.6) * canvas.width;
-            const aspectRatio = img.width / img.height;
-            let drawWidth = maxSize;
-            let drawHeight = maxSize;
-
-            if (aspectRatio > 1) {
-              drawHeight = maxSize / aspectRatio;
-            } else {
-              drawWidth = maxSize * aspectRatio;
-            }
-
-            ctx.drawImage(img, canvas.width/2 - drawWidth/2, canvas.height/2 - drawHeight/2, drawWidth, drawHeight);
-          };
-          img.src = simpleImageToShow;
-        } else {
+        // Simple mode - check for sprite sheet first
+        if (sprite.idleSpriteSheet && (sprite.idleSpriteSheet.imageData || sprite.idleSpriteSheet.imageUrl)) {
           drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
+        } else {
+          const simpleImageToShow = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
+          if (simpleImageToShow) {
+            const ax = sprite.idleAnchorX ?? 0.5;
+            const ay = sprite.idleAnchorY ?? 0.5;
+            const ox = sprite.idleOffsetX ?? 0;
+            const oy = sprite.idleOffsetY ?? 0;
+            const img = new Image();
+            img.onload = () => {
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+              // Redraw guides
+              ctx.save();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+              ctx.setLineDash([4, 4]);
+              ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+              ctx.restore();
+              ctx.save();
+              ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+              ctx.setLineDash([2, 4]);
+              ctx.beginPath();
+              ctx.moveTo(canvas.width / 2, 0);
+              ctx.lineTo(canvas.width / 2, canvas.height);
+              ctx.moveTo(0, canvas.height / 2);
+              ctx.lineTo(canvas.width, canvas.height / 2);
+              ctx.stroke();
+              ctx.restore();
+              drawImageWithAnchor(img, sprite.size || 0.6, ax, ay, ox, oy);
+            };
+            img.src = simpleImageToShow;
+          } else {
+            drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
+          }
         }
       }
     };

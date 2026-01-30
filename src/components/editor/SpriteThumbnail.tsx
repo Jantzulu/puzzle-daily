@@ -22,7 +22,18 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     const unsubscribe = subscribeToImageLoads(() => {
       setRenderTrigger(prev => prev + 1);
     });
-    return unsubscribe;
+
+    // Schedule a re-render shortly after mount to catch images that loaded
+    // synchronously or from browser cache before the subscription was active.
+    // Without this, thumbnails can appear blank on first navigation to the page.
+    const timerId = setTimeout(() => {
+      setRenderTrigger(prev => prev + 1);
+    }, 100);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(timerId);
+    };
   }, []);
 
   useEffect(() => {
@@ -49,8 +60,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
     let animationFrameId: number | null = null;
 
-    // Helper to draw sprite frame
-    const drawSpriteFrame = (img: HTMLImageElement, frameIndex: number, frameCount: number, frameWidth: number, frameHeight: number) => {
+    // Helper to draw sprite frame with anchor/offset support
+    const drawSpriteFrame = (
+      img: HTMLImageElement, frameIndex: number, frameCount: number,
+      frameWidth: number, frameHeight: number,
+      ax: number = 0.5, ay: number = 0.5, ox: number = 0, oy: number = 0
+    ) => {
       ctx.clearRect(0, 0, size, size);
       const maxSize = (sprite.size || 0.6) * size;
       const frameAspectRatio = frameWidth / frameHeight;
@@ -67,7 +82,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       ctx.drawImage(
         img,
         sourceX, 0, frameWidth, frameHeight,
-        size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight
+        size/2 - drawWidth * ax + ox, size/2 - drawHeight * ay + oy, drawWidth, drawHeight
       );
     };
 
@@ -78,6 +93,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       // Determine what to render based on sprite mode
       let spriteSheet = null;
       let imageSrc: string | undefined = undefined;
+      // Anchor/offset for idle image (spritesheets have anchor built-in)
+      let imgAx = 0.5, imgAy = 0.5, imgOx = 0, imgOy = 0;
 
       if (sprite.useDirectional && sprite.directionalSprites?.default) {
         // Directional mode - use default direction
@@ -87,6 +104,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           defaultConfig.idleImageData || defaultConfig.imageData,
           defaultConfig.idleImageUrl || defaultConfig.imageUrl
         );
+        imgAx = defaultConfig.idleAnchorX ?? 0.5;
+        imgAy = defaultConfig.idleAnchorY ?? 0.5;
+        imgOx = defaultConfig.idleOffsetX ?? 0;
+        imgOy = defaultConfig.idleOffsetY ?? 0;
       } else {
         // Simple mode
         spriteSheet = sprite.idleSpriteSheet;
@@ -94,6 +115,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           sprite.idleImageData || sprite.imageData,
           sprite.idleImageUrl || sprite.imageUrl
         );
+        imgAx = sprite.idleAnchorX ?? 0.5;
+        imgAy = sprite.idleAnchorY ?? 0.5;
+        imgOx = sprite.idleOffsetX ?? 0;
+        imgOy = sprite.idleOffsetY ?? 0;
       }
 
       // Resolve sprite sheet source (supports both data and URL)
@@ -101,6 +126,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
       // Priority: sprite sheet > static image > shapes
       if (spriteSheetSrc) {
+        // Anchor from spritesheet
+        const sheetAx = spriteSheet.anchorX ?? 0.5;
+        const sheetAy = spriteSheet.anchorY ?? 0.5;
+        const sheetOx = spriteSheet.offsetX ?? 0;
+        const sheetOy = spriteSheet.offsetY ?? 0;
+
         // Use centralized image loader with caching
         const img = loadImage(spriteSheetSrc);
         if (img && isImageReady(img)) {
@@ -124,7 +155,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               lastFrameTime = now;
             }
 
-            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight);
+            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy);
             animationFrameId = requestAnimationFrame(animate);
           };
 
@@ -146,7 +177,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawWidth = maxSize * aspectRatio;
           }
 
-          ctx.drawImage(img, size/2 - drawWidth/2, size/2 - drawHeight/2, drawWidth, drawHeight);
+          ctx.drawImage(img, size/2 - drawWidth * imgAx + imgOx, size/2 - drawHeight * imgAy + imgOy, drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
       } else {
