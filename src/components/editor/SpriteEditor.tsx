@@ -323,9 +323,9 @@ const AnchorPreview: React.FC<{
       }
 
       // Scale offset proportionally to preview size
-      const scale = previewSize / 64; // normalize to ~64px tile
-      const scaledOx = offsetX * scale;
-      const scaledOy = offsetY * scale;
+      const offsetScale = previewSize / 64; // normalize to ~64px tile
+      const scaledOx = offsetX * offsetScale;
+      const scaledOy = offsetY * offsetScale;
 
       // Draw first frame with anchor applied
       const dx = previewSize / 2 - drawWidth * anchorX + scaledOx;
