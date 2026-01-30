@@ -259,6 +259,90 @@ const DIRECTIONS: { key: SpriteDirection; label: string; arrow: string }[] = [
   { key: 'default', label: 'Default/Static', arrow: '⊙' },
 ];
 
+/**
+ * Small inline preview showing how a sprite looks with the current anchor/offset.
+ * Renders a tile boundary with the sprite positioned according to anchor settings.
+ */
+const AnchorPreview: React.FC<{
+  imageSrc: string;
+  anchorX: number;
+  anchorY: number;
+  offsetX: number;
+  offsetY: number;
+  spriteSize: number;
+  isSpriteSheet?: boolean;
+  frameCount?: number;
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, spriteSize, isSpriteSheet, frameCount }) => {
+  const previewRef = useRef<HTMLCanvasElement>(null);
+  const previewSize = 80;
+
+  useEffect(() => {
+    const canvas = previewRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    canvas.width = previewSize;
+    canvas.height = previewSize;
+
+    const img = new Image();
+    img.onload = () => {
+      ctx.clearRect(0, 0, previewSize, previewSize);
+
+      // Draw tile boundary
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+      ctx.setLineDash([3, 3]);
+      ctx.strokeRect(1, 1, previewSize - 2, previewSize - 2);
+
+      // Draw center crosshair
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(previewSize / 2, 0);
+      ctx.lineTo(previewSize / 2, previewSize);
+      ctx.moveTo(0, previewSize / 2);
+      ctx.lineTo(previewSize, previewSize / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Calculate sprite dimensions
+      const maxSize = spriteSize * previewSize;
+      // For sprite sheets, use first frame only
+      const srcWidth = isSpriteSheet && frameCount ? img.naturalWidth / frameCount : img.naturalWidth;
+      const srcHeight = img.naturalHeight;
+      const aspectRatio = srcWidth / srcHeight;
+      let drawWidth = maxSize;
+      let drawHeight = maxSize;
+      if (aspectRatio > 1) {
+        drawHeight = maxSize / aspectRatio;
+      } else {
+        drawWidth = maxSize * aspectRatio;
+      }
+
+      // Scale offset proportionally to preview size
+      const scale = previewSize / 64; // normalize to ~64px tile
+      const scaledOx = offsetX * scale;
+      const scaledOy = offsetY * scale;
+
+      // Draw first frame with anchor applied
+      const dx = previewSize / 2 - drawWidth * anchorX + scaledOx;
+      const dy = previewSize / 2 - drawHeight * anchorY + scaledOy;
+      ctx.drawImage(img, 0, 0, srcWidth, srcHeight, dx, dy, drawWidth, drawHeight);
+    };
+    img.src = imageSrc;
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, spriteSize, isSpriteSheet, frameCount]);
+
+  return (
+    <canvas
+      ref={previewRef}
+      width={previewSize}
+      height={previewSize}
+      className="rounded border border-stone-600 bg-stone-900 flex-shrink-0"
+      style={{ width: previewSize, height: previewSize }}
+    />
+  );
+};
+
 export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE, allowOversized = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
@@ -1460,7 +1544,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     ? (sprite.directionalSprites?.[selectedDirection]?.castingImageData || sprite.directionalSprites?.[selectedDirection]?.castingImageUrl)
     : (sprite.castingImageData || sprite.castingImageUrl);
 
-  // Helper to render compact anchor point grid + offset sliders
+  // Helper to render compact anchor point grid + offset sliders with inline preview
   const renderAnchorControls = (
     anchorX: number = 0.5,
     anchorY: number = 0.5,
@@ -1468,56 +1552,81 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     offsetY: number = 0,
     onAnchorChange: (ax: number, ay: number) => void,
     onOffsetChange: (field: 'offsetX' | 'offsetY', val: number) => void,
+    previewImageSrc?: string,
+    previewSpriteSheet?: import('../../utils/assetStorage').SpriteSheetConfig,
   ) => {
     const anchorPoints: { label: string; x: number; y: number }[] = [
       { label: 'TL', x: 0, y: 0 }, { label: 'T', x: 0.5, y: 0 }, { label: 'TR', x: 1, y: 0 },
       { label: 'L', x: 0, y: 0.5 }, { label: 'C', x: 0.5, y: 0.5 }, { label: 'R', x: 1, y: 0.5 },
       { label: 'BL', x: 0, y: 1 }, { label: 'B', x: 0.5, y: 1 }, { label: 'BR', x: 1, y: 1 },
     ];
+
+    // Determine preview source
+    const imgSrc = previewSpriteSheet
+      ? (previewSpriteSheet.imageData || previewSpriteSheet.imageUrl)
+      : previewImageSrc;
+
     return (
       <div className="mt-2 p-2 bg-stone-800 rounded border border-stone-600">
         <div className="text-[10px] text-stone-400 mb-1 font-bold">Anchor Point</div>
-        <div className="grid grid-cols-3 gap-0.5 w-fit mb-2">
-          {anchorPoints.map((pt) => (
-            <button
-              key={pt.label}
-              type="button"
-              onClick={() => onAnchorChange(pt.x, pt.y)}
-              className={`w-6 h-6 text-[9px] rounded border ${
-                anchorX === pt.x && anchorY === pt.y
-                  ? 'bg-arcane-600 border-arcane-400 text-white font-bold'
-                  : 'bg-stone-700 border-stone-600 text-stone-400 hover:bg-stone-600'
-              }`}
-            >
-              {pt.label}
-            </button>
-          ))}
-        </div>
-        <div className="space-y-1">
-          <div className="flex items-center gap-2">
-            <label className="text-[10px] text-stone-400 w-10">Off X</label>
-            <input
-              type="range"
-              min="-50"
-              max="50"
-              value={offsetX}
-              onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value))}
-              className="flex-1 h-3"
-            />
-            <span className="text-[10px] text-stone-300 w-6 text-right">{offsetX}</span>
+        <div className="flex items-start gap-3">
+          <div>
+            <div className="grid grid-cols-3 gap-0.5 w-fit mb-2">
+              {anchorPoints.map((pt) => (
+                <button
+                  key={pt.label}
+                  type="button"
+                  onClick={() => onAnchorChange(pt.x, pt.y)}
+                  className={`w-6 h-6 text-[9px] rounded border ${
+                    anchorX === pt.x && anchorY === pt.y
+                      ? 'bg-arcane-600 border-arcane-400 text-white font-bold'
+                      : 'bg-stone-700 border-stone-600 text-stone-400 hover:bg-stone-600'
+                  }`}
+                >
+                  {pt.label}
+                </button>
+              ))}
+            </div>
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] text-stone-400 w-10">Off X</label>
+                <input
+                  type="range"
+                  min="-50"
+                  max="50"
+                  value={offsetX}
+                  onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value))}
+                  className="flex-1 h-3"
+                />
+                <span className="text-[10px] text-stone-300 w-6 text-right">{offsetX}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="text-[10px] text-stone-400 w-10">Off Y</label>
+                <input
+                  type="range"
+                  min="-50"
+                  max="50"
+                  value={offsetY}
+                  onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value))}
+                  className="flex-1 h-3"
+                />
+                <span className="text-[10px] text-stone-300 w-6 text-right">{offsetY}</span>
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <label className="text-[10px] text-stone-400 w-10">Off Y</label>
-            <input
-              type="range"
-              min="-50"
-              max="50"
-              value={offsetY}
-              onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value))}
-              className="flex-1 h-3"
+          {/* Inline anchor preview */}
+          {imgSrc && (
+            <AnchorPreview
+              imageSrc={imgSrc}
+              anchorX={anchorX}
+              anchorY={anchorY}
+              offsetX={offsetX}
+              offsetY={offsetY}
+              spriteSize={currentConfig.size || sprite.size || 0.6}
+              isSpriteSheet={!!previewSpriteSheet}
+              frameCount={previewSpriteSheet?.frameCount}
             />
-            <span className="text-[10px] text-stone-300 w-6 text-right">{offsetY}</span>
-          </div>
+          )}
         </div>
       </div>
     );
@@ -2085,6 +2194,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     currentConfig.idleSpriteSheet?.offsetY ?? 0,
                     (ax, ay) => { handleIdleSpriteSheetConfigChange('anchorX', ax); handleIdleSpriteSheetConfigChange('anchorY', ay); },
                     (field, val) => handleIdleSpriteSheetConfigChange(field, val),
+                    undefined,
+                    currentConfig.idleSpriteSheet,
                   )}
                 </>
               )}
@@ -2187,6 +2298,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     const key = field === 'offsetX' ? 'idleOffsetX' : 'idleOffsetY';
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
+                  currentConfig.idleImageData || currentConfig.imageData || currentConfig.idleImageUrl || currentConfig.imageUrl,
                 )}
                 </>
               )}
@@ -2312,6 +2424,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     currentConfig.movingSpriteSheet?.offsetY ?? 0,
                     (ax, ay) => { handleMovingSpriteSheetConfigChange('anchorX', ax); handleMovingSpriteSheetConfigChange('anchorY', ay); },
                     (field, val) => handleMovingSpriteSheetConfigChange(field, val),
+                    undefined,
+                    currentConfig.movingSpriteSheet,
                   )}
                 </>
               )}
@@ -2414,6 +2528,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     const key = field === 'offsetX' ? 'movingOffsetX' : 'movingOffsetY';
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
+                  currentConfig.movingImageData || currentConfig.movingImageUrl,
                 )}
                 </>
               )}
@@ -2547,6 +2662,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     currentConfig.deathSpriteSheet?.offsetY ?? 0,
                     (ax, ay) => { handleDeathSpriteSheetConfigChange('anchorX', ax); handleDeathSpriteSheetConfigChange('anchorY', ay); },
                     (field, val) => handleDeathSpriteSheetConfigChange(field, val),
+                    undefined,
+                    currentConfig.deathSpriteSheet,
                   )}
                 </>
               )}
@@ -2649,6 +2766,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     const key = field === 'offsetX' ? 'deathOffsetX' : 'deathOffsetY';
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
+                  currentConfig.deathImageData || currentConfig.deathImageUrl,
                 )}
                 </>
               )}
@@ -2782,6 +2900,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     currentConfig.castingSpriteSheet?.offsetY ?? 0,
                     (ax, ay) => { handleCastingSpriteSheetConfigChange('anchorX', ax); handleCastingSpriteSheetConfigChange('anchorY', ay); },
                     (field, val) => handleCastingSpriteSheetConfigChange(field, val),
+                    undefined,
+                    currentConfig.castingSpriteSheet,
                   )}
                 </>
               )}
@@ -2884,6 +3004,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     const key = field === 'offsetX' ? 'castingOffsetX' : 'castingOffsetY';
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
+                  currentConfig.castingImageData || currentConfig.castingImageUrl,
                 )}
                 </>
               )}
