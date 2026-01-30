@@ -204,6 +204,12 @@ export interface DirectionalSpriteConfig {
   secondaryColor?: string;
   size?: number; // 0-1 scale
 
+  // Anchor point for sprite positioning on tile (default: center)
+  anchorX?: number; // 0=left, 0.5=center(default), 1=right
+  anchorY?: number; // 0=top, 0.5=center(default), 1=bottom
+  offsetX?: number; // Pixel offset from anchor (positive = right)
+  offsetY?: number; // Pixel offset from anchor (positive = down)
+
   // Idle state (not moving) - for this specific direction
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
   idleImageUrl?: string; // URL to idle image
@@ -249,6 +255,12 @@ export interface CustomSprite {
   primaryColor?: string;
   secondaryColor?: string;
   size?: number; // 0-1 scale
+
+  // Anchor point for sprite positioning on tile (default: center)
+  anchorX?: number; // 0=left, 0.5=center(default), 1=right
+  anchorY?: number; // 0=top, 0.5=center(default), 1=bottom
+  offsetX?: number; // Pixel offset from anchor (positive = right)
+  offsetY?: number; // Pixel offset from anchor (positive = down)
 
   // Simple mode images (same for all directions)
   // Each image field has an optional URL alternative for external storage

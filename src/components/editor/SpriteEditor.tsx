@@ -97,7 +97,11 @@ function drawSpriteSheet(
   centerY: number,
   displayWidth: number,
   displayHeight: number,
-  now: number
+  now: number,
+  anchorX: number = 0.5,
+  anchorY: number = 0.5,
+  offsetX: number = 0,
+  offsetY: number = 0
 ): void {
   // Resolve image source from data or URL
   const imageSrc = sheet.imageData || sheet.imageUrl;
@@ -152,7 +156,7 @@ function drawSpriteSheet(
     ctx.drawImage(
       img,
       sourceX, sourceY, frameWidth, frameHeight, // Source rectangle
-      centerX - finalWidth / 2, centerY - finalHeight / 2, finalWidth, finalHeight // Destination rectangle
+      centerX - finalWidth * anchorX + offsetX, centerY - finalHeight * anchorY + offsetY, finalWidth, finalHeight // Destination rectangle
     );
   } catch (e) {
     // Image not ready
@@ -172,7 +176,11 @@ function drawSpriteSheetFromStartTime(
   displayWidth: number,
   displayHeight: number,
   startTime: number,
-  now: number = Date.now()
+  now: number = Date.now(),
+  anchorX: number = 0.5,
+  anchorY: number = 0.5,
+  offsetX: number = 0,
+  offsetY: number = 0
 ): void {
   // Resolve image source from data or URL
   const imageSrc = sheet.imageData || sheet.imageUrl;
@@ -223,7 +231,7 @@ function drawSpriteSheetFromStartTime(
     ctx.drawImage(
       img,
       sourceX, sourceY, frameWidth, frameHeight,
-      centerX - finalWidth / 2, centerY - finalHeight / 2, finalWidth, finalHeight
+      centerX - finalWidth * anchorX + offsetX, centerY - finalHeight * anchorY + offsetY, finalWidth, finalHeight
     );
   } catch (e) {
     // Image not ready
@@ -2769,6 +2777,124 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           </p>
         )}
       </div>
+
+      {/* Anchor Point & Offset */}
+      <div>
+        <label className="block text-sm font-bold mb-2">Anchor Point</label>
+        <div className="flex items-start gap-4">
+          {/* 3x3 Anchor Grid */}
+          <div className="grid grid-cols-3 gap-1">
+            {[
+              { x: 0, y: 0, label: 'TL' }, { x: 0.5, y: 0, label: 'TC' }, { x: 1, y: 0, label: 'TR' },
+              { x: 0, y: 0.5, label: 'ML' }, { x: 0.5, y: 0.5, label: 'C' }, { x: 1, y: 0.5, label: 'MR' },
+              { x: 0, y: 1, label: 'BL' }, { x: 0.5, y: 1, label: 'BC' }, { x: 1, y: 1, label: 'BR' },
+            ].map(({ x, y, label }) => {
+              const currentAx = spriteMode === 'directional'
+                ? (sprite.directionalSprites?.[selectedDirection]?.anchorX ?? 0.5)
+                : (sprite.anchorX ?? 0.5);
+              const currentAy = spriteMode === 'directional'
+                ? (sprite.directionalSprites?.[selectedDirection]?.anchorY ?? 0.5)
+                : (sprite.anchorY ?? 0.5);
+              const isActive = currentAx === x && currentAy === y;
+              return (
+                <button
+                  key={label}
+                  onClick={() => {
+                    if (spriteMode === 'directional') {
+                      const dirSprites = sprite.directionalSprites || {};
+                      const config = dirSprites[selectedDirection] || {};
+                      onChange({
+                        ...sprite,
+                        directionalSprites: {
+                          ...dirSprites,
+                          [selectedDirection]: { ...config, anchorX: x, anchorY: y },
+                        },
+                      });
+                    } else {
+                      onChange({ ...sprite, anchorX: x, anchorY: y });
+                    }
+                  }}
+                  className={`w-7 h-7 text-[10px] rounded ${
+                    isActive ? 'bg-blue-600 text-white' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
+                  }`}
+                  title={`Anchor: ${label}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+          {/* Offset sliders */}
+          <div className="flex-1 space-y-1">
+            <div>
+              <label className="block text-xs text-stone-400">
+                X Offset: {spriteMode === 'directional'
+                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetX ?? 0)
+                  : (sprite.offsetX ?? 0)}px
+              </label>
+              <input
+                type="range"
+                min="-16"
+                max="16"
+                step="1"
+                value={spriteMode === 'directional'
+                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetX ?? 0)
+                  : (sprite.offsetX ?? 0)}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (spriteMode === 'directional') {
+                    const dirSprites = sprite.directionalSprites || {};
+                    const config = dirSprites[selectedDirection] || {};
+                    onChange({
+                      ...sprite,
+                      directionalSprites: {
+                        ...dirSprites,
+                        [selectedDirection]: { ...config, offsetX: val === 0 ? undefined : val },
+                      },
+                    });
+                  } else {
+                    onChange({ ...sprite, offsetX: val === 0 ? undefined : val });
+                  }
+                }}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="block text-xs text-stone-400">
+                Y Offset: {spriteMode === 'directional'
+                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetY ?? 0)
+                  : (sprite.offsetY ?? 0)}px
+              </label>
+              <input
+                type="range"
+                min="-16"
+                max="16"
+                step="1"
+                value={spriteMode === 'directional'
+                  ? (sprite.directionalSprites?.[selectedDirection]?.offsetY ?? 0)
+                  : (sprite.offsetY ?? 0)}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (spriteMode === 'directional') {
+                    const dirSprites = sprite.directionalSprites || {};
+                    const config = dirSprites[selectedDirection] || {};
+                    onChange({
+                      ...sprite,
+                      directionalSprites: {
+                        ...dirSprites,
+                        [selectedDirection]: { ...config, offsetY: val === 0 ? undefined : val },
+                      },
+                    });
+                  } else {
+                    onChange({ ...sprite, offsetY: val === 0 ? undefined : val });
+                  }
+                }}
+                className="w-full"
+              />
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
@@ -2784,6 +2910,11 @@ function drawSpriteConfig(
   now: number = Date.now(),
   isCasting: boolean = false
 ) {
+  const ax = config.anchorX ?? 0.5;
+  const ay = config.anchorY ?? 0.5;
+  const ox = config.offsetX ?? 0;
+  const oy = config.offsetY ?? 0;
+
   // Priority: moving > casting > idle
   // Check for sprite sheet first (highest priority for animation)
   let spriteSheet = isMoving ? config.movingSpriteSheet : null;
@@ -2795,7 +2926,7 @@ function drawSpriteConfig(
   }
   if (spriteSheet) {
     const maxSize = (config.size || 0.6) * tileSize;
-    drawSpriteSheet(ctx, spriteSheet, centerX, centerY, maxSize, maxSize, now);
+    drawSpriteSheet(ctx, spriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy);
     return;
   }
 
@@ -2831,7 +2962,7 @@ function drawSpriteConfig(
         }
       }
 
-      ctx.drawImage(img, centerX - drawWidth/2, centerY - drawHeight/2, drawWidth, drawHeight);
+      ctx.drawImage(img, centerX - drawWidth * ax + ox, centerY - drawHeight * ay + oy, drawWidth, drawHeight);
     } catch (e) {
       // Image not ready yet, will draw on next frame
     }
@@ -2904,6 +3035,11 @@ export function drawSprite(
   now: number = Date.now(),
   isCasting: boolean = false
 ) {
+  const ax = sprite.anchorX ?? 0.5;
+  const ay = sprite.anchorY ?? 0.5;
+  const ox = sprite.offsetX ?? 0;
+  const oy = sprite.offsetY ?? 0;
+
   // Check if we should use directional sprites
   if (sprite.useDirectional && sprite.directionalSprites) {
     // If direction is provided, use it; otherwise use 'default'
@@ -2927,7 +3063,7 @@ export function drawSprite(
   }
   if (simpleSpriteSheet) {
     const maxSize = (sprite.size || 0.6) * tileSize;
-    drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, maxSize, maxSize, now);
+    drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy);
     return;
   }
 
@@ -2963,7 +3099,7 @@ export function drawSprite(
         }
       }
 
-      ctx.drawImage(img, centerX - drawWidth/2, centerY - drawHeight/2, drawWidth, drawHeight);
+      ctx.drawImage(img, centerX - drawWidth * ax + ox, centerY - drawHeight * ay + oy, drawWidth, drawHeight);
     } catch (e) {
       // Image not ready yet, will draw on next frame
     }
@@ -3089,32 +3225,42 @@ export function drawDeathSprite(
     const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
 
     if (dirConfig) {
+      const dax = dirConfig.anchorX ?? 0.5;
+      const day = dirConfig.anchorY ?? 0.5;
+      const dox = dirConfig.offsetX ?? 0;
+      const doy = dirConfig.offsetY ?? 0;
+
       // Check for death sprite sheet
       if (dirConfig.deathSpriteSheet) {
         // Force loop=false for death animations so they stop on final frame
         const deathSheet = { ...dirConfig.deathSpriteSheet, loop: false };
-        drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now);
+        drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now, dax, day, dox, doy);
         return true;
       }
       // Check for death image
       if (dirConfig.deathImageData) {
-        drawImage(ctx, dirConfig.deathImageData, centerX, centerY, maxSize);
+        drawImage(ctx, dirConfig.deathImageData, centerX, centerY, maxSize, dax, day, dox, doy);
         return true;
       }
     }
   }
 
+  const ax = sprite.anchorX ?? 0.5;
+  const ay = sprite.anchorY ?? 0.5;
+  const ox = sprite.offsetX ?? 0;
+  const oy = sprite.offsetY ?? 0;
+
   // Check for simple mode death sprite sheet
   if (sprite.deathSpriteSheet) {
     // Force loop=false for death animations so they stop on final frame
     const deathSheet = { ...sprite.deathSpriteSheet, loop: false };
-    drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now);
+    drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now, ax, ay, ox, oy);
     return true;
   }
 
   // Check for simple mode death image
   if (sprite.deathImageData) {
-    drawImage(ctx, sprite.deathImageData, centerX, centerY, maxSize);
+    drawImage(ctx, sprite.deathImageData, centerX, centerY, maxSize, ax, ay, ox, oy);
     return true;
   }
 
@@ -3150,7 +3296,11 @@ function drawImage(
   imageData: string,
   centerX: number,
   centerY: number,
-  maxSize: number
+  maxSize: number,
+  anchorX: number = 0.5,
+  anchorY: number = 0.5,
+  offsetX: number = 0,
+  offsetY: number = 0
 ): void {
   const img = loadSpriteImage(imageData);
 
@@ -3167,7 +3317,7 @@ function drawImage(
       }
     }
 
-    ctx.drawImage(img, centerX - drawWidth / 2, centerY - drawHeight / 2, drawWidth, drawHeight);
+    ctx.drawImage(img, centerX - drawWidth * anchorX + offsetX, centerY - drawHeight * anchorY + offsetY, drawWidth, drawHeight);
   } catch (e) {
     // Image not ready
   }
