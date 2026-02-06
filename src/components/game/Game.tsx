@@ -693,23 +693,23 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
   };
 
-  // Scroll-aware test handlers for mobile (scrolls to game board)
+  // Scroll-aware test handlers (scrolls to game board on both mobile and desktop)
   const handleTestCharactersWithScroll = () => {
     // Don't scroll if no heroes placed (will show error modal instead)
     if (gameState.placedCharacters.length === 0) {
       handleTestCharacters(); // This will show the warning modal
       return;
     }
-    // On mobile (below lg breakpoint), scroll to game board
-    if (window.innerWidth < 1024 && gameBoardRef.current) {
+    // Scroll to game board when test starts
+    if (gameBoardRef.current) {
       gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     handleTestCharacters();
   };
 
   const handleTestEnemiesWithScroll = () => {
-    // On mobile (below lg breakpoint), scroll to game board
-    if (window.innerWidth < 1024 && gameBoardRef.current) {
+    // Scroll to game board when test starts
+    if (gameBoardRef.current) {
       gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
     handleTestEnemies();
