@@ -1154,17 +1154,15 @@ export const Game: React.FC = () => {
                           const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
 
                           if (customIcon) {
-                            // Use native 1x size (14x16) for crisp pixel art - no scaling artifacts
+                            // Use native 1x size on mobile, larger on desktop
                             hearts.push(
                               <img
                                 key={i}
                                 src={customIcon}
                                 alt={isFilled ? 'Life remaining' : 'Life lost'}
                                 title={isFilled ? 'Life remaining' : 'Life lost'}
-                                className="object-contain"
+                                className="object-contain w-[14px] h-[16px] lg:w-[18px] lg:h-[20px]"
                                 style={{
-                                  width: '14px',
-                                  height: '16px',
                                   opacity: isFilled ? 1 : 0.4,
                                   imageRendering: 'pixelated'
                                 }}
@@ -1174,7 +1172,7 @@ export const Game: React.FC = () => {
                             hearts.push(
                               <span
                                 key={i}
-                                className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+                                className={`text-sm lg:text-lg ${isFilled ? 'heart-filled' : 'heart-empty'}`}
                                 title={isFilled ? 'Life remaining' : 'Life lost'}
                               >
                                 &#x2665;
@@ -1247,9 +1245,9 @@ export const Game: React.FC = () => {
                   <div className="flex items-center justify-end min-w-[70px]">
                     {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       gameState.puzzle.maxTurns && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-stone-400 text-xs">Max Turns:</span>
-                          <span className="text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                        <div className="flex items-center gap-1 lg:gap-2">
+                          <span className="text-stone-400 text-xs lg:text-sm">Max Turns:</span>
+                          <span className="text-sm lg:text-base text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                         </div>
                       )
                     ) : (
@@ -1295,8 +1293,33 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Info Panels */}
-          <div className="w-full max-w-2xl mx-auto flex flex-col gap-4 md:gap-6">
-            {/* Puzzle Selector - moves to bottom on mobile */}
+          <div className="w-full max-w-2xl mx-auto flex flex-col gap-4">
+            {/* Enemies Display */}
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <EnemyDisplay
+                enemies={gameState.puzzle.enemies}
+                onTest={handleTestEnemiesWithScroll}
+                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+                themeAssets={themeAssets}
+              />
+            </div>
+
+            {/* Items Display - only shown if puzzle has items */}
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <ItemsDisplay puzzle={gameState.puzzle} />
+            </div>
+
+            {/* Status Effects Display - only shown if puzzle has status effects */}
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <StatusEffectsDisplay puzzle={gameState.puzzle} />
+            </div>
+
+            {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <SpecialTilesDisplay puzzle={gameState.puzzle} />
+            </div>
+
+            {/* Puzzle Selector - at bottom for dev use */}
             {allPuzzles.length > 0 && (
               <div className={`dungeon-panel p-4 lg:p-5 transition-opacity ${dimmedPanelClass}`}>
                 <label className="block text-sm lg:text-base font-bold mb-2 text-copper-400">
@@ -1328,32 +1351,6 @@ export const Game: React.FC = () => {
                 </select>
               </div>
             )}
-
-
-            {/* Enemies Display */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <EnemyDisplay
-                enemies={gameState.puzzle.enemies}
-                onTest={handleTestEnemiesWithScroll}
-                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-                themeAssets={themeAssets}
-              />
-            </div>
-
-            {/* Items Display - only shown if puzzle has items */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <ItemsDisplay puzzle={gameState.puzzle} />
-            </div>
-
-            {/* Status Effects Display - only shown if puzzle has status effects */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <StatusEffectsDisplay puzzle={gameState.puzzle} />
-            </div>
-
-            {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <SpecialTilesDisplay puzzle={gameState.puzzle} />
-            </div>
           </div>
         </div>
       </div>
