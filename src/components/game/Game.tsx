@@ -894,7 +894,7 @@ export const Game: React.FC = () => {
             )}
 
             {/* Game board with overlay container for loss/victory panels */}
-            <div className="relative w-full max-w-[700px] overflow-hidden">
+            <div className="relative w-full max-w-[900px] overflow-hidden">
               <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
 
               {/* Defeat Overlay - appears on top of the game board */}
