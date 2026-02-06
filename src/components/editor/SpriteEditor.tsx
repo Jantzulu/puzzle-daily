@@ -381,6 +381,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const [castingImageUrlInput, setCastingImageUrlInput] = useState('');
   const [showCastingSpriteSheetUrl, setShowCastingSpriteSheetUrl] = useState(false);
   const [castingSpriteSheetUrlInput, setCastingSpriteSheetUrlInput] = useState('');
+  const [showSpawnImageUrl, setShowSpawnImageUrl] = useState(false);
+  const [spawnImageUrlInput, setSpawnImageUrlInput] = useState('');
+  const [showSpawnSpriteSheetUrl, setShowSpawnSpriteSheetUrl] = useState(false);
+  const [spawnSpriteSheetUrlInput, setSpawnSpriteSheetUrlInput] = useState('');
 
   // Auto-migrate simple mode sprites to directional mode on first render
   useEffect(() => {
@@ -1549,6 +1553,104 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const hasCastingImage = spriteMode === 'directional'
     ? (sprite.directionalSprites?.[selectedDirection]?.castingImageData || sprite.directionalSprites?.[selectedDirection]?.castingImageUrl)
     : (sprite.castingImageData || sprite.castingImageUrl);
+
+  // Spawn animation handlers (NOT directional - same for all directions)
+  const handleSpawnImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG, GIF)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const spawnImageData = event.target?.result as string;
+      onChange({
+        ...sprite,
+        spawnImageData,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSpawnSpriteSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
+      alert('Please upload an image file (PNG, JPG)');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const imageData = event.target?.result as string;
+
+      const spriteSheetConfig = {
+        imageData,
+        frameCount: 4,
+        frameRate: 10,
+        loop: false, // Spawn animation plays once
+      };
+
+      onChange({
+        ...sprite,
+        spawnSpriteSheet: spriteSheetConfig,
+      });
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSpawnSpriteSheetConfigChange = (field: string, value: any) => {
+    if (sprite.spawnSpriteSheet) {
+      onChange({
+        ...sprite,
+        spawnSpriteSheet: {
+          ...sprite.spawnSpriteSheet,
+          [field]: value,
+        },
+      });
+    }
+  };
+
+  const clearSpawnSpriteSheet = () => {
+    const { spawnSpriteSheet, ...rest } = sprite;
+    onChange({ ...rest });
+  };
+
+  const clearSpawnImage = () => {
+    const { spawnImageData, spawnImageUrl, spawnAnchorX, spawnAnchorY, spawnOffsetX, spawnOffsetY, spawnScale, ...rest } = sprite;
+    onChange({ ...rest });
+  };
+
+  // URL setter for spawn image
+  const setSpawnImageUrl = (url: string) => {
+    onChange({
+      ...sprite,
+      spawnImageUrl: url,
+      spawnImageData: undefined,
+    });
+  };
+
+  // URL setter for spawn sprite sheet
+  const setSpawnSpriteSheetUrl = (url: string) => {
+    const existingSheet = sprite.spawnSpriteSheet;
+    onChange({
+      ...sprite,
+      spawnSpriteSheet: {
+        imageUrl: url,
+        imageData: undefined,
+        frameCount: existingSheet?.frameCount || 4,
+        frameRate: existingSheet?.frameRate || 10,
+        loop: existingSheet?.loop ?? false,
+      },
+    });
+  };
+
+  const hasSpawnSpriteSheetConfig = sprite.spawnSpriteSheet?.imageData || sprite.spawnSpriteSheet?.imageUrl;
+  const hasSpawnImageConfig = sprite.spawnImageData || sprite.spawnImageUrl;
 
   // Helper to render compact anchor point grid + offset sliders + scale slider with inline preview
   const renderAnchorControls = (
@@ -3079,6 +3181,242 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
       {/* Note: Corpse appearance is now handled by the final frame of the Death sprite sheet */}
 
+      {/* Spawn Animation Section - NOT directional, same for all */}
+      <div className="border-2 border-cyan-700 rounded-lg p-4 bg-stone-900/50">
+        <h4 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
+          <span className="text-lg">✦</span> Spawn Animation (appears when entity spawns)
+        </h4>
+        <p className="text-xs text-stone-400 mb-3">
+          Plays once when the entity first appears. Not directional - same animation regardless of facing direction.
+          If not set, idle animation will play immediately.
+        </p>
+
+        {/* Spawn Sprite Sheet Upload */}
+        <div className="mb-4">
+          <label className="block text-sm font-bold mb-2">
+            Spawn Sprite Sheet (Animation)
+          </label>
+          <div className="space-y-2">
+            <div className="flex gap-2 items-start">
+              <input
+                type="file"
+                accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
+                onChange={handleSpawnSpriteSheetUpload}
+                className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-cyan-600 file:text-parchment-100 hover:file:bg-cyan-700"
+              />
+              {hasSpawnSpriteSheetConfig && (
+                <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img
+                    src={sprite.spawnSpriteSheet?.imageData || sprite.spawnSpriteSheet?.imageUrl}
+                    alt="Spawn spritesheet"
+                    className="max-w-full max-h-full object-contain"
+                  />
+                </div>
+              )}
+            </div>
+
+            {/* URL Input Toggle */}
+            <button
+              type="button"
+              onClick={() => setShowSpawnSpriteSheetUrl(!showSpawnSpriteSheetUrl)}
+              className="text-xs text-arcane-400 hover:text-arcane-300"
+            >
+              {showSpawnSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+            </button>
+
+            {/* URL Input */}
+            {showSpawnSpriteSheetUrl && (
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={spawnSpriteSheetUrlInput}
+                  onChange={(e) => setSpawnSpriteSheetUrlInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && spawnSpriteSheetUrlInput.trim()) {
+                      setSpawnSpriteSheetUrl(spawnSpriteSheetUrlInput.trim());
+                      setSpawnSpriteSheetUrlInput('');
+                    }
+                  }}
+                  placeholder="https://your-storage.com/spawn-sheet.png"
+                  className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (spawnSpriteSheetUrlInput.trim()) {
+                      setSpawnSpriteSheetUrl(spawnSpriteSheetUrlInput.trim());
+                      setSpawnSpriteSheetUrlInput('');
+                    }
+                  }}
+                  className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                >
+                  Set
+                </button>
+              </div>
+            )}
+
+            {hasSpawnSpriteSheetConfig && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="64"
+                      value={sprite.spawnSpriteSheet?.frameCount || 4}
+                      onChange={(e) => handleSpawnSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
+                      className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="60"
+                      value={sprite.spawnSpriteSheet?.frameRate || 10}
+                      onChange={(e) => handleSpawnSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
+                      className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={clearSpawnSpriteSheet}
+                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                >
+                  ✕ Clear Spawn Sprite Sheet
+                </button>
+                {renderAnchorControls(
+                  sprite.spawnSpriteSheet?.anchorX ?? 0.5,
+                  sprite.spawnSpriteSheet?.anchorY ?? 0.5,
+                  sprite.spawnSpriteSheet?.offsetX ?? 0,
+                  sprite.spawnSpriteSheet?.offsetY ?? 0,
+                  (ax, ay) => { handleSpawnSpriteSheetConfigChange('anchorX', ax); handleSpawnSpriteSheetConfigChange('anchorY', ay); },
+                  (field, val) => handleSpawnSpriteSheetConfigChange(field, val),
+                  undefined,
+                  sprite.spawnSpriteSheet,
+                  sprite.spawnSpriteSheet?.scale ?? 1,
+                  (val) => handleSpawnSpriteSheetConfigChange('scale', val === 1 ? undefined : val),
+                )}
+              </>
+            )}
+            <p className="text-xs text-stone-400">
+              {hasSpawnSpriteSheetConfig
+                ? sprite.spawnSpriteSheet?.imageUrl && !sprite.spawnSpriteSheet?.imageData
+                  ? '✓ Using URL'
+                  : '✓ Spawn sprite sheet configured'
+                : 'No sprite sheet - use static image below or leave empty for idle animation'}
+            </p>
+          </div>
+        </div>
+
+        {/* Spawn Image Upload - hidden when spawn spritesheet is set */}
+        {!hasSpawnSpriteSheetConfig && (
+          <div>
+            <label className="block text-sm font-bold mb-2">
+              Spawn Image (Static)
+            </label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start">
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
+                  onChange={handleSpawnImageUpload}
+                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-cyan-600 file:text-parchment-100 hover:file:bg-cyan-700"
+                />
+                {hasSpawnImageConfig && (
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img
+                      src={sprite.spawnImageData || sprite.spawnImageUrl}
+                      alt="Spawn static"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {/* URL Input Toggle */}
+              <button
+                type="button"
+                onClick={() => setShowSpawnImageUrl(!showSpawnImageUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showSpawnImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
+              </button>
+
+              {/* URL Input */}
+              {showSpawnImageUrl && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={spawnImageUrlInput}
+                    onChange={(e) => setSpawnImageUrlInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && spawnImageUrlInput.trim()) {
+                        setSpawnImageUrl(spawnImageUrlInput.trim());
+                        setSpawnImageUrlInput('');
+                      }
+                    }}
+                    placeholder="https://your-storage.com/spawn.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (spawnImageUrlInput.trim()) {
+                        setSpawnImageUrl(spawnImageUrlInput.trim());
+                        setSpawnImageUrlInput('');
+                      }
+                    }}
+                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
+                  >
+                    Set
+                  </button>
+                </div>
+              )}
+
+              {hasSpawnImageConfig && (
+                <>
+                  <button
+                    onClick={clearSpawnImage}
+                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
+                  >
+                    ✕ Clear Spawn Image
+                  </button>
+                  {renderAnchorControls(
+                    sprite.spawnAnchorX ?? 0.5,
+                    sprite.spawnAnchorY ?? 0.5,
+                    sprite.spawnOffsetX ?? 0,
+                    sprite.spawnOffsetY ?? 0,
+                    (ax, ay) => {
+                      onChange({ ...sprite, spawnAnchorX: ax, spawnAnchorY: ay });
+                    },
+                    (field, val) => {
+                      const key = field === 'offsetX' ? 'spawnOffsetX' : 'spawnOffsetY';
+                      onChange({ ...sprite, [key]: val });
+                    },
+                    sprite.spawnImageData || sprite.spawnImageUrl,
+                    undefined,
+                    sprite.spawnScale ?? 1,
+                    (val) => {
+                      onChange({ ...sprite, spawnScale: val === 1 ? undefined : val });
+                    },
+                  )}
+                </>
+              )}
+              <p className="text-xs text-stone-400">
+                {hasSpawnImageConfig
+                  ? sprite.spawnImageUrl && !sprite.spawnImageData
+                    ? '✓ Using URL'
+                    : '✓ Spawn image uploaded'
+                  : 'No spawn image - will use idle sprite'}
+              </p>
+            </div>
+          </div>
+        )}
+      </div>
+
       <div>
         <label className="block text-sm font-bold mb-2">
           Preview ({DIRECTIONS.find(d => d.key === selectedDirection)?.label})
@@ -3642,22 +3980,36 @@ export function drawSpawnSprite(
     const oy = sprite.spawnSpriteSheet.offsetY ?? 0;
     const sc = sprite.spawnSpriteSheet.scale ?? 1;
 
-    drawSpriteSheet(
-      ctx, sprite.spawnSpriteSheet, centerX, centerY, maxSize * sc, ax, ay, ox, oy, now,
-      false, // loop = false (play once)
-      startTime // use spawn start time for frame calculation
+    // Use drawSpriteSheetFromStartTime for proper one-shot animation timing
+    // Create a modified config with loop=false for spawn animations
+    const spawnSheet = { ...sprite.spawnSpriteSheet, loop: false };
+    drawSpriteSheetFromStartTime(
+      ctx,
+      spawnSheet,
+      centerX,
+      centerY,
+      maxSize,
+      maxSize,
+      startTime,
+      now,
+      ax,
+      ay,
+      ox,
+      oy,
+      sc
     );
     return true;
   }
 
-  // Check for simple spawn image (static)
-  if (sprite.spawnImageData) {
+  // Check for simple spawn image (static) - supports both data and URL
+  const spawnImageSrc = sprite.spawnImageData || sprite.spawnImageUrl;
+  if (spawnImageSrc) {
     const ax = sprite.spawnAnchorX ?? 0.5;
     const ay = sprite.spawnAnchorY ?? 0.5;
     const ox = sprite.spawnOffsetX ?? 0;
     const oy = sprite.spawnOffsetY ?? 0;
     const sc = sprite.spawnScale ?? 1;
-    drawImage(ctx, sprite.spawnImageData, centerX, centerY, maxSize * sc, ax, ay, ox, oy);
+    drawImage(ctx, spawnImageSrc, centerX, centerY, maxSize * sc, ax, ay, ox, oy);
     return true;
   }
 
@@ -3669,7 +4021,7 @@ export function drawSpawnSprite(
  */
 export function hasSpawnAnimation(sprite: CustomSprite): boolean {
   // Only check simple mode - spawn animations are NOT directional
-  return !!(sprite.spawnSpriteSheet || sprite.spawnImageData);
+  return !!(sprite.spawnSpriteSheet || sprite.spawnImageData || sprite.spawnImageUrl);
 }
 
 /**
