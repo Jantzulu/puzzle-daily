@@ -3696,8 +3696,8 @@ interface ResponsiveGameBoardProps {
 
 /**
  * A wrapper component that automatically measures the container and scales the puzzle
- * to fit within the available space on mobile devices.
- * On desktop (>= 1024px), uses full size. On mobile, constrains to viewport width.
+ * to fit within the available space. Now applies responsive sizing on all screen sizes,
+ * capped at a maximum width to prevent overly large puzzles on very wide screens.
  */
 export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) => {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -3705,13 +3705,12 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
 
   useEffect(() => {
     const updateSize = () => {
-      // Only apply responsive sizing on screens smaller than lg breakpoint (1024px)
-      if (window.innerWidth < 1024 && containerRef.current) {
+      if (containerRef.current) {
         // Get the container width minus some padding
         const containerWidth = containerRef.current.offsetWidth;
-        setMaxWidth(containerWidth > 0 ? containerWidth : undefined);
-      } else {
-        setMaxWidth(undefined);
+        // Cap at 700px max to prevent overly large puzzles on wide screens
+        const cappedWidth = Math.min(containerWidth, 700);
+        setMaxWidth(cappedWidth > 0 ? cappedWidth : undefined);
       }
     };
 

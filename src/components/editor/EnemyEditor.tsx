@@ -560,9 +560,13 @@ export const EnemyEditor: React.FC = () => {
                               className="w-full px-3 py-2 bg-stone-700 rounded"
                             >
                               <option value={Direction.NORTH}>North ↑</option>
+                              <option value={Direction.NORTHEAST}>Northeast ↗</option>
                               <option value={Direction.EAST}>East →</option>
+                              <option value={Direction.SOUTHEAST}>Southeast ↘</option>
                               <option value={Direction.SOUTH}>South ↓</option>
+                              <option value={Direction.SOUTHWEST}>Southwest ↙</option>
                               <option value={Direction.WEST}>West ←</option>
+                              <option value={Direction.NORTHWEST}>Northwest ↖</option>
                             </select>
                           </div>
 
@@ -713,6 +717,18 @@ const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
               <option value="continue">Continue</option>
             </select>
           </div>
+          {(action.onWallCollision === 'turn_left' || action.onWallCollision === 'turn_right') && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-stone-400">Turn degrees:</label>
+              <select value={action.turnDegrees || 90}
+                onChange={(e) => onUpdate({ ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
+                className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
+                <option value={45}>45°</option>
+                <option value={90}>90°</option>
+                <option value={135}>135°</option>
+              </select>
+            </div>
+          )}
         </div>
       )}
 

@@ -777,12 +777,12 @@ export const Game: React.FC = () => {
       </div>
 
       <div className="max-w-6xl mx-auto relative">
-        <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
+        <div className="flex flex-col gap-4 md:gap-6">
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center">
             {/* Quest Display - above puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat') && testMode === 'none' && (
-              <div className="mb-4 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
                   <span key={shimmerKey} className="shimmer-container">
@@ -993,7 +993,7 @@ export const Game: React.FC = () => {
 
             {/* Victory Message - still below the game board */}
             {gameState.gameStatus === 'victory' && puzzleScore && (
-              <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
+              <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-2xl">
                 {/* Trophy and Rank */}
                 <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
                 <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
@@ -1134,7 +1134,7 @@ export const Game: React.FC = () => {
 
             {/* Control Panel - below puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+              <div className="mt-3 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="relative flex items-center justify-between">
                   {/* Left: Lives */}
                   <div className="flex items-center gap-1">
@@ -1278,7 +1278,7 @@ export const Game: React.FC = () => {
 
             {/* Character Selector - below puzzle (visible during setup, running, defeat, and test mode) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className={`mt-4 lg:mt-3 w-full max-w-md transition-opacity ${dimmedPanelClass}`}>
+              <div className={`mt-4 lg:mt-3 w-full max-w-2xl transition-opacity ${dimmedPanelClass}`}>
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
                   selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
@@ -1294,11 +1294,11 @@ export const Game: React.FC = () => {
             )}
           </div>
 
-          {/* Sidebar */}
-          <div className="w-full lg:w-80 flex flex-col gap-4 md:gap-6">
+          {/* Info Panels */}
+          <div className="w-full max-w-2xl mx-auto flex flex-col gap-4 md:gap-6">
             {/* Puzzle Selector - moves to bottom on mobile */}
             {allPuzzles.length > 0 && (
-              <div className={`dungeon-panel p-4 order-last lg:order-first transition-opacity ${dimmedPanelClass}`}>
+              <div className={`dungeon-panel p-4 transition-opacity ${dimmedPanelClass}`}>
                 <label className="block text-sm font-bold mb-2 text-copper-400">
                   Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
                 </label>

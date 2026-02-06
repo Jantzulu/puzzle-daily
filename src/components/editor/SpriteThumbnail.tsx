@@ -54,9 +54,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     // Scale context to match
     ctx.scale(dpr, dpr);
 
-    // Enable image smoothing for better quality
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    // Disable image smoothing for crisp pixel art rendering
+    ctx.imageSmoothingEnabled = false;
 
     let animationFrameId: number | null = null;
 

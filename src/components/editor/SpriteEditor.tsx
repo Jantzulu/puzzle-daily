@@ -285,8 +285,11 @@ const AnchorPreview: React.FC<{
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    canvas.width = previewSize;
-    canvas.height = previewSize;
+    // Account for device pixel ratio for crisp rendering
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = previewSize * dpr;
+    canvas.height = previewSize * dpr;
+    ctx.scale(dpr, dpr);
 
     const img = new Image();
     img.onload = () => {
@@ -330,6 +333,8 @@ const AnchorPreview: React.FC<{
       // Draw first frame with anchor applied
       const dx = previewSize / 2 - drawWidth * anchorX + scaledOx;
       const dy = previewSize / 2 - drawHeight * anchorY + scaledOy;
+      // Use pixelated rendering for crisp sprites
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, srcWidth, srcHeight, dx, dy, drawWidth, drawHeight);
     };
     img.src = imageSrc;
@@ -338,8 +343,6 @@ const AnchorPreview: React.FC<{
   return (
     <canvas
       ref={previewRef}
-      width={previewSize}
-      height={previewSize}
       className="rounded border border-stone-600 bg-stone-900 flex-shrink-0"
       style={{ width: previewSize, height: previewSize }}
     />
