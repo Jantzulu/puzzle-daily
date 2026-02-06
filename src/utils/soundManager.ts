@@ -28,6 +28,9 @@ class SoundManager {
   // Cache for decoded audio buffers from base64
   private decodingPromises: Map<string, Promise<AudioBuffer>> = new Map();
 
+  // Pending music to play when audio context is initialized
+  private pendingMusic: { base64Audio: string; loop: boolean } | null = null;
+
   constructor() {
     this.loadSettings();
   }
@@ -51,6 +54,16 @@ class SoundManager {
 
       // Apply loaded settings
       this.applySettings();
+
+      // Play any pending music that was requested before initialization
+      if (this.pendingMusic) {
+        const { base64Audio, loop } = this.pendingMusic;
+        this.pendingMusic = null;
+        // Use setTimeout to allow context to fully settle
+        setTimeout(() => {
+          this.playMusic(base64Audio, loop);
+        }, 100);
+      }
     } catch (error) {
       console.error('Failed to initialize audio context:', error);
     }
@@ -202,6 +215,13 @@ class SoundManager {
   // Play background music (loops by default)
   public async playMusic(base64Audio: string, loop: boolean = true): Promise<void> {
     if (!this.settings.enabled || !base64Audio) return;
+
+    // If audio context isn't initialized yet, store as pending music
+    // It will be played once the user interacts and context is initialized
+    if (!this.audioContext) {
+      this.pendingMusic = { base64Audio, loop };
+      return;
+    }
 
     try {
       await this.ensureContextRunning();

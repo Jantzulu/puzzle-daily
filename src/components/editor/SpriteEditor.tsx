@@ -3615,6 +3615,84 @@ export function hasDeathAnimation(sprite: CustomSprite): boolean {
 }
 
 /**
+ * Draw spawn animation sprite for an entity
+ * Returns true if a spawn sprite was drawn, false if not available
+ *
+ * @param startTime - When the spawn started (for proper frame calculation)
+ *                    For sprite sheets, this ensures animation plays from start and stops on final frame
+ */
+export function drawSpawnSprite(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite,
+  centerX: number,
+  centerY: number,
+  tileSize: number,
+  startTime: number = Date.now()
+): boolean {
+  const maxSize = (sprite.size || 0.6) * tileSize;
+  const now = Date.now();
+
+  // Spawn animations are NOT directional - same animation regardless of facing
+
+  // Check for spawn sprite sheet (animation)
+  if (sprite.spawnSpriteSheet) {
+    const ax = sprite.spawnSpriteSheet.anchorX ?? 0.5;
+    const ay = sprite.spawnSpriteSheet.anchorY ?? 0.5;
+    const ox = sprite.spawnSpriteSheet.offsetX ?? 0;
+    const oy = sprite.spawnSpriteSheet.offsetY ?? 0;
+    const sc = sprite.spawnSpriteSheet.scale ?? 1;
+
+    drawSpriteSheet(
+      ctx, sprite.spawnSpriteSheet, centerX, centerY, maxSize * sc, ax, ay, ox, oy, now,
+      false, // loop = false (play once)
+      startTime // use spawn start time for frame calculation
+    );
+    return true;
+  }
+
+  // Check for simple spawn image (static)
+  if (sprite.spawnImageData) {
+    const ax = sprite.spawnAnchorX ?? 0.5;
+    const ay = sprite.spawnAnchorY ?? 0.5;
+    const ox = sprite.spawnOffsetX ?? 0;
+    const oy = sprite.spawnOffsetY ?? 0;
+    const sc = sprite.spawnScale ?? 1;
+    drawImage(ctx, sprite.spawnImageData, centerX, centerY, maxSize * sc, ax, ay, ox, oy);
+    return true;
+  }
+
+  return false;
+}
+
+/**
+ * Check if a sprite has any spawn animation configured
+ */
+export function hasSpawnAnimation(sprite: CustomSprite): boolean {
+  // Only check simple mode - spawn animations are NOT directional
+  return !!(sprite.spawnSpriteSheet || sprite.spawnImageData);
+}
+
+/**
+ * Check if spawn animation is still playing (hasn't finished)
+ * Returns true if animation is still active, false if complete
+ */
+export function isSpawnAnimationPlaying(sprite: CustomSprite, startTime: number): boolean {
+  const now = Date.now();
+  const elapsed = now - startTime;
+
+  if (sprite.spawnSpriteSheet) {
+    // Calculate animation duration from sprite sheet
+    const frameCount = sprite.spawnSpriteSheet.frameCount;
+    const frameRate = sprite.spawnSpriteSheet.frameRate || 10;
+    const animDuration = (frameCount / frameRate) * 1000;
+    return elapsed < animDuration;
+  }
+
+  // For static spawn images, use a fixed duration
+  return elapsed < 500; // 500ms default duration for static spawn images
+}
+
+/**
  * Helper to draw an image from cache
  */
 function drawImage(

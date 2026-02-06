@@ -57,36 +57,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
     <div className={`dungeon-panel p-4 lg:p-5 ${className}`}>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
-        {/* Left: Help + Title + Test button (desktop only) */}
+        {/* Left: Help + Title */}
         <div className="flex items-center gap-2">
           <HelpButton sectionId="enemies" />
           <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
-          {/* Test button - inline on desktop */}
-          {showTestButton && onTest && (
-            <button
-              onClick={onTest}
-              className={`hidden lg:flex px-2 lg:px-3 py-1 lg:py-1.5 text-xs lg:text-sm transition-colors items-center gap-1 ${
-                themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
-              } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
-              style={{
-                ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
-                ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
-              }}
-              title="Watch enemies move without heroes for 5 turns"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              Test
-            </button>
-          )}
         </div>
-        {/* Center: Test button (mobile only - absolutely positioned) */}
+        {/* Center: Test button (absolutely positioned for true centering) */}
         {showTestButton && onTest && (
           <button
             onClick={onTest}
-            className={`lg:hidden absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
+            className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-1 lg:py-1.5 text-xs lg:text-sm transition-colors flex items-center gap-1 ${
               themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
             } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
             style={{

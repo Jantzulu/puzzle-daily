@@ -293,6 +293,14 @@ export interface CustomSprite {
   castingAnchorX?: number; castingAnchorY?: number; castingOffsetX?: number; castingOffsetY?: number;
   castingScale?: number;
 
+  // Spawn animation - plays once when entity first appears (for enemies on puzzle load, heroes on placement)
+  // Does NOT have directional variants - same animation regardless of facing direction
+  spawnImageData?: string; // Base64 encoded PNG/GIF for spawn animation
+  spawnImageUrl?: string; // URL to spawn image
+  spawnSpriteSheet?: SpriteSheetConfig; // Sprite sheet for spawn animation (plays once, no loop)
+  spawnAnchorX?: number; spawnAnchorY?: number; spawnOffsetX?: number; spawnOffsetY?: number;
+  spawnScale?: number;
+
   // Note: Corpse appearance is handled by the final frame of the Death sprite sheet
 
   // Deprecated - for backwards compatibility

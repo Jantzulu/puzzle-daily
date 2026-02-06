@@ -3,7 +3,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffec
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { drawSprite, drawDeathSprite, hasDeathAnimation, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
+import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible } from '../../utils/assetStorage';
 import { getThemeAsset } from '../../utils/themeAssets';
@@ -56,6 +56,7 @@ const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn 
 const MOVE_DURATION = 180; // Movement duration - balance between smoothness and minimizing time on wrong tile
 const IDLE_DURATION = 220; // Idle time on destination tile (where entity actually is)
 const DEATH_ANIMATION_DURATION = 500; // ms for death animation
+const SPAWN_ANIMATION_DURATION = 500; // ms for spawn animation (plays once when entity first appears)
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
 const TELEPORT_APPEAR_DURATION = 100; // Small delay after walking to teleport tile before appearing at destination
 
@@ -485,6 +486,13 @@ interface DeathAnimationState {
   facing: Direction;
 }
 
+// Track spawn animation state
+interface SpawnAnimationState {
+  startTime: number;
+  x: number;
+  y: number;
+}
+
 export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -503,6 +511,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const prevCharacterDeadStateRef = useRef<Map<string, boolean>>(new Map());
   const prevEnemyDeadStateRef = useRef<Map<number, boolean>>(new Map());
 
+  // Track spawn animations - keyed by entity ID (characterId + position or enemy index)
+  const [characterSpawnAnimations, setCharacterSpawnAnimations] = useState<Map<string, SpawnAnimationState>>(new Map());
+  const [enemySpawnAnimations, setEnemySpawnAnimations] = useState<Map<number, SpawnAnimationState>>(new Map());
+  // Track entities that have completed spawn animation (don't re-trigger on re-render)
+  const spawnedCharactersRef = useRef<Set<string>>(new Set());
+  const spawnedEnemiesRef = useRef<Set<number>>(new Set());
+
   // Track tile activations (e.g., teleport tile effects)
   const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
 
@@ -514,9 +529,36 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (prevPuzzleIdRef.current !== null && prevPuzzleIdRef.current !== currentPuzzleId) {
       // Puzzle changed - trigger fade-in by incrementing key
       setFadeKey(k => k + 1);
+      // Reset spawn animation tracking for new puzzle
+      spawnedCharactersRef.current.clear();
+      spawnedEnemiesRef.current.clear();
+      setCharacterSpawnAnimations(new Map());
+      setEnemySpawnAnimations(new Map());
     }
     prevPuzzleIdRef.current = currentPuzzleId;
   }, [gameState.puzzle.id]);
+
+  // Initialize spawn animations for enemies when puzzle loads (and they haven't spawned yet)
+  useEffect(() => {
+    const now = Date.now();
+    const newEnemySpawns = new Map<number, SpawnAnimationState>();
+
+    gameState.puzzle.enemies.forEach((enemy, index) => {
+      // Only start spawn animation if enemy hasn't already spawned and isn't dead
+      if (!spawnedEnemiesRef.current.has(index) && !enemy.dead) {
+        newEnemySpawns.set(index, { startTime: now, x: enemy.x, y: enemy.y });
+        spawnedEnemiesRef.current.add(index);
+      }
+    });
+
+    if (newEnemySpawns.size > 0) {
+      setEnemySpawnAnimations(prev => {
+        const updated = new Map(prev);
+        newEnemySpawns.forEach((state, index) => updated.set(index, state));
+        return updated;
+      });
+    }
+  }, [gameState.puzzle.id, gameState.puzzle.enemies.length]);
 
   // Force re-render when images finish loading
   const [, forceUpdate] = useState(0);
@@ -636,6 +678,26 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (newActivations.length > 0) {
       setTileActivations(prev => [...prev, ...newActivations]);
     }
+
+    // Detect newly placed characters and trigger spawn animations
+    const newCharSpawns = new Map<string, SpawnAnimationState>();
+    gameState.placedCharacters.forEach((char) => {
+      // Create a unique key for this character placement (characterId + position)
+      const spawnKey = `${char.characterId}:${char.x},${char.y}`;
+      if (!spawnedCharactersRef.current.has(spawnKey) && !char.dead) {
+        newCharSpawns.set(spawnKey, { startTime: now, x: char.x, y: char.y });
+        spawnedCharactersRef.current.add(spawnKey);
+      }
+    });
+
+    if (newCharSpawns.size > 0) {
+      setCharacterSpawnAnimations(prev => {
+        const updated = new Map(prev);
+        newCharSpawns.forEach((state, key) => updated.set(key, state));
+        return updated;
+      });
+    }
+
     prevCharactersRef.current = [...gameState.placedCharacters];
   }, [gameState.placedCharacters]);
 
@@ -992,6 +1054,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // Use ref for synchronous access (prevents flash at new position)
           const anim = enemyPositionsRef.current.get(index);
           const deathAnim = enemyDeathAnimations.get(index);
+          const spawnAnim = enemySpawnAnimations.get(index);
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1017,10 +1080,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
               } else {
                 // Phase 2: Appear at destination with normal sprite
-                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
               }
             } else {
               // Normal movement animation (or ice slide)
@@ -1034,19 +1097,22 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
               } else {
-                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
               }
             }
           } else {
-            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now);
+            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now, spawnAnim);
           }
         } else {
           const character = entity as PlacedCharacter;
           // Use ref for synchronous access (prevents flash at new position)
           const anim = characterPositionsRef.current.get(index);
           const deathAnim = characterDeathAnimations.get(character.characterId);
+          // Get spawn animation - keyed by characterId + position
+          const spawnKey = `${character.characterId}:${character.x},${character.y}`;
+          const spawnAnim = characterSpawnAnimations.get(spawnKey);
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1072,10 +1138,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
               } else {
                 // Phase 2: Appear at destination with normal sprite
-                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
               }
             } else {
               // Normal movement animation (or ice slide)
@@ -1089,13 +1155,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = easeInOutQuad(moveProgress);
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now);
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
               } else {
-                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now);
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
               }
             }
           } else {
-            drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted, deathAnim, now);
+            drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted, deathAnim, now, spawnAnim);
           }
         }
       });
@@ -2133,7 +2199,8 @@ function drawEnemy(
   facingOverride?: Direction,
   gameStarted: boolean = true,
   deathAnimState?: DeathAnimationState,
-  now: number = Date.now()
+  now: number = Date.now(),
+  spawnAnimState?: SpawnAnimationState
 ) {
   const x = renderX !== undefined ? renderX : enemy.x;
   const y = renderY !== undefined ? renderY : enemy.y;
@@ -2151,6 +2218,11 @@ function drawEnemy(
   const enemyData = getEnemy(enemy.enemyId) as CustomEnemy | undefined;
   const hasCustomSprite = enemyData && 'customSprite' in enemyData && enemyData.customSprite;
 
+  // Check if spawn animation is still playing
+  const isSpawning = spawnAnimState && hasCustomSprite && enemyData.customSprite &&
+    hasSpawnAnimation(enemyData.customSprite) &&
+    isSpawnAnimationPlaying(enemyData.customSprite, spawnAnimState.startTime);
+
   // Apply stealth opacity for living enemies
   const stealthOpacity = !enemy.dead ? getStealthOpacity(enemy) : 1.0;
   const originalAlpha = ctx.globalAlpha;
@@ -2160,8 +2232,14 @@ function drawEnemy(
 
   if (hasCustomSprite && enemyData.customSprite) {
     if (!enemy.dead) {
-      // Living enemy - draw normal sprite
-      drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+      // Living enemy
+      if (isSpawning && spawnAnimState) {
+        // Spawn animation is playing - draw spawn sprite instead of normal sprite
+        drawSpawnSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
+      } else {
+        // Normal sprite (idle/moving/casting)
+        drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+      }
     } else {
       // Dead enemy - use death sprite (animates then stays on final frame as corpse)
       const hasDeathSprite = hasDeathAnimation(enemyData.customSprite);
@@ -2216,7 +2294,7 @@ function drawEnemy(
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
-    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.statusEffects, now, isBoss);
+    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss);
 
     // Draw direction indicator next to health bar if enemy has movement actions
     if (enemyData && enemyHasMovementActions(enemyData.behavior)) {
@@ -2249,8 +2327,9 @@ const healthBarState = new Map<string, {
 }>();
 
 // Helper to get unique key for entity health tracking
-function getHealthBarKey(px: number, py: number): string {
-  return `${Math.round(px)},${Math.round(py)}`;
+// Uses entity type, ID, and logical position to create a unique key per placed entity instance
+function getHealthBarKey(entityId: string, entityType: 'enemy' | 'character', logicalX: number, logicalY: number): string {
+  return `${entityType}:${entityId}:${logicalX},${logicalY}`;
 }
 
 // Cache for boss icon image
@@ -2341,6 +2420,10 @@ function drawHealthBar(
   py: number,
   currentHealth: number,
   maxHealth: number,
+  entityId: string,
+  entityType: 'enemy' | 'character',
+  logicalX: number,
+  logicalY: number,
   statusEffects?: StatusEffectInstance[],
   now: number = Date.now(),
   isBoss: boolean = false
@@ -2373,8 +2456,8 @@ function drawHealthBar(
   ctx.fillStyle = '#141414';
   ctx.fillRect(startX, startY, barWidth, barHeight);
 
-  // Track health changes for flash effects
-  const key = getHealthBarKey(px, py);
+  // Track health changes for flash effects - use entity ID and logical position for unique tracking
+  const key = getHealthBarKey(entityId, entityType, logicalX, logicalY);
   let state = healthBarState.get(key);
 
   if (!state) {
@@ -2690,7 +2773,8 @@ function drawCharacter(
   facingOverride?: Direction,
   gameStarted: boolean = true,
   deathAnimState?: DeathAnimationState,
-  now: number = Date.now()
+  now: number = Date.now(),
+  spawnAnimState?: SpawnAnimationState
 ) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
@@ -2706,6 +2790,11 @@ function drawCharacter(
   const charData = getCharacter(character.characterId) as CustomCharacter | undefined;
   const hasCustomSprite = charData && 'customSprite' in charData && charData.customSprite;
 
+  // Check if spawn animation is still playing
+  const isSpawning = spawnAnimState && hasCustomSprite && charData.customSprite &&
+    hasSpawnAnimation(charData.customSprite) &&
+    isSpawnAnimationPlaying(charData.customSprite, spawnAnimState.startTime);
+
   // Apply stealth opacity for living characters
   const stealthOpacity = !character.dead ? getStealthOpacity(character) : 1.0;
   const originalAlpha = ctx.globalAlpha;
@@ -2715,18 +2804,34 @@ function drawCharacter(
 
   if (hasCustomSprite && charData.customSprite) {
     if (!character.dead) {
-      // Living character - draw custom sprite with directional support and idle/moving/casting state
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
-      ctx.shadowBlur = 4;
-      ctx.shadowOffsetX = 2;
-      ctx.shadowOffsetY = 2;
+      // Living character
+      if (isSpawning && spawnAnimState) {
+        // Spawn animation is playing - draw spawn sprite instead of normal sprite
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
 
-      drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+        drawSpawnSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
 
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      } else {
+        // Normal sprite (idle/moving/casting)
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+
+        drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      }
     } else {
       // Dead character - use death sprite (animates then stays on final frame as corpse)
       const hasDeathSprite = hasDeathAnimation(charData.customSprite);
@@ -2791,7 +2896,7 @@ function drawCharacter(
   if (!character.dead) {
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
-    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.statusEffects, now);
+    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now);
 
     // Draw direction indicator next to health bar if character has movement actions
     if (charData && hasMovementActions(charData.behavior || [])) {
