@@ -3708,8 +3708,8 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
       if (containerRef.current) {
         // Get the container width minus some padding
         const containerWidth = containerRef.current.offsetWidth;
-        // Cap at 700px max to prevent overly large puzzles on wide screens
-        const cappedWidth = Math.min(containerWidth, 700);
+        // Cap at 900px max to prevent overly large puzzles on very wide screens
+        const cappedWidth = Math.min(containerWidth, 900);
         setMaxWidth(cappedWidth > 0 ? cappedWidth : undefined);
       }
     };
