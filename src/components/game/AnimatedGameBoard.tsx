@@ -819,15 +819,32 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Get device pixel ratio for high-DPI rendering
       const dpr = window.devicePixelRatio || 1;
 
+      // Calculate the puzzle scale factor (must match the scale calculation in render)
+      const borderStyleForScale = gameState.puzzle.borderConfig?.style || 'none';
+      const hasBorderForScale = borderStyleForScale !== 'none';
+      const gridWidthForScale = gameState.puzzle.width * TILE_SIZE;
+      const gridHeightForScale = gameState.puzzle.height * TILE_SIZE;
+      const canvasWidthForScale = hasBorderForScale ? gridWidthForScale + (SIDE_BORDER_SIZE * 2) : gridWidthForScale;
+      const canvasHeightForScale = hasBorderForScale ? gridHeightForScale + (BORDER_SIZE * 2) : gridHeightForScale;
+
+      let puzzleScale = 1;
+      if (maxWidth || maxHeight) {
+        const scaleX = maxWidth ? maxWidth / canvasWidthForScale : Infinity;
+        const scaleY = maxHeight ? maxHeight / canvasHeightForScale : Infinity;
+        const rawScale = Math.min(scaleX, scaleY);
+        puzzleScale = Math.round(rawScale * 4) / 4;
+        if (puzzleScale < 0.25) puzzleScale = 0.25;
+      }
+
       // Disable image smoothing for crisp pixel art
       ctx.imageSmoothingEnabled = false;
 
       // Clear entire canvas (at full resolution)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Scale context for high-DPI rendering
+      // Scale context for both puzzle scale and high-DPI rendering
       ctx.save();
-      ctx.scale(dpr, dpr);
+      ctx.scale(puzzleScale * dpr, puzzleScale * dpr);
 
       // Load skin for tile sprites
       const skin = gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null;
@@ -1153,7 +1170,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations]);
+  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations, maxWidth, maxHeight]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onTileClick) return;
@@ -1176,7 +1193,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (maxWidth || maxHeight) {
       const scaleX = maxWidth ? maxWidth / canvasWidthPx : Infinity;
       const scaleY = maxHeight ? maxHeight / canvasHeightPx : Infinity;
-      currentScale = Math.min(scaleX, scaleY); // Scale to fit available space
+      const rawScale = Math.min(scaleX, scaleY);
+      // Round to nearest 0.25 to match rendering scale
+      currentScale = Math.round(rawScale * 4) / 4;
+      if (currentScale < 0.25) currentScale = 0.25;
     }
 
     const rect = canvas.getBoundingClientRect();
@@ -1202,11 +1222,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
   // Calculate scale factor for responsive sizing
+  // Round to nearest 0.5 to help maintain pixel-perfect rendering
   let scale = 1;
   if (maxWidth || maxHeight) {
     const scaleX = maxWidth ? maxWidth / canvasWidth : Infinity;
     const scaleY = maxHeight ? maxHeight / canvasHeight : Infinity;
-    scale = Math.min(scaleX, scaleY); // Scale to fit available space
+    const rawScale = Math.min(scaleX, scaleY);
+    // Round to nearest 0.25 for cleaner pixel scaling
+    scale = Math.round(rawScale * 4) / 4;
+    // Ensure minimum scale of 0.25
+    if (scale < 0.25) scale = 0.25;
   }
 
   // Get device pixel ratio for crisp rendering on high-DPI displays (e.g., Retina, mobile)
@@ -1215,9 +1240,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const scaledWidth = canvasWidth * scale;
   const scaledHeight = canvasHeight * scale;
 
-  // Canvas resolution accounts for both responsive scale and device pixel ratio
-  const canvasResWidth = Math.round(canvasWidth * dpr);
-  const canvasResHeight = Math.round(canvasHeight * dpr);
+  // Canvas resolution accounts for device pixel ratio for crisp text/lines
+  // We render at the scaled size * dpr for maximum quality
+  const canvasResWidth = Math.round(scaledWidth * dpr);
+  const canvasResHeight = Math.round(scaledHeight * dpr);
 
   return (
     <div
@@ -1236,11 +1262,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         onClick={handleCanvasClick}
         className="cursor-pointer"
         style={{
-          width: canvasWidth,
-          height: canvasHeight,
-          imageRendering: 'pixelated',
-          transform: `scale(${scale})`,
-          transformOrigin: 'top left'
+          width: scaledWidth,
+          height: scaledHeight,
+          imageRendering: 'pixelated'
         }}
       />
     </div>
