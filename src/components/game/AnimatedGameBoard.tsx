@@ -1174,9 +1174,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     let currentScale = 1;
     if (maxWidth || maxHeight) {
-      const scaleX = maxWidth ? maxWidth / canvasWidthPx : 1;
-      const scaleY = maxHeight ? maxHeight / canvasHeightPx : 1;
-      currentScale = Math.min(scaleX, scaleY, 1);
+      const scaleX = maxWidth ? maxWidth / canvasWidthPx : Infinity;
+      const scaleY = maxHeight ? maxHeight / canvasHeightPx : Infinity;
+      currentScale = Math.min(scaleX, scaleY); // Scale to fit available space
     }
 
     const rect = canvas.getBoundingClientRect();
@@ -1204,9 +1204,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Calculate scale factor for responsive sizing
   let scale = 1;
   if (maxWidth || maxHeight) {
-    const scaleX = maxWidth ? maxWidth / canvasWidth : 1;
-    const scaleY = maxHeight ? maxHeight / canvasHeight : 1;
-    scale = Math.min(scaleX, scaleY, 1); // Never scale up, only down
+    const scaleX = maxWidth ? maxWidth / canvasWidth : Infinity;
+    const scaleY = maxHeight ? maxHeight / canvasHeight : Infinity;
+    scale = Math.min(scaleX, scaleY); // Scale to fit available space
   }
 
   // Get device pixel ratio for crisp rendering on high-DPI displays (e.g., Retina, mobile)

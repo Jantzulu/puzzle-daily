@@ -40,19 +40,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
   return (
-    <div className={`dungeon-panel p-4 ${disabled ? 'opacity-60' : ''}`}>
+    <div className={`dungeon-panel p-4 lg:p-5 ${disabled ? 'opacity-60' : ''}`}>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title */}
         <div className="flex items-center gap-2">
           <HelpButton sectionId="characters" />
-          <h3 className="text-lg font-bold text-purple-400">Heroes</h3>
+          <h3 className="text-lg lg:text-xl font-bold text-purple-400">Heroes</h3>
         </div>
         {/* Center: Test button (centered on both mobile and desktop) */}
         {onTest && !disabled && (
           <button
             onClick={onTest}
-            className={`absolute left-1/2 -translate-x-1/2 px-2 py-1 text-xs transition-colors flex items-center gap-1 ${
+            className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-1 lg:py-1.5 text-xs lg:text-sm transition-colors flex items-center gap-1 ${
               themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
             } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
             style={{
@@ -62,7 +62,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             }}
             title="Test your heroes without enemies for 5 turns"
           >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 lg:h-4 lg:w-4" fill="currentColor" viewBox="0 0 24 24">
               <path d="M8 5v14l11-7z"/>
             </svg>
             Test
@@ -70,7 +70,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         )}
         {/* Right: Count + Clear button */}
         <div className="flex items-center gap-2">
-          <span className={`text-sm ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
+          <span className={`text-sm lg:text-base ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
             {placedCharacterIds.length}/{effectiveMaxPlaceable} placed
           </span>
           {onClearAll && placedCharacterIds.length > 0 && !disabled && (
@@ -115,7 +115,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               }`}
             >
               {/* HP display - above sprite */}
-              <div className={`text-xs text-center font-medium mb-1 ${
+              <div className={`text-xs lg:text-sm text-center font-medium mb-1 ${
                 isSelected ? 'text-parchment-100' : 'text-copper-400'
               }`}>
                 HP: {character.health}
@@ -123,7 +123,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
               {/* Sprite */}
               <div className="relative flex-shrink-0">
-                <SpriteThumbnail sprite={character.customSprite} size={48} previewType="entity" />
+                <SpriteThumbnail sprite={character.customSprite} size={56} previewType="entity" />
                 {isPlaced && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
                     <span className="text-copper-400 text-lg">✓</span>
@@ -132,14 +132,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* Name and Title */}
-              <div className="mt-1 text-center max-w-[100px]">
-                <span className={`text-xs font-medium ${
+              <div className="mt-1 text-center max-w-[100px] lg:max-w-[120px]">
+                <span className={`text-xs lg:text-sm font-medium ${
                   isSelected ? 'text-parchment-100' : 'text-parchment-300'
                 }`}>
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className={`text-xs italic ${
+                  <span className={`text-xs lg:text-sm italic ${
                     isSelected ? 'text-copper-200' : 'text-stone-500'
                   }`}> {character.title}</span>
                 )}
@@ -147,7 +147,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <ul className={`mt-1 text-xs text-left max-w-[100px] list-disc list-inside ${
+                <ul className={`mt-1 text-xs lg:text-sm text-left max-w-[100px] lg:max-w-[120px] list-disc list-inside ${
                   isSelected ? 'text-copper-200' : 'text-stone-400'
                 }`}>
                   {character.tooltipSteps!.map((step, idx) => (
@@ -161,7 +161,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       </div>
 
       {selectedCharacterId && (
-        <div className="mt-3 pt-3 border-t border-stone-700 text-sm text-copper-400 font-medium text-center">
+        <div className="mt-3 pt-3 border-t border-stone-700 text-sm lg:text-base text-copper-400 font-medium text-center">
           Click on the dungeon to place your hero
         </div>
       )}

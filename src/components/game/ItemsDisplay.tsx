@@ -137,13 +137,13 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
   }
 
   return (
-    <div className="dungeon-panel p-4">
+    <div className="dungeon-panel p-4 lg:p-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="items" />
-          <h3 className="text-lg font-bold text-parchment-400">Items</h3>
+          <h3 className="text-lg lg:text-xl font-bold text-parchment-400">Items</h3>
         </div>
-        <span className="text-sm text-stone-400">
+        <span className="text-sm lg:text-base text-stone-400">
           {itemsWithSources.length} type{itemsWithSources.length !== 1 ? 's' : ''}
         </span>
       </div>
@@ -163,7 +163,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
               {/* Name and effects */}
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium text-parchment-200">
+                  <span className="text-sm lg:text-base font-medium text-parchment-200">
                     {collectible.name}
                   </span>
                   {/* On map indicator */}
@@ -177,13 +177,13 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
                 {/* Description if available */}
                 {collectible.description && (
                   <div
-                    className="text-xs text-stone-400 mt-0.5"
+                    className="text-xs lg:text-sm text-stone-400 mt-0.5"
                     dangerouslySetInnerHTML={{ __html: collectible.description }}
                   />
                 )}
                 {/* Show placement restriction info - separate line like SpecialTilesDisplay */}
                 {collectible.preventPlacement && (
-                  <div className="text-xs text-blood-400/70 mt-0.5">
+                  <div className="text-xs lg:text-sm text-blood-400/70 mt-0.5">
                     Cannot place heroes on this tile
                   </div>
                 )}

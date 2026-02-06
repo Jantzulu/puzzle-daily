@@ -786,8 +786,8 @@ export const Game: React.FC = () => {
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
                   <span key={shimmerKey} className="shimmer-container">
-                    <span className="text-base md:text-lg font-semibold text-stone-400">Quest:</span>
-                    <span className="text-sm md:text-base text-copper-300 font-medium">
+                    <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
+                    <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
                     {gameState.puzzle.winConditions.map((wc) => {
                       switch (wc.type) {
                         case 'defeat_all_enemies': {
@@ -1137,15 +1137,15 @@ export const Game: React.FC = () => {
               <div className="mt-3 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
                 <div className="relative flex items-center justify-between">
                   {/* Left: Lives */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-stone-400 text-xs">Lives:</span>
+                  <div className="flex items-center gap-1 lg:gap-2">
+                    <span className="text-stone-400 text-xs lg:text-sm">Lives:</span>
                     <div className="flex items-center gap-0.5">
                       {(() => {
                         const puzzleLives = currentPuzzle.lives ?? 3;
                         const isUnlimitedLives = puzzleLives === 0;
 
                         if (isUnlimitedLives) {
-                          return <span className="text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
+                          return <span className="text-lg lg:text-xl text-copper-400" title="Unlimited lives">&#x221E;</span>;
                         }
 
                         const hearts = [];
@@ -1174,7 +1174,7 @@ export const Game: React.FC = () => {
                             hearts.push(
                               <span
                                 key={i}
-                                className={`text-sm ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+                                className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
                                 title={isFilled ? 'Life remaining' : 'Life lost'}
                               >
                                 &#x2665;
@@ -1193,7 +1193,7 @@ export const Game: React.FC = () => {
                       <button
                         onClick={testMode === 'none' ? handlePlay : undefined}
                         disabled={testMode !== 'none'}
-                        className={`px-5 md:px-6 py-1 font-bold text-sm transition-all ${
+                        className={`px-5 md:px-6 lg:px-8 py-1 lg:py-1.5 font-bold text-sm lg:text-base transition-all ${
                           testMode !== 'none'
                             ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
                             : themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
@@ -1211,7 +1211,7 @@ export const Game: React.FC = () => {
                       </button>
                     ) : (
                       <div className="flex items-center gap-2">
-                        <span className="text-stone-400 text-xs font-medium">Turn</span>
+                        <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
                         {(() => {
                           const maxTurns = currentPuzzle.maxTurns;
                           const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
@@ -1220,7 +1220,7 @@ export const Game: React.FC = () => {
 
                           return (
                             <>
-                              <span className={`text-xl font-bold min-w-[2ch] text-center ${
+                              <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
                                 isVeryNearLimit
                                   ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
                                   : isNearLimit
@@ -1230,7 +1230,7 @@ export const Game: React.FC = () => {
                                 {gameState.currentTurn}
                               </span>
                               {maxTurns && (
-                                <span className={`text-xs ${
+                                <span className={`text-xs lg:text-sm ${
                                   isNearLimit ? 'text-blood-400' : 'text-stone-500'
                                 }`}>
                                   / {maxTurns}
@@ -1298,14 +1298,14 @@ export const Game: React.FC = () => {
           <div className="w-full max-w-2xl mx-auto flex flex-col gap-4 md:gap-6">
             {/* Puzzle Selector - moves to bottom on mobile */}
             {allPuzzles.length > 0 && (
-              <div className={`dungeon-panel p-4 transition-opacity ${dimmedPanelClass}`}>
-                <label className="block text-sm font-bold mb-2 text-copper-400">
+              <div className={`dungeon-panel p-4 lg:p-5 transition-opacity ${dimmedPanelClass}`}>
+                <label className="block text-sm lg:text-base font-bold mb-2 text-copper-400">
                   Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
                 </label>
                 <select
                   value={currentPuzzle.id}
                   onChange={(e) => handlePuzzleChange(e.target.value)}
-                  className="dungeon-select w-full"
+                  className="dungeon-select w-full lg:text-base lg:py-2"
                 >
                   {officialPuzzles.length > 0 && (
                     <optgroup label="Official Dungeons">

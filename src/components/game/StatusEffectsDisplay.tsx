@@ -207,13 +207,13 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   }
 
   return (
-    <div className="dungeon-panel p-4">
+    <div className="dungeon-panel p-4 lg:p-5">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="status_effects" />
-          <h3 className="text-lg font-bold text-mystic-400">Enchantments</h3>
+          <h3 className="text-lg lg:text-xl font-bold text-mystic-400">Enchantments</h3>
         </div>
-        <span className="text-sm text-stone-400">
+        <span className="text-sm lg:text-base text-stone-400">
           {statusEffectsWithSources.length} possible
         </span>
       </div>
@@ -232,10 +232,10 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
 
               {/* Name and description */}
               <div className="flex-1 min-w-0">
-                <div className="text-sm font-medium text-mystic-300">
+                <div className="text-sm lg:text-base font-medium text-mystic-300">
                   {effect.name}
                 </div>
-                <div className="text-xs text-stone-400">
+                <div className="text-xs lg:text-sm text-stone-400">
                   {effect.description}
                 </div>
               </div>
