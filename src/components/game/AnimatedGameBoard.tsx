@@ -831,10 +831,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       if (maxWidth || maxHeight) {
         const scaleX = maxWidth ? maxWidth / canvasWidthForScale : Infinity;
         const scaleY = maxHeight ? maxHeight / canvasHeightForScale : Infinity;
-        const rawScale = Math.min(scaleX, scaleY);
-        // Round DOWN to nearest 0.25 (must match render calculation)
-        puzzleScale = Math.floor(rawScale * 4) / 4;
-        if (puzzleScale < 0.25) puzzleScale = 0.25;
+        puzzleScale = Math.min(scaleX, scaleY);
+        if (puzzleScale < 0.1) puzzleScale = 0.1;
       }
 
       // Disable image smoothing for crisp pixel art
@@ -1194,10 +1192,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     if (maxWidth || maxHeight) {
       const scaleX = maxWidth ? maxWidth / canvasWidthPx : Infinity;
       const scaleY = maxHeight ? maxHeight / canvasHeightPx : Infinity;
-      const rawScale = Math.min(scaleX, scaleY);
-      // Round DOWN to nearest 0.25 to match rendering scale
-      currentScale = Math.floor(rawScale * 4) / 4;
-      if (currentScale < 0.25) currentScale = 0.25;
+      currentScale = Math.min(scaleX, scaleY);
+      if (currentScale < 0.1) currentScale = 0.1;
     }
 
     const rect = canvas.getBoundingClientRect();
@@ -1223,16 +1219,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
   // Calculate scale factor for responsive sizing
-  // Round DOWN to nearest 0.25 to help maintain pixel-perfect rendering while fitting in container
+  // Use exact scale to maximize use of available space while never exceeding container
   let scale = 1;
   if (maxWidth || maxHeight) {
     const scaleX = maxWidth ? maxWidth / canvasWidth : Infinity;
     const scaleY = maxHeight ? maxHeight / canvasHeight : Infinity;
-    const rawScale = Math.min(scaleX, scaleY);
-    // Round DOWN to nearest 0.25 for cleaner pixel scaling (floor ensures we never exceed container)
-    scale = Math.floor(rawScale * 4) / 4;
-    // Ensure minimum scale of 0.25
-    if (scale < 0.25) scale = 0.25;
+    scale = Math.min(scaleX, scaleY);
+    // Ensure minimum scale of 0.1
+    if (scale < 0.1) scale = 0.1;
   }
 
   // Get device pixel ratio for crisp rendering on high-DPI displays (e.g., Retina, mobile)
