@@ -3694,23 +3694,29 @@ interface ResponsiveGameBoardProps {
   onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
 }
 
+// Maximum dimensions for the puzzle board on desktop
+const MAX_PUZZLE_WIDTH = 700;
+const MAX_PUZZLE_HEIGHT = 550;
+
 /**
  * A wrapper component that automatically measures the container and scales the puzzle
- * to fit within the available space. Now applies responsive sizing on all screen sizes,
- * capped at a maximum width to prevent overly large puzzles on very wide screens.
+ * to fit within the available space. Applies responsive sizing on all screen sizes,
+ * capped at maximum width and height to prevent overly large puzzles.
  */
 export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [maxWidth, setMaxWidth] = useState<number | undefined>(undefined);
+  const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
 
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
-        // Get the container width minus some padding
+        // Get the container width
         const containerWidth = containerRef.current.offsetWidth;
-        // Cap at 900px max to prevent overly large puzzles on very wide screens
-        const cappedWidth = Math.min(containerWidth, 900);
+        // Cap width and height to prevent overly large puzzles
+        const cappedWidth = Math.min(containerWidth, MAX_PUZZLE_WIDTH);
         setMaxWidth(cappedWidth > 0 ? cappedWidth : undefined);
+        setMaxHeight(MAX_PUZZLE_HEIGHT);
       }
     };
 
@@ -3734,7 +3740,7 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
 
   return (
     <div ref={containerRef} className="w-full flex justify-center">
-      <AnimatedGameBoard {...props} maxWidth={maxWidth} />
+      <AnimatedGameBoard {...props} maxWidth={maxWidth} maxHeight={maxHeight} />
     </div>
   );
 };
