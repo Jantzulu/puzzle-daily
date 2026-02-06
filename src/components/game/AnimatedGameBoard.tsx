@@ -2974,11 +2974,10 @@ function drawCollectible(
   const py = y * TILE_SIZE;
 
   // Calculate bobbing offset - gentle up/down animation like items dropped on the ground
-  // Use position-based offset so items bob at slightly different phases
-  const bobPhase = (x * 1.3 + y * 0.7) * Math.PI;
+  // All items bob in sync (no position-based phase offset)
   const bobSpeed = 1; // Cycles per second
   const bobAmount = TILE_SIZE * 0.06; // 6% of tile size
-  const bobOffset = Math.sin((now / 1000) * bobSpeed * Math.PI * 2 + bobPhase) * bobAmount;
+  const bobOffset = Math.sin((now / 1000) * bobSpeed * Math.PI * 2) * bobAmount;
 
   // Try to load custom collectible data
   const collectibleData = collectibleId ? loadCollectible(collectibleId) : null;
