@@ -8,6 +8,7 @@ import { HelpButton } from './HelpOverlay';
 
 interface ItemsDisplayProps {
   puzzle: Puzzle;
+  className?: string;
 }
 
 // Entity source info for an item drop
@@ -128,7 +129,7 @@ const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({
   );
 };
 
-export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
+export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = '' }) => {
   const itemsWithSources = useMemo(() => getPuzzleItemsWithSources(puzzle), [puzzle]);
 
   // Don't render if no items
@@ -137,7 +138,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle }) => {
   }
 
   return (
-    <div className="dungeon-panel p-4 lg:p-5">
+    <div className={`dungeon-panel p-4 lg:p-5 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="items" />

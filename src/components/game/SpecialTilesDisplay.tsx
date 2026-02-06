@@ -6,6 +6,7 @@ import { HelpButton } from './HelpOverlay';
 
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
+  className?: string;
 }
 
 // Information about a special tile to display
@@ -221,7 +222,7 @@ function getCadenceDescription(cadence: CadenceConfig): string {
   }
 }
 
-export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle }) => {
+export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle, className = '' }) => {
   const specialTiles = useMemo(() => getSpecialTiles(puzzle), [puzzle]);
 
   // Don't render if no special tiles
@@ -230,7 +231,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
   }
 
   return (
-    <div className="dungeon-panel p-4 lg:p-5">
+    <div className={`dungeon-panel p-4 lg:p-5 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="special_tiles" />

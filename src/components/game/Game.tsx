@@ -779,7 +779,7 @@ export const Game: React.FC = () => {
       <div className="max-w-6xl mx-auto relative">
         <div className="flex flex-col gap-4 md:gap-6">
           {/* Game Board - The Dungeon */}
-          <div ref={gameBoardRef} className="flex-1 flex flex-col items-center">
+          <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
             {/* Quest Display - above puzzle */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat') && testMode === 'none' && (
               <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
@@ -894,7 +894,7 @@ export const Game: React.FC = () => {
             )}
 
             {/* Game board with overlay container for loss/victory panels */}
-            <div className="relative w-full max-w-[700px]">
+            <div className="relative w-full max-w-[700px] overflow-hidden">
               <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
 
               {/* Defeat Overlay - appears on top of the game board */}
@@ -1154,19 +1154,24 @@ export const Game: React.FC = () => {
                           const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
 
                           if (customIcon) {
-                            // Use native 1x size on mobile, larger on desktop
+                            // Render at native 14x16, use transform scale(2) on desktop for crisp pixel art
+                            // Wrapper div handles the layout size so transform doesn't break flow
                             hearts.push(
-                              <img
+                              <div
                                 key={i}
-                                src={customIcon}
-                                alt={isFilled ? 'Life remaining' : 'Life lost'}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                                className="object-contain w-[14px] h-[16px] lg:w-[18px] lg:h-[20px]"
-                                style={{
-                                  opacity: isFilled ? 1 : 0.4,
-                                  imageRendering: 'pixelated'
-                                }}
-                              />
+                                className="w-[14px] h-[16px] lg:w-[28px] lg:h-[32px] flex items-center justify-center"
+                              >
+                                <img
+                                  src={customIcon}
+                                  alt={isFilled ? 'Life remaining' : 'Life lost'}
+                                  title={isFilled ? 'Life remaining' : 'Life lost'}
+                                  className="w-[14px] h-[16px] lg:scale-[2]"
+                                  style={{
+                                    opacity: isFilled ? 1 : 0.4,
+                                    imageRendering: 'pixelated'
+                                  }}
+                                />
+                              </div>
                             );
                           } else {
                             hearts.push(
@@ -1295,29 +1300,22 @@ export const Game: React.FC = () => {
           {/* Info Panels */}
           <div className="w-full max-w-2xl mx-auto flex flex-col gap-4">
             {/* Enemies Display */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <EnemyDisplay
-                enemies={gameState.puzzle.enemies}
-                onTest={handleTestEnemiesWithScroll}
-                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-                themeAssets={themeAssets}
-              />
-            </div>
+            <EnemyDisplay
+              enemies={gameState.puzzle.enemies}
+              onTest={handleTestEnemiesWithScroll}
+              showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+              themeAssets={themeAssets}
+              className={`transition-opacity ${dimmedPanelClass}`}
+            />
 
             {/* Items Display - only shown if puzzle has items */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <ItemsDisplay puzzle={gameState.puzzle} />
-            </div>
+            <ItemsDisplay puzzle={gameState.puzzle} className={`transition-opacity ${dimmedPanelClass}`} />
 
             {/* Status Effects Display - only shown if puzzle has status effects */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <StatusEffectsDisplay puzzle={gameState.puzzle} />
-            </div>
+            <StatusEffectsDisplay puzzle={gameState.puzzle} className={`transition-opacity ${dimmedPanelClass}`} />
 
             {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              <SpecialTilesDisplay puzzle={gameState.puzzle} />
-            </div>
+            <SpecialTilesDisplay puzzle={gameState.puzzle} className={`transition-opacity ${dimmedPanelClass}`} />
 
             {/* Puzzle Selector - at bottom for dev use */}
             {allPuzzles.length > 0 && (

@@ -11,9 +11,10 @@ interface EnemyDisplayProps {
   onTest?: () => void;
   showTestButton?: boolean;
   themeAssets?: ThemeAssets;
+  className?: string;
 }
 
-export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false, themeAssets = {} }) => {
+export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false, themeAssets = {}, className = '' }) => {
   // Determine button shape class
   const getShapeClass = (shape?: string) => {
     switch (shape) {
@@ -42,7 +43,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   if (uniqueEnemies.length === 0) {
     return (
-      <div className="dungeon-panel p-4 lg:p-5">
+      <div className={`dungeon-panel p-4 lg:p-5 ${className}`}>
         <div className="flex items-center gap-2 mb-2">
           <HelpButton sectionId="enemies" />
           <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
@@ -53,7 +54,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
   }
 
   return (
-    <div className="dungeon-panel p-4 lg:p-5">
+    <div className={`dungeon-panel p-4 lg:p-5 ${className}`}>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title + Test button (desktop only) */}

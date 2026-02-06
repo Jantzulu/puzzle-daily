@@ -8,6 +8,7 @@ import { HelpButton } from './HelpOverlay';
 
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
+  className?: string;
 }
 
 // Source type for status effects
@@ -198,7 +199,7 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
   );
 };
 
-export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzzle }) => {
+export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzzle, className = '' }) => {
   const statusEffectsWithSources = useMemo(() => getPuzzleStatusEffectsWithSources(puzzle), [puzzle]);
 
   // Don't render if no status effects
@@ -207,7 +208,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   }
 
   return (
-    <div className="dungeon-panel p-4 lg:p-5">
+    <div className={`dungeon-panel p-4 lg:p-5 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="status_effects" />

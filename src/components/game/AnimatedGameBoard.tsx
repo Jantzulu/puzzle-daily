@@ -832,7 +832,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         const scaleX = maxWidth ? maxWidth / canvasWidthForScale : Infinity;
         const scaleY = maxHeight ? maxHeight / canvasHeightForScale : Infinity;
         const rawScale = Math.min(scaleX, scaleY);
-        puzzleScale = Math.round(rawScale * 4) / 4;
+        // Round DOWN to nearest 0.25 (must match render calculation)
+        puzzleScale = Math.floor(rawScale * 4) / 4;
         if (puzzleScale < 0.25) puzzleScale = 0.25;
       }
 
@@ -1194,8 +1195,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const scaleX = maxWidth ? maxWidth / canvasWidthPx : Infinity;
       const scaleY = maxHeight ? maxHeight / canvasHeightPx : Infinity;
       const rawScale = Math.min(scaleX, scaleY);
-      // Round to nearest 0.25 to match rendering scale
-      currentScale = Math.round(rawScale * 4) / 4;
+      // Round DOWN to nearest 0.25 to match rendering scale
+      currentScale = Math.floor(rawScale * 4) / 4;
       if (currentScale < 0.25) currentScale = 0.25;
     }
 
@@ -1222,14 +1223,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
   // Calculate scale factor for responsive sizing
-  // Round to nearest 0.5 to help maintain pixel-perfect rendering
+  // Round DOWN to nearest 0.25 to help maintain pixel-perfect rendering while fitting in container
   let scale = 1;
   if (maxWidth || maxHeight) {
     const scaleX = maxWidth ? maxWidth / canvasWidth : Infinity;
     const scaleY = maxHeight ? maxHeight / canvasHeight : Infinity;
     const rawScale = Math.min(scaleX, scaleY);
-    // Round to nearest 0.25 for cleaner pixel scaling
-    scale = Math.round(rawScale * 4) / 4;
+    // Round DOWN to nearest 0.25 for cleaner pixel scaling (floor ensures we never exceed container)
+    scale = Math.floor(rawScale * 4) / 4;
     // Ensure minimum scale of 0.25
     if (scale < 0.25) scale = 0.25;
   }
@@ -3731,21 +3732,28 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
   const containerRef = useRef<HTMLDivElement>(null);
   const [maxWidth, setMaxWidth] = useState<number | undefined>(undefined);
   const [maxHeight, setMaxHeight] = useState<number | undefined>(undefined);
+  const [measured, setMeasured] = useState(false);
 
   useEffect(() => {
     const updateSize = () => {
       if (containerRef.current) {
         // Get the container width
         const containerWidth = containerRef.current.offsetWidth;
-        // Cap width and height to prevent overly large puzzles
-        const cappedWidth = Math.min(containerWidth, MAX_PUZZLE_WIDTH);
-        setMaxWidth(cappedWidth > 0 ? cappedWidth : undefined);
-        setMaxHeight(MAX_PUZZLE_HEIGHT);
+        // Only proceed if we got a valid width (> 0)
+        if (containerWidth > 0) {
+          // Cap width and height to prevent overly large puzzles
+          const cappedWidth = Math.min(containerWidth, MAX_PUZZLE_WIDTH);
+          setMaxWidth(cappedWidth);
+          setMaxHeight(MAX_PUZZLE_HEIGHT);
+          setMeasured(true);
+        }
       }
     };
 
-    // Initial measurement
-    updateSize();
+    // Initial measurement - use requestAnimationFrame to ensure layout is computed
+    requestAnimationFrame(() => {
+      updateSize();
+    });
 
     // Update on window resize
     window.addEventListener('resize', updateSize);
@@ -3763,8 +3771,8 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
   }, []);
 
   return (
-    <div ref={containerRef} className="w-full flex justify-center">
-      <AnimatedGameBoard {...props} maxWidth={maxWidth} maxHeight={maxHeight} />
+    <div ref={containerRef} className="w-full flex justify-center overflow-hidden">
+      {measured && <AnimatedGameBoard {...props} maxWidth={maxWidth} maxHeight={maxHeight} />}
     </div>
   );
 };
