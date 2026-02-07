@@ -71,7 +71,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             // Default styled button
             <button
               onClick={onTest}
-              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-0.5 lg:py-1 text-xs transition-colors flex items-center gap-1 ${
+              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
                 themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
               } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
               style={{

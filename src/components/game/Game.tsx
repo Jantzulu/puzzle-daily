@@ -1115,7 +1115,7 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1.5 lg:p-2">
+          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5">
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>

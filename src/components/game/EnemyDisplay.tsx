@@ -122,7 +122,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
             // Default styled button
             <button
               onClick={onTest}
-              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-0.5 lg:py-1 text-xs transition-colors flex items-center gap-1 ${
+              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
                 themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
               } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
               style={{
