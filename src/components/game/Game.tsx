@@ -787,7 +787,7 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 pt-2 md:pt-2 pb-3 md:pb-2.5 dungeon-panel-dark -mt-1 relative z-10">
+              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-1 relative z-10">
                 {/* Quest Row - only show when not in test mode */}
                 {testMode === 'none' && (
                   <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -874,7 +874,7 @@ export const Game: React.FC = () => {
                 })()}
 
                 {/* Accent divider line */}
-                <div className="my-2 border-t border-copper-700/50 relative">
+                <div className="my-1.5 border-t border-copper-700/50 relative">
                   <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
                 </div>
 
