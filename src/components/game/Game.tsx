@@ -777,7 +777,7 @@ export const Game: React.FC = () => {
       </div>
 
       <div className="max-w-6xl mx-auto relative">
-        <div className="flex flex-col gap-4 md:gap-6">
+        <div className="flex flex-col gap-3">
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
             {/* Quest Display - above puzzle */}
@@ -1281,7 +1281,7 @@ export const Game: React.FC = () => {
 
             {/* Character Selector - below puzzle (visible during setup, running, defeat, and test mode) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className={`mt-4 lg:mt-3 w-full max-w-2xl transition-opacity ${dimmedPanelClass}`}>
+              <div className={`mt-3 w-full max-w-2xl transition-opacity ${dimmedPanelClass}`}>
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
                   selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
@@ -1298,7 +1298,7 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Info Panels */}
-          <div className="w-full max-w-2xl mx-auto flex flex-col gap-4">
+          <div className="w-full max-w-2xl mx-auto flex flex-col gap-3">
             {/* Enemies Display */}
             <EnemyDisplay
               enemies={gameState.puzzle.enemies}
