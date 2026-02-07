@@ -791,15 +791,15 @@ export const Game: React.FC = () => {
                 {/* Ornate corner decorations - arrowhead triangles overlapping rounded corners */}
                 {/* Bottom-left: arrowhead with curved hypotenuse - separate strokes for uniform thickness */}
                 <svg className="absolute -bottom-[3px] -left-[3px] w-4 h-4" viewBox="0 0 16 16" fill="none">
-                  <path d="M0 16 L0 0" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-                  <path d="M0 16 L16 16" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-                  <path d="M0 0 Q4 12 16 16" stroke="#a97545" strokeWidth="2" fill="none" />
+                  <path d="M0 16 L0 0" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+                  <path d="M0 16 L16 16" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+                  <path d="M0 0 Q4 12 16 16" stroke="#a97545" strokeWidth="3" fill="none" />
                 </svg>
                 {/* Bottom-right: arrowhead with curved hypotenuse - separate strokes for uniform thickness */}
                 <svg className="absolute -bottom-[3px] -right-[3px] w-4 h-4" viewBox="0 0 16 16" fill="none">
-                  <path d="M16 16 L16 0" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-                  <path d="M16 16 L0 16" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-                  <path d="M16 0 Q12 12 0 16" stroke="#a97545" strokeWidth="2" fill="none" />
+                  <path d="M16 16 L16 0" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+                  <path d="M16 16 L0 16" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+                  <path d="M16 0 Q12 12 0 16" stroke="#a97545" strokeWidth="3" fill="none" />
                 </svg>
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
@@ -1134,15 +1134,15 @@ export const Game: React.FC = () => {
             {/* Ornate corner decorations - arrowhead triangles on top */}
             {/* Top-left: arrowhead with curved hypotenuse - separate strokes for uniform thickness */}
             <svg className="absolute -top-[2px] -left-[2px] w-4 h-4" viewBox="0 0 16 16" fill="none">
-              <path d="M0 0 L0 16" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-              <path d="M0 0 L16 0" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-              <path d="M0 16 Q4 4 16 0" stroke="#a97545" strokeWidth="2" fill="none" />
+              <path d="M0 0 L0 16" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+              <path d="M0 0 L16 0" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+              <path d="M0 16 Q4 4 16 0" stroke="#a97545" strokeWidth="3" fill="none" />
             </svg>
             {/* Top-right: arrowhead with curved hypotenuse - separate strokes for uniform thickness */}
             <svg className="absolute -top-[2px] -right-[2px] w-4 h-4" viewBox="0 0 16 16" fill="none">
-              <path d="M16 0 L16 16" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-              <path d="M16 0 L0 0" stroke="#a97545" strokeWidth="3" strokeLinecap="square" />
-              <path d="M16 16 Q12 4 0 0" stroke="#a97545" strokeWidth="2" fill="none" />
+              <path d="M16 0 L16 16" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+              <path d="M16 0 L0 0" stroke="#a97545" strokeWidth="4" strokeLinecap="square" />
+              <path d="M16 16 Q12 4 0 0" stroke="#a97545" strokeWidth="3" fill="none" />
             </svg>
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
