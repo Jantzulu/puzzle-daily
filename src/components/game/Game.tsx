@@ -788,6 +788,9 @@ export const Game: React.FC = () => {
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-1 relative z-10">
+                {/* Ornate corner decorations */}
+                <div className="absolute bottom-1 left-1 w-3 h-3 border-l-2 border-b-2 border-copper-600/60 rounded-bl-sm" />
+                <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-copper-600/60 rounded-br-sm" />
                 {/* Quest Row */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                     <HelpButton sectionId="game_general" />
@@ -1168,8 +1171,6 @@ export const Game: React.FC = () => {
                         return hearts;
                       })()}
                     </div>
-                    {/* Diamond separator after Lives */}
-                    <div className="ml-2 w-1 h-1 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
                   </div>
 
                   {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
@@ -1259,8 +1260,6 @@ export const Game: React.FC = () => {
 
                   {/* Right: Max Turns OR Concede button - centered in right third */}
                   <div className="flex items-center justify-center">
-                    {/* Diamond separator before Max Turns */}
-                    <div className="mr-2 w-1 h-1 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
                     {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       gameState.puzzle.maxTurns && (
                         <div className="flex items-center gap-1">
