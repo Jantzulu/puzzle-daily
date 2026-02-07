@@ -1115,8 +1115,8 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className={`mt-3 w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
-            {/* Control Panel Row - Lives / Play Button / Max Turns */}
+          <div className="mt-3 w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3">
+            {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
                 <div className="relative flex items-center justify-between mb-3">
@@ -1297,39 +1297,42 @@ export const Game: React.FC = () => {
               </>
             )}
 
-            {/* Character Selector - visible during setup, running, defeat, and test mode */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <CharacterSelector
-                availableCharacterIds={gameState.puzzle.availableCharacters}
-                selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
-                onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
-                placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
-                maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
-                onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
-                onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
+            {/* Heroes and Dungeon Details - dimmed during play/test */}
+            <div className={`transition-opacity ${dimmedPanelClass}`}>
+              {/* Character Selector - visible during setup, running, defeat, and test mode */}
+              {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+                <CharacterSelector
+                  availableCharacterIds={gameState.puzzle.availableCharacters}
+                  selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
+                  onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
+                  placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                  maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
+                  onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
+                  onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
+                  themeAssets={themeAssets}
+                  disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
+                  noPanel
+                />
+              )}
+
+              {/* Enemies Display */}
+              <EnemyDisplay
+                enemies={gameState.puzzle.enemies}
+                onTest={handleTestEnemiesWithScroll}
+                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
                 themeAssets={themeAssets}
-                disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                 noPanel
               />
-            )}
 
-            {/* Enemies Display */}
-            <EnemyDisplay
-              enemies={gameState.puzzle.enemies}
-              onTest={handleTestEnemiesWithScroll}
-              showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-              themeAssets={themeAssets}
-              noPanel
-            />
+              {/* Items Display - only shown if puzzle has items */}
+              <ItemsDisplay puzzle={gameState.puzzle} noPanel />
 
-            {/* Items Display - only shown if puzzle has items */}
-            <ItemsDisplay puzzle={gameState.puzzle} noPanel />
+              {/* Status Effects Display - only shown if puzzle has status effects */}
+              <StatusEffectsDisplay puzzle={gameState.puzzle} noPanel />
 
-            {/* Status Effects Display - only shown if puzzle has status effects */}
-            <StatusEffectsDisplay puzzle={gameState.puzzle} noPanel />
-
-            {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
-            <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
+              {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
+              <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
+            </div>
           </div>
 
           {/* Puzzle Selector - at bottom for dev use */}
