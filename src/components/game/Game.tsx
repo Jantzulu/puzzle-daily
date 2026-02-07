@@ -789,12 +789,12 @@ export const Game: React.FC = () => {
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible">
                 {/* Ornate corner decorations - outer pointed frame aligned with panel border */}
-                {/* Bottom-left: L-shaped outer frame piece */}
-                <div className="absolute -bottom-[6px] -left-[2px] w-4 h-[2px] bg-copper-600" />
-                <div className="absolute -bottom-[2px] -left-[6px] w-[2px] h-4 bg-copper-600" />
-                {/* Bottom-right: L-shaped outer frame piece */}
-                <div className="absolute -bottom-[6px] -right-[2px] w-4 h-[2px] bg-copper-600" />
-                <div className="absolute -bottom-[2px] -right-[6px] w-[2px] h-4 bg-copper-600" />
+                {/* Bottom-left: L-shaped outer frame piece extending from corner */}
+                <div className="absolute bottom-0 -left-[10px] w-[10px] h-[2px] bg-copper-600" />
+                <div className="absolute -bottom-[10px] left-0 w-[2px] h-[10px] bg-copper-600" />
+                {/* Bottom-right: L-shaped outer frame piece extending from corner */}
+                <div className="absolute bottom-0 -right-[10px] w-[10px] h-[2px] bg-copper-600" />
+                <div className="absolute -bottom-[10px] right-0 w-[2px] h-[10px] bg-copper-600" />
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}
