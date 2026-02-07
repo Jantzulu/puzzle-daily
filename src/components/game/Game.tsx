@@ -787,7 +787,7 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible rounded-bl-xl rounded-br-xl">
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible rounded-bl-2xl rounded-br-2xl">
                 {/* Ornate corner decorations - sharp L corners overlapping rounded corners */}
                 {/* Bottom-left: sharp corner - lines meet at corner */}
                 <div className="absolute -bottom-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
@@ -1124,7 +1124,14 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5">
+          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 rounded-tl-2xl rounded-tr-2xl relative overflow-visible">
+            {/* Ornate corner decorations - sharp L corners on top */}
+            <div className="absolute -top-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
+            <div className="absolute -top-[2px] -left-[2px] w-[2px] h-4 bg-copper-600" />
+            <div className="absolute -top-[2px] -right-[2px] w-4 h-[2px] bg-copper-600" />
+            <div className="absolute -top-[2px] -right-[2px] w-[2px] h-4 bg-copper-600" />
+            {/* Center diamond on top - vertically centered so border bisects it */}
+            <div className="absolute -top-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
