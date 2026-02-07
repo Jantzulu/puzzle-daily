@@ -1289,26 +1289,26 @@ export const Game: React.FC = () => {
               </div>
             )}
 
-            {/* Character Selector - below puzzle (visible during setup, running, defeat, and test mode) */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className={`mt-3 w-full max-w-2xl transition-opacity ${dimmedPanelClass}`}>
-                <CharacterSelector
-                  availableCharacterIds={gameState.puzzle.availableCharacters}
-                  selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
-                  onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
-                  placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
-                  maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
-                  onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
-                  onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
-                  themeAssets={themeAssets}
-                  disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
-                />
-              </div>
-            )}
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className={`w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
+          <div className={`mt-3 w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
+            {/* Character Selector - visible during setup, running, defeat, and test mode */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+              <CharacterSelector
+                availableCharacterIds={gameState.puzzle.availableCharacters}
+                selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
+                onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
+                placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
+                onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
+                onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
+                themeAssets={themeAssets}
+                disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
+                noPanel
+              />
+            )}
+
             {/* Enemies Display */}
             <EnemyDisplay
               enemies={gameState.puzzle.enemies}

@@ -42,8 +42,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   const uniqueEnemies = Array.from(enemyGroups.values());
 
+  // Accent divider for noPanel mode (when part of unified panel)
+  const divider = noPanel ? (
+    <div className="my-3 border-t border-copper-700/50 relative">
+      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
+    </div>
+  ) : null;
+
   const emptyContent = (
     <>
+      {divider}
       <div className="flex items-center gap-2 mb-2">
         <HelpButton sectionId="enemies" />
         <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
@@ -65,6 +73,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   const content = (
     <>
+      {divider}
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title */}
