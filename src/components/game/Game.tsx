@@ -787,7 +787,7 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-1 md:py-1.5 dungeon-panel-dark -mt-1 relative z-10">
+              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 pt-1 md:pt-1.5 pb-2 md:pb-2 dungeon-panel-dark -mt-1 relative z-10">
                 {/* Quest Row - only show when not in test mode */}
                 {testMode === 'none' && (
                   <div className="flex items-center justify-center gap-2 flex-wrap">
