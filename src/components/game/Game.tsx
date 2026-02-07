@@ -788,13 +788,29 @@ export const Game: React.FC = () => {
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible">
-                {/* Ornate corner decorations */}
-                {/* Bottom L-brackets - slightly inset from corners */}
-                <div className="absolute bottom-1 left-1 w-4 h-4 border-l-2 border-b-2 border-copper-600/70 rounded-bl-sm" />
-                <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-copper-600/70 rounded-br-sm" />
-                {/* Corner diamonds - rotated to point diagonally outward */}
-                <div className="absolute -bottom-[4px] -left-[4px] w-2 h-2 bg-copper-600 border border-copper-500" />
-                <div className="absolute -bottom-[4px] -right-[4px] w-2 h-2 bg-copper-600 border border-copper-500" />
+                {/* Ornate corner decorations - inspired by game UI frames */}
+                {/* Bottom-left corner piece */}
+                <div className="absolute bottom-0 left-0">
+                  {/* Horizontal line extending right */}
+                  <div className="absolute bottom-0 left-3 w-6 h-[2px] bg-copper-600" />
+                  {/* Vertical line extending up */}
+                  <div className="absolute bottom-3 left-0 w-[2px] h-6 bg-copper-600" />
+                  {/* Corner diamond */}
+                  <div className="absolute -bottom-[5px] -left-[5px] w-2.5 h-2.5 rotate-45 bg-copper-600 border border-copper-500" />
+                  {/* Inner corner accent */}
+                  <div className="absolute bottom-1 left-1 w-2 h-2 border-l border-b border-copper-500/50" />
+                </div>
+                {/* Bottom-right corner piece */}
+                <div className="absolute bottom-0 right-0">
+                  {/* Horizontal line extending left */}
+                  <div className="absolute bottom-0 right-3 w-6 h-[2px] bg-copper-600" />
+                  {/* Vertical line extending up */}
+                  <div className="absolute bottom-3 right-0 w-[2px] h-6 bg-copper-600" />
+                  {/* Corner diamond */}
+                  <div className="absolute -bottom-[5px] -right-[5px] w-2.5 h-2.5 rotate-45 bg-copper-600 border border-copper-500" />
+                  {/* Inner corner accent */}
+                  <div className="absolute bottom-1 right-1 w-2 h-2 border-r border-b border-copper-500/50" />
+                </div>
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}
