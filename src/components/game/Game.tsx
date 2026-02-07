@@ -1115,21 +1115,21 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className="w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3">
+          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1.5 lg:p-2">
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
-                <div className="relative flex items-center justify-between mb-2">
-                  {/* Left: Lives */}
-                  <div className="flex items-center gap-1 lg:gap-2">
-                    <span className="text-stone-400 text-xs lg:text-sm">Lives:</span>
+                <div className="flex items-center justify-between mb-1.5">
+                  {/* Left: Lives - fixed width for centering */}
+                  <div className="flex items-center gap-1 min-w-[100px] lg:min-w-[120px]">
+                    <span className="text-stone-400 text-xs">Lives:</span>
                     <div className="flex items-center gap-0.5">
                       {(() => {
                         const puzzleLives = currentPuzzle.lives ?? 3;
                         const isUnlimitedLives = puzzleLives === 0;
 
                         if (isUnlimitedLives) {
-                          return <span className="text-lg lg:text-xl text-copper-400" title="Unlimited lives">&#x221E;</span>;
+                          return <span className="text-base lg:text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
                         }
 
                         const hearts = [];
@@ -1141,13 +1141,13 @@ export const Game: React.FC = () => {
                             hearts.push(
                               <div
                                 key={i}
-                                className="w-[14px] h-[16px] lg:w-[28px] lg:h-[32px] flex items-center justify-center"
+                                className="w-[14px] h-[16px] lg:w-[18px] lg:h-[20px] flex items-center justify-center"
                               >
                                 <img
                                   src={customIcon}
                                   alt={isFilled ? 'Life remaining' : 'Life lost'}
                                   title={isFilled ? 'Life remaining' : 'Life lost'}
-                                  className="w-[14px] h-[16px] lg:scale-[2]"
+                                  className="w-[14px] h-[16px] lg:w-[18px] lg:h-[20px]"
                                   style={{
                                     opacity: isFilled ? 1 : 0.4,
                                     imageRendering: 'pixelated'
@@ -1159,7 +1159,7 @@ export const Game: React.FC = () => {
                             hearts.push(
                               <span
                                 key={i}
-                                className={`text-sm lg:text-lg ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+                                className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
                                 title={isFilled ? 'Life remaining' : 'Life lost'}
                               >
                                 &#x2665;
@@ -1173,7 +1173,7 @@ export const Game: React.FC = () => {
                   </div>
 
                   {/* Center: Play button OR Turn counter OR Test mode indicator */}
-                  <div className="absolute left-1/2 -translate-x-1/2">
+                  <div className="flex-1 flex justify-center">
                     {testMode !== 'none' ? (
                       // Test mode indicator
                       <div className={`flex items-center gap-2 px-3 py-1 rounded-pixel border ${
@@ -1257,13 +1257,13 @@ export const Game: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Right: Max Turns OR Concede button */}
-                  <div className="flex items-center justify-end min-w-[70px]">
+                  {/* Right: Max Turns OR Concede button - fixed width for centering */}
+                  <div className="flex items-center justify-end min-w-[100px] lg:min-w-[120px]">
                     {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       gameState.puzzle.maxTurns && (
-                        <div className="flex items-center gap-1 lg:gap-2">
-                          <span className="text-stone-400 text-xs lg:text-sm">Max Turns:</span>
-                          <span className="text-sm lg:text-base text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                        <div className="flex items-center gap-1">
+                          <span className="text-stone-400 text-xs">Max Turns:</span>
+                          <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                         </div>
                       )
                     ) : (
@@ -1289,7 +1289,7 @@ export const Game: React.FC = () => {
                 </div>
 
                 {/* Divider between control panel and heroes */}
-                <div className="mb-2 relative flex items-center justify-center">
+                <div className="mb-1.5 relative flex items-center justify-center">
                   <div className="flex-1 border-t border-copper-700/50" />
                   <div className="mx-3 w-1.5 h-1.5 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
                   <div className="flex-1 border-t border-copper-700/50" />
