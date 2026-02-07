@@ -1119,7 +1119,7 @@ export const Game: React.FC = () => {
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
-                <div className="relative flex items-center justify-between mb-3">
+                <div className="relative flex items-center justify-between mb-2">
                   {/* Left: Lives */}
                   <div className="flex items-center gap-1 lg:gap-2">
                     <span className="text-stone-400 text-xs lg:text-sm">Lives:</span>
@@ -1201,14 +1201,14 @@ export const Game: React.FC = () => {
                           <img
                             src={themeAssets.actionButtonPlayImage}
                             alt="Play"
-                            className="h-8 lg:h-10 w-auto"
+                            className="h-6 lg:h-8 w-auto"
                             style={{ imageRendering: 'pixelated' }}
                           />
                         </button>
                       ) : (
                         <button
                           onClick={handlePlay}
-                          className={`px-5 md:px-6 lg:px-8 py-1 lg:py-1.5 font-bold text-sm lg:text-base transition-all ${
+                          className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all ${
                             themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
                           } ${
                             themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
@@ -1289,7 +1289,7 @@ export const Game: React.FC = () => {
                 </div>
 
                 {/* Divider between control panel and heroes */}
-                <div className="mb-3 relative flex items-center justify-center">
+                <div className="mb-2 relative flex items-center justify-center">
                   <div className="flex-1 border-t border-copper-700/50" />
                   <div className="mx-3 w-1.5 h-1.5 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
                   <div className="flex-1 border-t border-copper-700/50" />
