@@ -792,9 +792,9 @@ export const Game: React.FC = () => {
                 {/* Bottom L-brackets - slightly inset from corners */}
                 <div className="absolute bottom-1 left-1 w-4 h-4 border-l-2 border-b-2 border-copper-600/70 rounded-bl-sm" />
                 <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-copper-600/70 rounded-br-sm" />
-                {/* Corner diamonds - standard diamonds at corners */}
-                <div className="absolute -bottom-[4px] -left-[4px] w-2 h-2 rotate-45 bg-copper-600 border border-copper-500" />
-                <div className="absolute -bottom-[4px] -right-[4px] w-2 h-2 rotate-45 bg-copper-600 border border-copper-500" />
+                {/* Corner diamonds - rotated to point diagonally outward */}
+                <div className="absolute -bottom-[4px] -left-[4px] w-2 h-2 bg-copper-600 border border-copper-500" />
+                <div className="absolute -bottom-[4px] -right-[4px] w-2 h-2 bg-copper-600 border border-copper-500" />
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}
