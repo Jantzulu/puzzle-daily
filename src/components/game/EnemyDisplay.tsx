@@ -64,23 +64,40 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
         </div>
         {/* Center: Test button (absolutely positioned for true centering) */}
         {showTestButton && onTest && (
-          <button
-            onClick={onTest}
-            className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-1 lg:py-1.5 text-xs lg:text-sm transition-colors flex items-center gap-1 ${
-              themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
-            } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
-            style={{
-              ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
-              ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '1px', borderStyle: 'solid' }),
-              ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
-            }}
-            title="Watch enemies move without heroes for 5 turns"
-          >
-            <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 lg:h-4 lg:w-4" fill="currentColor" viewBox="0 0 24 24">
-              <path d="M8 5v14l11-7z"/>
-            </svg>
-            Test
-          </button>
+          themeAssets.actionButtonTestEnemiesImage ? (
+            // Custom image button
+            <button
+              onClick={onTest}
+              className="absolute left-1/2 -translate-x-1/2 transition-all hover:scale-105 active:scale-95"
+              title="Watch enemies move without heroes for 5 turns"
+            >
+              <img
+                src={themeAssets.actionButtonTestEnemiesImage}
+                alt="Test Enemies"
+                className="h-6 lg:h-8 w-auto"
+                style={{ imageRendering: 'pixelated' }}
+              />
+            </button>
+          ) : (
+            // Default styled button
+            <button
+              onClick={onTest}
+              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-1 lg:py-1.5 text-xs lg:text-sm transition-colors flex items-center gap-1 ${
+                themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
+              } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
+              style={{
+                ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
+                ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
+              }}
+              title="Watch enemies move without heroes for 5 turns"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 lg:h-4 lg:w-4" fill="currentColor" viewBox="0 0 24 24">
+                <path d="M8 5v14l11-7z"/>
+              </svg>
+              Test
+            </button>
+          )
         )}
         {/* Right: Count indicator */}
         <span className="text-sm lg:text-base text-stone-400">

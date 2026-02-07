@@ -128,14 +128,20 @@ export interface ThemeAssets {
   actionButtonPlayBorder?: string;    // Play button border color
   actionButtonPlayText?: string;      // Play button text color
   actionButtonPlayShape?: string;     // Play button shape (default, rounded, pill)
+  actionButtonPlayImage?: string;     // Play button custom image (replaces bg when set)
+  actionButtonPlayImageDisabled?: string; // Play button image when disabled (optional, auto-greys if not set)
   actionButtonTestHeroesBg?: string;  // Test Heroes button background color
   actionButtonTestHeroesBorder?: string; // Test Heroes button border color
   actionButtonTestHeroesText?: string; // Test Heroes button text color
   actionButtonTestHeroesShape?: string; // Test Heroes button shape
+  actionButtonTestHeroesImage?: string; // Test Heroes button custom image
+  actionButtonTestHeroesImageDisabled?: string; // Test Heroes button image when disabled
   actionButtonTestEnemiesBg?: string; // Test Enemies button background color
   actionButtonTestEnemiesBorder?: string; // Test Enemies button border color
   actionButtonTestEnemiesText?: string; // Test Enemies button text color
   actionButtonTestEnemiesShape?: string; // Test Enemies button shape
+  actionButtonTestEnemiesImage?: string; // Test Enemies button custom image
+  actionButtonTestEnemiesImageDisabled?: string; // Test Enemies button image when disabled
   actionButtonConcedeBg?: string; // Concede button background color
   actionButtonConcedeBorder?: string; // Concede button border color
   actionButtonConcedeText?: string; // Concede button text color
@@ -271,14 +277,20 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorButtonDangerBg: { label: 'Danger Button Bg', description: 'Danger/warning button background', category: 'colors', inputType: 'color' },
   colorButtonDangerBorder: { label: 'Danger Button Border', description: 'Danger button border color', category: 'colors', inputType: 'color' },
   // Game Action Buttons (Test Heroes / Play / Test Enemies)
+  actionButtonPlayImage: { label: 'Play Button Image', description: 'Custom image for the Play button (replaces default styling)', category: 'actionButtons', inputType: 'image' },
+  actionButtonPlayImageDisabled: { label: 'Play Button Disabled', description: 'Image shown when Play button is disabled (optional, auto-greys if not set)', category: 'actionButtons', inputType: 'image' },
   actionButtonPlayBg: { label: 'Play Button Background', description: 'Background color for the Play button', category: 'actionButtons', inputType: 'color' },
   actionButtonPlayBorder: { label: 'Play Button Border', description: 'Border color for the Play button', category: 'actionButtons', inputType: 'color' },
   actionButtonPlayText: { label: 'Play Button Text', description: 'Text color for the Play button', category: 'actionButtons', inputType: 'color' },
   actionButtonPlayShape: { label: 'Play Button Shape', description: 'Shape of the Play button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
+  actionButtonTestHeroesImage: { label: 'Test Heroes Image', description: 'Custom image for the Test Heroes button (replaces default styling)', category: 'actionButtons', inputType: 'image' },
+  actionButtonTestHeroesImageDisabled: { label: 'Test Heroes Disabled', description: 'Image shown when Test Heroes is unavailable (optional)', category: 'actionButtons', inputType: 'image' },
   actionButtonTestHeroesBg: { label: 'Test Heroes Background', description: 'Background color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
   actionButtonTestHeroesBorder: { label: 'Test Heroes Border', description: 'Border color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
   actionButtonTestHeroesText: { label: 'Test Heroes Text', description: 'Text color for the Test Heroes button', category: 'actionButtons', inputType: 'color' },
   actionButtonTestHeroesShape: { label: 'Test Heroes Shape', description: 'Shape of the Test Heroes button (default, rounded, pill)', category: 'actionButtons', inputType: 'select' },
+  actionButtonTestEnemiesImage: { label: 'Test Enemies Image', description: 'Custom image for the Test Enemies button (replaces default styling)', category: 'actionButtons', inputType: 'image' },
+  actionButtonTestEnemiesImageDisabled: { label: 'Test Enemies Disabled', description: 'Image shown when Test Enemies is unavailable (optional)', category: 'actionButtons', inputType: 'image' },
   actionButtonTestEnemiesBg: { label: 'Test Enemies Background', description: 'Background color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
   actionButtonTestEnemiesBorder: { label: 'Test Enemies Border', description: 'Border color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },
   actionButtonTestEnemiesText: { label: 'Test Enemies Text', description: 'Text color for the Test Enemies button', category: 'actionButtons', inputType: 'color' },

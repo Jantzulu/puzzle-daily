@@ -1193,25 +1193,47 @@ export const Game: React.FC = () => {
                   {/* Center: Play button OR Turn counter - absolutely positioned for true centering */}
                   <div className="absolute left-1/2 -translate-x-1/2">
                     {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
-                      <button
-                        onClick={testMode === 'none' ? handlePlay : undefined}
-                        disabled={testMode !== 'none'}
-                        className={`px-5 md:px-6 lg:px-8 py-1 lg:py-1.5 font-bold text-sm lg:text-base transition-all ${
-                          testMode !== 'none'
-                            ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
-                            : themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
-                        } ${
-                          themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
-                          themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
-                        }`}
-                        style={{
-                          ...(testMode === 'none' && themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                          ...(testMode === 'none' && themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                          ...(testMode === 'none' && themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
-                        }}
-                      >
-                        {themeAssets.iconNavPlay || '\u2694'} Play
-                      </button>
+                      themeAssets.actionButtonPlayImage ? (
+                        // Custom image button
+                        <button
+                          onClick={testMode === 'none' ? handlePlay : undefined}
+                          disabled={testMode !== 'none'}
+                          className="relative transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed"
+                          style={{
+                            filter: testMode !== 'none' && !themeAssets.actionButtonPlayImageDisabled ? 'grayscale(1) brightness(0.6)' : undefined,
+                          }}
+                        >
+                          <img
+                            src={testMode !== 'none' && themeAssets.actionButtonPlayImageDisabled
+                              ? themeAssets.actionButtonPlayImageDisabled
+                              : themeAssets.actionButtonPlayImage}
+                            alt="Play"
+                            className="h-8 lg:h-10 w-auto"
+                            style={{ imageRendering: 'pixelated' }}
+                          />
+                        </button>
+                      ) : (
+                        // Default styled button
+                        <button
+                          onClick={testMode === 'none' ? handlePlay : undefined}
+                          disabled={testMode !== 'none'}
+                          className={`px-5 md:px-6 lg:px-8 py-1 lg:py-1.5 font-bold text-sm lg:text-base transition-all ${
+                            testMode !== 'none'
+                              ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
+                              : themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                          } ${
+                            themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
+                            themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
+                          }`}
+                          style={{
+                            ...(testMode === 'none' && themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                            ...(testMode === 'none' && themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                            ...(testMode === 'none' && themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                          }}
+                        >
+                          {themeAssets.iconNavPlay || '\u2694'} Play
+                        </button>
+                      )
                     ) : (
                       <div className="flex items-center gap-2">
                         <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
