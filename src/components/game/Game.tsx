@@ -788,9 +788,8 @@ export const Game: React.FC = () => {
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-1 relative z-10">
-                {/* Quest Row - only show when not in test mode */}
-                {testMode === 'none' && (
-                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                {/* Quest Row */}
+                <div className="flex items-center justify-center gap-2 flex-wrap">
                     <HelpButton sectionId="game_general" />
                     <span key={shimmerKey} className="shimmer-container">
                       <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
@@ -842,10 +841,9 @@ export const Game: React.FC = () => {
                       </span>
                     </span>
                   </div>
-                )}
 
                 {/* Side Quests Display */}
-                {testMode === 'none' && gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
+                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
                   const completedQuestIds = gameState.gameStatus === 'running'
                     ? checkSideQuests(gameState)
                     : [];
