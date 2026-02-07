@@ -787,14 +787,16 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
-                {/* Ornate corner decorations - sharp L corners overlapping rounded corners */}
-                {/* Bottom-left: sharp corner - lines meet at corner */}
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
+                {/* Ornate corner decorations - hollow triangles overlapping rounded corners */}
+                {/* Bottom-left: hollow triangle */}
                 <div className="absolute -bottom-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
                 <div className="absolute -bottom-[2px] -left-[2px] w-[2px] h-4 bg-copper-600" />
-                {/* Bottom-right: sharp corner - lines meet at corner */}
+                <div className="absolute -bottom-[2px] -left-[2px] w-[2px] h-[23px] bg-copper-600 origin-bottom-left rotate-[-66deg]" />
+                {/* Bottom-right: hollow triangle */}
                 <div className="absolute -bottom-[2px] -right-[2px] w-4 h-[2px] bg-copper-600" />
                 <div className="absolute -bottom-[2px] -right-[2px] w-[2px] h-4 bg-copper-600" />
+                <div className="absolute -bottom-[2px] -right-[2px] w-[2px] h-[23px] bg-copper-600 origin-bottom-right rotate-[66deg]" />
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}
@@ -1124,12 +1126,16 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '24px', borderTopRightRadius: '24px' }}>
-            {/* Ornate corner decorations - sharp L corners on top */}
+          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
+            {/* Ornate corner decorations - hollow triangles on top */}
+            {/* Top-left: hollow triangle */}
             <div className="absolute -top-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
             <div className="absolute -top-[2px] -left-[2px] w-[2px] h-4 bg-copper-600" />
+            <div className="absolute -top-[2px] -left-[2px] w-[2px] h-[23px] bg-copper-600 origin-top-left rotate-[66deg]" />
+            {/* Top-right: hollow triangle */}
             <div className="absolute -top-[2px] -right-[2px] w-4 h-[2px] bg-copper-600" />
             <div className="absolute -top-[2px] -right-[2px] w-[2px] h-4 bg-copper-600" />
+            <div className="absolute -top-[2px] -right-[2px] w-[2px] h-[23px] bg-copper-600 origin-top-right rotate-[-66deg]" />
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
