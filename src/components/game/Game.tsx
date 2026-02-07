@@ -788,25 +788,13 @@ export const Game: React.FC = () => {
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible">
-                {/* Ornate corner decorations - chamfered corners with diagonal accent */}
-                {/* Bottom-left corner notch */}
-                <div
-                  className="absolute -bottom-[2px] -left-[2px] w-3 h-3 bg-stone-950"
-                  style={{ clipPath: 'polygon(0 0, 0 100%, 100% 100%)' }}
-                />
-                <div
-                  className="absolute bottom-0 left-0 w-[10px] h-[2px] bg-copper-600 origin-bottom-left"
-                  style={{ transform: 'rotate(-45deg) translateY(1px)' }}
-                />
-                {/* Bottom-right corner notch */}
-                <div
-                  className="absolute -bottom-[2px] -right-[2px] w-3 h-3 bg-stone-950"
-                  style={{ clipPath: 'polygon(100% 0, 0 100%, 100% 100%)' }}
-                />
-                <div
-                  className="absolute bottom-0 right-0 w-[10px] h-[2px] bg-copper-600 origin-bottom-right"
-                  style={{ transform: 'rotate(45deg) translateY(1px)' }}
-                />
+                {/* Ornate corner decorations - outer pointed frame with gap to inner rounded panel */}
+                {/* Bottom-left: L-shaped outer frame piece */}
+                <div className="absolute -bottom-[6px] -left-[6px] w-4 h-[2px] bg-copper-600" />
+                <div className="absolute -bottom-[6px] -left-[6px] w-[2px] h-4 bg-copper-600" />
+                {/* Bottom-right: L-shaped outer frame piece */}
+                <div className="absolute -bottom-[6px] -right-[6px] w-4 h-[2px] bg-copper-600" />
+                <div className="absolute -bottom-[6px] -right-[6px] w-[2px] h-4 bg-copper-600" />
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}
