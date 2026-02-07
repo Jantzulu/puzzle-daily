@@ -874,7 +874,7 @@ export const Game: React.FC = () => {
                 })()}
 
                 {/* Accent divider line */}
-                <div className="my-2 border-t border-copper-700/50 relative">
+                <div className="my-1 md:my-1.5 border-t border-copper-700/50 relative">
                   <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
                 </div>
 
