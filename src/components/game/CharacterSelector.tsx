@@ -63,7 +63,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               <img
                 src={themeAssets.actionButtonTestHeroesImage}
                 alt="Test Heroes"
-                className="h-6 lg:h-8 w-auto"
+                className="h-5 lg:h-6 w-auto"
                 style={{ imageRendering: 'pixelated' }}
               />
             </button>
@@ -71,7 +71,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             // Default styled button
             <button
               onClick={onTest}
-              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-1 lg:py-1.5 text-xs lg:text-sm transition-colors flex items-center gap-1 ${
+              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-3 py-0.5 lg:py-1 text-xs transition-colors flex items-center gap-1 ${
                 themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
               } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
               style={{
@@ -81,7 +81,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               }}
               title="Test your heroes without enemies for 5 turns"
             >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3 lg:h-4 lg:w-4" fill="currentColor" viewBox="0 0 24 24">
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
                 <path d="M8 5v14l11-7z"/>
               </svg>
               Test

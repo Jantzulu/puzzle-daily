@@ -1141,13 +1141,13 @@ export const Game: React.FC = () => {
                             hearts.push(
                               <div
                                 key={i}
-                                className="w-[14px] h-[16px] lg:w-[18px] lg:h-[20px] flex items-center justify-center"
+                                className="w-[14px] h-[16px] lg:w-[16px] lg:h-[16px] flex items-center justify-center"
                               >
                                 <img
                                   src={customIcon}
                                   alt={isFilled ? 'Life remaining' : 'Life lost'}
                                   title={isFilled ? 'Life remaining' : 'Life lost'}
-                                  className="w-[14px] h-[16px] lg:w-[18px] lg:h-[20px]"
+                                  className="w-[14px] h-[16px] lg:w-[16px] lg:h-[16px]"
                                   style={{
                                     opacity: isFilled ? 1 : 0.4,
                                     imageRendering: 'pixelated'
