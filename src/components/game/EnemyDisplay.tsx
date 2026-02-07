@@ -44,15 +44,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   // More prominent divider for noPanel mode - separates interactive Heroes from informational sections
   const divider = noPanel ? (
-    <div className="my-4 relative">
-      {/* Main divider line */}
-      <div className="border-t-2 border-copper-700/60" />
-      {/* Center accent with decorative elements */}
-      <div className="absolute left-1/2 -translate-x-1/2 -top-[5px] flex items-center gap-2">
-        <div className="w-8 h-px bg-gradient-to-r from-transparent to-copper-500" />
-        <div className="w-2 h-2 rotate-45 bg-copper-600 border border-copper-500" />
-        <div className="w-8 h-px bg-gradient-to-l from-transparent to-copper-500" />
-      </div>
+    <div className="my-4 relative flex items-center justify-center">
+      {/* Left line segment */}
+      <div className="flex-1 border-t-2 border-copper-700/60" />
+      {/* Center diamond accent */}
+      <div className="mx-2 w-2 h-2 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
+      {/* Right line segment */}
+      <div className="flex-1 border-t-2 border-copper-700/60" />
     </div>
   ) : null;
 

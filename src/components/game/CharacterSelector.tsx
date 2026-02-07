@@ -189,12 +189,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   );
 
   if (noPanel) {
-    // Elevated card appearance when inside unified panel
-    return (
-      <div className={`bg-stone-800/60 rounded-pixel-md p-2 border border-purple-900/40 ${disabled ? 'opacity-60' : ''}`}>
-        {content}
-      </div>
-    );
+    return <div className={disabled ? 'opacity-60' : ''}>{content}</div>;
   }
 
   return (
