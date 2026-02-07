@@ -42,10 +42,17 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   const uniqueEnemies = Array.from(enemyGroups.values());
 
-  // Accent divider for noPanel mode (when part of unified panel)
+  // More prominent divider for noPanel mode - separates interactive Heroes from informational sections
   const divider = noPanel ? (
-    <div className="my-3 border-t border-copper-700/50 relative">
-      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
+    <div className="my-4 relative">
+      {/* Main divider line */}
+      <div className="border-t-2 border-copper-700/60" />
+      {/* Center accent with decorative elements */}
+      <div className="absolute left-1/2 -translate-x-1/2 -top-[5px] flex items-center gap-2">
+        <div className="w-8 h-px bg-gradient-to-r from-transparent to-copper-500" />
+        <div className="w-2 h-2 rotate-45 bg-copper-600 border border-copper-500" />
+        <div className="w-8 h-px bg-gradient-to-l from-transparent to-copper-500" />
+      </div>
     </div>
   ) : null;
 
