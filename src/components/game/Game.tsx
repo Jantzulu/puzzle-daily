@@ -767,7 +767,7 @@ export const Game: React.FC = () => {
   const dimmedPanelClass = isPanelsDimmed ? 'opacity-50 pointer-events-none' : '';
 
   return (
-    <div className="min-h-screen theme-root text-parchment-200 p-4 md:p-8 relative">
+    <div className="min-h-screen theme-root text-parchment-200 px-4 pb-4 md:px-8 md:pb-8 relative">
       {/* Underground cave background effect - positioned below nav bar */}
       <div className="absolute inset-0 pointer-events-none -z-10">
         <div className="absolute inset-0 bg-gradient-to-b from-stone-950 via-stone-900/50 to-stone-950" />
