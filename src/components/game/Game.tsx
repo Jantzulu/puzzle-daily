@@ -787,14 +787,32 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark relative z-10">
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible">
                 {/* Ornate corner decorations */}
                 {/* Bottom L-brackets - slightly inset from corners */}
                 <div className="absolute bottom-1 left-1 w-4 h-4 border-l-2 border-b-2 border-copper-600/70 rounded-bl-sm" />
                 <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-copper-600/70 rounded-br-sm" />
-                {/* Corner diamonds - pointing diagonally outward (bottom-left and bottom-right) */}
-                <div className="absolute -bottom-[4px] -left-[4px] w-2 h-2 bg-copper-600 border border-copper-500" style={{ transform: 'rotate(-45deg)' }} />
-                <div className="absolute -bottom-[4px] -right-[4px] w-2 h-2 bg-copper-600 border border-copper-500" style={{ transform: 'rotate(45deg)' }} />
+                {/* Corner diamonds - using borders to create triangle pointing diagonally */}
+                <div
+                  className="absolute -bottom-[5px] -left-[5px] w-0 h-0"
+                  style={{
+                    borderLeft: '5px solid transparent',
+                    borderRight: '5px solid transparent',
+                    borderTop: '5px solid transparent',
+                    borderBottom: '5px solid #b45309',
+                    transform: 'rotate(-45deg)'
+                  }}
+                />
+                <div
+                  className="absolute -bottom-[5px] -right-[5px] w-0 h-0"
+                  style={{
+                    borderLeft: '5px solid transparent',
+                    borderRight: '5px solid transparent',
+                    borderTop: '5px solid transparent',
+                    borderBottom: '5px solid #b45309',
+                    transform: 'rotate(45deg)'
+                  }}
+                />
                 {/* Center diamond - vertically centered on bottom border */}
                 <div className="absolute -bottom-[5px] left-1/2 -translate-x-1/2 w-2.5 h-2.5 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}

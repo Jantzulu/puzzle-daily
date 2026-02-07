@@ -45,7 +45,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   const content = (
     <>
       {/* Header row */}
-      <div className="relative flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-2">
         {/* Left: Help + Title */}
         <div className="flex items-center gap-2">
           <HelpButton sectionId="characters" />
