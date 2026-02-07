@@ -208,7 +208,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
   }
 
   return (
-    <div className={`dungeon-panel p-3 lg:p-4 ${className}`}>
+    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="status_effects" />

@@ -40,7 +40,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
   return (
-    <div className={`dungeon-panel p-3 lg:p-4 ${disabled ? 'opacity-60' : ''}`}>
+    <div className={`dungeon-panel p-2 lg:p-3 ${disabled ? 'opacity-60' : ''}`}>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title */}

@@ -43,7 +43,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   if (uniqueEnemies.length === 0) {
     return (
-      <div className={`dungeon-panel p-3 lg:p-4 ${className}`}>
+      <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
         <div className="flex items-center gap-2 mb-2">
           <HelpButton sectionId="enemies" />
           <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
@@ -54,7 +54,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
   }
 
   return (
-    <div className={`dungeon-panel p-3 lg:p-4 ${className}`}>
+    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title */}

@@ -1324,7 +1324,7 @@ export const Game: React.FC = () => {
 
             {/* Puzzle Selector - at bottom for dev use */}
             {allPuzzles.length > 0 && (
-              <div className={`dungeon-panel p-3 lg:p-4 transition-opacity ${dimmedPanelClass}`}>
+              <div className={`dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
                 <label className="block text-sm lg:text-base font-bold mb-2 text-copper-400">
                   Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
                 </label>
