@@ -787,7 +787,7 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderRadius: '12px' }}>
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderRadius: '4px 4px 12px 12px' }}>
                 {/* Ornate corner decorations - sharp L corners overlapping rounded corners */}
                 {/* Bottom-left: sharp corner - lines meet at corner */}
                 <div className="absolute -bottom-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
