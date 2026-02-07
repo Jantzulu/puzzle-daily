@@ -788,9 +788,11 @@ export const Game: React.FC = () => {
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-1 relative z-10">
-                {/* Ornate corner decorations */}
-                <div className="absolute bottom-1 left-1 w-3 h-3 border-l-2 border-b-2 border-copper-600/60 rounded-bl-sm" />
-                <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-copper-600/60 rounded-br-sm" />
+                {/* Ornate corner decorations - L-brackets with diamonds */}
+                <div className="absolute bottom-1 left-1 w-4 h-4 border-l-2 border-b-2 border-copper-600/70 rounded-bl-sm" />
+                <div className="absolute bottom-[7px] left-[7px] w-1.5 h-1.5 rotate-45 bg-copper-500/80" />
+                <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-copper-600/70 rounded-br-sm" />
+                <div className="absolute bottom-[7px] right-[7px] w-1.5 h-1.5 rotate-45 bg-copper-500/80" />
                 {/* Quest Row */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                     <HelpButton sectionId="game_general" />
