@@ -1119,9 +1119,9 @@ export const Game: React.FC = () => {
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
-                <div className="flex items-center justify-between mb-1.5">
-                  {/* Left: Lives - fixed width for centering */}
-                  <div className="flex items-center gap-1 min-w-[100px] lg:min-w-[120px]">
+                <div className="grid grid-cols-3 items-center mb-1">
+                  {/* Left: Lives - centered in left third */}
+                  <div className="flex items-center justify-center gap-1">
                     <span className="text-stone-400 text-xs">Lives:</span>
                     <div className="flex items-center gap-0.5">
                       {(() => {
@@ -1172,8 +1172,8 @@ export const Game: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Center: Play button OR Turn counter OR Test mode indicator */}
-                  <div className="flex-1 flex justify-center">
+                  {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
+                  <div className="flex justify-center">
                     {testMode !== 'none' ? (
                       // Test mode indicator
                       <div className={`flex items-center gap-2 px-3 py-1 rounded-pixel border ${
@@ -1257,8 +1257,8 @@ export const Game: React.FC = () => {
                     )}
                   </div>
 
-                  {/* Right: Max Turns OR Concede button - fixed width for centering */}
-                  <div className="flex items-center justify-end min-w-[100px] lg:min-w-[120px]">
+                  {/* Right: Max Turns OR Concede button - centered in right third */}
+                  <div className="flex items-center justify-center">
                     {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       gameState.puzzle.maxTurns && (
                         <div className="flex items-center gap-1">
@@ -1289,7 +1289,7 @@ export const Game: React.FC = () => {
                 </div>
 
                 {/* Divider between control panel and heroes */}
-                <div className="mb-1.5 relative flex items-center justify-center">
+                <div className="mb-1 relative flex items-center justify-center">
                   <div className="flex-1 border-t border-copper-700/50" />
                   <div className="mx-3 w-1.5 h-1.5 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
                   <div className="flex-1 border-t border-copper-700/50" />

@@ -44,7 +44,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   // More prominent divider for noPanel mode - separates interactive Heroes from informational sections
   const divider = noPanel ? (
-    <div className="mt-4 mb-3">
+    <div className="mt-2 mb-1.5">
       {/* Divider line with "Dungeon [icon] Details" integrated */}
       <div className="relative flex items-center justify-center">
         {/* Left line segment */}

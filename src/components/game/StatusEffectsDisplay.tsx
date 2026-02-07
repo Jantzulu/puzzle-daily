@@ -210,7 +210,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
 
   // Accent divider for noPanel mode (when part of unified panel)
   const divider = noPanel ? (
-    <div className="my-3 border-t border-copper-700/50 relative">
+    <div className="my-1.5 border-t border-copper-700/50 relative">
       <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
     </div>
   ) : null;
