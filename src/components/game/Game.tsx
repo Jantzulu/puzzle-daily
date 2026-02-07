@@ -700,19 +700,24 @@ export const Game: React.FC = () => {
       handleTestCharacters(); // This will show the warning modal
       return;
     }
-    // Scroll to game board when test starts
-    if (gameBoardRef.current) {
-      gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Start the test first, then scroll after state updates and DOM settles
     handleTestCharacters();
+    setTimeout(() => {
+      if (gameBoardRef.current) {
+        gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
   };
 
   const handleTestEnemiesWithScroll = () => {
-    // Scroll to game board when test starts
-    if (gameBoardRef.current) {
-      gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    // Start the test first, then scroll after state updates and DOM settles
     handleTestEnemies();
+    // Use setTimeout to scroll after React re-renders from the state change
+    setTimeout(() => {
+      if (gameBoardRef.current) {
+        gameBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    }, 50);
   };
 
   // Render heart icons for lives (uses custom theme icons if available)
