@@ -780,9 +780,9 @@ export const Game: React.FC = () => {
         <div className="flex flex-col gap-3">
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
-            {/* Quest Display - above puzzle */}
+            {/* Quest Display - above puzzle, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat') && testMode === 'none' && (
-              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark -mt-1 relative z-10">
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                   <HelpButton sectionId="game_general" />
                   <span key={shimmerKey} className="shimmer-container">
