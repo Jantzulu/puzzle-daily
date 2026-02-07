@@ -780,64 +780,67 @@ export const Game: React.FC = () => {
         <div className="flex flex-col gap-3">
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
-            {/* Quest Display - above puzzle, overlaps navbar border */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat') && testMode === 'none' && (
+            {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark -mt-1 relative z-10">
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                  <HelpButton sectionId="game_general" />
-                  <span key={shimmerKey} className="shimmer-container">
-                    <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
-                    <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
-                    {gameState.puzzle.winConditions.map((wc) => {
-                      switch (wc.type) {
-                        case 'defeat_all_enemies': {
-                          const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
-                          return `Defeat all Enemies (${enemyCount})`;
+                {/* Quest Row - only show when not in test mode */}
+                {testMode === 'none' && (
+                  <div className="flex items-center justify-center gap-2 flex-wrap">
+                    <HelpButton sectionId="game_general" />
+                    <span key={shimmerKey} className="shimmer-container">
+                      <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
+                      <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
+                      {gameState.puzzle.winConditions.map((wc) => {
+                        switch (wc.type) {
+                          case 'defeat_all_enemies': {
+                            const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
+                            return `Defeat all Enemies (${enemyCount})`;
+                          }
+                          case 'defeat_boss': {
+                            const bossEnemies = gameState.puzzle.enemies
+                              .filter(e => {
+                                const enemy = loadEnemy(e.enemyId);
+                                return enemy?.isBoss && !e.dead;
+                              })
+                              .map(e => loadEnemy(e.enemyId)!);
+                            const bossCount = bossEnemies.length;
+                            const bossNames = bossEnemies.map(enemy => enemy.name);
+                            if (bossNames.length === 0) return 'Defeat the Boss';
+                            if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
+                            return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
+                          }
+                          case 'collect_all': {
+                            const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
+                            return `Collect all Items (${collectibleCount})`;
+                          }
+                          case 'collect_keys': {
+                            const keyCount = gameState.puzzle.collectibles.filter(c => {
+                              const collectible = loadCollectible(c.collectibleId);
+                              return collectible?.effect === 'win_key' && !c.collected;
+                            }).length;
+                            return `Collect all Keys (${keyCount})`;
+                          }
+                          case 'reach_goal':
+                            return 'Reach the Exit';
+                          case 'survive_turns':
+                            return `Survive ${wc.params?.turns ?? 10} Turns`;
+                          case 'win_in_turns':
+                            return `Win within ${wc.params?.turns ?? 10} Turns`;
+                          case 'max_characters':
+                            return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
+                          case 'characters_alive':
+                            return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
+                          default:
+                            return wc.type;
                         }
-                        case 'defeat_boss': {
-                          const bossEnemies = gameState.puzzle.enemies
-                            .filter(e => {
-                              const enemy = loadEnemy(e.enemyId);
-                              return enemy?.isBoss && !e.dead;
-                            })
-                            .map(e => loadEnemy(e.enemyId)!);
-                          const bossCount = bossEnemies.length;
-                          const bossNames = bossEnemies.map(enemy => enemy.name);
-                          if (bossNames.length === 0) return 'Defeat the Boss';
-                          if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
-                          return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
-                        }
-                        case 'collect_all': {
-                          const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
-                          return `Collect all Items (${collectibleCount})`;
-                        }
-                        case 'collect_keys': {
-                          const keyCount = gameState.puzzle.collectibles.filter(c => {
-                            const collectible = loadCollectible(c.collectibleId);
-                            return collectible?.effect === 'win_key' && !c.collected;
-                          }).length;
-                          return `Collect all Keys (${keyCount})`;
-                        }
-                        case 'reach_goal':
-                          return 'Reach the Exit';
-                        case 'survive_turns':
-                          return `Survive ${wc.params?.turns ?? 10} Turns`;
-                        case 'win_in_turns':
-                          return `Win within ${wc.params?.turns ?? 10} Turns`;
-                        case 'max_characters':
-                          return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
-                        case 'characters_alive':
-                          return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
-                        default:
-                          return wc.type;
-                      }
-                    }).join(' & ')}
+                      }).join(' & ')}
+                      </span>
                     </span>
-                  </span>
-                </div>
+                  </div>
+                )}
 
                 {/* Side Quests Display */}
-                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
+                {testMode === 'none' && gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
                   const completedQuestIds = gameState.gameStatus === 'running'
                     ? checkSideQuests(gameState)
                     : [];
@@ -864,31 +867,180 @@ export const Game: React.FC = () => {
                     </div>
                   );
                 })()}
-              </div>
-            )}
 
-            {/* Test mode indicator - above puzzle */}
-            {testMode !== 'none' && (
-              <div className="mb-4 flex flex-col items-center">
-                {/* Test mode turn counter - arcane for characters, blood for enemies */}
-                <div className={`flex items-center gap-3 px-4 py-2 rounded-pixel-lg border-2 ${
-                  testMode === 'enemies'
-                    ? 'bg-blood-900/80 border-blood-600'
-                    : 'bg-arcane-900/80 border-arcane-600'
-                }`}>
-                  <span className={`text-sm font-medium ${
-                    testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
-                  }`}>
-                    Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
-                  </span>
-                  <span className={`text-2xl font-bold min-w-[2ch] text-center ${
-                    testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
-                  }`}>
-                    {testTurnsRemaining}
-                  </span>
-                  <span className={`text-sm ${
-                    testMode === 'enemies' ? 'text-blood-400' : 'text-arcane-400'
-                  }`}>Turns Left</span>
+                {/* Accent divider line */}
+                <div className="my-2 border-t border-copper-700/50 relative">
+                  <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
+                </div>
+
+                {/* Control Panel Row */}
+                <div className="relative flex items-center justify-between">
+                  {/* Left: Lives */}
+                  <div className="flex items-center gap-1 lg:gap-2">
+                    <span className="text-stone-400 text-xs lg:text-sm">Lives:</span>
+                    <div className="flex items-center gap-0.5">
+                      {(() => {
+                        const puzzleLives = currentPuzzle.lives ?? 3;
+                        const isUnlimitedLives = puzzleLives === 0;
+
+                        if (isUnlimitedLives) {
+                          return <span className="text-lg lg:text-xl text-copper-400" title="Unlimited lives">&#x221E;</span>;
+                        }
+
+                        const hearts = [];
+                        for (let i = 0; i < puzzleLives; i++) {
+                          const isFilled = i < livesRemaining;
+                          const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
+
+                          if (customIcon) {
+                            hearts.push(
+                              <div
+                                key={i}
+                                className="w-[14px] h-[16px] lg:w-[28px] lg:h-[32px] flex items-center justify-center"
+                              >
+                                <img
+                                  src={customIcon}
+                                  alt={isFilled ? 'Life remaining' : 'Life lost'}
+                                  title={isFilled ? 'Life remaining' : 'Life lost'}
+                                  className="w-[14px] h-[16px] lg:scale-[2]"
+                                  style={{
+                                    opacity: isFilled ? 1 : 0.4,
+                                    imageRendering: 'pixelated'
+                                  }}
+                                />
+                              </div>
+                            );
+                          } else {
+                            hearts.push(
+                              <span
+                                key={i}
+                                className={`text-sm lg:text-lg ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+                                title={isFilled ? 'Life remaining' : 'Life lost'}
+                              >
+                                &#x2665;
+                              </span>
+                            );
+                          }
+                        }
+                        return hearts;
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Center: Play button OR Turn counter OR Test mode indicator */}
+                  <div className="absolute left-1/2 -translate-x-1/2">
+                    {testMode !== 'none' ? (
+                      // Test mode indicator
+                      <div className={`flex items-center gap-2 px-3 py-1 rounded-pixel border ${
+                        testMode === 'enemies'
+                          ? 'bg-blood-900/80 border-blood-600'
+                          : 'bg-arcane-900/80 border-arcane-600'
+                      }`}>
+                        <span className={`text-xs font-medium ${
+                          testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
+                        }`}>
+                          Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
+                        </span>
+                        <span className={`text-lg font-bold ${
+                          testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
+                        }`}>
+                          {testTurnsRemaining}
+                        </span>
+                      </div>
+                    ) : gameState.gameStatus === 'setup' ? (
+                      themeAssets.actionButtonPlayImage ? (
+                        <button
+                          onClick={handlePlay}
+                          className="relative transition-all hover:scale-105 active:scale-95"
+                        >
+                          <img
+                            src={themeAssets.actionButtonPlayImage}
+                            alt="Play"
+                            className="h-8 lg:h-10 w-auto"
+                            style={{ imageRendering: 'pixelated' }}
+                          />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handlePlay}
+                          className={`px-5 md:px-6 lg:px-8 py-1 lg:py-1.5 font-bold text-sm lg:text-base transition-all ${
+                            themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                          } ${
+                            themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
+                            themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
+                          }`}
+                          style={{
+                            ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                            ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                            ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                          }}
+                        >
+                          {themeAssets.iconNavPlay || '\u2694'} Play
+                        </button>
+                      )
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
+                        {(() => {
+                          const maxTurns = currentPuzzle.maxTurns;
+                          const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
+                          const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                          const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+
+                          return (
+                            <>
+                              <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
+                                isVeryNearLimit
+                                  ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                                  : isNearLimit
+                                  ? 'text-rust-400'
+                                  : 'text-copper-400 text-shadow-glow-copper'
+                              }`}>
+                                {gameState.currentTurn}
+                              </span>
+                              {maxTurns && (
+                                <span className={`text-xs lg:text-sm ${
+                                  isNearLimit ? 'text-blood-400' : 'text-stone-500'
+                                }`}>
+                                  / {maxTurns}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Max Turns OR Concede button */}
+                  <div className="flex items-center justify-end min-w-[70px]">
+                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
+                      gameState.puzzle.maxTurns && (
+                        <div className="flex items-center gap-1 lg:gap-2">
+                          <span className="text-stone-400 text-xs lg:text-sm">Max Turns:</span>
+                          <span className="text-sm lg:text-base text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                        </div>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => setShowConcedeConfirm(true)}
+                        className={`text-xs px-2 py-1 ${
+                          themeAssets.actionButtonConcedeBg ? '' : 'dungeon-btn-danger'
+                        } ${
+                          themeAssets.actionButtonConcedeShape === 'rounded' ? 'rounded-lg' :
+                          themeAssets.actionButtonConcedeShape === 'pill' ? 'rounded-full' : ''
+                        }`}
+                        style={{
+                          ...(themeAssets.actionButtonConcedeBg && { backgroundColor: themeAssets.actionButtonConcedeBg }),
+                          ...(themeAssets.actionButtonConcedeBorder && { borderColor: themeAssets.actionButtonConcedeBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                          ...(themeAssets.actionButtonConcedeText && { color: themeAssets.actionButtonConcedeText }),
+                        }}
+                        title="Give up this attempt and lose a life"
+                      >
+                        Concede
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -1127,175 +1279,6 @@ export const Game: React.FC = () => {
                     >
                       Concede
                     </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Control Panel - below puzzle */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mt-3 w-full max-w-2xl px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
-                <div className="relative flex items-center justify-between">
-                  {/* Left: Lives */}
-                  <div className="flex items-center gap-1 lg:gap-2">
-                    <span className="text-stone-400 text-xs lg:text-sm">Lives:</span>
-                    <div className="flex items-center gap-0.5">
-                      {(() => {
-                        const puzzleLives = currentPuzzle.lives ?? 3;
-                        const isUnlimitedLives = puzzleLives === 0;
-
-                        if (isUnlimitedLives) {
-                          return <span className="text-lg lg:text-xl text-copper-400" title="Unlimited lives">&#x221E;</span>;
-                        }
-
-                        const hearts = [];
-                        for (let i = 0; i < puzzleLives; i++) {
-                          const isFilled = i < livesRemaining;
-                          const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
-
-                          if (customIcon) {
-                            // Render at native 14x16, use transform scale(2) on desktop for crisp pixel art
-                            // Wrapper div handles the layout size so transform doesn't break flow
-                            hearts.push(
-                              <div
-                                key={i}
-                                className="w-[14px] h-[16px] lg:w-[28px] lg:h-[32px] flex items-center justify-center"
-                              >
-                                <img
-                                  src={customIcon}
-                                  alt={isFilled ? 'Life remaining' : 'Life lost'}
-                                  title={isFilled ? 'Life remaining' : 'Life lost'}
-                                  className="w-[14px] h-[16px] lg:scale-[2]"
-                                  style={{
-                                    opacity: isFilled ? 1 : 0.4,
-                                    imageRendering: 'pixelated'
-                                  }}
-                                />
-                              </div>
-                            );
-                          } else {
-                            hearts.push(
-                              <span
-                                key={i}
-                                className={`text-sm lg:text-lg ${isFilled ? 'heart-filled' : 'heart-empty'}`}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                              >
-                                &#x2665;
-                              </span>
-                            );
-                          }
-                        }
-                        return hearts;
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Center: Play button OR Turn counter - absolutely positioned for true centering */}
-                  <div className="absolute left-1/2 -translate-x-1/2">
-                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
-                      themeAssets.actionButtonPlayImage ? (
-                        // Custom image button
-                        <button
-                          onClick={testMode === 'none' ? handlePlay : undefined}
-                          disabled={testMode !== 'none'}
-                          className="relative transition-all hover:scale-105 active:scale-95 disabled:cursor-not-allowed"
-                          style={{
-                            filter: testMode !== 'none' && !themeAssets.actionButtonPlayImageDisabled ? 'grayscale(1) brightness(0.6)' : undefined,
-                          }}
-                        >
-                          <img
-                            src={testMode !== 'none' && themeAssets.actionButtonPlayImageDisabled
-                              ? themeAssets.actionButtonPlayImageDisabled
-                              : themeAssets.actionButtonPlayImage}
-                            alt="Play"
-                            className="h-8 lg:h-10 w-auto"
-                            style={{ imageRendering: 'pixelated' }}
-                          />
-                        </button>
-                      ) : (
-                        // Default styled button
-                        <button
-                          onClick={testMode === 'none' ? handlePlay : undefined}
-                          disabled={testMode !== 'none'}
-                          className={`px-5 md:px-6 lg:px-8 py-1 lg:py-1.5 font-bold text-sm lg:text-base transition-all ${
-                            testMode !== 'none'
-                              ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
-                              : themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
-                          } ${
-                            themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
-                            themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
-                          }`}
-                          style={{
-                            ...(testMode === 'none' && themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                            ...(testMode === 'none' && themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                            ...(testMode === 'none' && themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
-                          }}
-                        >
-                          {themeAssets.iconNavPlay || '\u2694'} Play
-                        </button>
-                      )
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
-                        {(() => {
-                          const maxTurns = currentPuzzle.maxTurns;
-                          const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
-                          const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
-                          const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
-
-                          return (
-                            <>
-                              <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
-                                isVeryNearLimit
-                                  ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
-                                  : isNearLimit
-                                  ? 'text-rust-400'
-                                  : 'text-copper-400 text-shadow-glow-copper'
-                              }`}>
-                                {gameState.currentTurn}
-                              </span>
-                              {maxTurns && (
-                                <span className={`text-xs lg:text-sm ${
-                                  isNearLimit ? 'text-blood-400' : 'text-stone-500'
-                                }`}>
-                                  / {maxTurns}
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right: Max Turns OR Concede button */}
-                  <div className="flex items-center justify-end min-w-[70px]">
-                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
-                      gameState.puzzle.maxTurns && (
-                        <div className="flex items-center gap-1 lg:gap-2">
-                          <span className="text-stone-400 text-xs lg:text-sm">Max Turns:</span>
-                          <span className="text-sm lg:text-base text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
-                        </div>
-                      )
-                    ) : (
-                      <button
-                        onClick={() => setShowConcedeConfirm(true)}
-                        className={`text-xs px-2 py-1 ${
-                          themeAssets.actionButtonConcedeBg ? '' : 'dungeon-btn-danger'
-                        } ${
-                          themeAssets.actionButtonConcedeShape === 'rounded' ? 'rounded-lg' :
-                          themeAssets.actionButtonConcedeShape === 'pill' ? 'rounded-full' : ''
-                        }`}
-                        style={{
-                          ...(themeAssets.actionButtonConcedeBg && { backgroundColor: themeAssets.actionButtonConcedeBg }),
-                          ...(themeAssets.actionButtonConcedeBorder && { borderColor: themeAssets.actionButtonConcedeBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                          ...(themeAssets.actionButtonConcedeText && { color: themeAssets.actionButtonConcedeText }),
-                        }}
-                        title="Give up this attempt and lose a life"
-                      >
-                        Concede
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
