@@ -782,7 +782,7 @@ export const Game: React.FC = () => {
       </div>
 
       <div className="max-w-6xl mx-auto relative">
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
