@@ -787,7 +787,7 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-4 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-1 relative z-10">
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-1 relative z-10">
                 {/* Quest Row */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                     <HelpButton sectionId="game_general" />
@@ -1115,7 +1115,7 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className="mt-3 w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3">
+          <div className="mt-2 w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3">
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
