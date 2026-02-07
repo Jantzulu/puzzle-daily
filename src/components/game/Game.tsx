@@ -787,7 +787,7 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '24px', borderBottomRightRadius: '24px' }}>
                 {/* Ornate corner decorations - sharp L corners overlapping rounded corners */}
                 {/* Bottom-left: sharp corner - lines meet at corner */}
                 <div className="absolute -bottom-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
@@ -1124,7 +1124,7 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
+          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '24px', borderTopRightRadius: '24px' }}>
             {/* Ornate corner decorations - sharp L corners on top */}
             <div className="absolute -top-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
             <div className="absolute -top-[2px] -left-[2px] w-[2px] h-4 bg-copper-600" />
