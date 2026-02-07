@@ -100,6 +100,7 @@ export interface ThemeAssets {
   colorBgCard?: string;       // Inner card background (heroes, enemies, items)
   colorBgNavbar?: string;     // Navigation bar background color
   colorBgInput?: string;      // Input field background color
+  colorBgControlPanel?: string; // Control panel background (Quest/Play panel)
 
   // Text colors
   colorTextPrimary?: string;  // Main text color
@@ -263,6 +264,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   colorBgCard: { label: 'Card Background', description: 'Inner card background (heroes, enemies, items)', category: 'colors', inputType: 'color' },
   colorBgNavbar: { label: 'Navbar Background', description: 'Navigation bar background color', category: 'colors', inputType: 'color' },
   colorBgInput: { label: 'Input Background', description: 'Input field background color', category: 'colors', inputType: 'color' },
+  colorBgControlPanel: { label: 'Control Panel Background', description: 'Quest/Play control panel background color', category: 'colors', inputType: 'color' },
   colorTextPrimary: { label: 'Primary Text', description: 'Main text color', category: 'colors', inputType: 'color' },
   colorTextSecondary: { label: 'Secondary Text', description: 'Muted/secondary text color', category: 'colors', inputType: 'color' },
   colorTextHeading: { label: 'Heading Text', description: 'Heading and title color', category: 'colors', inputType: 'color' },
@@ -577,6 +579,7 @@ export function getThemeAssetsCSSProperties(): Record<string, string> {
   if (assets.colorBgCard) properties['--theme-bg-card'] = assets.colorBgCard;
   if (assets.colorBgNavbar) properties['--theme-bg-navbar'] = assets.colorBgNavbar;
   if (assets.colorBgInput) properties['--theme-bg-input'] = assets.colorBgInput;
+  if (assets.colorBgControlPanel) properties['--theme-bg-control-panel'] = assets.colorBgControlPanel;
   if (assets.colorTextPrimary) properties['--theme-text-primary'] = assets.colorTextPrimary;
   if (assets.colorTextSecondary) properties['--theme-text-secondary'] = assets.colorTextSecondary;
   if (assets.colorTextHeading) properties['--theme-text-heading'] = assets.colorTextHeading;
@@ -698,6 +701,7 @@ const ALL_THEME_CSS_VARS = [
   '--theme-bg-card',
   '--theme-bg-navbar',
   '--theme-bg-input',
+  '--theme-bg-control-panel',
   '--theme-text-primary',
   '--theme-text-secondary',
   '--theme-text-heading',
