@@ -74,6 +74,7 @@ export interface ThemeAssets {
   iconSword?: string;
   iconShield?: string;
   iconBossHealthBar?: string; // Skull icon shown next to boss health bars
+  iconDungeonDetails?: string; // Icon for the Dungeon Details divider (between Heroes and info sections)
 
   // Navigation & Tab Icons (emoji/text)
   iconNavPlay?: string;       // Icon for Play nav button (default: ⚔)
@@ -243,6 +244,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconSword: { label: 'Sword Icon', description: 'Attack/combat icon', category: 'icons', inputType: 'image' },
   iconShield: { label: 'Shield Icon', description: 'Defense/protection icon', category: 'icons', inputType: 'image' },
   iconBossHealthBar: { label: 'Boss Health Bar Icon', description: 'Small skull/icon shown next to boss health bars (recommended: 8x8 or 16x16 pixels)', category: 'icons', inputType: 'image' },
+  iconDungeonDetails: { label: 'Dungeon Details Icon', description: 'Icon for the divider between Heroes and Dungeon Details sections (recommended: 12x12 or 16x16 pixels)', category: 'icons', inputType: 'image' },
   iconNavPlay: { label: 'Play Nav Icon', description: 'Icon/emoji for Play button in navbar (default: ⚔)', category: 'icons', inputType: 'text' },
   iconNavCompendium: { label: 'Compendium Nav Icon', description: 'Icon/emoji for Compendium button in navbar (default: 📖)', category: 'icons', inputType: 'text' },
   iconNavEditor: { label: 'Editor Nav Icon', description: 'Icon/emoji for Map Editor button in navbar (default: 🛠)', category: 'icons', inputType: 'text' },

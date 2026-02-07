@@ -44,19 +44,28 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   // More prominent divider for noPanel mode - separates interactive Heroes from informational sections
   const divider = noPanel ? (
-    <div className="mt-4 mb-2">
-      {/* Divider line with diamond */}
+    <div className="mt-4 mb-3">
+      {/* Divider line with "Dungeon [icon] Details" integrated */}
       <div className="relative flex items-center justify-center">
         {/* Left line segment */}
         <div className="flex-1 border-t-2 border-copper-700/60" />
-        {/* Center diamond accent */}
-        <div className="mx-2 w-2 h-2 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
+        {/* "Dungeon" text */}
+        <span className="mx-2 text-xs text-stone-500 tracking-wider uppercase">Dungeon</span>
+        {/* Center icon - custom or fallback diamond */}
+        {themeAssets.iconDungeonDetails ? (
+          <img
+            src={themeAssets.iconDungeonDetails}
+            alt=""
+            className="w-4 h-4 flex-shrink-0"
+            style={{ imageRendering: 'pixelated' }}
+          />
+        ) : (
+          <div className="w-2 h-2 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
+        )}
+        {/* "Details" text */}
+        <span className="mx-2 text-xs text-stone-500 tracking-wider uppercase">Details</span>
         {/* Right line segment */}
         <div className="flex-1 border-t-2 border-copper-700/60" />
-      </div>
-      {/* "Dungeon Details" label centered below */}
-      <div className="text-center mt-1">
-        <span className="text-xs text-stone-500 tracking-wider uppercase">Dungeon Details</span>
       </div>
     </div>
   ) : null;
