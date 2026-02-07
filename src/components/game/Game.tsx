@@ -788,13 +788,13 @@ export const Game: React.FC = () => {
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible">
-                {/* Ornate corner decorations - L pieces meeting at corner point */}
-                {/* Bottom-left: L-shaped pieces meeting at corner */}
-                <div className="absolute -bottom-[2px] -left-[10px] w-[10px] h-[2px] bg-copper-600" />
-                <div className="absolute -bottom-[10px] -left-[2px] w-[2px] h-[10px] bg-copper-600" />
-                {/* Bottom-right: L-shaped pieces meeting at corner */}
-                <div className="absolute -bottom-[2px] -right-[10px] w-[10px] h-[2px] bg-copper-600" />
-                <div className="absolute -bottom-[10px] -right-[2px] w-[2px] h-[10px] bg-copper-600" />
+                {/* Ornate corner decorations - sharp L corners overlapping rounded corners */}
+                {/* Bottom-left: sharp corner at the actual corner position */}
+                <div className="absolute -bottom-[2px] left-0 w-3 h-[2px] bg-copper-600" />
+                <div className="absolute bottom-0 -left-[2px] w-[2px] h-3 bg-copper-600" />
+                {/* Bottom-right: sharp corner at the actual corner position */}
+                <div className="absolute -bottom-[2px] right-0 w-3 h-[2px] bg-copper-600" />
+                <div className="absolute bottom-0 -right-[2px] w-[2px] h-3 bg-copper-600" />
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}
