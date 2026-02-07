@@ -57,7 +57,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             // Custom image button
             <button
               onClick={onTest}
-              className="absolute left-1/2 -translate-x-1/2 transition-all hover:scale-105 active:scale-95"
+              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all hover:scale-105 active:scale-95"
               title="Test your heroes without enemies for 5 turns"
             >
               <img
@@ -71,7 +71,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             // Default styled button
             <button
               onClick={onTest}
-              className={`absolute left-1/2 -translate-x-1/2 px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
+              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
                 themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
               } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
               style={{

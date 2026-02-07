@@ -1138,22 +1138,20 @@ export const Game: React.FC = () => {
                           const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
 
                           if (customIcon) {
+                            // Use exact integer pixel sizes for crisp pixel art (2x scale: 14x16 -> 28x32)
                             hearts.push(
-                              <div
+                              <img
                                 key={i}
-                                className="w-[14px] h-[16px] lg:w-[16px] lg:h-[16px] flex items-center justify-center"
-                              >
-                                <img
-                                  src={customIcon}
-                                  alt={isFilled ? 'Life remaining' : 'Life lost'}
-                                  title={isFilled ? 'Life remaining' : 'Life lost'}
-                                  className="w-[14px] h-[16px] lg:w-[16px] lg:h-[16px]"
-                                  style={{
-                                    opacity: isFilled ? 1 : 0.4,
-                                    imageRendering: 'pixelated'
-                                  }}
-                                />
-                              </div>
+                                src={customIcon}
+                                alt={isFilled ? 'Life remaining' : 'Life lost'}
+                                title={isFilled ? 'Life remaining' : 'Life lost'}
+                                style={{
+                                  width: '28px',
+                                  height: '32px',
+                                  opacity: isFilled ? 1 : 0.4,
+                                  imageRendering: 'pixelated'
+                                }}
+                              />
                             );
                           } else {
                             hearts.push(
@@ -1170,6 +1168,8 @@ export const Game: React.FC = () => {
                         return hearts;
                       })()}
                     </div>
+                    {/* Diamond separator after Lives */}
+                    <div className="ml-2 w-1 h-1 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
                   </div>
 
                   {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
@@ -1259,6 +1259,8 @@ export const Game: React.FC = () => {
 
                   {/* Right: Max Turns OR Concede button - centered in right third */}
                   <div className="flex items-center justify-center">
+                    {/* Diamond separator before Max Turns */}
+                    <div className="mr-2 w-1 h-1 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
                     {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                       gameState.puzzle.maxTurns && (
                         <div className="flex items-center gap-1">
@@ -1288,12 +1290,8 @@ export const Game: React.FC = () => {
                   </div>
                 </div>
 
-                {/* Divider between control panel and heroes */}
-                <div className="mb-1 relative flex items-center justify-center">
-                  <div className="flex-1 border-t border-copper-700/50" />
-                  <div className="mx-3 w-1.5 h-1.5 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
-                  <div className="flex-1 border-t border-copper-700/50" />
-                </div>
+                {/* Divider between control panel and heroes - solid line */}
+                <div className="mb-1 border-t border-copper-700/50" />
               </>
             )}
 
