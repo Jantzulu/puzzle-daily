@@ -3819,7 +3819,7 @@ interface ResponsiveGameBoardProps {
 
 // Maximum dimensions for the puzzle board on desktop
 const MAX_PUZZLE_WIDTH = 900;
-const MAX_PUZZLE_HEIGHT = 550;
+const MAX_PUZZLE_HEIGHT = 525;
 
 /**
  * A wrapper component that automatically measures the container and scales the puzzle
