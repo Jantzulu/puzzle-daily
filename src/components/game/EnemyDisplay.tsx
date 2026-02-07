@@ -12,9 +12,10 @@ interface EnemyDisplayProps {
   showTestButton?: boolean;
   themeAssets?: ThemeAssets;
   className?: string;
+  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
-export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false, themeAssets = {}, className = '' }) => {
+export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false, themeAssets = {}, className = '', noPanel = false }) => {
   // Determine button shape class
   const getShapeClass = (shape?: string) => {
     switch (shape) {
@@ -41,20 +42,29 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
   const uniqueEnemies = Array.from(enemyGroups.values());
 
+  const emptyContent = (
+    <>
+      <div className="flex items-center gap-2 mb-2">
+        <HelpButton sectionId="enemies" />
+        <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
+      </div>
+      <p className="text-sm lg:text-base text-stone-500 text-center">No enemies remaining</p>
+    </>
+  );
+
   if (uniqueEnemies.length === 0) {
+    if (noPanel) {
+      return <div className={className}>{emptyContent}</div>;
+    }
     return (
       <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
-        <div className="flex items-center gap-2 mb-2">
-          <HelpButton sectionId="enemies" />
-          <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
-        </div>
-        <p className="text-sm lg:text-base text-stone-500 text-center">No enemies remaining</p>
+        {emptyContent}
       </div>
     );
   }
 
-  return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+  const content = (
+    <>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title */}
@@ -153,6 +163,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
           );
         })}
       </div>
+    </>
+  );
+
+  if (noPanel) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+      {content}
     </div>
   );
 };

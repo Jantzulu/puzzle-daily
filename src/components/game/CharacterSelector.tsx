@@ -15,6 +15,7 @@ interface CharacterSelectorProps {
   onTest?: () => void;
   themeAssets?: ThemeAssets;
   disabled?: boolean;
+  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -27,6 +28,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onTest,
   themeAssets = {},
   disabled = false,
+  noPanel = false,
 }) => {
   // If maxPlaceable not specified, default to number of available characters
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
@@ -39,8 +41,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       default: return 'rounded';
     }
   };
-  return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${disabled ? 'opacity-60' : ''}`}>
+
+  const content = (
+    <>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-3">
         {/* Left: Help + Title */}
@@ -182,6 +185,16 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           Click on the dungeon to place your hero
         </div>
       )}
+    </>
+  );
+
+  if (noPanel) {
+    return <div className={disabled ? 'opacity-60' : ''}>{content}</div>;
+  }
+
+  return (
+    <div className={`dungeon-panel p-2 lg:p-3 ${disabled ? 'opacity-60' : ''}`}>
+      {content}
     </div>
   );
 };

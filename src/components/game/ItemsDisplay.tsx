@@ -9,6 +9,7 @@ import { HelpButton } from './HelpOverlay';
 interface ItemsDisplayProps {
   puzzle: Puzzle;
   className?: string;
+  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
 // Entity source info for an item drop
@@ -129,7 +130,7 @@ const ItemIcon: React.FC<{ collectible: CustomCollectible; size?: number }> = ({
   );
 };
 
-export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = '' }) => {
+export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = '', noPanel = false }) => {
   const itemsWithSources = useMemo(() => getPuzzleItemsWithSources(puzzle), [puzzle]);
 
   // Don't render if no items
@@ -137,8 +138,16 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
     return null;
   }
 
-  return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+  // Accent divider for noPanel mode (when part of unified panel)
+  const divider = noPanel ? (
+    <div className="my-3 border-t border-copper-700/50 relative">
+      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
+    </div>
+  ) : null;
+
+  const content = (
+    <>
+      {divider}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="items" />
@@ -218,6 +227,16 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
           </div>
         ))}
       </div>
+    </>
+  );
+
+  if (noPanel) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+      {content}
     </div>
   );
 };

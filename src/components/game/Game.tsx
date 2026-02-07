@@ -1302,27 +1302,29 @@ export const Game: React.FC = () => {
             )}
           </div>
 
-          {/* Info Panels */}
-          <div className="w-full max-w-2xl mx-auto flex flex-col gap-3">
+          {/* Unified Info Panel - combines all info displays */}
+          <div className={`w-full max-w-2xl mx-auto dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
             {/* Enemies Display */}
             <EnemyDisplay
               enemies={gameState.puzzle.enemies}
               onTest={handleTestEnemiesWithScroll}
               showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
               themeAssets={themeAssets}
-              className={`transition-opacity ${dimmedPanelClass}`}
+              noPanel
             />
 
             {/* Items Display - only shown if puzzle has items */}
-            <ItemsDisplay puzzle={gameState.puzzle} className={`transition-opacity ${dimmedPanelClass}`} />
+            <ItemsDisplay puzzle={gameState.puzzle} noPanel />
 
             {/* Status Effects Display - only shown if puzzle has status effects */}
-            <StatusEffectsDisplay puzzle={gameState.puzzle} className={`transition-opacity ${dimmedPanelClass}`} />
+            <StatusEffectsDisplay puzzle={gameState.puzzle} noPanel />
 
             {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
-            <SpecialTilesDisplay puzzle={gameState.puzzle} className={`transition-opacity ${dimmedPanelClass}`} />
+            <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
+          </div>
 
-            {/* Puzzle Selector - at bottom for dev use */}
+          {/* Puzzle Selector - at bottom for dev use */}
+          <div className="w-full max-w-2xl mx-auto">
             {allPuzzles.length > 0 && (
               <div className={`dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
                 <label className="block text-sm lg:text-base font-bold mb-2 text-copper-400">

@@ -9,6 +9,7 @@ import { HelpButton } from './HelpOverlay';
 interface StatusEffectsDisplayProps {
   puzzle: Puzzle;
   className?: string;
+  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
 // Source type for status effects
@@ -199,7 +200,7 @@ const StatusEffectIcon: React.FC<{ effect: StatusEffectAsset; size?: number }> =
   );
 };
 
-export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzzle, className = '' }) => {
+export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzzle, className = '', noPanel = false }) => {
   const statusEffectsWithSources = useMemo(() => getPuzzleStatusEffectsWithSources(puzzle), [puzzle]);
 
   // Don't render if no status effects
@@ -207,8 +208,16 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
     return null;
   }
 
-  return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+  // Accent divider for noPanel mode (when part of unified panel)
+  const divider = noPanel ? (
+    <div className="my-3 border-t border-copper-700/50 relative">
+      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
+    </div>
+  ) : null;
+
+  const content = (
+    <>
+      {divider}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="status_effects" />
@@ -273,6 +282,16 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
           </div>
         ))}
       </div>
+    </>
+  );
+
+  if (noPanel) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+      {content}
     </div>
   );
 };

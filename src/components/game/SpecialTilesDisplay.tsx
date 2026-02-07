@@ -7,6 +7,7 @@ import { HelpButton } from './HelpOverlay';
 interface SpecialTilesDisplayProps {
   puzzle: Puzzle;
   className?: string;
+  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
 // Information about a special tile to display
@@ -222,7 +223,7 @@ function getCadenceDescription(cadence: CadenceConfig): string {
   }
 }
 
-export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle, className = '' }) => {
+export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle, className = '', noPanel = false }) => {
   const specialTiles = useMemo(() => getSpecialTiles(puzzle), [puzzle]);
 
   // Don't render if no special tiles
@@ -230,8 +231,16 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
     return null;
   }
 
-  return (
-    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+  // Accent divider for noPanel mode (when part of unified panel)
+  const divider = noPanel ? (
+    <div className="my-3 border-t border-copper-700/50 relative">
+      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
+    </div>
+  ) : null;
+
+  const content = (
+    <>
+      {divider}
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <HelpButton sectionId="special_tiles" />
@@ -312,6 +321,16 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
           </div>
         ))}
       </div>
+    </>
+  );
+
+  if (noPanel) {
+    return <div className={className}>{content}</div>;
+  }
+
+  return (
+    <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
+      {content}
     </div>
   );
 };
