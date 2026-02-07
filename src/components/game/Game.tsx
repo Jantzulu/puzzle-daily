@@ -784,15 +784,15 @@ export const Game: React.FC = () => {
       <div className="max-w-6xl mx-auto relative">
         <div className="flex flex-col gap-2">
           {/* Game Board - The Dungeon */}
-          <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-hidden">
+          <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-1 relative z-10">
                 {/* Ornate corner decorations */}
-                {/* Bottom L-brackets */}
-                <div className="absolute bottom-0 left-0 w-4 h-4 border-l-2 border-b-2 border-copper-600/70 rounded-bl-sm" />
-                <div className="absolute bottom-0 right-0 w-4 h-4 border-r-2 border-b-2 border-copper-600/70 rounded-br-sm" />
-                {/* Corner diamonds - positioned at corners, rotated diagonally outward */}
+                {/* Bottom L-brackets - slightly inset from corners */}
+                <div className="absolute bottom-1 left-1 w-4 h-4 border-l-2 border-b-2 border-copper-600/70 rounded-bl-sm" />
+                <div className="absolute bottom-1 right-1 w-4 h-4 border-r-2 border-b-2 border-copper-600/70 rounded-br-sm" />
+                {/* Corner diamonds - at actual corners, protruding */}
                 <div className="absolute -bottom-1 -left-1 w-2 h-2 rotate-45 bg-copper-600 border border-copper-500" />
                 <div className="absolute -bottom-1 -right-1 w-2 h-2 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Center diamond - vertically centered on bottom border */}
