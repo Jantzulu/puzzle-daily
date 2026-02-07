@@ -789,14 +789,14 @@ export const Game: React.FC = () => {
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
                 {/* Ornate corner decorations - hollow triangles overlapping rounded corners */}
-                {/* Bottom-left: hollow triangle */}
-                <div className="absolute -bottom-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
-                <div className="absolute -bottom-[2px] -left-[2px] w-[2px] h-4 bg-copper-600" />
-                <div className="absolute -bottom-[2px] -left-[2px] w-[2px] h-[23px] bg-copper-600 origin-bottom-left rotate-[-66deg]" />
-                {/* Bottom-right: hollow triangle */}
-                <div className="absolute -bottom-[2px] -right-[2px] w-4 h-[2px] bg-copper-600" />
-                <div className="absolute -bottom-[2px] -right-[2px] w-[2px] h-4 bg-copper-600" />
-                <div className="absolute -bottom-[2px] -right-[2px] w-[2px] h-[23px] bg-copper-600 origin-bottom-right rotate-[66deg]" />
+                {/* Bottom-left: hollow triangle using SVG */}
+                <svg className="absolute -bottom-[2px] -left-[2px] w-4 h-4" viewBox="0 0 16 16" fill="none">
+                  <path d="M0 16 L0 0 L16 16 Z" stroke="#a97545" strokeWidth="2" fill="none" />
+                </svg>
+                {/* Bottom-right: hollow triangle using SVG */}
+                <svg className="absolute -bottom-[2px] -right-[2px] w-4 h-4" viewBox="0 0 16 16" fill="none">
+                  <path d="M16 16 L16 0 L0 16 Z" stroke="#a97545" strokeWidth="2" fill="none" />
+                </svg>
                 {/* Center diamond - vertically centered so border bisects it */}
                 <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
                 {/* Quest Row */}
@@ -1128,14 +1128,14 @@ export const Game: React.FC = () => {
           {/* Unified Info Panel - combines all info displays */}
           <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
             {/* Ornate corner decorations - hollow triangles on top */}
-            {/* Top-left: hollow triangle */}
-            <div className="absolute -top-[2px] -left-[2px] w-4 h-[2px] bg-copper-600" />
-            <div className="absolute -top-[2px] -left-[2px] w-[2px] h-4 bg-copper-600" />
-            <div className="absolute -top-[2px] -left-[2px] w-[2px] h-[23px] bg-copper-600 origin-top-left rotate-[66deg]" />
-            {/* Top-right: hollow triangle */}
-            <div className="absolute -top-[2px] -right-[2px] w-4 h-[2px] bg-copper-600" />
-            <div className="absolute -top-[2px] -right-[2px] w-[2px] h-4 bg-copper-600" />
-            <div className="absolute -top-[2px] -right-[2px] w-[2px] h-[23px] bg-copper-600 origin-top-right rotate-[-66deg]" />
+            {/* Top-left: hollow triangle using SVG */}
+            <svg className="absolute -top-[2px] -left-[2px] w-4 h-4" viewBox="0 0 16 16" fill="none">
+              <path d="M0 0 L0 16 L16 0 Z" stroke="#a97545" strokeWidth="2" fill="none" />
+            </svg>
+            {/* Top-right: hollow triangle using SVG */}
+            <svg className="absolute -top-[2px] -right-[2px] w-4 h-4" viewBox="0 0 16 16" fill="none">
+              <path d="M16 0 L16 16 L0 0 Z" stroke="#a97545" strokeWidth="2" fill="none" />
+            </svg>
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
