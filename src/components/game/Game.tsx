@@ -1138,7 +1138,7 @@ export const Game: React.FC = () => {
                           const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
 
                           if (customIcon) {
-                            // Use exact integer pixel sizes for crisp pixel art (2x scale: 14x16 -> 28x32)
+                            // Use integer pixel sizes for crisp pixel art (14px width)
                             hearts.push(
                               <img
                                 key={i}
@@ -1146,8 +1146,8 @@ export const Game: React.FC = () => {
                                 alt={isFilled ? 'Life remaining' : 'Life lost'}
                                 title={isFilled ? 'Life remaining' : 'Life lost'}
                                 style={{
-                                  width: '28px',
-                                  height: '32px',
+                                  width: '14px',
+                                  height: '16px',
                                   opacity: isFilled ? 1 : 0.4,
                                   imageRendering: 'pixelated'
                                 }}
