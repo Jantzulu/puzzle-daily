@@ -174,10 +174,12 @@ function Navigation() {
     navbarStyle.backgroundSize = 'cover';
     navbarStyle.backgroundPosition = 'center';
   }
+  // Use theme border color
+  navbarStyle.borderColor = 'var(--theme-border-primary, #8c5c37)';
 
   return (
     <nav
-      className="bg-stone-600 border-b-2 border-copper-700 px-4 md:px-6 py-1.5 shadow-dungeon"
+      className="bg-stone-600 border-b-2 px-4 md:px-6 py-1.5 shadow-dungeon"
       style={navbarStyle}
     >
       <div className="flex items-center gap-3 md:gap-4">
