@@ -798,7 +798,7 @@ export const Game: React.FC = () => {
                   <path d="M16 16 L16 0 Q12 12 0 16 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Center triangle - pointing downward, wider and shorter */}
-                <svg className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-3 translate-y-[calc(100%-1px)]" viewBox="0 0 24 12">
+                <svg className="absolute bottom-0 left-1/2 -translate-x-1/2 w-6 h-3 translate-y-full" viewBox="0 0 24 12">
                   <path d="M0 0 L24 0 L12 12 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Quest Row */}
