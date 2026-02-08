@@ -791,21 +791,21 @@ export const Game: React.FC = () => {
                 {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
                 {/* Bottom-left: L-bracket with triangle */}
                 <svg className="absolute -bottom-[3px] -left-[3px] w-10 h-10" viewBox="0 0 40 40">
-                  {/* Extended horizontal line - from triangle end to right edge */}
-                  <path d="M16 38 L40 38" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Extended vertical line - from triangle end to top edge */}
-                  <path d="M2 24 L2 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Filled triangle at corner */}
-                  <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                  {/* Extended horizontal line - goes into triangle, outer edge aligns with triangle */}
+                  <path d="M0 37 L40 37" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Extended vertical line - goes into triangle, outer edge aligns with triangle */}
+                  <path d="M3 40 L3 0" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Filled triangle at corner - moved inward to align with line outer edges */}
+                  <path d="M2 38 L2 22 Q6 34 18 38 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Bottom-right: L-bracket with triangle */}
                 <svg className="absolute -bottom-[3px] -right-[3px] w-10 h-10" viewBox="0 0 40 40">
-                  {/* Extended horizontal line - from triangle end to left edge */}
-                  <path d="M24 38 L0 38" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Extended vertical line - from triangle end to top edge */}
-                  <path d="M38 24 L38 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Filled triangle at corner */}
-                  <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                  {/* Extended horizontal line - goes into triangle, outer edge aligns with triangle */}
+                  <path d="M40 37 L0 37" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Extended vertical line - goes into triangle, outer edge aligns with triangle */}
+                  <path d="M37 40 L37 0" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Filled triangle at corner - moved inward to align with line outer edges */}
+                  <path d="M38 38 L38 22 Q34 34 22 38 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Quest Row */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -1138,21 +1138,21 @@ export const Game: React.FC = () => {
             {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
             {/* Top-left: L-bracket with triangle */}
             <svg className="absolute -top-[3px] -left-[3px] w-10 h-10" viewBox="0 0 40 40">
-              {/* Extended horizontal line - from triangle end to right edge */}
-              <path d="M16 2 L40 2" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Extended vertical line - from triangle end to bottom edge */}
-              <path d="M2 16 L2 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Filled triangle at corner */}
-              <path d="M0 0 L0 16 Q4 4 16 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+              {/* Extended horizontal line - goes into triangle, outer edge aligns with triangle */}
+              <path d="M0 3 L40 3" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Extended vertical line - goes into triangle, outer edge aligns with triangle */}
+              <path d="M3 0 L3 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Filled triangle at corner - moved inward to align with line outer edges */}
+              <path d="M2 2 L2 18 Q6 6 18 2 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             {/* Top-right: L-bracket with triangle */}
             <svg className="absolute -top-[3px] -right-[3px] w-10 h-10" viewBox="0 0 40 40">
-              {/* Extended horizontal line - from triangle end to left edge */}
-              <path d="M24 2 L0 2" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Extended vertical line - from triangle end to bottom edge */}
-              <path d="M38 16 L38 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Filled triangle at corner */}
-              <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+              {/* Extended horizontal line - goes into triangle, outer edge aligns with triangle */}
+              <path d="M40 3 L0 3" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Extended vertical line - goes into triangle, outer edge aligns with triangle */}
+              <path d="M37 0 L37 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Filled triangle at corner - moved inward to align with line outer edges */}
+              <path d="M38 2 L38 18 Q34 6 22 2 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
