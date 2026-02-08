@@ -790,20 +790,20 @@ export const Game: React.FC = () => {
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
                 {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
                 {/* Bottom-left: L-bracket with triangle */}
-                <svg className="absolute -bottom-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40">
-                  {/* Horizontal line - at y=40 (bottom edge) */}
-                  <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line - at x=0 (left edge) */}
-                  <path d="M0 0 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                <svg className="absolute -bottom-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+                  {/* Horizontal line - center at y=39, outer edge at y=40 aligns with panel border */}
+                  <path d="M0 39 L40 39" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Vertical line - center at x=1, outer edge at x=0 aligns with panel border */}
+                  <path d="M1 0 L1 40" stroke="#c4915c" strokeWidth="2" fill="none" />
                   {/* Triangle at corner */}
                   <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Bottom-right: L-bracket with triangle */}
-                <svg className="absolute -bottom-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40">
-                  {/* Horizontal line - at y=40 (bottom edge) */}
-                  <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line - at x=40 (right edge) */}
-                  <path d="M40 0 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                <svg className="absolute -bottom-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+                  {/* Horizontal line - center at y=39, outer edge at y=40 aligns with panel border */}
+                  <path d="M0 39 L40 39" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Vertical line - center at x=39, outer edge at x=40 aligns with panel border */}
+                  <path d="M39 0 L39 40" stroke="#c4915c" strokeWidth="2" fill="none" />
                   {/* Triangle at corner */}
                   <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
@@ -1137,20 +1137,20 @@ export const Game: React.FC = () => {
           <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
             {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
             {/* Top-left: L-bracket with triangle */}
-            <svg className="absolute -top-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40">
-              {/* Horizontal line - at y=0 (top edge) */}
-              <path d="M0 0 L40 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Vertical line - at x=0 (left edge) */}
-              <path d="M0 0 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+            <svg className="absolute -top-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+              {/* Horizontal line - center at y=1, outer edge at y=0 aligns with panel border */}
+              <path d="M0 1 L40 1" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Vertical line - center at x=1, outer edge at x=0 aligns with panel border */}
+              <path d="M1 0 L1 40" stroke="#c4915c" strokeWidth="2" fill="none" />
               {/* Triangle at corner */}
               <path d="M0 0 L0 16 Q4 4 16 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             {/* Top-right: L-bracket with triangle */}
-            <svg className="absolute -top-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40">
-              {/* Horizontal line - at y=0 (top edge) */}
-              <path d="M0 0 L40 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Vertical line - at x=40 (right edge) */}
-              <path d="M40 0 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+            <svg className="absolute -top-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+              {/* Horizontal line - center at y=1, outer edge at y=0 aligns with panel border */}
+              <path d="M0 1 L40 1" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Vertical line - center at x=39, outer edge at x=40 aligns with panel border */}
+              <path d="M39 0 L39 40" stroke="#c4915c" strokeWidth="2" fill="none" />
               {/* Triangle at corner */}
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
