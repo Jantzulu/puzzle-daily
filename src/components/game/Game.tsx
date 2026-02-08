@@ -788,14 +788,24 @@ export const Game: React.FC = () => {
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
-                {/* Ornate corner decorations - arrowhead triangles overlapping rounded corners */}
-                {/* Bottom-left: filled arrowhead with curved hypotenuse */}
-                <svg className="absolute -bottom-[3px] -left-[3px] w-4 h-4" viewBox="0 0 16 16">
-                  <path d="M0 16 L0 0 Q4 12 16 16 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
+                {/* Bottom-left: L-bracket with triangle */}
+                <svg className="absolute -bottom-[3px] -left-[3px] w-10 h-10" viewBox="0 0 40 40">
+                  {/* Extended horizontal line */}
+                  <path d="M0 38 L40 38" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Extended vertical line */}
+                  <path d="M2 40 L2 0" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Filled triangle at corner */}
+                  <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
-                {/* Bottom-right: filled arrowhead with curved hypotenuse */}
-                <svg className="absolute -bottom-[3px] -right-[3px] w-4 h-4" viewBox="0 0 16 16">
-                  <path d="M16 16 L16 0 Q12 12 0 16 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                {/* Bottom-right: L-bracket with triangle */}
+                <svg className="absolute -bottom-[3px] -right-[3px] w-10 h-10" viewBox="0 0 40 40">
+                  {/* Extended horizontal line */}
+                  <path d="M40 38 L0 38" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Extended vertical line */}
+                  <path d="M38 40 L38 0" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Filled triangle at corner */}
+                  <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Quest Row */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -1125,14 +1135,24 @@ export const Game: React.FC = () => {
 
           {/* Unified Info Panel - combines all info displays */}
           <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
-            {/* Ornate corner decorations - arrowhead triangles on top */}
-            {/* Top-left: filled arrowhead with curved hypotenuse */}
-            <svg className="absolute -top-[2px] -left-[2px] w-4 h-4" viewBox="0 0 16 16">
+            {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
+            {/* Top-left: L-bracket with triangle */}
+            <svg className="absolute -top-[3px] -left-[3px] w-10 h-10" viewBox="0 0 40 40">
+              {/* Extended horizontal line */}
+              <path d="M0 2 L40 2" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Extended vertical line */}
+              <path d="M2 0 L2 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Filled triangle at corner */}
               <path d="M0 0 L0 16 Q4 4 16 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
-            {/* Top-right: filled arrowhead with curved hypotenuse */}
-            <svg className="absolute -top-[2px] -right-[2px] w-4 h-4" viewBox="0 0 16 16">
-              <path d="M16 0 L16 16 Q12 4 0 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+            {/* Top-right: L-bracket with triangle */}
+            <svg className="absolute -top-[3px] -right-[3px] w-10 h-10" viewBox="0 0 40 40">
+              {/* Extended horizontal line */}
+              <path d="M40 2 L0 2" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Extended vertical line */}
+              <path d="M38 0 L38 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+              {/* Filled triangle at corner */}
+              <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
