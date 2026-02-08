@@ -793,8 +793,9 @@ export const Game: React.FC = () => {
                 <svg className="absolute -bottom-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
                   {/* Horizontal line at bottom edge */}
                   <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line at left edge */}
-                  <path d="M0 0 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Vertical line - extends upward to navbar border */}
+                  <path d="M0 -16 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" className="hidden md:block" />
+                  <path d="M0 8 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" className="md:hidden" />
                   {/* Triangle at corner */}
                   <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
@@ -802,8 +803,9 @@ export const Game: React.FC = () => {
                 <svg className="absolute -bottom-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
                   {/* Horizontal line at bottom edge */}
                   <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line at right edge */}
-                  <path d="M40 0 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                  {/* Vertical line - extends upward to navbar border */}
+                  <path d="M40 -16 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" className="hidden md:block" />
+                  <path d="M40 8 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" className="md:hidden" />
                   {/* Triangle at corner */}
                   <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
