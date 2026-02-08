@@ -795,8 +795,8 @@ export const Game: React.FC = () => {
                   <path d="M0 38 L40 38" stroke="#c4915c" strokeWidth="2" fill="none" />
                   {/* Extended vertical line */}
                   <path d="M2 40 L2 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Filled triangle at corner */}
-                  <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                  {/* Filled triangle at corner - aligned to lines at y=38 and x=2 */}
+                  <path d="M2 38 L2 22 Q6 34 18 38 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Bottom-right: L-bracket with triangle */}
                 <svg className="absolute -bottom-[3px] -right-[3px] w-10 h-10" viewBox="0 0 40 40">
@@ -804,8 +804,8 @@ export const Game: React.FC = () => {
                   <path d="M40 38 L0 38" stroke="#c4915c" strokeWidth="2" fill="none" />
                   {/* Extended vertical line */}
                   <path d="M38 40 L38 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Filled triangle at corner */}
-                  <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                  {/* Filled triangle at corner - aligned to lines at y=38 and x=38 */}
+                  <path d="M38 38 L38 22 Q34 34 22 38 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Quest Row */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
@@ -1142,8 +1142,8 @@ export const Game: React.FC = () => {
               <path d="M0 2 L40 2" stroke="#c4915c" strokeWidth="2" fill="none" />
               {/* Extended vertical line */}
               <path d="M2 0 L2 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Filled triangle at corner */}
-              <path d="M0 0 L0 16 Q4 4 16 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+              {/* Filled triangle at corner - aligned to lines at y=2 and x=2 */}
+              <path d="M2 2 L2 18 Q6 6 18 2 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             {/* Top-right: L-bracket with triangle */}
             <svg className="absolute -top-[3px] -right-[3px] w-10 h-10" viewBox="0 0 40 40">
@@ -1151,8 +1151,8 @@ export const Game: React.FC = () => {
               <path d="M40 2 L0 2" stroke="#c4915c" strokeWidth="2" fill="none" />
               {/* Extended vertical line */}
               <path d="M38 0 L38 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Filled triangle at corner */}
-              <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+              {/* Filled triangle at corner - aligned to lines at y=2 and x=38 */}
+              <path d="M38 2 L38 18 Q34 6 22 2 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
