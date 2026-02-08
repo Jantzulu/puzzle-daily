@@ -797,8 +797,10 @@ export const Game: React.FC = () => {
                 <svg className="absolute -bottom-[3px] -right-[3px] w-4 h-4" viewBox="0 0 16 16">
                   <path d="M16 16 L16 0 Q12 12 0 16 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
-                {/* Center diamond - vertically centered so border bisects it */}
-                <div className="absolute -bottom-[7px] left-1/2 -translate-x-1/2 w-3 h-3 rotate-45 bg-copper-600 border border-copper-500" />
+                {/* Center triangle - pointing downward */}
+                <svg className="absolute -bottom-[6px] left-1/2 -translate-x-1/2 w-3 h-2" viewBox="0 0 12 8">
+                  <path d="M0 0 L12 0 L6 8 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                </svg>
                 {/* Quest Row */}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                     <HelpButton sectionId="game_general" />
