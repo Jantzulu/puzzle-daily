@@ -791,20 +791,20 @@ export const Game: React.FC = () => {
                 {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
                 {/* Bottom-left: L-bracket with triangle */}
                 <svg className="absolute -bottom-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40">
-                  {/* Horizontal line at y=39 (center), extends from x=0 to x=40 */}
+                  {/* Horizontal line - outer edge at y=40 */}
                   <path d="M0 39 L40 39" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line at x=1 (center), extends from y=0 to y=40 */}
+                  {/* Vertical line - outer edge at x=0 */}
                   <path d="M1 0 L1 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Triangle: vertical edge at x=0, horizontal edge at y=40, meeting at corner (0,40) */}
+                  {/* Triangle at corner */}
                   <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Bottom-right: L-bracket with triangle */}
                 <svg className="absolute -bottom-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40">
-                  {/* Horizontal line at y=39 (center), extends from x=0 to x=40 */}
+                  {/* Horizontal line - outer edge at y=40 */}
                   <path d="M0 39 L40 39" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line at x=39 (center), extends from y=0 to y=40 */}
+                  {/* Vertical line - outer edge at x=40 */}
                   <path d="M39 0 L39 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Triangle: vertical edge at x=40, horizontal edge at y=40, meeting at corner (40,40) */}
+                  {/* Triangle at corner */}
                   <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
                 {/* Quest Row */}
