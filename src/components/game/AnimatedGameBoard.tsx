@@ -1077,7 +1077,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1094,7 +1094,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1135,7 +1135,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1152,7 +1152,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -2204,9 +2204,8 @@ function drawEnemy(
 ) {
   const x = renderX !== undefined ? renderX : enemy.x;
   const y = renderY !== undefined ? renderY : enemy.y;
-  // Round to nearest pixel to prevent sub-pixel anti-aliasing blur during movement
-  const px = Math.round(x * TILE_SIZE);
-  const py = Math.round(y * TILE_SIZE);
+  const px = x * TILE_SIZE;
+  const py = y * TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : enemy.facing;
 
   // Use undefined direction before game starts to force 'default' directional sprite
@@ -2777,9 +2776,8 @@ function drawCharacter(
   now: number = Date.now(),
   spawnAnimState?: SpawnAnimationState
 ) {
-  // Round to nearest pixel to prevent sub-pixel anti-aliasing blur during movement
-  const px = Math.round(x * TILE_SIZE);
-  const py = Math.round(y * TILE_SIZE);
+  const px = x * TILE_SIZE;
+  const py = y * TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : character.facing;
 
   // Use undefined direction before game starts to force 'default' directional sprite
