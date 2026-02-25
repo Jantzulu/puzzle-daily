@@ -2233,6 +2233,11 @@ function drawEnemy(
   if (hasCustomSprite && enemyData.customSprite) {
     if (!enemy.dead) {
       // Living enemy
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 2;
+      ctx.shadowOffsetY = 2;
+
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
         drawSpawnSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
@@ -2240,6 +2245,11 @@ function drawEnemy(
         // Normal sprite (idle/moving/casting)
         drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
       }
+
+      ctx.shadowColor = 'transparent';
+      ctx.shadowBlur = 0;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 0;
     } else {
       // Dead enemy - use death sprite (animates then stays on final frame as corpse)
       const hasDeathSprite = hasDeathAnimation(enemyData.customSprite);
