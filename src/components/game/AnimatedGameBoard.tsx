@@ -2204,8 +2204,9 @@ function drawEnemy(
 ) {
   const x = renderX !== undefined ? renderX : enemy.x;
   const y = renderY !== undefined ? renderY : enemy.y;
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
+  // Round to nearest pixel to prevent sub-pixel anti-aliasing blur during movement
+  const px = Math.round(x * TILE_SIZE);
+  const py = Math.round(y * TILE_SIZE);
   const facing = facingOverride !== undefined ? facingOverride : enemy.facing;
 
   // Use undefined direction before game starts to force 'default' directional sprite
@@ -2776,8 +2777,9 @@ function drawCharacter(
   now: number = Date.now(),
   spawnAnimState?: SpawnAnimationState
 ) {
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
+  // Round to nearest pixel to prevent sub-pixel anti-aliasing blur during movement
+  const px = Math.round(x * TILE_SIZE);
+  const py = Math.round(y * TILE_SIZE);
   const facing = facingOverride !== undefined ? facingOverride : character.facing;
 
   // Use undefined direction before game starts to force 'default' directional sprite
