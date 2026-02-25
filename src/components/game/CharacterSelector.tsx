@@ -1,8 +1,10 @@
 import React from 'react';
 import { getCharacter } from '../../data/characters';
+import { Direction } from '../../types/game';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
+import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 
 interface CharacterSelectorProps {
@@ -134,11 +136,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700 hover:border-copper-600 cursor-pointer'
               }`}
             >
-              {/* HP display - above sprite */}
-              <div className={`text-xs lg:text-sm text-center font-medium mb-1 ${
+              {/* HP and direction display - above sprite */}
+              <div className={`text-xs lg:text-sm text-center font-medium mb-1 flex items-center justify-center gap-1.5 ${
                 isSelected ? 'text-parchment-100' : 'text-copper-400'
               }`}>
-                HP: {character.health}
+                <span>HP: {character.health}</span>
+                <DirectionArrow direction={character.defaultFacing} className={isSelected ? 'text-parchment-100' : 'text-copper-400'} />
               </div>
 
               {/* Sprite */}

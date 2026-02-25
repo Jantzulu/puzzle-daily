@@ -4,6 +4,7 @@ import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
+import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 
 interface EnemyDisplayProps {
@@ -157,9 +158,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
               key={enemy.enemyId}
               className="p-2 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
             >
-              {/* HP display - above sprite */}
-              <div className="text-xs lg:text-sm text-center text-blood-400 font-medium mb-1">
-                HP: {enemyData.health}
+              {/* HP and direction display - above sprite */}
+              <div className="text-xs lg:text-sm text-center text-blood-400 font-medium mb-1 flex items-center justify-center gap-1.5">
+                <span>HP: {enemyData.health}</span>
+                {enemyData.behavior?.defaultFacing && (
+                  <DirectionArrow direction={enemyData.behavior.defaultFacing} className="text-blood-400" />
+                )}
               </div>
 
               {/* Sprite */}
