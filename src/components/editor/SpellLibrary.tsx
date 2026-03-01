@@ -4,6 +4,7 @@ import type { SpellAsset } from '../../types/game';
 import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 
 export const SpellLibrary: React.FC = () => {
   const [spells, setSpells] = useState<SpellAsset[]>([]);
@@ -12,6 +13,7 @@ export const SpellLibrary: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const bulk = useBulkSelect();
 
   const loadSpells = () => {
     setSpells(getSpellAssets());
@@ -123,6 +125,26 @@ export const SpellLibrary: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredSpells.length}
+              onSelectAll={() => bulk.selectAll(filteredSpells.map(s => s.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(spells.map(s => [s.id, s.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'spell', deleteSpellAsset, nameMap);
+                if (deleted.length) { loadSpells(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingSpell(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'spells', (id: string) => spells.find(s => s.id === id), saveSpellAsset);
+                loadSpells(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = spells.filter(s => bulk.selectedIds.has(s.id));
+                bulkExport(items, 'spells-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredSpells.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
@@ -135,6 +157,7 @@ export const SpellLibrary: React.FC = () => {
                   <div
                     key={spell.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
+                      bulk.isSelected(spell.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === spell.id
                         ? 'bg-copper-700/50 border border-copper-500'
                         : 'dungeon-panel hover:bg-stone-700'
@@ -143,6 +166,13 @@ export const SpellLibrary: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={bulk.isSelected(spell.id)}
+                          onChange={() => bulk.toggle(spell.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-blue-500 flex-shrink-0"
+                        />
                         {spell.thumbnailIcon ? (
                           <img
                             src={spell.thumbnailIcon}

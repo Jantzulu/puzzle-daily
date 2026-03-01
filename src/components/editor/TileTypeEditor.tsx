@@ -5,6 +5,7 @@ import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Directi
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 
 // Helper to convert file to base64
@@ -439,6 +440,8 @@ export const TileTypeEditor: React.FC = () => {
   const [showOffSpriteUrl, setShowOffSpriteUrl] = useState(false);
   const [offSpriteUrlInput, setOffSpriteUrlInput] = useState('');
 
+  const bulk = useBulkSelect();
+
   // Filter tile types based on folder and search term
   const folderFilteredTileTypes = useFilteredAssets(tileTypes, selectedFolderId);
   const filteredTileTypes = folderFilteredTileTypes.filter(tileType =>
@@ -658,6 +661,26 @@ export const TileTypeEditor: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredTileTypes.length}
+              onSelectAll={() => bulk.selectAll(filteredTileTypes.map(t => t.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(tileTypes.map(t => [t.id, t.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'tile_type', deleteTileType, nameMap);
+                if (deleted.length) { refreshTileTypes(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'tiles', (id: string) => tileTypes.find(t => t.id === id), saveTileType);
+                refreshTileTypes(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = tileTypes.filter(t => bulk.selectedIds.has(t.id));
+                bulkExport(items, 'tiles-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredTileTypes.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
@@ -670,6 +693,7 @@ export const TileTypeEditor: React.FC = () => {
                   <div
                     key={tileType.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
+                      bulk.isSelected(tileType.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === tileType.id
                         ? 'bg-arcane-700'
                         : 'dungeon-panel hover:bg-stone-700'
@@ -678,6 +702,13 @@ export const TileTypeEditor: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={bulk.isSelected(tileType.id)}
+                          onChange={() => bulk.toggle(tileType.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-blue-500 flex-shrink-0"
+                        />
                         {/* Preview thumbnail */}
                         <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                           {(tileType.customSprite?.idleImageData || tileType.customSprite?.idleImageUrl) ? (

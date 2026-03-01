@@ -7,6 +7,7 @@ import { saveCollectible, getCustomCollectibles, deleteCollectible, getFolders, 
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 
 // Effect type options with icons
@@ -31,6 +32,7 @@ export const CollectibleEditor: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const bulk = useBulkSelect();
 
   // Filter collectibles based on folder and search term
   const folderFilteredCollectibles = useFilteredAssets(collectibles, selectedFolderId);
@@ -203,6 +205,26 @@ export const CollectibleEditor: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredCollectibles.length}
+              onSelectAll={() => bulk.selectAll(filteredCollectibles.map(c => c.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(collectibles.map(c => [c.id, c.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'collectible', deleteCollectible, nameMap);
+                if (deleted.length) { refreshCollectibles(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'collectibles', (id: string) => collectibles.find(c => c.id === id), saveCollectible);
+                refreshCollectibles(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = collectibles.filter(c => bulk.selectedIds.has(c.id));
+                bulkExport(items, 'collectibles-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredCollectibles.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
@@ -215,6 +237,7 @@ export const CollectibleEditor: React.FC = () => {
                   <div
                     key={collectible.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
+                      bulk.isSelected(collectible.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === collectible.id
                         ? 'bg-arcane-700'
                         : 'dungeon-panel hover:bg-stone-700'
@@ -223,6 +246,13 @@ export const CollectibleEditor: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={bulk.isSelected(collectible.id)}
+                          onChange={() => bulk.toggle(collectible.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-blue-500 flex-shrink-0"
+                        />
                         {/* Preview thumbnail */}
                         <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                           <SpriteThumbnail sprite={collectible.customSprite} size={40} />

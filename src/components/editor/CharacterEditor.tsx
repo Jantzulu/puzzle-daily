@@ -11,6 +11,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { AttackEditor } from './AttackEditor';
 import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { DirectionCompass } from './DirectionCompass';
 
@@ -49,6 +50,7 @@ export const CharacterEditor: React.FC = () => {
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const bulk = useBulkSelect();
 
   // Filter characters based on folder and search term
   const folderFilteredCharacters = useFilteredAssets(characters, selectedFolderId);
@@ -230,6 +232,26 @@ export const CharacterEditor: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredCharacters.length}
+              onSelectAll={() => bulk.selectAll(filteredCharacters.map(c => c.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(characters.map(c => [c.id, c.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'character', deleteCharacter, nameMap);
+                if (deleted.length) { refreshCharacters(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'characters', (id: string) => characters.find(c => c.id === id), saveCharacter);
+                refreshCharacters(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = characters.filter(c => bulk.selectedIds.has(c.id));
+                bulkExport(items, 'characters-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto dungeon-scrollbar">
               {filteredCharacters.length === 0 ? (
                 <div className="dungeon-panel p-4 text-center text-stone-400 text-sm">
@@ -242,6 +264,7 @@ export const CharacterEditor: React.FC = () => {
                   <div
                     key={char.id}
                     className={`p-3 rounded-pixel cursor-pointer transition-colors ${
+                      bulk.isSelected(char.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === char.id
                         ? 'bg-copper-700/50 border border-copper-500'
                         : 'dungeon-panel hover:bg-stone-700'
@@ -250,6 +273,13 @@ export const CharacterEditor: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={bulk.isSelected(char.id)}
+                          onChange={() => bulk.toggle(char.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-blue-500 flex-shrink-0"
+                        />
                         <div className="w-10 h-10 bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0">
                           <SpriteThumbnail sprite={char.customSprite} size={40} previewType="entity" />
                         </div>

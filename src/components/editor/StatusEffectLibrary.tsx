@@ -7,6 +7,7 @@ import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, 
 import { StatusEffectEditor } from './StatusEffectEditor';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { SpriteThumbnail } from './SpriteThumbnail';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 
 // Get display color for status effect type
 function getEffectTypeColor(type: StatusEffectType): string {
@@ -33,6 +34,7 @@ export const StatusEffectLibrary: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const bulk = useBulkSelect();
 
   const loadEffects = () => {
     setEffects(getStatusEffectAssets());
@@ -150,6 +152,26 @@ export const StatusEffectLibrary: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredEffects.length}
+              onSelectAll={() => bulk.selectAll(filteredEffects.map(e => e.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(effects.map(e => [e.id, e.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'status_effect', deleteStatusEffectAsset, nameMap);
+                if (deleted.length) { loadEffects(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingEffect(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'status_effects', (id: string) => effects.find(e => e.id === id), saveStatusEffectAsset);
+                loadEffects(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = effects.filter(e => bulk.selectedIds.has(e.id));
+                bulkExport(items, 'status-effects-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredEffects.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
@@ -162,6 +184,7 @@ export const StatusEffectLibrary: React.FC = () => {
                   <div
                     key={effect.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
+                      bulk.isSelected(effect.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === effect.id
                         ? 'bg-arcane-700'
                         : 'dungeon-panel hover:bg-stone-700'
@@ -170,6 +193,13 @@ export const StatusEffectLibrary: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={bulk.isSelected(effect.id)}
+                          onChange={() => bulk.toggle(effect.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-blue-500 flex-shrink-0"
+                        />
                         {/* Icon - use SpriteThumbnail if iconSprite has sprite data */}
                         {effect.iconSprite?.type === 'inline' && effect.iconSprite.spriteData ? (
                           <SpriteThumbnail sprite={effect.iconSprite.spriteData as CustomSprite} size={32} />

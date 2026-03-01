@@ -6,6 +6,7 @@ import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../ut
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
@@ -40,6 +41,7 @@ export const ObjectEditor: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const bulk = useBulkSelect();
 
   // Filter objects based on folder and search term
   const folderFilteredObjects = useFilteredAssets(objects, selectedFolderId);
@@ -202,6 +204,26 @@ export const ObjectEditor: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredObjects.length}
+              onSelectAll={() => bulk.selectAll(filteredObjects.map(o => o.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(objects.map(o => [o.id, o.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'object', deleteObject, nameMap);
+                if (deleted.length) { refreshObjects(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'objects', (id: string) => objects.find(o => o.id === id), saveObject);
+                refreshObjects(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = objects.filter(o => bulk.selectedIds.has(o.id));
+                bulkExport(items, 'objects-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredObjects.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
@@ -214,6 +236,7 @@ export const ObjectEditor: React.FC = () => {
                   <div
                     key={obj.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
+                      bulk.isSelected(obj.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === obj.id
                         ? 'bg-arcane-700'
                         : 'dungeon-panel hover:bg-stone-700'
@@ -222,6 +245,13 @@ export const ObjectEditor: React.FC = () => {
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={bulk.isSelected(obj.id)}
+                          onChange={() => bulk.toggle(obj.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-blue-500 flex-shrink-0"
+                        />
                         {/* Preview thumbnail */}
                         <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                           <SpriteThumbnail sprite={obj.customSprite} size={40} />

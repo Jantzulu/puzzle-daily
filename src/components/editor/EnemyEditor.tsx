@@ -10,6 +10,7 @@ import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { DirectionCompass } from './DirectionCompass';
 
@@ -32,6 +33,7 @@ export const EnemyEditor: React.FC = () => {
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const bulk = useBulkSelect();
 
   // Filter enemies based on folder and search term
   const folderFilteredEnemies = useFilteredAssets(enemies, selectedFolderId);
@@ -195,6 +197,26 @@ export const EnemyEditor: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredEnemies.length}
+              onSelectAll={() => bulk.selectAll(filteredEnemies.map(e => e.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(enemies.map(e => [e.id, e.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'enemy', deleteEnemy, nameMap);
+                if (deleted.length) { setEnemies(refreshEnemies()); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'enemies', (id: string) => enemies.find(e => e.id === id), saveEnemy);
+                setEnemies(refreshEnemies()); bulk.clear();
+              }}
+              onExport={() => {
+                const items = enemies.filter(e => bulk.selectedIds.has(e.id));
+                bulkExport(items, 'enemies-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredEnemies.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
@@ -206,12 +228,20 @@ export const EnemyEditor: React.FC = () => {
                   <div
                     key={enemy.id}
                     className={`p-3 rounded cursor-pointer transition-colors ${
+                      bulk.isSelected(enemy.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === enemy.id ? 'bg-arcane-700' : 'dungeon-panel hover:bg-stone-700'
                     }`}
                     onClick={() => handleSelect(enemy.id)}
                   >
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-2">
+                        <input
+                          type="checkbox"
+                          checked={bulk.isSelected(enemy.id)}
+                          onChange={() => bulk.toggle(enemy.id)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="accent-blue-500 flex-shrink-0"
+                        />
                         <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                           <SpriteThumbnail sprite={enemy.customSprite} size={40} previewType="entity" />
                         </div>

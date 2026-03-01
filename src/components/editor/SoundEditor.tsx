@@ -13,6 +13,7 @@ import {
 } from '../../utils/assetStorage';
 import { soundManager } from '../../utils/soundManager';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 
 // Sound trigger categories for global config
 const GLOBAL_SOUND_TRIGGERS = [
@@ -52,6 +53,7 @@ export const SoundEditor: React.FC = () => {
   const [globalConfig, setGlobalConfig] = useState<GlobalSoundConfig>(() => getGlobalSoundConfig());
   const [activeTab, setActiveTab] = useState<'library' | 'global'>('library');
   const [isPlaying, setIsPlaying] = useState(false);
+  const bulk = useBulkSelect();
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -290,6 +292,26 @@ export const SoundEditor: React.FC = () => {
               className="dungeon-input w-full mb-3"
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredSounds.length}
+              onSelectAll={() => bulk.selectAll(filteredSounds.map(s => s.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(sounds.map(s => [s.id, s.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'sound', deleteSoundAsset, nameMap);
+                if (deleted.length) { refreshSounds(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'objects', (id: string) => sounds.find(s => s.id === id), saveSoundAsset);
+                refreshSounds(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = sounds.filter(s => bulk.selectedIds.has(s.id));
+                bulkExport(items, 'sounds-export.json');
+              }}
+            />
+
             {/* Sound List */}
             <div className="space-y-2 max-h-96 overflow-y-auto">
               {filteredSounds.length === 0 ? (
@@ -302,12 +324,20 @@ export const SoundEditor: React.FC = () => {
                     key={sound.id}
                     onClick={() => handleSelect(sound.id)}
                     className={`p-3 rounded cursor-pointer flex items-center justify-between ${
+                      bulk.isSelected(sound.id) ? 'bg-blue-900/40 border border-blue-500' :
                       selectedId === sound.id
                         ? 'bg-arcane-700'
                         : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
                     <div className="flex items-center gap-3">
+                      <input
+                        type="checkbox"
+                        checked={bulk.isSelected(sound.id)}
+                        onChange={() => bulk.toggle(sound.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="accent-blue-500 flex-shrink-0"
+                      />
                       <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center">
                         <svg className="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />

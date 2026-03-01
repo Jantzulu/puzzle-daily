@@ -5,6 +5,7 @@ import type { PuzzleSkin, CustomBorderSprites, TileSprites } from '../../types/g
 import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 
 // Helper to convert file to base64
@@ -58,6 +59,7 @@ export const SkinEditor: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
+  const bulk = useBulkSelect();
 
   // URL input states - track which slot is showing URL input and the current input value
   const [showUrlInput, setShowUrlInput] = useState<string | null>(null);
@@ -378,6 +380,26 @@ export const SkinEditor: React.FC = () => {
               onFolderSelect={setSelectedFolderId}
             />
 
+            <BulkActionBar
+              count={bulk.count}
+              totalCount={filteredSkins.length}
+              onSelectAll={() => bulk.selectAll(filteredSkins.map(s => s.id))}
+              onClear={bulk.clear}
+              onDelete={() => {
+                const nameMap = new Map(skins.map(s => [s.id, s.name]));
+                const deleted = bulkDelete([...bulk.selectedIds], 'skin', deletePuzzleSkin, nameMap);
+                if (deleted.length) { refreshSkins(); bulk.clear(); if (selectedSkinId && deleted.includes(selectedSkinId)) { setSelectedSkinId(null); setEditingSkin(null); } }
+              }}
+              onMoveToFolder={() => {
+                bulkMoveToFolder([...bulk.selectedIds], 'skins', (id: string) => skins.find(s => s.id === id), savePuzzleSkin);
+                refreshSkins(); bulk.clear();
+              }}
+              onExport={() => {
+                const items = skins.filter(s => bulk.selectedIds.has(s.id));
+                bulkExport(items, 'skins-export.json');
+              }}
+            />
+
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
               {filteredSkins.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
@@ -390,6 +412,7 @@ export const SkinEditor: React.FC = () => {
                 <div
                   key={skin.id}
                   className={`p-3 rounded cursor-pointer transition-colors ${
+                    bulk.isSelected(skin.id) ? 'bg-blue-900/40 border border-blue-500' :
                     selectedSkinId === skin.id
                       ? 'bg-arcane-700'
                       : 'dungeon-panel hover:bg-stone-700'
@@ -397,7 +420,15 @@ export const SkinEditor: React.FC = () => {
                   onClick={() => handleSelectSkin(skin.id)}
                 >
                   <div className="flex justify-between items-start">
-                    <div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="checkbox"
+                        checked={bulk.isSelected(skin.id)}
+                        onChange={() => bulk.toggle(skin.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="accent-blue-500 flex-shrink-0"
+                      />
+                      <div>
                       <h3 className="font-bold">
                         {skin.name}
                         {skin.isBuiltIn && (
@@ -407,6 +438,7 @@ export const SkinEditor: React.FC = () => {
                       {skin.description && (
                         <p className="text-xs text-stone-400 mt-1">{skin.description}</p>
                       )}
+                      </div>
                     </div>
                     <div className="flex items-center gap-1">
                       {!skin.isBuiltIn && (
