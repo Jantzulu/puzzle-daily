@@ -343,6 +343,8 @@ export const MapEditor: React.FC = () => {
         mode: 'edit' as EditorMode,
         // Ensure sideQuests is always an array (for backwards compatibility with old cached state)
         sideQuests: cached.sideQuests || [],
+        // Filter out references to deleted characters
+        availableCharacters: (cached.availableCharacters || []).filter(id => getCharacter(id) != null),
       };
     }
     return createDefaultEditorState();
@@ -1417,7 +1419,7 @@ export const MapEditor: React.FC = () => {
       maxPlaceableCharacters: puzzle.maxPlaceableCharacters,
       maxTurns: puzzle.maxTurns,
       lives: puzzle.lives ?? 3,
-      availableCharacters: puzzle.availableCharacters,
+      availableCharacters: puzzle.availableCharacters.filter(id => getCharacter(id) != null),
       winConditions: puzzle.winConditions,
       skinId: puzzle.skinId || 'builtin_dungeon',
       backgroundMusicId: puzzle.backgroundMusicId,
@@ -1452,7 +1454,7 @@ export const MapEditor: React.FC = () => {
       maxPlaceableCharacters: puzzle.maxPlaceableCharacters,
       maxTurns: puzzle.maxTurns,
       lives: puzzle.lives ?? 3,
-      availableCharacters: puzzle.availableCharacters,
+      availableCharacters: puzzle.availableCharacters.filter(id => getCharacter(id) != null),
       winConditions: puzzle.winConditions,
       skinId: puzzle.skinId || 'builtin_dungeon',
       backgroundMusicId: puzzle.backgroundMusicId,
@@ -3071,7 +3073,7 @@ export const MapEditor: React.FC = () => {
                   }}
                 >
                   {Array.from({ length: state.maxCharacters }).map((_, index) => {
-                    const charId = state.availableCharacters[index];
+                    const charId = state.availableCharacters.filter(id => getCharacter(id) != null)[index];
                     const char = charId ? getCharacter(charId) : null;
                     const spells = char ? getAllSpells(char.behavior) : [];
 
@@ -4034,11 +4036,11 @@ export const MapEditor: React.FC = () => {
                                     className="flex-1 px-2 py-1 bg-stone-600 rounded text-sm"
                                   >
                                     <option value="">Select...</option>
-                                    {state.availableCharacters.map(charId => {
-                                      const char = getCharacter(charId);
+                                    {state.availableCharacters.filter(id => getCharacter(id) != null).map(charId => {
+                                      const char = getCharacter(charId)!;
                                       return (
                                         <option key={charId} value={charId}>
-                                          {char?.name || charId}
+                                          {char.name}
                                         </option>
                                       );
                                     })}

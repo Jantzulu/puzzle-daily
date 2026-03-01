@@ -357,19 +357,31 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
                       <option key={enemy.id} value={enemy.id}>{enemy.name}</option>
                     ))}
                   </select>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    min={1}
-                    max={10}
-                    value={config.count}
-                    onChange={e => updateEnemyConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
-                    onBlur={e => updateEnemyConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
-                    disabled={isGenerating}
-                    className="w-16 px-2 py-1 bg-stone-600 border border-stone-500 rounded text-sm text-parchment-100
-                      disabled:opacity-50 text-center"
-                  />
+                  <div className="flex items-center">
+                    <button
+                      onClick={() => updateEnemyConfig(index, { count: Math.max(1, config.count - 1) })}
+                      disabled={isGenerating || config.count <= 1}
+                      className="px-1.5 py-1 bg-stone-700 hover:bg-stone-600 rounded-l text-sm font-bold disabled:opacity-50"
+                    >-</button>
+                    <input
+                      type="number"
+                      min={1}
+                      max={10}
+                      value={config.count}
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        if (!isNaN(val)) updateEnemyConfig(index, { count: Math.min(10, Math.max(1, val)) });
+                      }}
+                      disabled={isGenerating}
+                      className="w-10 px-1 py-1 bg-stone-600 border-y border-stone-500 text-sm text-parchment-100
+                        disabled:opacity-50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                    />
+                    <button
+                      onClick={() => updateEnemyConfig(index, { count: Math.min(10, config.count + 1) })}
+                      disabled={isGenerating || config.count >= 10}
+                      className="px-1.5 py-1 bg-stone-700 hover:bg-stone-600 rounded-r text-sm font-bold disabled:opacity-50"
+                    >+</button>
+                  </div>
                   <select
                     value={config.placement || 'random'}
                     onChange={e => updateEnemyConfig(index, { placement: e.target.value as EnemyConfig['placement'] })}
@@ -424,19 +436,31 @@ const GeneratorDialog: React.FC<GeneratorDialogProps> = ({
                         <option key={collectible.id} value={collectible.id}>{collectible.name}</option>
                       ))}
                     </select>
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      pattern="[0-9]*"
-                      min={1}
-                      max={20}
-                      value={config.count}
-                      onChange={e => updateCollectibleConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
-                      onBlur={e => updateCollectibleConfig(index, { count: Math.max(1, parseInt(e.target.value) || 1) })}
-                      disabled={isGenerating}
-                      className="w-16 px-2 py-1 bg-stone-600 border border-stone-500 rounded text-sm text-parchment-100
-                        disabled:opacity-50 text-center"
-                    />
+                    <div className="flex items-center">
+                      <button
+                        onClick={() => updateCollectibleConfig(index, { count: Math.max(1, config.count - 1) })}
+                        disabled={isGenerating || config.count <= 1}
+                        className="px-1.5 py-1 bg-stone-700 hover:bg-stone-600 rounded-l text-sm font-bold disabled:opacity-50"
+                      >-</button>
+                      <input
+                        type="number"
+                        min={1}
+                        max={20}
+                        value={config.count}
+                        onChange={e => {
+                          const val = parseInt(e.target.value);
+                          if (!isNaN(val)) updateCollectibleConfig(index, { count: Math.min(20, Math.max(1, val)) });
+                        }}
+                        disabled={isGenerating}
+                        className="w-10 px-1 py-1 bg-stone-600 border-y border-stone-500 text-sm text-parchment-100
+                          disabled:opacity-50 text-center [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <button
+                        onClick={() => updateCollectibleConfig(index, { count: Math.min(20, config.count + 1) })}
+                        disabled={isGenerating || config.count >= 20}
+                        className="px-1.5 py-1 bg-stone-700 hover:bg-stone-600 rounded-r text-sm font-bold disabled:opacity-50"
+                      >+</button>
+                    </div>
                     <button
                       onClick={() => removeCollectibleConfig(index)}
                       disabled={isGenerating}
