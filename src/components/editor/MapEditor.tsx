@@ -655,10 +655,12 @@ export const MapEditor: React.FC = () => {
     return () => clearInterval(timer);
   }, [state.mode]);
 
-  // Warn before leaving with unsaved changes
+  // Warn before leaving and flush auto-save on tab close
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       if (state.mode === 'edit') {
+        // Flush auto-save immediately so recovery works on next load
+        writeAutoSave(getCurrentPuzzleRef.current());
         e.preventDefault();
       }
     };
