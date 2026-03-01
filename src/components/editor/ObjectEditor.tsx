@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint } from '../../utils/assetStorage';
@@ -34,7 +34,7 @@ const getEffectIcon = (type: ObjectEffectConfig['type']): string => {
   }
 };
 
-export const ObjectEditor: React.FC = () => {
+export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [objects, setObjects] = useState<CustomObject[]>(() => getCustomObjects());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomObject | null>(null);
@@ -62,6 +62,10 @@ export const ObjectEditor: React.FC = () => {
       setIsCreating(false);
     }
   };
+
+  useEffect(() => {
+    if (initialSelectedId) handleSelect(initialSelectedId);
+  }, [initialSelectedId]);
 
   const handleNew = () => {
     const newObj: CustomObject = {

@@ -51,7 +51,7 @@ const TILE_SPRITE_SLOTS: { key: keyof TileSprites; label: string; description: s
   { key: 'goal', label: 'Goal Tile', description: 'Goal/exit tile (48x48)' },
 ];
 
-export const SkinEditor: React.FC = () => {
+export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [skins, setSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
   const [selectedSkinId, setSelectedSkinId] = useState<string | null>(null);
   const [editingSkin, setEditingSkin] = useState<PuzzleSkin | null>(null);
@@ -89,6 +89,10 @@ export const SkinEditor: React.FC = () => {
       setIsCreating(false);
     }
   };
+
+  useEffect(() => {
+    if (initialSelectedId) handleSelectSkin(initialSelectedId);
+  }, [initialSelectedId]);
 
   const handleNewSkin = () => {
     const newSkin: PuzzleSkin = {

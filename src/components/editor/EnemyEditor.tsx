@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { Direction, ActionType } from '../../types/game';
@@ -18,7 +18,7 @@ const ACTION_TYPES = Object.values(ActionType).filter(
   type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
 );
 
-export const EnemyEditor: React.FC = () => {
+export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const refreshEnemies = () => getAllEnemies().map(e => ({
     ...e,
     isCustom: true,
@@ -49,6 +49,10 @@ export const EnemyEditor: React.FC = () => {
       setIsCreating(false);
     }
   };
+
+  useEffect(() => {
+    if (initialSelectedId) handleSelect(initialSelectedId);
+  }, [initialSelectedId]);
 
   const handleNew = () => {
     const newEnemy: CustomEnemy = {

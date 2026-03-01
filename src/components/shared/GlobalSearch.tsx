@@ -229,11 +229,10 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
 
   const handleSelect = useCallback((result: SearchResult) => {
     onClose();
-    if (result.tab) {
-      navigate(`${result.route}?tab=${result.tab}`);
-    } else {
-      navigate(result.route);
-    }
+    const params = new URLSearchParams();
+    if (result.tab) params.set('tab', result.tab);
+    params.set('id', result.id);
+    navigate(`${result.route}?${params.toString()}`);
   }, [navigate, onClose]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {

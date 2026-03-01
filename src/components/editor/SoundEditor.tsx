@@ -43,7 +43,7 @@ const GLOBAL_SOUND_TRIGGERS = [
   ]},
 ];
 
-export const SoundEditor: React.FC = () => {
+export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [sounds, setSounds] = useState<SoundAsset[]>(() => getSoundAssets());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<SoundAsset | null>(null);
@@ -76,6 +76,10 @@ export const SoundEditor: React.FC = () => {
       setIsCreating(false);
     }
   };
+
+  useEffect(() => {
+    if (initialSelectedId) handleSelect(initialSelectedId);
+  }, [initialSelectedId]);
 
   const handleNew = () => {
     const newSound: SoundAsset = {

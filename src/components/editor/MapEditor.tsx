@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from '../shared/Toast';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType, PuzzleScore } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
@@ -1422,6 +1422,15 @@ export const MapEditor: React.FC = () => {
 
     setShowLibrary(false);
   };
+
+  // Auto-load puzzle from URL search params (global search navigation)
+  const [editorSearchParams] = useSearchParams();
+  useEffect(() => {
+    const puzzleId = editorSearchParams.get('id');
+    if (puzzleId) {
+      handleLoadFromLibrary(puzzleId);
+    }
+  }, []);
 
   const handleDeleteFromLibrary = (puzzleId: string) => {
     if (!confirm('Delete this puzzle from library?')) return;

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig, CadenceConfig, CadencePattern } from '../../types/game';
@@ -426,7 +426,7 @@ const getBehaviorIcon = (type: TileBehaviorType): string => {
   }
 };
 
-export const TileTypeEditor: React.FC = () => {
+export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [tileTypes, setTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomTileType | null>(null);
@@ -452,6 +452,10 @@ export const TileTypeEditor: React.FC = () => {
   const refreshTileTypes = () => {
     setTileTypes(getCustomTileTypes());
   };
+
+  useEffect(() => {
+    if (initialSelectedId) handleSelect(initialSelectedId);
+  }, [initialSelectedId]);
 
   const handleSelect = (id: string) => {
     const tileType = tileTypes.find(t => t.id === id);

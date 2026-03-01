@@ -6,7 +6,7 @@ import { SpellAssetBuilder } from './SpellAssetBuilder';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 
-export const SpellLibrary: React.FC = () => {
+export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [spells, setSpells] = useState<SpellAsset[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingSpell, setEditingSpell] = useState<SpellAsset | null>(null);
@@ -28,6 +28,13 @@ export const SpellLibrary: React.FC = () => {
     setEditingSpell(spell);
     setIsCreating(false);
   };
+
+  useEffect(() => {
+    if (initialSelectedId) {
+      const spell = spells.find(s => s.id === initialSelectedId);
+      if (spell) handleSelect(spell);
+    }
+  }, [initialSelectedId, spells]);
 
   const handleNew = () => {
     setSelectedId(null);

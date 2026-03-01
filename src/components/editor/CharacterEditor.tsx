@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { Direction, ActionType } from '../../types/game';
@@ -20,7 +20,7 @@ const ACTION_TYPES = Object.values(ActionType).filter(
   type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
 );
 
-export const CharacterEditor: React.FC = () => {
+export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   // Helper to ensure all characters have a default customSprite
   const ensureCustomSprite = (char: any): CustomCharacter => {
     return {
@@ -71,6 +71,10 @@ export const CharacterEditor: React.FC = () => {
       setIsCreating(false);
     }
   };
+
+  useEffect(() => {
+    if (initialSelectedId) handleSelect(initialSelectedId);
+  }, [initialSelectedId]);
 
   const handleNew = () => {
     const newChar: CustomCharacter = {

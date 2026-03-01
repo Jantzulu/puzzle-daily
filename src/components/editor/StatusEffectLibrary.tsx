@@ -27,7 +27,7 @@ function getEffectTypeColor(type: StatusEffectType): string {
   }
 }
 
-export const StatusEffectLibrary: React.FC = () => {
+export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [effects, setEffects] = useState<StatusEffectAsset[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editingEffect, setEditingEffect] = useState<StatusEffectAsset | null>(null);
@@ -49,6 +49,13 @@ export const StatusEffectLibrary: React.FC = () => {
     setEditingEffect(effect);
     setIsCreating(false);
   };
+
+  useEffect(() => {
+    if (initialSelectedId) {
+      const effect = effects.find(e => e.id === initialSelectedId);
+      if (effect) handleSelect(effect);
+    }
+  }, [initialSelectedId, effects]);
 
   const handleNew = () => {
     setSelectedId(null);

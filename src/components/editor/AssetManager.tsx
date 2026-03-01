@@ -103,15 +103,15 @@ export const AssetManager: React.FC = () => {
 
       {/* Tab content */}
       <div>
-        {activeTab === 'characters' && <CharacterEditor />}
-        {activeTab === 'enemies' && <EnemyEditor />}
-        {activeTab === 'spells' && <SpellLibrary />}
-        {activeTab === 'status_effects' && <StatusEffectLibrary />}
-        {activeTab === 'skins' && <SkinEditor />}
-        {activeTab === 'tiles' && <TileTypeEditor />}
-        {activeTab === 'objects' && <ObjectEditor />}
-        {activeTab === 'collectibles' && <CollectibleEditor />}
-        {activeTab === 'sounds' && <SoundEditor />}
+        {activeTab === 'characters' && <CharacterEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'enemies' && <EnemyEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'spells' && <SpellLibrary initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'status_effects' && <StatusEffectLibrary initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'skins' && <SkinEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'tiles' && <TileTypeEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'objects' && <ObjectEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'collectibles' && <CollectibleEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'sounds' && <SoundEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'theme' && <ThemeAssetsEditor />}
         {activeTab === 'help' && (
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6" style={{ height: 'calc(100vh - 130px)' }}>

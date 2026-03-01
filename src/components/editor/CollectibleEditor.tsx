@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { CustomCollectible, CustomSprite } from '../../utils/assetStorage';
@@ -25,7 +25,7 @@ const getEffectIcon = (type: CollectibleEffectType): string => {
   return found?.icon || '?';
 };
 
-export const CollectibleEditor: React.FC = () => {
+export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [collectibles, setCollectibles] = useState<CustomCollectible[]>(() => getCustomCollectibles());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomCollectible | null>(null);
@@ -53,6 +53,10 @@ export const CollectibleEditor: React.FC = () => {
       setIsCreating(false);
     }
   };
+
+  useEffect(() => {
+    if (initialSelectedId) handleSelect(initialSelectedId);
+  }, [initialSelectedId]);
 
   const handleNew = () => {
     const newCollectible: CustomCollectible = {
