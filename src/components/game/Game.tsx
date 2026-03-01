@@ -1080,7 +1080,7 @@ export const Game: React.FC = () => {
               >
                 <div
                   className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${
-                    themeAssets.concedeModalPanelBg ? '' : 'defeat-panel'
+                    themeAssets.concedeModalPanelBg ? '' : 'bg-gradient-to-b from-blood-800 to-blood-900 border-2 border-blood-500'
                   }`}
                   style={{
                     ...(themeAssets.concedeModalPanelBg && { backgroundColor: themeAssets.concedeModalPanelBg }),
