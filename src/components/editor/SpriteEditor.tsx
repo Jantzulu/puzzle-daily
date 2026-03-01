@@ -2300,6 +2300,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 const hasDeathImg = dirConfig?.deathImageData;
                 const hasCastingImg = dirConfig?.castingImageData;
 
+                const hasIdle = !!(hasIdleSS || hasIdleImg);
+                const hasMoving = !!(hasMovingSS || hasMovingImg);
+                const hasDeath = !!(hasDeathSS || hasDeathImg);
+                const hasCasting = !!(hasCastingSS || hasCastingImg);
+
                 return (
                   <button
                     key={dir.key}
@@ -2311,16 +2316,18 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     }`}
                   >
                     <div className="text-sm">{dir.arrow} {dir.label}</div>
-                    <div className="flex gap-1 text-[9px]">
-                      {hasIdleSS && <span className="text-purple-400" title="Has idle sprite sheet">🎞️</span>}
-                      {!hasIdleSS && hasIdleImg && <span className="text-green-400" title="Has idle image">💤</span>}
-                      {hasMovingSS && <span className="text-purple-400" title="Has moving sprite sheet">🎬</span>}
-                      {!hasMovingSS && hasMovingImg && <span className="text-blue-400" title="Has moving image">🏃</span>}
-                      {hasDeathSS && <span className="text-red-400" title="Has death sprite sheet">💀</span>}
-                      {!hasDeathSS && hasDeathImg && <span className="text-orange-400" title="Has death image">🪦</span>}
-                      {hasCastingSS && <span className="text-yellow-400" title="Has casting sprite sheet">✨</span>}
-                      {!hasCastingSS && hasCastingImg && <span className="text-amber-400" title="Has casting image">🔮</span>}
-                      {!hasIdleSS && !hasIdleImg && !hasMovingSS && !hasMovingImg && !hasDeathSS && !hasDeathImg && !hasCastingSS && !hasCastingImg && <span className="text-stone-500">—</span>}
+                    <div className="grid grid-cols-4 gap-x-1 text-[9px]">
+                      {[
+                        { icon: '💤', done: hasIdle, label: 'Idle' },
+                        { icon: '🏃', done: hasMoving, label: 'Move' },
+                        { icon: '💀', done: hasDeath, label: 'Death' },
+                        { icon: '✨', done: hasCasting, label: 'Cast' },
+                      ].map((s) => (
+                        <div key={s.label} className="flex flex-col items-center" title={`${s.label}: ${s.done ? 'Set' : 'Not set'}`}>
+                          <span>{s.icon}</span>
+                          <span className={s.done ? 'text-green-400' : 'text-stone-600'}>{s.done ? '☑' : '☐'}</span>
+                        </div>
+                      ))}
                     </div>
                   </button>
                 );
