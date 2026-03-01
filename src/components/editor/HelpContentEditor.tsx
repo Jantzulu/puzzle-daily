@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from '../shared/Toast';
 import {
   getAllHelpSections,
   saveHelpSection,
@@ -60,7 +61,7 @@ export const HelpContentEditor: React.FC = () => {
     if (saveHelpSection(editing)) {
       setSections(getAllHelpSections());
       setHasUnsavedChanges(false);
-      alert(`Saved "${editing.title}"!`);
+      toast.success(`Saved "${editing.title}"!`);
     }
   };
 

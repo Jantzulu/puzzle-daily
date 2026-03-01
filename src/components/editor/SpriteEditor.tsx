@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { toast } from '../shared/Toast';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
@@ -688,7 +689,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const sourceConfig = dirSprites[selectedDirection];
 
     if (!sourceConfig) {
-      alert('Configure this direction first before copying!');
+      toast.warning('Configure this direction first before copying!');
       return;
     }
 
@@ -702,7 +703,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       directionalSprites: newDirectionalSprites,
     });
 
-    alert('Copied to all directions!');
+    toast.success('Copied to all directions!');
   };
 
   const copyFromDirection = (sourceDir: SpriteDirection) => {
@@ -736,7 +737,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const dirSprites = sprite.directionalSprites || {};
     const sourceConfig = dirSprites[selectedDirection];
     if (!sourceConfig) {
-      alert('Configure this direction first before copying!');
+      toast.warning('Configure this direction first before copying!');
       return;
     }
 
@@ -787,7 +788,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -825,7 +826,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -1151,7 +1152,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG)');
+      toast.warning('Please upload an image file (PNG, JPG)');
       return;
     }
 
@@ -1193,7 +1194,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG)');
+      toast.warning('Please upload an image file (PNG, JPG)');
       return;
     }
 
@@ -1354,7 +1355,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -1389,7 +1390,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG)');
+      toast.warning('Please upload an image file (PNG, JPG)');
       return;
     }
 
@@ -1512,7 +1513,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -1547,7 +1548,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG)');
+      toast.warning('Please upload an image file (PNG, JPG)');
       return;
     }
 
@@ -1670,7 +1671,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -1690,7 +1691,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG)');
+      toast.warning('Please upload an image file (PNG, JPG)');
       return;
     }
 

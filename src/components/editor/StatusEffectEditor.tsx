@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { toast } from '../shared/Toast';
 import type { StatusEffectAsset, SpriteReference } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
 import { saveStatusEffectAsset } from '../../utils/assetStorage';
@@ -56,7 +57,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
 
   const handleSave = () => {
     if (!name.trim()) {
-      alert('Please enter a name for the status effect.');
+      toast.warning('Please enter a name for the status effect.');
       return;
     }
 
@@ -86,7 +87,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
     };
 
     saveStatusEffectAsset(effectData);
-    alert(`Saved "${name.trim()}"!`);
+    toast.success(`Saved "${name.trim()}"!`);
     onSave();
   };
 

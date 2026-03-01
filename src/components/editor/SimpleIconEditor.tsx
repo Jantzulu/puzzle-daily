@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { toast } from '../shared/Toast';
 import type { SpriteReference } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
 
@@ -201,7 +202,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 

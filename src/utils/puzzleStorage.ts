@@ -1,5 +1,6 @@
 import type { Puzzle } from '../types/game';
 import { safeLocalStorageSet } from './assetStorage';
+import { toast } from '../components/shared/Toast';
 
 const STORAGE_KEY = 'saved_puzzles';
 const PENDING_PUZZLE_DELETIONS_KEY = 'pending_puzzle_deletions';
@@ -117,7 +118,7 @@ export const savePuzzle = (puzzle: Puzzle): boolean => {
   // Validate puzzle has required fields
   if (!puzzle.id) {
     console.error('[PuzzleStorage] Cannot save puzzle without ID:', puzzle.name);
-    alert('Cannot save puzzle: Missing ID');
+    toast.error('Cannot save puzzle: Missing ID');
     return false;
   }
 

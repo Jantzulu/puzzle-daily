@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { toast } from '../shared/Toast';
+import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint } from '../../utils/assetStorage';
 import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../utils/assetStorage';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
@@ -92,11 +94,13 @@ export const ObjectEditor: React.FC = () => {
     refreshObjects();
     setSelectedId(editing.id);
     setIsCreating(false);
-    alert(`Saved "${editing.name}"!`);
+    toast.success(`Saved "${editing.name}"!`);
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Delete this object?')) return;
+    const usages = findAssetUsages('object', id);
+    const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
+    if (!confirm(`Delete this object?${warning}`)) return;
     deleteObject(id);
     refreshObjects();
     if (selectedId === id) {

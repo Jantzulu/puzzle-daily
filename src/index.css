@@ -636,6 +636,38 @@ html body.theme-font-active,
   mix-blend-mode: overlay;
 }
 
+@keyframes slide-in-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-in-right {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-up 0.25s ease-out;
+}
+
+@media (min-width: 768px) {
+  .animate-slide-in-right {
+    animation: slide-in-right 0.25s ease-out;
+  }
+}
+
 @keyframes shimmer-sweep {
   0% {
     background-position: 200% center;

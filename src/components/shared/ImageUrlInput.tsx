@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { toast } from './Toast';
 
 interface ImageUrlInputProps {
   /** Current base64 image data (if any) */
@@ -45,7 +46,7 @@ export const ImageUrlInput: React.FC<ImageUrlInputProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF, WebP)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF, WebP)');
       return;
     }
 
@@ -79,7 +80,7 @@ export const ImageUrlInput: React.FC<ImageUrlInputProps> = ({
       onImageDataChange(undefined);
       setPreviewError(false);
     } catch {
-      alert('Please enter a valid URL');
+      toast.warning('Please enter a valid URL');
     }
   };
 

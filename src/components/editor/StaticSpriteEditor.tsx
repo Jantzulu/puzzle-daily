@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { toast } from '../shared/Toast';
 import type { CustomSprite, SpriteSheetConfig } from '../../utils/assetStorage';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
@@ -173,7 +174,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -224,7 +225,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         });
       }
     } catch {
-      alert('Please enter a valid URL');
+      toast.warning('Please enter a valid URL');
     }
   };
 
@@ -233,7 +234,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG)');
+      toast.warning('Please upload an image file (PNG, JPG)');
       return;
     }
 
@@ -292,7 +293,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         });
       }
     } catch {
-      alert('Please enter a valid URL');
+      toast.warning('Please enter a valid URL');
     }
   };
 

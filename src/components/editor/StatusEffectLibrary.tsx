@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { toast } from '../shared/Toast';
+import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { StatusEffectAsset } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
 import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, getFolders, type CustomSprite } from '../../utils/assetStorage';
@@ -56,10 +58,12 @@ export const StatusEffectLibrary: React.FC = () => {
     e.stopPropagation();
     const effect = effects.find(ef => ef.id === effectId);
     if (effect?.isBuiltIn) {
-      alert('Cannot delete built-in status effects.');
+      toast.warning('Cannot delete built-in status effects.');
       return;
     }
-    if (!confirm('Delete this status effect?')) return;
+    const usages = findAssetUsages('status_effect', effectId);
+    const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
+    if (!confirm(`Delete this status effect?${warning}`)) return;
     deleteStatusEffectAsset(effectId);
     loadEffects();
     if (selectedId === effectId) {

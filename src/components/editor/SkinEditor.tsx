@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from '../shared/Toast';
+import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { PuzzleSkin, CustomBorderSprites, TileSprites } from '../../types/game';
 import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
 import type { CustomTileType } from '../../utils/assetStorage';
@@ -107,15 +109,17 @@ export const SkinEditor: React.FC = () => {
     refreshSkins();
     setSelectedSkinId(editingSkin.id);
     setIsCreating(false);
-    alert('Skin saved!');
+    toast.success('Skin saved!');
   };
 
   const handleDeleteSkin = (skinId: string) => {
     if (skinId.startsWith('builtin_')) {
-      alert('Cannot delete built-in skins');
+      toast.warning('Cannot delete built-in skins');
       return;
     }
-    if (!confirm('Delete this skin?')) return;
+    const usages = findAssetUsages('skin', skinId);
+    const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
+    if (!confirm(`Delete this skin?${warning}`)) return;
 
     deletePuzzleSkin(skinId);
     refreshSkins();

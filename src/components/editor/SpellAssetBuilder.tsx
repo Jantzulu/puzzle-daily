@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from '../shared/Toast';
 import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset, SoundAsset } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
@@ -142,7 +143,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
         }
       });
     } catch {
-      alert('Please enter a valid URL');
+      toast.warning('Please enter a valid URL');
     }
   };
 
@@ -196,7 +197,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
         }
       });
     } catch {
-      alert('Please enter a valid URL');
+      toast.warning('Please enter a valid URL');
     }
   };
 
@@ -652,7 +653,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -672,7 +673,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
       new URL(trimmed);
       setEditedSpell({ ...editedSpell, thumbnailIcon: trimmed });
     } catch {
-      alert('Please enter a valid URL');
+      toast.warning('Please enter a valid URL');
     }
   };
 
@@ -713,23 +714,23 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const handleSave = () => {
     // Validation
     if (!editedSpell.name.trim()) {
-      alert('Please enter a spell name');
+      toast.warning('Please enter a spell name');
       return;
     }
 
     if (editedSpell.directionMode === 'fixed' && (!editedSpell.defaultDirections || editedSpell.defaultDirections.length === 0)) {
-      alert('Please select at least one direction for fixed direction mode');
+      toast.warning('Please select at least one direction for fixed direction mode');
       return;
     }
 
     if (editedSpell.directionMode === 'relative' && (!editedSpell.relativeDirections || editedSpell.relativeDirections.length === 0)) {
-      alert('Please select at least one relative direction');
+      toast.warning('Please select at least one relative direction');
       return;
     }
 
     // Save to library
     saveSpellAsset(editedSpell);
-    alert(`Saved "${editedSpell.name}"!`);
+    toast.success(`Saved "${editedSpell.name}"!`);
     onSave(editedSpell);
   };
 

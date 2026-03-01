@@ -1,4 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { toast } from '../shared/Toast';
+import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { SoundAsset, GlobalSoundConfig } from '../../types/game';
 import {
   saveSoundAsset,
@@ -89,18 +91,20 @@ export const SoundEditor: React.FC = () => {
   const handleSave = () => {
     if (!editing) return;
     if (!editing.audioData && !editing.audioUrl) {
-      alert('Please upload an audio file or provide a URL');
+      toast.warning('Please upload an audio file or provide a URL');
       return;
     }
     saveSoundAsset(editing);
     refreshSounds();
     setSelectedId(editing.id);
     setIsCreating(false);
-    alert(`Saved "${editing.name}"!`);
+    toast.success(`Saved "${editing.name}"!`);
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Delete this sound?')) return;
+    const usages = findAssetUsages('sound', id);
+    const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
+    if (!confirm(`Delete this sound?${warning}`)) return;
     deleteSoundAsset(id);
     refreshSounds();
     if (selectedId === id) {
@@ -115,13 +119,13 @@ export const SoundEditor: React.FC = () => {
 
     // Check file type
     if (!file.type.startsWith('audio/')) {
-      alert('Please upload an audio file (MP3, WAV, OGG, etc.)');
+      toast.warning('Please upload an audio file (MP3, WAV, OGG, etc.)');
       return;
     }
 
     // Check file size (limit to 1MB for localStorage)
     if (file.size > 1024 * 1024) {
-      alert('Audio file is too large. Please keep files under 1MB.');
+      toast.warning('Audio file is too large. Please keep files under 1MB.');
       return;
     }
 

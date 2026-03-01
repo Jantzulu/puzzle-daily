@@ -7,6 +7,7 @@ import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
+import { ToastContainer } from './components/shared/Toast';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -371,6 +372,7 @@ function App() {
           <Route path="/editor" element={<MapEditor />} />
           <Route path="/assets" element={<AssetManager />} />
         </Routes>
+        <ToastContainer />
       </div>
     </BrowserRouter>
   );

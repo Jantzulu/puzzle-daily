@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { toast } from '../shared/Toast';
 import { Link } from 'react-router-dom';
 import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType, PuzzleScore } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
@@ -972,7 +973,7 @@ export const MapEditor: React.FC = () => {
   const paintTile = (x: number, y: number) => {
     if (state.selectedTool === 'enemy') {
       if (!selectedEnemyId) {
-        alert('Please select an enemy type first!');
+        toast.warning('Please select an enemy type first!');
         return;
       }
 
@@ -1044,7 +1045,7 @@ export const MapEditor: React.FC = () => {
     // Handle object placement
     if (state.selectedTool === 'object') {
       if (!selectedObjectId) {
-        alert('Please select an object type first!');
+        toast.warning('Please select an object type first!');
         return;
       }
 
@@ -1073,7 +1074,7 @@ export const MapEditor: React.FC = () => {
     // Handle custom tile placement
     if (state.selectedTool === 'custom') {
       if (!selectedCustomTileTypeId) {
-        alert('Please select a custom tile type first!');
+        toast.warning('Please select a custom tile type first!');
         return;
       }
 
@@ -1191,7 +1192,7 @@ export const MapEditor: React.FC = () => {
     const success = savePuzzle(puzzle);
     if (success) {
       setSavedPuzzles(getSavedPuzzles());
-      alert(`Saved "${state.puzzleName}"!`);
+      toast.success(`Saved "${state.puzzleName}"!`);
     }
     // If save failed, safeLocalStorageSet already showed an error alert
   };
@@ -1215,7 +1216,7 @@ export const MapEditor: React.FC = () => {
         puzzleName: newName,
       }));
       setSavedPuzzles(getSavedPuzzles());
-      alert(`Saved as "${newName}"!`);
+      toast.success(`Saved as "${newName}"!`);
     }
     // If save failed, safeLocalStorageSet already showed an error alert
   };
@@ -1226,7 +1227,7 @@ export const MapEditor: React.FC = () => {
 
     // Copy to clipboard
     navigator.clipboard.writeText(json).then(() => {
-      alert('Puzzle JSON copied to clipboard!');
+      toast.success('Puzzle JSON copied to clipboard!');
     });
   };
 
@@ -1322,9 +1323,9 @@ export const MapEditor: React.FC = () => {
         sideQuests: puzzle.sideQuests || [],
       }));
 
-      alert('Puzzle loaded successfully!');
+      toast.success('Puzzle loaded successfully!');
     } catch (e) {
-      alert('Invalid JSON format: ' + (e as Error).message);
+      toast.error('Invalid JSON format: ' + (e as Error).message);
     }
   };
 

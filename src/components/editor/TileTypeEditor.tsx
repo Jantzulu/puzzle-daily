@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { toast } from '../shared/Toast';
+import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig, CadenceConfig, CadencePattern } from '../../types/game';
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
@@ -478,11 +480,13 @@ export const TileTypeEditor: React.FC = () => {
     refreshTileTypes();
     setSelectedId(editing.id);
     setIsCreating(false);
-    alert('Tile type saved!');
+    toast.success('Tile type saved!');
   };
 
   const handleDelete = (id: string) => {
-    if (!confirm('Delete this tile type?')) return;
+    const usages = findAssetUsages('tile_type', id);
+    const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
+    if (!confirm(`Delete this tile type?${warning}`)) return;
     deleteTileType(id);
     refreshTileTypes();
     if (selectedId === id) {

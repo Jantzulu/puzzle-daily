@@ -1,4 +1,5 @@
 import React, { useRef, useState } from 'react';
+import { toast } from '../shared/Toast';
 
 interface SpriteImageInputProps {
   /** Current base64 image data (if any) */
@@ -70,7 +71,7 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
     if (!file) return;
 
     if (!file.type.startsWith('image/')) {
-      alert('Please upload an image file (PNG, JPG, GIF)');
+      toast.warning('Please upload an image file (PNG, JPG, GIF)');
       return;
     }
 
@@ -93,7 +94,7 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
       new URL(trimmed);
       onImageChange(undefined, trimmed);
     } catch {
-      alert('Please enter a valid URL');
+      toast.warning('Please enter a valid URL');
     }
   };
 

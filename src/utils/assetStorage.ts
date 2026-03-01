@@ -1,4 +1,5 @@
 import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, CollectibleEffectConfig, CollectiblePickupPermissions } from '../types/game';
+import { toast } from '../components/shared/Toast';
 
 // ============ SAFE LOCALSTORAGE UTILITIES ============
 // Handles mobile browser restrictions (Private mode, quota limits, Safari quirks)
@@ -15,7 +16,7 @@ export const safeLocalStorageSet = (key: string, value: string): boolean => {
     if (verification !== value) {
       console.error(`[Storage] Verification failed for key: ${key}. Data may be too large for mobile storage.`);
       // Alert the user about the silent failure
-      alert('Storage is full or data is too large. Some items may not have been saved. Please delete unused items to free up space.');
+      toast.error('Storage is full or data is too large. Please delete unused items to free up space.');
       return false;
     }
     return true;
@@ -26,11 +27,11 @@ export const safeLocalStorageSet = (key: string, value: string): boolean => {
 
     // Check for specific error types
     if (error.name === 'QuotaExceededError' || error.name === 'NS_ERROR_DOM_QUOTA_REACHED') {
-      alert('Storage is full. Please delete some saved items to free up space.');
+      toast.error('Storage is full. Please delete some saved items to free up space.');
     } else if (error.name === 'SecurityError') {
-      alert('Storage is not available. You may be in private/incognito mode.');
+      toast.error('Storage is not available. You may be in private/incognito mode.');
     } else {
-      alert('Failed to save. Storage may be unavailable on this device.');
+      toast.error('Failed to save. Storage may be unavailable on this device.');
     }
     return false;
   }

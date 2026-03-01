@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import type { SpellAsset } from '../../types/game';
 import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
@@ -34,7 +35,9 @@ export const SpellLibrary: React.FC = () => {
 
   const handleDelete = (spellId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!confirm('Delete this spell?')) return;
+    const usages = findAssetUsages('spell', spellId);
+    const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
+    if (!confirm(`Delete this spell?${warning}`)) return;
     deleteSpellAsset(spellId);
     loadSpells();
     if (selectedId === spellId) {
