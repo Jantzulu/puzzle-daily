@@ -362,7 +362,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
               <h2 className="text-xl font-bold font-medieval text-copper-400">Puzzle Skins</h2>
               <button
                 onClick={handleNewSkin}
-                className="dungeon-btn-success"
+                className="dungeon-btn-success text-sm"
               >
                 + New
               </button>

@@ -137,7 +137,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
               <h2 className="text-xl font-bold font-medieval text-copper-400">Enchantments</h2>
               <button
                 onClick={handleNew}
-                className="dungeon-btn-success"
+                className="dungeon-btn-success text-sm"
               >
                 + New
               </button>

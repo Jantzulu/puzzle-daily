@@ -187,7 +187,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
               <h2 className="text-xl font-bold font-medieval text-copper-400">Items</h2>
               <button
                 onClick={handleNew}
-                className="dungeon-btn-success"
+                className="dungeon-btn-success text-sm"
               >
                 + New
               </button>

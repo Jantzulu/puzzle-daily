@@ -643,7 +643,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
               <h2 className="text-xl font-bold font-medieval text-copper-400">Custom Tile Types</h2>
               <button
                 onClick={handleNew}
-                className="dungeon-btn-success"
+                className="dungeon-btn-success text-sm"
               >
                 + New
               </button>
