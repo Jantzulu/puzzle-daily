@@ -207,18 +207,18 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
                 )}
               </div>
               {/* Name and Title */}
-              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px]" style={{ lineHeight: '1.15' }}>
-                <span className="text-xs lg:text-sm font-medium text-blood-300">
+              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px] text-xs lg:text-sm !leading-[1.2]">
+                <span className="font-medium text-blood-300">
                   {enemyData.name}
                 </span>
                 {enemyData.title && (
-                  <span className="text-xs lg:text-sm text-stone-500 italic"> {enemyData.title}</span>
+                  <span className="text-stone-500 italic"> {enemyData.title}</span>
                 )}
               </div>
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <ul className="text-xs lg:text-sm text-stone-400 text-left leading-tight max-w-[100px] lg:max-w-[120px] list-disc list-inside">
+                <ul className="mt-0.5 text-xs lg:text-sm !leading-[1.2] text-stone-400 text-left max-w-[100px] lg:max-w-[120px] list-disc list-inside">
                   {enemyData.tooltipSteps!.map((step, idx) => (
                     <li key={idx}><RichTextRenderer html={step} /></li>
                   ))}

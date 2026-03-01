@@ -185,14 +185,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* Name and Title */}
-              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px]" style={{ lineHeight: '1.15' }}>
-                <span className={`text-xs lg:text-sm font-medium ${
+              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px] text-xs lg:text-sm !leading-[1.2]">
+                <span className={`font-medium ${
                   isSelected ? 'text-parchment-100' : 'text-parchment-300'
                 }`}>
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className={`text-xs lg:text-sm italic ${
+                  <span className={`italic ${
                     isSelected ? 'text-copper-200' : 'text-stone-500'
                   }`}> {character.title}</span>
                 )}
@@ -200,7 +200,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <ul className={`text-xs lg:text-sm text-left leading-tight max-w-[100px] lg:max-w-[120px] list-disc list-inside ${
+                <ul className={`mt-0.5 text-xs lg:text-sm !leading-[1.2] text-left max-w-[100px] lg:max-w-[120px] list-disc list-inside ${
                   isSelected ? 'text-copper-200' : 'text-stone-400'
                 }`}>
                   {character.tooltipSteps!.map((step, idx) => (
