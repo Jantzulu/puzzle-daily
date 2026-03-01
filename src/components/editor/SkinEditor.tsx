@@ -793,7 +793,9 @@ export const SkinEditor: React.FC = () => {
                           spriteType: 'on' | 'off',
                           currentSprite: string | undefined,
                           defaultSprite: string | undefined
-                        ) => (
+                        ) => {
+                          const urlKey = `customtile_${tileType.id}_${spriteType}`;
+                          return (
                           <div className="flex-1">
                             <div className="text-xs text-stone-400 mb-1">{label}</div>
                             {currentSprite ? (
@@ -844,8 +846,50 @@ export const SkinEditor: React.FC = () => {
                                 </label>
                               </div>
                             )}
+                            {!isBuiltIn && (
+                              <div className="mt-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setShowUrlInput(showUrlInput === urlKey ? null : urlKey);
+                                    setUrlInputValue('');
+                                  }}
+                                  className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                >
+                                  {showUrlInput === urlKey ? '▼ Hide' : '▶ URL'}
+                                </button>
+                                {showUrlInput === urlKey && (
+                                  <div className="flex gap-1 mt-0.5">
+                                    <input
+                                      type="url"
+                                      value={urlInputValue}
+                                      onChange={(e) => setUrlInputValue(e.target.value)}
+                                      onKeyDown={(e) => {
+                                        if (e.key === 'Enter' && urlInputValue.trim()) {
+                                          setCustomTileSpriteUrl(tileType.id, urlInputValue.trim(), spriteType);
+                                        }
+                                      }}
+                                      placeholder="https://..."
+                                      className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        if (urlInputValue.trim()) {
+                                          setCustomTileSpriteUrl(tileType.id, urlInputValue.trim(), spriteType);
+                                        }
+                                      }}
+                                      className="px-1 py-0.5 bg-arcane-700 hover:bg-arcane-600 rounded text-[10px]"
+                                    >
+                                      Set
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        );
+                          );
+                        };
 
                         return (
                           <div key={tileType.id} className="bg-stone-700 p-2 rounded">
@@ -924,6 +968,47 @@ export const SkinEditor: React.FC = () => {
                                         />
                                       )}
                                     </label>
+                                  </div>
+                                )}
+                                {!isBuiltIn && (
+                                  <div className="mt-1">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setShowUrlInput(showUrlInput === `customtile_${tileType.id}` ? null : `customtile_${tileType.id}`);
+                                        setUrlInputValue('');
+                                      }}
+                                      className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                    >
+                                      {showUrlInput === `customtile_${tileType.id}` ? '▼ Hide' : '▶ URL'}
+                                    </button>
+                                    {showUrlInput === `customtile_${tileType.id}` && (
+                                      <div className="flex gap-1 mt-0.5">
+                                        <input
+                                          type="url"
+                                          value={urlInputValue}
+                                          onChange={(e) => setUrlInputValue(e.target.value)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter' && urlInputValue.trim()) {
+                                              setCustomTileSpriteUrl(tileType.id, urlInputValue.trim(), 'on');
+                                            }
+                                          }}
+                                          placeholder="https://..."
+                                          className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
+                                        />
+                                        <button
+                                          type="button"
+                                          onClick={() => {
+                                            if (urlInputValue.trim()) {
+                                              setCustomTileSpriteUrl(tileType.id, urlInputValue.trim(), 'on');
+                                            }
+                                          }}
+                                          className="px-1 py-0.5 bg-arcane-700 hover:bg-arcane-600 rounded text-[10px]"
+                                        >
+                                          Set
+                                        </button>
+                                      </div>
+                                    )}
                                   </div>
                                 )}
                               </div>
