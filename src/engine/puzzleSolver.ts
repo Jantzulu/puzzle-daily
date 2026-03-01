@@ -2,7 +2,8 @@
 // Uses brute-force search across all valid placement combinations
 
 import { initializeGameState, executeTurn } from './simulation';
-import { getCharacter } from '../data/characters';
+import { getCharacter, getAllCharacters } from '../data/characters';
+import { getEnemy } from '../data/enemies';
 import { loadTileType, loadCollectible } from '../utils/assetStorage';
 import type { Puzzle, PlacedCharacter, GameState, Direction, TileType } from '../types/game';
 
@@ -13,6 +14,7 @@ export interface SolverResult {
   totalCombinationsTested: number;
   searchTimeMs: number;
   error?: string;
+  warnings?: string[];
 }
 
 export interface PlacementSolution {
@@ -516,8 +518,11 @@ export async function solvePuzzleAsync(
  * Quick check if a puzzle has any chance of being solvable
  * (basic sanity checks before running full solver)
  */
-export function quickValidate(puzzle: Puzzle): { valid: boolean; issues: string[] } {
+export function quickValidate(puzzle: Puzzle): { valid: boolean; issues: string[]; warnings: string[] } {
   const issues: string[] = [];
+  const warnings: string[] = [];
+
+  // ===== BLOCKING ISSUES =====
 
   // Check for available characters
   if (!puzzle.availableCharacters || puzzle.availableCharacters.length === 0) {
@@ -598,8 +603,165 @@ export function quickValidate(puzzle: Puzzle): { valid: boolean; issues: string[
     }
   }
 
+  // ===== WARNINGS (non-blocking) =====
+
+  // Orphaned character references
+  if (puzzle.availableCharacters) {
+    for (const charId of puzzle.availableCharacters) {
+      const char = getCharacter(charId);
+      if (!char) {
+        warnings.push(`Character "${charId}" not found in asset storage`);
+      }
+    }
+  }
+
+  // Orphaned enemy references
+  if (puzzle.enemies) {
+    for (const enemy of puzzle.enemies) {
+      if (enemy.enemyId) {
+        const enemyDef = getEnemy(enemy.enemyId);
+        if (!enemyDef) {
+          warnings.push(`Enemy "${enemy.enemyId}" at (${enemy.x + 1}, ${enemy.y + 1}) not found in assets`);
+        }
+      }
+    }
+  }
+
+  // Orphaned custom tile references
+  for (const row of puzzle.tiles) {
+    for (const tile of row) {
+      if (tile?.customTileTypeId) {
+        const customTile = loadTileType(tile.customTileTypeId);
+        if (!customTile) {
+          warnings.push(`Custom tile type "${tile.customTileTypeId}" not found in assets`);
+          break; // Only warn once per missing type
+        }
+      }
+    }
+  }
+
+  // Orphaned collectible references
+  if (puzzle.collectibles) {
+    for (const coll of puzzle.collectibles) {
+      if (coll.collectibleId) {
+        const collDef = loadCollectible(coll.collectibleId);
+        if (!collDef) {
+          warnings.push(`Collectible "${coll.collectibleId}" at (${coll.x + 1}, ${coll.y + 1}) not found in assets`);
+        }
+      }
+    }
+  }
+
+  // Unreachable areas — flood-fill from placement tiles, check if enemies/collectibles are reachable
+  if (validTiles.length > 0) {
+    const reachable = new Set<string>();
+    const queue = [...validTiles];
+    for (const t of queue) {
+      reachable.add(`${t.x},${t.y}`);
+    }
+    // BFS: walk through non-wall, non-null tiles
+    while (queue.length > 0) {
+      const { x, y } = queue.shift()!;
+      for (const [dx, dy] of [[0, 1], [0, -1], [1, 0], [-1, 0]]) {
+        const nx = x + dx;
+        const ny = y + dy;
+        const key = `${nx},${ny}`;
+        if (nx < 0 || nx >= puzzle.width || ny < 0 || ny >= puzzle.height) continue;
+        if (reachable.has(key)) continue;
+        const tile = puzzle.tiles[ny]?.[nx];
+        if (!tile) continue; // void
+        if (tile.type === 'wall' as TileType) continue;
+        reachable.add(key);
+        queue.push({ x: nx, y: ny });
+      }
+    }
+
+    // Check enemies reachability
+    if (puzzle.enemies) {
+      const unreachableEnemies = puzzle.enemies.filter(e => !reachable.has(`${e.x},${e.y}`));
+      if (unreachableEnemies.length > 0 && hasDefeatAllCondition) {
+        warnings.push(`${unreachableEnemies.length} enemy/enemies unreachable from placement area (defeat_all_enemies will fail)`);
+      } else if (unreachableEnemies.length > 0) {
+        warnings.push(`${unreachableEnemies.length} enemy/enemies in unreachable areas`);
+      }
+    }
+
+    // Check collectibles reachability
+    if (puzzle.collectibles) {
+      const unreachableItems = puzzle.collectibles.filter(c => !reachable.has(`${c.x},${c.y}`));
+      if (unreachableItems.length > 0 && hasCollectAllCondition) {
+        warnings.push(`${unreachableItems.length} collectible(s) unreachable from placement area (collect_all will fail)`);
+      } else if (unreachableItems.length > 0) {
+        warnings.push(`${unreachableItems.length} collectible(s) in unreachable areas`);
+      }
+    }
+
+    // Check goal tiles reachability
+    if (hasReachGoalCondition) {
+      let hasReachableGoal = false;
+      for (const row of puzzle.tiles) {
+        for (const tile of row) {
+          if (tile?.type === 'goal' as TileType) {
+            const tilePos = puzzle.tiles.findIndex(r => r.includes(tile));
+            const tileX = row.indexOf(tile);
+            if (reachable.has(`${tileX},${tilePos}`)) {
+              hasReachableGoal = true;
+            }
+          }
+        }
+      }
+      if (!hasReachableGoal) {
+        warnings.push('Goal tile is unreachable from placement area');
+      }
+    }
+  }
+
+  // Side quest feasibility
+  if (puzzle.sideQuests) {
+    for (const quest of puzzle.sideQuests) {
+      switch (quest.type) {
+        case 'use_specific_character':
+          if (quest.params?.characterId && puzzle.availableCharacters) {
+            if (!puzzle.availableCharacters.includes(quest.params.characterId)) {
+              warnings.push(`Side quest "${quest.title}" requires a character not in available characters`);
+            }
+          }
+          break;
+        case 'speed_run':
+          if (quest.params?.turns && puzzle.maxTurns && quest.params.turns > puzzle.maxTurns) {
+            warnings.push(`Side quest "${quest.title}" speed_run target (${quest.params.turns}) exceeds max turns (${puzzle.maxTurns})`);
+          }
+          break;
+        case 'minimalist':
+          if (quest.params?.characterCount && puzzle.availableCharacters &&
+              quest.params.characterCount > puzzle.availableCharacters.length) {
+            warnings.push(`Side quest "${quest.title}" minimalist target (${quest.params.characterCount}) exceeds available characters`);
+          }
+          break;
+      }
+    }
+  }
+
+  // Win condition coherence
+  const hasSurviveTurns = puzzle.winConditions?.find(c => c.type === 'survive_turns');
+  if (hasSurviveTurns?.params?.turns && puzzle.maxTurns && hasSurviveTurns.params.turns > puzzle.maxTurns) {
+    warnings.push(`survive_turns condition (${hasSurviveTurns.params.turns}) exceeds maxTurns (${puzzle.maxTurns})`);
+  }
+
+  const hasCharAlive = puzzle.winConditions?.find(c => c.type === 'characters_alive');
+  if (hasCharAlive?.params?.characterCount && puzzle.maxCharacters &&
+      hasCharAlive.params.characterCount > puzzle.maxCharacters) {
+    warnings.push(`characters_alive condition requires ${hasCharAlive.params.characterCount} but max characters is ${puzzle.maxCharacters}`);
+  }
+
+  // Placement tiles vs max characters
+  if (validTiles.length > 0 && puzzle.maxCharacters && validTiles.length < puzzle.maxCharacters) {
+    warnings.push(`Only ${validTiles.length} valid placement tiles but maxCharacters is ${puzzle.maxCharacters}`);
+  }
+
   return {
     valid: issues.length === 0,
     issues,
+    warnings,
   };
 }

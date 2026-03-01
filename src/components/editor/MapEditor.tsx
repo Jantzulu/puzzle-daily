@@ -1586,10 +1586,14 @@ export const MapEditor: React.FC = () => {
         totalCombinationsTested: 0,
         searchTimeMs: 0,
         error: quickResult.issues.join('; '),
+        warnings: quickResult.warnings,
       });
       setIsValidating(false);
       return;
     }
+
+    // Capture warnings to pass to solver result
+    const quickWarnings = quickResult.warnings;
 
     // Run full solver asynchronously to avoid blocking UI
     const runValidation = async () => {
@@ -1600,7 +1604,25 @@ export const MapEditor: React.FC = () => {
           maxCombinations: 50000,
           yieldEvery: 50, // Yield every 50 combinations to keep UI responsive
         });
-        setValidationResult(result);
+        // Merge quick warnings + difficulty hints into result
+        const resultWarnings = [...quickWarnings];
+        if (result.solvable && result.solutionFound) {
+          const combos = result.totalCombinationsTested;
+          if (combos < 10) resultWarnings.push('Difficulty: Trivial (very few placement options)');
+          else if (combos < 100) resultWarnings.push('Difficulty: Easy');
+          else if (combos < 1000) resultWarnings.push('Difficulty: Medium');
+          else if (combos < 10000) resultWarnings.push('Difficulty: Hard');
+          else resultWarnings.push('Difficulty: Very Hard (many possible placements)');
+
+          // Par feasibility
+          if (state.parTurns && result.solutionFound.turnsToWin > state.parTurns) {
+            resultWarnings.push(`Par turns (${state.parTurns}) is less than solver's best (${result.solutionFound.turnsToWin}) — par may be impossible`);
+          }
+          if (state.parCharacters && result.minCharactersNeeded && result.minCharactersNeeded > state.parCharacters) {
+            resultWarnings.push(`Par characters (${state.parCharacters}) is less than minimum needed (${result.minCharactersNeeded}) — par may be impossible`);
+          }
+        }
+        setValidationResult({ ...result, warnings: resultWarnings });
 
         // Auto-suggest par values if not already set and solution found
         if (result.solvable && result.solutionFound) {
@@ -4040,6 +4062,20 @@ export const MapEditor: React.FC = () => {
                   <div className="bg-red-900/30 border border-red-700 rounded p-3 text-sm">
                     <span className="font-semibold text-red-400">Issue: </span>
                     {validationResult.error}
+                  </div>
+                )}
+
+                {validationResult.warnings && validationResult.warnings.length > 0 && (
+                  <div className="bg-yellow-900/30 border border-yellow-700 rounded p-3 text-sm">
+                    <span className="font-semibold text-yellow-400 block mb-1">Warnings:</span>
+                    <ul className="space-y-0.5 text-yellow-200/80">
+                      {validationResult.warnings.map((w, i) => (
+                        <li key={i} className="flex gap-1.5">
+                          <span className="text-yellow-500 flex-shrink-0">{'•'}</span>
+                          <span>{w}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 )}
 
