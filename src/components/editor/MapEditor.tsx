@@ -34,6 +34,7 @@ import { subscribeToSpriteImageLoads } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 import { solvePuzzleAsync, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
+import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/combatLog';
 import { WarningModal } from '../shared/WarningModal';
 import GeneratorDialog from './GeneratorDialog';
 
@@ -404,6 +405,39 @@ export const MapEditor: React.FC = () => {
 
   // Keyboard shortcuts reference overlay
   const [showShortcuts, setShowShortcuts] = useState(false);
+
+  // Combat log state
+  const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
+  const [showCombatLog, setShowCombatLog] = useState(true);
+  const combatLogEndRef = useRef<HTMLDivElement>(null);
+  const pendingLogEntriesRef = useRef<CombatLogEntry[]>([]);
+
+  /** Wraps executeTurn to capture combat log diffs. Call inside setGameState callbacks. */
+  const executeTurnWithLog = useCallback((stateCopy: GameState): GameState => {
+    const before = JSON.parse(JSON.stringify(stateCopy));
+    // Restore Maps/Sets on the before snapshot for diffing
+    before.tileStates = new Map();
+    const newState = executeTurn(stateCopy);
+    const entries = diffTurn(before, newState);
+    if (entries.length > 0) {
+      pendingLogEntriesRef.current.push(...entries);
+    }
+    return newState;
+  }, []);
+
+  // Flush pending log entries to state after each render cycle
+  useEffect(() => {
+    if (pendingLogEntriesRef.current.length > 0) {
+      const entries = pendingLogEntriesRef.current;
+      pendingLogEntriesRef.current = [];
+      setCombatLog(prev => [...prev, ...entries]);
+    }
+  });
+
+  // Auto-scroll combat log to bottom when new entries appear
+  useEffect(() => {
+    combatLogEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [combatLog.length]);
 
   // Local input state for grid size (allows typing without immediate validation)
   const [widthInput, setWidthInput] = useState(String(state.gridWidth));
@@ -914,7 +948,7 @@ export const MapEditor: React.FC = () => {
             });
           });
         }
-        const newState = executeTurn(stateCopy);
+        const newState = executeTurnWithLog(stateCopy);
 
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
@@ -1741,6 +1775,7 @@ export const MapEditor: React.FC = () => {
     setDefeatReason(null);
     setPuzzleScore(null);
     setPlayStartCharacters([]);
+    setCombatLog([]);
 
     // Start background music for playtest (puzzle-specific or global fallback)
     playBackgroundMusic(state.backgroundMusicId);
@@ -1893,6 +1928,7 @@ export const MapEditor: React.FC = () => {
     setIsSimulating(false);
     setSelectedCharacterId(null);
     setPuzzleScore(null);
+    setCombatLog([]);
   };
 
   const handleWipe = () => {
@@ -2042,7 +2078,7 @@ export const MapEditor: React.FC = () => {
             });
           });
         }
-        return executeTurn(stateCopy);
+        return executeTurnWithLog(stateCopy);
       });
     }
   };
@@ -2751,6 +2787,59 @@ export const MapEditor: React.FC = () => {
                     </div>
                   )}
                 </div>
+              </div>
+
+              {/* Combat Log */}
+              <div className="dungeon-panel p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <button
+                    onClick={() => setShowCombatLog(!showCombatLog)}
+                    className="text-sm font-bold text-copper-400 flex items-center gap-1 hover:text-copper-300"
+                  >
+                    <span className={`transition-transform ${showCombatLog ? 'rotate-90' : ''}`}>&#9656;</span>
+                    Combat Log
+                    {combatLog.length > 0 && (
+                      <span className="text-xs text-stone-400 font-normal ml-1">({combatLog.length})</span>
+                    )}
+                  </button>
+                  {combatLog.length > 0 && (
+                    <button
+                      onClick={() => setCombatLog([])}
+                      className="text-xs text-stone-500 hover:text-stone-300"
+                      title="Clear log"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+                {showCombatLog && (
+                  <div className="max-h-60 overflow-y-auto dungeon-scrollbar text-xs space-y-0.5 pr-1">
+                    {combatLog.length === 0 ? (
+                      <p className="text-stone-500 italic">No events yet. Step or run the simulation to see turn-by-turn events.</p>
+                    ) : (
+                      <>
+                        {combatLog.map((entry, i) => {
+                          const prevEntry = i > 0 ? combatLog[i - 1] : null;
+                          const showTurnHeader = !prevEntry || prevEntry.turn !== entry.turn;
+                          return (
+                            <React.Fragment key={i}>
+                              {showTurnHeader && (
+                                <div className="text-stone-500 font-semibold mt-1.5 mb-0.5 border-t border-stone-700/50 pt-1">
+                                  Turn {entry.turn}
+                                </div>
+                              )}
+                              <div className={`flex items-start gap-1.5 ${logTypeStyles[entry.type]}`}>
+                                <span className="flex-shrink-0 w-4 text-center">{entry.icon}</span>
+                                <span>{entry.text}</span>
+                              </div>
+                            </React.Fragment>
+                          );
+                        })}
+                        <div ref={combatLogEndRef} />
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Enemies Display */}
