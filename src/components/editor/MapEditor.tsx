@@ -412,8 +412,6 @@ export const MapEditor: React.FC = () => {
   const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
   const [showCombatLog, setShowCombatLog] = useState(true);
   const combatLogEndRef = useRef<HTMLDivElement>(null);
-  const pendingLogEntriesRef = useRef<CombatLogEntry[]>([]);
-
   /** Wraps executeTurn to capture combat log diffs. Call inside setGameState callbacks. */
   const executeTurnWithLog = useCallback((stateCopy: GameState): GameState => {
     const before = JSON.parse(JSON.stringify(stateCopy));
@@ -422,19 +420,11 @@ export const MapEditor: React.FC = () => {
     const newState = executeTurn(stateCopy);
     const entries = diffTurn(before, newState);
     if (entries.length > 0) {
-      pendingLogEntriesRef.current.push(...entries);
+      // Use setTimeout to batch the state update outside the setGameState callback
+      setTimeout(() => setCombatLog(prev => [...prev, ...entries]), 0);
     }
     return newState;
   }, []);
-
-  // Flush pending log entries to state after each render cycle
-  useEffect(() => {
-    if (pendingLogEntriesRef.current.length > 0) {
-      const entries = pendingLogEntriesRef.current;
-      pendingLogEntriesRef.current = [];
-      setCombatLog(prev => [...prev, ...entries]);
-    }
-  });
 
   // Auto-scroll combat log to bottom when new entries appear
   useEffect(() => {
@@ -2349,7 +2339,7 @@ export const MapEditor: React.FC = () => {
               )}
 
               {/* Game board with overlay container for loss panels */}
-              <div className="relative">
+              <div className="relative w-full max-w-[900px]">
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} isEditor={true} />
 
                 {/* Defeat Overlay - appears on top of the game board */}
