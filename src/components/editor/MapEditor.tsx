@@ -402,6 +402,9 @@ export const MapEditor: React.FC = () => {
   // Auto-save recovery state
   const [recoveryData, setRecoveryData] = useState<AutoSaveData | null>(null);
 
+  // Keyboard shortcuts reference overlay
+  const [showShortcuts, setShowShortcuts] = useState(false);
+
   // Local input state for grid size (allows typing without immediate validation)
   const [widthInput, setWidthInput] = useState(String(state.gridWidth));
   const [heightInput, setHeightInput] = useState(String(state.gridHeight));
@@ -504,24 +507,102 @@ export const MapEditor: React.FC = () => {
     }
   }, [syncHistoryState]);
 
-  // Keyboard shortcuts for undo/redo
+  // Stable refs for callbacks used in keyboard handler
+  const handleSaveRef = useRef<() => void>(() => {});
+  const handlePlaytestRef = useRef<() => void>(() => {});
+
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Skip if user is typing in an input/textarea/select
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+      // Skip if any modal is open
+      if (showLibrary || showGenerator || showShortcuts) {
+        // Allow Escape to close shortcuts overlay
+        if (e.key === 'Escape' && showShortcuts) {
+          e.preventDefault();
+          setShowShortcuts(false);
+        }
+        return;
+      }
+
       // Only handle in edit mode
       if (state.mode !== 'edit') return;
 
-      if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
+      const mod = e.ctrlKey || e.metaKey;
+
+      // Ctrl+S — Save
+      if (mod && e.key === 's') {
+        e.preventDefault();
+        handleSaveRef.current();
+        return;
+      }
+
+      // Ctrl+Z — Undo
+      if (mod && e.key === 'z' && !e.shiftKey) {
         e.preventDefault();
         handleUndo();
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
+        return;
+      }
+
+      // Ctrl+Y or Ctrl+Shift+Z — Redo
+      if (mod && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
         e.preventDefault();
         handleRedo();
+        return;
+      }
+
+      // Non-modifier shortcuts below — skip if any modifier held
+      if (mod || e.altKey) return;
+
+      switch (e.key) {
+        // 1 — Tile tool
+        case '1':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'custom' }));
+          break;
+        // 2 — Enemy tool
+        case '2':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'enemy' }));
+          break;
+        // 3 — Object tool
+        case '3':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'object' }));
+          break;
+        // 4 — Item (collectible) tool
+        case '4':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'collectible' }));
+          break;
+        // 5 — Heroes tool
+        case '5':
+          e.preventDefault();
+          setState(prev => ({ ...prev, selectedTool: 'characters' }));
+          break;
+        // Space — Playtest
+        case ' ':
+          e.preventDefault();
+          handlePlaytestRef.current();
+          break;
+        // ? — Show keyboard shortcuts reference
+        case '?':
+          e.preventDefault();
+          setShowShortcuts(true);
+          break;
+        // Escape — close shortcuts overlay (handled above for modals)
+        case 'Escape':
+          setShowShortcuts(false);
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [state.mode, handleUndo, handleRedo]);
+  }, [state.mode, handleUndo, handleRedo, showLibrary, showGenerator, showShortcuts]);
 
   // Subscribe to image load events to trigger canvas redraws when images finish loading
   useEffect(() => {
@@ -1246,6 +1327,7 @@ export const MapEditor: React.FC = () => {
     }
     // If save failed, safeLocalStorageSet already showed an error alert
   };
+  handleSaveRef.current = handleSave;
 
   const handleSaveAs = () => {
     const newName = prompt('Enter new puzzle name:', state.puzzleName + ' (Copy)');
@@ -1641,6 +1723,7 @@ export const MapEditor: React.FC = () => {
     // Start background music for playtest (puzzle-specific or global fallback)
     playBackgroundMusic(state.backgroundMusicId);
   };
+  handlePlaytestRef.current = handlePlaytest;
 
   const handleBackToEditor = () => {
     setState(prev => ({ ...prev, mode: 'edit' }));
@@ -2826,6 +2909,13 @@ export const MapEditor: React.FC = () => {
                 title="Redo (Ctrl+Y)"
               >
                 ↪
+              </button>
+              <button
+                onClick={() => setShowShortcuts(true)}
+                className="px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors bg-stone-700 hover:bg-stone-600 text-stone-400 hover:text-parchment-100 ml-1"
+                title="Keyboard Shortcuts (?)"
+              >
+                ?
               </button>
             </div>
           </div>
@@ -4135,6 +4225,77 @@ export const MapEditor: React.FC = () => {
         customTileTypes={customTileTypes}
         availableCollectibles={allCollectibles}
       />
+
+      {/* Keyboard Shortcuts Reference */}
+      {showShortcuts && (
+        <div
+          className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+          onClick={() => setShowShortcuts(false)}
+        >
+          <div
+            className="bg-stone-800 border border-stone-600 rounded-lg shadow-xl max-w-md w-full p-5"
+            onClick={e => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-parchment-100">Keyboard Shortcuts</h2>
+              <button
+                onClick={() => setShowShortcuts(false)}
+                className="text-stone-400 hover:text-white text-xl leading-none w-8 h-8 flex items-center justify-center"
+              >
+                {'\u00D7'}
+              </button>
+            </div>
+            <div className="space-y-3 text-sm">
+              <div>
+                <h3 className="text-stone-400 font-medium mb-1.5 text-xs uppercase tracking-wider">Tools</h3>
+                <div className="space-y-1">
+                  {[
+                    ['1', 'Tile tool'],
+                    ['2', 'Enemy tool'],
+                    ['3', 'Object tool'],
+                    ['4', 'Item tool'],
+                    ['5', 'Heroes tool'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
+                      <span className="text-parchment-200">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-stone-400 font-medium mb-1.5 text-xs uppercase tracking-wider">Actions</h3>
+                <div className="space-y-1">
+                  {[
+                    ['Ctrl+S', 'Save puzzle'],
+                    ['Ctrl+Z', 'Undo'],
+                    ['Ctrl+Y', 'Redo'],
+                    ['Space', 'Playtest'],
+                  ].map(([key, label]) => (
+                    <div key={key} className="flex items-center gap-3">
+                      <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
+                      <span className="text-parchment-200">{label}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-stone-400 font-medium mb-1.5 text-xs uppercase tracking-wider">Other</h3>
+                <div className="space-y-1">
+                  <div className="flex items-center gap-3">
+                    <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">?</kbd>
+                    <span className="text-parchment-200">Show this reference</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">Esc</kbd>
+                    <span className="text-parchment-200">Close dialogs</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
