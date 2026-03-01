@@ -413,6 +413,7 @@ export const MapEditor: React.FC = () => {
   const [showCombatLog, setShowCombatLog] = useState(true);
   const [showDevTools, setShowDevTools] = useState(true);
   const combatLogEndRef = useRef<HTMLDivElement>(null);
+  const playtestBoardRef = useRef<HTMLDivElement>(null);
   /** Wraps executeTurn to capture combat log diffs. Call inside setGameState callbacks. */
   const executeTurnWithLog = useCallback((stateCopy: GameState): GameState => {
     const before = JSON.parse(JSON.stringify(stateCopy));
@@ -1772,6 +1773,9 @@ export const MapEditor: React.FC = () => {
 
     // Start background music for playtest (puzzle-specific or global fallback)
     playBackgroundMusic(state.backgroundMusicId);
+
+    // Scroll to top when entering playtest
+    window.scrollTo({ top: 0 });
   };
   handlePlaytestRef.current = handlePlaytest;
 
@@ -1893,6 +1897,13 @@ export const MapEditor: React.FC = () => {
     setGameState((prev) => prev ? ({ ...prev, gameStatus: 'running' }) : null);
     setIsSimulating(true);
     playGameSound('simulation_start');
+
+    // Scroll to center the board
+    setTimeout(() => {
+      if (playtestBoardRef.current) {
+        playtestBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 50);
   };
 
   const handlePause = () => {
@@ -2355,7 +2366,7 @@ export const MapEditor: React.FC = () => {
               )}
 
               {/* Game board with overlay container */}
-              <div className="relative w-full max-w-[900px] overflow-hidden">
+              <div ref={playtestBoardRef} className="relative w-full max-w-[900px] overflow-hidden">
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} isEditor={true} />
 
                 {/* Defeat Overlay */}
