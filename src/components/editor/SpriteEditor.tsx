@@ -262,6 +262,55 @@ const DIRECTIONS: { key: SpriteDirection; label: string; arrow: string }[] = [
 ];
 
 /**
+ * Small canvas preview of a DirectionalSpriteConfig's idle sprite.
+ * Used in the "Copy From Direction" overlay to show what each direction looks like.
+ */
+const DirectionPreviewCanvas: React.FC<{ dirConfig: DirectionalSpriteConfig; size: number }> = ({ dirConfig, size }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = size * dpr;
+    canvas.height = size * dpr;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, size, size);
+
+    // Draw idle sprite preview using drawSpriteConfig
+    drawSpriteConfig(ctx, dirConfig, size / 2, size / 2, size, false, Date.now());
+  }, [dirConfig, size]);
+
+  // Re-render when sprite images load
+  useEffect(() => {
+    const unsubscribe = subscribeToSpriteImageLoads(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      ctx.setTransform(1, 0, 0, 1, 0, 0);
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, size, size);
+      drawSpriteConfig(ctx, dirConfig, size / 2, size / 2, size, false, Date.now());
+    });
+    return unsubscribe;
+  }, [dirConfig, size]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className="rounded border border-stone-600 bg-stone-900"
+      style={{ width: size, height: size }}
+    />
+  );
+};
+
+/**
  * Small inline preview showing how a sprite looks with the current anchor/offset.
  * Renders a tile boundary with the sprite positioned according to anchor settings.
  */
@@ -354,6 +403,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
   // Always use directional mode - 'default' direction serves as universal fallback
   const spriteMode = 'directional' as const;
+  // Tab for separating directional vs global settings
+  const [editorTab, setEditorTab] = useState<'directional' | 'global'>('directional');
+  // Copy-from-direction overlay
+  const [showCopyFromOverlay, setShowCopyFromOverlay] = useState(false);
   // Trigger re-render when background images load
   const [renderTrigger, setRenderTrigger] = useState(0);
 
@@ -650,6 +703,63 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     });
 
     alert('Copied to all directions!');
+  };
+
+  const copyFromDirection = (sourceDir: SpriteDirection) => {
+    if (sourceDir === selectedDirection) return;
+
+    const dirSprites = sprite.directionalSprites || {};
+    const sourceConfig = dirSprites[sourceDir];
+
+    if (!sourceConfig) return;
+
+    onChange({
+      ...sprite,
+      directionalSprites: {
+        ...dirSprites,
+        [selectedDirection]: { ...sourceConfig },
+      },
+    });
+
+    setShowCopyFromOverlay(false);
+  };
+
+  // Per-state field groups for targeted copying
+  const stateFields: Record<string, (keyof DirectionalSpriteConfig)[]> = {
+    idle: ['idleImageData', 'idleImageUrl', 'idleSpriteSheet', 'idleAnchorX', 'idleAnchorY', 'idleOffsetX', 'idleOffsetY', 'idleScale', 'imageData', 'imageUrl'],
+    moving: ['movingImageData', 'movingImageUrl', 'movingSpriteSheet', 'movingAnchorX', 'movingAnchorY', 'movingOffsetX', 'movingOffsetY', 'movingScale'],
+    death: ['deathImageData', 'deathImageUrl', 'deathSpriteSheet', 'deathAnchorX', 'deathAnchorY', 'deathOffsetX', 'deathOffsetY', 'deathScale'],
+    casting: ['castingImageData', 'castingImageUrl', 'castingSpriteSheet', 'castingAnchorX', 'castingAnchorY', 'castingOffsetX', 'castingOffsetY', 'castingScale'],
+  };
+
+  const copyStateToAllDirections = (stateName: string) => {
+    const dirSprites = sprite.directionalSprites || {};
+    const sourceConfig = dirSprites[selectedDirection];
+    if (!sourceConfig) {
+      alert('Configure this direction first before copying!');
+      return;
+    }
+
+    const fields = stateFields[stateName];
+    if (!fields) return;
+
+    const newDirectionalSprites: Partial<Record<SpriteDirection, DirectionalSpriteConfig>> = { ...dirSprites };
+    DIRECTIONS.forEach(dir => {
+      if (dir.key === selectedDirection) return;
+      const existing = newDirectionalSprites[dir.key] || {};
+      const updated = { ...existing };
+      for (const field of fields) {
+        const val = (sourceConfig as Record<string, unknown>)[field];
+        if (val !== undefined) {
+          (updated as Record<string, unknown>)[field] = val;
+        } else {
+          delete (updated as Record<string, unknown>)[field];
+        }
+      }
+      newDirectionalSprites[dir.key] = updated as DirectionalSpriteConfig;
+    });
+
+    onChange({ ...sprite, directionalSprites: newDirectionalSprites });
   };
 
   // Get current values based on mode
@@ -2148,8 +2258,32 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         </>
       )}
 
-      {/* DIRECTIONAL MODE UPLOADS - Always shown now */}
-      {(
+      {/* Editor Section Tabs */}
+      <div className="flex gap-2 mb-4">
+        <button
+          onClick={() => setEditorTab('directional')}
+          className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
+            editorTab === 'directional'
+              ? 'bg-purple-700 text-parchment-100'
+              : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+          }`}
+        >
+          Directional Sprites
+        </button>
+        <button
+          onClick={() => setEditorTab('global')}
+          className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
+            editorTab === 'global'
+              ? 'bg-cyan-700 text-parchment-100'
+              : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+          }`}
+        >
+          Global Settings
+        </button>
+      </div>
+
+      {/* DIRECTIONAL MODE UPLOADS */}
+      {editorTab === 'directional' && (
         <>
           {/* Direction Selector */}
           <div>
@@ -2199,11 +2333,35 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             >
               📋 Copy "{DIRECTIONS.find(d => d.key === selectedDirection)?.label}" to All Directions
             </button>
+            <button
+              onClick={() => setShowCopyFromOverlay(true)}
+              className="w-full mt-1 px-3 py-1 text-xs bg-blue-600 rounded hover:bg-blue-700"
+            >
+              📥 Copy From Another Direction
+            </button>
           </div>
 
           {/* IDLE & MOVING STATES */}
           <div className="bg-green-950 bg-opacity-30 p-4 rounded border-2 border-green-900">
-            <h3 className="text-lg font-semibold mb-3 text-green-400">💤 Idle & Moving States</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-green-400">💤 Idle & Moving States</h3>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => copyStateToAllDirections('idle')}
+                  className="px-2 py-0.5 text-[10px] bg-green-700 rounded hover:bg-green-600 text-parchment-100"
+                  title="Copy idle sprite to all directions"
+                >
+                  Idle → All
+                </button>
+                <button
+                  onClick={() => copyStateToAllDirections('moving')}
+                  className="px-2 py-0.5 text-[10px] bg-green-700 rounded hover:bg-green-600 text-parchment-100"
+                  title="Copy moving sprite to all directions"
+                >
+                  Moving → All
+                </button>
+              </div>
+            </div>
             <p className="text-xs text-stone-400 mb-4">
               Sprites for when the unit is idle (not moving) or actively moving
             </p>
@@ -2687,7 +2845,16 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
           {/* DEATH STATE */}
           <div className="bg-red-950 bg-opacity-30 p-4 rounded border-2 border-red-900">
-            <h3 className="text-lg font-semibold mb-3 text-red-400">💀 Death State</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-red-400">💀 Death State</h3>
+              <button
+                onClick={() => copyStateToAllDirections('death')}
+                className="px-2 py-0.5 text-[10px] bg-red-700 rounded hover:bg-red-600 text-parchment-100"
+                title="Copy death sprite to all directions"
+              >
+                Death → All
+              </button>
+            </div>
             <p className="text-xs text-stone-400 mb-4">
               Animation that plays when the unit dies (before corpse appears)
             </p>
@@ -2933,7 +3100,16 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
           {/* CASTING STATE */}
           <div className="bg-yellow-950 bg-opacity-30 p-4 rounded border-2 border-yellow-900">
-            <h3 className="text-lg font-semibold mb-3 text-yellow-400">✨ Casting State</h3>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-lg font-semibold text-yellow-400">✨ Casting State</h3>
+              <button
+                onClick={() => copyStateToAllDirections('casting')}
+                className="px-2 py-0.5 text-[10px] bg-yellow-700 rounded hover:bg-yellow-600 text-parchment-100"
+                title="Copy casting sprite to all directions"
+              >
+                Casting → All
+              </button>
+            </div>
             <p className="text-xs text-stone-400 mb-4">
               Animation when casting a spell while stationary (moving animation has priority)
             </p>
@@ -3176,12 +3352,65 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </div>
           </div>)}
           </div>
+
+          {/* COPY FROM DIRECTION OVERLAY */}
+          {showCopyFromOverlay && (
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50" onClick={() => setShowCopyFromOverlay(false)}>
+              <div className="bg-stone-800 border-2 border-blue-600 rounded-lg p-5 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-parchment-100 mb-1">Copy sprites to {DIRECTIONS.find(d => d.key === selectedDirection)?.label}</h3>
+                <p className="text-xs text-stone-400 mb-4">Select a direction to copy its sprites from</p>
+                <div className="grid grid-cols-3 gap-2">
+                  {DIRECTIONS.map((dir) => {
+                    const dirConfig = sprite.directionalSprites?.[dir.key];
+                    const isCurrent = dir.key === selectedDirection;
+                    const hasAnySprite = dirConfig && (
+                      dirConfig.idleImageData || dirConfig.imageData || dirConfig.idleImageUrl || dirConfig.imageUrl ||
+                      dirConfig.idleSpriteSheet || dirConfig.movingImageData || dirConfig.movingImageUrl || dirConfig.movingSpriteSheet ||
+                      dirConfig.deathImageData || dirConfig.deathImageUrl || dirConfig.deathSpriteSheet ||
+                      dirConfig.castingImageData || dirConfig.castingImageUrl || dirConfig.castingSpriteSheet
+                    );
+                    const isDisabled = isCurrent || !hasAnySprite;
+
+                    return (
+                      <button
+                        key={dir.key}
+                        disabled={isDisabled}
+                        onClick={() => copyFromDirection(dir.key)}
+                        className={`p-2 rounded flex flex-col items-center gap-1 text-xs transition-colors ${
+                          isDisabled
+                            ? 'bg-stone-700/50 text-stone-500 cursor-not-allowed'
+                            : 'bg-stone-700 hover:bg-blue-600 text-parchment-100 cursor-pointer'
+                        }`}
+                      >
+                        <div className="text-sm font-medium">{dir.arrow} {dir.label}</div>
+                        {dirConfig && hasAnySprite ? (
+                          <DirectionPreviewCanvas dirConfig={dirConfig} size={48} />
+                        ) : (
+                          <div className="w-12 h-12 rounded bg-stone-900 border border-stone-600 flex items-center justify-center">
+                            <span className="text-[9px] text-stone-500">{isCurrent ? 'Current' : 'Empty'}</span>
+                          </div>
+                        )}
+                        {isCurrent && <span className="text-[9px] text-blue-400">(Current)</span>}
+                      </button>
+                    );
+                  })}
+                </div>
+                <button
+                  onClick={() => setShowCopyFromOverlay(false)}
+                  className="w-full mt-4 px-3 py-2 text-sm bg-stone-600 rounded hover:bg-stone-500"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
         </>
       )}
 
       {/* Note: Corpse appearance is now handled by the final frame of the Death sprite sheet */}
 
-      {/* Spawn Animation Section - NOT directional, same for all */}
+      {/* GLOBAL SETTINGS TAB */}
+      {editorTab === 'global' && (
       <div className="border-2 border-cyan-700 rounded-lg p-4 bg-stone-900/50">
         <h4 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
           <span className="text-lg">✦</span> Spawn Animation (appears when entity spawns)
@@ -3416,6 +3645,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           </div>
         )}
       </div>
+      )}
 
       <div>
         <label className="block text-sm font-bold mb-2">
