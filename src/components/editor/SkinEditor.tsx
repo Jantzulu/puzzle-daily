@@ -428,16 +428,33 @@ export const SkinEditor: React.FC = () => {
                         onClick={(e) => e.stopPropagation()}
                         className="accent-blue-500 flex-shrink-0"
                       />
+                      <div className="w-10 h-10 bg-stone-700 rounded overflow-hidden flex-shrink-0 grid grid-cols-2 grid-rows-2">
+                        {(() => {
+                          const sprites = [
+                            skin.borderSprites?.wallFront,
+                            skin.borderSprites?.wallTop,
+                            skin.tileSprites?.wall,
+                            skin.tileSprites?.empty,
+                          ];
+                          if (!sprites.some(Boolean)) {
+                            return <div className="col-span-2 row-span-2 flex items-center justify-center text-lg">🎨</div>;
+                          }
+                          return sprites.map((src, i) =>
+                            src ? <img key={i} src={src} alt="" className="w-5 h-5 object-cover" style={{ imageRendering: 'pixelated' as const }} />
+                                 : <div key={i} className="w-5 h-5 bg-stone-600" />
+                          );
+                        })()}
+                      </div>
                       <div>
-                      <h3 className="font-bold">
-                        {skin.name}
-                        {skin.isBuiltIn && (
-                          <span className="ml-2 text-xs text-stone-400">(Built-in)</span>
+                        <h3 className="font-bold">
+                          {skin.name}
+                          {skin.isBuiltIn && (
+                            <span className="ml-2 text-xs text-stone-400">(Built-in)</span>
+                          )}
+                        </h3>
+                        {skin.description && (
+                          <p className="text-xs text-stone-400 mt-1">{skin.description}</p>
                         )}
-                      </h3>
-                      {skin.description && (
-                        <p className="text-xs text-stone-400 mt-1">{skin.description}</p>
-                      )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
