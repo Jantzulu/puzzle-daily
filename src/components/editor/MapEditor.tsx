@@ -2373,7 +2373,7 @@ export const MapEditor: React.FC = () => {
                 </button>
                 {showDevTools && (
                   <div className="mt-1.5 space-y-1.5">
-                    <div className="grid grid-cols-4 gap-1.5">
+                    <div className="flex flex-wrap justify-center gap-1.5">
                       <button
                         onClick={handleStep}
                         className="dungeon-btn px-2 py-1 text-xs font-semibold"
