@@ -2354,6 +2354,151 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
+              {/* Dev Tools - collapsible bar below quest panel */}
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1 dungeon-panel-dark rounded-pixel">
+                <button
+                  onClick={() => setShowDevTools(!showDevTools)}
+                  className="w-full flex items-center justify-between text-xs font-bold text-copper-400 hover:text-copper-300"
+                >
+                  <span className="flex items-center gap-1">
+                    <span className={`transition-transform ${showDevTools ? 'rotate-90' : ''}`}>&#9656;</span>
+                    Dev Tools
+                  </span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); handleBackToEditor(); }}
+                    className="dungeon-btn px-2 py-0.5 text-xs"
+                  >
+                    ← Editor
+                  </button>
+                </button>
+                {showDevTools && (
+                  <div className="mt-1.5 space-y-1.5">
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <button
+                        onClick={handleStep}
+                        className="dungeon-btn px-2 py-1 text-xs font-semibold"
+                        title="Execute one turn at a time"
+                      >
+                        Step
+                      </button>
+                      <button
+                        onClick={handleReset}
+                        className="dungeon-btn-danger px-2 py-1 text-xs font-semibold"
+                        title="Reset to when Play was pressed"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        onClick={handleWipe}
+                        className="dungeon-btn px-2 py-1 text-xs font-semibold"
+                        style={{ backgroundColor: '#c2410c', borderColor: '#ea580c' }}
+                        title="Remove all placed characters"
+                      >
+                        Wipe
+                      </button>
+                      {testMode === 'none' && gameState.gameStatus === 'running' && !isSimulating && (
+                        <button
+                          onClick={handlePlay}
+                          className="dungeon-btn-success px-2 py-1 text-xs font-semibold"
+                        >
+                          Resume
+                        </button>
+                      )}
+                      {isSimulating && gameState.gameStatus === 'running' && testMode === 'none' && (
+                        <button
+                          onClick={handlePause}
+                          className="dungeon-btn px-2 py-1 text-xs font-semibold"
+                          style={{ backgroundColor: 'var(--theme-accent-danger, #c4915c)', borderColor: 'var(--theme-border-accent, #c4915c)' }}
+                        >
+                          Pause
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Solution Display */}
+                    {validationResult?.solutionFound && (
+                      <div className="p-2 bg-stone-900/50 rounded border border-moss-700/50">
+                        <div className="text-xs text-moss-400 font-semibold mb-1">
+                          Solution ({validationResult.solutionFound.turnsToWin} turns):
+                        </div>
+                        <div className="text-xs text-stone-300 space-y-0.5">
+                          {validationResult.solutionFound.placements.map((p, i) => {
+                            const charData = getCharacter(p.characterId);
+                            return (
+                              <div key={i}>
+                                {charData?.name || p.characterId} @ ({p.x}, {p.y}) facing {p.facing}
+                              </div>
+                            );
+                          })}
+                        </div>
+                        {gameState.gameStatus === 'setup' && (
+                          <button
+                            onClick={handleShowSolution}
+                            className="mt-2 w-full dungeon-btn px-2 py-1 text-xs"
+                            style={{ backgroundColor: '#166534', borderColor: '#22c55e' }}
+                          >
+                            Auto-place
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Combat Log */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <button
+                          onClick={() => setShowCombatLog(!showCombatLog)}
+                          className="text-xs font-bold text-copper-400 flex items-center gap-1 hover:text-copper-300"
+                        >
+                          <span className={`transition-transform ${showCombatLog ? 'rotate-90' : ''}`}>&#9656;</span>
+                          Combat Log
+                          {combatLog.length > 0 && (
+                            <span className="text-xs text-stone-400 font-normal ml-1">({combatLog.length})</span>
+                          )}
+                        </button>
+                        {combatLog.length > 0 && (
+                          <button
+                            onClick={() => setCombatLog([])}
+                            className="text-xs text-stone-500 hover:text-stone-300"
+                            title="Clear log"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      {showCombatLog && (
+                        <div className="max-h-60 overflow-y-auto dungeon-scrollbar text-xs space-y-0.5 pr-1">
+                          {combatLog.length === 0 ? (
+                            <p className="text-stone-500 italic">No events yet. Step or run the simulation to see turn-by-turn events.</p>
+                          ) : (
+                            <>
+                              {combatLog.map((entry, i) => {
+                                const prevEntry = i > 0 ? combatLog[i - 1] : null;
+                                const showTurnHeader = !prevEntry || prevEntry.turn !== entry.turn;
+                                return (
+                                  <React.Fragment key={i}>
+                                    {showTurnHeader && (
+                                      <div className="text-stone-500 font-semibold mt-1.5 mb-0.5 border-t border-stone-700/50 pt-1">
+                                        Turn {entry.turn}
+                                      </div>
+                                    )}
+                                    <div className={`flex items-start gap-1.5 ${logTypeStyles[entry.type]}`}>
+                                      <span className="flex-shrink-0 w-4 text-center">{entry.icon}</span>
+                                      <span>{entry.text}</span>
+                                    </div>
+                                  </React.Fragment>
+                                );
+                              })}
+                              <div ref={combatLogEndRef} />
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Game board with overlay container */}
               <div className="relative w-full max-w-[900px] overflow-hidden">
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} isEditor={true} />
@@ -2760,150 +2905,6 @@ export const MapEditor: React.FC = () => {
                 <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
               </div>
 
-              {/* Dev Tools Section - collapsible */}
-              <div className="mt-1 pt-1 border-t border-copper-700/50">
-                <button
-                  onClick={() => setShowDevTools(!showDevTools)}
-                  className="text-sm font-bold text-copper-400 flex items-center gap-1 hover:text-copper-300 mb-1"
-                >
-                  <span className={`transition-transform ${showDevTools ? 'rotate-90' : ''}`}>&#9656;</span>
-                  Dev Tools
-                </button>
-                {showDevTools && (
-                  <div className="space-y-2">
-                    <div className="grid grid-cols-4 gap-1.5">
-                      <button
-                        onClick={handleBackToEditor}
-                        className="dungeon-btn px-2 py-1.5 text-xs font-semibold"
-                      >
-                        ← Editor
-                      </button>
-                      <button
-                        onClick={handleStep}
-                        className="dungeon-btn px-2 py-1.5 text-xs font-semibold"
-                        title="Execute one turn at a time"
-                      >
-                        Step
-                      </button>
-                      <button
-                        onClick={handleReset}
-                        className="dungeon-btn-danger px-2 py-1.5 text-xs font-semibold"
-                        title="Reset to when Play was pressed"
-                      >
-                        Reset
-                      </button>
-                      <button
-                        onClick={handleWipe}
-                        className="dungeon-btn px-2 py-1.5 text-xs font-semibold"
-                        style={{ backgroundColor: '#c2410c', borderColor: '#ea580c' }}
-                        title="Remove all placed characters"
-                      >
-                        Wipe
-                      </button>
-                    </div>
-
-                    {/* Resume/Pause buttons */}
-                    {testMode === 'none' && gameState.gameStatus === 'running' && !isSimulating && (
-                      <button
-                        onClick={handlePlay}
-                        className="w-full dungeon-btn-success px-4 py-1.5 text-xs font-semibold"
-                      >
-                        Resume
-                      </button>
-                    )}
-                    {isSimulating && gameState.gameStatus === 'running' && testMode === 'none' && (
-                      <button
-                        onClick={handlePause}
-                        className="w-full dungeon-btn px-4 py-1.5 text-xs font-semibold"
-                        style={{ backgroundColor: 'var(--theme-accent-danger, #c4915c)', borderColor: 'var(--theme-border-accent, #c4915c)' }}
-                      >
-                        Pause
-                      </button>
-                    )}
-
-                    {/* Solution Display */}
-                    {validationResult?.solutionFound && (
-                      <div className="p-2 bg-stone-900/50 rounded border border-moss-700/50">
-                        <div className="text-xs text-moss-400 font-semibold mb-1">
-                          Solution ({validationResult.solutionFound.turnsToWin} turns):
-                        </div>
-                        <div className="text-xs text-stone-300 space-y-0.5">
-                          {validationResult.solutionFound.placements.map((p, i) => {
-                            const charData = getCharacter(p.characterId);
-                            return (
-                              <div key={i}>
-                                {charData?.name || p.characterId} @ ({p.x}, {p.y}) facing {p.facing}
-                              </div>
-                            );
-                          })}
-                        </div>
-                        {gameState.gameStatus === 'setup' && (
-                          <button
-                            onClick={handleShowSolution}
-                            className="mt-2 w-full dungeon-btn px-2 py-1 text-xs"
-                            style={{ backgroundColor: '#166534', borderColor: '#22c55e' }}
-                          >
-                            Auto-place
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Combat Log */}
-                    <div>
-                      <div className="flex items-center justify-between mb-1">
-                        <button
-                          onClick={() => setShowCombatLog(!showCombatLog)}
-                          className="text-xs font-bold text-copper-400 flex items-center gap-1 hover:text-copper-300"
-                        >
-                          <span className={`transition-transform ${showCombatLog ? 'rotate-90' : ''}`}>&#9656;</span>
-                          Combat Log
-                          {combatLog.length > 0 && (
-                            <span className="text-xs text-stone-400 font-normal ml-1">({combatLog.length})</span>
-                          )}
-                        </button>
-                        {combatLog.length > 0 && (
-                          <button
-                            onClick={() => setCombatLog([])}
-                            className="text-xs text-stone-500 hover:text-stone-300"
-                            title="Clear log"
-                          >
-                            Clear
-                          </button>
-                        )}
-                      </div>
-                      {showCombatLog && (
-                        <div className="max-h-60 overflow-y-auto dungeon-scrollbar text-xs space-y-0.5 pr-1">
-                          {combatLog.length === 0 ? (
-                            <p className="text-stone-500 italic">No events yet. Step or run the simulation to see turn-by-turn events.</p>
-                          ) : (
-                            <>
-                              {combatLog.map((entry, i) => {
-                                const prevEntry = i > 0 ? combatLog[i - 1] : null;
-                                const showTurnHeader = !prevEntry || prevEntry.turn !== entry.turn;
-                                return (
-                                  <React.Fragment key={i}>
-                                    {showTurnHeader && (
-                                      <div className="text-stone-500 font-semibold mt-1.5 mb-0.5 border-t border-stone-700/50 pt-1">
-                                        Turn {entry.turn}
-                                      </div>
-                                    )}
-                                    <div className={`flex items-start gap-1.5 ${logTypeStyles[entry.type]}`}>
-                                      <span className="flex-shrink-0 w-4 text-center">{entry.icon}</span>
-                                      <span>{entry.text}</span>
-                                    </div>
-                                  </React.Fragment>
-                                );
-                              })}
-                              <div ref={combatLogEndRef} />
-                            </>
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
             </div>
 
           </div>
