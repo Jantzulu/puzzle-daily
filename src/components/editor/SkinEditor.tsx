@@ -432,7 +432,7 @@ export const SkinEditor: React.FC = () => {
                         {(() => {
                           const sprites = [
                             skin.borderSprites?.wallFront,
-                            skin.borderSprites?.wallTop,
+                            skin.borderSprites?.wallBottomOuter,
                             skin.tileSprites?.wall,
                             skin.tileSprites?.empty,
                           ];
