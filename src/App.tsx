@@ -8,6 +8,7 @@ import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
 import { ToastContainer } from './components/shared/Toast';
+import { GlobalSearch } from './components/shared/GlobalSearch';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -148,6 +149,19 @@ function Navigation() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Ctrl+K / Cmd+K to open search
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        setSearchOpen(prev => !prev);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Load theme assets and subscribe to changes
   useEffect(() => {
@@ -266,6 +280,19 @@ function Navigation() {
 
         <div className="flex-1" />
 
+        {/* Global search button */}
+        <button
+          onClick={() => setSearchOpen(true)}
+          className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-stone-700/60 hover:bg-stone-600/80 border border-stone-600 text-stone-400 hover:text-parchment-200 transition-colors text-sm"
+          title="Search all assets (Ctrl+K)"
+        >
+          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+          <span className="hidden lg:inline">Search...</span>
+          <kbd className="hidden lg:inline text-xs text-stone-500 bg-stone-800 px-1 py-0.5 rounded border border-stone-700">Ctrl+K</kbd>
+        </button>
+
         <div className="hidden md:flex items-center gap-2">
           <SoundSettings />
           <CloudSyncButton />
@@ -323,6 +350,7 @@ function Navigation() {
           </div>
         </div>
       )}
+      <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
     </nav>
   );
 }

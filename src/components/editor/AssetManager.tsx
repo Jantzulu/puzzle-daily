@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CharacterEditor } from './CharacterEditor';
 import { EnemyEditor } from './EnemyEditor';
 import { SpellLibrary } from './SpellLibrary';
@@ -13,9 +14,23 @@ import { ThemeAssetsEditor } from './ThemeAssetsEditor';
 
 type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'theme' | 'help';
 
+const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'sounds', 'theme', 'help'];
+
 export const AssetManager: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<AssetTab>('characters');
+  const [searchParams] = useSearchParams();
+  const [activeTab, setActiveTab] = useState<AssetTab>(() => {
+    const tab = searchParams.get('tab') as AssetTab;
+    return tab && VALID_TABS.includes(tab) ? tab : 'characters';
+  });
   const [showClearConfirm, setShowClearConfirm] = useState(false);
+
+  // Sync URL params when navigated to from global search
+  useEffect(() => {
+    const tab = searchParams.get('tab') as AssetTab;
+    if (tab && VALID_TABS.includes(tab) && tab !== activeTab) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   const handleClearCache = () => {
     localStorage.clear();
