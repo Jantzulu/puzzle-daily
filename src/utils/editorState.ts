@@ -27,6 +27,7 @@ export interface EditorPuzzleState {
   winConditions: WinCondition[];
   borderConfig?: BorderConfig;
   skinId?: string;
+  backgroundMusicId?: string;
 
   // Scoring
   parCharacters?: number;

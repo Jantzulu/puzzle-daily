@@ -19,6 +19,7 @@ import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, 
 import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
+import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
 import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, type CustomObject, type CustomCollectible, type SoundAsset } from '../../utils/assetStorage';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { preloadImages } from '../../utils/imageLoader';
@@ -398,6 +399,9 @@ export const MapEditor: React.FC = () => {
   // Generator dialog state
   const [showGenerator, setShowGenerator] = useState(false);
 
+  // Auto-save recovery state
+  const [recoveryData, setRecoveryData] = useState<AutoSaveData | null>(null);
+
   // Local input state for grid size (allows typing without immediate validation)
   const [widthInput, setWidthInput] = useState(String(state.gridWidth));
   const [heightInput, setHeightInput] = useState(String(state.gridHeight));
@@ -622,6 +626,45 @@ export const MapEditor: React.FC = () => {
       });
     }
   }, [state]);
+
+  // Auto-save: check for recoverable data on mount
+  useEffect(() => {
+    const autoSave = readAutoSave();
+    if (autoSave) {
+      // Check if this auto-save is newer than the corresponding manual save
+      const savedPuzzle = getSavedPuzzles().find(p => p.id === autoSave.puzzleId);
+      const manualSavedAt = savedPuzzle?.savedAt;
+      if (!manualSavedAt || new Date(autoSave.savedAt).getTime() > new Date(manualSavedAt).getTime()) {
+        setRecoveryData(autoSave);
+      } else {
+        // Auto-save is stale, clear it
+        clearAutoSave();
+      }
+    }
+  }, []);
+
+  // Auto-save: periodic timer (every 30s while in edit mode)
+  useEffect(() => {
+    if (state.mode !== 'edit') return;
+
+    const timer = setInterval(() => {
+      const puzzle = getCurrentPuzzleRef.current();
+      writeAutoSave(puzzle);
+    }, AUTOSAVE_INTERVAL_MS);
+
+    return () => clearInterval(timer);
+  }, [state.mode]);
+
+  // Warn before leaving with unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (state.mode === 'edit') {
+        e.preventDefault();
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [state.mode]);
 
   // Subscribe to theme asset changes
   useEffect(() => {
@@ -1178,6 +1221,10 @@ export const MapEditor: React.FC = () => {
     };
   };
 
+  // Keep a ref to getCurrentPuzzle so the auto-save timer always has the latest state
+  const getCurrentPuzzleRef = useRef(getCurrentPuzzle);
+  getCurrentPuzzleRef.current = getCurrentPuzzle;
+
   const handleSave = () => {
     // Check if puzzle already exists in library
     const existingPuzzle = savedPuzzles.find(p => p.id === state.puzzleId);
@@ -1191,6 +1238,7 @@ export const MapEditor: React.FC = () => {
     const puzzle = getCurrentPuzzle();
     const success = savePuzzle(puzzle);
     if (success) {
+      clearAutoSave();
       setSavedPuzzles(getSavedPuzzles());
       toast.success(`Saved "${state.puzzleName}"!`);
     }
@@ -1210,6 +1258,7 @@ export const MapEditor: React.FC = () => {
 
     const success = savePuzzle(puzzle);
     if (success) {
+      clearAutoSave();
       setState(prev => ({
         ...prev,
         puzzleId: newId,
@@ -1234,6 +1283,7 @@ export const MapEditor: React.FC = () => {
   const handleLoadFromLibrary = (puzzleId: string) => {
     const puzzle = loadPuzzle(puzzleId);
     if (!puzzle) return;
+    clearAutoSave();
 
     setState(prev => ({
       ...prev,
@@ -1267,8 +1317,44 @@ export const MapEditor: React.FC = () => {
     setSavedPuzzles(getSavedPuzzles());
   };
 
+  const handleRecoverAutoSave = () => {
+    if (!recoveryData) return;
+    const puzzle = recoveryData.puzzle;
+    setState(prev => ({
+      ...prev,
+      gridWidth: puzzle.width,
+      gridHeight: puzzle.height,
+      tiles: puzzle.tiles,
+      enemies: puzzle.enemies,
+      collectibles: puzzle.collectibles,
+      placedObjects: puzzle.placedObjects || [],
+      puzzleName: puzzle.name,
+      puzzleId: puzzle.id,
+      maxCharacters: puzzle.maxCharacters,
+      maxPlaceableCharacters: puzzle.maxPlaceableCharacters,
+      maxTurns: puzzle.maxTurns,
+      lives: puzzle.lives ?? 3,
+      availableCharacters: puzzle.availableCharacters,
+      winConditions: puzzle.winConditions,
+      skinId: puzzle.skinId || 'builtin_dungeon',
+      backgroundMusicId: puzzle.backgroundMusicId,
+      parCharacters: puzzle.parCharacters,
+      parTurns: puzzle.parTurns,
+      sideQuests: puzzle.sideQuests || [],
+    }));
+    clearAutoSave();
+    setRecoveryData(null);
+    toast.success(`Recovered "${puzzle.name}"`);
+  };
+
+  const handleDismissRecovery = () => {
+    clearAutoSave();
+    setRecoveryData(null);
+  };
+
   const handleNewPuzzle = () => {
     if (!confirm('Create new puzzle? Unsaved changes will be lost.')) return;
+    clearAutoSave();
 
     setState({
       gridWidth: 8,
@@ -2587,6 +2673,34 @@ export const MapEditor: React.FC = () => {
   return (
     <div className="min-h-screen theme-root text-parchment-100 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
+        {/* Auto-save recovery banner */}
+        {recoveryData && (
+          <div className="mb-4 bg-amber-900/90 border border-amber-500 rounded-lg px-4 py-3 flex flex-col sm:flex-row items-start sm:items-center gap-3">
+            <div className="flex-1 min-w-0">
+              <p className="text-amber-100 font-medium text-sm">
+                Unsaved work found: &quot;{recoveryData.puzzleName}&quot;
+              </p>
+              <p className="text-amber-300/80 text-xs mt-0.5">
+                Auto-saved {new Date(recoveryData.savedAt).toLocaleString()}
+              </p>
+            </div>
+            <div className="flex gap-2 flex-shrink-0">
+              <button
+                onClick={handleRecoverAutoSave}
+                className="px-3 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-sm rounded font-medium"
+              >
+                Restore
+              </button>
+              <button
+                onClick={handleDismissRecovery}
+                className="px-3 py-1.5 bg-stone-700 hover:bg-stone-600 text-stone-300 text-sm rounded"
+              >
+                Dismiss
+              </button>
+            </div>
+          </div>
+        )}
+
         {/* Header - stacks on mobile */}
         <div className="mb-4 md:mb-6 space-y-3 md:space-y-0 md:flex md:items-center md:gap-4">
           <div className="flex items-center justify-between md:justify-start gap-4">
