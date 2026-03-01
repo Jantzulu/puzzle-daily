@@ -1,11 +1,22 @@
 import React from 'react';
-import type { PlacedEnemy } from '../../types/game';
+import type { PlacedEnemy, EnemyBehavior } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
+
+const MOVEMENT_TYPES = new Set([
+  'move_forward', 'move_backward', 'move_left', 'move_right',
+  'move_diagonal_ne', 'move_diagonal_nw', 'move_diagonal_se', 'move_diagonal_sw',
+]);
+
+function getEnemyMovementInfo(behavior?: EnemyBehavior) {
+  if (!behavior?.pattern) return null;
+  const moveAction = behavior.pattern.find(a => MOVEMENT_TYPES.has(a.type));
+  return moveAction ? { tilesPerMove: moveAction.tilesPerMove || 1 } : null;
+}
 
 interface EnemyDisplayProps {
   enemies: PlacedEnemy[];
@@ -158,13 +169,30 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
               key={enemy.enemyId}
               className="p-2 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
             >
-              {/* HP and direction display - above sprite */}
-              <div className="text-xs lg:text-sm text-center text-blood-400 font-medium mb-1 flex items-center justify-center gap-1.5">
-                <span>HP: {enemyData.health}</span>
-                {enemyData.behavior?.defaultFacing && (
-                  <DirectionArrow direction={enemyData.behavior.defaultFacing} className="text-blood-400" />
-                )}
-              </div>
+              {/* HP and movement info - above sprite */}
+              {(() => {
+                const moveInfo = getEnemyMovementInfo(enemyData.behavior);
+                return (
+                  <div className="flex items-center justify-center mb-1 w-full">
+                    {/* HP section */}
+                    <div className="flex items-center justify-center gap-1 pr-2 border-r border-stone-600">
+                      <span className="text-xs lg:text-sm font-medium text-blood-300">HP</span>
+                      <span className="text-sm lg:text-base font-bold text-blood-400">{enemyData.health}</span>
+                    </div>
+                    {/* Movement section */}
+                    <div className="flex items-center justify-center gap-0.5 pl-2 text-blood-300">
+                      {moveInfo && enemyData.behavior?.defaultFacing ? (
+                        <>
+                          <DirectionArrow direction={enemyData.behavior.defaultFacing} className="text-blood-300" size={10} />
+                          <span className="text-xs lg:text-sm font-medium">{moveInfo.tilesPerMove}</span>
+                        </>
+                      ) : (
+                        <span className="text-xs text-stone-500">—</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Sprite */}
               <div className="relative flex-shrink-0">
