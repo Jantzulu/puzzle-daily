@@ -154,7 +154,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                     {/* HP section */}
                     <div className={`flex items-center justify-center gap-1 pr-2 border-r border-stone-600`}>
                       <span className={`text-xs lg:text-sm font-medium ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>HP:</span>
-                      <span className={`text-sm lg:text-base font-bold ${isSelected ? 'text-parchment-100' : 'text-moss-400'}`}>{character.health}</span>
+                      <span className={`text-sm lg:text-base font-bold ${isSelected ? 'text-parchment-100' : ''}`} style={isSelected ? undefined : { color: '#4ade80' }}>{character.health}</span>
                     </div>
                     {/* Movement section */}
                     <div className={`flex items-center justify-center gap-0.5 pl-2 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
