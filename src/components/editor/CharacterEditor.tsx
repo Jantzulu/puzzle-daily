@@ -700,7 +700,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                 </div>
               </div>
             ) : (
-              <div className="dungeon-panel p-8 text-center">
+              <div className="dungeon-panel p-8 rounded text-center">
                 <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Hero Editor</h2>
                 <p className="text-stone-400 mb-6">
                   Create and customize heroes with unique sprites and behaviors.

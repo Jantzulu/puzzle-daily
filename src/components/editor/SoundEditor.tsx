@@ -268,7 +268,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         {activeTab === 'library' && (
           <>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-bold font-medieval text-copper-400">Sounds</h2>
+              <h2 className="text-xl font-bold font-medieval text-copper-400">Sounds</h2>
               <button
                 onClick={handleNew}
                 className="dungeon-btn-success"
@@ -424,10 +424,10 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 </button>
               </div>
         ) : (
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-lg font-bold text-parchment-100">
-                {isCreating ? 'New Sound' : 'Edit Sound'}
+          <div className="space-y-6">
+            <div className="flex justify-between items-center">
+              <h2 className="text-2xl font-bold">
+                {isCreating ? 'Create Sound' : 'Edit Sound'}
               </h2>
               <div className="flex gap-2">
                 <button
@@ -436,15 +436,15 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     setSelectedId(null);
                     setIsCreating(false);
                   }}
-                  className="px-3 py-1 bg-stone-600 hover:bg-stone-500 rounded text-sm"
+                  className="px-4 py-2 bg-stone-600 hover:bg-stone-500 rounded"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleSave}
-                  className="px-3 py-1 bg-moss-700 hover:bg-moss-600 rounded text-sm"
+                  className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
                 >
-                  Save
+                  Save Sound
                 </button>
               </div>
             </div>

@@ -311,7 +311,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                     onClick={handleSave}
                     className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
                   >
-                    💾 Save Item
+                    Save Item
                   </button>
                 </div>
 

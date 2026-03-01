@@ -509,7 +509,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       onClick={handleSaveSkin}
                       className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
                     >
-                      💾 Save Skin
+                      Save Skin
                     </button>
                   )}
                 </div>

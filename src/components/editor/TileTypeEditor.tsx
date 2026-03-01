@@ -777,7 +777,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                     onClick={handleSave}
                     className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
                   >
-                    💾 Save Tile Type
+                    Save Tile Type
                   </button>
                 </div>
 

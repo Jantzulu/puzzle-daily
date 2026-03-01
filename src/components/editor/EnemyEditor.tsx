@@ -665,7 +665,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 </div>
               </div>
             ) : (
-              <div className="dungeon-panel p-8 text-center">
+              <div className="dungeon-panel p-8 rounded text-center">
                 <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Enemy Editor</h2>
                 <p className="text-stone-400 mb-6">
                   Create and customize enemies with unique sprites and behaviors.
