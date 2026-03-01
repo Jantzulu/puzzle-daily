@@ -1898,10 +1898,10 @@ export const MapEditor: React.FC = () => {
     setIsSimulating(true);
     playGameSound('simulation_start');
 
-    // Scroll to center the board
+    // Scroll so the board is near the top of the viewport
     setTimeout(() => {
       if (playtestBoardRef.current) {
-        playtestBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        playtestBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
     }, 50);
   };
