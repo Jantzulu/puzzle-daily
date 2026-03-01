@@ -187,13 +187,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* Name and Title */}
               <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px] text-xs lg:text-sm !leading-[1.2]">
                 <span className={`font-medium ${
-                  isSelected ? 'text-parchment-100' : 'text-parchment-300'
+                  isSelected ? 'text-parchment-100' : 'text-arcane-400'
                 }`}>
                   {character.name}
                 </span>
                 {character.title && (
                   <span className={`italic ${
-                    isSelected ? 'text-copper-200' : 'text-stone-500'
+                    isSelected ? 'text-copper-200' : 'text-parchment-300'
                   }`}> {character.title}</span>
                 )}
               </div>

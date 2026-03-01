@@ -212,7 +212,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
                   {enemyData.name}
                 </span>
                 {enemyData.title && (
-                  <span className="text-stone-500 italic"> {enemyData.title}</span>
+                  <span className="text-parchment-300 italic"> {enemyData.title}</span>
                 )}
               </div>
 
