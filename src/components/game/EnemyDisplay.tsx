@@ -167,7 +167,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
           return (
             <div
               key={enemy.enemyId}
-              className="px-2 py-1 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
+              className="px-1 py-1 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
             >
               {/* HP and movement info - above sprite */}
               {(() => {

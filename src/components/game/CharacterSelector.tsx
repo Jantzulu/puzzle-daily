@@ -134,7 +134,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             <div
               key={charId}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
-              className={`rounded-pixel-md px-2 py-1 transition-all flex flex-col items-center border-2 min-w-[80px] ${
+              className={`rounded-pixel-md px-1 py-1 transition-all flex flex-col items-center border-2 min-w-[80px] ${
                 disabled
                   ? 'bg-stone-800/80 border-stone-600 cursor-default'
                   : isPlaced
