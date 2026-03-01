@@ -410,7 +410,7 @@ export const MapEditor: React.FC = () => {
 
   // Combat log state
   const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
-  const [showCombatLog, setShowCombatLog] = useState(true);
+  const [showCombatLog, setShowCombatLog] = useState(false);
   const [showDevTools, setShowDevTools] = useState(true);
   const combatLogEndRef = useRef<HTMLDivElement>(null);
   const playtestBoardRef = useRef<HTMLDivElement>(null);
