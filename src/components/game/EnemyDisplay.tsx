@@ -167,24 +167,27 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
           return (
             <div
               key={enemy.enemyId}
-              className="p-2 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
+              className="px-2 py-1 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
             >
               {/* HP and movement info - above sprite */}
               {(() => {
                 const moveInfo = getEnemyMovementInfo(enemyData.behavior);
                 return (
-                  <div className="flex items-center justify-center mb-1 w-full">
+                  <div className="flex items-center justify-center mb-0.5 w-full">
                     {/* HP section */}
                     <div className="flex items-center justify-center gap-1 pr-2 border-r border-stone-600">
-                      <span className="text-xs lg:text-sm font-medium text-blood-300">HP</span>
+                      <span className="text-xs lg:text-sm font-medium text-blood-300">HP:</span>
                       <span className="text-sm lg:text-base font-bold text-blood-400">{enemyData.health}</span>
                     </div>
                     {/* Movement section */}
                     <div className="flex items-center justify-center gap-0.5 pl-2 text-blood-300">
                       {moveInfo && enemyData.behavior?.defaultFacing ? (
                         <>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60 text-blood-300">
+                            <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
+                          </svg>
+                          <span className="text-xs font-medium text-stone-400">{moveInfo.tilesPerMove}</span>
                           <DirectionArrow direction={enemyData.behavior.defaultFacing} className="text-blood-300" size={10} />
-                          <span className="text-xs lg:text-sm font-medium">{moveInfo.tilesPerMove}</span>
                         </>
                       ) : (
                         <span className="text-xs text-stone-500">—</span>
@@ -204,7 +207,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
                 )}
               </div>
               {/* Name and Title */}
-              <div className="mt-1 text-center max-w-[100px] lg:max-w-[120px]">
+              <div className="mt-0.5 text-center leading-tight max-w-[100px] lg:max-w-[120px]">
                 <span className="text-xs lg:text-sm font-medium text-blood-300">
                   {enemyData.name}
                 </span>
@@ -215,7 +218,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <ul className="mt-1 text-xs lg:text-sm text-stone-400 text-left max-w-[100px] lg:max-w-[120px] list-disc list-inside">
+                <ul className="text-xs lg:text-sm text-stone-400 text-left leading-tight max-w-[100px] lg:max-w-[120px] list-disc list-inside">
                   {enemyData.tooltipSteps!.map((step, idx) => (
                     <li key={idx}><RichTextRenderer html={step} /></li>
                   ))}
