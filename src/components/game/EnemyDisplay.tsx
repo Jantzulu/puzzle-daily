@@ -207,7 +207,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
                 )}
               </div>
               {/* Name and Title */}
-              <div className="mt-0.5 text-center leading-tight max-w-[100px] lg:max-w-[120px]">
+              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px]" style={{ lineHeight: '1.15' }}>
                 <span className="text-xs lg:text-sm font-medium text-blood-300">
                   {enemyData.name}
                 </span>
