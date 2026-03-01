@@ -411,6 +411,7 @@ export const MapEditor: React.FC = () => {
   // Combat log state
   const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
   const [showCombatLog, setShowCombatLog] = useState(true);
+  const [showDevTools, setShowDevTools] = useState(true);
   const combatLogEndRef = useRef<HTMLDivElement>(null);
   /** Wraps executeTurn to capture combat log diffs. Call inside setGameState callbacks. */
   const executeTurnWithLog = useCallback((stateCopy: GameState): GameState => {
@@ -2214,8 +2215,11 @@ export const MapEditor: React.FC = () => {
 
   // Render playtest mode
   if (state.mode === 'playtest' && gameState) {
+    const isPanelsDimmed = gameState.gameStatus === 'running' || testMode !== 'none';
+    const dimmedPanelClass = isPanelsDimmed ? 'opacity-50 pointer-events-none' : '';
+
     return (
-      <div className="min-h-screen theme-root text-parchment-200 p-4 md:p-8 relative">
+      <div className="min-h-screen theme-root text-parchment-200 px-4 pb-4 md:px-8 md:pb-8 relative">
         {/* Underground cave background effect */}
         <div className="absolute inset-0 pointer-events-none -z-10">
           <div className="absolute inset-0 bg-gradient-to-b from-stone-950 via-stone-900/50 to-stone-950" />
@@ -2225,16 +2229,28 @@ export const MapEditor: React.FC = () => {
         </div>
 
         <div className="max-w-6xl mx-auto relative">
-          <div className="flex flex-col lg:flex-row gap-4 md:gap-8">
-            {/* Game Board */}
-            <div className="flex-1 flex flex-col items-center">
-              {/* Quest Display - above puzzle */}
+          <div className="flex flex-col gap-2">
+            {/* Game Board Area */}
+            <div className="flex-1 flex flex-col items-center w-full overflow-visible">
+              {/* Quest Panel - matches Game.tsx styling */}
               {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat') && testMode === 'none' && (
-                <div className="mb-4 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
+                <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
+                  {/* Ornate corner decorations */}
+                  <svg className="absolute -bottom-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+                    <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                    <path d="M0 8 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                    <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                  </svg>
+                  <svg className="absolute -bottom-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+                    <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                    <path d="M40 8 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                    <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+                  </svg>
+                  {/* Quest Row */}
                   <div className="flex items-center justify-center gap-2 flex-wrap">
                     <HelpButton sectionId="game_general" />
-                    <span className="text-base md:text-lg font-semibold text-stone-400">Quest:</span>
-                    <span className="text-sm md:text-base text-copper-300 font-medium">
+                    <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
+                    <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
                       {gameState.puzzle.winConditions.map((wc) => {
                         switch (wc.type) {
                           case 'defeat_all_enemies': {
@@ -2315,7 +2331,7 @@ export const MapEditor: React.FC = () => {
 
               {/* Test mode indicator - above puzzle */}
               {testMode !== 'none' && (
-                <div className="mb-4 flex flex-col items-center">
+                <div className="mb-2 flex flex-col items-center">
                   <div className={`flex items-center gap-3 px-4 py-2 rounded-pixel-lg border-2 ${
                     testMode === 'enemies'
                       ? 'bg-blood-900/80 border-blood-600'
@@ -2338,11 +2354,11 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
-              {/* Game board with overlay container for loss panels */}
-              <div className="relative w-full max-w-[900px]">
+              {/* Game board with overlay container */}
+              <div className="relative w-full max-w-[900px] overflow-hidden">
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} isEditor={true} />
 
-                {/* Defeat Overlay - appears on top of the game board */}
+                {/* Defeat Overlay */}
                 {gameState.gameStatus === 'defeat' && !showGameOver && (
                   <div
                     className="absolute inset-0 flex items-center justify-center z-10"
@@ -2436,9 +2452,9 @@ export const MapEditor: React.FC = () => {
                 )}
               </div>
 
-              {/* Victory Message with Score - still below the game board */}
+              {/* Victory Message with Score */}
               {gameState.gameStatus === 'victory' && puzzleScore && (
-                <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-md">
+                <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-2xl">
                   <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
                   <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
                     {getRankName(puzzleScore.rank)}
@@ -2573,43 +2589,73 @@ export const MapEditor: React.FC = () => {
                 </div>
               )}
 
-              {/* Control Panel - below puzzle */}
+            </div>
+
+            {/* Unified Info Panel - matches Game.tsx */}
+            <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
+              {/* Ornate corner decorations */}
+              <svg className="absolute -top-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+                <path d="M0 0 L40 0" stroke="#c4915c" strokeWidth="2" fill="none" />
+                <path d="M0 0 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                <path d="M0 0 L0 16 Q4 4 16 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+              </svg>
+              <svg className="absolute -top-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
+                <path d="M0 0 L40 0" stroke="#c4915c" strokeWidth="2" fill="none" />
+                <path d="M40 0 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
+                <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
+              </svg>
+
+              {/* Control Row - Lives / Play Button or Turn / Max Turns or Concede */}
               {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-                <div className="mt-3 w-full max-w-md px-3 md:px-4 py-2 md:py-3 dungeon-panel-dark">
-                  <div className="relative flex items-center justify-between">
+                <>
+                  <div className="grid grid-cols-3 items-center mb-1">
                     {/* Left: Lives */}
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center justify-center gap-1">
                       <span className="text-stone-400 text-xs">Lives:</span>
                       <div className="flex items-center gap-0.5">
                         {renderLivesHearts()}
                       </div>
                     </div>
 
-                    {/* Center: Play button OR Turn counter */}
-                    <div className="absolute left-1/2 -translate-x-1/2">
-                      {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
+                    {/* Center: Play button OR Turn counter OR Test mode indicator */}
+                    <div className="flex justify-center">
+                      {testMode !== 'none' ? (
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-pixel border ${
+                          testMode === 'enemies'
+                            ? 'bg-blood-900/80 border-blood-600'
+                            : 'bg-arcane-900/80 border-arcane-600'
+                        }`}>
+                          <span className={`text-xs font-medium ${
+                            testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
+                          }`}>
+                            Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
+                          </span>
+                          <span className={`text-lg font-bold ${
+                            testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
+                          }`}>
+                            {testTurnsRemaining}
+                          </span>
+                        </div>
+                      ) : gameState.gameStatus === 'setup' ? (
                         <button
-                          onClick={testMode === 'none' ? handlePlay : undefined}
-                          disabled={testMode !== 'none'}
-                          className={`px-5 md:px-6 py-1 font-bold text-sm transition-all ${
-                            testMode !== 'none'
-                              ? 'bg-stone-700 text-stone-500 cursor-not-allowed'
-                              : themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
+                          onClick={handlePlay}
+                          className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all ${
+                            themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
                           } ${
                             themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
                             themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
                           }`}
                           style={{
-                            ...(testMode === 'none' && themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                            ...(testMode === 'none' && themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                            ...(testMode === 'none' && themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                            ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                            ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                            ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
                           }}
                         >
-                          ⚔ Play
+                          {themeAssets.iconNavPlay || '\u2694'} Play
                         </button>
                       ) : (
                         <div className="flex items-center gap-2">
-                          <span className="text-stone-400 text-xs font-medium">Turn</span>
+                          <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
                           {(() => {
                             const maxTurns = originalPlaytestPuzzle?.maxTurns;
                             const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
@@ -2618,7 +2664,7 @@ export const MapEditor: React.FC = () => {
 
                             return (
                               <>
-                                <span className={`text-xl font-bold min-w-[2ch] text-center ${
+                                <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
                                   isVeryNearLimit
                                     ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
                                     : isNearLimit
@@ -2628,7 +2674,7 @@ export const MapEditor: React.FC = () => {
                                   {gameState.currentTurn}
                                 </span>
                                 {maxTurns && (
-                                  <span className={`text-xs ${
+                                  <span className={`text-xs lg:text-sm ${
                                     isNearLimit ? 'text-blood-400' : 'text-stone-500'
                                   }`}>
                                     / {maxTurns}
@@ -2642,12 +2688,12 @@ export const MapEditor: React.FC = () => {
                     </div>
 
                     {/* Right: Max Turns OR Concede button */}
-                    <div className="flex items-center justify-end min-w-[70px]">
+                    <div className="flex items-center justify-center">
                       {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
                         gameState.puzzle.maxTurns && (
                           <div className="flex items-center gap-1">
-                            <span className="text-stone-400 text-xs">Max:</span>
-                            <span className="text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                            <span className="text-stone-400 text-xs">Max Turns:</span>
+                            <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
                           </div>
                         )
                       ) : (
@@ -2671,12 +2717,16 @@ export const MapEditor: React.FC = () => {
                       )}
                     </div>
                   </div>
-                </div>
+
+                  {/* Divider */}
+                  <div className="mb-1 border-t border-copper-700/50" />
+                </>
               )}
 
-              {/* Character Selector - below control panel (visible during setup, running, defeat, and test mode) */}
-              {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-                <div className="mt-3 w-full max-w-md">
+              {/* Heroes and Dungeon Details - dimmed during play/test */}
+              <div className={`transition-opacity ${dimmedPanelClass}`}>
+                {/* Character Selector */}
+                {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
                     availableCharacterIds={gameState.puzzle.availableCharacters}
                     selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
@@ -2687,170 +2737,175 @@ export const MapEditor: React.FC = () => {
                     onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharacters : undefined}
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
+                    noPanel
                   />
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Sidebar */}
-            <div className="w-full lg:w-80 space-y-4 md:space-y-6">
-              {/* Playtest Controls Panel - exclusive to playtest */}
-              <div className="dungeon-panel p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-lg font-bold text-copper-400">Dev Controls</h3>
-                  <button
-                    onClick={handleBackToEditor}
-                    className="dungeon-btn px-3 py-1 text-sm"
-                  >
-                    ← Editor
-                  </button>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {/* Resume button - shows when game is running but paused */}
-                  {testMode === 'none' && gameState.gameStatus === 'running' && !isSimulating && (
-                    <button
-                      onClick={handlePlay}
-                      className="col-span-2 dungeon-btn-success px-4 py-2 font-semibold"
-                    >
-                      Resume
-                    </button>
-                  )}
+                {/* Enemies Display */}
+                <EnemyDisplay
+                  enemies={gameState.puzzle.enemies}
+                  onTest={handleTestEnemies}
+                  showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
+                  themeAssets={themeAssets}
+                  noPanel
+                />
 
-                  {isSimulating && gameState.gameStatus === 'running' && testMode === 'none' && (
-                    <button
-                      onClick={handlePause}
-                      className="col-span-2 dungeon-btn px-4 py-2 font-semibold"
-                      style={{ backgroundColor: 'var(--theme-accent-danger, #c4915c)', borderColor: 'var(--theme-border-accent, #c4915c)' }}
-                    >
-                      Pause
-                    </button>
-                  )}
+                {/* Items Display */}
+                <ItemsDisplay puzzle={gameState.puzzle} noPanel />
 
-                  <button
-                    onClick={handleStep}
-                    className="dungeon-btn px-4 py-2 font-semibold"
-                    title="Execute one turn at a time"
-                  >
-                    Step
-                  </button>
+                {/* Status Effects Display */}
+                <StatusEffectsDisplay puzzle={gameState.puzzle} noPanel />
 
-                  <button
-                    onClick={handleReset}
-                    className="dungeon-btn-danger px-4 py-2 font-semibold"
-                    title="Reset to when Play was pressed"
-                  >
-                    Reset
-                  </button>
-
-                  <button
-                    onClick={handleWipe}
-                    className="dungeon-btn px-4 py-2 font-semibold"
-                    style={{ backgroundColor: '#c2410c', borderColor: '#ea580c' }}
-                    title="Remove all placed characters"
-                  >
-                    Wipe
-                  </button>
-
-                  {/* Show Solution - displays placements if validation found a solution */}
-                  {validationResult?.solutionFound && (
-                    <div className="col-span-2 mt-2 p-2 bg-stone-900/50 rounded border border-moss-700/50">
-                      <div className="text-xs text-moss-400 font-semibold mb-1">
-                        Solution ({validationResult.solutionFound.turnsToWin} turns):
-                      </div>
-                      <div className="text-xs text-stone-300 space-y-0.5">
-                        {validationResult.solutionFound.placements.map((p, i) => {
-                          const charData = getCharacter(p.characterId);
-                          return (
-                            <div key={i}>
-                              {charData?.name || p.characterId} @ ({p.x}, {p.y}) facing {p.facing}
-                            </div>
-                          );
-                        })}
-                      </div>
-                      {gameState.gameStatus === 'setup' && (
-                        <button
-                          onClick={handleShowSolution}
-                          className="mt-2 w-full dungeon-btn px-2 py-1 text-xs"
-                          style={{ backgroundColor: '#166534', borderColor: '#22c55e' }}
-                        >
-                          Auto-place
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                {/* Special Tiles Display */}
+                <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
               </div>
 
-              {/* Combat Log */}
-              <div className="dungeon-panel p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <button
-                    onClick={() => setShowCombatLog(!showCombatLog)}
-                    className="text-sm font-bold text-copper-400 flex items-center gap-1 hover:text-copper-300"
-                  >
-                    <span className={`transition-transform ${showCombatLog ? 'rotate-90' : ''}`}>&#9656;</span>
-                    Combat Log
-                    {combatLog.length > 0 && (
-                      <span className="text-xs text-stone-400 font-normal ml-1">({combatLog.length})</span>
+              {/* Dev Tools Section - collapsible */}
+              <div className="mt-1 pt-1 border-t border-copper-700/50">
+                <button
+                  onClick={() => setShowDevTools(!showDevTools)}
+                  className="text-sm font-bold text-copper-400 flex items-center gap-1 hover:text-copper-300 mb-1"
+                >
+                  <span className={`transition-transform ${showDevTools ? 'rotate-90' : ''}`}>&#9656;</span>
+                  Dev Tools
+                </button>
+                {showDevTools && (
+                  <div className="space-y-2">
+                    <div className="grid grid-cols-4 gap-1.5">
+                      <button
+                        onClick={handleBackToEditor}
+                        className="dungeon-btn px-2 py-1.5 text-xs font-semibold"
+                      >
+                        ← Editor
+                      </button>
+                      <button
+                        onClick={handleStep}
+                        className="dungeon-btn px-2 py-1.5 text-xs font-semibold"
+                        title="Execute one turn at a time"
+                      >
+                        Step
+                      </button>
+                      <button
+                        onClick={handleReset}
+                        className="dungeon-btn-danger px-2 py-1.5 text-xs font-semibold"
+                        title="Reset to when Play was pressed"
+                      >
+                        Reset
+                      </button>
+                      <button
+                        onClick={handleWipe}
+                        className="dungeon-btn px-2 py-1.5 text-xs font-semibold"
+                        style={{ backgroundColor: '#c2410c', borderColor: '#ea580c' }}
+                        title="Remove all placed characters"
+                      >
+                        Wipe
+                      </button>
+                    </div>
+
+                    {/* Resume/Pause buttons */}
+                    {testMode === 'none' && gameState.gameStatus === 'running' && !isSimulating && (
+                      <button
+                        onClick={handlePlay}
+                        className="w-full dungeon-btn-success px-4 py-1.5 text-xs font-semibold"
+                      >
+                        Resume
+                      </button>
                     )}
-                  </button>
-                  {combatLog.length > 0 && (
-                    <button
-                      onClick={() => setCombatLog([])}
-                      className="text-xs text-stone-500 hover:text-stone-300"
-                      title="Clear log"
-                    >
-                      Clear
-                    </button>
-                  )}
-                </div>
-                {showCombatLog && (
-                  <div className="max-h-60 overflow-y-auto dungeon-scrollbar text-xs space-y-0.5 pr-1">
-                    {combatLog.length === 0 ? (
-                      <p className="text-stone-500 italic">No events yet. Step or run the simulation to see turn-by-turn events.</p>
-                    ) : (
-                      <>
-                        {combatLog.map((entry, i) => {
-                          const prevEntry = i > 0 ? combatLog[i - 1] : null;
-                          const showTurnHeader = !prevEntry || prevEntry.turn !== entry.turn;
-                          return (
-                            <React.Fragment key={i}>
-                              {showTurnHeader && (
-                                <div className="text-stone-500 font-semibold mt-1.5 mb-0.5 border-t border-stone-700/50 pt-1">
-                                  Turn {entry.turn}
-                                </div>
-                              )}
-                              <div className={`flex items-start gap-1.5 ${logTypeStyles[entry.type]}`}>
-                                <span className="flex-shrink-0 w-4 text-center">{entry.icon}</span>
-                                <span>{entry.text}</span>
+                    {isSimulating && gameState.gameStatus === 'running' && testMode === 'none' && (
+                      <button
+                        onClick={handlePause}
+                        className="w-full dungeon-btn px-4 py-1.5 text-xs font-semibold"
+                        style={{ backgroundColor: 'var(--theme-accent-danger, #c4915c)', borderColor: 'var(--theme-border-accent, #c4915c)' }}
+                      >
+                        Pause
+                      </button>
+                    )}
+
+                    {/* Solution Display */}
+                    {validationResult?.solutionFound && (
+                      <div className="p-2 bg-stone-900/50 rounded border border-moss-700/50">
+                        <div className="text-xs text-moss-400 font-semibold mb-1">
+                          Solution ({validationResult.solutionFound.turnsToWin} turns):
+                        </div>
+                        <div className="text-xs text-stone-300 space-y-0.5">
+                          {validationResult.solutionFound.placements.map((p, i) => {
+                            const charData = getCharacter(p.characterId);
+                            return (
+                              <div key={i}>
+                                {charData?.name || p.characterId} @ ({p.x}, {p.y}) facing {p.facing}
                               </div>
-                            </React.Fragment>
-                          );
-                        })}
-                        <div ref={combatLogEndRef} />
-                      </>
+                            );
+                          })}
+                        </div>
+                        {gameState.gameStatus === 'setup' && (
+                          <button
+                            onClick={handleShowSolution}
+                            className="mt-2 w-full dungeon-btn px-2 py-1 text-xs"
+                            style={{ backgroundColor: '#166534', borderColor: '#22c55e' }}
+                          >
+                            Auto-place
+                          </button>
+                        )}
+                      </div>
                     )}
+
+                    {/* Combat Log */}
+                    <div>
+                      <div className="flex items-center justify-between mb-1">
+                        <button
+                          onClick={() => setShowCombatLog(!showCombatLog)}
+                          className="text-xs font-bold text-copper-400 flex items-center gap-1 hover:text-copper-300"
+                        >
+                          <span className={`transition-transform ${showCombatLog ? 'rotate-90' : ''}`}>&#9656;</span>
+                          Combat Log
+                          {combatLog.length > 0 && (
+                            <span className="text-xs text-stone-400 font-normal ml-1">({combatLog.length})</span>
+                          )}
+                        </button>
+                        {combatLog.length > 0 && (
+                          <button
+                            onClick={() => setCombatLog([])}
+                            className="text-xs text-stone-500 hover:text-stone-300"
+                            title="Clear log"
+                          >
+                            Clear
+                          </button>
+                        )}
+                      </div>
+                      {showCombatLog && (
+                        <div className="max-h-60 overflow-y-auto dungeon-scrollbar text-xs space-y-0.5 pr-1">
+                          {combatLog.length === 0 ? (
+                            <p className="text-stone-500 italic">No events yet. Step or run the simulation to see turn-by-turn events.</p>
+                          ) : (
+                            <>
+                              {combatLog.map((entry, i) => {
+                                const prevEntry = i > 0 ? combatLog[i - 1] : null;
+                                const showTurnHeader = !prevEntry || prevEntry.turn !== entry.turn;
+                                return (
+                                  <React.Fragment key={i}>
+                                    {showTurnHeader && (
+                                      <div className="text-stone-500 font-semibold mt-1.5 mb-0.5 border-t border-stone-700/50 pt-1">
+                                        Turn {entry.turn}
+                                      </div>
+                                    )}
+                                    <div className={`flex items-start gap-1.5 ${logTypeStyles[entry.type]}`}>
+                                      <span className="flex-shrink-0 w-4 text-center">{entry.icon}</span>
+                                      <span>{entry.text}</span>
+                                    </div>
+                                  </React.Fragment>
+                                );
+                              })}
+                              <div ref={combatLogEndRef} />
+                            </>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
               </div>
-
-              {/* Enemies Display */}
-              <EnemyDisplay
-                enemies={gameState.puzzle.enemies}
-                onTest={handleTestEnemies}
-                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-                themeAssets={themeAssets}
-              />
-
-              {/* Items Display */}
-              <ItemsDisplay puzzle={gameState.puzzle} />
-
-              {/* Status Effects Display */}
-              <StatusEffectsDisplay puzzle={gameState.puzzle} />
-
-              {/* Special Tiles Display */}
-              <SpecialTilesDisplay puzzle={gameState.puzzle} />
             </div>
+
           </div>
         </div>
       </div>
