@@ -2915,7 +2915,7 @@ export const MapEditor: React.FC = () => {
                 className="px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors bg-stone-700 hover:bg-stone-600 text-stone-400 hover:text-parchment-100 ml-1"
                 title="Keyboard Shortcuts (?)"
               >
-                ?
+                {'\u2328'} ?
               </button>
             </div>
           </div>
@@ -3026,7 +3026,7 @@ export const MapEditor: React.FC = () => {
                         ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    Tile
+                    <span className="text-[10px] opacity-50 mr-0.5">1</span> Tile
                   </button>
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'enemy' }))}
@@ -3034,7 +3034,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'enemy' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    Enemy
+                    <span className="text-[10px] opacity-50 mr-0.5">2</span> Enemy
                   </button>
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'object' }))}
@@ -3042,7 +3042,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'object' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    Object
+                    <span className="text-[10px] opacity-50 mr-0.5">3</span> Object
                   </button>
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'collectible' }))}
@@ -3050,7 +3050,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'collectible' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    Item
+                    <span className="text-[10px] opacity-50 mr-0.5">4</span> Item
                   </button>
                   <button
                     onClick={() => setState(prev => ({ ...prev, selectedTool: 'characters' }))}
@@ -3058,7 +3058,7 @@ export const MapEditor: React.FC = () => {
                       state.selectedTool === 'characters' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    Heroes
+                    <span className="text-[10px] opacity-50 mr-0.5">5</span> Heroes
                   </button>
                 </div>
               </div>
