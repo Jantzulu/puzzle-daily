@@ -1089,7 +1089,7 @@ export const Game: React.FC = () => {
                 >
                   <h3
                     className={`text-xl font-bold font-medieval ${
-                      themeAssets.concedeModalTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
+                      themeAssets.concedeModalTitleText ? '' : 'text-blood-200'
                     }`}
                     style={{
                       ...(themeAssets.concedeModalTitleText && { color: themeAssets.concedeModalTitleText }),
