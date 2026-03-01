@@ -483,11 +483,19 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                 </div>
               </div>
             ) : (
-              <div className="flex items-center justify-center h-64 text-stone-400">
-                <div className="text-center">
-                  <p className="text-xl mb-2">🏆</p>
-                  <p>Select a collectible to edit or create a new one.</p>
-                </div>
+              <div className="dungeon-panel p-8 rounded text-center">
+                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Item Editor</h2>
+                <p className="text-stone-400 mb-6">
+                  Create collectible items with custom sprites and effects.
+                  <br />
+                  Select an item from the list or create a new one.
+                </p>
+                <button
+                  onClick={handleNew}
+                  className="dungeon-btn-success text-lg"
+                >
+                  + Create New Item
+                </button>
               </div>
             )}
           </div>

@@ -238,9 +238,9 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   return (
     <div className="p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
           {/* Left Panel - Sound Library */}
-      <div className="lg:col-span-1 dungeon-panel rounded-lg p-4">
+      <div className="w-full md:w-72 space-y-4">
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
           <button
@@ -407,11 +407,22 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       </div>
 
       {/* Right Panel - Sound Editor */}
-      <div className="lg:col-span-2 dungeon-panel rounded-lg p-4">
+      <div className="flex-1">
         {!editing ? (
-          <div className="flex items-center justify-center h-64 text-stone-400">
-            Select a sound or create a new one
-          </div>
+              <div className="dungeon-panel p-8 rounded text-center">
+                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Sound Editor</h2>
+                <p className="text-stone-400 mb-6">
+                  Create and manage sound effects and music for your puzzles.
+                  <br />
+                  Select a sound from the list or create a new one.
+                </p>
+                <button
+                  onClick={handleNew}
+                  className="dungeon-btn-success text-lg"
+                >
+                  + Create New Sound
+                </button>
+              </div>
         ) : (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
