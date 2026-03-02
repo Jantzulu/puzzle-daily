@@ -1575,6 +1575,14 @@ function executeSpellInDirection(
       character.facing = originalFacing;
       break;
 
+    case SpellTemplate.MELEE_CONE:
+      attackData.pattern = AttackPattern.MELEE;
+      const origFacingCone = character.facing;
+      character.facing = direction;
+      executeConeAttack(character, attackData, gameState, spell.meleeRange || 1, spell.coneAngle || 90, spell);
+      character.facing = origFacingCone;
+      break;
+
     case SpellTemplate.RANGE_LINEAR:
     case SpellTemplate.MAGIC_LINEAR:
       attackData.pattern = AttackPattern.PROJECTILE;
@@ -1846,6 +1854,120 @@ function executeMeleeAttack(
 
         if (attackData.hitEffectSprite) {
           spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        }
+      }
+    }
+  }
+}
+
+/**
+ * Execute cone/arc melee attack
+ * Hits tiles in a cone shape emanating from the caster's facing direction.
+ * Uses angle-based targeting: each candidate tile's angle from the caster is checked
+ * against the facing direction ± half the cone angle.
+ */
+function executeConeAttack(
+  character: PlacedCharacter,
+  attackData: CustomAttack,
+  gameState: GameState,
+  meleeRange: number = 1,
+  coneAngle: number = 90,
+  spell?: SpellAsset
+): void {
+  const damage = attackData.damage ?? 1;
+  const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
+  const isEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+
+  // Get attack sprite (same logic as executeMeleeAttack)
+  let attackSprite = spell?.sprites.meleeAttack;
+  const hasValidSprite = (sprite: any) => {
+    if (!sprite?.spriteData) return false;
+    const data = sprite.spriteData;
+    return data.shape || data.idleImageData || data.spriteSheet;
+  };
+  if (!hasValidSprite(attackSprite)) {
+    attackSprite = {
+      type: 'inline',
+      spriteData: {
+        shape: 'star',
+        primaryColor: '#ffcc00',
+        type: 'simple'
+      }
+    };
+  }
+
+  // Calculate facing angle in degrees (atan2 convention: 0=east, positive=clockwise on screen)
+  const { dx: faceDx, dy: faceDy } = getDirectionOffset(character.facing);
+  const facingAngle = Math.atan2(faceDy, faceDx) * (180 / Math.PI);
+  const halfCone = coneAngle / 2;
+
+  // Collect all tiles in the cone
+  const coneTiles: { x: number; y: number }[] = [];
+
+  for (let dy = -meleeRange; dy <= meleeRange; dy++) {
+    for (let dx = -meleeRange; dx <= meleeRange; dx++) {
+      if (dx === 0 && dy === 0) continue; // Skip caster tile
+
+      const tileX = character.x + dx;
+      const tileY = character.y + dy;
+
+      // Bounds check
+      if (!isInBounds(tileX, tileY, gameState.puzzle.width, gameState.puzzle.height)) continue;
+
+      // Wall check
+      const tile = gameState.puzzle.tiles[tileY]?.[tileX];
+      if (!tile || tile.type === 'wall') continue;
+
+      // Distance check (Chebyshev distance for grid — max of |dx|, |dy|)
+      const dist = Math.max(Math.abs(dx), Math.abs(dy));
+      if (dist > meleeRange) continue;
+
+      // Angle check
+      const tileAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+      let angleDiff = tileAngle - facingAngle;
+      // Normalize to [-180, 180]
+      while (angleDiff > 180) angleDiff -= 360;
+      while (angleDiff < -180) angleDiff += 360;
+
+      if (Math.abs(angleDiff) <= halfCone) {
+        coneTiles.push({ x: tileX, y: tileY });
+      }
+    }
+  }
+
+  // Apply attack to all tiles in cone
+  for (const target of coneTiles) {
+    // Show attack sprite
+    if (attackSprite) {
+      spawnParticle(target.x, target.y, attackSprite, attackData.effectDuration || 300, gameState, character.facing);
+    }
+
+    if (isEnemyCaster) {
+      // Enemy attacking characters
+      const targetChar = gameState.placedCharacters.find(
+        c => c.x === target.x && c.y === target.y && !c.dead
+      );
+      if (targetChar) {
+        applyDamageToEntity(targetChar, damage, gameState, character);
+        if (spell && !targetChar.dead) {
+          applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
+        }
+        if (attackData.hitEffectSprite) {
+          spawnParticle(target.x, target.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        }
+      }
+    } else {
+      // Character attacking enemies
+      const enemy = gameState.puzzle.enemies.find(
+        e => e.x === target.x && e.y === target.y && !e.dead
+      );
+      if (enemy) {
+        applyDamageToEntity(enemy, damage, gameState, character);
+        if (spell && !enemy.dead) {
+          applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
+        }
+        if (attackData.hitEffectSprite) {
+          spawnParticle(target.x, target.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     }

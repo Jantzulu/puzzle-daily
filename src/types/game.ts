@@ -821,6 +821,7 @@ export interface GameStateExtended extends GameState {
  */
 export enum SpellTemplate {
   MELEE = 'melee',              // Adjacent tile attack
+  MELEE_CONE = 'melee_cone',    // Cone/arc attack in facing direction
   RANGE_LINEAR = 'range_linear', // Projectile in straight line
   MAGIC_LINEAR = 'magic_linear', // Magic projectile (different visuals)
   AOE = 'aoe',                   // Area of effect
@@ -894,6 +895,9 @@ export interface SpellAsset {
 
   // Melee-specific settings
   skipSpriteOnCasterTile?: boolean; // For melee spells - don't show attack sprite on caster's tile
+
+  // Cone/Arc settings (for MELEE_CONE template)
+  coneAngle?: 90 | 180 | 270;     // Cone spread angle in degrees (default: 90)
 
   // Visual configuration
   sprites: {

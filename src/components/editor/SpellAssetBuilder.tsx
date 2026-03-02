@@ -624,6 +624,60 @@ const SpriteSheetPreview: React.FC<SpriteSheetPreviewProps> = ({
   );
 };
 
+/**
+ * Visual preview of cone attack shape on a mini grid
+ */
+const ConePreview: React.FC<{ range: number; coneAngle: number }> = ({ range, coneAngle }) => {
+  const gridSize = range * 2 + 1;
+  const center = range;
+  const halfCone = coneAngle / 2;
+  // Facing north: angle = -90° in atan2 convention
+  const facingAngle = -90;
+
+  const cells: { x: number; y: number; hit: boolean; isCaster: boolean }[] = [];
+  for (let gy = 0; gy < gridSize; gy++) {
+    for (let gx = 0; gx < gridSize; gx++) {
+      const dx = gx - center;
+      const dy = gy - center;
+      const isCaster = dx === 0 && dy === 0;
+      let hit = false;
+      if (!isCaster) {
+        const dist = Math.max(Math.abs(dx), Math.abs(dy));
+        if (dist <= range) {
+          const tileAngle = Math.atan2(dy, dx) * (180 / Math.PI);
+          let angleDiff = tileAngle - facingAngle;
+          while (angleDiff > 180) angleDiff -= 360;
+          while (angleDiff < -180) angleDiff += 360;
+          hit = Math.abs(angleDiff) <= halfCone;
+        }
+      }
+      cells.push({ x: gx, y: gy, hit, isCaster });
+    }
+  }
+
+  const cellSize = Math.max(16, Math.min(24, 120 / gridSize));
+  return (
+    <div
+      className="inline-grid gap-px"
+      style={{ gridTemplateColumns: `repeat(${gridSize}, ${cellSize}px)` }}
+    >
+      {cells.map((cell, i) => (
+        <div
+          key={i}
+          className={`rounded-sm flex items-center justify-center text-[8px] ${
+            cell.isCaster ? 'bg-blue-600 text-white' :
+            cell.hit ? 'bg-red-500/70 text-white' :
+            'bg-stone-700'
+          }`}
+          style={{ width: cellSize, height: cellSize }}
+        >
+          {cell.isCaster ? '▲' : cell.hit ? '×' : ''}
+        </div>
+      ))}
+    </div>
+  );
+};
+
 export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onSave, onCancel }) => {
   const [editedSpell, setEditedSpell] = useState<SpellAsset>(spell || {
     id: 'spell_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
@@ -738,6 +792,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateNeedsRadius = editedSpell.templateType === 'aoe';
   const templateNeedsProjectileSettings = templateNeedsRange;
   const templateIsMelee = editedSpell.templateType === 'melee';
+  const templateIsCone = editedSpell.templateType === 'melee_cone';
+  const templateIsMeleeOrCone = templateIsMelee || templateIsCone;
   const templateIsResurrect = editedSpell.templateType === 'resurrect';
   const templateIsPush = editedSpell.templateType === 'push';
 
@@ -906,6 +962,18 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 >
                   <div className="font-semibold">Melee</div>
                   <div className="text-xs text-stone-400">Adjacent tile attack</div>
+                </button>
+
+                <button
+                  onClick={() => setEditedSpell({ ...editedSpell, templateType: 'melee_cone' as SpellTemplate })}
+                  className={`p-3 rounded border-2 transition-colors ${
+                    editedSpell.templateType === 'melee_cone'
+                      ? 'border-blue-500 bg-blue-900'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
+                  }`}
+                >
+                  <div className="font-semibold">Melee Cone</div>
+                  <div className="text-xs text-stone-400">Arc/cone melee sweep</div>
                 </button>
 
                 <button
@@ -1337,14 +1405,14 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </div>
             )}
 
-            {/* Melee Range (for melee spells) */}
-            {templateIsMelee && (
+            {/* Melee Range (for melee and cone spells) */}
+            {templateIsMeleeOrCone && (
               <>
                 <div>
-                  <label className="block text-sm font-medium mb-1">Melee Range (tiles)</label>
+                  <label className="block text-sm font-medium mb-1">{templateIsCone ? 'Cone Range (tiles)' : 'Melee Range (tiles)'}</label>
                   <input
                     type="number"
-                    min="0"
+                    min={templateIsCone ? 1 : 0}
                     max="5"
                     value={editedSpell.meleeRange ?? 1}
                     onChange={(e) => {
@@ -1354,9 +1422,47 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                   />
                   <p className="text-xs text-stone-400 mt-1">
-                    How many tiles in attack direction get hit. 0 = self-target only, 1 = adjacent tile (default), 2+ = extended reach
+                    {templateIsCone
+                      ? 'How far the cone extends from the caster. 1 = adjacent tiles, 2+ = wider reach'
+                      : 'How many tiles in attack direction get hit. 0 = self-target only, 1 = adjacent tile (default), 2+ = extended reach'}
                   </p>
                 </div>
+
+                {/* Cone Angle selector (cone spells only) */}
+                {templateIsCone && (
+                  <div>
+                    <label className="block text-sm font-medium mb-2">Cone Angle</label>
+                    <div className="flex gap-2">
+                      {([90, 180, 270] as const).map(angle => (
+                        <button
+                          key={angle}
+                          type="button"
+                          onClick={() => setEditedSpell({ ...editedSpell, coneAngle: angle })}
+                          className={`flex-1 p-2 rounded border-2 transition-colors text-center ${
+                            (editedSpell.coneAngle ?? 90) === angle
+                              ? 'border-blue-500 bg-blue-900'
+                              : 'border-stone-600 bg-stone-700 hover:border-stone-500'
+                          }`}
+                        >
+                          <div className="font-semibold text-sm">{angle}°</div>
+                          <div className="text-xs text-stone-400">
+                            {angle === 90 ? 'Narrow' : angle === 180 ? 'Wide' : 'Very Wide'}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-xs text-stone-400 mt-1">
+                      How wide the cone spreads from the facing direction. 90° = narrow forward arc, 180° = half-circle, 270° = nearly all around
+                    </p>
+                    {/* Visual preview of cone shape */}
+                    <div className="mt-3 bg-stone-900 rounded p-3">
+                      <p className="text-xs text-stone-500 mb-2 text-center">Preview (facing North, range {editedSpell.meleeRange ?? 1})</p>
+                      <div className="flex justify-center">
+                        <ConePreview range={editedSpell.meleeRange ?? 1} coneAngle={editedSpell.coneAngle ?? 90} />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <div>
                   <label className="flex items-center gap-2">
@@ -1630,8 +1736,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               />
             )}
 
-            {/* Attack Appearance (for melee spells) - uses meleeAttack sprite field */}
-            {templateIsMelee && (
+            {/* Attack Appearance (for melee/cone spells) - uses meleeAttack sprite field */}
+            {templateIsMeleeOrCone && (
               <SpellSpriteEditor
                 label="Attack Appearance"
                 spriteRef={editedSpell.sprites?.meleeAttack}

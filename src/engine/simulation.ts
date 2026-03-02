@@ -457,8 +457,8 @@ export function canEntityCastSpell(
   for (const effect of entity.statusEffects) {
     const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
 
-    // Check melee prevention (Disarmed)
-    if (spellTemplate === 'melee' && (effectAsset?.preventsMelee || effect.type === StatusEffectType.DISARMED)) {
+    // Check melee prevention (Disarmed) - applies to both melee and melee_cone
+    if ((spellTemplate === 'melee' || spellTemplate === 'melee_cone') && (effectAsset?.preventsMelee || effect.type === StatusEffectType.DISARMED)) {
       return { allowed: false, reason: 'Disarmed' };
     }
 
