@@ -298,14 +298,9 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             {editing ? (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <SpriteThumbnail sprite={editing.customSprite} size={48} previewType="entity" />
-                    </div>
-                    <h2 className="text-2xl font-bold font-medieval text-copper-400">
-                      {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
-                    </h2>
-                  </div>
+                  <h2 className="text-2xl font-bold font-medieval text-copper-400">
+                    {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
+                  </h2>
                   <button onClick={handleSave} className="dungeon-btn-success">
                     Save Enemy
                   </button>
@@ -316,7 +311,15 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                   <div className="space-y-6">
                     {/* Basic Info */}
                     <div className="dungeon-panel p-4 rounded space-y-3">
-                      <h3 className="text-lg font-bold">Basic Info</h3>
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Enemy'}</h3>
+                          <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior?.type || 'static'}</p>
+                        </div>
+                      </div>
                       <div>
                         <label className="block text-sm mb-1">Name</label>
                         <input

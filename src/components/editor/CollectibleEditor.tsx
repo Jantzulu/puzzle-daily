@@ -307,14 +307,9 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
               <div className="space-y-6">
                 {/* Header */}
                 <div className="flex justify-between items-center">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                      <SpriteThumbnail sprite={editing.customSprite} size={48} />
-                    </div>
-                    <h2 className="text-2xl font-bold">
-                      {isCreating ? 'Create Item' : 'Edit Item'}
-                    </h2>
-                  </div>
+                  <h2 className="text-2xl font-bold">
+                    {isCreating ? 'Create Item' : 'Edit Item'}
+                  </h2>
                   <button
                     onClick={handleSave}
                     className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
@@ -328,7 +323,15 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                   <div className="space-y-6">
                     {/* Basic Info */}
                     <div className="dungeon-panel p-4 rounded space-y-3">
-                      <h3 className="text-lg font-bold">Basic Info</h3>
+                      <div className="flex items-center gap-4">
+                        <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                          <SpriteThumbnail sprite={editing.customSprite} size={64} />
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Item'}</h3>
+                          <p className="text-xs text-stone-400">{editing.effects.length > 0 ? `${editing.effects.length} effect${editing.effects.length !== 1 ? 's' : ''}` : 'No effects'}</p>
+                        </div>
+                      </div>
                       <div>
                         <label className="block text-sm mb-1">Name</label>
                         <input

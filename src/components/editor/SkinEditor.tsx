@@ -522,7 +522,29 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
 
                 {/* Basic Info */}
                 <div className="dungeon-panel p-4 rounded space-y-3">
-                  <h3 className="text-lg font-bold">Basic Info</h3>
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 bg-stone-700 rounded overflow-hidden flex-shrink-0 grid grid-cols-2 grid-rows-2">
+                      {(() => {
+                        const sprites = [
+                          editingSkin.borderSprites?.wallFront,
+                          editingSkin.borderSprites?.wallBottomOuter,
+                          editingSkin.tileSprites?.wall,
+                          editingSkin.tileSprites?.empty,
+                        ];
+                        if (!sprites.some(Boolean)) {
+                          return <div className="col-span-2 row-span-2 flex items-center justify-center text-2xl">🎨</div>;
+                        }
+                        return sprites.map((src, i) =>
+                          src ? <img key={i} src={src} alt="" className="w-8 h-8 object-cover" style={{ imageRendering: 'pixelated' as const }} />
+                               : <div key={i} className="w-8 h-8 bg-stone-600" />
+                        );
+                      })()}
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold text-parchment-200">{editingSkin.name || 'Unnamed Skin'}</h3>
+                      <p className="text-xs text-stone-400">{editingSkin.isBuiltIn ? 'Built-in' : 'Custom'}</p>
+                    </div>
+                  </div>
                   <div>
                     <label className="block text-sm mb-1">Name</label>
                     <input
