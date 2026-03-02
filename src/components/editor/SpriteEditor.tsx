@@ -1819,7 +1819,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value))}
                   className="flex-1 h-3"
                 />
-                <span className="text-[10px] text-stone-300 w-6 text-right">{offsetX}</span>
+                <input
+                  type="number"
+                  min="-50"
+                  max="50"
+                  value={offsetX}
+                  onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value) || 0)}
+                  className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+                />
               </div>
               <div className="flex items-center gap-2">
                 <label className="text-[10px] text-stone-400 w-10">Off Y</label>
@@ -1831,7 +1838,14 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value))}
                   className="flex-1 h-3"
                 />
-                <span className="text-[10px] text-stone-300 w-6 text-right">{offsetY}</span>
+                <input
+                  type="number"
+                  min="-50"
+                  max="50"
+                  value={offsetY}
+                  onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value) || 0)}
+                  className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+                />
               </div>
               {onScaleChange && (
                 <div className="flex items-center gap-2">
@@ -1845,7 +1859,15 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     onChange={(e) => onScaleChange(parseFloat(e.target.value))}
                     className="flex-1 h-3"
                   />
-                  <span className="text-[10px] text-stone-300 w-6 text-right">{scaleValue.toFixed(2)}</span>
+                  <input
+                    type="number"
+                    min="0.25"
+                    max="2"
+                    step="0.05"
+                    value={scaleValue.toFixed(2)}
+                    onChange={(e) => onScaleChange(Math.max(0.25, Math.min(2, parseFloat(e.target.value) || 1)))}
+                    className="w-12 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+                  />
                 </div>
               )}
             </div>
@@ -2347,6 +2369,45 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             >
               📥 Copy From Another Direction
             </button>
+          </div>
+
+          {/* UNIVERSAL SCALE — applies to all directions equally */}
+          <div className="bg-stone-800 p-3 rounded border border-stone-600">
+            <h3 className="text-sm font-bold text-copper-400 mb-2">Universal Scale (All Directions)</h3>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              {([
+                ['Idle', 'idleScale'],
+                ['Moving', 'movingScale'],
+                ['Death', 'deathScale'],
+                ['Casting', 'castingScale'],
+              ] as const).map(([label, key]) => (
+                <div key={key} className="flex items-center gap-2">
+                  <label className="text-[10px] text-stone-400 w-12">{label}</label>
+                  <input
+                    type="range"
+                    min="0.25"
+                    max="2"
+                    step="0.05"
+                    value={sprite[key] ?? 1}
+                    onChange={(e) => onChange({ ...sprite, [key]: parseFloat(e.target.value) === 1 ? undefined : parseFloat(e.target.value) })}
+                    className="flex-1 h-3"
+                  />
+                  <input
+                    type="number"
+                    min="0.25"
+                    max="2"
+                    step="0.05"
+                    value={(sprite[key] ?? 1).toFixed(2)}
+                    onChange={(e) => {
+                      const val = Math.max(0.25, Math.min(2, parseFloat(e.target.value) || 1));
+                      onChange({ ...sprite, [key]: val === 1 ? undefined : val });
+                    }}
+                    className="w-12 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+                  />
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-stone-500 mt-1">Per-direction scale in each state section below will override these values.</p>
           </div>
 
           {/* IDLE & MOVING STATES */}

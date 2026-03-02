@@ -2304,7 +2304,8 @@ function drawEnemy(
     // Draw health bar above the enemy
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
-    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss);
+    const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
+    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop);
 
     // Draw direction indicator next to health bar if enemy has movement actions
     if (enemyData && enemyHasMovementActions(enemyData.behavior)) {
@@ -2423,6 +2424,18 @@ function loadBossIcon(): HTMLImageElement | null {
   return null;
 }
 
+// Helper to calculate the top Y of a rendered sprite (for healthbar positioning)
+function getSpriteTopY(sprite: import('../../utils/assetStorage').CustomSprite | undefined, py: number): number {
+  if (!sprite) return py;
+  const spriteSize = (sprite.size || 0.6) * TILE_SIZE;
+  // Use idle scale as default (most common state)
+  const scale = sprite.idleScale ?? 1;
+  const maxSize = spriteSize * scale;
+  // Assume center anchor (0.5) which is the default
+  const centerY = py + TILE_SIZE / 2;
+  return centerY - maxSize / 2;
+}
+
 // Helper to draw health bar above entity
 function drawHealthBar(
   ctx: CanvasRenderingContext2D,
@@ -2436,7 +2449,8 @@ function drawHealthBar(
   logicalY: number,
   statusEffects?: StatusEffectInstance[],
   now: number = Date.now(),
-  isBoss: boolean = false
+  isBoss: boolean = false,
+  spriteTopY?: number
 ) {
   const barWidth = 30; // Fixed total width of the health bar (including border)
   const barHeight = 5; // Total height including 1px border on each side (3px inner + 2px border)
@@ -2446,11 +2460,13 @@ function drawHealthBar(
   const bossIconSize = 7; // Small icon size
   const bossIconGap = 2; // Gap between icon and health bar
 
-  // Position: centered above the sprite, near the top of the tile
+  // Position: centered above the sprite
   // If boss, shift the bar right to make room for the icon
   const totalWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
   const startX = px + (TILE_SIZE - totalWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
-  const startY = py + 2; // 2px from top of tile
+  // Place healthbar above the sprite's top edge, or near tile top if sprite fits in tile
+  const defaultY = py + 2;
+  const startY = spriteTopY !== undefined ? Math.min(defaultY, spriteTopY - barHeight - 1) : defaultY;
 
   // Draw boss icon if this is a boss
   if (isBoss) {
@@ -2906,7 +2922,8 @@ function drawCharacter(
   if (!character.dead) {
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
-    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now);
+    const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
+    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop);
 
     // Draw direction indicator next to health bar if character has movement actions
     if (charData && hasMovementActions(charData.behavior || [])) {

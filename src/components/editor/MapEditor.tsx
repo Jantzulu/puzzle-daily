@@ -1258,10 +1258,9 @@ export const MapEditor: React.FC = () => {
             teleportGroupId = teleportBehavior.teleportGroupId || 'A';
           }
 
-          // For tiles with on/off states, assign trigger group if selected
+          // Assign trigger group if selected (available for all custom tiles)
           let triggerGroupId: string | undefined;
-          const hasOnOffStates = tileType.cadence?.enabled || tileType.canBeTriggered || tileType.offStateSprite;
-          if (hasOnOffStates && selectedTriggerGroupId) {
+          if (selectedTriggerGroupId) {
             triggerGroupId = selectedTriggerGroupId;
           }
 
@@ -3361,24 +3360,28 @@ export const MapEditor: React.FC = () => {
                       <p className="text-xs text-stone-400 mt-2">No tiles in this folder.</p>
                     )}
 
-                    {/* Trigger Group Selector - Shows when a tile with on/off states is selected */}
+                    {/* Trigger Group Selector - Shows for any selected custom tile */}
                     {selectedCustomTileTypeId && (() => {
                       const tileType = loadTileType(selectedCustomTileTypeId);
-                      // Show trigger group selector if tile has on/off states (cadence, canBeTriggered, or offStateSprite)
-                      const hasOnOffStates = tileType?.cadence?.enabled || tileType?.canBeTriggered || tileType?.offStateSprite;
-                      if (!hasOnOffStates) return null;
+                      if (!tileType) return null;
+                      const hasOnOffStates = tileType.cadence?.enabled || tileType.canBeTriggered || tileType.offStateSprite;
+                      const hasPressurePlate = tileType.behaviors?.some(b => b.type === 'pressure_plate');
                       return (
                         <div className="mt-3 p-2 bg-stone-700 rounded">
-                          <label className="text-sm text-stone-300 block mb-1">Trigger Group (optional)</label>
+                          <label className="text-sm text-stone-300 block mb-1">Trigger Group</label>
                           <p className="text-xs text-stone-400 mb-2">
-                            Assign to a group to control this tile's on/off state with pressure plates
+                            {hasPressurePlate
+                              ? 'Tiles in the same group will be toggled when this pressure plate is activated'
+                              : hasOnOffStates
+                                ? 'Assign to a group to control this tile with pressure plates'
+                                : 'Assign to a group to link this tile with pressure plates'}
                           </p>
                           <select
                             value={selectedTriggerGroupId}
                             onChange={e => setSelectedTriggerGroupId(e.target.value)}
                             className="w-full bg-stone-600 rounded px-2 py-1 text-sm"
                           >
-                            <option value="">None (uses cadence)</option>
+                            <option value="">None{hasOnOffStates ? ' (uses cadence)' : ''}</option>
                             {['1', '2', '3', '4', '5', '6', '7', '8', '9'].map(group => (
                               <option key={group} value={group}>Group {group}</option>
                             ))}
@@ -4659,7 +4662,36 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
   const isWall = tile.type === TileType.WALL;
   const baseColor = isWall ? '#4a4a4a' : '#2a2a2a';
 
-  // First: Draw custom tile sprite if available
+  // Priority 1: Check for skin-specific custom tile sprite
+  const customTileSprites = skin?.customTileSprites;
+  if (tile.customTileTypeId && customTileSprites?.[tile.customTileTypeId]) {
+    const skinSpriteEntry = customTileSprites[tile.customTileTypeId];
+    let spriteData: string | undefined;
+    if (typeof skinSpriteEntry === 'string') {
+      spriteData = skinSpriteEntry;
+    } else {
+      // In editor, default to "on" state sprite
+      spriteData = skinSpriteEntry.onSprite || skinSpriteEntry.offSprite;
+    }
+
+    if (spriteData) {
+      const customImg = loadSkinImage(spriteData);
+      if (customImg?.complete) {
+        ctx.fillStyle = baseColor;
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
+        ctx.strokeStyle = '#1a1a1a';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+        if (customTileType) {
+          drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+        }
+        return;
+      }
+    }
+  }
+
+  // Priority 2: Draw tile type's default custom sprite if available
   if (customTileType?.customSprite?.idleImageData) {
     const customImg = loadSkinImage(customTileType.customSprite.idleImageData);
     if (customImg?.complete) {

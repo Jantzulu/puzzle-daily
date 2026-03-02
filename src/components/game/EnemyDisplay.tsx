@@ -218,7 +218,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
-                <ul className="mt-0.5 text-xs lg:text-sm !leading-[1.2] text-stone-400 text-left max-w-[100px] lg:max-w-[120px] list-disc list-inside">
+                <ul className="mt-0.5 text-xs lg:text-sm !leading-[1.2] text-stone-400 text-left max-w-[160px] lg:max-w-[200px] list-disc list-inside break-words">
                   {enemyData.tooltipSteps!.map((step, idx) => (
                     <li key={idx}><RichTextRenderer html={step} /></li>
                   ))}
