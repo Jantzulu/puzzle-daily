@@ -709,6 +709,19 @@ export const MapEditor: React.FC = () => {
   const filteredTileTypes = useFilteredAssets(customTileTypes, tileFolderId);
   const filteredCollectibles = useFilteredAssets(allCollectibles, collectibleFolderId);
 
+  // Search filtering for tool panels
+  const [toolSearchTerm, setToolSearchTerm] = useState('');
+  const searchFilteredEnemies = toolSearchTerm ? filteredEnemies.filter(e => e.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredEnemies;
+  const searchFilteredObjects = toolSearchTerm ? filteredObjects.filter(o => o.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredObjects;
+  const searchFilteredCharacters = toolSearchTerm ? filteredCharacters.filter(c => c.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredCharacters;
+  const searchFilteredTileTypes = toolSearchTerm ? filteredTileTypes.filter(t => t.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredTileTypes;
+  const searchFilteredCollectibles = toolSearchTerm ? filteredCollectibles.filter(c => c.name.toLowerCase().includes(toolSearchTerm.toLowerCase())) : filteredCollectibles;
+
+  // Clear search when switching tools
+  useEffect(() => {
+    setToolSearchTerm('');
+  }, [state.selectedTool]);
+
   // Cache editor state when it changes (for persistence across tab switches)
   useEffect(() => {
     // Only cache when in edit mode (not during playtest)
@@ -3299,11 +3312,18 @@ export const MapEditor: React.FC = () => {
                           selectedFolderId={tileFolderId}
                           onFolderSelect={setTileFolderId}
                         />
+                        <input
+                          type="text"
+                          placeholder="Search custom tiles..."
+                          value={toolSearchTerm}
+                          onChange={e => setToolSearchTerm(e.target.value)}
+                          className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
+                        />
                       </div>
                     )}
 
                     {/* Custom tiles */}
-                    {filteredTileTypes.map(tileType => {
+                    {searchFilteredTileTypes.map(tileType => {
                       const isSelected = selectedCustomTileTypeId === tileType.id && state.selectedTool === 'custom';
                       const behaviorIcons = tileType.behaviors.map(b => {
                         switch (b.type) {
@@ -3356,8 +3376,8 @@ export const MapEditor: React.FC = () => {
                           Asset Manager → Tiles
                         </a>
                       </p>
-                    ) : filteredTileTypes.length === 0 && (
-                      <p className="text-xs text-stone-400 mt-2">No tiles in this folder.</p>
+                    ) : searchFilteredTileTypes.length === 0 && (
+                      <p className="text-xs text-stone-400 mt-2">{toolSearchTerm ? 'No tiles match your search.' : 'No tiles in this folder.'}</p>
                     )}
 
                     {/* Trigger Group Selector - Shows for any selected custom tile */}
@@ -3402,13 +3422,20 @@ export const MapEditor: React.FC = () => {
                     selectedFolderId={enemyFolderId}
                     onFolderSelect={setEnemyFolderId}
                   />
-                  {filteredEnemies.length === 0 ? (
+                  <input
+                    type="text"
+                    placeholder="Search enemies..."
+                    value={toolSearchTerm}
+                    onChange={e => setToolSearchTerm(e.target.value)}
+                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
+                  />
+                  {searchFilteredEnemies.length === 0 ? (
                     <p className="text-sm text-stone-400 mt-2">
-                      {allEnemies.length === 0 ? 'No enemies available. Create enemies in Asset Manager!' : 'No enemies in this folder.'}
+                      {allEnemies.length === 0 ? 'No enemies available. Create enemies in Asset Manager!' : toolSearchTerm ? 'No enemies match your search.' : 'No enemies in this folder.'}
                     </p>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                      {filteredEnemies.map(enemy => {
+                      {searchFilteredEnemies.map(enemy => {
                         const spells = getAllSpells(enemy.behavior?.pattern);
                         return (
                           <ActionTooltip key={enemy.id} actions={enemy.behavior?.pattern}>
@@ -3456,10 +3483,17 @@ export const MapEditor: React.FC = () => {
                     selectedFolderId={objectFolderId}
                     onFolderSelect={setObjectFolderId}
                   />
-                  {filteredObjects.length === 0 ? (
+                  <input
+                    type="text"
+                    placeholder="Search objects..."
+                    value={toolSearchTerm}
+                    onChange={e => setToolSearchTerm(e.target.value)}
+                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
+                  />
+                  {searchFilteredObjects.length === 0 ? (
                     <div className="text-center py-4">
                       <p className="text-sm text-stone-400 mb-2">
-                        {allObjects.length === 0 ? 'No objects available.' : 'No objects in this folder.'}
+                        {allObjects.length === 0 ? 'No objects available.' : toolSearchTerm ? 'No objects match your search.' : 'No objects in this folder.'}
                       </p>
                       {allObjects.length === 0 && (
                         <a href="/assets" className="text-blue-400 hover:underline text-sm">
@@ -3469,7 +3503,7 @@ export const MapEditor: React.FC = () => {
                     </div>
                   ) : (
                     <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                      {filteredObjects.map(obj => (
+                      {searchFilteredObjects.map(obj => (
                         <ObjectTooltip key={obj.id} object={obj}>
                           <button
                             onClick={() => setSelectedObjectId(obj.id)}
@@ -3518,23 +3552,32 @@ export const MapEditor: React.FC = () => {
                     selectedFolderId={collectibleFolderId}
                     onFolderSelect={setCollectibleFolderId}
                   />
+                  <input
+                    type="text"
+                    placeholder="Search collectibles..."
+                    value={toolSearchTerm}
+                    onChange={e => setToolSearchTerm(e.target.value)}
+                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
+                  />
                   {/* Legacy coin option */}
                   <div className="space-y-2 max-h-64 overflow-y-auto mt-2">
-                    <button
-                      onClick={() => setSelectedCollectibleId(null)}
-                      className={`w-full p-2 rounded text-left flex items-center gap-2 ${
-                        selectedCollectibleId === null ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
-                      }`}
-                    >
-                      <div className="w-8 h-8 rounded flex items-center justify-center bg-stone-600">
-                        <span className="text-yellow-400">⭐</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium truncate">Default Coin</div>
-                        <div className="text-xs text-stone-400">Legacy collectible (10 points)</div>
-                      </div>
-                    </button>
-                    {filteredCollectibles.length === 0 && allCollectibles.length > 0 ? (
+                    {!toolSearchTerm && (
+                      <button
+                        onClick={() => setSelectedCollectibleId(null)}
+                        className={`w-full p-2 rounded text-left flex items-center gap-2 ${
+                          selectedCollectibleId === null ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
+                        }`}
+                      >
+                        <div className="w-8 h-8 rounded flex items-center justify-center bg-stone-600">
+                          <span className="text-yellow-400">⭐</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium truncate">Default Coin</div>
+                          <div className="text-xs text-stone-400">Legacy collectible (10 points)</div>
+                        </div>
+                      </button>
+                    )}
+                    {searchFilteredCollectibles.length === 0 && allCollectibles.length > 0 ? (
                       <div className="text-center py-2">
                         <p className="text-sm text-stone-400">No collectibles in this folder.</p>
                       </div>
@@ -3546,7 +3589,7 @@ export const MapEditor: React.FC = () => {
                         </a>
                       </div>
                     ) : (
-                      filteredCollectibles.map(coll => (
+                      searchFilteredCollectibles.map(coll => (
                         <button
                           key={coll.id}
                           onClick={() => setSelectedCollectibleId(coll.id)}
@@ -3598,13 +3641,20 @@ export const MapEditor: React.FC = () => {
                     selectedFolderId={characterFolderId}
                     onFolderSelect={setCharacterFolderId}
                   />
-                  {filteredCharacters.length === 0 ? (
+                  <input
+                    type="text"
+                    placeholder="Search heroes..."
+                    value={toolSearchTerm}
+                    onChange={e => setToolSearchTerm(e.target.value)}
+                    className="w-full bg-stone-700 rounded px-2 py-1 text-sm placeholder-stone-500 mt-2"
+                  />
+                  {searchFilteredCharacters.length === 0 ? (
                     <p className="text-sm text-stone-400 mt-2">
-                      {allCharacters.length === 0 ? 'No characters available' : 'No characters in this folder.'}
+                      {allCharacters.length === 0 ? 'No characters available' : toolSearchTerm ? 'No heroes match your search.' : 'No characters in this folder.'}
                     </p>
                   ) : (
                     <div className="space-y-2 max-h-80 overflow-y-auto mt-2">
-                      {filteredCharacters.map(char => {
+                      {searchFilteredCharacters.map(char => {
                         const spells = getAllSpells(char.behavior);
                         const isSelected = state.availableCharacters.includes(char.id);
                         const isAtCap = state.availableCharacters.length >= 5 && !isSelected;
