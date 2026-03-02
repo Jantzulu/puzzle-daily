@@ -27,6 +27,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const [editing, setEditing] = useState<CustomEnemy | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const bulk = useBulkSelect();
@@ -74,6 +75,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     setEditing(newEnemy);
     setSelectedId(null);
     setIsCreating(true);
+    setActiveTab('details');
   };
 
   const handleSave = () => {
@@ -267,48 +269,62 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
           {/* Enemy Editor - Right Panel */}
           <div className="flex-1">
             {editing ? (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold font-medieval text-copper-400">
-                    {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
-                  </h2>
-                  <button onClick={handleSave} className="dungeon-btn-success">
-                    Save Enemy
-                  </button>
+              <div className="space-y-4">
+                {/* Persistent Header */}
+                <div className="dungeon-panel p-4 rounded">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h2 className="text-2xl font-bold font-medieval text-copper-400">
+                            {editing.name || 'Unnamed Enemy'}
+                          </h2>
+                          {editing.isBoss && (
+                            <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium">BOSS</span>
+                          )}
+                        </div>
+                        <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior?.type || 'static'}</p>
+                      </div>
+                    </div>
+                    <button onClick={handleSave} className="dungeon-btn-success">
+                      Save Enemy
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column */}
+                {/* Tab Bar */}
+                <div className="flex gap-1">
+                  {(['details', 'behavior', 'sprite'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`dungeon-tab ${activeTab === tab ? 'dungeon-tab-active' : ''}`}
+                    >
+                      {tab === 'details' ? '📋 Details' : tab === 'behavior' ? '⚔️ Behavior' : '🎨 Sprite'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Details Tab */}
+                {activeTab === 'details' && (
                   <div className="space-y-6">
                     {/* Basic Info */}
                     <div className="dungeon-panel p-4 rounded space-y-3">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Enemy'}</h3>
-                          <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior?.type || 'static'}</p>
-                        </div>
-                      </div>
                       <div>
                         <label className="block text-sm mb-1">Name</label>
-                        <input
-                          type="text"
-                          value={editing.name}
+                        <input type="text" value={editing.name}
                           onChange={(e) => updateEnemy({ name: e.target.value })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        />
+                          className="w-full px-3 py-2 bg-stone-700 rounded" />
                       </div>
                       <div>
                         <label className="block text-sm mb-1">Title <span className="text-stone-400 font-normal">(optional)</span></label>
-                        <input
-                          type="text"
-                          value={editing.title || ''}
+                        <input type="text" value={editing.title || ''}
                           onChange={(e) => updateEnemy({ title: e.target.value || undefined })}
                           placeholder="e.g., the Terrible"
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        />
+                          className="w-full px-3 py-2 bg-stone-700 rounded" />
                         <p className="text-xs text-stone-400 mt-1">Displayed after name in italics</p>
                       </div>
                       <div>
@@ -320,40 +336,109 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           multiline
                         />
                       </div>
+
+                      {/* Tooltip Steps (moved here, under description) */}
+                      <div className="border-t border-stone-600 pt-3 mt-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm font-semibold">Tooltip Steps</label>
+                          <button
+                            onClick={() => {
+                              const steps = editing.tooltipSteps || [];
+                              updateEnemy({ tooltipSteps: [...steps, ''] });
+                            }}
+                            className="px-2 py-0.5 text-xs bg-arcane-700 rounded hover:bg-arcane-600"
+                          >
+                            + Add Step
+                          </button>
+                        </div>
+                        <p className="text-xs text-stone-400 mb-2">
+                          Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
+                        </p>
+                        <div className="space-y-2">
+                          {(editing.tooltipSteps || []).map((step, index) => (
+                            <div key={index} className="flex gap-2 items-center">
+                              <div className="flex flex-col gap-0.5">
+                                <button
+                                  onClick={() => {
+                                    if (index === 0) return;
+                                    const newSteps = [...(editing.tooltipSteps || [])];
+                                    [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
+                                    updateEnemy({ tooltipSteps: newSteps });
+                                  }}
+                                  disabled={index === 0}
+                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const steps = editing.tooltipSteps || [];
+                                    if (index === steps.length - 1) return;
+                                    const newSteps = [...steps];
+                                    [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
+                                    updateEnemy({ tooltipSteps: newSteps });
+                                  }}
+                                  disabled={index === (editing.tooltipSteps?.length || 0) - 1}
+                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                >
+                                  ↓
+                                </button>
+                              </div>
+                              <span className="text-stone-400 text-sm">•</span>
+                              <div className="flex-1">
+                                <RichTextEditor
+                                  value={step}
+                                  onChange={(value) => {
+                                    const newSteps = [...(editing.tooltipSteps || [])];
+                                    newSteps[index] = value;
+                                    updateEnemy({ tooltipSteps: newSteps });
+                                  }}
+                                  placeholder="Enter tooltip step..."
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
+                                  updateEnemy({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
+                                }}
+                                className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
+                            <div className="text-stone-500 text-sm italic">
+                              No tooltip steps. Click "+ Add Step" to create one.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-sm mb-1">Folder</label>
-                        <select
-                          value={editing.folderId || ''}
+                        <select value={editing.folderId || ''}
                           onChange={(e) => updateEnemy({ folderId: e.target.value || undefined })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        >
+                          className="w-full px-3 py-2 bg-stone-700 rounded">
                           <option value="">Uncategorized</option>
                           {getFolders('enemies').map(folder => (
                             <option key={folder.id} value={folder.id}>{folder.name}</option>
                           ))}
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-sm mb-1">Health</label>
-                        <input
-                          type="number"
-                          min="1"
-                          max="99"
-                          value={editing.health}
-                          onChange={(e) => updateEnemy({ health: parseInt(e.target.value) })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Contact Damage</label>
-                        <input
-                          type="number"
-                          min="0"
-                          max="99"
-                          value={editing.contactDamage ?? 0}
-                          onChange={(e) => updateEnemy({ contactDamage: parseInt(e.target.value) || 0 })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        />
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-sm mb-1">Health</label>
+                          <input type="number" min="1" max="99" value={editing.health}
+                            onChange={(e) => updateEnemy({ health: parseInt(e.target.value) })}
+                            className="w-full px-3 py-2 bg-stone-700 rounded" />
+                        </div>
+                        <div>
+                          <label className="block text-sm mb-1">Contact Damage</label>
+                          <input type="number" min="0" max="99" value={editing.contactDamage ?? 0}
+                            onChange={(e) => updateEnemy({ contactDamage: parseInt(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 bg-stone-700 rounded" />
+                        </div>
                       </div>
                     </div>
 
@@ -365,9 +450,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           onChange={(e) => updateEnemy({ isBoss: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm font-medium text-blood-300">Boss Enemy</span>
                       </label>
-                      <p className="text-xs text-stone-400 mb-2 ml-1">
-                        Boss enemies enable the "Defeat the Boss" win condition.
-                      </p>
+                      <p className="text-xs text-stone-400 mb-2 ml-1">Boss enemies enable the "Defeat the Boss" win condition.</p>
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={editing.canOverlapEntities || false}
                           onChange={(e) => updateEnemy({ canOverlapEntities: e.target.checked })} className="w-4 h-4" />
@@ -411,41 +494,23 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm mb-1">Death Sound</label>
-                          <select
-                            value={editing.sounds?.death || ''}
-                            onChange={(e) => updateEnemy({
-                              sounds: {
-                                ...editing.sounds,
-                                death: e.target.value || undefined,
-                              }
-                            })}
-                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
-                          >
+                          <select value={editing.sounds?.death || ''}
+                            onChange={(e) => updateEnemy({ sounds: { ...editing.sounds, death: e.target.value || undefined } })}
+                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm">
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
-                              <option key={sound.id} value={sound.id}>
-                                {sound.name}
-                              </option>
+                              <option key={sound.id} value={sound.id}>{sound.name}</option>
                             ))}
                           </select>
                         </div>
                         <div>
                           <label className="block text-sm mb-1">Damage Taken Sound</label>
-                          <select
-                            value={editing.sounds?.damageTaken || ''}
-                            onChange={(e) => updateEnemy({
-                              sounds: {
-                                ...editing.sounds,
-                                damageTaken: e.target.value || undefined,
-                              }
-                            })}
-                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
-                          >
+                          <select value={editing.sounds?.damageTaken || ''}
+                            onChange={(e) => updateEnemy({ sounds: { ...editing.sounds, damageTaken: e.target.value || undefined } })}
+                            className="w-full px-3 py-2 bg-stone-700 rounded text-sm">
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
-                              <option key={sound.id} value={sound.id}>
-                                {sound.name}
-                              </option>
+                              <option key={sound.id} value={sound.id}>{sound.name}</option>
                             ))}
                           </select>
                         </div>
@@ -455,169 +520,81 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     {/* Death Drop */}
                     <div className="dungeon-panel p-4 rounded">
                       <h3 className="text-lg font-bold mb-3">Death Drop</h3>
-                      <p className="text-xs text-stone-400 mb-3">
-                        Select a collectible to drop when this enemy dies.
-                      </p>
-                      <select
-                        value={editing.droppedCollectibleId || ''}
+                      <p className="text-xs text-stone-400 mb-3">Select a collectible to drop when this enemy dies.</p>
+                      <select value={editing.droppedCollectibleId || ''}
                         onChange={(e) => updateEnemy({ droppedCollectibleId: e.target.value || undefined })}
-                        className="w-full px-3 py-2 bg-stone-700 rounded"
-                      >
+                        className="w-full px-3 py-2 bg-stone-700 rounded">
                         <option value="">None</option>
                         {getAllCollectibles().map((coll) => (
-                          <option key={coll.id} value={coll.id}>
-                            {coll.name}
-                          </option>
+                          <option key={coll.id} value={coll.id}>{coll.name}</option>
                         ))}
                       </select>
                     </div>
-
-                    {/* Tooltip Steps */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-bold">Tooltip Steps</h3>
-                        <button
-                          onClick={() => {
-                            const steps = editing.tooltipSteps || [];
-                            updateEnemy({ tooltipSteps: [...steps, ''] });
-                          }}
-                          className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
-                        >
-                          + Add Step
-                        </button>
-                      </div>
-                      <p className="text-xs text-stone-400 mb-3">
-                        Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
-                      </p>
-                      <div className="space-y-2">
-                        {(editing.tooltipSteps || []).map((step, index) => (
-                          <div key={index} className="flex gap-2 items-center">
-                            <div className="flex flex-col gap-0.5">
-                              <button
-                                onClick={() => {
-                                  if (index === 0) return;
-                                  const newSteps = [...(editing.tooltipSteps || [])];
-                                  [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
-                                  updateEnemy({ tooltipSteps: newSteps });
-                                }}
-                                disabled={index === 0}
-                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const steps = editing.tooltipSteps || [];
-                                  if (index === steps.length - 1) return;
-                                  const newSteps = [...steps];
-                                  [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
-                                  updateEnemy({ tooltipSteps: newSteps });
-                                }}
-                                disabled={index === (editing.tooltipSteps?.length || 0) - 1}
-                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
-                              >
-                                ↓
-                              </button>
-                            </div>
-                            <span className="text-stone-400 text-sm">•</span>
-                            <div className="flex-1">
-                              <RichTextEditor
-                                value={step}
-                                onChange={(value) => {
-                                  const newSteps = [...(editing.tooltipSteps || [])];
-                                  newSteps[index] = value;
-                                  updateEnemy({ tooltipSteps: newSteps });
-                                }}
-                                placeholder="Enter tooltip step..."
-                              />
-                            </div>
-                            <button
-                              onClick={() => {
-                                const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
-                                updateEnemy({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
-                              }}
-                              className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                        {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
-                          <div className="text-stone-500 text-sm italic">
-                            No tooltip steps. Click "+ Add Step" to create one.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Behavior */}
-                    <div className="dungeon-panel p-4 rounded space-y-3">
-                      <h3 className="text-lg font-bold">Behavior</h3>
-                      <div>
-                        <label className="block text-sm mb-1">Type</label>
-                        <select
-                          value={editing.behavior?.type || 'static'}
-                          onChange={(e) => updateBehavior({
-                            ...editing.behavior!,
-                            type: e.target.value as 'static' | 'active',
-                            defaultFacing: editing.behavior?.defaultFacing || Direction.SOUTH,
-                            pattern: editing.behavior?.pattern || []
-                          })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        >
-                          <option value="static">Static</option>
-                          <option value="active">Active</option>
-                        </select>
-                      </div>
-
-                      {editing.behavior?.type === 'active' && (
-                        <>
-                          <div>
-                            <label className="block text-sm mb-1">Default Facing</label>
-                            <select
-                              value={editing.behavior?.defaultFacing || Direction.SOUTH}
-                              onChange={(e) => updateBehavior({ ...editing.behavior!, defaultFacing: e.target.value as Direction })}
-                              className="w-full px-3 py-2 bg-stone-700 rounded"
-                            >
-                              <option value={Direction.NORTH}>North ↑</option>
-                              <option value={Direction.NORTHEAST}>Northeast ↗</option>
-                              <option value={Direction.EAST}>East →</option>
-                              <option value={Direction.SOUTHEAST}>Southeast ↘</option>
-                              <option value={Direction.SOUTH}>South ↓</option>
-                              <option value={Direction.SOUTHWEST}>Southwest ↙</option>
-                              <option value={Direction.WEST}>West ←</option>
-                              <option value={Direction.NORTHWEST}>Northwest ↖</option>
-                            </select>
-                          </div>
-
-                          <BehaviorSequenceBuilder
-                            actions={editing.behavior?.pattern || []}
-                            onChange={updatePattern}
-                            onSelectSpell={(index) => setShowSpellPicker(index)}
-                            context="enemy"
-                          />
-                        </>
-                      )}
-                    </div>
                   </div>
+                )}
 
-                  {/* Right Column - Sprite */}
+                {/* Behavior Tab */}
+                {activeTab === 'behavior' && (
+                  <div className="dungeon-panel p-4 rounded space-y-3">
+                    <h3 className="text-lg font-bold">Behavior</h3>
+                    <div>
+                      <label className="block text-sm mb-1">Type</label>
+                      <select
+                        value={editing.behavior?.type || 'static'}
+                        onChange={(e) => updateBehavior({
+                          ...editing.behavior!,
+                          type: e.target.value as 'static' | 'active',
+                          defaultFacing: editing.behavior?.defaultFacing || Direction.SOUTH,
+                          pattern: editing.behavior?.pattern || []
+                        })}
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
+                      >
+                        <option value="static">Static</option>
+                        <option value="active">Active</option>
+                      </select>
+                    </div>
+                    {editing.behavior?.type === 'active' && (
+                      <>
+                        <div>
+                          <label className="block text-sm mb-1">Default Facing</label>
+                          <select
+                            value={editing.behavior?.defaultFacing || Direction.SOUTH}
+                            onChange={(e) => updateBehavior({ ...editing.behavior!, defaultFacing: e.target.value as Direction })}
+                            className="w-full px-3 py-2 bg-stone-700 rounded"
+                          >
+                            <option value={Direction.NORTH}>North ↑</option>
+                            <option value={Direction.NORTHEAST}>Northeast ↗</option>
+                            <option value={Direction.EAST}>East →</option>
+                            <option value={Direction.SOUTHEAST}>Southeast ↘</option>
+                            <option value={Direction.SOUTH}>South ↓</option>
+                            <option value={Direction.SOUTHWEST}>Southwest ↙</option>
+                            <option value={Direction.WEST}>West ←</option>
+                            <option value={Direction.NORTHWEST}>Northwest ↖</option>
+                          </select>
+                        </div>
+                        <BehaviorSequenceBuilder
+                          actions={editing.behavior?.pattern || []}
+                          onChange={updatePattern}
+                          onSelectSpell={(index) => setShowSpellPicker(index)}
+                          context="enemy"
+                        />
+                      </>
+                    )}
+                  </div>
+                )}
+
+                {/* Sprite Tab */}
+                {activeTab === 'sprite' && (
                   <div className="dungeon-panel p-4 rounded">
                     <h3 className="text-lg font-bold mb-4">Sprite</h3>
-                    {/* Allow oversized sprites checkbox */}
                     <div className="mb-4">
                       <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={editing.allowOversizedSprite || false}
+                        <input type="checkbox" checked={editing.allowOversizedSprite || false}
                           onChange={(e) => updateEnemy({ allowOversizedSprite: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                          className="w-4 h-4" />
                         <span className="text-sm">Allow sprite to exceed tile size</span>
                       </label>
-                      <p className="text-xs text-stone-400 mt-1 ml-6">
-                        Enable to allow sprites larger than 100% (for bosses, large creatures, etc.)
-                      </p>
+                      <p className="text-xs text-stone-400 mt-1 ml-6">Enable to allow sprites larger than 100% (for bosses, large creatures, etc.)</p>
                     </div>
                     {editing.customSprite && (
                       <SpriteEditor
@@ -627,7 +604,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       />
                     )}
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="dungeon-panel p-8 rounded text-center">

@@ -43,6 +43,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
   const [isCreating, setIsCreating] = useState(false);
   const [editingAttack, setEditingAttack] = useState<{ attack: CustomAttack; actionIndex: number } | null>(null);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const bulk = useBulkSelect();
@@ -100,6 +101,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
     setEditing(newChar);
     setSelectedId(null);
     setIsCreating(true);
+    setActiveTab('details');
   };
 
   const handleSave = () => {
@@ -291,34 +293,45 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
           {/* Character Editor - Right Panel */}
           <div className="flex-1">
             {editing ? (
-              <div className="space-y-6">
-                {/* Header */}
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold font-medieval text-copper-400">
-                    {isCreating ? 'Create New Hero' : `Edit: ${editing.name}`}
-                  </h2>
-                  <button
-                    onClick={handleSave}
-                    className="dungeon-btn-success"
-                  >
-                    Save Hero
-                  </button>
+              <div className="space-y-4">
+                {/* Persistent Header */}
+                <div className="dungeon-panel p-4 rounded">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0">
+                        <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
+                      </div>
+                      <div>
+                        <h2 className="text-2xl font-bold font-medieval text-copper-400">
+                          {editing.name || 'Unnamed Hero'}
+                        </h2>
+                        <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior.length} actions</p>
+                      </div>
+                    </div>
+                    <button onClick={handleSave} className="dungeon-btn-success">
+                      Save Hero
+                    </button>
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column - Stats */}
+                {/* Tab Bar */}
+                <div className="flex gap-1">
+                  {(['details', 'behavior', 'sprite'] as const).map((tab) => (
+                    <button
+                      key={tab}
+                      onClick={() => setActiveTab(tab)}
+                      className={`dungeon-tab ${activeTab === tab ? 'dungeon-tab-active' : ''}`}
+                    >
+                      {tab === 'details' ? '📋 Details' : tab === 'behavior' ? '⚔️ Behavior' : '🎨 Sprite'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Details Tab */}
+                {activeTab === 'details' && (
                   <div className="space-y-6">
                     {/* Basic Info */}
                     <div className="dungeon-panel p-4 rounded space-y-3">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Hero'}</h3>
-                          <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior.length} actions</p>
-                        </div>
-                      </div>
                       <div>
                         <label className="block text-sm mb-1">Name</label>
                         <input
@@ -348,6 +361,85 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           multiline
                         />
                       </div>
+
+                      {/* Tooltip Steps (moved here, under description) */}
+                      <div className="border-t border-stone-600 pt-3 mt-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm font-semibold">Tooltip Steps</label>
+                          <button
+                            onClick={() => {
+                              const steps = editing.tooltipSteps || [];
+                              updateCharacter({ tooltipSteps: [...steps, ''] });
+                            }}
+                            className="px-2 py-0.5 text-xs bg-arcane-700 rounded hover:bg-arcane-600"
+                          >
+                            + Add Step
+                          </button>
+                        </div>
+                        <p className="text-xs text-stone-400 mb-2">
+                          Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
+                        </p>
+                        <div className="space-y-2">
+                          {(editing.tooltipSteps || []).map((step, index) => (
+                            <div key={index} className="flex gap-2 items-center">
+                              <div className="flex flex-col gap-0.5">
+                                <button
+                                  onClick={() => {
+                                    if (index === 0) return;
+                                    const newSteps = [...(editing.tooltipSteps || [])];
+                                    [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
+                                    updateCharacter({ tooltipSteps: newSteps });
+                                  }}
+                                  disabled={index === 0}
+                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const steps = editing.tooltipSteps || [];
+                                    if (index === steps.length - 1) return;
+                                    const newSteps = [...steps];
+                                    [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
+                                    updateCharacter({ tooltipSteps: newSteps });
+                                  }}
+                                  disabled={index === (editing.tooltipSteps?.length || 0) - 1}
+                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                >
+                                  ↓
+                                </button>
+                              </div>
+                              <span className="text-stone-400 text-sm">•</span>
+                              <div className="flex-1">
+                                <RichTextEditor
+                                  value={step}
+                                  onChange={(value) => {
+                                    const newSteps = [...(editing.tooltipSteps || [])];
+                                    newSteps[index] = value;
+                                    updateCharacter({ tooltipSteps: newSteps });
+                                  }}
+                                  placeholder="Enter tooltip step..."
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
+                                  updateCharacter({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
+                                }}
+                                className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
+                            <div className="text-stone-500 text-sm italic">
+                              No tooltip steps. Click "+ Add Step" to create one.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
                       <div>
                         <label className="block text-sm mb-1">Folder</label>
                         <select
@@ -410,57 +502,33 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                     <div className="dungeon-panel p-4 rounded space-y-2">
                       <h3 className="text-lg font-bold mb-3">Properties</h3>
                       <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editing.canOverlapEntities || false}
-                          onChange={(e) => updateCharacter({ canOverlapEntities: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                        <input type="checkbox" checked={editing.canOverlapEntities || false}
+                          onChange={(e) => updateCharacter({ canOverlapEntities: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Can Overlap Entities (Ghost)</span>
                       </label>
                       <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editing.behavesLikeWall || false}
-                          onChange={(e) => updateCharacter({ behavesLikeWall: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                        <input type="checkbox" checked={editing.behavesLikeWall || false}
+                          onChange={(e) => updateCharacter({ behavesLikeWall: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Behaves Like Wall (Alive)</span>
                       </label>
                       <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editing.behavesLikeWallDead || false}
-                          onChange={(e) => updateCharacter({ behavesLikeWallDead: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                        <input type="checkbox" checked={editing.behavesLikeWallDead || false}
+                          onChange={(e) => updateCharacter({ behavesLikeWallDead: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Behaves Like Wall (Dead)</span>
                       </label>
                       <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editing.blocksMovement || false}
-                          onChange={(e) => updateCharacter({ blocksMovement: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                        <input type="checkbox" checked={editing.blocksMovement || false}
+                          onChange={(e) => updateCharacter({ blocksMovement: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Blocks Movement (Alive)</span>
                       </label>
                       <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editing.blocksMovementDead || false}
-                          onChange={(e) => updateCharacter({ blocksMovementDead: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                        <input type="checkbox" checked={editing.blocksMovementDead || false}
+                          onChange={(e) => updateCharacter({ blocksMovementDead: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Blocks Movement (Dead)</span>
                       </label>
                       <label className="flex items-center gap-2">
-                        <input
-                          type="checkbox"
-                          checked={editing.immuneToPush || false}
-                          onChange={(e) => updateCharacter({ immuneToPush: e.target.checked })}
-                          className="w-4 h-4"
-                        />
+                        <input type="checkbox" checked={editing.immuneToPush || false}
+                          onChange={(e) => updateCharacter({ immuneToPush: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Immune to Push</span>
                       </label>
                     </div>
@@ -473,19 +541,12 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           <label className="block text-sm mb-1">Death Sound</label>
                           <select
                             value={editing.sounds?.death || ''}
-                            onChange={(e) => updateCharacter({
-                              sounds: {
-                                ...editing.sounds,
-                                death: e.target.value || undefined,
-                              }
-                            })}
+                            onChange={(e) => updateCharacter({ sounds: { ...editing.sounds, death: e.target.value || undefined } })}
                             className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                           >
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
-                              <option key={sound.id} value={sound.id}>
-                                {sound.name}
-                              </option>
+                              <option key={sound.id} value={sound.id}>{sound.name}</option>
                             ))}
                           </select>
                         </div>
@@ -493,19 +554,12 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           <label className="block text-sm mb-1">Damage Taken Sound</label>
                           <select
                             value={editing.sounds?.damageTaken || ''}
-                            onChange={(e) => updateCharacter({
-                              sounds: {
-                                ...editing.sounds,
-                                damageTaken: e.target.value || undefined,
-                              }
-                            })}
+                            onChange={(e) => updateCharacter({ sounds: { ...editing.sounds, damageTaken: e.target.value || undefined } })}
                             className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
                           >
                             <option value="">None</option>
                             {getSoundAssets().map((sound) => (
-                              <option key={sound.id} value={sound.id}>
-                                {sound.name}
-                              </option>
+                              <option key={sound.id} value={sound.id}>{sound.name}</option>
                             ))}
                           </select>
                         </div>
@@ -515,9 +569,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                     {/* Death Drop */}
                     <div className="dungeon-panel p-4 rounded">
                       <h3 className="text-lg font-bold mb-3">Death Drop</h3>
-                      <p className="text-xs text-stone-400 mb-3">
-                        Select a collectible to drop when this character dies.
-                      </p>
+                      <p className="text-xs text-stone-400 mb-3">Select a collectible to drop when this character dies.</p>
                       <select
                         value={editing.droppedCollectibleId || ''}
                         onChange={(e) => updateCharacter({ droppedCollectibleId: e.target.value || undefined })}
@@ -525,106 +577,29 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                       >
                         <option value="">None</option>
                         {getAllCollectibles().map((coll) => (
-                          <option key={coll.id} value={coll.id}>
-                            {coll.name}
-                          </option>
+                          <option key={coll.id} value={coll.id}>{coll.name}</option>
                         ))}
                       </select>
                     </div>
-
-                    {/* Tooltip Steps */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <div className="flex justify-between items-center mb-3">
-                        <h3 className="text-lg font-bold">Tooltip Steps</h3>
-                        <button
-                          onClick={() => {
-                            const steps = editing.tooltipSteps || [];
-                            updateCharacter({ tooltipSteps: [...steps, ''] });
-                          }}
-                          className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
-                        >
-                          + Add Step
-                        </button>
-                      </div>
-                      <p className="text-xs text-stone-400 mb-3">
-                        Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
-                      </p>
-                      <div className="space-y-2">
-                        {(editing.tooltipSteps || []).map((step, index) => (
-                          <div key={index} className="flex gap-2 items-center">
-                            <div className="flex flex-col gap-0.5">
-                              <button
-                                onClick={() => {
-                                  if (index === 0) return;
-                                  const newSteps = [...(editing.tooltipSteps || [])];
-                                  [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
-                                  updateCharacter({ tooltipSteps: newSteps });
-                                }}
-                                disabled={index === 0}
-                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
-                              >
-                                ↑
-                              </button>
-                              <button
-                                onClick={() => {
-                                  const steps = editing.tooltipSteps || [];
-                                  if (index === steps.length - 1) return;
-                                  const newSteps = [...steps];
-                                  [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
-                                  updateCharacter({ tooltipSteps: newSteps });
-                                }}
-                                disabled={index === (editing.tooltipSteps?.length || 0) - 1}
-                                className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
-                              >
-                                ↓
-                              </button>
-                            </div>
-                            <span className="text-stone-400 text-sm">•</span>
-                            <div className="flex-1">
-                              <RichTextEditor
-                                value={step}
-                                onChange={(value) => {
-                                  const newSteps = [...(editing.tooltipSteps || [])];
-                                  newSteps[index] = value;
-                                  updateCharacter({ tooltipSteps: newSteps });
-                                }}
-                                placeholder="Enter tooltip step..."
-                              />
-                            </div>
-                            <button
-                              onClick={() => {
-                                const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
-                                updateCharacter({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
-                              }}
-                              className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ))}
-                        {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
-                          <div className="text-stone-500 text-sm italic">
-                            No tooltip steps. Click "+ Add Step" to create one.
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Behavior */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <BehaviorSequenceBuilder
-                        actions={editing.behavior}
-                        onChange={updateBehaviorActions}
-                        onSelectSpell={(index) => setShowSpellPicker(index)}
-                        context="character"
-                      />
-                    </div>
                   </div>
+                )}
 
-                  {/* Right Column - Sprite */}
+                {/* Behavior Tab */}
+                {activeTab === 'behavior' && (
+                  <div className="dungeon-panel p-4 rounded">
+                    <BehaviorSequenceBuilder
+                      actions={editing.behavior}
+                      onChange={updateBehaviorActions}
+                      onSelectSpell={(index) => setShowSpellPicker(index)}
+                      context="character"
+                    />
+                  </div>
+                )}
+
+                {/* Sprite Tab */}
+                {activeTab === 'sprite' && (
                   <div className="dungeon-panel p-4 rounded">
                     <h3 className="text-lg font-bold mb-4">Sprite</h3>
-                    {/* Allow oversized sprites checkbox */}
                     <div className="mb-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -635,9 +610,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         />
                         <span className="text-sm">Allow sprite to exceed tile size</span>
                       </label>
-                      <p className="text-xs text-stone-400 mt-1 ml-6">
-                        Enable to allow sprites larger than 100%
-                      </p>
+                      <p className="text-xs text-stone-400 mt-1 ml-6">Enable to allow sprites larger than 100%</p>
                     </div>
                     {editing.customSprite && (
                       <SpriteEditor
@@ -647,7 +620,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                       />
                     )}
                   </div>
-                </div>
+                )}
               </div>
             ) : (
               <div className="dungeon-panel p-8 rounded text-center">
