@@ -1,5 +1,6 @@
 import type { Enemy } from '../../types/game';
 import { getCustomEnemies, isAssetHidden, type CustomEnemy } from '../../utils/assetStorage';
+import { migrateActions } from '../../utils/actionMigration';
 import goblinData from './goblin.json';
 
 // Type that includes both base Enemy and optional customSprite
@@ -19,6 +20,7 @@ export const getEnemy = (id: string): EnemyWithSprite | undefined => {
   const customEnemies = getCustomEnemies();
   const customEnemy = customEnemies.find(e => e.id === id);
   if (customEnemy) {
+    if (customEnemy.behavior?.pattern) customEnemy.behavior.pattern = migrateActions(customEnemy.behavior.pattern);
     return customEnemy;
   }
 

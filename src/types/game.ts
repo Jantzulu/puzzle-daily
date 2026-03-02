@@ -160,7 +160,9 @@ export type WallCollisionBehavior = 'stop' | 'turn_left' | 'turn_right' | 'turn_
 // EXECUTION SYSTEM (New)
 // ==========================================
 
-export type ExecutionMode = 'sequential' | 'parallel' | 'parallel_with_previous';
+export type ExecutionMode = 'sequential' | 'parallel' | 'parallel_with_previous'; // parallel_with_previous is DEPRECATED — use linkedToNext instead
+
+export const TURN_INTERVAL_MS = 800;
 
 export type TriggerMode = 'interval' | 'on_event';
 
@@ -183,6 +185,7 @@ export interface CharacterAction {
   // Execution configuration (new system)
   executionMode?: ExecutionMode;  // Default: 'sequential'
   trigger?: TriggerConfig;        // For parallel actions
+  linkedToNext?: boolean;         // If true, the next sequential action executes on the same turn
 
   // For CUSTOM_ATTACK action type (deprecated)
   customAttackId?: string;      // Reference to saved CustomAttack

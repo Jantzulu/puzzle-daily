@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore } from '../../types/game';
-import { Direction } from '../../types/game';
+import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -341,7 +341,7 @@ export const Game: React.FC = () => {
 
         return newState;
       });
-    }, 800); // 800ms per turn (slower for better visibility)
+    }, TURN_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining, livesRemaining, currentPuzzle.lives]);

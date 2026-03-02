@@ -1,5 +1,6 @@
 import type { Character } from '../../types/game';
 import { getCustomCharacters, isAssetHidden, type CustomCharacter } from '../../utils/assetStorage';
+import { migrateActions } from '../../utils/actionMigration';
 import knightData from './knight.json';
 import archerData from './archer.json';
 import fireballMageData from './archer-fireball.json';
@@ -30,6 +31,7 @@ export const getCharacter = (id: string): CharacterWithSprite | undefined => {
   const customCharacters = getCustomCharacters();
   const customChar = customCharacters.find(c => c.id === id);
   if (customChar) {
+    if (customChar.behavior) customChar.behavior = migrateActions(customChar.behavior);
     return customChar;
   }
 

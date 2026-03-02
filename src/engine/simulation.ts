@@ -1,4 +1,4 @@
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
@@ -983,7 +983,7 @@ export function executeTurn(gameState: GameState): GameState {
     // Find the current action (accounting for parallel actions)
     let actionIndex = character.actionIndex || 0;
     let currentAction = charData.behavior[actionIndex];
-    while (currentAction && (currentAction.executionMode === 'parallel' || currentAction.executionMode === 'parallel_with_previous')) {
+    while (currentAction && (currentAction.executionMode === 'parallel')) {
       actionIndex++;
       currentAction = charData.behavior[actionIndex];
     }
@@ -1041,13 +1041,6 @@ export function executeTurn(gameState: GameState): GameState {
       skippedAnyActions = true;
     }
 
-    // Also skip parallel_with_previous actions (they execute with the PREVIOUS action)
-    while (currentAction && currentAction.executionMode === 'parallel_with_previous') {
-      newCharacter.actionIndex++;
-      currentAction = charData.behavior[newCharacter.actionIndex];
-      skippedAnyActions = true;
-    }
-
     if (!currentAction) {
       // No more actions, deactivate
       newCharacter.active = false;
@@ -1065,19 +1058,32 @@ export function executeTurn(gameState: GameState): GameState {
       let firstSequentialIndex = 0;
       while (firstSequentialIndex < charData.behavior.length) {
         const action = charData.behavior[firstSequentialIndex];
-        if (action.executionMode !== 'parallel' && action.executionMode !== 'parallel_with_previous') {
-          break;
+        if (action.executionMode === 'parallel') {
+          firstSequentialIndex++;
+          continue;
         }
-        firstSequentialIndex++;
+        break;
       }
 
-      // Execute the first sequential action
+      // Execute the first sequential action (and any linked actions)
       if (firstSequentialIndex < charData.behavior.length) {
         const firstAction = charData.behavior[firstSequentialIndex];
         if (firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
           newCharacter.actionIndex = firstSequentialIndex;
           const updatedCharacter = executeAction(newCharacter, firstAction, gameState);
           Object.assign(newCharacter, updatedCharacter);
+
+          // Execute linkedToNext chain
+          while (charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
+            newCharacter.actionIndex++;
+            const linkedAction = charData.behavior[newCharacter.actionIndex];
+            if (linkedAction && linkedAction.executionMode !== 'parallel') {
+              const linkedResult = executeAction(newCharacter, linkedAction, gameState);
+              Object.assign(newCharacter, linkedResult);
+            } else {
+              break;
+            }
+          }
         }
       }
     } else {
@@ -1085,17 +1091,14 @@ export function executeTurn(gameState: GameState): GameState {
       const updatedCharacter = executeAction(newCharacter, currentAction, gameState);
       Object.assign(newCharacter, updatedCharacter);
 
-      // Also execute any parallel_with_previous actions that follow
-      let checkIndex = newCharacter.actionIndex + 1;
-      while (checkIndex < charData.behavior.length) {
-        const nextAction = charData.behavior[checkIndex];
-        if (nextAction.executionMode === 'parallel_with_previous') {
-          // Execute this action alongside the current one
-          const parallelResult = executeAction(newCharacter, nextAction, gameState);
-          Object.assign(newCharacter, parallelResult);
-          checkIndex++;
+      // Execute linkedToNext chain — linked actions fire on the same turn
+      while (charData.behavior[newCharacter.actionIndex]?.linkedToNext) {
+        newCharacter.actionIndex++;
+        const linkedAction = charData.behavior[newCharacter.actionIndex];
+        if (linkedAction && linkedAction.executionMode !== 'parallel') {
+          const linkedResult = executeAction(newCharacter, linkedAction, gameState);
+          Object.assign(newCharacter, linkedResult);
         } else {
-          // Stop when we hit a non-parallel_with_previous action
           break;
         }
       }
@@ -1135,7 +1138,7 @@ export function executeTurn(gameState: GameState): GameState {
     // Find the current action (accounting for parallel actions)
     let actionIndex = enemy.actionIndex || 0;
     let currentAction = pattern[actionIndex];
-    while (currentAction && (currentAction.executionMode === 'parallel' || currentAction.executionMode === 'parallel_with_previous')) {
+    while (currentAction && (currentAction.executionMode === 'parallel')) {
       actionIndex++;
       currentAction = pattern[actionIndex];
     }
@@ -1196,19 +1199,12 @@ export function executeTurn(gameState: GameState): GameState {
       continue;
     }
 
-    // Get current action (skip forward-looking parallel and backward-looking parallel_with_previous)
+    // Get current action (skip forward-looking parallel actions)
     let currentAction = pattern[newEnemy.actionIndex!];
     let skippedAnyActions = false;
 
     // Skip forward-looking parallel actions
     while (currentAction && currentAction.executionMode === 'parallel') {
-      newEnemy.actionIndex = (newEnemy.actionIndex || 0) + 1;
-      currentAction = pattern[newEnemy.actionIndex!];
-      skippedAnyActions = true;
-    }
-
-    // Skip backward-looking parallel_with_previous actions
-    while (currentAction && currentAction.executionMode === 'parallel_with_previous') {
       newEnemy.actionIndex = (newEnemy.actionIndex || 0) + 1;
       currentAction = pattern[newEnemy.actionIndex!];
       skippedAnyActions = true;
@@ -1221,6 +1217,45 @@ export function executeTurn(gameState: GameState): GameState {
       continue;
     }
 
+    // Helper: execute an action via tempChar and copy results back to enemy
+    const executeEnemyAction = (action: CharacterAction) => {
+      const tempChar: PlacedCharacter = {
+        characterId: newEnemy.enemyId,
+        x: newEnemy.x,
+        y: newEnemy.y,
+        facing: newEnemy.facing || Direction.SOUTH,
+        currentHealth: newEnemy.currentHealth,
+        actionIndex: newEnemy.actionIndex || 0,
+        active: newEnemy.active || true,
+        dead: newEnemy.dead,
+        spellCooldowns: newEnemy.spellCooldowns,
+      };
+      const result = executeAction(tempChar, action, gameState);
+      newEnemy.x = result.x;
+      newEnemy.y = result.y;
+      newEnemy.facing = result.facing;
+      newEnemy.currentHealth = result.currentHealth;
+      newEnemy.dead = result.dead;
+      newEnemy.spellCooldowns = result.spellCooldowns;
+      newEnemy.justTeleported = result.justTeleported;
+      newEnemy.teleportFromX = result.teleportFromX;
+      newEnemy.teleportFromY = result.teleportFromY;
+      newEnemy.iceSlideDistance = result.iceSlideDistance;
+    };
+
+    // Helper: execute linkedToNext chain for enemy
+    const executeEnemyLinkedChain = () => {
+      while (pattern[newEnemy.actionIndex!]?.linkedToNext) {
+        newEnemy.actionIndex = (newEnemy.actionIndex || 0) + 1;
+        const linkedAction = pattern[newEnemy.actionIndex!];
+        if (linkedAction && linkedAction.executionMode !== 'parallel') {
+          executeEnemyAction(linkedAction);
+        } else {
+          break;
+        }
+      }
+    };
+
     // Handle REPEAT action - loop back to beginning AND execute first action
     if (currentAction.type === ActionType.REPEAT || currentAction.type === 'REPEAT') {
       // Reset to beginning
@@ -1230,113 +1265,28 @@ export function executeTurn(gameState: GameState): GameState {
       let firstSequentialIndex = 0;
       while (firstSequentialIndex < pattern.length) {
         const action = pattern[firstSequentialIndex];
-        if (action.executionMode !== 'parallel' && action.executionMode !== 'parallel_with_previous') {
-          break;
+        if (action.executionMode === 'parallel') {
+          firstSequentialIndex++;
+          continue;
         }
-        firstSequentialIndex++;
+        break;
       }
 
-      // Execute the first sequential action
+      // Execute the first sequential action (and any linked actions)
       if (firstSequentialIndex < pattern.length) {
         const firstAction = pattern[firstSequentialIndex];
         if (firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
           newEnemy.actionIndex = firstSequentialIndex;
-
-          const tempChar: PlacedCharacter = {
-            characterId: newEnemy.enemyId,
-            x: newEnemy.x,
-            y: newEnemy.y,
-            facing: newEnemy.facing || Direction.SOUTH,
-            currentHealth: newEnemy.currentHealth,
-            actionIndex: firstSequentialIndex,
-            active: newEnemy.active || true,
-            dead: newEnemy.dead,
-            spellCooldowns: newEnemy.spellCooldowns,
-          };
-
-          const updatedChar = executeAction(tempChar, firstAction, gameState);
-
-          newEnemy.x = updatedChar.x;
-          newEnemy.y = updatedChar.y;
-          newEnemy.facing = updatedChar.facing;
-          newEnemy.currentHealth = updatedChar.currentHealth;
-          newEnemy.dead = updatedChar.dead;
-          newEnemy.spellCooldowns = updatedChar.spellCooldowns;
-          // Copy teleport animation state
-          newEnemy.justTeleported = updatedChar.justTeleported;
-          newEnemy.teleportFromX = updatedChar.teleportFromX;
-          newEnemy.teleportFromY = updatedChar.teleportFromY;
-          newEnemy.iceSlideDistance = updatedChar.iceSlideDistance;
+          executeEnemyAction(firstAction);
+          executeEnemyLinkedChain();
         }
       }
     } else {
-      // Create a temporary PlacedCharacter to use executeAction
-      const tempChar: PlacedCharacter = {
-        characterId: newEnemy.enemyId,
-        x: newEnemy.x,
-        y: newEnemy.y,
-        facing: newEnemy.facing || 'south',
-        currentHealth: newEnemy.currentHealth,
-        actionIndex: newEnemy.actionIndex || 0,
-        active: newEnemy.active || true,
-        dead: newEnemy.dead,
-        spellCooldowns: newEnemy.spellCooldowns,
-      };
+      // Execute the current sequential action
+      executeEnemyAction(currentAction);
 
-      // Execute the current action
-      const updatedChar = executeAction(tempChar, currentAction, gameState);
-
-      // Update enemy from temp character
-      newEnemy.x = updatedChar.x;
-      newEnemy.y = updatedChar.y;
-      newEnemy.facing = updatedChar.facing;
-      newEnemy.currentHealth = updatedChar.currentHealth;
-      newEnemy.dead = updatedChar.dead;
-      newEnemy.spellCooldowns = updatedChar.spellCooldowns;
-      // Copy teleport animation state
-      newEnemy.justTeleported = updatedChar.justTeleported;
-      newEnemy.teleportFromX = updatedChar.teleportFromX;
-      newEnemy.teleportFromY = updatedChar.teleportFromY;
-      newEnemy.iceSlideDistance = updatedChar.iceSlideDistance;
-
-      // Also execute any parallel_with_previous actions that follow
-      let checkIndex = (newEnemy.actionIndex || 0) + 1;
-      while (checkIndex < pattern.length) {
-        const nextAction = pattern[checkIndex];
-        if (nextAction.executionMode === 'parallel_with_previous') {
-          // Execute this action alongside the current one
-          const parallelTempChar: PlacedCharacter = {
-            characterId: newEnemy.enemyId,
-            x: newEnemy.x,
-            y: newEnemy.y,
-            facing: newEnemy.facing || Direction.SOUTH,
-            currentHealth: newEnemy.currentHealth,
-            actionIndex: checkIndex,
-            active: newEnemy.active || true,
-            dead: newEnemy.dead,
-            spellCooldowns: newEnemy.spellCooldowns,
-          };
-
-          const parallelResult = executeAction(parallelTempChar, nextAction, gameState);
-
-          newEnemy.x = parallelResult.x;
-          newEnemy.y = parallelResult.y;
-          newEnemy.facing = parallelResult.facing;
-          newEnemy.currentHealth = parallelResult.currentHealth;
-          newEnemy.dead = parallelResult.dead;
-          newEnemy.spellCooldowns = parallelResult.spellCooldowns;
-          // Copy teleport animation state
-          newEnemy.justTeleported = parallelResult.justTeleported;
-          newEnemy.teleportFromX = parallelResult.teleportFromX;
-          newEnemy.teleportFromY = parallelResult.teleportFromY;
-          newEnemy.iceSlideDistance = parallelResult.iceSlideDistance;
-
-          checkIndex++;
-        } else {
-          // Stop when we hit a non-parallel_with_previous action
-          break;
-        }
-      }
+      // Execute linkedToNext chain — linked actions fire on the same turn
+      executeEnemyLinkedChain();
     }
 
     // Advance to next action

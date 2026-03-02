@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
-import { Direction, ActionType } from '../../types/game';
-import type { CharacterAction, EnemyBehavior, ExecutionMode, TriggerConfig, EntitySoundSet, RelativeDirection } from '../../types/game';
+import { Direction } from '../../types/game';
+import type { CharacterAction, EnemyBehavior, EntitySoundSet } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, getCustomEnemies, deleteEnemy, loadSpellAsset, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
+import { saveEnemy, getCustomEnemies, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -12,11 +12,7 @@ import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
-import { DirectionCompass } from './DirectionCompass';
-
-const ACTION_TYPES = Object.values(ActionType).filter(
-  type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
-);
+import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 
 export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const refreshEnemies = () => getAllEnemies().map(e => ({
@@ -142,34 +138,9 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     setEditing({ ...editing, behavior });
   };
 
-  const addAction = () => {
+  const updatePattern = (pattern: CharacterAction[]) => {
     if (!editing?.behavior) return;
-    const newPattern = [...(editing.behavior.pattern || []), { type: ActionType.MOVE_FORWARD }];
-    updateBehavior({ ...editing.behavior, pattern: newPattern });
-  };
-
-  const removeAction = (index: number) => {
-    if (!editing?.behavior) return;
-    const newPattern = editing.behavior.pattern?.filter((_, i) => i !== index) || [];
-    updateBehavior({ ...editing.behavior, pattern: newPattern });
-  };
-
-  const updateAction = (index: number, action: CharacterAction) => {
-    if (!editing?.behavior) return;
-    const newPattern = [...(editing.behavior.pattern || [])];
-    newPattern[index] = action;
-    updateBehavior({ ...editing.behavior, pattern: newPattern });
-  };
-
-  const moveAction = (index: number, dir: 'up' | 'down') => {
-    if (!editing?.behavior) return;
-    const pattern = editing.behavior.pattern || [];
-    if (dir === 'up' && index === 0) return;
-    if (dir === 'down' && index === pattern.length - 1) return;
-    const newPattern = [...pattern];
-    const swapIdx = dir === 'up' ? index - 1 : index + 1;
-    [newPattern[index], newPattern[swapIdx]] = [newPattern[swapIdx], newPattern[index]];
-    updateBehavior({ ...editing.behavior, pattern: newPattern });
+    updateBehavior({ ...editing.behavior, pattern });
   };
 
   return (
@@ -619,29 +590,12 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                             </select>
                           </div>
 
-                          <div>
-                            <div className="flex justify-between items-center mb-2">
-                              <label className="text-sm font-bold">Action Pattern</label>
-                              <button onClick={addAction} className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600">
-                                + Add
-                              </button>
-                            </div>
-                            <div className="space-y-2 max-h-[32rem] overflow-y-auto">
-                              {(editing.behavior?.pattern || []).map((action, index) => (
-                                <EnemyActionRow
-                                  key={index}
-                                  action={action}
-                                  index={index}
-                                  totalActions={editing.behavior!.pattern!.length}
-                                  onUpdate={(a) => updateAction(index, a)}
-                                  onRemove={() => removeAction(index)}
-                                  onMoveUp={() => moveAction(index, 'up')}
-                                  onMoveDown={() => moveAction(index, 'down')}
-                                  onSelectSpell={() => setShowSpellPicker(index)}
-                                />
-                              ))}
-                            </div>
-                          </div>
+                          <BehaviorSequenceBuilder
+                            actions={editing.behavior?.pattern || []}
+                            onChange={updatePattern}
+                            onSelectSpell={(index) => setShowSpellPicker(index)}
+                            context="enemy"
+                          />
                         </>
                       )}
                     </div>
@@ -694,12 +648,13 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       {showSpellPicker !== null && editing?.behavior && (
         <SpellPicker
           onSelect={(spell) => {
-            const pattern = editing.behavior!.pattern || [];
-            updateAction(showSpellPicker, {
+            const pattern = [...(editing.behavior!.pattern || [])];
+            pattern[showSpellPicker] = {
               ...pattern[showSpellPicker],
               spellId: spell.id,
               executionMode: pattern[showSpellPicker].executionMode || 'sequential',
-            });
+            };
+            updatePattern(pattern);
             setShowSpellPicker(null);
           }}
           onCancel={() => setShowSpellPicker(null)}
@@ -709,340 +664,3 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   );
 };
 
-// Reusable action row component
-interface EnemyActionRowProps {
-  action: CharacterAction;
-  index: number;
-  totalActions: number;
-  onUpdate: (action: CharacterAction) => void;
-  onRemove: () => void;
-  onMoveUp: () => void;
-  onMoveDown: () => void;
-  onSelectSpell: () => void;
-}
-
-const EnemyActionRow: React.FC<EnemyActionRowProps> = ({
-  action, index, totalActions, onUpdate, onRemove, onMoveUp, onMoveDown, onSelectSpell
-}) => {
-  const spell = action.spellId ? loadSpellAsset(action.spellId) : null;
-
-  return (
-    <div className="bg-stone-700 p-3 rounded">
-      <div className="flex gap-2 items-center mb-2">
-        <div className="flex flex-col gap-1">
-          <button onClick={onMoveUp} disabled={index === 0}
-            className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30">↑</button>
-          <button onClick={onMoveDown} disabled={index === totalActions - 1}
-            className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30">↓</button>
-        </div>
-        <span className="text-sm text-stone-400 w-6">{index + 1}.</span>
-        <select
-          value={action.type}
-          onChange={(e) => onUpdate({ ...action, type: e.target.value as ActionType })}
-          className="flex-1 px-2 py-1 bg-stone-600 rounded text-sm"
-        >
-          {ACTION_TYPES.map(type => (
-            <option key={type} value={type}>{type.replace(/_/g, ' ')}</option>
-          ))}
-        </select>
-        <button onClick={onRemove} className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600">✕</button>
-      </div>
-
-      {action.type.startsWith('move_') && (
-        <div className="ml-8 space-y-2">
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-stone-400">Tiles:</label>
-            <input type="number" min="1" max="5" value={action.tilesPerMove || 1}
-              onChange={(e) => onUpdate({ ...action, tilesPerMove: parseInt(e.target.value) || 1 })}
-              className="w-16 px-2 py-1 bg-stone-600 rounded text-sm" />
-            <label className="text-xs text-stone-400">Wall:</label>
-            <select value={action.onWallCollision || 'stop'}
-              onChange={(e) => onUpdate({ ...action, onWallCollision: e.target.value as any })}
-              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
-              <option value="stop">Stop</option>
-              <option value="turn_left">Turn Left</option>
-              <option value="turn_right">Turn Right</option>
-              <option value="turn_around">Turn Around</option>
-              <option value="continue">Continue</option>
-            </select>
-          </div>
-          {(action.onWallCollision === 'turn_left' || action.onWallCollision === 'turn_right') && (
-            <div className="flex items-center gap-2">
-              <label className="text-xs text-stone-400">Turn degrees:</label>
-              <select value={action.turnDegrees || 90}
-                onChange={(e) => onUpdate({ ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-                className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
-                <option value={45}>45°</option>
-                <option value={90}>90°</option>
-                <option value={135}>135°</option>
-              </select>
-            </div>
-          )}
-        </div>
-      )}
-
-      {(action.type === ActionType.TURN_LEFT || action.type === ActionType.TURN_RIGHT) && (
-        <div className="ml-8">
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-stone-400">Degrees:</label>
-            <select value={action.turnDegrees || 90}
-              onChange={(e) => onUpdate({ ...action, turnDegrees: parseInt(e.target.value) as 45 | 90 | 135 })}
-              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
-              <option value={45}>45°</option>
-              <option value={90}>90°</option>
-              <option value={135}>135°</option>
-            </select>
-          </div>
-        </div>
-      )}
-
-      {action.type === ActionType.SPELL && (
-        <div className="ml-8 space-y-2">
-          {spell ? (
-            <div className="flex items-center gap-2 dungeon-panel p-2 rounded">
-              {spell.thumbnailIcon && <img src={spell.thumbnailIcon} alt={spell.name} className="w-8 h-8 object-contain" />}
-              <div className="flex-1">
-                <div className="text-sm font-semibold">{spell.name}</div>
-                <div className="text-xs text-stone-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
-              </div>
-              <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-arcane-700 rounded hover:bg-arcane-600">Change</button>
-            </div>
-          ) : (
-            <button onClick={onSelectSpell} className="px-3 py-1 bg-moss-700 rounded text-xs hover:bg-moss-600">Select Spell</button>
-          )}
-
-          {spell && (
-            <>
-              <div>
-                <label className="text-xs text-stone-400">Execution:</label>
-                <select value={action.executionMode || 'sequential'}
-                  onChange={(e) => onUpdate({ ...action, executionMode: e.target.value as ExecutionMode })}
-                  className="w-full px-2 py-1 bg-stone-600 rounded text-xs mt-1">
-                  <option value="sequential">Sequential</option>
-                  <option value="parallel">Parallel</option>
-                  <option value="parallel_with_previous">Parallel with Previous</option>
-                </select>
-              </div>
-
-              {action.executionMode === 'parallel' && (
-                <div className="dungeon-panel p-2 rounded space-y-2">
-                  <div className="text-xs font-semibold text-stone-300">Trigger:</div>
-                  <select value={action.trigger?.mode || 'interval'}
-                    onChange={(e) => {
-                      const newTrigger: TriggerConfig = {
-                        mode: e.target.value as any,
-                        ...(e.target.value === 'interval' ? { intervalMs: 600 } : { event: 'character_adjacent' })
-                      };
-                      onUpdate({ ...action, trigger: newTrigger });
-                    }}
-                    className="w-full px-2 py-1 bg-stone-600 rounded text-xs">
-                    <option value="interval">Interval</option>
-                    <option value="on_event">On Event</option>
-                  </select>
-                  {action.trigger?.mode === 'interval' && (
-                    <input type="number" min="100" max="5000" step="100" value={action.trigger.intervalMs || 600}
-                      onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, intervalMs: parseInt(e.target.value) || 600 } })}
-                      className="w-full px-2 py-1 bg-stone-600 rounded text-xs" placeholder="ms" />
-                  )}
-                  {action.trigger?.mode === 'on_event' && (
-                    <>
-                      <select value={action.trigger.event || 'character_adjacent'}
-                        onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, event: e.target.value as any } })}
-                        className="w-full px-2 py-1 bg-stone-600 rounded text-xs">
-                        <option value="character_adjacent">Character Adjacent</option>
-                        <option value="character_in_range">Character in Range</option>
-                        <option value="enemy_in_range">Enemy in Range</option>
-                        <option value="wall_ahead">Wall Ahead</option>
-                        <option value="health_below_50">Health Below 50%</option>
-                      </select>
-                      {(action.trigger.event === 'character_in_range' || action.trigger.event === 'enemy_in_range') && (
-                        <div className="flex items-center gap-2 mt-1">
-                          <label className="text-xs text-stone-400">Range (tiles):</label>
-                          <input
-                            type="number"
-                            min="1"
-                            max="10"
-                            value={action.trigger.eventRange || 2}
-                            onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, eventRange: parseInt(e.target.value) || 2 } })}
-                            className="w-16 px-2 py-1 bg-stone-600 rounded text-xs"
-                          />
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-
-              <div className="dungeon-panel p-2 rounded space-y-1">
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={action.autoTargetNearestCharacter || false}
-                    onChange={(e) => onUpdate({
-                      ...action,
-                      autoTargetNearestCharacter: e.target.checked,
-                      autoTargetNearestEnemy: false,
-                      homing: e.target.checked ? action.homing : false
-                    })}
-                    className="w-3 h-3" />
-                  Auto-Target Character
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <input type="checkbox" checked={action.autoTargetNearestEnemy || false}
-                    onChange={(e) => onUpdate({
-                      ...action,
-                      autoTargetNearestEnemy: e.target.checked,
-                      autoTargetNearestCharacter: false,
-                      homing: e.target.checked ? action.homing : false
-                    })}
-                    className="w-3 h-3" />
-                  Auto-Target Enemy
-                </label>
-                {/* Homing option - only available when auto-targeting is enabled */}
-                {(action.autoTargetNearestCharacter || action.autoTargetNearestEnemy) && (
-                  <>
-                    <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
-                      <input type="checkbox" checked={action.homing || false}
-                        onChange={(e) => onUpdate({ ...action, homing: e.target.checked })}
-                        className="w-3 h-3" />
-                      Homing (guaranteed hit)
-                    </label>
-                    <label className="flex items-center gap-2 text-xs ml-4">
-                      Max Targets:
-                      <input
-                        type="number"
-                        min={1}
-                        max={10}
-                        value={action.maxTargets || 1}
-                        onChange={(e) => onUpdate({
-                          ...action,
-                          maxTargets: parseInt(e.target.value) || 1
-                        })}
-                        className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs"
-                      />
-                    </label>
-                  </>
-                )}
-              </div>
-
-              {/* Self-targeting options */}
-              <div className="dungeon-panel p-2 rounded space-y-1">
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={action.targetSelf || false}
-                    onChange={(e) => onUpdate({
-                      ...action,
-                      targetSelf: e.target.checked,
-                      targetSelfOnly: e.target.checked ? false : action.targetSelfOnly
-                    })}
-                    className="w-3 h-3"
-                    disabled={action.targetSelfOnly}
-                  />
-                  Also Target Self
-                </label>
-                <label className="flex items-center gap-2 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={action.targetSelfOnly || false}
-                    onChange={(e) => onUpdate({
-                      ...action,
-                      targetSelfOnly: e.target.checked,
-                      targetSelf: e.target.checked ? false : action.targetSelf
-                    })}
-                    className="w-3 h-3"
-                  />
-                  Target Self Only
-                </label>
-                {(action.targetSelf || action.targetSelfOnly) && (
-                  <p className="text-xs text-stone-400 ml-5">
-                    {action.targetSelfOnly
-                      ? 'Spell only affects the caster'
-                      : 'Spell affects caster in addition to targets'}
-                  </p>
-                )}
-              </div>
-
-              {/* Direction Override - only show when not auto-targeting */}
-              {!action.autoTargetNearestEnemy && !action.autoTargetNearestCharacter && (
-                <div className="dungeon-panel p-2 rounded space-y-2">
-                  <div className="flex items-center gap-2">
-                    <label className="flex items-center gap-2 text-xs">
-                      <input
-                        type="checkbox"
-                        checked={action.useRelativeOverride !== undefined || action.directionOverride !== undefined || action.relativeDirectionOverride !== undefined}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            onUpdate({
-                              ...action,
-                              useRelativeOverride: true,
-                              relativeDirectionOverride: ['forward'],
-                              directionOverride: undefined
-                            });
-                          } else {
-                            onUpdate({
-                              ...action,
-                              useRelativeOverride: undefined,
-                              relativeDirectionOverride: undefined,
-                              directionOverride: undefined
-                            });
-                          }
-                        }}
-                        className="w-3 h-3"
-                      />
-                      Override Direction
-                    </label>
-                  </div>
-
-                  {(action.useRelativeOverride !== undefined || action.directionOverride !== undefined || action.relativeDirectionOverride !== undefined) && (
-                    <>
-                      <div className="flex items-center gap-2 mb-2">
-                        <label className="text-xs text-stone-400">Mode:</label>
-                        <select
-                          value={action.useRelativeOverride ? 'relative' : 'absolute'}
-                          onChange={(e) => {
-                            const isRelative = e.target.value === 'relative';
-                            onUpdate({
-                              ...action,
-                              useRelativeOverride: isRelative,
-                              relativeDirectionOverride: isRelative ? ['forward'] : undefined,
-                              directionOverride: isRelative ? undefined : [Direction.NORTH]
-                            });
-                          }}
-                          className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
-                        >
-                          <option value="relative">Relative (to facing)</option>
-                          <option value="absolute">Absolute (fixed)</option>
-                        </select>
-                      </div>
-
-                      <DirectionCompass
-                        mode={action.useRelativeOverride ? 'relative' : 'absolute'}
-                        selectedDirections={
-                          action.useRelativeOverride
-                            ? (action.relativeDirectionOverride || ['forward'])
-                            : (action.directionOverride || [Direction.NORTH])
-                        }
-                        onChange={(dirs) => {
-                          if (action.useRelativeOverride) {
-                            onUpdate({
-                              ...action,
-                              relativeDirectionOverride: dirs as RelativeDirection[]
-                            });
-                          } else {
-                            onUpdate({
-                              ...action,
-                              directionOverride: dirs as Direction[]
-                            });
-                          }
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              )}
-            </>
-          )}
-        </div>
-      )}
-    </div>
-  );
-};
