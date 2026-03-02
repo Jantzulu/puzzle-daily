@@ -20,7 +20,7 @@ import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring'
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, type CustomObject, type CustomCollectible, type SoundAsset } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject, type CustomCollectible, type SoundAsset } from '../../utils/assetStorage';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { preloadImages } from '../../utils/imageLoader';
 import { checkVictoryConditions } from '../../engine/simulation';
@@ -4741,9 +4741,10 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
     }
   }
 
-  // Priority 2: Draw tile type's default custom sprite if available
-  if (customTileType?.customSprite?.idleImageData) {
-    const customImg = loadSkinImage(customTileType.customSprite.idleImageData);
+  // Priority 2: Draw tile type's default custom sprite if available (supports both data URLs and HTTP URLs)
+  const tileTypeSpriteSource = resolveImageSource(customTileType?.customSprite?.idleImageData, customTileType?.customSprite?.idleImageUrl);
+  if (tileTypeSpriteSource) {
+    const customImg = loadSkinImage(tileTypeSpriteSource);
     if (customImg?.complete) {
       // Draw base color first for transparency support
       ctx.fillStyle = baseColor;

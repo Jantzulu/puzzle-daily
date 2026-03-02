@@ -5,7 +5,7 @@ import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible } from '../../utils/assetStorage';
-import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible } from '../../utils/assetStorage';
+import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
 import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
@@ -1995,11 +1995,13 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     }
   }
 
-  // Priority 2: Draw tile type's default custom sprite if available
+  // Priority 2: Draw tile type's default custom sprite if available (supports both data URLs and HTTP URLs)
   // Use off state sprite if available and tile is off, otherwise use main sprite
+  const mainSpriteSource = resolveImageSource(customTileType?.customSprite?.idleImageData, customTileType?.customSprite?.idleImageUrl);
+  const offSpriteSource = resolveImageSource(customTileType?.offStateSprite?.idleImageData, customTileType?.offStateSprite?.idleImageUrl);
   const spriteToUse = isOnState
-    ? customTileType?.customSprite?.idleImageData
-    : (customTileType?.offStateSprite?.idleImageData || customTileType?.customSprite?.idleImageData);
+    ? mainSpriteSource
+    : (offSpriteSource || mainSpriteSource);
 
   if (spriteToUse) {
     const customImg = loadTileImage(spriteToUse);
@@ -2008,7 +2010,7 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
       ctx.fillStyle = baseColor;
       ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
       // Apply dimming if tile is off and no dedicated off sprite
-      if (!isOnState && !customTileType?.offStateSprite?.idleImageData) {
+      if (!isOnState && !offSpriteSource) {
         ctx.globalAlpha = 0.4;
       }
       ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
