@@ -246,8 +246,11 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           onClick={(e) => e.stopPropagation()}
                           className="accent-blue-500 flex-shrink-0"
                         />
-                        <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={enemy.customSprite} size={40} previewType="entity" />
+                        <div
+                          className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
+                          style={{ width: selectedId === enemy.id ? 56 : 40, height: selectedId === enemy.id ? 56 : 40 }}
+                        >
+                          <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" />
                         </div>
                         <div>
                           <div className="flex items-center gap-2">

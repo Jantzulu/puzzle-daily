@@ -284,8 +284,11 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           onClick={(e) => e.stopPropagation()}
                           className="accent-blue-500 flex-shrink-0"
                         />
-                        <div className="w-10 h-10 bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={char.customSprite} size={40} previewType="entity" />
+                        <div
+                          className="bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
+                          style={{ width: selectedId === char.id ? 56 : 40, height: selectedId === char.id ? 56 : 40 }}
+                        >
+                          <SpriteThumbnail sprite={char.customSprite} size={selectedId === char.id ? 56 : 40} previewType="entity" />
                         </div>
                         <div>
                           <h3 className="font-bold text-parchment-200">{char.name}</h3>

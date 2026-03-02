@@ -184,10 +184,14 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                           <img
                             src={spell.thumbnailIcon}
                             alt={spell.name}
-                            className="w-10 h-10 object-contain bg-stone-900 rounded"
+                            className="object-contain bg-stone-900 rounded flex-shrink-0 transition-all duration-150"
+                            style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
                           />
                         ) : (
-                          <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center text-stone-400 text-xs">
+                          <div
+                            className="bg-stone-600 rounded flex items-center justify-center text-stone-400 text-xs flex-shrink-0 transition-all duration-150"
+                            style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
+                          >
                             ?
                           </div>
                         )}

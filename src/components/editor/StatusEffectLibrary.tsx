@@ -209,10 +209,18 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                         />
                         {/* Icon - use SpriteThumbnail if iconSprite has sprite data */}
                         {effect.iconSprite?.type === 'inline' && effect.iconSprite.spriteData ? (
-                          <SpriteThumbnail sprite={effect.iconSprite.spriteData as CustomSprite} size={32} />
+                          <div
+                            className="flex-shrink-0 transition-all duration-150"
+                            style={{ width: selectedId === effect.id ? 48 : 32, height: selectedId === effect.id ? 48 : 32 }}
+                          >
+                            <SpriteThumbnail sprite={effect.iconSprite.spriteData as CustomSprite} size={selectedId === effect.id ? 48 : 32} />
+                          </div>
                         ) : (
-                          <div className={`w-8 h-8 ${getEffectTypeColor(effect.type)} rounded flex items-center justify-center`}>
-                            <span className="text-white text-xs font-bold">
+                          <div
+                            className={`${getEffectTypeColor(effect.type)} rounded flex items-center justify-center flex-shrink-0 transition-all duration-150 ${selectedId === effect.id ? 'text-sm' : 'text-xs'}`}
+                            style={{ width: selectedId === effect.id ? 48 : 32, height: selectedId === effect.id ? 48 : 32 }}
+                          >
+                            <span className="text-white font-bold">
                               {effect.type.charAt(0).toUpperCase()}
                             </span>
                           </div>

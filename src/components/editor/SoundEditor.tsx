@@ -342,8 +342,15 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         onClick={(e) => e.stopPropagation()}
                         className="accent-blue-500 flex-shrink-0"
                       />
-                      <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center">
-                        <svg className="w-4 h-4 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <div
+                        className="bg-stone-600 rounded flex items-center justify-center flex-shrink-0 transition-all duration-150"
+                        style={{ width: selectedId === sound.id ? 48 : 32, height: selectedId === sound.id ? 48 : 32 }}
+                      >
+                        <svg
+                          className="text-stone-300 transition-all duration-150"
+                          style={{ width: selectedId === sound.id ? 24 : 16, height: selectedId === sound.id ? 24 : 16 }}
+                          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                        >
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
                         </svg>
                       </div>

@@ -257,8 +257,11 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                           className="accent-blue-500 flex-shrink-0"
                         />
                         {/* Preview thumbnail */}
-                        <div className="w-10 h-10 bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={obj.customSprite} size={40} />
+                        <div
+                          className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
+                          style={{ width: selectedId === obj.id ? 56 : 40, height: selectedId === obj.id ? 56 : 40 }}
+                        >
+                          <SpriteThumbnail sprite={obj.customSprite} size={selectedId === obj.id ? 56 : 40} />
                         </div>
                         <div>
                           <h3 className="font-bold">{obj.name}</h3>
