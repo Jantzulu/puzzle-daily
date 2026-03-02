@@ -9,6 +9,9 @@ import { SoundSettings } from './components/shared/SoundSettings';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
+import { LoginPage } from './components/auth/LoginPage';
+import { ProtectedRoute } from './components/auth/ProtectedRoute';
+import { UserMenu } from './components/auth/UserMenu';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -296,6 +299,7 @@ function Navigation() {
         <div className="hidden md:flex items-center gap-2">
           <SoundSettings />
           <CloudSyncButton />
+          <UserMenu />
         </div>
 
         {/* Mobile hamburger button */}
@@ -347,6 +351,7 @@ function Navigation() {
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
             <SoundSettings isMobile />
             <CloudSyncButton />
+            <UserMenu />
           </div>
         </div>
       )}
@@ -396,9 +401,10 @@ function App() {
         <Navigation />
         <Routes>
           <Route path="/" element={<Game />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route path="/compendium" element={<Compendium />} />
-          <Route path="/editor" element={<MapEditor />} />
-          <Route path="/assets" element={<AssetManager />} />
+          <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
+          <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
         </Routes>
         <ToastContainer />
       </div>

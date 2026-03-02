@@ -30,6 +30,15 @@ export interface DbAsset {
   deleted_at?: string | null; // Soft delete timestamp
 }
 
+export interface Profile {
+  id: string;
+  display_name: string;
+  avatar_url: string | null;
+  preferences: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface DbSpriteImage {
   id: string;
   asset_id: string;

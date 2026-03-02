@@ -1,5 +1,10 @@
 import { supabase } from '../lib/supabase';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
+
+async function getCurrentUserId(): Promise<string | undefined> {
+  const { data } = await supabase.auth.getUser();
+  return data.user?.id;
+}
 import type { Puzzle } from '../types/game';
 import type { CustomTileType, CustomObject, PuzzleSkin, SpellAsset } from '../utils/assetStorage';
 import type { EnemyWithSprite } from '../data/enemies';
@@ -47,12 +52,14 @@ export async function fetchPuzzle(id: string): Promise<DbPuzzle | null> {
 }
 
 export async function savePuzzleToCloud(puzzle: Puzzle, name?: string): Promise<boolean> {
+  const userId = await getCurrentUserId();
   const dbPuzzle: Partial<DbPuzzle> = {
     id: puzzle.id,
     name: name || puzzle.name || 'Untitled Puzzle',
     data: puzzle as unknown as object,
     status: 'draft',
     updated_at: new Date().toISOString(),
+    ...(userId && { created_by: userId }),
   };
 
   console.log('[Supabase] Saving puzzle:', dbPuzzle.id, dbPuzzle.name);
@@ -149,6 +156,7 @@ export async function saveAssetToCloud(
   name: string,
   data: AssetData
 ): Promise<boolean> {
+  const userId = await getCurrentUserId();
   const dbAsset: Partial<DbAsset> = {
     id,
     type,
@@ -156,6 +164,7 @@ export async function saveAssetToCloud(
     data: data as unknown as object,
     status: 'draft',
     updated_at: new Date().toISOString(),
+    ...(userId && { created_by: userId }),
   };
 
   const { error } = await supabase
