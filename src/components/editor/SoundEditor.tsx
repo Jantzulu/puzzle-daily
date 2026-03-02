@@ -433,9 +433,16 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
         ) : (
           <div className="space-y-6">
             <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-bold">
-                {isCreating ? 'Create Sound' : 'Edit Sound'}
-              </h2>
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center flex-shrink-0">
+                  <svg className="w-6 h-6 text-stone-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
+                  </svg>
+                </div>
+                <h2 className="text-2xl font-bold">
+                  {isCreating ? 'Create Sound' : 'Edit Sound'}
+                </h2>
+              </div>
               <div className="flex gap-2">
                 <button
                   onClick={() => {

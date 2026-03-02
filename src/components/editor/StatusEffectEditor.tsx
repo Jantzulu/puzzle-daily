@@ -243,9 +243,18 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   return (
     <div className="bg-stone-800 p-6 rounded space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="text-xl font-bold">
-          {effect ? (isBuiltIn ? 'View Built-in Effect' : 'Edit Status Effect') : 'Create Status Effect'}
-        </h2>
+        <div className="flex items-center gap-3">
+          {iconSprite?.type === 'inline' && iconSprite.spriteData ? (
+            <div className="w-12 h-12 flex-shrink-0">
+              <SpriteThumbnail sprite={iconSprite.spriteData} size={48} />
+            </div>
+          ) : (
+            <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center text-stone-400 text-lg flex-shrink-0">🔮</div>
+          )}
+          <h2 className="text-xl font-bold">
+            {effect ? (isBuiltIn ? 'View Built-in Effect' : 'Edit Status Effect') : 'Create Status Effect'}
+          </h2>
+        </div>
         <div className="flex gap-2">
           <button
             onClick={onCancel}

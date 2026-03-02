@@ -298,9 +298,14 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
             {editing ? (
               <div className="space-y-6">
                 <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold font-medieval text-copper-400">
-                    {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
-                  </h2>
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                      <SpriteThumbnail sprite={editing.customSprite} size={48} previewType="entity" />
+                    </div>
+                    <h2 className="text-2xl font-bold font-medieval text-copper-400">
+                      {isCreating ? 'Create New Enemy' : `Edit: ${editing.name}`}
+                    </h2>
+                  </div>
                   <button onClick={handleSave} className="dungeon-btn-success">
                     Save Enemy
                   </button>

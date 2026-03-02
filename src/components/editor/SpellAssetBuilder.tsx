@@ -744,9 +744,16 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">
-          {spell ? 'Edit Spell' : 'Create New Spell'}
-        </h2>
+        <div className="flex items-center gap-3">
+          {editedSpell.thumbnailIcon ? (
+            <img src={editedSpell.thumbnailIcon} alt="" className="w-12 h-12 object-contain bg-stone-900 rounded flex-shrink-0" />
+          ) : (
+            <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center text-stone-400 text-lg flex-shrink-0">✨</div>
+          )}
+          <h2 className="text-2xl font-bold">
+            {spell ? 'Edit Spell' : 'Create New Spell'}
+          </h2>
+        </div>
         <div className="flex gap-3">
           <button
             onClick={handleSave}
