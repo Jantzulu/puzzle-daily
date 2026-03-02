@@ -3255,7 +3255,25 @@ export const MapEditor: React.FC = () => {
               </div>
 
               {/* Tile Selector - Shows when Tile tool is selected */}
-              {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (
+              {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (() => {
+                const currentSkin = state.skinId ? loadPuzzleSkin(state.skinId) : null;
+                const skinEmptySprite = currentSkin?.tileSprites?.empty;
+                const skinWallSprite = currentSkin?.tileSprites?.wall;
+                const skinVoidSprite = currentSkin?.tileSprites?.void;
+
+                // Helper to get the best sprite for a custom tile (skin override > tile default > null)
+                const getCustomTileThumbnail = (tileTypeId: string, tileType: { customSprite?: { idleImageData?: string; idleImageUrl?: string } }) => {
+                  // Priority 1: Skin-specific custom tile sprite
+                  const skinEntry = currentSkin?.customTileSprites?.[tileTypeId];
+                  if (skinEntry) {
+                    if (typeof skinEntry === 'string') return skinEntry;
+                    if (skinEntry.onSprite) return skinEntry.onSprite;
+                  }
+                  // Priority 2: Tile type's own sprite (data URL or HTTP URL)
+                  return resolveImageSource(tileType.customSprite?.idleImageData, tileType.customSprite?.idleImageUrl);
+                };
+
+                return (
                 <div className="bg-stone-800 p-4 rounded">
                   <h2 className="text-lg font-bold mb-3">Tile Type</h2>
                   <div className="space-y-2">
@@ -3266,8 +3284,12 @@ export const MapEditor: React.FC = () => {
                         state.selectedTool === 'void' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-stone-900 rounded flex items-center justify-center">
-                        <span className="text-stone-600">✕</span>
+                      <div className="w-8 h-8 bg-stone-900 rounded flex items-center justify-center overflow-hidden">
+                        {skinVoidSprite ? (
+                          <img src={skinVoidSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                        ) : (
+                          <span className="text-stone-600">✕</span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">Void</div>
@@ -3280,8 +3302,12 @@ export const MapEditor: React.FC = () => {
                         state.selectedTool === 'empty' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center">
-                        <span className="text-stone-400">⬜</span>
+                      <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
+                        {skinEmptySprite ? (
+                          <img src={skinEmptySprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                        ) : (
+                          <span className="text-stone-400">⬜</span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">Empty</div>
@@ -3294,8 +3320,12 @@ export const MapEditor: React.FC = () => {
                         state.selectedTool === 'wall' ? 'bg-blue-600' : 'bg-stone-700 hover:bg-stone-600'
                       }`}
                     >
-                      <div className="w-8 h-8 bg-stone-500 rounded flex items-center justify-center">
-                        <span className="text-parchment-300">▓</span>
+                      <div className="w-8 h-8 bg-stone-500 rounded flex items-center justify-center overflow-hidden">
+                        {skinWallSprite ? (
+                          <img src={skinWallSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                        ) : (
+                          <span className="text-parchment-300">▓</span>
+                        )}
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium">Wall</div>
@@ -3348,15 +3378,19 @@ export const MapEditor: React.FC = () => {
                           }`}
                         >
                           <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
-                            {tileType.customSprite?.idleImageData ? (
-                              <img
-                                src={tileType.customSprite.idleImageData}
-                                alt=""
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <span className="text-sm">{behaviorIcons || '⬜'}</span>
-                            )}
+                            {(() => {
+                              const thumbSrc = getCustomTileThumbnail(tileType.id, tileType);
+                              return thumbSrc ? (
+                                <img
+                                  src={thumbSrc}
+                                  alt=""
+                                  className="w-full h-full object-cover"
+                                  style={{ imageRendering: 'pixelated' }}
+                                />
+                              ) : (
+                                <span className="text-sm">{behaviorIcons || '⬜'}</span>
+                              );
+                            })()}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{tileType.name}</div>
@@ -3411,7 +3445,8 @@ export const MapEditor: React.FC = () => {
                     })()}
                   </div>
                 </div>
-              )}
+                );
+              })()}
 
               {/* Enemy Type Selector - List style with sprites */}
               {state.selectedTool === 'enemy' && (
