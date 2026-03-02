@@ -58,6 +58,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     ctx.imageSmoothingEnabled = false;
 
     let animationFrameId: number | null = null;
+    const uScale = sprite.universalScale ?? 1;
 
     // Helper to draw sprite frame with anchor/offset/scale support
     const drawSpriteFrame = (
@@ -67,7 +68,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       sc: number = 1
     ) => {
       ctx.clearRect(0, 0, size, size);
-      const maxSize = (sprite.size || 0.6) * size * sc;
+      const maxSize = (sprite.size || 0.6) * size * sc * uScale;
       const frameAspectRatio = frameWidth / frameHeight;
       let drawWidth = maxSize;
       let drawHeight = maxSize;
@@ -169,7 +170,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         // Use centralized image loader with caching
         const img = loadImage(imageSrc);
         if (img && isImageReady(img)) {
-          const maxSize = (sprite.size || 0.6) * size * imgScale;
+          const maxSize = (sprite.size || 0.6) * size * imgScale * uScale;
           const aspectRatio = img.width / img.height;
           let drawWidth = maxSize;
           let drawHeight = maxSize;

@@ -2430,8 +2430,8 @@ function loadBossIcon(): HTMLImageElement | null {
 function getSpriteTopY(sprite: import('../../utils/assetStorage').CustomSprite | undefined, py: number): number {
   if (!sprite) return py;
   const spriteSize = (sprite.size || 0.6) * TILE_SIZE;
-  // Use idle scale as default (most common state)
-  const scale = sprite.idleScale ?? 1;
+  // Use idle scale as default (most common state), multiplied by universal scale
+  const scale = (sprite.idleScale ?? 1) * (sprite.universalScale ?? 1);
   const maxSize = spriteSize * scale;
   // Assume center anchor (0.5) which is the default
   const centerY = py + TILE_SIZE / 2;

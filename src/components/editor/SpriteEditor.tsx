@@ -2371,43 +2371,33 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </button>
           </div>
 
-          {/* UNIVERSAL SCALE — applies to all directions equally */}
+          {/* UNIVERSAL SCALE — single multiplier applied to all states/directions equally */}
           <div className="bg-stone-800 p-3 rounded border border-stone-600">
-            <h3 className="text-sm font-bold text-copper-400 mb-2">Universal Scale (All Directions)</h3>
-            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-              {([
-                ['Idle', 'idleScale'],
-                ['Moving', 'movingScale'],
-                ['Death', 'deathScale'],
-                ['Casting', 'castingScale'],
-              ] as const).map(([label, key]) => (
-                <div key={key} className="flex items-center gap-2">
-                  <label className="text-[10px] text-stone-400 w-12">{label}</label>
-                  <input
-                    type="range"
-                    min="0.25"
-                    max="2"
-                    step="0.05"
-                    value={sprite[key] ?? 1}
-                    onChange={(e) => onChange({ ...sprite, [key]: parseFloat(e.target.value) === 1 ? undefined : parseFloat(e.target.value) })}
-                    className="flex-1 h-3"
-                  />
-                  <input
-                    type="number"
-                    min="0.25"
-                    max="2"
-                    step="0.05"
-                    value={(sprite[key] ?? 1).toFixed(2)}
-                    onChange={(e) => {
-                      const val = Math.max(0.25, Math.min(2, parseFloat(e.target.value) || 1));
-                      onChange({ ...sprite, [key]: val === 1 ? undefined : val });
-                    }}
-                    className="w-12 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
-                  />
-                </div>
-              ))}
+            <h3 className="text-sm font-bold text-copper-400 mb-2">Universal Scale</h3>
+            <div className="flex items-center gap-2">
+              <input
+                type="range"
+                min="0.25"
+                max="3"
+                step="0.05"
+                value={sprite.universalScale ?? 1}
+                onChange={(e) => onChange({ ...sprite, universalScale: parseFloat(e.target.value) === 1 ? undefined : parseFloat(e.target.value) })}
+                className="flex-1 h-3"
+              />
+              <input
+                type="number"
+                min="0.25"
+                max="3"
+                step="0.05"
+                value={(sprite.universalScale ?? 1).toFixed(2)}
+                onChange={(e) => {
+                  const val = Math.max(0.25, Math.min(3, parseFloat(e.target.value) || 1));
+                  onChange({ ...sprite, universalScale: val === 1 ? undefined : val });
+                }}
+                className="w-14 text-xs text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+              />
             </div>
-            <p className="text-[10px] text-stone-500 mt-1">Per-direction scale in each state section below will override these values.</p>
+            <p className="text-[10px] text-stone-500 mt-1">Scales all sprites equally. Use per-state scale below to match individual sprites first.</p>
           </div>
 
           {/* IDLE & MOVING STATES */}
@@ -3830,7 +3820,8 @@ function drawSpriteConfig(
   tileSize: number,
   isMoving: boolean = false,
   now: number = Date.now(),
-  isCasting: boolean = false
+  isCasting: boolean = false,
+  universalScale: number = 1
 ) {
   // Determine active state and resolve anchor from the appropriate source
   // For spritesheets: anchor lives on SpriteSheetConfig
@@ -3855,7 +3846,7 @@ function drawSpriteConfig(
     const ox = spriteSheet.offsetX ?? 0;
     const oy = spriteSheet.offsetY ?? 0;
     const sc = spriteSheet.scale ?? 1;
-    const maxSize = (config.size || 0.6) * tileSize;
+    const maxSize = (config.size || 0.6) * tileSize * universalScale;
     drawSpriteSheet(ctx, spriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy, sc);
     return;
   }
@@ -3889,7 +3880,7 @@ function drawSpriteConfig(
     // Draw the image - for GIFs, the browser handles animation automatically
     // We draw even if not fully loaded to ensure GIF animation starts properly
     try {
-      const maxSize = (config.size || 0.6) * tileSize * imgScale;
+      const maxSize = (config.size || 0.6) * tileSize * imgScale * universalScale;
       let drawWidth = maxSize;
       let drawHeight = maxSize;
 
@@ -3983,10 +3974,12 @@ export function drawSprite(
     const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
 
     if (dirConfig) {
-      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now, isCasting);
+      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now, isCasting, sprite.universalScale ?? 1);
       return;
     }
   }
+
+  const uScale = sprite.universalScale ?? 1;
 
   // Priority: moving > casting > idle
   // Check for sprite sheet first (simple mode)
@@ -4004,7 +3997,7 @@ export function drawSprite(
     const ox = simpleSpriteSheet.offsetX ?? 0;
     const oy = simpleSpriteSheet.offsetY ?? 0;
     const sc = simpleSpriteSheet.scale ?? 1;
-    const maxSize = (sprite.size || 0.6) * tileSize;
+    const maxSize = (sprite.size || 0.6) * tileSize * uScale;
     drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy, sc);
     return;
   }
@@ -4038,7 +4031,7 @@ export function drawSprite(
     // Draw the image - for GIFs, the browser handles animation automatically
     // We draw even if not fully loaded to ensure GIF animation starts properly
     try {
-      const maxSize = (sprite.size || 0.6) * tileSize * imgScale;
+      const maxSize = (sprite.size || 0.6) * tileSize * imgScale * uScale;
       let drawWidth = maxSize;
       let drawHeight = maxSize;
 
@@ -4169,7 +4162,8 @@ export function drawDeathSprite(
   direction?: Direction,
   startTime: number = Date.now()
 ): boolean {
-  const maxSize = (sprite.size || 0.6) * tileSize;
+  const uScale = sprite.universalScale ?? 1;
+  const maxSize = (sprite.size || 0.6) * tileSize * uScale;
   const now = Date.now();
 
   // Check for directional death sprite first
@@ -4266,7 +4260,8 @@ export function drawSpawnSprite(
   tileSize: number,
   startTime: number = Date.now()
 ): boolean {
-  const maxSize = (sprite.size || 0.6) * tileSize;
+  const uScale = sprite.universalScale ?? 1;
+  const maxSize = (sprite.size || 0.6) * tileSize * uScale;
   const now = Date.now();
 
   // Spawn animations are NOT directional - same animation regardless of facing

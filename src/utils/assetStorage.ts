@@ -308,6 +308,9 @@ export interface CustomSprite {
   imageData?: string; // Will be used as idleImageData if idleImageData not set
   imageUrl?: string; // URL alternative for backwards compat field
 
+  // Universal scale — multiplied on top of all per-state individual scales
+  universalScale?: number; // Default 1.0, applied to all states/directions equally
+
   // Directional sprites (different appearance per direction with idle/moving states)
   directionalSprites?: Partial<Record<SpriteDirection, DirectionalSpriteConfig>>;
   useDirectional?: boolean; // If true, use directional sprites when available
