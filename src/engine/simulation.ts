@@ -970,21 +970,6 @@ export function executeTurn(gameState: GameState): GameState {
   // They will be reactivated if entities are standing on hold-mode pressure plates
   resetHeldTriggerGroups(gameState);
 
-  // Snapshot entity positions at start of turn (for same-turn projectile hit detection)
-  // This allows projectiles fired this turn to hit entities at their pre-move positions
-  gameState.enemyPositionsAtTurnStart = gameState.puzzle.enemies.map(e => ({
-    enemyId: e.enemyId,
-    x: e.x,
-    y: e.y,
-    dead: e.dead,
-  }));
-  gameState.characterPositionsAtTurnStart = gameState.placedCharacters.map(c => ({
-    characterId: c.characterId,
-    x: c.x,
-    y: c.y,
-    dead: c.dead,
-  }));
-
   // Process turn-start status effects for all entities
   processAllStatusEffectsTurnStart(gameState);
 
@@ -2670,23 +2655,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
             // This allows same-turn hits (projectile reaches tile before enemy moves away)
             let hitEnemy: PlacedEnemy | undefined;
 
-            // First check current positions
+            // Check current (post-move) positions only — in the real game, projectiles
+            // travel over time and won't hit enemies that have already moved away
             hitEnemy = gameState.puzzle.enemies.find(
               e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                    !hitEntityIds.includes(e.enemyId)
             );
-
-            // If no hit at current position and this is a same-turn projectile, check pre-move positions
-            if (!hitEnemy && proj.spawnTurn === gameState.currentTurn && gameState.enemyPositionsAtTurnStart) {
-              const preMoveEnemy = gameState.enemyPositionsAtTurnStart.find(
-                e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
-                     !hitEntityIds.includes(e.enemyId)
-              );
-              if (preMoveEnemy) {
-                // Find the actual enemy object to apply damage to
-                hitEnemy = gameState.puzzle.enemies.find(e => e.enemyId === preMoveEnemy.enemyId && !e.dead);
-              }
-            }
 
             if (hitEnemy) {
               hitEntityIds.push(hitEnemy.enemyId);
@@ -2735,23 +2709,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
             // For projectiles spawned this turn, also check pre-move positions
             let hitChar: PlacedCharacter | undefined;
 
-            // First check current positions
+            // Check current (post-move) positions only — in the real game, projectiles
+            // travel over time and won't hit characters that have already moved away
             hitChar = gameState.placedCharacters.find(
               c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
                    !hitEntityIds.includes(c.characterId)
             );
-
-            // If no hit at current position and this is a same-turn projectile, check pre-move positions
-            if (!hitChar && proj.spawnTurn === gameState.currentTurn && gameState.characterPositionsAtTurnStart) {
-              const preMoveChar = gameState.characterPositionsAtTurnStart.find(
-                c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
-                     !hitEntityIds.includes(c.characterId)
-              );
-              if (preMoveChar) {
-                // Find the actual character object to apply damage to
-                hitChar = gameState.placedCharacters.find(c => c.characterId === preMoveChar.characterId && !c.dead);
-              }
-            }
 
             if (hitChar) {
               hitEntityIds.push(hitChar.characterId);
