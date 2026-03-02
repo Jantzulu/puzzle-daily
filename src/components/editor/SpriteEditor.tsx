@@ -440,6 +440,9 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const [showSpawnSpriteSheetUrl, setShowSpawnSpriteSheetUrl] = useState(false);
   const [spawnSpriteSheetUrlInput, setSpawnSpriteSheetUrlInput] = useState('');
 
+  // Sprite type choice per state — 'sheet' or 'image', used when neither is uploaded yet
+  const [spriteTypeChoice, setSpriteTypeChoice] = useState<Record<string, 'sheet' | 'image'>>({});
+
   // Auto-migrate simple mode sprites to directional mode on first render
   useEffect(() => {
     if (sprite.type === 'simple' || !sprite.useDirectional) {
@@ -1965,7 +1968,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </>
               )}
               <p className="text-xs text-stone-400">
-                {hasIdleSpriteSheet ? '✓ Sprite sheet configured' : 'No sprite sheet - use static image below'}
+                {hasIdleSpriteSheet ? '✓ Sprite sheet configured' : 'No sprite sheet uploaded'}
               </p>
               <p className="text-xs text-purple-400">
                 💡 Sprite sheets should be horizontal strips with frames of equal width
@@ -2122,7 +2125,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </>
               )}
               <p className="text-xs text-stone-400">
-                {hasDeathSpriteSheet ? '✓ Death sprite sheet configured' : 'No sprite sheet - use static image below'}
+                {hasDeathSpriteSheet ? '✓ Death sprite sheet configured' : 'No sprite sheet uploaded'}
               </p>
               <p className="text-xs text-red-400">
                 💀 Death animation plays when character/enemy reaches 0 HP
@@ -2234,7 +2237,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 </>
               )}
               <p className="text-xs text-stone-400">
-                {hasCastingSpriteSheet ? '✓ Casting sprite sheet configured' : 'No sprite sheet - use static image below'}
+                {hasCastingSpriteSheet ? '✓ Casting sprite sheet configured' : 'No sprite sheet uploaded'}
               </p>
               <p className="text-xs text-yellow-400">
                 ✨ Casting animation plays when character/enemy casts spell while stationary
@@ -2425,8 +2428,26 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Sprites for when the unit is idle (not moving) or actively moving
             </p>
 
-          {/* Idle Sprite Sheet Upload - hidden when idle image is set */}
-          {!hasIdleImage && (<div>
+          {/* Sprite type toggle — shown when neither sheet nor image is set */}
+          {!hasIdleSpriteSheet && !hasIdleImage && (
+            <div className="flex gap-1 mb-3">
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, idle: 'sheet' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${(spriteTypeChoice.idle || 'sheet') === 'sheet' ? 'bg-purple-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🎞️ Sprite Sheet
+              </button>
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, idle: 'image' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${spriteTypeChoice.idle === 'image' ? 'bg-blue-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🖼️ Still Image
+              </button>
+            </div>
+          )}
+
+          {/* Idle Sprite Sheet Upload */}
+          {(hasIdleSpriteSheet || (!hasIdleImage && (spriteTypeChoice.idle || 'sheet') === 'sheet')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Idle Sprite Sheet (Not Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2549,7 +2570,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ? currentConfig.idleSpriteSheet?.imageUrl && !currentConfig.idleSpriteSheet?.imageData
                     ? '✓ Using URL'
                     : '✓ Idle sprite sheet configured'
-                  : 'No sprite sheet - use static image below'}
+                  : 'No sprite sheet uploaded'}
               </p>
               <p className="text-xs text-purple-400">
                 💡 Sprite sheets should be horizontal strips with frames of equal width
@@ -2557,8 +2578,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </div>
           </div>)}
 
-          {/* Idle Image Upload - hidden when idle spritesheet is set */}
-          {!hasIdleSpriteSheet && (<div>
+          {/* Idle Image Upload */}
+          {(hasIdleImage || (!hasIdleSpriteSheet && spriteTypeChoice.idle === 'image')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Idle Image (Not Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2663,8 +2684,26 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </div>
           </div>)}
 
-          {/* Moving Sprite Sheet Upload - hidden when moving image is set */}
-          {!hasMovingImage && (<div>
+          {/* Sprite type toggle — shown when neither sheet nor image is set */}
+          {!hasMovingSpriteSheet && !hasMovingImage && (
+            <div className="flex gap-1 mb-3">
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, moving: 'sheet' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${(spriteTypeChoice.moving || 'sheet') === 'sheet' ? 'bg-purple-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🎞️ Sprite Sheet
+              </button>
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, moving: 'image' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${spriteTypeChoice.moving === 'image' ? 'bg-blue-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🖼️ Still Image
+              </button>
+            </div>
+          )}
+
+          {/* Moving Sprite Sheet Upload */}
+          {(hasMovingSpriteSheet || (!hasMovingImage && (spriteTypeChoice.moving || 'sheet') === 'sheet')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Moving Sprite Sheet (While Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2787,7 +2826,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ? currentConfig.movingSpriteSheet?.imageUrl && !currentConfig.movingSpriteSheet?.imageData
                     ? '✓ Using URL'
                     : '✓ Moving sprite sheet configured'
-                  : 'No sprite sheet - use static image below'}
+                  : 'No sprite sheet uploaded'}
               </p>
               <p className="text-xs text-purple-400">
                 💡 Sprite sheets should be horizontal strips with frames of equal width
@@ -2795,8 +2834,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </div>
           </div>)}
 
-          {/* Moving Image Upload - hidden when moving spritesheet is set */}
-          {!hasMovingSpriteSheet && (<div>
+          {/* Moving Image Upload */}
+          {(hasMovingImage || (!hasMovingSpriteSheet && spriteTypeChoice.moving === 'image')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Moving Image (While Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -2918,8 +2957,26 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Animation that plays when the unit dies (before corpse appears)
             </p>
 
-          {/* Death Sprite Sheet Upload - hidden when death image is set */}
-          {!hasDeathImage && (<div>
+          {/* Sprite type toggle — shown when neither sheet nor image is set */}
+          {!hasDeathSpriteSheet && !hasDeathImage && (
+            <div className="flex gap-1 mb-3">
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, death: 'sheet' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${(spriteTypeChoice.death || 'sheet') === 'sheet' ? 'bg-purple-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🎞️ Sprite Sheet
+              </button>
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, death: 'image' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${spriteTypeChoice.death === 'image' ? 'bg-blue-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🖼️ Still Image
+              </button>
+            </div>
+          )}
+
+          {/* Death Sprite Sheet Upload */}
+          {(hasDeathSpriteSheet || (!hasDeathImage && (spriteTypeChoice.death || 'sheet') === 'sheet')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Death Sprite Sheet (On Death - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -3042,7 +3099,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ? currentConfig.deathSpriteSheet?.imageUrl && !currentConfig.deathSpriteSheet?.imageData
                     ? '✓ Using URL'
                     : '✓ Death sprite sheet configured'
-                  : 'No sprite sheet - use static image below'}
+                  : 'No sprite sheet uploaded'}
               </p>
               <p className="text-xs text-red-400">
                 💀 Death animation plays when character/enemy reaches 0 HP
@@ -3050,8 +3107,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </div>
           </div>)}
 
-          {/* Death Image Upload - hidden when death spritesheet is set */}
-          {!hasDeathSpriteSheet && (<div>
+          {/* Death Image Upload */}
+          {(hasDeathImage || (!hasDeathSpriteSheet && spriteTypeChoice.death === 'image')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Death Image (On Death - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -3173,8 +3230,26 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Animation when casting a spell while stationary (moving animation has priority)
             </p>
 
-          {/* Casting Sprite Sheet Upload - hidden when casting image is set */}
-          {!hasCastingImage && (<div>
+          {/* Sprite type toggle — shown when neither sheet nor image is set */}
+          {!hasCastingSpriteSheet && !hasCastingImage && (
+            <div className="flex gap-1 mb-3">
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, casting: 'sheet' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${(spriteTypeChoice.casting || 'sheet') === 'sheet' ? 'bg-purple-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🎞️ Sprite Sheet
+              </button>
+              <button
+                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, casting: 'image' }))}
+                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${spriteTypeChoice.casting === 'image' ? 'bg-blue-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
+              >
+                🖼️ Still Image
+              </button>
+            </div>
+          )}
+
+          {/* Casting Sprite Sheet Upload */}
+          {(hasCastingSpriteSheet || (!hasCastingImage && (spriteTypeChoice.casting || 'sheet') === 'sheet')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Casting Sprite Sheet (Casting Spell - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -3297,7 +3372,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   ? currentConfig.castingSpriteSheet?.imageUrl && !currentConfig.castingSpriteSheet?.imageData
                     ? '✓ Using URL'
                     : '✓ Casting sprite sheet configured'
-                  : 'No sprite sheet - use static image below'}
+                  : 'No sprite sheet uploaded'}
               </p>
               <p className="text-xs text-yellow-400">
                 ✨ Casting animation plays when character/enemy casts spell while stationary
@@ -3305,8 +3380,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </div>
           </div>)}
 
-          {/* Casting Image Upload - hidden when casting spritesheet is set */}
-          {!hasCastingSpriteSheet && (<div>
+          {/* Casting Image Upload */}
+          {(hasCastingImage || (!hasCastingSpriteSheet && spriteTypeChoice.casting === 'image')) && (<div>
             <label className="block text-sm font-bold mb-2">
               Casting Image (Casting Spell - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
@@ -3594,7 +3669,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 ? sprite.spawnSpriteSheet?.imageUrl && !sprite.spawnSpriteSheet?.imageData
                   ? '✓ Using URL'
                   : '✓ Spawn sprite sheet configured'
-                : 'No sprite sheet - use static image below or leave empty for idle animation'}
+                : 'No sprite sheet uploaded'}
             </p>
           </div>
         </div>

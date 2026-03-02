@@ -86,7 +86,7 @@ export const BehaviorSequenceBuilder: React.FC<BehaviorSequenceBuilderProps> = (
   }, [actions, onChange]);
 
   return (
-    <div>
+    <div className="max-w-xl">
       <div className="flex justify-between items-center mb-3">
         <h3 className="text-lg font-bold">
           {context === 'enemy' ? 'Action Pattern' : 'Behavior Sequence'}
@@ -99,7 +99,7 @@ export const BehaviorSequenceBuilder: React.FC<BehaviorSequenceBuilderProps> = (
         </button>
       </div>
 
-      <div className="max-h-[32rem] overflow-y-auto space-y-0">
+      <div className="space-y-0">
         {actions.map((action, index) => (
           <div key={index}>
             {/* Action Node */}
