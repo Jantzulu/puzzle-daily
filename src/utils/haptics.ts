@@ -12,6 +12,14 @@ import { WebHaptics } from 'web-haptics';
 import { getGlobalHapticConfig } from './assetStorage';
 import type { HapticPattern, GlobalHapticConfig } from '../types/game';
 
+// ─── Platform detection ─────────────────────────────────────────
+
+// WebHaptics.isSupported only checks navigator.vibrate (missing on iOS).
+// The library internally falls back to the checkbox switch trick on iOS,
+// so we also consider touch devices as supported.
+const isTouchDevice = typeof window !== 'undefined' &&
+  window.matchMedia('(pointer: coarse)').matches;
+
 // ─── Singleton instance ─────────────────────────────────────────
 
 let haptics: WebHaptics | null = null;
@@ -56,7 +64,7 @@ export const HAPTIC_DEFAULTS: GlobalHapticConfig = {
 export type HapticTriggerId = keyof GlobalHapticConfig;
 
 export function isHapticsSupported(): boolean {
-  return WebHaptics.isSupported;
+  return WebHaptics.isSupported || isTouchDevice;
 }
 
 /**
