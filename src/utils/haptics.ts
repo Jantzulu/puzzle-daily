@@ -14,32 +14,39 @@ import type { HapticPattern, GlobalHapticConfig } from '../types/game';
 
 // ─── Platform detection ──────────────────────────────────────────
 
-const isIOS = typeof navigator !== 'undefined' &&
-  /iPad|iPhone|iPod/.test(navigator.userAgent);
-
 const hasVibrate = typeof navigator !== 'undefined' && 'vibrate' in navigator;
 
+// Detect touch device (for iOS fallback) — pointer:coarse = touchscreen
+const isTouchDevice = typeof window !== 'undefined' &&
+  window.matchMedia('(pointer: coarse)').matches;
+
+// iOS = touch device without vibrate API
+const useIOSFallback = isTouchDevice && !hasVibrate;
+
 // ─── iOS haptic via checkbox switch toggle ───────────────────────
+// Wraps input in a <label>, appends to <head>, clicks label, removes.
+// Must match the pattern from github.com/tijnjh/ios-haptics exactly.
 
 function iosHapticTap(): void {
   try {
+    const label = document.createElement('label');
+    label.ariaHidden = 'true';
+    label.style.display = 'none';
+
     const input = document.createElement('input');
     input.type = 'checkbox';
     input.setAttribute('switch', '');
-    input.style.position = 'fixed';
-    input.style.opacity = '0';
-    input.style.pointerEvents = 'none';
-    input.style.top = '-100px';
-    document.body.appendChild(input);
-    input.click();
-    requestAnimationFrame(() => {
-      input.remove();
-    });
+    label.appendChild(input);
+
+    document.head.appendChild(label);
+    label.click();
+    document.head.removeChild(label);
   } catch {}
 }
 
-function iosHapticMulti(taps: number, delayMs: number = 80): void {
-  for (let i = 0; i < taps; i++) {
+function iosHapticMulti(taps: number, delayMs: number = 120): void {
+  iosHapticTap();
+  for (let i = 1; i < taps; i++) {
     setTimeout(() => iosHapticTap(), i * delayMs);
   }
 }
@@ -85,7 +92,7 @@ export const HAPTIC_DEFAULTS: GlobalHapticConfig = {
 export type HapticTriggerId = keyof GlobalHapticConfig;
 
 export function isHapticsSupported(): boolean {
-  return isIOS || hasVibrate;
+  return useIOSFallback || hasVibrate;
 }
 
 /**
@@ -100,7 +107,7 @@ export function getEffectiveHapticConfig(): GlobalHapticConfig {
 // ─── Core fire function ──────────────────────────────────────────
 
 function firePattern(pattern: HapticPattern): void {
-  if (isIOS) {
+  if (useIOSFallback) {
     const taps = IOS_TAPS[pattern] || 1;
     if (taps === 1) {
       iosHapticTap();
