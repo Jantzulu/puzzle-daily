@@ -19,6 +19,7 @@ import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, 
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
 import { preloadImages } from '../../utils/imageLoader';
+import { vibrate } from '../../utils/haptics';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -293,6 +294,7 @@ export const Game: React.FC = () => {
         }
 
         const newState = executeTurn(stateCopy);
+        vibrate('turn');
 
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
@@ -300,6 +302,7 @@ export const Game: React.FC = () => {
 
           // Handle victory
           if (newState.gameStatus === 'victory') {
+            vibrate('success');
             playGameSound('victory');
             playVictoryMusic();
             // Calculate and store score
@@ -317,6 +320,7 @@ export const Game: React.FC = () => {
             const ranOutOfTurns = newState.currentTurn >= maxTurns;
             setDefeatReason(ranOutOfTurns ? 'turns' : 'damage');
 
+            vibrate('error');
             playGameSound('defeat');
 
             if (!isUnlimitedLives) {
@@ -447,6 +451,7 @@ export const Game: React.FC = () => {
         placedCharacters: [...prev.placedCharacters, newCharacter],
       }));
       playGameSound('character_placed');
+      vibrate('tap');
     },
     [selectedCharacterId, gameState]
   );
@@ -461,6 +466,7 @@ export const Game: React.FC = () => {
       // Victory! Stop simulation and trigger victory handling
       setIsSimulating(false);
       setGameState(prev => ({ ...prev, gameStatus: 'victory' }));
+      vibrate('success');
       playGameSound('victory');
       playVictoryMusic();
       // Calculate and store score

@@ -12,6 +12,7 @@ import { GlobalSearch } from './components/shared/GlobalSearch';
 import { LoginPage } from './components/auth/LoginPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
+import { HapticSettings } from './components/shared/HapticSettings';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -298,6 +299,7 @@ function Navigation() {
 
         <div className="hidden md:flex items-center gap-2">
           <SoundSettings />
+          <HapticSettings />
           <CloudSyncButton />
           <UserMenu />
         </div>
@@ -350,6 +352,7 @@ function Navigation() {
           </Link>
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
             <SoundSettings isMobile />
+            <HapticSettings />
             <CloudSyncButton />
             <UserMenu />
           </div>

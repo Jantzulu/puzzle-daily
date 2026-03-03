@@ -37,6 +37,7 @@ import { solvePuzzleAsync, quickValidate, type SolverResult } from '../../engine
 import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/combatLog';
 import { WarningModal } from '../shared/WarningModal';
 import GeneratorDialog from './GeneratorDialog';
+import { vibrate } from '../../utils/haptics';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -1138,6 +1139,7 @@ export const MapEditor: React.FC = () => {
   };
 
   const paintTile = (x: number, y: number) => {
+    vibrate('tap');
     if (state.selectedTool === 'enemy') {
       if (!selectedEnemyId) {
         toast.warning('Please select an enemy type first!');
