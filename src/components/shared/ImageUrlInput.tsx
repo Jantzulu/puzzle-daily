@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { toast } from './Toast';
+import { MediaLibraryModal } from '../editor/MediaLibrary';
 
 interface ImageUrlInputProps {
   /** Current base64 image data (if any) */
@@ -40,6 +41,7 @@ export const ImageUrlInput: React.FC<ImageUrlInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState(imageUrl || '');
   const [previewError, setPreviewError] = useState(false);
+  const [mediaOpen, setMediaOpen] = useState(false);
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -152,6 +154,20 @@ export const ImageUrlInput: React.FC<ImageUrlInputProps> = ({
         </span>
       </div>
 
+      {/* Browse Cloud Media */}
+      <div className="flex items-center gap-2 mt-2">
+        <div className="flex-1 h-px bg-stone-700"></div>
+        <span className="text-stone-500 text-xs">OR</span>
+        <div className="flex-1 h-px bg-stone-700"></div>
+      </div>
+
+      <button
+        onClick={() => setMediaOpen(true)}
+        className="w-full px-3 py-1.5 bg-arcane-700 hover:bg-arcane-600 rounded text-sm text-parchment-100 transition-colors"
+      >
+        Browse Cloud Media
+      </button>
+
       {/* URL Input */}
       <div className="flex items-center gap-2 mt-2">
         <div className="flex-1 h-px bg-stone-700"></div>
@@ -179,6 +195,19 @@ export const ImageUrlInput: React.FC<ImageUrlInputProps> = ({
       <p className="text-stone-500 text-xs">
         Link to external image (Supabase, CDN, etc.). No file size limit.
       </p>
+
+      {/* Media Library Modal */}
+      <MediaLibraryModal
+        isOpen={mediaOpen}
+        onClose={() => setMediaOpen(false)}
+        onSelect={(url) => {
+          onImageUrlChange(url);
+          onImageDataChange(undefined);
+          setUrlInput(url);
+          setPreviewError(false);
+          setMediaOpen(false);
+        }}
+      />
     </div>
   );
 };

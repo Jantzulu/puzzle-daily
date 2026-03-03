@@ -11,10 +11,11 @@ import { CollectibleEditor } from './CollectibleEditor';
 import { SoundEditor } from './SoundEditor';
 import { HelpContentEditor } from './HelpContentEditor';
 import { ThemeAssetsEditor } from './ThemeAssetsEditor';
+import { MediaLibraryTab } from './MediaLibraryTab';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'theme' | 'help';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'theme' | 'help' | 'media';
 
-const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'sounds', 'theme', 'help'];
+const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'sounds', 'theme', 'help', 'media'];
 
 export const AssetManager: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -96,6 +97,9 @@ export const AssetManager: React.FC = () => {
               <button onClick={() => setActiveTab('help')} className={tabClass('help')}>
                 ❓ Help
               </button>
+              <button onClick={() => setActiveTab('media')} className={tabClass('media')}>
+                ☁️ Media
+              </button>
             </div>
           </div>
         </div>
@@ -118,6 +122,7 @@ export const AssetManager: React.FC = () => {
             <HelpContentEditor />
           </div>
         )}
+        {activeTab === 'media' && <MediaLibraryTab />}
       </div>
 
       {/* Clear Cache Confirmation Dialog */}
