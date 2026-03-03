@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
 import { MediaLibraryModal } from './MediaLibrary';
-import type { MediaFolder } from '../../utils/mediaStorage';
 
 interface MediaBrowseButtonProps {
   onSelect: (url: string) => void;
-  initialFolder?: MediaFolder;
+  initialFolder?: string;
   className?: string;
   label?: string;
 }
@@ -35,7 +34,7 @@ export const MediaBrowseButton: React.FC<MediaBrowseButtonProps> = ({
         isOpen={open}
         onClose={() => setOpen(false)}
         onSelect={(url) => { onSelect(url); setOpen(false); }}
-        initialFolder={initialFolder}
+        initialPath={initialFolder}
       />
     </>
   );

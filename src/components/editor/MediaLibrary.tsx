@@ -1,46 +1,46 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useOptionalAuth } from '../../contexts/AuthContext';
-import { uploadMedia, listMedia, deleteMedia, MEDIA_FOLDERS } from '../../utils/mediaStorage';
-import type { MediaFile, MediaFolder } from '../../utils/mediaStorage';
+import { browseMedia, uploadMedia, deleteMedia, createFolder } from '../../utils/mediaStorage';
+import type { MediaEntry } from '../../utils/mediaStorage';
 import { toast } from '../shared/Toast';
 
 // ─── Shared Inner Component ─────────────────────────────────────
 
 interface MediaLibraryInnerProps {
   onSelect?: (url: string) => void;
-  initialFolder?: MediaFolder;
+  initialPath?: string;
 }
 
-export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, initialFolder }) => {
+export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, initialPath }) => {
   const auth = useOptionalAuth();
-  const [folder, setFolder] = useState<MediaFolder>(initialFolder || 'all');
-  const [files, setFiles] = useState<MediaFile[]>([]);
+  const [currentPath, setCurrentPath] = useState(initialPath || '');
+  const [entries, setEntries] = useState<MediaEntry[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [showNewFolder, setShowNewFolder] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const [dragOver, setDragOver] = useState(false);
 
-  const userId = auth?.user?.id;
-
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      const result = await listMedia(folder);
-      setFiles(result);
+      const result = await browseMedia(currentPath);
+      setEntries(result);
     } catch {
       toast.error('Failed to load media');
     } finally {
       setLoading(false);
     }
-  }, [folder]);
+  }, [currentPath]);
 
   useEffect(() => { refresh(); }, [refresh]);
 
   const handleUpload = async (fileList: FileList | File[]) => {
-    if (!userId) {
+    if (!auth?.user) {
       toast.warning('Sign in to upload media');
       return;
     }
@@ -48,7 +48,7 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
     let uploaded = 0;
     for (const file of Array.from(fileList)) {
       if (!file.type.startsWith('image/')) continue;
-      const result = await uploadMedia(file, folder, userId);
+      const result = await uploadMedia(file, currentPath);
       if (result) uploaded++;
     }
     if (uploaded > 0) {
@@ -64,15 +64,45 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
     const ok = await deleteMedia(path);
     if (ok) {
       toast.success('Deleted');
-      setFiles(prev => prev.filter(f => f.path !== path));
+      setEntries(prev => prev.filter(e => e.path !== path));
     } else {
       toast.error('Delete failed');
     }
     setDeleteConfirm(null);
   };
 
+  const handleCreateFolder = async () => {
+    const name = newFolderName.trim().replace(/[^a-zA-Z0-9._-]/g, '_');
+    if (!name) {
+      toast.warning('Enter a folder name');
+      return;
+    }
+    const folderPath = currentPath ? `${currentPath}/${name}` : name;
+    const ok = await createFolder(folderPath);
+    if (ok) {
+      toast.success(`Created folder "${name}"`);
+      setNewFolderName('');
+      setShowNewFolder(false);
+      refresh();
+    } else {
+      toast.error('Failed to create folder');
+    }
+  };
+
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url).then(() => toast.success('URL copied'));
+  };
+
+  const navigateTo = (path: string) => {
+    setCurrentPath(path);
+    setSearch('');
+  };
+
+  const navigateUp = () => {
+    const parts = currentPath.split('/').filter(Boolean);
+    parts.pop();
+    setCurrentPath(parts.join('/'));
+    setSearch('');
   };
 
   // Drag & drop handlers
@@ -84,9 +114,19 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
     if (e.dataTransfer.files.length > 0) handleUpload(e.dataTransfer.files);
   };
 
+  // Build breadcrumbs
+  const pathParts = currentPath.split('/').filter(Boolean);
+  const breadcrumbs = [
+    { label: 'root', path: '' },
+    ...pathParts.map((part, i) => ({
+      label: part,
+      path: pathParts.slice(0, i + 1).join('/'),
+    })),
+  ];
+
   const filtered = search
-    ? files.filter(f => f.name.toLowerCase().includes(search.toLowerCase()))
-    : files;
+    ? entries.filter(e => e.name.toLowerCase().includes(search.toLowerCase()))
+    : entries;
 
   const formatSize = (bytes: number) => {
     if (!bytes) return '';
@@ -97,20 +137,24 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
 
   return (
     <div className="flex flex-col h-full">
-      {/* Folder tabs */}
-      <div className="flex gap-1 mb-3 overflow-x-auto">
-        {MEDIA_FOLDERS.map(f => (
-          <button
-            key={f.key}
-            onClick={() => { setFolder(f.key); setSearch(''); }}
-            className={`dungeon-tab whitespace-nowrap ${folder === f.key ? 'dungeon-tab-active' : ''}`}
-          >
-            {f.icon} {f.label}
-          </button>
+      {/* Breadcrumb navigation */}
+      <div className="flex items-center gap-1 mb-3 text-sm overflow-x-auto">
+        {breadcrumbs.map((crumb, i) => (
+          <React.Fragment key={crumb.path}>
+            {i > 0 && <span className="text-stone-600">/</span>}
+            <button
+              onClick={() => navigateTo(crumb.path)}
+              className={`px-1.5 py-0.5 rounded hover:bg-stone-700 transition-colors whitespace-nowrap ${
+                i === breadcrumbs.length - 1 ? 'text-copper-400 font-medium' : 'text-stone-400'
+              }`}
+            >
+              {i === 0 ? '📂' : ''} {crumb.label}
+            </button>
+          </React.Fragment>
         ))}
       </div>
 
-      {/* Upload area + search */}
+      {/* Upload area + search + new folder */}
       <div className="flex gap-2 mb-3">
         <div
           ref={dropRef}
@@ -136,67 +180,123 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
             onChange={(e) => e.target.files && handleUpload(e.target.files)}
           />
         </div>
+        <button
+          onClick={() => setShowNewFolder(!showNewFolder)}
+          className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs text-stone-300 whitespace-nowrap"
+          title="New folder"
+        >
+          📁+
+        </button>
         <input
           type="text"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Filter..."
-          className="w-32 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+          className="w-28 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
         />
       </div>
 
-      {/* File grid */}
+      {/* New folder input */}
+      {showNewFolder && (
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && handleCreateFolder()}
+            placeholder="Folder name..."
+            className="flex-1 px-2 py-1.5 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500 focus:outline-none focus:ring-1 focus:ring-copper-400"
+            autoFocus
+          />
+          <button onClick={handleCreateFolder} className="px-3 py-1 bg-copper-600 hover:bg-copper-500 rounded text-xs text-parchment-100">
+            Create
+          </button>
+          <button onClick={() => { setShowNewFolder(false); setNewFolderName(''); }} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs text-stone-300">
+            Cancel
+          </button>
+        </div>
+      )}
+
+      {/* Content grid */}
       <div className="flex-1 overflow-y-auto dungeon-scrollbar">
         {loading ? (
           <div className="text-center py-8 text-stone-400 animate-pulse">Loading...</div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-8 text-stone-500 text-sm">
-            {search ? 'No files match your filter' : 'No files uploaded yet'}
+            {search ? 'No files match your filter' : 'Empty folder'}
           </div>
         ) : (
           <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 lg:grid-cols-6 gap-2">
-            {filtered.map(file => (
+            {/* Back button when inside a folder */}
+            {currentPath && !search && (
               <div
-                key={file.path}
+                onClick={navigateUp}
+                className="group relative bg-stone-800 rounded border border-stone-700 hover:border-copper-400 transition-colors overflow-hidden cursor-pointer"
+              >
+                <div className="aspect-square flex items-center justify-center text-2xl text-stone-400 group-hover:text-copper-400">
+                  ⬆️
+                </div>
+                <div className="px-1.5 py-1 text-[10px] text-stone-400 text-center">..</div>
+              </div>
+            )}
+
+            {filtered.map(entry => (
+              <div
+                key={entry.path}
                 className="group relative bg-stone-800 rounded border border-stone-700 hover:border-copper-400 transition-colors overflow-hidden"
               >
-                {/* Thumbnail */}
-                <div
-                  className={`aspect-square sprite-preview-bg flex items-center justify-center p-1 ${onSelect ? 'cursor-pointer' : ''}`}
-                  onClick={() => onSelect?.(file.url)}
-                  title={onSelect ? 'Click to select' : file.name}
-                >
-                  <img
-                    src={file.url}
-                    alt={file.name}
-                    className="max-w-full max-h-full object-contain"
-                    loading="lazy"
-                  />
+                {entry.isFolder ? (
+                  /* Folder */
+                  <div
+                    className="aspect-square flex items-center justify-center text-2xl cursor-pointer text-stone-400 group-hover:text-copper-400"
+                    onClick={() => navigateTo(entry.path)}
+                    title={`Open ${entry.name}`}
+                  >
+                    📁
+                  </div>
+                ) : (
+                  /* File thumbnail */
+                  <div
+                    className={`aspect-square sprite-preview-bg flex items-center justify-center p-1 ${onSelect ? 'cursor-pointer' : ''}`}
+                    onClick={() => entry.url && onSelect?.(entry.url)}
+                    title={onSelect ? 'Click to select' : entry.name}
+                  >
+                    <img
+                      src={entry.url}
+                      alt={entry.name}
+                      className="max-w-full max-h-full object-contain"
+                      loading="lazy"
+                    />
+                  </div>
+                )}
+
+                {/* Name row */}
+                <div className="px-1.5 py-1 text-[10px] text-stone-400 truncate" title={entry.name}>
+                  {entry.name}
+                  {!entry.isFolder && entry.size && entry.size > 0 && (
+                    <span className="ml-1 text-stone-500">{formatSize(entry.size)}</span>
+                  )}
                 </div>
 
-                {/* Info row */}
-                <div className="px-1.5 py-1 text-[10px] text-stone-400 truncate" title={file.name}>
-                  {file.name}
-                  {file.size > 0 && <span className="ml-1 text-stone-500">{formatSize(file.size)}</span>}
-                </div>
-
-                {/* Action buttons (hover) */}
-                <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); copyUrl(file.url); }}
-                    className="w-6 h-6 bg-stone-900/80 hover:bg-arcane-700 rounded text-xs flex items-center justify-center"
-                    title="Copy URL"
-                  >
-                    📋
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setDeleteConfirm(file.path); }}
-                    className="w-6 h-6 bg-stone-900/80 hover:bg-blood-700 rounded text-xs flex items-center justify-center"
-                    title="Delete"
-                  >
-                    🗑️
-                  </button>
-                </div>
+                {/* Action buttons (hover) - only for files */}
+                {!entry.isFolder && (
+                  <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); entry.url && copyUrl(entry.url); }}
+                      className="w-6 h-6 bg-stone-900/80 hover:bg-arcane-700 rounded text-xs flex items-center justify-center"
+                      title="Copy URL"
+                    >
+                      📋
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setDeleteConfirm(entry.path); }}
+                      className="w-6 h-6 bg-stone-900/80 hover:bg-blood-700 rounded text-xs flex items-center justify-center"
+                      title="Delete"
+                    >
+                      🗑️
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -225,10 +325,10 @@ interface MediaLibraryModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (url: string) => void;
-  initialFolder?: MediaFolder;
+  initialPath?: string;
 }
 
-export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({ isOpen, onClose, onSelect, initialFolder }) => {
+export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({ isOpen, onClose, onSelect, initialPath }) => {
   if (!isOpen) return null;
 
   const handleSelect = (url: string) => {
@@ -246,7 +346,7 @@ export const MediaLibraryModal: React.FC<MediaLibraryModalProps> = ({ isOpen, on
           <h2 className="text-lg font-medieval text-copper-400">Cloud Media Library</h2>
           <button onClick={onClose} className="text-stone-400 hover:text-parchment-100 text-xl px-2">✕</button>
         </div>
-        <MediaLibraryInner onSelect={handleSelect} initialFolder={initialFolder} />
+        <MediaLibraryInner onSelect={handleSelect} initialPath={initialPath} />
       </div>
     </div>
   );

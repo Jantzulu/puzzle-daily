@@ -2,23 +2,22 @@ import { supabase } from '../lib/supabase';
 
 const BUCKET = 'theme-assets';
 
-export type MediaFolder = 'all' | 'characters' | 'enemies' | 'tiles' | 'effects' | 'misc';
-
-export const MEDIA_FOLDERS: { key: MediaFolder; label: string; icon: string }[] = [
-  { key: 'all', label: 'All', icon: '📂' },
-  { key: 'characters', label: 'Characters', icon: '⚔️' },
-  { key: 'enemies', label: 'Enemies', icon: '👹' },
-  { key: 'tiles', label: 'Tiles', icon: '🧱' },
-  { key: 'effects', label: 'Effects', icon: '✨' },
-  { key: 'misc', label: 'Misc', icon: '📁' },
-];
-
 export interface MediaFile {
   name: string;
   path: string;
   url: string;
   size: number;
   createdAt: string;
+}
+
+export interface MediaEntry {
+  name: string;
+  isFolder: boolean;
+  path: string;
+  // Only for files:
+  url?: string;
+  size?: number;
+  createdAt?: string;
 }
 
 function sanitizeFilename(name: string): string {
@@ -35,20 +34,69 @@ function getMimeExt(file: File): string {
 }
 
 /**
- * Upload a file to Supabase Storage.
- * Path: {folder}/{timestamp}-{filename} (or public/{timestamp}-{filename} for 'all'/'misc')
+ * Browse a directory in the bucket. Returns folders and files.
+ */
+export async function browseMedia(path: string = ''): Promise<MediaEntry[]> {
+  try {
+    const { data, error } = await supabase.storage.from(BUCKET).list(path, {
+      limit: 500,
+      sortBy: { column: 'name', order: 'asc' },
+    });
+
+    if (error || !data) return [];
+
+    const entries: MediaEntry[] = [];
+
+    for (const item of data) {
+      if (!item.name || item.name.startsWith('.')) continue;
+
+      if (item.id) {
+        // It's a file
+        const fullPath = path ? `${path}/${item.name}` : item.name;
+        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fullPath);
+        entries.push({
+          name: item.name,
+          isFolder: false,
+          path: fullPath,
+          url: urlData.publicUrl,
+          size: (item.metadata as Record<string, unknown>)?.size as number || 0,
+          createdAt: item.created_at || '',
+        });
+      } else {
+        // It's a folder
+        const fullPath = path ? `${path}/${item.name}` : item.name;
+        entries.push({
+          name: item.name,
+          isFolder: true,
+          path: fullPath,
+        });
+      }
+    }
+
+    // Sort: folders first, then files
+    return entries.sort((a, b) => {
+      if (a.isFolder && !b.isFolder) return -1;
+      if (!a.isFolder && b.isFolder) return 1;
+      return a.name.localeCompare(b.name);
+    });
+  } catch (e) {
+    console.error('[MediaStorage] Browse error:', e);
+    return [];
+  }
+}
+
+/**
+ * Upload a file to a specific path in the bucket.
  */
 export async function uploadMedia(
   file: File,
-  folder: MediaFolder,
-  _userId: string
+  folderPath: string,
 ): Promise<{ url: string; path: string } | null> {
   try {
     const ext = getMimeExt(file);
     const baseName = file.name.replace(/\.[^.]+$/, '');
     const filename = `${Date.now()}-${sanitizeFilename(baseName)}.${ext}`;
-    const uploadFolder = folder === 'all' ? 'public' : folder;
-    const filePath = `${uploadFolder}/${filename}`;
+    const filePath = folderPath ? `${folderPath}/${filename}` : filename;
 
     const { error } = await supabase.storage
       .from(BUCKET)
@@ -79,8 +127,7 @@ export async function uploadMedia(
 export async function uploadMediaDataUrl(
   dataUrl: string,
   name: string,
-  folder: MediaFolder,
-  userId: string
+  folderPath: string,
 ): Promise<{ url: string; path: string } | null> {
   try {
     const [header, base64] = dataUrl.split(',');
@@ -93,7 +140,7 @@ export async function uploadMediaDataUrl(
     }
     const blob = new Blob([array], { type: mime });
     const file = new File([blob], name, { type: mime });
-    return uploadMedia(file, folder, userId);
+    return uploadMedia(file, folderPath);
   } catch (e) {
     console.error('[MediaStorage] DataUrl upload error:', e);
     return null;
@@ -101,77 +148,24 @@ export async function uploadMediaDataUrl(
 }
 
 /**
- * List all files in a folder. For 'all', recursively lists every folder in the bucket.
+ * Create a folder by uploading a placeholder file (Supabase creates folders implicitly).
  */
-export async function listMedia(folder: MediaFolder): Promise<MediaFile[]> {
+export async function createFolder(path: string): Promise<boolean> {
   try {
-    if (folder === 'all') {
-      return listAllMedia();
+    const placeholder = new Blob([''], { type: 'text/plain' });
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(`${path}/.keep`, placeholder, { upsert: true });
+
+    if (error) {
+      console.error('[MediaStorage] Create folder failed:', error);
+      return false;
     }
-    return listFolder(folder);
+    return true;
   } catch (e) {
-    console.error('[MediaStorage] List error:', e);
-    return [];
+    console.error('[MediaStorage] Create folder error:', e);
+    return false;
   }
-}
-
-/**
- * List all files across all folders in the bucket (recursive).
- */
-export async function listAllMedia(): Promise<MediaFile[]> {
-  try {
-    // List top-level entries
-    const { data: topLevel, error } = await supabase.storage.from(BUCKET).list('', { limit: 200 });
-    if (error || !topLevel) return [];
-
-    const allFiles: MediaFile[] = [];
-
-    for (const entry of topLevel) {
-      if (entry.id) {
-        // It's a file at root level
-        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(entry.name);
-        allFiles.push({
-          name: entry.name,
-          path: entry.name,
-          url: urlData.publicUrl,
-          size: (entry.metadata as Record<string, unknown>)?.size as number || 0,
-          createdAt: entry.created_at || '',
-        });
-      } else {
-        // It's a directory — list its contents
-        const folderFiles = await listFolder(entry.name);
-        allFiles.push(...folderFiles);
-      }
-    }
-
-    return allFiles.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  } catch (e) {
-    console.error('[MediaStorage] ListAll error:', e);
-    return [];
-  }
-}
-
-async function listFolder(path: string): Promise<MediaFile[]> {
-  const { data, error } = await supabase.storage.from(BUCKET).list(path, {
-    limit: 200,
-    sortBy: { column: 'created_at', order: 'desc' },
-  });
-
-  if (error || !data) return [];
-
-  return data
-    .filter(f => f.name && !f.name.startsWith('.'))
-    .map(f => {
-      const fullPath = `${path}/${f.name}`;
-      const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fullPath);
-      return {
-        name: f.name,
-        path: fullPath,
-        url: urlData.publicUrl,
-        size: (f.metadata as Record<string, unknown>)?.size as number || 0,
-        createdAt: f.created_at || '',
-      };
-    });
 }
 
 /**
