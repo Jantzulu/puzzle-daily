@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
-import type { SoundAsset, GlobalSoundConfig } from '../../types/game';
+import type { SoundAsset, GlobalSoundConfig, GlobalHapticConfig, HapticPattern } from '../../types/game';
 import {
   saveSoundAsset,
   getSoundAssets,
@@ -9,8 +9,11 @@ import {
   loadSoundAsset,
   saveGlobalSoundConfig,
   getGlobalSoundConfig,
+  saveGlobalHapticConfig,
+  getGlobalHapticConfig,
   getFolders,
 } from '../../utils/assetStorage';
+import { HAPTIC_PATTERN_OPTIONS, vibratePreview } from '../../utils/haptics';
 import { soundManager } from '../../utils/soundManager';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
@@ -43,6 +46,20 @@ const GLOBAL_SOUND_TRIGGERS = [
   ]},
 ];
 
+// Haptic trigger categories for global config
+const GLOBAL_HAPTIC_TRIGGERS = [
+  { group: 'Gameplay', items: [
+    { key: 'turnAdvance' as keyof GlobalHapticConfig, label: 'Turn Advance', description: 'Each turn during simulation' },
+    { key: 'victory' as keyof GlobalHapticConfig, label: 'Victory', description: 'Puzzle solved' },
+    { key: 'defeat' as keyof GlobalHapticConfig, label: 'Defeat', description: 'Out of turns or lethal damage' },
+    { key: 'characterPlace' as keyof GlobalHapticConfig, label: 'Character Placed', description: 'Placing a hero on the board' },
+    { key: 'lifeLost' as keyof GlobalHapticConfig, label: 'Life Lost', description: 'Losing a life on defeat' },
+  ]},
+  { group: 'Editor', items: [
+    { key: 'tilePaint' as keyof GlobalHapticConfig, label: 'Tile Paint', description: 'Painting tiles in map editor' },
+  ]},
+];
+
 export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [sounds, setSounds] = useState<SoundAsset[]>(() => getSoundAssets());
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -51,7 +68,8 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [globalConfig, setGlobalConfig] = useState<GlobalSoundConfig>(() => getGlobalSoundConfig());
-  const [activeTab, setActiveTab] = useState<'library' | 'global'>('library');
+  const [hapticConfig, setHapticConfig] = useState<GlobalHapticConfig>(() => getGlobalHapticConfig());
+  const [activeTab, setActiveTab] = useState<'library' | 'global' | 'haptics'>('library');
   const [isPlaying, setIsPlaying] = useState(false);
   const bulk = useBulkSelect();
 
@@ -217,6 +235,13 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     saveGlobalSoundConfig(newConfig);
   };
 
+  const handleHapticConfigChange = (key: keyof GlobalHapticConfig, pattern: HapticPattern | null) => {
+    const newConfig = { ...hapticConfig, [key]: pattern };
+    setHapticConfig(newConfig);
+    saveGlobalHapticConfig(newConfig);
+    if (pattern) vibratePreview(pattern);
+  };
+
   const handleFolderChange = (soundId: string, folderId: string | undefined) => {
     const sound = sounds.find(s => s.id === soundId);
     if (sound) {
@@ -261,7 +286,17 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
             }`}
           >
-            Global Config
+            Sounds
+          </button>
+          <button
+            onClick={() => setActiveTab('haptics')}
+            className={`flex-1 px-3 py-2 rounded text-sm font-medium ${
+              activeTab === 'haptics'
+                ? 'bg-arcane-700 text-parchment-100'
+                : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+            }`}
+          >
+            Haptics
           </button>
         </div>
 
@@ -403,6 +438,45 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         <option key={sound.id} value={sound.id}>
                           {sound.name}
                         </option>
+                      ))}
+                    </select>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {activeTab === 'haptics' && (
+          <div className="space-y-4 max-h-[500px] overflow-y-auto">
+            <h3 className="text-parchment-100 font-medium">Haptic Feedback</h3>
+            <p className="text-stone-400 text-xs">
+              Configure vibration patterns for game events. These apply to all users on mobile devices.
+              Set "None" to disable haptics for a specific event.
+            </p>
+
+            {GLOBAL_HAPTIC_TRIGGERS.map((group) => (
+              <div key={group.group} className="space-y-2">
+                <h4 className="text-stone-300 text-sm font-medium border-b border-stone-700 pb-1">
+                  {group.group}
+                </h4>
+                {group.items.map((item) => (
+                  <div key={item.key} className="flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-stone-300 text-sm">{item.label}</span>
+                      <p className="text-stone-500 text-[10px] leading-tight">{item.description}</p>
+                    </div>
+                    <select
+                      value={hapticConfig[item.key] ?? ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        handleHapticConfigChange(item.key, val ? val as HapticPattern : null);
+                      }}
+                      className="w-24 px-2 py-1 bg-stone-700 rounded text-parchment-100 text-xs"
+                    >
+                      <option value="">None</option>
+                      {HAPTIC_PATTERN_OPTIONS.map((p) => (
+                        <option key={p} value={p}>{p}</option>
                       ))}
                     </select>
                   </div>

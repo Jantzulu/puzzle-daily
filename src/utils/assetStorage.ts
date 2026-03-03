@@ -1,4 +1,4 @@
-import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, CollectibleEffectConfig, CollectiblePickupPermissions } from '../types/game';
+import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, GlobalHapticConfig, CollectibleEffectConfig, CollectiblePickupPermissions } from '../types/game';
 import { toast } from '../components/shared/Toast';
 
 // ============ SAFE LOCALSTORAGE UTILITIES ============
@@ -1236,6 +1236,25 @@ export const getGlobalSoundConfig = (): GlobalSoundConfig => {
     return JSON.parse(stored);
   } catch (e) {
     console.error('Failed to load global sound config:', e);
+    return {};
+  }
+};
+
+// ============ GLOBAL HAPTIC CONFIG ============
+
+const GLOBAL_HAPTICS_KEY = 'global_haptic_config';
+
+export const saveGlobalHapticConfig = (config: GlobalHapticConfig): boolean => {
+  return safeLocalStorageSet(GLOBAL_HAPTICS_KEY, JSON.stringify(config));
+};
+
+export const getGlobalHapticConfig = (): GlobalHapticConfig => {
+  try {
+    const stored = localStorage.getItem(GLOBAL_HAPTICS_KEY);
+    if (!stored) return {};
+    return JSON.parse(stored);
+  } catch (e) {
+    console.error('Failed to load global haptic config:', e);
     return {};
   }
 };

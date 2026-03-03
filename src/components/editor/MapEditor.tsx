@@ -1139,7 +1139,7 @@ export const MapEditor: React.FC = () => {
   };
 
   const paintTile = (x: number, y: number) => {
-    vibrate('tap');
+    vibrate('tilePaint');
     if (state.selectedTool === 'enemy') {
       if (!selectedEnemyId) {
         toast.warning('Please select an enemy type first!');

@@ -294,7 +294,7 @@ export const Game: React.FC = () => {
         }
 
         const newState = executeTurn(stateCopy);
-        vibrate('turn');
+        vibrate('turnAdvance');
 
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
@@ -302,7 +302,7 @@ export const Game: React.FC = () => {
 
           // Handle victory
           if (newState.gameStatus === 'victory') {
-            vibrate('success');
+            vibrate('victory');
             playGameSound('victory');
             playVictoryMusic();
             // Calculate and store score
@@ -320,7 +320,7 @@ export const Game: React.FC = () => {
             const ranOutOfTurns = newState.currentTurn >= maxTurns;
             setDefeatReason(ranOutOfTurns ? 'turns' : 'damage');
 
-            vibrate('error');
+            vibrate('defeat');
             playGameSound('defeat');
 
             if (!isUnlimitedLives) {
@@ -332,8 +332,9 @@ export const Game: React.FC = () => {
                 setShowGameOver(true);
                 playDefeatMusic();
               } else {
-                // Life lost - play sound
+                // Life lost - play sound and haptic
                 playGameSound('life_lost');
+                vibrate('lifeLost');
                 // Auto-reset after a delay to show defeat message (3 seconds)
                 setTimeout(() => {
                   handleAutoReset();
@@ -451,7 +452,7 @@ export const Game: React.FC = () => {
         placedCharacters: [...prev.placedCharacters, newCharacter],
       }));
       playGameSound('character_placed');
-      vibrate('tap');
+      vibrate('characterPlace');
     },
     [selectedCharacterId, gameState]
   );
@@ -466,7 +467,7 @@ export const Game: React.FC = () => {
       // Victory! Stop simulation and trigger victory handling
       setIsSimulating(false);
       setGameState(prev => ({ ...prev, gameStatus: 'victory' }));
-      vibrate('success');
+      vibrate('victory');
       playGameSound('victory');
       playVictoryMusic();
       // Calculate and store score
@@ -587,8 +588,9 @@ export const Game: React.FC = () => {
         setShowGameOver(true);
         playDefeatMusic();
       } else {
-        // Life lost - play sound and reset
+        // Life lost - play sound, haptic, and reset
         playGameSound('life_lost');
+        vibrate('lifeLost');
         handleAutoReset();
       }
     } else {

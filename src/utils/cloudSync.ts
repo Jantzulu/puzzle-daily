@@ -49,6 +49,7 @@ import {
   getHiddenAssets,
   getSoundAssets,
   getGlobalSoundConfig,
+  getGlobalHapticConfig,
   getHelpContent,
   saveTileType,
   saveObject,
@@ -62,6 +63,7 @@ import {
   saveFolder,
   saveSoundAsset,
   saveGlobalSoundConfig,
+  saveGlobalHapticConfig,
   saveHelpSection,
   deleteTileType,
   deleteObject,
@@ -81,7 +83,7 @@ import {
   type CustomCollectible,
   type HelpContentStorage,
 } from './assetStorage';
-import type { SoundAsset, GlobalSoundConfig } from '../types/game';
+import type { SoundAsset, GlobalSoundConfig, GlobalHapticConfig } from '../types/game';
 import { getSavedPuzzles, savePuzzle as saveLocalPuzzle, deletePuzzle as deleteLocalPuzzle, getPendingPuzzleDeletions, clearPendingPuzzleDeletions } from './puzzleStorage';
 import { loadThemeAssets, saveThemeAssets, notifyThemeAssetsChanged, type ThemeAssets } from './themeAssets';
 
@@ -264,6 +266,13 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     if (Object.keys(globalSoundConfig).length > 0) {
       const success = await saveAssetToCloud('global_sound_config', 'global_sound_config', 'Global Sound Config', globalSoundConfig);
       if (!success) errors.push('Failed to upload global sound config');
+    }
+
+    // Push global haptic configuration
+    const globalHapticConfig = getGlobalHapticConfig();
+    if (Object.keys(globalHapticConfig).length > 0) {
+      const success = await saveAssetToCloud('global_haptic_config', 'global_haptic_config', 'Global Haptic Config', globalHapticConfig);
+      if (!success) errors.push('Failed to upload global haptic config');
     }
 
     // Push help content
@@ -662,6 +671,25 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           }
         } catch (e) {
           errors.push(`Failed to import global sound config`);
+        }
+      }
+    }
+
+    // Import global haptic configuration
+    if (cloudData.globalHapticConfig) {
+      for (const asset of cloudData.globalHapticConfig) {
+        try {
+          if (!asset.deleted_at && asset.id === 'global_haptic_config') {
+            const config = asset.data as unknown as GlobalHapticConfig;
+            const saved = saveGlobalHapticConfig(config);
+            if (!saved) {
+              errors.push(`Storage full - failed to save global haptic config`);
+            } else {
+              console.log(`[CloudSync] Imported global haptic config`);
+            }
+          }
+        } catch (e) {
+          errors.push(`Failed to import global haptic config`);
         }
       }
     }

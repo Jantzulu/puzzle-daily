@@ -1092,6 +1092,23 @@ export interface GlobalSoundConfig {
 }
 
 // ==========================================
+// HAPTIC FEEDBACK CONFIG
+// ==========================================
+
+export type HapticPattern = 'tap' | 'medium' | 'heavy' | 'success' | 'error' | 'combat' | 'spell' | 'turn';
+
+export interface GlobalHapticConfig {
+  // Gameplay
+  turnAdvance?: HapticPattern | null;
+  victory?: HapticPattern | null;
+  defeat?: HapticPattern | null;
+  characterPlace?: HapticPattern | null;
+  lifeLost?: HapticPattern | null;
+  // Editor
+  tilePaint?: HapticPattern | null;
+}
+
+// ==========================================
 // COLLECTIBLE SYSTEM
 // ==========================================
 
