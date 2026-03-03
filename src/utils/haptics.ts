@@ -22,8 +22,8 @@ const PATTERNS: Record<HapticPattern, number | number[]> = {
   turn:    20,
 };
 
-// Default config — used when team hasn't configured haptics yet
-const DEFAULTS: GlobalHapticConfig = {
+/** Default config — used when team hasn't configured haptics yet */
+export const HAPTIC_DEFAULTS: GlobalHapticConfig = {
   turnAdvance: 'turn',
   victory: 'success',
   defeat: 'error',
@@ -39,6 +39,17 @@ export function isHapticsSupported(): boolean {
 }
 
 /**
+ * Get the effective haptic config — stored config merged over defaults.
+ * This ensures defaults are used for any trigger not explicitly configured.
+ */
+export function getEffectiveHapticConfig(): GlobalHapticConfig {
+  const config = getGlobalHapticConfig();
+  // If config is empty (never configured), return defaults
+  if (Object.keys(config).length === 0) return { ...HAPTIC_DEFAULTS };
+  return config;
+}
+
+/**
  * Trigger a haptic event by trigger ID.
  * Reads the team-configured pattern from GlobalHapticConfig.
  * If the trigger is null/undefined in config, it doesn't fire.
@@ -46,11 +57,8 @@ export function isHapticsSupported(): boolean {
 export function vibrate(triggerId: HapticTriggerId): void {
   if (!isHapticsSupported()) return;
 
-  const config = getGlobalHapticConfig();
-  // Use config value if set, otherwise fall back to defaults
-  const pattern = triggerId in config
-    ? config[triggerId]
-    : DEFAULTS[triggerId];
+  const config = getEffectiveHapticConfig();
+  const pattern = config[triggerId];
 
   if (!pattern) return;
 

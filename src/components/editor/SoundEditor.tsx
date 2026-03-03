@@ -10,10 +10,9 @@ import {
   saveGlobalSoundConfig,
   getGlobalSoundConfig,
   saveGlobalHapticConfig,
-  getGlobalHapticConfig,
   getFolders,
 } from '../../utils/assetStorage';
-import { HAPTIC_PATTERN_OPTIONS, vibratePreview } from '../../utils/haptics';
+import { HAPTIC_PATTERN_OPTIONS, vibratePreview, getEffectiveHapticConfig } from '../../utils/haptics';
 import { soundManager } from '../../utils/soundManager';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
@@ -68,7 +67,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [globalConfig, setGlobalConfig] = useState<GlobalSoundConfig>(() => getGlobalSoundConfig());
-  const [hapticConfig, setHapticConfig] = useState<GlobalHapticConfig>(() => getGlobalHapticConfig());
+  const [hapticConfig, setHapticConfig] = useState<GlobalHapticConfig>(() => getEffectiveHapticConfig());
   const [activeTab, setActiveTab] = useState<'library' | 'global' | 'haptics'>('library');
   const [isPlaying, setIsPlaying] = useState(false);
   const bulk = useBulkSelect();
