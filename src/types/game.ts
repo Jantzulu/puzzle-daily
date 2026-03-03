@@ -1103,6 +1103,11 @@ export interface GlobalHapticConfig {
   victory?: HapticPattern | null;
   defeat?: HapticPattern | null;
   characterPlace?: HapticPattern | null;
+  heroSelect?: HapticPattern | null;
+  heroRemove?: HapticPattern | null;
+  heroTrash?: HapticPattern | null;
+  playButton?: HapticPattern | null;
+  testButton?: HapticPattern | null;
   lifeLost?: HapticPattern | null;
   // Editor
   tilePaint?: HapticPattern | null;

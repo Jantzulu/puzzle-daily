@@ -4,77 +4,36 @@
  * Reads trigger→pattern mappings from GlobalHapticConfig (team-level setting).
  * Falls back to defaults if no config is set.
  *
- * iOS: Uses hidden <input type="checkbox" switch> toggle trick (Safari 17.4+).
- * Android: Uses navigator.vibrate() with full pattern support.
+ * Uses web-haptics library for cross-platform support (iOS + Android).
  * Fails silently on unsupported devices.
  */
 
+import { WebHaptics } from 'web-haptics';
 import { getGlobalHapticConfig } from './assetStorage';
 import type { HapticPattern, GlobalHapticConfig } from '../types/game';
 
-// ─── Platform detection ──────────────────────────────────────────
+// ─── Singleton instance ─────────────────────────────────────────
 
-const hasVibrate = typeof navigator !== 'undefined' && 'vibrate' in navigator;
+let haptics: WebHaptics | null = null;
 
-// Detect touch device (for iOS fallback) — pointer:coarse = touchscreen
-const isTouchDevice = typeof window !== 'undefined' &&
-  window.matchMedia('(pointer: coarse)').matches;
-
-// iOS = touch device without vibrate API
-const useIOSFallback = isTouchDevice && !hasVibrate;
-
-// ─── iOS haptic via checkbox switch toggle ───────────────────────
-// Wraps input in a <label>, appends to <head>, clicks label, removes.
-// Must match the pattern from github.com/tijnjh/ios-haptics exactly.
-
-function iosHapticTap(): void {
-  try {
-    const label = document.createElement('label');
-    label.ariaHidden = 'true';
-    label.style.display = 'none';
-
-    const input = document.createElement('input');
-    input.type = 'checkbox';
-    input.setAttribute('switch', '');
-    label.appendChild(input);
-
-    document.head.appendChild(label);
-    label.click();
-    document.head.removeChild(label);
-  } catch {}
-}
-
-function iosHapticMulti(taps: number, delayMs: number = 120): void {
-  iosHapticTap();
-  for (let i = 1; i < taps; i++) {
-    setTimeout(() => iosHapticTap(), i * delayMs);
+function getHaptics(): WebHaptics {
+  if (!haptics) {
+    haptics = new WebHaptics();
   }
+  return haptics;
 }
 
-// ─── iOS tap count per pattern (approximation of vibration patterns) ──
+// ─── Pattern mapping → web-haptics trigger input ────────────────
 
-const IOS_TAPS: Record<HapticPattern, number> = {
-  tap:     1,
-  medium:  1,
-  heavy:   1,
-  success: 2,
-  error:   3,
-  combat:  2,
-  spell:   3,
-  turn:    1,
-};
-
-// ─── Android vibration patterns ──────────────────────────────────
-
-const PATTERNS: Record<HapticPattern, number | number[]> = {
-  tap:     10,
-  medium:  25,
-  heavy:   50,
-  success: [10, 50, 10],
-  error:   [50, 25, 50],
-  combat:  [15, 30, 15],
-  spell:   [10, 20, 10, 20, 10],
-  turn:    20,
+const PATTERN_MAP: Record<HapticPattern, Parameters<WebHaptics['trigger']>[0]> = {
+  tap:     'light',
+  medium:  'medium',
+  heavy:   'heavy',
+  success: 'success',
+  error:   'error',
+  combat:  [{ duration: 15, intensity: 0.7 }, { delay: 30, duration: 15, intensity: 0.7 }],
+  spell:   [{ duration: 10, intensity: 0.5 }, { delay: 20, duration: 10, intensity: 0.6 }, { delay: 20, duration: 10, intensity: 0.7 }],
+  turn:    'selection',
 };
 
 // ─── Shared config ───────────────────────────────────────────────
@@ -85,6 +44,11 @@ export const HAPTIC_DEFAULTS: GlobalHapticConfig = {
   victory: 'success',
   defeat: 'error',
   characterPlace: 'tap',
+  heroSelect: 'tap',
+  heroRemove: null,
+  heroTrash: null,
+  playButton: 'medium',
+  testButton: 'tap',
   lifeLost: null,
   tilePaint: null,
 };
@@ -92,7 +56,7 @@ export const HAPTIC_DEFAULTS: GlobalHapticConfig = {
 export type HapticTriggerId = keyof GlobalHapticConfig;
 
 export function isHapticsSupported(): boolean {
-  return useIOSFallback || hasVibrate;
+  return WebHaptics.isSupported;
 }
 
 /**
@@ -107,18 +71,9 @@ export function getEffectiveHapticConfig(): GlobalHapticConfig {
 // ─── Core fire function ──────────────────────────────────────────
 
 function firePattern(pattern: HapticPattern): void {
-  if (useIOSFallback) {
-    const taps = IOS_TAPS[pattern] || 1;
-    if (taps === 1) {
-      iosHapticTap();
-    } else {
-      iosHapticMulti(taps);
-    }
-  } else if (hasVibrate) {
-    const p = PATTERNS[pattern];
-    if (p !== undefined) {
-      navigator.vibrate(p);
-    }
+  const input = PATTERN_MAP[pattern];
+  if (input !== undefined) {
+    getHaptics().trigger(input);
   }
 }
 

@@ -277,6 +277,7 @@ export const Game: React.FC = () => {
         setTestTurnsRemaining(prev => prev - 1);
       }
 
+      vibrate('turnAdvance');
       setGameState((prevState) => {
         // Deep copy all mutable state to ensure React StrictMode double-invoke works correctly.
         // StrictMode calls the updater function twice with the same prevState to detect impure renders.
@@ -294,7 +295,6 @@ export const Game: React.FC = () => {
         }
 
         const newState = executeTurn(stateCopy);
-        vibrate('turnAdvance');
 
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
@@ -366,6 +366,7 @@ export const Game: React.FC = () => {
           placedCharacters: prev.placedCharacters.filter((c) => c.x !== x || c.y !== y),
         }));
         playGameSound('character_removed');
+        vibrate('heroRemove');
         return;
       }
 
@@ -487,6 +488,7 @@ export const Game: React.FC = () => {
     setGameState((prev) => ({ ...prev, gameStatus: 'running' }));
     setIsSimulating(true);
     playGameSound('simulation_start');
+    vibrate('playButton');
   };
 
   const handlePause = () => {
@@ -528,6 +530,7 @@ export const Game: React.FC = () => {
     setIsSimulating(false);
     setSelectedCharacterId(null);
     setPuzzleScore(null);
+    vibrate('heroTrash');
   };
 
   // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
@@ -660,6 +663,7 @@ export const Game: React.FC = () => {
     setTestTurnsRemaining(5);
     setIsSimulating(true);
     setSelectedCharacterId(null);
+    vibrate('testButton');
   };
 
   const handleTestCharacters = () => {
@@ -699,6 +703,7 @@ export const Game: React.FC = () => {
     setTestTurnsRemaining(5);
     setIsSimulating(true);
     setSelectedCharacterId(null);
+    vibrate('testButton');
   };
 
   // Scroll-aware test handlers (scrolls to game board on both mobile and desktop)
@@ -1346,7 +1351,7 @@ export const Game: React.FC = () => {
                 <CharacterSelector
                   availableCharacterIds={gameState.puzzle.availableCharacters}
                   selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
-                  onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? setSelectedCharacterId : () => {}}
+                  onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? (id: string | null) => { setSelectedCharacterId(id); if (id) vibrate('heroSelect'); } : () => {}}
                   placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
                   maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
                   onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}

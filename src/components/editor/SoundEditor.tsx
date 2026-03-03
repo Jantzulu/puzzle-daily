@@ -52,6 +52,11 @@ const GLOBAL_HAPTIC_TRIGGERS = [
     { key: 'victory' as keyof GlobalHapticConfig, label: 'Victory', description: 'Puzzle solved' },
     { key: 'defeat' as keyof GlobalHapticConfig, label: 'Defeat', description: 'Out of turns or lethal damage' },
     { key: 'characterPlace' as keyof GlobalHapticConfig, label: 'Character Placed', description: 'Placing a hero on the board' },
+    { key: 'heroSelect' as keyof GlobalHapticConfig, label: 'Hero Selected', description: 'Selecting a hero from the panel' },
+    { key: 'heroRemove' as keyof GlobalHapticConfig, label: 'Hero Removed', description: 'Removing a placed hero from the board' },
+    { key: 'heroTrash' as keyof GlobalHapticConfig, label: 'Clear All Heroes', description: 'Clicking trash to remove all heroes' },
+    { key: 'playButton' as keyof GlobalHapticConfig, label: 'Play Button', description: 'Starting the simulation' },
+    { key: 'testButton' as keyof GlobalHapticConfig, label: 'Test Button', description: 'Starting a hero or enemy test' },
     { key: 'lifeLost' as keyof GlobalHapticConfig, label: 'Life Lost', description: 'Losing a life on defeat' },
   ]},
   { group: 'Editor', items: [
