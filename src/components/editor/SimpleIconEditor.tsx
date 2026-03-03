@@ -317,7 +317,6 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
           <div className="flex items-center gap-2">
             <MediaBrowseButton
               onSelect={(url) => setImageUrl(url)}
-              initialFolder="misc"
               label="☁️ Browse Media"
               className="px-2 py-1 text-xs"
             />

@@ -316,7 +316,6 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
             <div className="flex items-center gap-2 mt-2">
               <MediaBrowseButton
                 onSelect={(url) => setImageUrlInput(url)}
-                initialFolder="effects"
                 label="☁️ Browse Media"
                 className="px-2 py-1 text-xs"
               />
@@ -421,7 +420,6 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
             <div className="flex items-center gap-2 mt-2">
               <MediaBrowseButton
                 onSelect={(url) => setSpriteSheetUrlInput(url)}
-                initialFolder="effects"
                 label="☁️ Browse Media"
                 className="px-2 py-1 text-xs"
               />
@@ -927,7 +925,6 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <div className="flex items-center gap-2 mt-2">
                 <MediaBrowseButton
                   onSelect={(url) => setThumbnailUrlInput(url)}
-                  initialFolder="effects"
                   label="☁️ Browse Media"
                   className="px-2 py-1 text-xs"
                 />

@@ -133,7 +133,6 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
         {/* Cloud Media + URL Input Toggle */}
         <div className="flex items-center gap-2">
           <MediaBrowseButton
-            initialFolder="characters"
             onSelect={(url) => onImageChange(undefined, url)}
             label="☁️ Browse Media"
             className="px-2 py-1 text-xs"

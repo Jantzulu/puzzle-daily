@@ -2003,7 +2003,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
@@ -2476,7 +2476,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setIdleSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setIdleSpriteSheetUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowIdleSpriteSheetUrl(!showIdleSpriteSheetUrl)}
@@ -2611,7 +2611,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
@@ -2738,7 +2738,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setMovingSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setMovingSpriteSheetUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowMovingSpriteSheetUrl(!showMovingSpriteSheetUrl)}
@@ -2873,7 +2873,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setMovingImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setMovingImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowMovingImageUrl(!showMovingImageUrl)}
@@ -3017,7 +3017,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setDeathSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setDeathSpriteSheetUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowDeathSpriteSheetUrl(!showDeathSpriteSheetUrl)}
@@ -3152,7 +3152,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setDeathImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setDeathImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowDeathImageUrl(!showDeathImageUrl)}
@@ -3296,7 +3296,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setCastingSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setCastingSpriteSheetUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowCastingSpriteSheetUrl(!showCastingSpriteSheetUrl)}
@@ -3431,7 +3431,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setCastingImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setCastingImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowCastingImageUrl(!showCastingImageUrl)}
@@ -3608,7 +3608,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
             {/* Cloud Media + URL Input Toggle */}
             <div className="flex items-center gap-2">
-              <MediaBrowseButton onSelect={(url) => setSpawnSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+              <MediaBrowseButton onSelect={(url) => setSpawnSpriteSheetUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
               <button
                 type="button"
                 onClick={() => setShowSpawnSpriteSheetUrl(!showSpawnSpriteSheetUrl)}
@@ -3732,7 +3732,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setSpawnImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <MediaBrowseButton onSelect={(url) => setSpawnImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
                 <button
                   type="button"
                   onClick={() => setShowSpawnImageUrl(!showSpawnImageUrl)}

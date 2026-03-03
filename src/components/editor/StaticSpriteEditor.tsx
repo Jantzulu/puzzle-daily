@@ -451,7 +451,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
               </label>
               <div className="flex items-center gap-2 mt-1">
                 <MediaBrowseButton
-                  initialFolder="tiles"
+
                   onSelect={(url) => {
                     setDefaultImageUrlInput(url);
                     onChange({
@@ -555,7 +555,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
               </label>
               <div className="flex items-center gap-2 mt-1">
                 <MediaBrowseButton
-                  initialFolder="tiles"
+
                   onSelect={(url) => {
                     setDefaultSpriteSheetUrlInput(url);
                     const existingSheet = sprite.idleSpriteSheet;
@@ -666,7 +666,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                   </label>
                   <div className="flex items-center gap-2 mt-1">
                     <MediaBrowseButton
-                      initialFolder="tiles"
+    
                       onSelect={(url) => {
                         setTriggeredImageUrlInput(url);
                         onChange({
@@ -767,7 +767,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                   </label>
                   <div className="flex items-center gap-2 mt-1">
                     <MediaBrowseButton
-                      initialFolder="tiles"
+    
                       onSelect={(url) => {
                         setTriggeredSpriteSheetUrlInput(url);
                         const existingSheet = sprite.triggeredSpriteSheet;

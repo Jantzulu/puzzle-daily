@@ -647,7 +647,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                               <>
                                 <div className="flex items-center gap-1">
                                   <MediaBrowseButton
-                                    initialFolder="characters"
+
                                     onSelect={(url) => setBorderSpriteUrl(key, url)}
                                     label="☁️ Browse Media"
                                     className="px-1 py-0.5 text-[10px]"
@@ -758,7 +758,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                               <>
                                 <div className="flex items-center gap-1">
                                   <MediaBrowseButton
-                                    initialFolder="characters"
+
                                     onSelect={(url) => setTileSpriteUrl(key, url)}
                                     label="☁️ Browse Media"
                                     className="px-1 py-0.5 text-[10px]"
@@ -893,7 +893,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                               <div className="mt-1">
                                 <div className="flex items-center gap-1">
                                   <MediaBrowseButton
-                                    initialFolder="characters"
+
                                     onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, spriteType)}
                                     label="☁️ Browse Media"
                                     className="px-1 py-0.5 text-[10px]"
@@ -1025,7 +1025,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                   <div className="mt-1">
                                     <div className="flex items-center gap-1">
                                       <MediaBrowseButton
-                                        initialFolder="characters"
+    
                                         onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, 'on')}
                                         label="☁️ Browse Media"
                                         className="px-1 py-0.5 text-[10px]"

@@ -1130,7 +1130,6 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       {/* Cloud Media + URL Input Toggle */}
                       <div className="flex items-center gap-2">
                         <MediaBrowseButton
-                          initialFolder="tiles"
                           onSelect={(url) => setSpriteUrl(url)}
                           label="☁️ Browse Media"
                           className="px-2 py-1 text-xs"
@@ -1244,7 +1243,6 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                         {/* Cloud Media + URL Input Toggle */}
                         <div className="flex items-center gap-2">
                           <MediaBrowseButton
-                            initialFolder="tiles"
                             onSelect={(url) => setOffSpriteUrl(url)}
                             label="☁️ Browse Media"
                             className="px-2 py-1 text-xs"
