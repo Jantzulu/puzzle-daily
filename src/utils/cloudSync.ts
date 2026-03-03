@@ -15,6 +15,16 @@ import {
   syncFromCloud,
 } from '../services/supabaseService';
 import { logActivity } from '../services/activityLogService';
+import {
+  getLocallyChangedIds,
+  detectConflicts,
+  markPushCompleted,
+  markPullCompleted,
+  trackCloudTimestamp,
+  resolveConflictKeepLocal,
+  resolveConflictAcceptCloud,
+  type SyncConflict,
+} from './syncTracker';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
 import type { Puzzle } from '../types/game';
 import type {
@@ -79,8 +89,51 @@ import { loadThemeAssets, saveThemeAssets, notifyThemeAssetsChanged, type ThemeA
 let lastSyncTime: Date | null = null;
 let isSyncing = false;
 let syncListeners: Array<(status: SyncStatus) => void> = [];
+let pendingConflicts: SyncConflict[] = [];
+let conflictListeners: Array<(conflicts: SyncConflict[]) => void> = [];
 
 export type SyncStatus = 'idle' | 'syncing' | 'success' | 'error';
+
+export function getConflicts(): SyncConflict[] {
+  return pendingConflicts;
+}
+
+export function subscribeConflicts(listener: (conflicts: SyncConflict[]) => void): () => void {
+  conflictListeners.push(listener);
+  return () => { conflictListeners = conflictListeners.filter(l => l !== listener); };
+}
+
+function notifyConflicts() {
+  conflictListeners.forEach(l => l(pendingConflicts));
+}
+
+export function resolveConflict(id: string, resolution: 'keep_local' | 'accept_cloud'): void {
+  const conflict = pendingConflicts.find(c => c.id === id);
+  if (!conflict) return;
+
+  if (resolution === 'keep_local') {
+    resolveConflictKeepLocal(id, conflict.cloudUpdatedAt);
+  } else {
+    resolveConflictAcceptCloud(id);
+  }
+
+  pendingConflicts = pendingConflicts.filter(c => c.id !== id);
+  notifyConflicts();
+}
+
+export function resolveAllConflicts(resolution: 'keep_local' | 'accept_cloud'): void {
+  for (const conflict of pendingConflicts) {
+    if (resolution === 'keep_local') {
+      resolveConflictKeepLocal(conflict.id, conflict.cloudUpdatedAt);
+    } else {
+      resolveConflictAcceptCloud(conflict.id);
+    }
+  }
+  pendingConflicts = [];
+  notifyConflicts();
+}
+
+export { type SyncConflict } from './syncTracker';
 
 export function subscribeSyncStatus(listener: (status: SyncStatus) => void): () => void {
   syncListeners.push(listener);
@@ -267,6 +320,22 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
       clearPendingPuzzleDeletions();
     }
 
+    // Track what we pushed for incremental sync
+    const allPushedIds = [
+      ...tileTypes.map(t => t.id),
+      ...enemies.map(e => e.id),
+      ...characters.map(c => c.id),
+      ...objects.map(o => o.id),
+      ...skins.filter(s => !s.isBuiltIn).map(s => s.id),
+      ...spells.map(s => s.id),
+      ...statusEffects.filter(e => !e.isBuiltIn).map(e => e.id),
+      ...folders.map(f => f.id),
+      ...collectibleTypes.map(c => c.id),
+      ...collectibleAssets.map(c => c.id),
+      ...puzzles.map(p => p.id),
+    ];
+    markPushCompleted(allPushedIds);
+
     lastSyncTime = new Date();
     logActivity({ action: 'sync_push', details: { errors: errors.length } });
     notifySyncStatus(errors.length > 0 ? 'error' : 'success');
@@ -298,8 +367,44 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
   try {
     const cloudData = await syncFromCloud();
 
+    // Detect conflicts before importing
+    const allCloudAssets = [
+      ...cloudData.tileTypes,
+      ...cloudData.enemies,
+      ...cloudData.characters,
+      ...cloudData.objects,
+      ...cloudData.skins,
+      ...cloudData.spells,
+      ...cloudData.statusEffects,
+      ...cloudData.folders,
+      ...cloudData.collectibleTypes,
+      ...cloudData.collectibles,
+      ...cloudData.sounds,
+    ]
+      .filter(a => !a.deleted_at)
+      .map(a => ({ id: a.id, name: a.name, type: a.type, updated_at: a.updated_at }));
+
+    // Also check puzzles
+    const allCloudItems = [
+      ...allCloudAssets,
+      ...cloudData.puzzles
+        .filter(p => !p.deleted_at)
+        .map(p => ({ id: p.id, name: p.name, type: 'puzzle', updated_at: p.updated_at })),
+    ];
+
+    const detected = detectConflicts(allCloudItems);
+    if (detected.length > 0) {
+      pendingConflicts = detected;
+      notifyConflicts();
+      console.log(`[CloudSync] Detected ${detected.length} conflicts`);
+    }
+
+    // Build set of conflicted IDs to skip during import
+    const conflictedIds = new Set(pendingConflicts.map(c => c.id));
+
     // Import tile types (or delete if soft-deleted)
     for (const asset of cloudData.tileTypes) {
+      if (conflictedIds.has(asset.id)) continue;
       try {
         if (asset.deleted_at) {
           // Soft-deleted in cloud - remove locally
@@ -319,6 +424,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
 
     // Import enemies (or delete if soft-deleted)
     for (const asset of cloudData.enemies) {
+      if (conflictedIds.has(asset.id)) continue;
       try {
         if (asset.deleted_at) {
           deleteEnemy(asset.id);
@@ -337,6 +443,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
 
     // Import characters (or delete if soft-deleted)
     for (const asset of cloudData.characters) {
+      if (conflictedIds.has(asset.id)) continue;
       try {
         if (asset.deleted_at) {
           deleteCharacter(asset.id);
@@ -355,6 +462,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
 
     // Import objects (or delete if soft-deleted)
     for (const asset of cloudData.objects) {
+      if (conflictedIds.has(asset.id)) continue;
       try {
         if (asset.deleted_at) {
           deleteObject(asset.id);
@@ -373,6 +481,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
 
     // Import skins (or delete if soft-deleted)
     for (const asset of cloudData.skins) {
+      if (conflictedIds.has(asset.id)) continue;
       try {
         if (asset.deleted_at) {
           deletePuzzleSkin(asset.id);
@@ -393,6 +502,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
 
     // Import spells (or delete if soft-deleted)
     for (const asset of cloudData.spells) {
+      if (conflictedIds.has(asset.id)) continue;
       try {
         if (asset.deleted_at) {
           deleteSpellAsset(asset.id);
@@ -412,6 +522,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     // Import status effects (or delete if soft-deleted)
     if (cloudData.statusEffects) {
       for (const asset of cloudData.statusEffects) {
+        if (conflictedIds.has(asset.id)) continue;
         try {
           if (asset.deleted_at) {
             deleteStatusEffectAsset(asset.id);
@@ -434,6 +545,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     // Import folders (or delete if soft-deleted)
     if (cloudData.folders) {
       for (const asset of cloudData.folders) {
+        if (conflictedIds.has(asset.id)) continue;
         try {
           if (asset.deleted_at) {
             deleteFolder(asset.id);
@@ -454,6 +566,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     // Import collectible types (or delete if soft-deleted)
     if (cloudData.collectibleTypes) {
       for (const asset of cloudData.collectibleTypes) {
+        if (conflictedIds.has(asset.id)) continue;
         try {
           if (asset.deleted_at) {
             deleteCollectibleType(asset.id);
@@ -474,6 +587,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     // Import collectible assets (full-featured collectibles) (or delete if soft-deleted)
     if (cloudData.collectibles) {
       for (const asset of cloudData.collectibles) {
+        if (conflictedIds.has(asset.id)) continue;
         try {
           if (asset.deleted_at) {
             deleteCollectible(asset.id);
@@ -513,6 +627,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     // Import sound assets (or delete if soft-deleted)
     if (cloudData.sounds) {
       for (const asset of cloudData.sounds) {
+        if (conflictedIds.has(asset.id)) continue;
         try {
           if (asset.deleted_at) {
             deleteSoundAsset(asset.id);
@@ -596,6 +711,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     // Import puzzles (or delete if soft-deleted)
     console.log(`[CloudSync] Pulling ${cloudData.puzzles.length} puzzles from cloud`);
     for (const dbPuzzle of cloudData.puzzles) {
+      if (conflictedIds.has(dbPuzzle.id)) continue;
       try {
         if (dbPuzzle.deleted_at) {
           deleteLocalPuzzle(dbPuzzle.id);
@@ -616,8 +732,16 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     }
     console.log(`[CloudSync] After pull, local puzzles count: ${getSavedPuzzles().length}`);
 
+    // Track cloud timestamps for imported assets
+    for (const asset of allCloudItems) {
+      if (!conflictedIds.has(asset.id)) {
+        trackCloudTimestamp(asset.id, asset.updated_at);
+      }
+    }
+    markPullCompleted();
+
     lastSyncTime = new Date();
-    logActivity({ action: 'sync_pull', details: { errors: errors.length } });
+    logActivity({ action: 'sync_pull', details: { errors: errors.length, conflicts: pendingConflicts.length } });
     notifySyncStatus(errors.length > 0 ? 'error' : 'success');
     return { success: errors.length === 0, errors };
 

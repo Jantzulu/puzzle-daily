@@ -4,8 +4,14 @@ import {
   pullFromCloud,
   getLastSyncTime,
   subscribeSyncStatus,
+  getConflicts,
+  subscribeConflicts,
+  resolveConflict,
+  resolveAllConflicts,
   type SyncStatus,
+  type SyncConflict,
 } from '../../utils/cloudSync';
+import { ConflictResolutionModal } from './ConflictResolutionModal';
 
 interface CloudSyncButtonProps {
   onSyncComplete?: () => void;
@@ -17,6 +23,8 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
   const [showDropdown, setShowDropdown] = useState(false);
   const [errors, setErrors] = useState<string[]>([]);
   const [confirmPull, setConfirmPull] = useState(false);
+  const [conflicts, setConflicts] = useState<SyncConflict[]>(getConflicts());
+  const [showConflicts, setShowConflicts] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -25,6 +33,14 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
       if (status === 'success' || status === 'error') {
         setLastSync(getLastSyncTime());
       }
+    });
+    return unsubscribe;
+  }, []);
+
+  useEffect(() => {
+    const unsubscribe = subscribeConflicts((c) => {
+      setConflicts([...c]);
+      if (c.length > 0) setShowConflicts(true);
     });
     return unsubscribe;
   }, []);
@@ -68,6 +84,14 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
     onSyncComplete?.();
   };
 
+  const handleResolve = (id: string, resolution: 'keep_local' | 'accept_cloud') => {
+    resolveConflict(id, resolution);
+  };
+
+  const handleResolveAll = (resolution: 'keep_local' | 'accept_cloud') => {
+    resolveAllConflicts(resolution);
+  };
+
   const formatLastSync = (date: Date | null) => {
     if (!date) return 'Never synced';
     const now = new Date();
@@ -105,6 +129,11 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
           </svg>
         )}
         <span className="text-sm text-parchment-300">Cloud</span>
+        {conflicts.length > 0 && (
+          <span className="w-4 h-4 bg-amber-600 rounded-full text-[10px] font-bold flex items-center justify-center text-white">
+            {conflicts.length}
+          </span>
+        )}
         <svg className={`w-3 h-3 text-stone-400 transition-transform ${showDropdown ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
         </svg>
@@ -173,6 +202,19 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
             </div>
           )}
 
+          {/* Conflicts section */}
+          {conflicts.length > 0 && (
+            <div className="p-2 border-t border-stone-700">
+              <button
+                onClick={() => { setShowConflicts(true); setShowDropdown(false); }}
+                className="w-full flex items-center gap-2 px-3 py-2 rounded text-sm text-left bg-amber-700/20 hover:bg-amber-700/30 text-amber-300"
+              >
+                <span className="text-amber-400">!</span>
+                {conflicts.length} conflict{conflicts.length !== 1 ? 's' : ''} to resolve
+              </button>
+            </div>
+          )}
+
           {errors.length > 0 && (
             <div className="p-2 border-t border-stone-700">
               <p className="text-red-400 text-xs font-medium mb-1">Errors:</p>
@@ -187,6 +229,16 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
             </div>
           )}
         </div>
+      )}
+
+      {/* Conflict Resolution Modal */}
+      {showConflicts && conflicts.length > 0 && (
+        <ConflictResolutionModal
+          conflicts={conflicts}
+          onResolve={handleResolve}
+          onResolveAll={handleResolveAll}
+          onClose={() => setShowConflicts(false)}
+        />
       )}
     </div>
   );
