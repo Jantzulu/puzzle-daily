@@ -1127,14 +1127,22 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                         />
                       </label>
 
-                      {/* URL Input Toggle */}
-                      <button
-                        type="button"
-                        onClick={() => setShowSpriteUrl(!showSpriteUrl)}
-                        className="text-xs text-arcane-400 hover:text-arcane-300"
-                      >
-                        {showSpriteUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-                      </button>
+                      {/* Cloud Media + URL Input Toggle */}
+                      <div className="flex items-center gap-2">
+                        <MediaBrowseButton
+                          initialFolder="tiles"
+                          onSelect={(url) => setSpriteUrl(url)}
+                          label="☁️ Browse Media"
+                          className="px-2 py-1 text-xs"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowSpriteUrl(!showSpriteUrl)}
+                          className="text-xs text-arcane-400 hover:text-arcane-300"
+                        >
+                          {showSpriteUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                        </button>
+                      </div>
 
                       {/* URL Input */}
                       {showSpriteUrl && (
@@ -1151,10 +1159,6 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             }}
                             placeholder="https://your-storage.com/sprite.png"
                             className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
-                          />
-                          <MediaBrowseButton
-                            initialFolder="tiles"
-                            onSelect={(url) => setSpriteUrl(url)}
                           />
                           <button
                             type="button"
@@ -1237,14 +1241,22 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           />
                         </label>
 
-                        {/* URL Input Toggle */}
-                        <button
-                          type="button"
-                          onClick={() => setShowOffSpriteUrl(!showOffSpriteUrl)}
-                          className="text-xs text-arcane-400 hover:text-arcane-300"
-                        >
-                          {showOffSpriteUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-                        </button>
+                        {/* Cloud Media + URL Input Toggle */}
+                        <div className="flex items-center gap-2">
+                          <MediaBrowseButton
+                            initialFolder="tiles"
+                            onSelect={(url) => setOffSpriteUrl(url)}
+                            label="☁️ Browse Media"
+                            className="px-2 py-1 text-xs"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowOffSpriteUrl(!showOffSpriteUrl)}
+                            className="text-xs text-arcane-400 hover:text-arcane-300"
+                          >
+                            {showOffSpriteUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                          </button>
+                        </div>
 
                         {/* URL Input */}
                         {showOffSpriteUrl && (
@@ -1261,10 +1273,6 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                               }}
                               placeholder="https://your-storage.com/sprite.png"
                               className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
-                            />
-                            <MediaBrowseButton
-                              initialFolder="tiles"
-                              onSelect={(url) => setOffSpriteUrl(url)}
                             />
                             <button
                               type="button"

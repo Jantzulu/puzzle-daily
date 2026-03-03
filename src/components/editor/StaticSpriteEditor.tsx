@@ -449,13 +449,31 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                   className="hidden"
                 />
               </label>
-              <button
-                type="button"
-                onClick={() => setShowDefaultImageUrl(!showDefaultImageUrl)}
-                className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showDefaultImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              <div className="flex items-center gap-2 mt-1">
+                <MediaBrowseButton
+                  initialFolder="tiles"
+                  onSelect={(url) => {
+                    setDefaultImageUrlInput(url);
+                    onChange({
+                      ...sprite,
+                      type: 'image',
+                      idleImageUrl: url,
+                      idleImageData: undefined,
+                      imageUrl: url,
+                      imageData: undefined,
+                    });
+                  }}
+                  label="☁️ Browse Media"
+                  className="px-2 py-1 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDefaultImageUrl(!showDefaultImageUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showDefaultImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
               {showDefaultImageUrl && (
                 <div className="flex gap-2 mt-1">
                   <input
@@ -465,20 +483,6 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                     onKeyDown={(e) => e.key === 'Enter' && handleImageUrlSubmit(false)}
                     placeholder="https://..."
                     className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
-                  />
-                  <MediaBrowseButton
-                    initialFolder="tiles"
-                    onSelect={(url) => {
-                      setDefaultImageUrlInput(url);
-                      onChange({
-                        ...sprite,
-                        type: 'image',
-                        idleImageUrl: url,
-                        idleImageData: undefined,
-                        imageUrl: url,
-                        imageData: undefined,
-                      });
-                    }}
                   />
                   <button
                     type="button"
@@ -549,13 +553,35 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                   className="hidden"
                 />
               </label>
-              <button
-                type="button"
-                onClick={() => setShowDefaultSpriteSheetUrl(!showDefaultSpriteSheetUrl)}
-                className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showDefaultSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              <div className="flex items-center gap-2 mt-1">
+                <MediaBrowseButton
+                  initialFolder="tiles"
+                  onSelect={(url) => {
+                    setDefaultSpriteSheetUrlInput(url);
+                    const existingSheet = sprite.idleSpriteSheet;
+                    onChange({
+                      ...sprite,
+                      idleSpriteSheet: {
+                        ...(existingSheet || {}),
+                        imageUrl: url,
+                        imageData: undefined,
+                        frameCount: existingSheet?.frameCount || 4,
+                        frameRate: existingSheet?.frameRate || 8,
+                        loop: existingSheet?.loop !== false,
+                      },
+                    });
+                    }}
+                  label="☁️ Browse Media"
+                  className="px-2 py-1 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowDefaultSpriteSheetUrl(!showDefaultSpriteSheetUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showDefaultSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
               {showDefaultSpriteSheetUrl && (
                 <div className="flex gap-2 mt-1">
                   <input
@@ -565,24 +591,6 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                     onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit(false)}
                     placeholder="https://..."
                     className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
-                  />
-                  <MediaBrowseButton
-                    initialFolder="tiles"
-                    onSelect={(url) => {
-                      setDefaultSpriteSheetUrlInput(url);
-                      const existingSheet = sprite.idleSpriteSheet;
-                      onChange({
-                        ...sprite,
-                        idleSpriteSheet: {
-                          ...(existingSheet || {}),
-                          imageUrl: url,
-                          imageData: undefined,
-                          frameCount: existingSheet?.frameCount || 4,
-                          frameRate: existingSheet?.frameRate || 8,
-                          loop: existingSheet?.loop !== false,
-                        },
-                      });
-                    }}
                   />
                   <button
                     type="button"
@@ -656,13 +664,28 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                       className="hidden"
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowTriggeredImageUrl(!showTriggeredImageUrl)}
-                    className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
-                  >
-                    {showTriggeredImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-                  </button>
+                  <div className="flex items-center gap-2 mt-1">
+                    <MediaBrowseButton
+                      initialFolder="tiles"
+                      onSelect={(url) => {
+                        setTriggeredImageUrlInput(url);
+                        onChange({
+                          ...sprite,
+                          triggeredImageUrl: url,
+                          triggeredImageData: undefined,
+                        });
+                      }}
+                      label="☁️ Browse Media"
+                      className="px-2 py-1 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTriggeredImageUrl(!showTriggeredImageUrl)}
+                      className="text-xs text-arcane-400 hover:text-arcane-300"
+                    >
+                      {showTriggeredImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                    </button>
+                  </div>
                   {showTriggeredImageUrl && (
                     <div className="flex gap-2 mt-1">
                       <input
@@ -672,17 +695,6 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                         onKeyDown={(e) => e.key === 'Enter' && handleImageUrlSubmit(true)}
                         placeholder="https://..."
                         className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
-                      />
-                      <MediaBrowseButton
-                        initialFolder="tiles"
-                        onSelect={(url) => {
-                          setTriggeredImageUrlInput(url);
-                          onChange({
-                            ...sprite,
-                            triggeredImageUrl: url,
-                            triggeredImageData: undefined,
-                          });
-                        }}
                       />
                       <button
                         type="button"
@@ -753,13 +765,35 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                       className="hidden"
                     />
                   </label>
-                  <button
-                    type="button"
-                    onClick={() => setShowTriggeredSpriteSheetUrl(!showTriggeredSpriteSheetUrl)}
-                    className="mt-1 text-xs text-arcane-400 hover:text-arcane-300"
-                  >
-                    {showTriggeredSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-                  </button>
+                  <div className="flex items-center gap-2 mt-1">
+                    <MediaBrowseButton
+                      initialFolder="tiles"
+                      onSelect={(url) => {
+                        setTriggeredSpriteSheetUrlInput(url);
+                        const existingSheet = sprite.triggeredSpriteSheet;
+                        onChange({
+                          ...sprite,
+                          triggeredSpriteSheet: {
+                            ...(existingSheet || {}),
+                            imageUrl: url,
+                            imageData: undefined,
+                            frameCount: existingSheet?.frameCount || 4,
+                            frameRate: existingSheet?.frameRate || 8,
+                            loop: existingSheet?.loop !== false,
+                          },
+                        });
+                      }}
+                      label="☁️ Browse Media"
+                      className="px-2 py-1 text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowTriggeredSpriteSheetUrl(!showTriggeredSpriteSheetUrl)}
+                      className="text-xs text-arcane-400 hover:text-arcane-300"
+                    >
+                      {showTriggeredSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                    </button>
+                  </div>
                   {showTriggeredSpriteSheetUrl && (
                     <div className="flex gap-2 mt-1">
                       <input
@@ -769,24 +803,6 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                         onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit(true)}
                         placeholder="https://..."
                         className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
-                      />
-                      <MediaBrowseButton
-                        initialFolder="tiles"
-                        onSelect={(url) => {
-                          setTriggeredSpriteSheetUrlInput(url);
-                          const existingSheet = sprite.triggeredSpriteSheet;
-                          onChange({
-                            ...sprite,
-                            triggeredSpriteSheet: {
-                              ...(existingSheet || {}),
-                              imageUrl: url,
-                              imageData: undefined,
-                              frameCount: existingSheet?.frameCount || 4,
-                              frameRate: existingSheet?.frameRate || 8,
-                              loop: existingSheet?.loop !== false,
-                            },
-                          });
-                        }}
                       />
                       <button
                         type="button"

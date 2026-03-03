@@ -130,14 +130,22 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
           )}
         </div>
 
-        {/* URL Input Toggle */}
-        <button
-          type="button"
-          onClick={() => setShowUrlInput(!showUrlInput)}
-          className="text-xs text-arcane-400 hover:text-arcane-300"
-        >
-          {showUrlInput ? '▼ Hide URL input' : '▶ Or use URL...'}
-        </button>
+        {/* Cloud Media + URL Input Toggle */}
+        <div className="flex items-center gap-2">
+          <MediaBrowseButton
+            initialFolder="characters"
+            onSelect={(url) => onImageChange(undefined, url)}
+            label="☁️ Browse Media"
+            className="px-2 py-1 text-xs"
+          />
+          <button
+            type="button"
+            onClick={() => setShowUrlInput(!showUrlInput)}
+            className="text-xs text-arcane-400 hover:text-arcane-300"
+          >
+            {showUrlInput ? '▼ Hide URL input' : '▶ Or paste URL...'}
+          </button>
+        </div>
 
         {/* URL Input */}
         {showUrlInput && (
@@ -149,10 +157,6 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
               onKeyDown={(e) => e.key === 'Enter' && handleUrlSubmit()}
               placeholder="https://your-storage.com/sprite.png"
               className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
-            />
-            <MediaBrowseButton
-              initialFolder="characters"
-              onSelect={(url) => onImageChange(undefined, url)}
             />
             <button
               type="button"

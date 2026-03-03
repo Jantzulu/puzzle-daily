@@ -2001,14 +2001,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showIdleImageUrl ? '▼ Hide URL input' : '▶ Or use image URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showIdleImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showIdleImageUrl && (
@@ -2026,7 +2029,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
-                  <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -2472,14 +2474,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowIdleSpriteSheetUrl(!showIdleSpriteSheetUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showIdleSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setIdleSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowIdleSpriteSheetUrl(!showIdleSpriteSheetUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showIdleSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showIdleSpriteSheetUrl && (
@@ -2604,14 +2609,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showIdleImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowIdleImageUrl(!showIdleImageUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showIdleImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showIdleImageUrl && (
@@ -2629,7 +2637,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
-                  <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -2729,14 +2736,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowMovingSpriteSheetUrl(!showMovingSpriteSheetUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showMovingSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setMovingSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowMovingSpriteSheetUrl(!showMovingSpriteSheetUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showMovingSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showMovingSpriteSheetUrl && (
@@ -2861,14 +2871,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowMovingImageUrl(!showMovingImageUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showMovingImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setMovingImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowMovingImageUrl(!showMovingImageUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showMovingImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showMovingImageUrl && (
@@ -2886,7 +2899,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
-                  <MediaBrowseButton onSelect={(url) => setMovingImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -3003,14 +3015,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowDeathSpriteSheetUrl(!showDeathSpriteSheetUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showDeathSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setDeathSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowDeathSpriteSheetUrl(!showDeathSpriteSheetUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showDeathSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showDeathSpriteSheetUrl && (
@@ -3135,14 +3150,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowDeathImageUrl(!showDeathImageUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showDeathImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setDeathImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowDeathImageUrl(!showDeathImageUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showDeathImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showDeathImageUrl && (
@@ -3160,7 +3178,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
-                  <MediaBrowseButton onSelect={(url) => setDeathImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -3277,14 +3294,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowCastingSpriteSheetUrl(!showCastingSpriteSheetUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showCastingSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setCastingSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowCastingSpriteSheetUrl(!showCastingSpriteSheetUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showCastingSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showCastingSpriteSheetUrl && (
@@ -3409,14 +3429,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowCastingImageUrl(!showCastingImageUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showCastingImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setCastingImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowCastingImageUrl(!showCastingImageUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showCastingImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showCastingImageUrl && (
@@ -3434,7 +3457,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
-                  <MediaBrowseButton onSelect={(url) => setCastingImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -3584,14 +3606,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               )}
             </div>
 
-            {/* URL Input Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowSpawnSpriteSheetUrl(!showSpawnSpriteSheetUrl)}
-              className="text-xs text-arcane-400 hover:text-arcane-300"
-            >
-              {showSpawnSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-            </button>
+            {/* Cloud Media + URL Input Toggle */}
+            <div className="flex items-center gap-2">
+              <MediaBrowseButton onSelect={(url) => setSpawnSpriteSheetUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+              <button
+                type="button"
+                onClick={() => setShowSpawnSpriteSheetUrl(!showSpawnSpriteSheetUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showSpawnSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+              </button>
+            </div>
 
             {/* URL Input */}
             {showSpawnSpriteSheetUrl && (
@@ -3705,14 +3730,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowSpawnImageUrl(!showSpawnImageUrl)}
-                className="text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showSpawnImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setSpawnImageUrl(url)} initialFolder="characters" label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button
+                  type="button"
+                  onClick={() => setShowSpawnImageUrl(!showSpawnImageUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showSpawnImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {/* URL Input */}
               {showSpawnImageUrl && (
@@ -3730,7 +3758,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/spawn.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
-                  <MediaBrowseButton onSelect={(url) => setSpawnImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {

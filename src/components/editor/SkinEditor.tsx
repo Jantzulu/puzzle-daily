@@ -645,16 +645,24 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             </label>
                             {!isBuiltIn && (
                               <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShowUrlInput(showUrlInput === `border_${key}` ? null : `border_${key}`);
-                                    setUrlInputValue('');
-                                  }}
-                                  className="text-[10px] text-arcane-400 hover:text-arcane-300"
-                                >
-                                  {showUrlInput === `border_${key}` ? '▼ Hide' : '▶ URL'}
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <MediaBrowseButton
+                                    initialFolder="characters"
+                                    onSelect={(url) => setBorderSpriteUrl(key, url)}
+                                    label="☁️ Browse Media"
+                                    className="px-1 py-0.5 text-[10px]"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowUrlInput(showUrlInput === `border_${key}` ? null : `border_${key}`);
+                                      setUrlInputValue('');
+                                    }}
+                                    className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                  >
+                                    {showUrlInput === `border_${key}` ? '▼ Hide' : '▶ URL'}
+                                  </button>
+                                </div>
                                 {showUrlInput === `border_${key}` && (
                                   <div className="flex gap-1">
                                     <input
@@ -668,11 +676,6 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       }}
                                       placeholder="https://..."
                                       className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
-                                    />
-                                    <MediaBrowseButton
-                                      initialFolder="characters"
-                                      onSelect={(url) => setBorderSpriteUrl(key, url)}
-                                      className="px-1 py-0.5 text-[10px]"
                                     />
                                     <button
                                       type="button"
@@ -753,16 +756,24 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             </label>
                             {!isBuiltIn && (
                               <>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShowUrlInput(showUrlInput === `tile_${key}` ? null : `tile_${key}`);
-                                    setUrlInputValue('');
-                                  }}
-                                  className="text-[10px] text-arcane-400 hover:text-arcane-300"
-                                >
-                                  {showUrlInput === `tile_${key}` ? '▼ Hide' : '▶ URL'}
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <MediaBrowseButton
+                                    initialFolder="characters"
+                                    onSelect={(url) => setTileSpriteUrl(key, url)}
+                                    label="☁️ Browse Media"
+                                    className="px-1 py-0.5 text-[10px]"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowUrlInput(showUrlInput === `tile_${key}` ? null : `tile_${key}`);
+                                      setUrlInputValue('');
+                                    }}
+                                    className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                  >
+                                    {showUrlInput === `tile_${key}` ? '▼ Hide' : '▶ URL'}
+                                  </button>
+                                </div>
                                 {showUrlInput === `tile_${key}` && (
                                   <div className="flex gap-1">
                                     <input
@@ -776,11 +787,6 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       }}
                                       placeholder="https://..."
                                       className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
-                                    />
-                                    <MediaBrowseButton
-                                      initialFolder="characters"
-                                      onSelect={(url) => setTileSpriteUrl(key, url)}
-                                      className="px-1 py-0.5 text-[10px]"
                                     />
                                     <button
                                       type="button"
@@ -885,16 +891,24 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             )}
                             {!isBuiltIn && (
                               <div className="mt-1">
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setShowUrlInput(showUrlInput === urlKey ? null : urlKey);
-                                    setUrlInputValue('');
-                                  }}
-                                  className="text-[10px] text-arcane-400 hover:text-arcane-300"
-                                >
-                                  {showUrlInput === urlKey ? '▼ Hide' : '▶ URL'}
-                                </button>
+                                <div className="flex items-center gap-1">
+                                  <MediaBrowseButton
+                                    initialFolder="characters"
+                                    onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, spriteType)}
+                                    label="☁️ Browse Media"
+                                    className="px-1 py-0.5 text-[10px]"
+                                  />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowUrlInput(showUrlInput === urlKey ? null : urlKey);
+                                      setUrlInputValue('');
+                                    }}
+                                    className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                  >
+                                    {showUrlInput === urlKey ? '▼ Hide' : '▶ URL'}
+                                  </button>
+                                </div>
                                 {showUrlInput === urlKey && (
                                   <div className="flex gap-1 mt-0.5">
                                     <input
@@ -908,11 +922,6 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       }}
                                       placeholder="https://..."
                                       className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
-                                    />
-                                    <MediaBrowseButton
-                                      initialFolder="characters"
-                                      onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, spriteType)}
-                                      className="px-1 py-0.5 text-[10px]"
                                     />
                                     <button
                                       type="button"
@@ -1014,16 +1023,24 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 )}
                                 {!isBuiltIn && (
                                   <div className="mt-1">
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setShowUrlInput(showUrlInput === `customtile_${tileType.id}` ? null : `customtile_${tileType.id}`);
-                                        setUrlInputValue('');
-                                      }}
-                                      className="text-[10px] text-arcane-400 hover:text-arcane-300"
-                                    >
-                                      {showUrlInput === `customtile_${tileType.id}` ? '▼ Hide' : '▶ URL'}
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                      <MediaBrowseButton
+                                        initialFolder="characters"
+                                        onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, 'on')}
+                                        label="☁️ Browse Media"
+                                        className="px-1 py-0.5 text-[10px]"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setShowUrlInput(showUrlInput === `customtile_${tileType.id}` ? null : `customtile_${tileType.id}`);
+                                          setUrlInputValue('');
+                                        }}
+                                        className="text-[10px] text-arcane-400 hover:text-arcane-300"
+                                      >
+                                        {showUrlInput === `customtile_${tileType.id}` ? '▼ Hide' : '▶ URL'}
+                                      </button>
+                                    </div>
                                     {showUrlInput === `customtile_${tileType.id}` && (
                                       <div className="flex gap-1 mt-0.5">
                                         <input
@@ -1037,11 +1054,6 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                           }}
                                           placeholder="https://..."
                                           className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
-                                        />
-                                        <MediaBrowseButton
-                                          initialFolder="characters"
-                                          onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, 'on')}
-                                          className="px-1 py-0.5 text-[10px]"
                                         />
                                         <button
                                           type="button"

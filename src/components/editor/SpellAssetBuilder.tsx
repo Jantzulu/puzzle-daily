@@ -312,14 +312,22 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-parchment-100 ${colors.fileHover}`}
             />
 
-            {/* URL Input Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowImageUrl(!showImageUrl)}
-              className="mt-2 text-xs text-arcane-400 hover:text-arcane-300"
-            >
-              {showImageUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-            </button>
+            {/* Cloud Media + URL Input Toggle */}
+            <div className="flex items-center gap-2 mt-2">
+              <MediaBrowseButton
+                onSelect={(url) => setImageUrlInput(url)}
+                initialFolder="effects"
+                label="☁️ Browse Media"
+                className="px-2 py-1 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setShowImageUrl(!showImageUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+              </button>
+            </div>
 
             {showImageUrl && (
               <div className="flex gap-2 mt-2">
@@ -330,10 +338,6 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   onKeyDown={(e) => e.key === 'Enter' && handleImageUrlSubmit()}
                   placeholder="https://your-storage.com/sprite.png"
                   className="flex-1 px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100 placeholder:text-stone-500"
-                />
-                <MediaBrowseButton
-                  onSelect={(url) => setImageUrlInput(url)}
-                  initialFolder="effects"
                 />
                 <button
                   type="button"
@@ -413,14 +417,22 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
               className={`w-full text-xs text-stone-300 file:mr-2 file:py-1 file:px-3 file:rounded file:border-0 file:text-xs ${colors.fileBg} file:text-parchment-100 ${colors.fileHover}`}
             />
 
-            {/* URL Input Toggle */}
-            <button
-              type="button"
-              onClick={() => setShowSpriteSheetUrl(!showSpriteSheetUrl)}
-              className="mt-2 text-xs text-arcane-400 hover:text-arcane-300"
-            >
-              {showSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-            </button>
+            {/* Cloud Media + URL Input Toggle */}
+            <div className="flex items-center gap-2 mt-2">
+              <MediaBrowseButton
+                onSelect={(url) => setSpriteSheetUrlInput(url)}
+                initialFolder="effects"
+                label="☁️ Browse Media"
+                className="px-2 py-1 text-xs"
+              />
+              <button
+                type="button"
+                onClick={() => setShowSpriteSheetUrl(!showSpriteSheetUrl)}
+                className="text-xs text-arcane-400 hover:text-arcane-300"
+              >
+                {showSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+              </button>
+            </div>
 
             {showSpriteSheetUrl && (
               <div className="flex gap-2 mt-2">
@@ -431,10 +443,6 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit()}
                   placeholder="https://your-storage.com/spritesheet.png"
                   className="flex-1 px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100 placeholder:text-stone-500"
-                />
-                <MediaBrowseButton
-                  onSelect={(url) => setSpriteSheetUrlInput(url)}
-                  initialFolder="effects"
                 />
                 <button
                   type="button"
@@ -915,14 +923,22 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 )}
               </div>
 
-              {/* URL Input Toggle */}
-              <button
-                type="button"
-                onClick={() => setShowThumbnailUrl(!showThumbnailUrl)}
-                className="mt-2 text-xs text-arcane-400 hover:text-arcane-300"
-              >
-                {showThumbnailUrl ? '▼ Hide URL input' : '▶ Or use URL...'}
-              </button>
+              {/* Cloud Media + URL Input Toggle */}
+              <div className="flex items-center gap-2 mt-2">
+                <MediaBrowseButton
+                  onSelect={(url) => setThumbnailUrlInput(url)}
+                  initialFolder="effects"
+                  label="☁️ Browse Media"
+                  className="px-2 py-1 text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowThumbnailUrl(!showThumbnailUrl)}
+                  className="text-xs text-arcane-400 hover:text-arcane-300"
+                >
+                  {showThumbnailUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
 
               {showThumbnailUrl && (
                 <div className="flex gap-2 mt-2">
@@ -933,10 +949,6 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     onKeyDown={(e) => e.key === 'Enter' && handleThumbnailUrlSubmit()}
                     placeholder="https://your-storage.com/icon.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
-                  />
-                  <MediaBrowseButton
-                    onSelect={(url) => setThumbnailUrlInput(url)}
-                    initialFolder="effects"
                   />
                   <button
                     type="button"
