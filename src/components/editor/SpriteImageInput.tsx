@@ -1,5 +1,6 @@
 import React, { useRef, useState } from 'react';
 import { toast } from '../shared/Toast';
+import { MediaBrowseButton } from './MediaBrowseButton';
 
 interface SpriteImageInputProps {
   /** Current base64 image data (if any) */
@@ -148,6 +149,10 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
               onKeyDown={(e) => e.key === 'Enter' && handleUrlSubmit()}
               placeholder="https://your-storage.com/sprite.png"
               className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+            />
+            <MediaBrowseButton
+              initialFolder="characters"
+              onSelect={(url) => onImageChange(undefined, url)}
             />
             <button
               type="button"

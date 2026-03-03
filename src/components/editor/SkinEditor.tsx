@@ -7,6 +7,7 @@ import type { CustomTileType } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
+import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -668,6 +669,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       placeholder="https://..."
                                       className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
                                     />
+                                    <MediaBrowseButton
+                                      initialFolder="characters"
+                                      onSelect={(url) => setBorderSpriteUrl(key, url)}
+                                      className="px-1 py-0.5 text-[10px]"
+                                    />
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -770,6 +776,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       }}
                                       placeholder="https://..."
                                       className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
+                                    />
+                                    <MediaBrowseButton
+                                      initialFolder="characters"
+                                      onSelect={(url) => setTileSpriteUrl(key, url)}
+                                      className="px-1 py-0.5 text-[10px]"
                                     />
                                     <button
                                       type="button"
@@ -898,6 +909,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       placeholder="https://..."
                                       className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
                                     />
+                                    <MediaBrowseButton
+                                      initialFolder="characters"
+                                      onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, spriteType)}
+                                      className="px-1 py-0.5 text-[10px]"
+                                    />
                                     <button
                                       type="button"
                                       onClick={() => {
@@ -1021,6 +1037,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                           }}
                                           placeholder="https://..."
                                           className="flex-1 px-1 py-0.5 bg-stone-600 rounded text-[10px] text-parchment-100 placeholder:text-stone-500"
+                                        />
+                                        <MediaBrowseButton
+                                          initialFolder="characters"
+                                          onSelect={(url) => setCustomTileSpriteUrl(tileType.id, url, 'on')}
+                                          className="px-1 py-0.5 text-[10px]"
                                         />
                                         <button
                                           type="button"

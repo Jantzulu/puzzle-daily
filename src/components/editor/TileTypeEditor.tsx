@@ -7,6 +7,7 @@ import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '..
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
+import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -1151,6 +1152,10 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             placeholder="https://your-storage.com/sprite.png"
                             className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                           />
+                          <MediaBrowseButton
+                            initialFolder="tiles"
+                            onSelect={(url) => setSpriteUrl(url)}
+                          />
                           <button
                             type="button"
                             onClick={() => {
@@ -1256,6 +1261,10 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                               }}
                               placeholder="https://your-storage.com/sprite.png"
                               className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                            />
+                            <MediaBrowseButton
+                              initialFolder="tiles"
+                              onSelect={(url) => setOffSpriteUrl(url)}
                             />
                             <button
                               type="button"

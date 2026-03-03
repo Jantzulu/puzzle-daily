@@ -4,6 +4,7 @@ import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReferen
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
 import { RichTextEditor } from './RichTextEditor';
+import { MediaBrowseButton } from './MediaBrowseButton';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -330,6 +331,10 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   placeholder="https://your-storage.com/sprite.png"
                   className="flex-1 px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100 placeholder:text-stone-500"
                 />
+                <MediaBrowseButton
+                  onSelect={(url) => setImageUrlInput(url)}
+                  initialFolder="effects"
+                />
                 <button
                   type="button"
                   onClick={handleImageUrlSubmit}
@@ -426,6 +431,10 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit()}
                   placeholder="https://your-storage.com/spritesheet.png"
                   className="flex-1 px-2 py-1 bg-stone-700 rounded text-xs text-parchment-100 placeholder:text-stone-500"
+                />
+                <MediaBrowseButton
+                  onSelect={(url) => setSpriteSheetUrlInput(url)}
+                  initialFolder="effects"
                 />
                 <button
                   type="button"
@@ -924,6 +933,10 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     onKeyDown={(e) => e.key === 'Enter' && handleThumbnailUrlSubmit()}
                     placeholder="https://your-storage.com/icon.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <MediaBrowseButton
+                    onSelect={(url) => setThumbnailUrlInput(url)}
+                    initialFolder="effects"
                   />
                   <button
                     type="button"

@@ -13,7 +13,7 @@ interface MediaLibraryInnerProps {
 
 export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, initialFolder }) => {
   const auth = useOptionalAuth();
-  const [folder, setFolder] = useState<MediaFolder>(initialFolder || 'characters');
+  const [folder, setFolder] = useState<MediaFolder>(initialFolder || 'all');
   const [files, setFiles] = useState<MediaFile[]>([]);
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState('');

@@ -1,5 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { toast } from '../shared/Toast';
+import { MediaBrowseButton } from './MediaBrowseButton';
 import type { SpriteReference } from '../../types/game';
 import type { CustomSprite } from '../../utils/assetStorage';
 
@@ -336,6 +337,10 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
                 }}
                 placeholder="https://your-storage.com/icon.png"
                 className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+              />
+              <MediaBrowseButton
+                onSelect={(url) => setImageUrl(url)}
+                initialFolder="misc"
               />
               <button
                 type="button"

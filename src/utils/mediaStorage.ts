@@ -1,10 +1,11 @@
 import { supabase } from '../lib/supabase';
 
-const BUCKET = 'sprites';
+const BUCKET = 'theme-assets';
 
-export type MediaFolder = 'characters' | 'enemies' | 'tiles' | 'effects' | 'misc';
+export type MediaFolder = 'all' | 'characters' | 'enemies' | 'tiles' | 'effects' | 'misc';
 
 export const MEDIA_FOLDERS: { key: MediaFolder; label: string; icon: string }[] = [
+  { key: 'all', label: 'All', icon: '📂' },
   { key: 'characters', label: 'Characters', icon: '⚔️' },
   { key: 'enemies', label: 'Enemies', icon: '👹' },
   { key: 'tiles', label: 'Tiles', icon: '🧱' },
@@ -35,18 +36,19 @@ function getMimeExt(file: File): string {
 
 /**
  * Upload a file to Supabase Storage.
- * Path: {userId}/{folder}/{timestamp}-{filename}
+ * Path: {folder}/{timestamp}-{filename} (or public/{timestamp}-{filename} for 'all'/'misc')
  */
 export async function uploadMedia(
   file: File,
   folder: MediaFolder,
-  userId: string
+  _userId: string
 ): Promise<{ url: string; path: string } | null> {
   try {
     const ext = getMimeExt(file);
     const baseName = file.name.replace(/\.[^.]+$/, '');
     const filename = `${Date.now()}-${sanitizeFilename(baseName)}.${ext}`;
-    const filePath = `${userId}/${folder}/${filename}`;
+    const uploadFolder = folder === 'all' ? 'public' : folder;
+    const filePath = `${uploadFolder}/${filename}`;
 
     const { error } = await supabase.storage
       .from(BUCKET)
@@ -99,26 +101,14 @@ export async function uploadMediaDataUrl(
 }
 
 /**
- * List all files in a folder for a specific user.
- * If userId is omitted, lists all users' files in that folder.
+ * List all files in a folder. For 'all', recursively lists every folder in the bucket.
  */
-export async function listMedia(folder: MediaFolder, userId?: string): Promise<MediaFile[]> {
+export async function listMedia(folder: MediaFolder): Promise<MediaFile[]> {
   try {
-    if (userId) {
-      return listFolder(`${userId}/${folder}`);
+    if (folder === 'all') {
+      return listAllMedia();
     }
-
-    // List all user directories, then list each user's folder
-    const { data: users, error } = await supabase.storage.from(BUCKET).list('', { limit: 100 });
-    if (error || !users) return [];
-
-    const results: MediaFile[] = [];
-    for (const userDir of users) {
-      if (userDir.id) continue; // skip files at root level
-      const files = await listFolder(`${userDir.name}/${folder}`);
-      results.push(...files);
-    }
-    return results.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    return listFolder(folder);
   } catch (e) {
     console.error('[MediaStorage] List error:', e);
     return [];
@@ -126,15 +116,39 @@ export async function listMedia(folder: MediaFolder, userId?: string): Promise<M
 }
 
 /**
- * List all files across all folders.
+ * List all files across all folders in the bucket (recursive).
  */
-export async function listAllMedia(userId?: string): Promise<MediaFile[]> {
-  const allFiles: MediaFile[] = [];
-  for (const folder of MEDIA_FOLDERS) {
-    const files = await listMedia(folder.key, userId);
-    allFiles.push(...files);
+export async function listAllMedia(): Promise<MediaFile[]> {
+  try {
+    // List top-level entries
+    const { data: topLevel, error } = await supabase.storage.from(BUCKET).list('', { limit: 200 });
+    if (error || !topLevel) return [];
+
+    const allFiles: MediaFile[] = [];
+
+    for (const entry of topLevel) {
+      if (entry.id) {
+        // It's a file at root level
+        const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(entry.name);
+        allFiles.push({
+          name: entry.name,
+          path: entry.name,
+          url: urlData.publicUrl,
+          size: (entry.metadata as Record<string, unknown>)?.size as number || 0,
+          createdAt: entry.created_at || '',
+        });
+      } else {
+        // It's a directory — list its contents
+        const folderFiles = await listFolder(entry.name);
+        allFiles.push(...folderFiles);
+      }
+    }
+
+    return allFiles.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  } catch (e) {
+    console.error('[MediaStorage] ListAll error:', e);
+    return [];
   }
-  return allFiles.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 }
 
 async function listFolder(path: string): Promise<MediaFile[]> {

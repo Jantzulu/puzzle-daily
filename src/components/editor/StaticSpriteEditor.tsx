@@ -3,6 +3,7 @@ import { toast } from '../shared/Toast';
 import type { CustomSprite, SpriteSheetConfig } from '../../utils/assetStorage';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
+import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Preview type for static assets (tiles, items, enchantments)
 const ASSET_PREVIEW_TYPE: PreviewType = 'asset';
@@ -465,6 +466,20 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                     placeholder="https://..."
                     className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
                   />
+                  <MediaBrowseButton
+                    initialFolder="tiles"
+                    onSelect={(url) => {
+                      setDefaultImageUrlInput(url);
+                      onChange({
+                        ...sprite,
+                        type: 'image',
+                        idleImageUrl: url,
+                        idleImageData: undefined,
+                        imageUrl: url,
+                        imageData: undefined,
+                      });
+                    }}
+                  />
                   <button
                     type="button"
                     onClick={() => handleImageUrlSubmit(false)}
@@ -550,6 +565,24 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                     onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit(false)}
                     placeholder="https://..."
                     className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
+                  />
+                  <MediaBrowseButton
+                    initialFolder="tiles"
+                    onSelect={(url) => {
+                      setDefaultSpriteSheetUrlInput(url);
+                      const existingSheet = sprite.idleSpriteSheet;
+                      onChange({
+                        ...sprite,
+                        idleSpriteSheet: {
+                          ...(existingSheet || {}),
+                          imageUrl: url,
+                          imageData: undefined,
+                          frameCount: existingSheet?.frameCount || 4,
+                          frameRate: existingSheet?.frameRate || 8,
+                          loop: existingSheet?.loop !== false,
+                        },
+                      });
+                    }}
                   />
                   <button
                     type="button"
@@ -640,6 +673,17 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                         placeholder="https://..."
                         className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
                       />
+                      <MediaBrowseButton
+                        initialFolder="tiles"
+                        onSelect={(url) => {
+                          setTriggeredImageUrlInput(url);
+                          onChange({
+                            ...sprite,
+                            triggeredImageUrl: url,
+                            triggeredImageData: undefined,
+                          });
+                        }}
+                      />
                       <button
                         type="button"
                         onClick={() => handleImageUrlSubmit(true)}
@@ -725,6 +769,24 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
                         onKeyDown={(e) => e.key === 'Enter' && handleSpriteSheetUrlSubmit(true)}
                         placeholder="https://..."
                         className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs text-parchment-100"
+                      />
+                      <MediaBrowseButton
+                        initialFolder="tiles"
+                        onSelect={(url) => {
+                          setTriggeredSpriteSheetUrlInput(url);
+                          const existingSheet = sprite.triggeredSpriteSheet;
+                          onChange({
+                            ...sprite,
+                            triggeredSpriteSheet: {
+                              ...(existingSheet || {}),
+                              imageUrl: url,
+                              imageData: undefined,
+                              frameCount: existingSheet?.frameCount || 4,
+                              frameRate: existingSheet?.frameRate || 8,
+                              loop: existingSheet?.loop !== false,
+                            },
+                          });
+                        }}
                       />
                       <button
                         type="button"

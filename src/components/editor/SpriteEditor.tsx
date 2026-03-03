@@ -4,6 +4,7 @@ import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../
 import { Direction } from '../../types/game';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
+import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Preview type for character/enemy sprites (entities)
 const ENTITY_PREVIEW_TYPE: PreviewType = 'entity';
@@ -2025,6 +2026,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
+                  <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -2627,6 +2629,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
+                  <MediaBrowseButton onSelect={(url) => setIdleImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -2883,6 +2886,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
+                  <MediaBrowseButton onSelect={(url) => setMovingImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -3156,6 +3160,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
+                  <MediaBrowseButton onSelect={(url) => setDeathImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -3429,6 +3434,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/sprite.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
+                  <MediaBrowseButton onSelect={(url) => setCastingImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
@@ -3724,6 +3730,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     placeholder="https://your-storage.com/spawn.png"
                     className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
                   />
+                  <MediaBrowseButton onSelect={(url) => setSpawnImageUrl(url)} initialFolder="characters" />
                   <button
                     type="button"
                     onClick={() => {
