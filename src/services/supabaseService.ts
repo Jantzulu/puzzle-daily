@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
+import { logActivity } from './activityLogService';
 
 async function getCurrentUserId(): Promise<string | undefined> {
   const { data } = await supabase.auth.getUser();
@@ -74,6 +75,7 @@ export async function savePuzzleToCloud(puzzle: Puzzle, name?: string): Promise<
     return false;
   }
   console.log('[Supabase] Puzzle saved successfully:', data);
+  logActivity({ action: 'update', asset_type: 'puzzle', asset_id: puzzle.id, asset_name: dbPuzzle.name });
   return true;
 }
 
@@ -88,6 +90,7 @@ export async function deletePuzzleFromCloud(id: string): Promise<boolean> {
     console.error('Error deleting puzzle:', error);
     return false;
   }
+  logActivity({ action: 'delete', asset_type: 'puzzle', asset_id: id });
   return true;
 }
 
@@ -175,6 +178,7 @@ export async function saveAssetToCloud(
     console.error('Error saving asset:', error);
     return false;
   }
+  logActivity({ action: 'update', asset_type: type, asset_id: id, asset_name: name });
   return true;
 }
 
@@ -189,6 +193,7 @@ export async function deleteAssetFromCloud(id: string): Promise<boolean> {
     console.error('Error deleting asset:', error);
     return false;
   }
+  logActivity({ action: 'delete', asset_type: 'asset', asset_id: id });
   return true;
 }
 
@@ -225,6 +230,7 @@ export async function publishPuzzle(puzzleId: string, scheduledDate?: string): P
 
   // Update draft status
   await updatePuzzleStatus(puzzleId, 'published');
+  logActivity({ action: 'publish', asset_type: 'puzzle', asset_id: puzzleId, asset_name: puzzle.name, details: { scheduled_date: scheduledDate } });
 
   // If scheduled as daily, add to schedule
   if (scheduledDate) {
@@ -278,6 +284,7 @@ export async function publishAsset(assetId: string): Promise<boolean> {
     console.error('Error updating asset status:', updateError);
   }
 
+  logActivity({ action: 'publish', asset_type: asset.type, asset_id: assetId, asset_name: asset.name });
   return true;
 }
 

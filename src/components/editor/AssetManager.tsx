@@ -12,10 +12,11 @@ import { SoundEditor } from './SoundEditor';
 import { HelpContentEditor } from './HelpContentEditor';
 import { ThemeAssetsEditor } from './ThemeAssetsEditor';
 import { MediaLibraryTab } from './MediaLibraryTab';
+import { ActivityFeed } from './ActivityFeed';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'theme' | 'help' | 'media';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'theme' | 'help' | 'media' | 'activity';
 
-const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'sounds', 'theme', 'help', 'media'];
+const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'sounds', 'theme', 'help', 'media', 'activity'];
 
 export const AssetManager: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -100,6 +101,9 @@ export const AssetManager: React.FC = () => {
               <button onClick={() => setActiveTab('media')} className={tabClass('media')}>
                 ☁️ Media
               </button>
+              <button onClick={() => setActiveTab('activity')} className={tabClass('activity')}>
+                📜 Activity
+              </button>
             </div>
           </div>
         </div>
@@ -123,6 +127,11 @@ export const AssetManager: React.FC = () => {
           </div>
         )}
         {activeTab === 'media' && <MediaLibraryTab />}
+        {activeTab === 'activity' && (
+          <div className="max-w-2xl mx-auto px-4 md:px-8 py-4 md:py-6">
+            <ActivityFeed />
+          </div>
+        )}
       </div>
 
       {/* Clear Cache Confirmation Dialog */}

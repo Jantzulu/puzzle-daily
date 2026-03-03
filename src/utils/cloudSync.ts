@@ -14,6 +14,7 @@ import {
   deleteAssetFromCloud,
   syncFromCloud,
 } from '../services/supabaseService';
+import { logActivity } from '../services/activityLogService';
 import type { DbPuzzle, DbAsset } from '../lib/supabase';
 import type { Puzzle } from '../types/game';
 import type {
@@ -267,6 +268,7 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
     }
 
     lastSyncTime = new Date();
+    logActivity({ action: 'sync_push', details: { errors: errors.length } });
     notifySyncStatus(errors.length > 0 ? 'error' : 'success');
     return { success: errors.length === 0, errors };
 
@@ -615,6 +617,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
     console.log(`[CloudSync] After pull, local puzzles count: ${getSavedPuzzles().length}`);
 
     lastSyncTime = new Date();
+    logActivity({ action: 'sync_pull', details: { errors: errors.length } });
     notifySyncStatus(errors.length > 0 ? 'error' : 'success');
     return { success: errors.length === 0, errors };
 
