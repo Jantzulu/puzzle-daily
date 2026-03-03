@@ -278,6 +278,11 @@ export const Game: React.FC = () => {
       }
 
       vibrate('turnAdvance');
+
+      // Track outcome outside the state updater so side effects (haptics, sounds)
+      // aren't suppressed by React StrictMode's double-invoke of updater functions.
+      let outcome: 'running' | 'victory' | 'defeat' = 'running';
+
       setGameState((prevState) => {
         // Deep copy all mutable state to ensure React StrictMode double-invoke works correctly.
         // StrictMode calls the updater function twice with the same prevState to detect impure renders.
@@ -299,46 +304,27 @@ export const Game: React.FC = () => {
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
+          outcome = newState.gameStatus as 'victory' | 'defeat';
 
-          // Handle victory
           if (newState.gameStatus === 'victory') {
-            vibrate('victory');
-            playGameSound('victory');
-            playVictoryMusic();
-            // Calculate and store score
             const score = calculateScore(newState, livesRemaining, currentPuzzle.lives ?? 3);
             setPuzzleScore(score);
           }
 
-          // Handle defeat - deduct a life and auto-reset (or show game over)
           if (newState.gameStatus === 'defeat') {
-            const puzzleLives = currentPuzzle.lives ?? 3;
-            const isUnlimitedLives = puzzleLives === 0;
-
-            // Determine defeat reason
             const maxTurns = currentPuzzle.maxTurns || 1000;
             const ranOutOfTurns = newState.currentTurn >= maxTurns;
             setDefeatReason(ranOutOfTurns ? 'turns' : 'damage');
 
-            vibrate('defeat');
-            playGameSound('defeat');
+            const puzzleLives = currentPuzzle.lives ?? 3;
+            const isUnlimitedLives = puzzleLives === 0;
 
             if (!isUnlimitedLives) {
               const newLives = livesRemaining - 1;
               setLivesRemaining(newLives);
 
               if (newLives <= 0) {
-                // No lives left - show game over
                 setShowGameOver(true);
-                playDefeatMusic();
-              } else {
-                // Life lost - play sound and haptic
-                playGameSound('life_lost');
-                vibrate('lifeLost');
-                // Auto-reset after a delay to show defeat message (3 seconds)
-                setTimeout(() => {
-                  handleAutoReset();
-                }, 3000);
               }
             }
           }
@@ -346,6 +332,32 @@ export const Game: React.FC = () => {
 
         return newState;
       });
+
+      // Fire side effects (haptics, sounds) outside the state updater
+      if (outcome === 'victory') {
+        vibrate('victory');
+        playGameSound('victory');
+        playVictoryMusic();
+      } else if (outcome === 'defeat') {
+        vibrate('defeat');
+        playGameSound('defeat');
+
+        const puzzleLives = currentPuzzle.lives ?? 3;
+        const isUnlimitedLives = puzzleLives === 0;
+
+        if (!isUnlimitedLives) {
+          const newLives = livesRemaining - 1;
+          if (newLives <= 0) {
+            playDefeatMusic();
+          } else {
+            playGameSound('life_lost');
+            vibrate('lifeLost');
+            setTimeout(() => {
+              handleAutoReset();
+            }, 3000);
+          }
+        }
+      }
     }, TURN_INTERVAL_MS);
 
     return () => clearInterval(interval);
