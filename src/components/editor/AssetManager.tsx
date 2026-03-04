@@ -8,15 +8,9 @@ import { SkinEditor } from './SkinEditor';
 import { TileTypeEditor } from './TileTypeEditor';
 import { ObjectEditor } from './ObjectEditor';
 import { CollectibleEditor } from './CollectibleEditor';
-import { SoundEditor } from './SoundEditor';
-import { HelpContentEditor } from './HelpContentEditor';
-import { ThemeAssetsEditor } from './ThemeAssetsEditor';
-import { MediaLibraryTab } from './MediaLibraryTab';
-import { ActivityFeed } from './ActivityFeed';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'theme' | 'help' | 'media' | 'activity';
-
-const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'sounds', 'theme', 'help', 'media', 'activity'];
+const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles'];
 
 export const AssetManager: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -89,21 +83,6 @@ export const AssetManager: React.FC = () => {
               <button onClick={() => setActiveTab('collectibles')} className={tabClass('collectibles')}>
                 💎 Items
               </button>
-              <button onClick={() => setActiveTab('sounds')} className={tabClass('sounds')}>
-                🔊 Sounds
-              </button>
-              <button onClick={() => setActiveTab('theme')} className={tabClass('theme')}>
-                🖼️ Theme
-              </button>
-              <button onClick={() => setActiveTab('help')} className={tabClass('help')}>
-                ❓ Help
-              </button>
-              <button onClick={() => setActiveTab('media')} className={tabClass('media')}>
-                ☁️ Media
-              </button>
-              <button onClick={() => setActiveTab('activity')} className={tabClass('activity')}>
-                📜 Activity
-              </button>
             </div>
           </div>
         </div>
@@ -119,19 +98,6 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'tiles' && <TileTypeEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'objects' && <ObjectEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'collectibles' && <CollectibleEditor initialSelectedId={searchParams.get('id') || undefined} />}
-        {activeTab === 'sounds' && <SoundEditor initialSelectedId={searchParams.get('id') || undefined} />}
-        {activeTab === 'theme' && <ThemeAssetsEditor />}
-        {activeTab === 'help' && (
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6" style={{ height: 'calc(100vh - 130px)' }}>
-            <HelpContentEditor />
-          </div>
-        )}
-        {activeTab === 'media' && <MediaLibraryTab />}
-        {activeTab === 'activity' && (
-          <div className="max-w-2xl mx-auto px-4 md:px-8 py-4 md:py-6">
-            <ActivityFeed />
-          </div>
-        )}
       </div>
 
       {/* Clear Cache Confirmation Dialog */}

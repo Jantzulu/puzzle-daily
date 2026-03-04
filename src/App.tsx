@@ -14,6 +14,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
 import { SchedulingDashboard } from './components/editor/SchedulingDashboard';
+import { SettingsPage } from './components/editor/SettingsPage';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -285,6 +286,9 @@ function Navigation() {
           <Link to="/assets" className={linkClass('/assets')}>
             <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
+          <Link to="/settings" className={linkClass('/settings')}>
+            <span className="mr-1">⚙️</span> Settings
+          </Link>
         </div>
 
         <div className="flex-1" />
@@ -363,6 +367,13 @@ function Navigation() {
           >
             <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
+          <Link
+            to="/settings"
+            className={`block ${linkClass('/settings')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">⚙️</span> Settings
+          </Link>
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
             <SoundSettings isMobile />
             <CloudSyncButton />
@@ -421,6 +432,7 @@ function App() {
           <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
           <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
           <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
+          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         </Routes>
         <ToastContainer />
       </div>

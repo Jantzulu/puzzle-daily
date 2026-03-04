@@ -24,7 +24,7 @@ const CATEGORIES = [
   { key: 'skins', icon: '🎨', label: 'Skins', route: '/assets', tab: 'skins' },
   { key: 'objects', icon: '🏺', label: 'Objects', route: '/assets', tab: 'objects' },
   { key: 'collectibles', icon: '💎', label: 'Items', route: '/assets', tab: 'collectibles' },
-  { key: 'sounds', icon: '🔊', label: 'Sounds', route: '/assets', tab: 'sounds' },
+  { key: 'sounds', icon: '🔊', label: 'Sounds', route: '/settings', tab: 'sounds' },
 ];
 
 function loadAllAssets(): SearchResult[] {
@@ -153,7 +153,7 @@ function loadAllAssets(): SearchResult[] {
       name: s.name,
       category: 'sounds',
       icon: '🔊',
-      route: '/assets',
+      route: '/settings',
       tab: 'sounds',
       subtitle: s.category,
     });
