@@ -7,6 +7,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -696,6 +697,7 @@ const ConePreview: React.FC<{ range: number; coneAngle: number }> = ({ range, co
 };
 
 export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onSave, onCancel }) => {
+  const isMobile = useIsMobile();
   const [editedSpell, setEditedSpell] = useState<SpellAsset>(spell || {
     id: 'spell_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
     name: '',
@@ -817,52 +819,60 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          {editedSpell.thumbnailIcon ? (
-            <img src={editedSpell.thumbnailIcon} alt="" className="w-12 h-12 object-contain bg-stone-900 rounded flex-shrink-0" />
-          ) : (
-            <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center text-stone-400 text-lg flex-shrink-0">✨</div>
-          )}
-          <h2 className="text-2xl font-bold">
-            {spell ? 'Edit Spell' : 'Create New Spell'}
-          </h2>
-        </div>
-        <div className="flex gap-3">
-          {spell && (
-            <>
-              <button
-                onClick={async () => {
-                  const result = await createVersionSnapshot(editedSpell.id, 'spell', editedSpell.name, editedSpell as unknown as object);
-                  if (result.success) toast.success(`Saved version #${result.versionNumber}`);
-                  else toast.error('Failed to save version');
-                }}
-                className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
-                title="Save version snapshot"
-              >
-                📸
-              </button>
-              <button
-                onClick={() => setShowVersionHistory(true)}
-                className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
-                title="Version history"
-              >
-                History
-              </button>
-            </>
-          )}
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
-          >
-            Save Spell
-          </button>
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-700"
-          >
-            Cancel
-          </button>
+      <div className="dungeon-panel p-3 md:p-4 rounded">
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
+              {editedSpell.thumbnailIcon ? (
+                <img src={editedSpell.thumbnailIcon} alt="" className="w-full h-full object-contain" />
+              ) : (
+                <span className="text-stone-400 text-lg">✨</span>
+              )}
+            </div>
+            <div className="min-w-0">
+              <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
+                {editedSpell.name || 'Unnamed Spell'}
+              </h2>
+              <p className="text-xs text-stone-400">{editedSpell.templateType} • {editedSpell.damage} dmg</p>
+            </div>
+          </div>
+          <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
+            {spell && (
+              <>
+                <button
+                  onClick={async () => {
+                    const result = await createVersionSnapshot(editedSpell.id, 'spell', editedSpell.name, editedSpell as unknown as object);
+                    if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                    else toast.error('Failed to save version');
+                  }}
+                  className="p-2 md:px-3 md:py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                  title="Save version snapshot"
+                >
+                  📸
+                </button>
+                <button
+                  onClick={() => setShowVersionHistory(true)}
+                  className="p-2 md:px-3 md:py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                  title="Version history"
+                >
+                  <span className="md:hidden">📜</span>
+                  <span className="hidden md:inline">History</span>
+                </button>
+              </>
+            )}
+            <button onClick={handleSave} className="dungeon-btn-success text-sm">
+              <span className="md:hidden">💾</span>
+              <span className="hidden md:inline">Save Spell</span>
+            </button>
+            <button
+              onClick={onCancel}
+              className="p-2 md:px-3 md:py-1.5 text-sm bg-stone-600 hover:bg-stone-500 rounded"
+              title="Cancel"
+            >
+              <span className="md:hidden">✕</span>
+              <span className="hidden md:inline">Cancel</span>
+            </button>
+          </div>
         </div>
       </div>
 

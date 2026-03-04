@@ -12,6 +12,8 @@ import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { SpriteThumbnail } from './SpriteThumbnail';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -432,6 +434,7 @@ const getBehaviorIcon = (type: TileBehaviorType): string => {
 };
 
 export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
+  const isMobile = useIsMobile();
   const [tileTypes, setTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomTileType | null>(null);
@@ -801,40 +804,49 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
             </div>
       </>}
       detailPanel={editing ? (<>
-                {/* Header */}
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">
-                    {isCreating ? 'Create New Tile Type' : `Edit: ${editing.name}`}
-                  </h2>
-                  <div className="flex gap-2">
-                    {!isCreating && (
-                      <>
-                        <button
-                          onClick={async () => {
-                            const result = await createVersionSnapshot(editing.id, 'tile_type', editing.name, editing as unknown as object);
-                            if (result.success) toast.success(`Saved version #${result.versionNumber}`);
-                            else toast.error('Failed to save version');
-                          }}
-                          className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
-                          title="Save version snapshot"
-                        >
-                          📸
-                        </button>
-                        <button
-                          onClick={() => setShowVersionHistory(true)}
-                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
-                          title="Version history"
-                        >
-                          History
-                        </button>
-                      </>
-                    )}
-                    <button
-                      onClick={handleSave}
-                      className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
-                    >
-                      Save Tile Type
-                    </button>
+                {/* Persistent Header */}
+                <div className="dungeon-panel p-3 md:p-4 rounded">
+                  <div className="flex justify-between items-center gap-2">
+                    <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                      <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
+                        <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} />
+                      </div>
+                      <div className="min-w-0">
+                        <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
+                          {editing.name || 'Unnamed Tile'}
+                        </h2>
+                        <p className="text-xs text-stone-400">{editing.baseType} • {editing.behaviors.length} behavior{editing.behaviors.length !== 1 ? 's' : ''}</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
+                      {!isCreating && (
+                        <>
+                          <button
+                            onClick={async () => {
+                              const result = await createVersionSnapshot(editing.id, 'tile_type', editing.name, editing as unknown as object);
+                              if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                              else toast.error('Failed to save version');
+                            }}
+                            className="p-2 md:px-3 md:py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                            title="Save version snapshot"
+                          >
+                            📸
+                          </button>
+                          <button
+                            onClick={() => setShowVersionHistory(true)}
+                            className="p-2 md:px-3 md:py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                            title="Version history"
+                          >
+                            <span className="md:hidden">📜</span>
+                            <span className="hidden md:inline">History</span>
+                          </button>
+                        </>
+                      )}
+                      <button onClick={handleSave} className="dungeon-btn-success text-sm">
+                        <span className="md:hidden">💾</span>
+                        <span className="hidden md:inline">Save Tile Type</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 

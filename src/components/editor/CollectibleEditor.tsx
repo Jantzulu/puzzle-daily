@@ -11,6 +11,7 @@ import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderD
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Effect type options with icons
 const EFFECT_TYPES: { value: CollectibleEffectType; label: string; icon: string }[] = [
@@ -28,6 +29,7 @@ const getEffectIcon = (type: CollectibleEffectType): string => {
 };
 
 export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
+  const isMobile = useIsMobile();
   const [collectibles, setCollectibles] = useState<CustomCollectible[]>(() => getCustomCollectibles());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomCollectible | null>(null);
@@ -312,17 +314,27 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
       }
       detailPanel={editing ? (
         <>
-          {/* Header */}
-          <div className="flex justify-between items-center">
-            <h2 className="text-2xl font-bold">
-              {isCreating ? 'Create Item' : 'Edit Item'}
-            </h2>
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
-            >
-              Save Item
-            </button>
+          {/* Persistent Header */}
+          <div className="dungeon-panel p-3 md:p-4 rounded">
+            <div className="flex justify-between items-center gap-2">
+              <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
+                  <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
+                    {editing.name || 'Unnamed Item'}
+                  </h2>
+                  <p className="text-xs text-stone-400">{editing.effects?.length || 0} effect{(editing.effects?.length || 0) !== 1 ? 's' : ''}</p>
+                </div>
+              </div>
+              <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
+                <button onClick={handleSave} className="dungeon-btn-success text-sm">
+                  <span className="md:hidden">💾</span>
+                  <span className="hidden md:inline">Save Item</span>
+                </button>
+              </div>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

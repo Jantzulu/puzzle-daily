@@ -18,8 +18,10 @@ import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
+  const isMobile = useIsMobile();
   // Helper to ensure all characters have a default customSprite
   const ensureCustomSprite = (char: any): CustomCharacter => {
     return {
@@ -311,7 +313,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                 <div className="flex justify-between items-center gap-2">
                   <div className="flex items-center gap-2 md:gap-4 min-w-0">
                     <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
-                      <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
+                      <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} previewType="entity" />
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">

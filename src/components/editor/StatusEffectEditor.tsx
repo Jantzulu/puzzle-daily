@@ -6,6 +6,7 @@ import { saveStatusEffectAsset } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SimpleIconEditor } from './SimpleIconEditor';
 import { RichTextEditor } from './RichTextEditor';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 interface StatusEffectEditorProps {
   effect?: StatusEffectAsset;
@@ -30,6 +31,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   onSave,
   onCancel,
 }) => {
+  const isMobile = useIsMobile();
   const [name, setName] = useState(effect?.name || '');
   const [description, setDescription] = useState(effect?.description || '');
   const [type, setType] = useState<StatusEffectType>(effect?.type || StatusEffectType.POISON);
@@ -241,35 +243,40 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   };
 
   return (
-    <div className="bg-stone-800 p-6 rounded space-y-6">
-      <div className="flex justify-between items-center">
-        <div className="flex items-center gap-3">
-          {iconSprite?.type === 'inline' && iconSprite.spriteData ? (
-            <div className="w-12 h-12 flex-shrink-0">
-              <SpriteThumbnail sprite={iconSprite.spriteData} size={48} />
+    <div className="bg-stone-800 p-4 md:p-6 rounded space-y-6">
+      <div className="dungeon-panel p-3 md:p-4 rounded">
+        <div className="flex justify-between items-center gap-2">
+          <div className="flex items-center gap-2 md:gap-4 min-w-0">
+            <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
+              {iconSprite?.type === 'inline' && iconSprite.spriteData ? (
+                <SpriteThumbnail sprite={iconSprite.spriteData} size={isMobile ? 40 : 64} />
+              ) : (
+                <span className="text-stone-400 text-lg">🔮</span>
+              )}
             </div>
-          ) : (
-            <div className="w-12 h-12 bg-stone-700 rounded flex items-center justify-center text-stone-400 text-lg flex-shrink-0">🔮</div>
-          )}
-          <h2 className="text-xl font-bold">
-            {effect ? (isBuiltIn ? 'View Built-in Effect' : 'Edit Status Effect') : 'Create Status Effect'}
-          </h2>
-        </div>
-        <div className="flex gap-2">
-          <button
-            onClick={onCancel}
-            className="px-4 py-2 bg-stone-600 rounded hover:bg-stone-500"
-          >
-            Cancel
-          </button>
-          {!isBuiltIn && (
+            <div className="min-w-0">
+              <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
+                {name || 'Unnamed Effect'}
+              </h2>
+              <p className="text-xs text-stone-400">{effectType}{isBuiltIn ? ' • built-in' : ''}</p>
+            </div>
+          </div>
+          <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
             <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
+              onClick={onCancel}
+              className="p-2 md:px-3 md:py-1.5 text-sm bg-stone-600 hover:bg-stone-500 rounded"
+              title="Cancel"
             >
-              Save
+              <span className="md:hidden">✕</span>
+              <span className="hidden md:inline">Cancel</span>
             </button>
-          )}
+            {!isBuiltIn && (
+              <button onClick={handleSave} className="dungeon-btn-success text-sm">
+                <span className="md:hidden">💾</span>
+                <span className="hidden md:inline">Save</span>
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
