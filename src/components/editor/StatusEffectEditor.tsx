@@ -258,7 +258,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
                 {name || 'Unnamed Effect'}
               </h2>
-              <p className="text-xs text-stone-400">{effectType}{isBuiltIn ? ' • built-in' : ''}</p>
+              <p className="text-xs text-stone-400">{type}{isBuiltIn ? ' • built-in' : ''}</p>
             </div>
           </div>
           <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
