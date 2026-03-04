@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
+import { scaledNameClass } from '../../utils/textScale';
 import type { StatusEffectAsset } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
 import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, getFolders, type CustomSprite } from '../../utils/assetStorage';
@@ -226,8 +227,8 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                           </div>
                         )}
                         <div className="min-w-0">
-                          <h3 className="font-bold flex flex-wrap items-center gap-1">
-                            <span className="line-clamp-2 break-words">{effect.name || 'Unnamed'}</span>
+                          <h3 className={`font-bold flex flex-wrap items-center gap-1 ${scaledNameClass(effect.name || 'Unnamed')}`}>
+                            <span className="line-clamp-2">{effect.name || 'Unnamed'}</span>
                             {effect.isBuiltIn && (
                               <span className="text-xs bg-stone-600 px-1 rounded flex-shrink-0">Built-in</span>
                             )}

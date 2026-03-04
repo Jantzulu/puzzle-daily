@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
+import { scaledNameClass } from '../../utils/textScale';
 import type { SoundAsset, GlobalSoundConfig, GlobalHapticConfig, HapticPattern } from '../../types/game';
 import {
   saveSoundAsset,
@@ -394,7 +395,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <p className="text-parchment-100 text-sm font-medium line-clamp-2 break-words">{sound.name}</p>
+                        <p className={`text-parchment-100 font-medium line-clamp-2 ${scaledNameClass(sound.name)}`}>{sound.name}</p>
                         <p className="text-stone-400 text-xs">{formatDuration(sound.duration)}</p>
                       </div>
                     </div>

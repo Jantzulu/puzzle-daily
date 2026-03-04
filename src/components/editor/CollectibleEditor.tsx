@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
+import { scaledNameClass } from '../../utils/textScale';
 import type { CustomCollectible, CustomSprite } from '../../utils/assetStorage';
 import type { CollectibleEffectConfig, CollectibleEffectType } from '../../types/game';
 import { saveCollectible, getCustomCollectibles, deleteCollectible, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
@@ -265,7 +266,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                           <SpriteThumbnail sprite={collectible.customSprite} size={selectedId === collectible.id ? 56 : 40} />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold line-clamp-2 break-words">{collectible.name}</h3>
+                          <h3 className={`font-bold line-clamp-2 ${scaledNameClass(collectible.name)}`}>{collectible.name}</h3>
                           <p className="text-xs text-stone-400">
                             {getEffectSummary(collectible.effects)}
                           </p>

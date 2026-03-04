@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
+import { scaledNameClass } from '../../utils/textScale';
 import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint } from '../../utils/assetStorage';
 import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../utils/assetStorage';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
@@ -267,7 +268,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                           <SpriteThumbnail sprite={obj.customSprite} size={selectedId === obj.id ? 56 : 40} />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold line-clamp-2 break-words">{obj.name}</h3>
+                          <h3 className={`font-bold line-clamp-2 ${scaledNameClass(obj.name)}`}>{obj.name}</h3>
                           <p className="text-xs text-stone-400 capitalize">
                             {obj.effects.length > 0 ? `${obj.effects.length} effect${obj.effects.length !== 1 ? 's' : ''}` : 'Decorative'}
                           </p>

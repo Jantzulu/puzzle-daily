@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
+import { scaledNameClass } from '../../utils/textScale';
 import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig, CadenceConfig, CadencePattern } from '../../types/game';
 import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
@@ -757,7 +758,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           )}
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold line-clamp-2 break-words">{tileType.name}</h3>
+                          <h3 className={`font-bold line-clamp-2 ${scaledNameClass(tileType.name)}`}>{tileType.name}</h3>
                           <p className="text-xs text-stone-400">
                             {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
                           </p>

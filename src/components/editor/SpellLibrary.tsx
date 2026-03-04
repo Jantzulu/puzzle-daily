@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
+import { scaledNameClass } from '../../utils/textScale';
 import type { SpellAsset } from '../../types/game';
 import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
@@ -196,7 +197,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                           </div>
                         )}
                         <div className="min-w-0">
-                          <h3 className="font-bold line-clamp-2 break-words">{spell.name || 'Unnamed'}</h3>
+                          <h3 className={`font-bold line-clamp-2 ${scaledNameClass(spell.name || 'Unnamed')}`}>{spell.name || 'Unnamed'}</h3>
                           <p className="text-xs text-stone-400 capitalize">
                             {spell.templateType.replace('_', ' ')}
                           </p>

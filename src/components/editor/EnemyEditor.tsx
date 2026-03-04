@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
+import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
 import type { CharacterAction, EnemyBehavior, EntitySoundSet } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
@@ -230,7 +231,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         </div>
                         <div className="min-w-0">
                           <div className="flex flex-wrap items-center gap-2">
-                            <h3 className="font-bold line-clamp-2 break-words">{enemy.name}</h3>
+                            <h3 className={`font-bold line-clamp-2 ${scaledNameClass(enemy.name)}`}>{enemy.name}</h3>
                             {enemy.isBoss && (
                               <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium flex-shrink-0">
                                 BOSS
