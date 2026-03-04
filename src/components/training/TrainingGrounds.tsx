@@ -40,21 +40,21 @@ const ArenaCard: React.FC<{ puzzle: Puzzle; onClick: () => void }> = ({ puzzle, 
   const previewState = useMemo(() => initializeGameState(JSON.parse(JSON.stringify(puzzle))), [puzzle]);
 
   return (
-    <div
-      className="dungeon-panel p-3 hover:border-copper-500/50 transition-colors cursor-pointer"
-      onClick={onClick}
-    >
-      {/* Board preview — let ResponsiveGameBoard fill the card */}
-      <div className="w-full aspect-square overflow-hidden rounded mb-2 pointer-events-none">
+    <div className="cursor-pointer group" onClick={onClick}>
+      {/* Board preview — unclipped, outside the panel */}
+      <div className="w-full pointer-events-none mb-1">
         <ResponsiveGameBoard gameState={previewState} />
       </div>
-      <h3 className="font-medieval text-copper-300 text-lg truncate">{puzzle.name}</h3>
-      {puzzle.description && (
-        <p className="text-stone-400 text-sm mt-0.5 line-clamp-2">{puzzle.description}</p>
-      )}
-      <div className="flex items-center gap-3 mt-1.5 text-xs text-stone-500">
-        <span>{puzzle.width}x{puzzle.height}</span>
-        <span>{puzzle.enemies.length} {puzzle.enemies.length === 1 ? 'enemy' : 'enemies'}</span>
+      {/* Info panel below */}
+      <div className="dungeon-panel p-2.5 group-hover:border-copper-500/50 transition-colors">
+        <h3 className="font-medieval text-copper-300 text-lg truncate">{puzzle.name}</h3>
+        {puzzle.description && (
+          <p className="text-stone-400 text-sm mt-0.5 line-clamp-2">{puzzle.description}</p>
+        )}
+        <div className="flex items-center gap-3 mt-1.5 text-xs text-stone-500">
+          <span>{puzzle.width}x{puzzle.height}</span>
+          <span>{puzzle.enemies.length} {puzzle.enemies.length === 1 ? 'enemy' : 'enemies'}</span>
+        </div>
       </div>
     </div>
   );
