@@ -257,7 +257,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         >
                           <SpriteThumbnail sprite={char.customSprite} size={selectedId === char.id ? 56 : 40} previewType="entity" />
                         </div>
-                        <div className="min-w-0 overflow-hidden">
+                        <div className="min-w-0">
                           <h3 className={`font-bold text-parchment-200 ${scaledNameClass(char.name)}`}>{char.name}</h3>
                           <p className="text-xs text-stone-400">
                             HP: {char.health} • {char.behavior.length} actions

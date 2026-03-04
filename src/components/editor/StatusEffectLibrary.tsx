@@ -226,7 +226,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                             </span>
                           </div>
                         )}
-                        <div className="min-w-0 overflow-hidden">
+                        <div className="min-w-0">
                           <h3 className={`font-bold ${scaledNameClass(effect.name || 'Unnamed')}`}>{effect.name || 'Unnamed'}</h3>
                           <p className="text-xs text-stone-400 capitalize">
                             {effect.isBuiltIn && <span className="text-stone-500 mr-1">Built-in</span>}

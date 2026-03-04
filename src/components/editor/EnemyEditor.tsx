@@ -229,7 +229,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         >
                           <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" />
                         </div>
-                        <div className="min-w-0 overflow-hidden">
+                        <div className="min-w-0">
                           <h3 className={`font-bold ${scaledNameClass(enemy.name)}`}>{enemy.name}</h3>
                           <p className="text-xs text-stone-400">
                             {enemy.isBoss && <span className="text-blood-300 font-medium mr-1">BOSS</span>}
