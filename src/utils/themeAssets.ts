@@ -204,6 +204,11 @@ export interface ThemeAssets {
   fontFamilyHeading?: string;   // Font family for headings/titles
   fontSizeBody?: string;        // Body text size multiplier
   fontSizeHeading?: string;     // Heading text size multiplier
+
+  // === COMPENDIUM BOOK ===
+  compendiumPageTexture?: string;      // Background texture for book pages (data URL)
+  compendiumSpineTexture?: string;     // Background texture/image for book spine (data URL)
+  compendiumCornerDecoration?: string; // Corner decoration image (data URL, replaces L-bracket corners)
 }
 
 export type ThemeAssetKey = keyof ThemeAssets;
@@ -354,6 +359,11 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   fontFamilyHeading: { label: 'Heading Font', description: 'Font for titles and headings', category: 'styles', inputType: 'select' },
   fontSizeBody: { label: 'Body Text Size', description: 'Size of body text', category: 'styles', inputType: 'select' },
   fontSizeHeading: { label: 'Heading Size', description: 'Size of headings and titles', category: 'styles', inputType: 'select' },
+
+  // Compendium Book
+  compendiumPageTexture: { label: 'Page Texture', description: 'Background texture for compendium book pages', category: 'compendium', inputType: 'image' },
+  compendiumSpineTexture: { label: 'Spine Texture', description: 'Background texture for the book spine', category: 'compendium', inputType: 'image' },
+  compendiumCornerDecoration: { label: 'Corner Decoration', description: 'Corner decorations for book pages (replaces default L-brackets)', category: 'compendium', inputType: 'image' },
 };
 
 export const ASSET_CATEGORIES = ['branding', 'backgrounds', 'buttons', 'borders', 'icons', 'effects', 'colors', 'actionButtons', 'concedeModal', 'defeatPanel', 'gameOverPanel', 'styles'] as const;

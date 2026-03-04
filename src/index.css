@@ -691,6 +691,336 @@ html body.theme-font-active,
   --scroll-percent: 0;
 }
 
+/* ============================================
+   COMPENDIUM BOOK STYLES
+   ============================================ */
+
+/* Compendium book container — the open book with two pages */
+.compendium-book {
+  --page-bg: #f2e0b5;
+  --page-bg-dark: #e8d3a0;
+  --text-primary: #2a2118;
+  --text-heading: #6b4a24;
+  --text-muted: #8b7a5e;
+  --section-bg: rgba(74, 51, 24, 0.06);
+  --border-warm: rgba(139, 101, 48, 0.25);
+  --spine-dark: #3d2e1a;
+  --spine-light: #5a4530;
+  --corner-color: rgba(139, 101, 48, 0.35);
+  --page-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+
+  display: flex;
+  position: relative;
+  background: var(--spine-dark);
+  border-radius: 4px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.6),
+    0 2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Single-page mode for mobile */
+.compendium-book--single {
+  display: block;
+  border-radius: 4px;
+  background: var(--page-bg);
+}
+
+/* Book page — left or right */
+.compendium-page {
+  flex: 1;
+  min-width: 0;
+  background-color: var(--page-bg);
+  background-image: var(--page-texture);
+  color: var(--text-primary);
+  padding: 1.5rem;
+  overflow-y: auto;
+  position: relative;
+}
+
+/* Left page — inner shadow near spine */
+.compendium-page--left {
+  border-radius: 4px 0 0 4px;
+  box-shadow: inset -12px 0 20px -10px rgba(61, 46, 26, 0.25);
+}
+
+/* Right page — inner shadow near spine */
+.compendium-page--right {
+  border-radius: 0 4px 4px 0;
+  box-shadow: inset 12px 0 20px -10px rgba(61, 46, 26, 0.25);
+}
+
+/* Mobile single page */
+.compendium-page--single {
+  border-radius: 4px;
+  background-color: var(--page-bg);
+  background-image: var(--page-texture);
+  color: var(--text-primary);
+  padding: 1rem;
+}
+
+/* Spine divider between pages */
+.compendium-spine {
+  width: 16px;
+  flex-shrink: 0;
+  background: linear-gradient(
+    to right,
+    var(--spine-dark),
+    var(--spine-light) 40%,
+    var(--spine-light) 60%,
+    var(--spine-dark)
+  );
+  box-shadow:
+    inset 1px 0 2px rgba(0, 0, 0, 0.4),
+    inset -1px 0 2px rgba(0, 0, 0, 0.4);
+  position: relative;
+}
+
+/* Spine stitching dots */
+.compendium-spine::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 8%;
+  bottom: 8%;
+  width: 2px;
+  transform: translateX(-50%);
+  background: repeating-linear-gradient(
+    to bottom,
+    rgba(255, 220, 160, 0.3) 0px,
+    rgba(255, 220, 160, 0.3) 4px,
+    transparent 4px,
+    transparent 12px
+  );
+}
+
+/* Decorative corners (L-bracket, overridable by theme) */
+.compendium-corner {
+  position: absolute;
+  width: 24px;
+  height: 24px;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.compendium-corner::before,
+.compendium-corner::after {
+  content: '';
+  position: absolute;
+  background-color: var(--corner-color);
+}
+
+/* Horizontal arm */
+.compendium-corner::before {
+  height: 2px;
+  width: 20px;
+}
+
+/* Vertical arm */
+.compendium-corner::after {
+  width: 2px;
+  height: 20px;
+}
+
+.compendium-corner--tl { top: 8px; left: 8px; }
+.compendium-corner--tl::before { top: 0; left: 0; }
+.compendium-corner--tl::after { top: 0; left: 0; }
+
+.compendium-corner--tr { top: 8px; right: 8px; }
+.compendium-corner--tr::before { top: 0; right: 0; }
+.compendium-corner--tr::after { top: 0; right: 0; }
+
+.compendium-corner--bl { bottom: 8px; left: 8px; }
+.compendium-corner--bl::before { bottom: 0; left: 0; }
+.compendium-corner--bl::after { bottom: 0; left: 0; }
+
+.compendium-corner--br { bottom: 8px; right: 8px; }
+.compendium-corner--br::before { bottom: 0; right: 0; }
+.compendium-corner--br::after { bottom: 0; right: 0; }
+
+/* Chapter tab — bookmark on right edge */
+.compendium-chapter-tab {
+  padding: 0.5rem 0.75rem;
+  font-family: 'Almendra', serif;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text-heading);
+  background: var(--page-bg-dark);
+  border: 1px solid var(--border-warm);
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.compendium-chapter-tab:hover {
+  background: var(--page-bg);
+}
+
+.compendium-chapter-tab--active {
+  background: var(--page-bg);
+  color: #4a3318;
+  border-bottom-color: transparent;
+  font-weight: 700;
+}
+
+/* Desktop: vertical tabs on right edge */
+.compendium-chapter-tabs--vertical {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  position: absolute;
+  right: -1px;
+  top: 2rem;
+  z-index: 2;
+}
+
+.compendium-chapter-tabs--vertical .compendium-chapter-tab {
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+  border-radius: 0 4px 4px 0;
+  padding: 0.75rem 0.4rem;
+  font-size: 0.75rem;
+  border-left-color: transparent;
+}
+
+.compendium-chapter-tabs--vertical .compendium-chapter-tab--active {
+  border-left-color: transparent;
+  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Mobile: horizontal tabs above book */
+.compendium-chapter-tabs--horizontal {
+  display: flex;
+  gap: 2px;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 0;
+}
+
+.compendium-chapter-tabs--horizontal::-webkit-scrollbar {
+  display: none;
+}
+
+.compendium-chapter-tabs--horizontal .compendium-chapter-tab {
+  border-radius: 4px 4px 0 0;
+  font-size: 0.75rem;
+  padding: 0.4rem 0.6rem;
+  border-bottom-color: transparent;
+}
+
+/* Entry card on parchment page */
+.compendium-entry {
+  padding: 0.5rem 0.75rem;
+  border-radius: 3px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  color: var(--text-primary);
+}
+
+.compendium-entry:hover {
+  background: var(--section-bg);
+  border-color: var(--border-warm);
+}
+
+.compendium-entry--selected {
+  background: rgba(74, 51, 24, 0.1);
+  border-color: var(--border-warm);
+  box-shadow: inset 0 0 0 1px rgba(139, 101, 48, 0.1);
+}
+
+/* Page heading — medieval manuscript style */
+.compendium-page-heading {
+  font-family: 'Almendra', serif;
+  color: var(--text-heading);
+  font-weight: 700;
+  border-bottom: 2px solid var(--border-warm);
+  padding-bottom: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+/* Detail section panels */
+.compendium-detail-section {
+  background: var(--section-bg);
+  border: 1px solid var(--border-warm);
+  border-radius: 3px;
+  padding: 0.75rem;
+}
+
+.compendium-detail-section h3 {
+  font-family: 'Almendra', serif;
+  color: var(--text-heading);
+  font-weight: 600;
+  font-size: 0.875rem;
+  margin-bottom: 0.5rem;
+}
+
+/* Search input on parchment */
+.compendium-search {
+  width: 100%;
+  padding: 0.4rem 0.75rem;
+  font-size: 0.875rem;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--border-warm);
+  border-radius: 3px;
+  color: var(--text-primary);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.compendium-search::placeholder {
+  color: var(--text-muted);
+}
+
+.compendium-search:focus {
+  border-color: rgba(139, 101, 48, 0.5);
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* Category accent colors on parchment */
+.compendium-accent-heroes { color: #7a4f1e; }
+.compendium-accent-enemies { color: #8b2020; }
+.compendium-accent-enchantments { color: #5a3a7e; }
+.compendium-accent-tiles { color: #6b4a24; }
+.compendium-accent-items { color: #4a6b30; }
+
+/* Empty/placeholder state on parchment */
+.compendium-empty {
+  text-align: center;
+  padding: 3rem 1rem;
+  color: var(--text-muted);
+  font-style: italic;
+  font-family: 'Almendra', serif;
+}
+
+/* Badge on parchment */
+.compendium-badge {
+  display: inline-block;
+  padding: 0.125rem 0.5rem;
+  font-size: 0.75rem;
+  border-radius: 3px;
+  background: rgba(74, 51, 24, 0.1);
+  border: 1px solid var(--border-warm);
+  color: var(--text-heading);
+}
+
+/* Scrollbar for book pages */
+.compendium-page::-webkit-scrollbar {
+  width: 6px;
+}
+.compendium-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+.compendium-page::-webkit-scrollbar-thumb {
+  background: rgba(139, 101, 48, 0.3);
+  border-radius: 3px;
+}
+.compendium-page::-webkit-scrollbar-thumb:hover {
+  background: rgba(139, 101, 48, 0.5);
+}
+
 /* Metallic shine on primary buttons using box-shadow */
 .dungeon-btn-primary {
   --shine-offset: calc(var(--scroll-percent) * 300% - 150%);
