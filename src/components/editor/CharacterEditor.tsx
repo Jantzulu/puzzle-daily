@@ -257,14 +257,14 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         >
                           <SpriteThumbnail sprite={char.customSprite} size={selectedId === char.id ? 56 : 40} previewType="entity" />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 overflow-hidden">
                           <h3 className={`font-bold text-parchment-200 ${scaledNameClass(char.name)}`}>{char.name}</h3>
                           <p className="text-xs text-stone-400">
                             HP: {char.health} • {char.behavior.length} actions
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
                         <InlineFolderPicker
                           category="characters"
                           currentFolderId={char.folderId}
@@ -272,7 +272,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         />
                         <button
                           onClick={(e) => handleDuplicate(char, e)}
-                          className="px-1.5 py-1 text-xs bg-stone-600 rounded-pixel hover:bg-stone-500"
+                          className="p-1 text-xs leading-none bg-stone-600 rounded-pixel hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -282,7 +282,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                             e.stopPropagation();
                             handleDelete(char.id);
                           }}
-                          className="px-2 py-1 text-xs bg-blood-700 rounded-pixel hover:bg-blood-600"
+                          className="p-1 text-xs leading-none bg-blood-700 rounded-pixel hover:bg-blood-600"
                         >
                           ✕
                         </button>

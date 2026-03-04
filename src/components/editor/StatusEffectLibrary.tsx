@@ -226,19 +226,15 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                             </span>
                           </div>
                         )}
-                        <div className="min-w-0">
-                          <h3 className={`font-bold flex flex-wrap items-center gap-1 ${scaledNameClass(effect.name || 'Unnamed')}`}>
-                            <span>{effect.name || 'Unnamed'}</span>
-                            {effect.isBuiltIn && (
-                              <span className="text-xs bg-stone-600 px-1 rounded flex-shrink-0">Built-in</span>
-                            )}
-                          </h3>
+                        <div className="min-w-0 overflow-hidden">
+                          <h3 className={`font-bold ${scaledNameClass(effect.name || 'Unnamed')}`}>{effect.name || 'Unnamed'}</h3>
                           <p className="text-xs text-stone-400 capitalize">
+                            {effect.isBuiltIn && <span className="text-stone-500 mr-1">Built-in</span>}
                             {effect.type.replace('_', ' ')}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
                         {!effect.isBuiltIn && (
                           <InlineFolderPicker
                             category="status_effects"
@@ -248,7 +244,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                         )}
                         <button
                           onClick={(e) => handleDuplicate(effect, e)}
-                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
+                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -256,7 +252,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                         {!effect.isBuiltIn && (
                           <button
                             onClick={(e) => handleDelete(effect.id, e)}
-                            className="px-1.5 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
+                            className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
                             title="Delete"
                           >
                             ✕

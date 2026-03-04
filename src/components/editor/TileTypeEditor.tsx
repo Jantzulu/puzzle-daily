@@ -757,14 +757,14 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             </span>
                           )}
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 overflow-hidden">
                           <h3 className={`font-bold ${scaledNameClass(tileType.name)}`}>{tileType.name}</h3>
                           <p className="text-xs text-stone-400">
                             {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
                         <InlineFolderPicker
                           category="tiles"
                           currentFolderId={tileType.folderId}
@@ -772,7 +772,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                         />
                         <button
                           onClick={(e) => handleDuplicate(tileType, e)}
-                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
+                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -782,7 +782,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             e.stopPropagation();
                             handleDelete(tileType.id);
                           }}
-                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
+                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
                         >
                           ✕
                         </button>

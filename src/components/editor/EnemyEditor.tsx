@@ -229,21 +229,15 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         >
                           <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" />
                         </div>
-                        <div className="min-w-0">
-                          <div className="flex flex-wrap items-center gap-2">
-                            <h3 className={`font-bold ${scaledNameClass(enemy.name)}`}>{enemy.name}</h3>
-                            {enemy.isBoss && (
-                              <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium flex-shrink-0">
-                                BOSS
-                              </span>
-                            )}
-                          </div>
+                        <div className="min-w-0 overflow-hidden">
+                          <h3 className={`font-bold ${scaledNameClass(enemy.name)}`}>{enemy.name}</h3>
                           <p className="text-xs text-stone-400">
+                            {enemy.isBoss && <span className="text-blood-300 font-medium mr-1">BOSS</span>}
                             HP: {enemy.health} • {enemy.behavior?.type || 'static'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
                         <InlineFolderPicker
                           category="enemies"
                           currentFolderId={enemy.folderId}
@@ -251,14 +245,14 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         />
                         <button
                           onClick={(e) => handleDuplicate(enemy, e)}
-                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
+                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
                         </button>
                         <button
                           onClick={(e) => { e.stopPropagation(); handleDelete(enemy.id); }}
-                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
+                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
                         >
                           ✕
                         </button>

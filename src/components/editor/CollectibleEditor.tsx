@@ -265,37 +265,37 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                         >
                           <SpriteThumbnail sprite={collectible.customSprite} size={selectedId === collectible.id ? 56 : 40} />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 overflow-hidden">
                           <h3 className={`font-bold ${scaledNameClass(collectible.name)}`}>{collectible.name}</h3>
                           <p className="text-xs text-stone-400">
                             {getEffectSummary(collectible.effects)}
                           </p>
                         </div>
                       </div>
-                      <div className="flex gap-1">
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
+                        <InlineFolderPicker
+                          category="collectibles"
+                          currentFolderId={collectible.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(collectible.id, folderId)}
+                        />
                         <button
                           onClick={(e) => handleDuplicate(collectible, e)}
-                          className="px-2 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
+                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
-                          📋
+                          ⎘
                         </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
                             handleDelete(collectible.id);
                           }}
-                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
+                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
                         >
-                          🗑️
+                          ✕
                         </button>
                       </div>
                     </div>
-                    <InlineFolderPicker
-                      category="collectibles"
-                      currentFolderId={collectible.folderId}
-                      onFolderChange={(folderId) => handleFolderChange(collectible.id, folderId)}
-                    />
                   </div>
                 ))
               )}

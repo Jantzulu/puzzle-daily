@@ -454,19 +454,15 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                           );
                         })()}
                       </div>
-                      <div className="min-w-0">
-                        <h3 className={`font-bold ${scaledNameClass(skin.name)}`}>
-                          {skin.name}
-                          {skin.isBuiltIn && (
-                            <span className="ml-2 text-xs text-stone-400">(Built-in)</span>
-                          )}
-                        </h3>
-                        {skin.description && (
-                          <p className="text-xs text-stone-400 mt-1">{skin.description}</p>
-                        )}
+                      <div className="min-w-0 overflow-hidden">
+                        <h3 className={`font-bold ${scaledNameClass(skin.name)}`}>{skin.name}</h3>
+                        <p className="text-xs text-stone-400">
+                          {skin.isBuiltIn && <span className="text-stone-500 mr-1">Built-in</span>}
+                          {skin.description || ''}
+                        </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex flex-col gap-0.5 flex-shrink-0">
                       {!skin.isBuiltIn && (
                         <InlineFolderPicker
                           category="skins"
@@ -476,7 +472,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       )}
                       <button
                         onClick={(e) => handleDuplicate(skin, e)}
-                        className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
+                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
                         title="Duplicate"
                       >
                         ⎘
@@ -487,7 +483,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             e.stopPropagation();
                             handleDeleteSkin(skin.id);
                           }}
-                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
+                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
                         >
                           ✕
                         </button>

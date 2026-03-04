@@ -296,7 +296,7 @@ export const InlineFolderPicker: React.FC<InlineFolderPickerProps> = ({
           e.stopPropagation();
           setIsOpen(!isOpen);
         }}
-        className={`p-1.5 rounded text-xs transition-colors ${
+        className={`p-1 rounded text-xs leading-none transition-colors ${
           currentFolder
             ? 'bg-copper-700 hover:bg-copper-600 text-white'
             : 'bg-stone-600 hover:bg-stone-500 text-stone-300'

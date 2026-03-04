@@ -196,14 +196,14 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                             ?
                           </div>
                         )}
-                        <div className="min-w-0">
+                        <div className="min-w-0 overflow-hidden">
                           <h3 className={`font-bold ${scaledNameClass(spell.name || 'Unnamed')}`}>{spell.name || 'Unnamed'}</h3>
                           <p className="text-xs text-stone-400 capitalize">
                             {spell.templateType.replace('_', ' ')}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
                         <InlineFolderPicker
                           category="spells"
                           currentFolderId={spell.folderId}
@@ -211,14 +211,14 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                         />
                         <button
                           onClick={(e) => handleDuplicate(spell, e)}
-                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
+                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
                         </button>
                         <button
                           onClick={(e) => handleDelete(spell.id, e)}
-                          className="px-1.5 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
+                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
                           title="Delete"
                         >
                           ✕

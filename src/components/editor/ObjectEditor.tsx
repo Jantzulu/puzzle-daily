@@ -267,14 +267,14 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                         >
                           <SpriteThumbnail sprite={obj.customSprite} size={selectedId === obj.id ? 56 : 40} />
                         </div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 overflow-hidden">
                           <h3 className={`font-bold ${scaledNameClass(obj.name)}`}>{obj.name}</h3>
                           <p className="text-xs text-stone-400 capitalize">
                             {obj.effects.length > 0 ? `${obj.effects.length} effect${obj.effects.length !== 1 ? 's' : ''}` : 'Decorative'}
                           </p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-1">
+                      <div className="flex flex-col gap-0.5 flex-shrink-0">
                         <InlineFolderPicker
                           category="objects"
                           currentFolderId={obj.folderId}
@@ -282,7 +282,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                         />
                         <button
                           onClick={(e) => handleDuplicate(obj, e)}
-                          className="px-1.5 py-1 text-xs bg-stone-600 rounded hover:bg-stone-500"
+                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
                           title="Duplicate"
                         >
                           ⎘
@@ -292,7 +292,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                             e.stopPropagation();
                             handleDelete(obj.id);
                           }}
-                          className="px-2 py-1 text-xs bg-blood-700 rounded hover:bg-blood-600"
+                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
                         >
                           ✕
                         </button>
