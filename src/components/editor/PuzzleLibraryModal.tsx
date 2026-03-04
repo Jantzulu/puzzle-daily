@@ -1,6 +1,12 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import type { SavedPuzzle } from '../../utils/puzzleStorage';
 import { getPuzzleFolders, addPuzzleFolder, deletePuzzleFolder, setPuzzleFolder } from '../../utils/puzzleStorage';
+import { collectAllTags } from '../shared/TagInput';
+import { publishPuzzle, publishAsset, unpublishPuzzle } from '../../services/supabaseService';
+import { getPuzzleDependencies } from '../../utils/publishDependencies';
+import { PublishDependencyModal } from './PublishDependencyModal';
+import type { AssetDependency } from '../../utils/publishDependencies';
+import { toast } from '../shared/Toast';
 
 interface PuzzleLibraryModalProps {
   isOpen: boolean;
@@ -33,6 +39,13 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
   const [folderToDelete, setFolderToDelete] = useState<string | null>(null);
   const [movingPuzzle, setMovingPuzzle] = useState<string | null>(null);
   const [showMobileFolders, setShowMobileFolders] = useState(false);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+  const [publishingPuzzle, setPublishingPuzzle] = useState<string | null>(null);
+  const [publishDeps, setPublishDeps] = useState<AssetDependency[]>([]);
+  const [publishModalPuzzle, setPublishModalPuzzle] = useState<SavedPuzzle | null>(null);
+
+  // Collect all unique tags across puzzles
+  const allTags = useMemo(() => collectAllTags(puzzles), [puzzles]);
 
   // Load folders when modal opens
   useEffect(() => {
@@ -45,6 +58,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
       setFolderToDelete(null);
       setMovingPuzzle(null);
       setShowMobileFolders(false);
+      setSelectedTags([]);
     }
   }, [isOpen]);
 
@@ -82,7 +96,15 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
       const query = searchQuery.toLowerCase();
       result = result.filter(p =>
         p.name.toLowerCase().includes(query) ||
-        p.id.toLowerCase().includes(query)
+        p.id.toLowerCase().includes(query) ||
+        p.tags?.some(t => t.toLowerCase().includes(query))
+      );
+    }
+
+    // Filter by selected tags (AND logic — puzzle must have ALL selected tags)
+    if (selectedTags.length > 0) {
+      result = result.filter(p =>
+        selectedTags.every(tag => p.tags?.includes(tag))
       );
     }
 
@@ -103,7 +125,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
     }
 
     return result;
-  }, [puzzles, searchQuery, sortBy, selectedFolder, folders]);
+  }, [puzzles, searchQuery, sortBy, selectedFolder, folders, selectedTags]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -444,6 +466,35 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                 </select>
               </div>
 
+              {/* Tag filter pills */}
+              {allTags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {allTags.map(tag => (
+                    <button
+                      key={tag}
+                      onClick={() => setSelectedTags(prev =>
+                        prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag]
+                      )}
+                      className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+                        selectedTags.includes(tag)
+                          ? 'bg-copper-600/40 border-copper-500/50 text-copper-300'
+                          : 'bg-stone-800 border-stone-600 text-stone-400 hover:border-stone-500'
+                      }`}
+                    >
+                      {tag}
+                    </button>
+                  ))}
+                  {selectedTags.length > 0 && (
+                    <button
+                      onClick={() => setSelectedTags([])}
+                      className="px-2 py-0.5 text-xs text-stone-500 hover:text-stone-300"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Stats - hidden on mobile, shown in desktop sidebar context */}
               <div className="hidden sm:flex items-center justify-between text-sm text-stone-400">
                 <span className="md:hidden">{getFolderDisplayName()}</span>
@@ -562,6 +613,18 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                               <span>{puzzle.enemies.length} enem{puzzle.enemies.length === 1 ? 'y' : 'ies'}</span>
                               <span className="hidden sm:inline text-xs">{formatDate(puzzle.savedAt)}</span>
                             </div>
+                            {puzzle.tags && puzzle.tags.length > 0 && (
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {puzzle.tags.slice(0, 5).map(tag => (
+                                  <span key={tag} className="px-1.5 py-0 text-[10px] rounded-full bg-stone-700 text-stone-400 border border-stone-600">
+                                    {tag}
+                                  </span>
+                                ))}
+                                {puzzle.tags.length > 5 && (
+                                  <span className="text-[10px] text-stone-500">+{puzzle.tags.length - 5}</span>
+                                )}
+                              </div>
+                            )}
                           </div>
                           <div className="flex gap-2 flex-shrink-0">
                             <button
@@ -572,6 +635,24 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                               </svg>
+                            </button>
+                            <button
+                              onClick={async () => {
+                                setPublishingPuzzle(puzzle.id);
+                                try {
+                                  const deps = await getPuzzleDependencies(puzzle);
+                                  setPublishDeps(deps);
+                                  setPublishModalPuzzle(puzzle);
+                                } catch {
+                                  toast.error('Failed to check dependencies');
+                                }
+                                setPublishingPuzzle(null);
+                              }}
+                              className="p-2 sm:px-2 sm:py-1.5 text-sm bg-green-700/50 rounded hover:bg-green-600 text-green-400 hover:text-white"
+                              title="Publish puzzle"
+                              disabled={publishingPuzzle === puzzle.id}
+                            >
+                              {publishingPuzzle === puzzle.id ? '⏳' : '🚀'}
                             </button>
                             <button
                               onClick={() => handleLoad(puzzle.id)}
@@ -609,6 +690,29 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Publish Modal */}
+      {publishModalPuzzle && (
+        <PublishDependencyModal
+          isOpen={!!publishModalPuzzle}
+          onClose={() => setPublishModalPuzzle(null)}
+          puzzleName={publishModalPuzzle.name}
+          dependencies={publishDeps}
+          onPublish={async () => {
+            const unpublished = publishDeps.filter(d => !d.isPublished && !d.isMissing);
+            for (const dep of unpublished) {
+              await publishAsset(dep.assetId);
+            }
+            const success = await publishPuzzle(publishModalPuzzle.id);
+            if (success) {
+              toast.success(`Published "${publishModalPuzzle.name}"`);
+            } else {
+              toast.error('Failed to publish puzzle');
+            }
+            setPublishModalPuzzle(null);
+          }}
+        />
+      )}
     </div>
   );
 };

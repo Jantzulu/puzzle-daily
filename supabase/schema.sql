@@ -135,6 +135,22 @@ CREATE POLICY "Allow insert to assets_live" ON assets_live
 CREATE POLICY "Allow insert to daily_schedule" ON daily_schedule
   FOR INSERT WITH CHECK (true);
 
+-- Allow dev tool to update/delete live tables (for unpublish & re-publish)
+CREATE POLICY "Allow update to puzzles_live" ON puzzles_live
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow delete from puzzles_live" ON puzzles_live
+  FOR DELETE USING (true);
+
+CREATE POLICY "Allow update to assets_live" ON assets_live
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow delete from assets_live" ON assets_live
+  FOR DELETE USING (true);
+
+CREATE POLICY "Allow update to daily_schedule" ON daily_schedule
+  FOR UPDATE USING (true) WITH CHECK (true);
+CREATE POLICY "Allow delete from daily_schedule" ON daily_schedule
+  FOR DELETE USING (true);
+
 -- ============================================
 -- STORAGE BUCKET FOR IMAGES (optional - for large sprites)
 -- ============================================

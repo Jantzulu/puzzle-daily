@@ -6,6 +6,10 @@ const ACTION_COLORS: Record<string, string> = {
   update: 'text-arcane-400',
   delete: 'text-blood-400',
   publish: 'text-copper-400',
+  unpublish: 'text-amber-400',
+  batch_publish: 'text-copper-400',
+  schedule: 'text-sky-400',
+  unschedule: 'text-amber-400',
   sync_push: 'text-sky-400',
   sync_pull: 'text-amber-400',
 };
@@ -15,6 +19,10 @@ const ACTION_ICONS: Record<string, string> = {
   update: '~',
   delete: '×',
   publish: '▲',
+  unpublish: '▼',
+  batch_publish: '▲▲',
+  schedule: '📅',
+  unschedule: '📅',
   sync_push: '↑',
   sync_pull: '↓',
 };
@@ -40,6 +48,10 @@ function formatAction(record: ActivityRecord): string {
     : record.action === 'update' ? 'updated'
     : record.action === 'delete' ? 'deleted'
     : record.action === 'publish' ? 'published'
+    : record.action === 'unpublish' ? 'unpublished'
+    : record.action === 'batch_publish' ? 'batch published'
+    : record.action === 'schedule' ? 'scheduled'
+    : record.action === 'unschedule' ? 'unscheduled'
     : record.action === 'sync_push' ? 'pushed to cloud'
     : record.action === 'sync_pull' ? 'pulled from cloud'
     : record.action;

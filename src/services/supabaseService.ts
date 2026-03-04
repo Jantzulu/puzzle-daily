@@ -289,6 +289,79 @@ export async function publishAsset(assetId: string): Promise<boolean> {
 }
 
 // ============================================
+// UNPUBLISH OPERATIONS (Live -> Draft)
+// ============================================
+
+export async function unpublishPuzzle(puzzleId: string): Promise<boolean> {
+  // Remove from daily_schedule first (FK constraint)
+  await supabase
+    .from('daily_schedule')
+    .delete()
+    .eq('puzzle_id', puzzleId);
+
+  // Delete from live table
+  const { error: liveError } = await supabase
+    .from('puzzles_live')
+    .delete()
+    .eq('id', puzzleId);
+
+  if (liveError) {
+    console.error('Error unpublishing puzzle:', liveError);
+    return false;
+  }
+
+  // Update draft status back to 'draft'
+  await updatePuzzleStatus(puzzleId, 'draft');
+  logActivity({ action: 'unpublish', asset_type: 'puzzle', asset_id: puzzleId });
+  return true;
+}
+
+export async function unpublishAsset(assetId: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('assets_live')
+    .delete()
+    .eq('id', assetId);
+
+  if (error) {
+    console.error('Error unpublishing asset:', error);
+    return false;
+  }
+
+  // Update draft status
+  await supabase
+    .from('assets_draft')
+    .update({ status: 'draft', updated_at: new Date().toISOString() })
+    .eq('id', assetId);
+
+  logActivity({ action: 'unpublish', asset_type: 'asset', asset_id: assetId });
+  return true;
+}
+
+/**
+ * Check if a puzzle is currently published.
+ */
+export async function isPuzzlePublished(puzzleId: string): Promise<boolean> {
+  const { data } = await supabase
+    .from('puzzles_live')
+    .select('id')
+    .eq('id', puzzleId)
+    .maybeSingle();
+  return !!data;
+}
+
+/**
+ * Get the draft status of a puzzle from the cloud.
+ */
+export async function getPuzzleDraftStatus(puzzleId: string): Promise<DbPuzzle['status'] | null> {
+  const { data } = await supabase
+    .from('puzzles_draft')
+    .select('status')
+    .eq('id', puzzleId)
+    .maybeSingle();
+  return data?.status || null;
+}
+
+// ============================================
 // SYNC OPERATIONS (Cloud <-> Local)
 // ============================================
 
@@ -384,4 +457,116 @@ export async function fetchLiveAssets(type: AssetType): Promise<AssetData[]> {
   }
 
   return (data || []).map(a => a.data as unknown as AssetData);
+}
+
+// ============================================
+// SCHEDULING OPERATIONS
+// ============================================
+
+export interface ScheduleEntry {
+  date: string;
+  puzzleId: string;
+  puzzleName: string;
+  puzzleNumber?: number; // Sequential puzzle number based on schedule order
+}
+
+/**
+ * Fetch schedule for a date range.
+ */
+export async function fetchSchedule(startDate: string, endDate: string): Promise<ScheduleEntry[]> {
+  const { data, error } = await supabase
+    .from('daily_schedule')
+    .select('scheduled_date, puzzle_id, puzzles_live(name)')
+    .gte('scheduled_date', startDate)
+    .lte('scheduled_date', endDate)
+    .order('scheduled_date', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching schedule:', error);
+    return [];
+  }
+
+  return (data || []).map(row => ({
+    date: row.scheduled_date,
+    puzzleId: row.puzzle_id,
+    puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
+  }));
+}
+
+/**
+ * Fetch the full schedule (all entries) to compute puzzle numbers.
+ * Returns entries ordered by scheduled_date, with sequential puzzle_number assigned.
+ */
+export async function fetchFullScheduleWithNumbers(): Promise<ScheduleEntry[]> {
+  const { data, error } = await supabase
+    .from('daily_schedule')
+    .select('scheduled_date, puzzle_id, puzzles_live(name)')
+    .order('scheduled_date', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching full schedule:', error);
+    return [];
+  }
+
+  return (data || []).map((row, idx) => ({
+    date: row.scheduled_date,
+    puzzleId: row.puzzle_id,
+    puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
+    puzzleNumber: idx + 1,
+  }));
+}
+
+/**
+ * Schedule a puzzle for a specific date.
+ */
+export async function schedulePuzzle(puzzleId: string, date: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('daily_schedule')
+    .upsert({
+      puzzle_id: puzzleId,
+      scheduled_date: date,
+    }, { onConflict: 'scheduled_date' });
+
+  if (error) {
+    console.error('Error scheduling puzzle:', error);
+    return false;
+  }
+
+  logActivity({ action: 'schedule', asset_type: 'puzzle', asset_id: puzzleId, details: { scheduled_date: date } });
+  return true;
+}
+
+/**
+ * Unschedule a puzzle from a date.
+ */
+export async function unschedulePuzzle(date: string): Promise<boolean> {
+  const { error } = await supabase
+    .from('daily_schedule')
+    .delete()
+    .eq('scheduled_date', date);
+
+  if (error) {
+    console.error('Error unscheduling puzzle:', error);
+    return false;
+  }
+
+  logActivity({ action: 'unschedule', asset_type: 'puzzle', details: { scheduled_date: date } });
+  return true;
+}
+
+/**
+ * Fetch all published puzzles (for the scheduling sidebar).
+ */
+export async function fetchPublishedPuzzles(): Promise<{ id: string; name: string }[]> {
+  const { data, error } = await supabase
+    .from('puzzles_live')
+    .select('id, name')
+    .order('name', { ascending: true });
+
+  if (error) {
+    console.error('Error fetching published puzzles:', error);
+    return [];
+  }
+
+  return data || [];
 }

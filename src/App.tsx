@@ -12,6 +12,7 @@ import { GlobalSearch } from './components/shared/GlobalSearch';
 import { LoginPage } from './components/auth/LoginPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
+import { SchedulingDashboard } from './components/editor/SchedulingDashboard';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -276,6 +277,9 @@ function Navigation() {
           <Link to="/editor" className={linkClass('/editor')}>
             <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
           </Link>
+          <Link to="/schedule" className={linkClass('/schedule')}>
+            <span className="mr-1">📅</span> Schedule
+          </Link>
           <Link to="/assets" className={linkClass('/assets')}>
             <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
@@ -342,6 +346,13 @@ function Navigation() {
             <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
           </Link>
           <Link
+            to="/schedule"
+            className={`block ${linkClass('/schedule')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">📅</span> Schedule
+          </Link>
+          <Link
             to="/assets"
             className={`block ${linkClass('/assets')}`}
             onClick={() => setMobileMenuOpen(false)}
@@ -404,6 +415,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
           <Route path="/compendium" element={<Compendium />} />
           <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
+          <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
           <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
         </Routes>
         <ToastContainer />

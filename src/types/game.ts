@@ -509,6 +509,10 @@ export interface Puzzle {
 
   // Side quests (optional bonus objectives)
   sideQuests?: SideQuest[];
+
+  // Metadata — tags and description for organization
+  tags?: string[];        // User-defined tags (e.g., "tutorial", "hard", "boss")
+  description?: string;   // Short description shown in library
 }
 
 export interface PlacedCharacter {

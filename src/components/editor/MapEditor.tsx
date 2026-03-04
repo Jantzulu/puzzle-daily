@@ -28,6 +28,11 @@ import { checkSideQuests } from '../../engine/scoring';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
+import { TagInput, collectAllTags } from '../shared/TagInput';
+import { suggestTags } from '../../utils/puzzleTagSuggestions';
+import { getPuzzleDependencies, type AssetDependency } from '../../utils/publishDependencies';
+import { publishPuzzle, publishAsset, unpublishPuzzle, isPuzzlePublished } from '../../services/supabaseService';
+import { PublishDependencyModal } from './PublishDependencyModal';
 import { createHistoryManager } from '../../utils/historyManager';
 import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
@@ -295,6 +300,10 @@ interface EditorState {
   parTurns?: number;
   sideQuests: SideQuest[];
 
+  // Tags & description
+  tags: string[];
+  description: string;
+
   // Editor state
   selectedTool: ToolType;
   isDrawing: boolean;
@@ -324,6 +333,10 @@ const createDefaultEditorState = (): EditorState => ({
   parTurns: undefined,
   sideQuests: [],
 
+  // Tags & description
+  tags: [],
+  description: '',
+
   selectedTool: 'wall',
   isDrawing: false,
   mode: 'edit',
@@ -344,6 +357,9 @@ export const MapEditor: React.FC = () => {
         mode: 'edit' as EditorMode,
         // Ensure sideQuests is always an array (for backwards compatibility with old cached state)
         sideQuests: cached.sideQuests || [],
+        // Ensure tags/description are always initialized
+        tags: cached.tags || [],
+        description: cached.description || '',
         // Filter out references to deleted characters
         availableCharacters: (cached.availableCharacters || []).filter(id => getCharacter(id) != null),
       };
@@ -377,6 +393,11 @@ export const MapEditor: React.FC = () => {
   // Library state
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
   const [showLibrary, setShowLibrary] = useState(false);
+
+  // Publishing state
+  const [publishStatus, setPublishStatus] = useState<'draft' | 'published' | 'checking' | null>(null);
+  const [showPublishModal, setShowPublishModal] = useState(false);
+  const [publishDeps, setPublishDeps] = useState<AssetDependency[]>([]);
 
   // History manager for undo/redo
   const historyRef = useRef(createHistoryManager({
@@ -1343,6 +1364,8 @@ export const MapEditor: React.FC = () => {
       parCharacters: state.parCharacters,
       parTurns: state.parTurns,
       sideQuests: state.sideQuests.length > 0 ? state.sideQuests : undefined,
+      tags: state.tags.length > 0 ? state.tags : undefined,
+      description: state.description || undefined,
     };
   };
 
@@ -1432,6 +1455,8 @@ export const MapEditor: React.FC = () => {
       parCharacters: puzzle.parCharacters,
       parTurns: puzzle.parTurns,
       sideQuests: puzzle.sideQuests || [],
+      tags: puzzle.tags || [],
+      description: puzzle.description || '',
     }));
 
     setShowLibrary(false);
@@ -1476,6 +1501,8 @@ export const MapEditor: React.FC = () => {
       parCharacters: puzzle.parCharacters,
       parTurns: puzzle.parTurns,
       sideQuests: puzzle.sideQuests || [],
+      tags: puzzle.tags || [],
+      description: puzzle.description || '',
     }));
     clearAutoSave();
     setRecoveryData(null);
@@ -1542,6 +1569,8 @@ export const MapEditor: React.FC = () => {
         parCharacters: puzzle.parCharacters,
         parTurns: puzzle.parTurns,
         sideQuests: puzzle.sideQuests || [],
+        tags: puzzle.tags || [],
+        description: puzzle.description || '',
       }));
 
       toast.success('Puzzle loaded successfully!');
@@ -3834,6 +3863,111 @@ export const MapEditor: React.FC = () => {
                     />
                   </div>
                   <div>
+                    <label className="block text-sm mb-1">Description</label>
+                    <textarea
+                      value={state.description}
+                      onChange={(e) => setState(prev => ({ ...prev, description: e.target.value }))}
+                      placeholder="Short description for the library..."
+                      rows={2}
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-sm resize-none"
+                    />
+                  </div>
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="text-sm">Tags</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const puzzle = getCurrentPuzzle();
+                          const suggested = suggestTags(puzzle);
+                          const newTags = suggested.filter(t => !state.tags.includes(t));
+                          if (newTags.length === 0) {
+                            toast.info('No new tags to suggest');
+                          } else {
+                            setState(prev => ({ ...prev, tags: [...prev.tags, ...newTags] }));
+                            toast.success(`Added ${newTags.length} suggested tag${newTags.length > 1 ? 's' : ''}`);
+                          }
+                        }}
+                        className="text-xs text-copper-400 hover:text-copper-300"
+                      >
+                        ✨ Auto-suggest
+                      </button>
+                    </div>
+                    <TagInput
+                      tags={state.tags}
+                      onChange={(tags) => setState(prev => ({ ...prev, tags }))}
+                      knownTags={collectAllTags(savedPuzzles)}
+                      placeholder="Add tag..."
+                    />
+                  </div>
+
+                  {/* Publishing */}
+                  <div className="border-t border-stone-700 pt-3">
+                    <div className="flex items-center justify-between mb-2">
+                      <label className="text-sm font-medium">Publishing</label>
+                      {publishStatus === 'published' && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/30 text-green-400 border border-green-500/30">
+                          Published
+                        </span>
+                      )}
+                      {publishStatus === 'draft' && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-stone-600/30 text-stone-400 border border-stone-500/30">
+                          Draft
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          setPublishStatus('checking');
+                          try {
+                            const puzzle = getCurrentPuzzle();
+                            const deps = await getPuzzleDependencies(puzzle);
+                            setPublishDeps(deps);
+                            setShowPublishModal(true);
+                          } catch (err) {
+                            toast.error('Failed to check dependencies');
+                            console.error(err);
+                          }
+                          setPublishStatus(publishStatus);
+                        }}
+                        className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
+                        disabled={publishStatus === 'checking'}
+                      >
+                        {publishStatus === 'checking' ? 'Checking...' : '🚀 Publish'}
+                      </button>
+                      {publishStatus === 'published' && (
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            if (!confirm('Unpublish this puzzle? It will be removed from the live site.')) return;
+                            const success = await unpublishPuzzle(state.puzzleId);
+                            if (success) {
+                              setPublishStatus('draft');
+                              toast.success('Puzzle unpublished');
+                            } else {
+                              toast.error('Failed to unpublish');
+                            }
+                          }}
+                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-red-600/80 rounded text-stone-400 hover:text-white"
+                        >
+                          Unpublish
+                        </button>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const isLive = await isPuzzlePublished(state.puzzleId);
+                        setPublishStatus(isLive ? 'published' : 'draft');
+                      }}
+                      className="text-xs text-stone-500 hover:text-stone-300 mt-1"
+                    >
+                      Check status
+                    </button>
+                  </div>
+                  <div>
                     <label className="block text-sm mb-1">Visual Skin</label>
                     <select
                       value={state.skinId || 'builtin_dungeon'}
@@ -4276,6 +4410,31 @@ export const MapEditor: React.FC = () => {
         onDelete={handleDeleteFromLibrary}
         onPuzzlesChanged={() => setSavedPuzzles(getSavedPuzzles())}
         currentPuzzleId={state.puzzleId}
+      />
+
+      {/* Publish Dependency Modal */}
+      <PublishDependencyModal
+        isOpen={showPublishModal}
+        onClose={() => setShowPublishModal(false)}
+        puzzleName={state.puzzleName}
+        dependencies={publishDeps}
+        onPublish={async () => {
+          const puzzle = getCurrentPuzzle();
+          // Publish all unpublished dependencies first
+          const unpublished = publishDeps.filter(d => !d.isPublished && !d.isMissing);
+          for (const dep of unpublished) {
+            await publishAsset(dep.assetId);
+          }
+          // Publish the puzzle itself
+          const success = await publishPuzzle(puzzle.id);
+          if (success) {
+            setPublishStatus('published');
+            toast.success(`Published "${state.puzzleName}" with ${unpublished.length} asset${unpublished.length !== 1 ? 's' : ''}`);
+          } else {
+            toast.error('Failed to publish puzzle');
+          }
+          setShowPublishModal(false);
+        }}
       />
 
       {/* Validation Results Modal */}

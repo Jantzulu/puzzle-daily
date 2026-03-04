@@ -20,6 +20,7 @@ import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../..
 import { WarningModal } from '../shared/WarningModal';
 import { preloadImages } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
+import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supabaseService';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -89,6 +90,25 @@ export const Game: React.FC = () => {
     }
     prevPuzzleIdForShimmerRef.current = currentPuzzleId;
   }, [currentPuzzle.id]);
+
+  // Try to load today's puzzle from cloud (daily_schedule)
+  useEffect(() => {
+    let cancelled = false;
+    fetchCloudTodaysPuzzle().then(cloudPuzzle => {
+      if (cancelled || !cloudPuzzle) return;
+      // Only switch if we're still on the default puzzle (haven't manually selected one)
+      setCurrentPuzzle(prev => {
+        // If user has already switched puzzles, don't override
+        if (prev.id !== getTodaysPuzzle().id) return prev;
+        setOriginalPuzzle(JSON.parse(JSON.stringify(cloudPuzzle)));
+        setGameState(initializeGameState(cloudPuzzle));
+        return cloudPuzzle;
+      });
+    }).catch(() => {
+      // Silently fall back to local puzzle if cloud is unreachable
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   // Reload saved puzzles when component mounts or when returning from editor
   useEffect(() => {

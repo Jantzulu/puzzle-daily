@@ -11,6 +11,7 @@ interface SearchResult {
   tab?: string;       // AssetManager tab name
   route: string;      // Route to navigate to
   subtitle?: string;
+  tags?: string[];    // For tag-based search
 }
 
 const CATEGORIES = [
@@ -37,7 +38,8 @@ function loadAllAssets(): SearchResult[] {
       category: 'puzzles',
       icon: '🗺️',
       route: '/editor',
-      subtitle: `${p.gridWidth}×${p.gridHeight}`,
+      subtitle: p.tags?.length ? `${p.width}×${p.height} · ${p.tags.join(', ')}` : `${p.width}×${p.height}`,
+      tags: p.tags,
     });
   }
 
@@ -185,7 +187,8 @@ export const GlobalSearch: React.FC<GlobalSearchProps> = ({ isOpen, onClose }) =
     return allAssets.filter(r =>
       r.name.toLowerCase().includes(q) ||
       r.subtitle?.toLowerCase().includes(q) ||
-      r.category.toLowerCase().includes(q)
+      r.category.toLowerCase().includes(q) ||
+      r.tags?.some(t => t.toLowerCase().includes(q))
     );
   }, [allAssets, query]);
 
