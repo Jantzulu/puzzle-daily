@@ -62,7 +62,7 @@ export const AssetManager: React.FC = () => {
           <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 dungeon-scrollbar">
             <div className="flex gap-1 md:gap-2 min-w-max">
               <button onClick={() => setActiveTab('characters')} className={tabClass('characters')}>
-                ⚔️ <span className="hidden sm:inline">Heroes</span><span className="sm:hidden">Chars</span>
+                ⚔️ Heroes
               </button>
               <button onClick={() => setActiveTab('enemies')} className={tabClass('enemies')}>
                 👹 Enemies
@@ -71,7 +71,7 @@ export const AssetManager: React.FC = () => {
                 ✨ Spells
               </button>
               <button onClick={() => setActiveTab('status_effects')} className={tabClass('status_effects')}>
-                🔮 <span className="hidden sm:inline">Enchantments</span><span className="sm:hidden">Effects</span>
+                🔮 Enchantments
               </button>
               <button onClick={() => setActiveTab('tiles')} className={tabClass('tiles')}>
                 🧱 Tiles

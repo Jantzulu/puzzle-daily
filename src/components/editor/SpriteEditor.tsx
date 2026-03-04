@@ -1792,9 +1792,9 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       : previewImageSrc;
 
     return (
-      <div className="mt-2 p-2 bg-stone-800 rounded border border-stone-600">
+      <div className="mt-2 p-2 bg-stone-800 rounded border border-stone-600 overflow-hidden">
         <div className="text-[10px] text-stone-400 mb-1 font-bold">Anchor Point</div>
-        <div className="flex items-start gap-3">
+        <div className="flex flex-wrap items-start gap-3">
           <div>
             <div className="grid grid-cols-3 gap-0.5 w-fit mb-2">
               {anchorPoints.map((pt) => (
@@ -1908,7 +1908,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Sprite Sheet (Animated)
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -1983,7 +1983,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Static Image (Fallback)
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
@@ -2068,7 +2068,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Death Sprite Sheet (On Death - Animated)
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -2143,7 +2143,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Death Image (On Death - Static)
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -2180,7 +2180,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Casting Sprite Sheet (Casting Spell - Animated)
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -2255,7 +2255,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Casting Image (Casting Spell - Static)
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -2456,7 +2456,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Idle Sprite Sheet (Not Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -2591,7 +2591,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Idle Image (Not Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
@@ -2718,7 +2718,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Moving Sprite Sheet (While Moving - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -2853,7 +2853,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Moving Image (While Moving - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
@@ -2997,7 +2997,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Death Sprite Sheet (On Death - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -3132,7 +3132,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Death Image (On Death - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
@@ -3276,7 +3276,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Casting Sprite Sheet (Casting Spell - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg"
@@ -3411,7 +3411,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Casting Image (Casting Spell - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
@@ -3588,7 +3588,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             Spawn Sprite Sheet (Animation)
           </label>
           <div className="space-y-2">
-            <div className="flex gap-2 items-start">
+            <div className="flex gap-2 items-start min-w-0">
               <input
                 type="file"
                 accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
@@ -3712,7 +3712,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               Spawn Image (Static)
             </label>
             <div className="space-y-2">
-              <div className="flex gap-2 items-start">
+              <div className="flex gap-2 items-start min-w-0">
                 <input
                   type="file"
                   accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
