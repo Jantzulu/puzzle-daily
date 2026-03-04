@@ -395,7 +395,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         </svg>
                       </div>
                       <div className="min-w-0">
-                        <p className={`text-parchment-100 font-medium line-clamp-2 ${scaledNameClass(sound.name)}`}>{sound.name}</p>
+                        <p className={`text-parchment-100 font-medium ${scaledNameClass(sound.name)}`}>{sound.name}</p>
                         <p className="text-stone-400 text-xs">{formatDuration(sound.duration)}</p>
                       </div>
                     </div>

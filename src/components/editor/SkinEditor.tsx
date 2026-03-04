@@ -455,7 +455,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                         })()}
                       </div>
                       <div className="min-w-0">
-                        <h3 className={`font-bold line-clamp-2 ${scaledNameClass(skin.name)}`}>
+                        <h3 className={`font-bold ${scaledNameClass(skin.name)}`}>
                           {skin.name}
                           {skin.isBuiltIn && (
                             <span className="ml-2 text-xs text-stone-400">(Built-in)</span>
