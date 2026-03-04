@@ -67,17 +67,17 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
 
   return (
     <div className="dungeon-panel p-3 space-y-2">
-      {/* Row 1: Exit button | "Replay" label | Speed buttons */}
-      <div className="flex items-center justify-between">
+      {/* Row 1: Exit button | "Replay" label (absolutely centered) | Speed buttons */}
+      <div className="relative flex items-center justify-between">
         <button
           onClick={onExit}
-          className="dungeon-btn px-2 py-1 text-xs font-bold flex items-center gap-1"
+          className="dungeon-btn px-2 py-1 text-xs font-bold flex items-center gap-1 z-10"
         >
           <span>&times;</span>
           <span>Exit</span>
         </button>
-        <span className="text-sm text-stone-300 font-medieval">Replay</span>
-        <div className="flex items-center gap-1">
+        <span className="absolute inset-0 flex items-center justify-center text-sm text-stone-300 font-medieval pointer-events-none">Replay</span>
+        <div className="flex items-center gap-1 z-10">
           {SPEEDS.map(s => (
             <button
               key={s}
