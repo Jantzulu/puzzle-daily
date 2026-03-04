@@ -148,9 +148,10 @@ export const SchedulingDashboard: React.FC = () => {
       }
     }
 
-    const success = await schedulePuzzle(dragPuzzle.id, dateKey);
-    if (success) {
-      toast.success(`Scheduled "${dragPuzzle.name}" for ${dateKey}`);
+    const result = await schedulePuzzle(dragPuzzle.id, dateKey);
+    if (result.success) {
+      const numLabel = result.puzzleNumber ? ` as Puzzle #${result.puzzleNumber}` : '';
+      toast.success(`Scheduled "${dragPuzzle.name}" for ${dateKey}${numLabel}`);
       loadData();
     } else {
       toast.error('Failed to schedule');
@@ -331,12 +332,15 @@ export const SchedulingDashboard: React.FC = () => {
                   <span>Gaps this month</span>
                   <span className={gapCount > 0 ? 'text-amber-400' : 'text-green-400'}>{gapCount}</span>
                 </div>
-                {fullSchedule.length > 0 && (
-                  <div className="flex justify-between">
-                    <span>Latest puzzle #</span>
-                    <span className="text-copper-400">#{fullSchedule.length}</span>
-                  </div>
-                )}
+                {fullSchedule.length > 0 && (() => {
+                  const maxNum = Math.max(...fullSchedule.map(e => e.puzzleNumber ?? 0));
+                  return maxNum > 0 ? (
+                    <div className="flex justify-between">
+                      <span>Latest puzzle #</span>
+                      <span className="text-copper-400">#{maxNum}</span>
+                    </div>
+                  ) : null;
+                })()}
               </div>
             </div>
           </div>

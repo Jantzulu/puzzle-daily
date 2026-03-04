@@ -476,7 +476,7 @@ export interface ScheduleEntry {
 export async function fetchSchedule(startDate: string, endDate: string): Promise<ScheduleEntry[]> {
   const { data, error } = await supabase
     .from('daily_schedule')
-    .select('scheduled_date, puzzle_id, puzzles_live(name)')
+    .select('scheduled_date, puzzle_id, puzzle_number, puzzles_live(name)')
     .gte('scheduled_date', startDate)
     .lte('scheduled_date', endDate)
     .order('scheduled_date', { ascending: true });
@@ -490,17 +490,18 @@ export async function fetchSchedule(startDate: string, endDate: string): Promise
     date: row.scheduled_date,
     puzzleId: row.puzzle_id,
     puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
+    puzzleNumber: row.puzzle_number ?? undefined,
   }));
 }
 
 /**
- * Fetch the full schedule (all entries) to compute puzzle numbers.
- * Returns entries ordered by scheduled_date, with sequential puzzle_number assigned.
+ * Fetch the full schedule (all entries) with persistent puzzle numbers.
+ * Returns entries ordered by scheduled_date.
  */
 export async function fetchFullScheduleWithNumbers(): Promise<ScheduleEntry[]> {
   const { data, error } = await supabase
     .from('daily_schedule')
-    .select('scheduled_date, puzzle_id, puzzles_live(name)')
+    .select('scheduled_date, puzzle_id, puzzle_number, puzzles_live(name)')
     .order('scheduled_date', { ascending: true });
 
   if (error) {
@@ -508,32 +509,71 @@ export async function fetchFullScheduleWithNumbers(): Promise<ScheduleEntry[]> {
     return [];
   }
 
-  return (data || []).map((row, idx) => ({
+  return (data || []).map(row => ({
     date: row.scheduled_date,
     puzzleId: row.puzzle_id,
     puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
-    puzzleNumber: idx + 1,
+    puzzleNumber: row.puzzle_number ?? undefined,
   }));
 }
 
 /**
- * Schedule a puzzle for a specific date.
+ * Get the next available puzzle number.
  */
-export async function schedulePuzzle(puzzleId: string, date: string): Promise<boolean> {
+async function getNextPuzzleNumber(): Promise<number> {
+  const { data } = await supabase
+    .from('daily_schedule')
+    .select('puzzle_number')
+    .order('puzzle_number', { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  return (data?.puzzle_number ?? 0) + 1;
+}
+
+/**
+ * Schedule a puzzle for a specific date.
+ * Automatically assigns the next puzzle number if one isn't already set for that date.
+ */
+export async function schedulePuzzle(puzzleId: string, date: string): Promise<{ success: boolean; puzzleNumber?: number }> {
+  // Check if this date already has a puzzle_number (re-scheduling same slot)
+  const { data: existing } = await supabase
+    .from('daily_schedule')
+    .select('puzzle_number')
+    .eq('scheduled_date', date)
+    .maybeSingle();
+
+  const puzzleNumber = existing?.puzzle_number ?? await getNextPuzzleNumber();
+
   const { error } = await supabase
     .from('daily_schedule')
     .upsert({
       puzzle_id: puzzleId,
       scheduled_date: date,
+      puzzle_number: puzzleNumber,
     }, { onConflict: 'scheduled_date' });
 
   if (error) {
     console.error('Error scheduling puzzle:', error);
-    return false;
+    return { success: false };
   }
 
-  logActivity({ action: 'schedule', asset_type: 'puzzle', asset_id: puzzleId, details: { scheduled_date: date } });
-  return true;
+  logActivity({ action: 'schedule', asset_type: 'puzzle', asset_id: puzzleId, details: { scheduled_date: date, puzzle_number: puzzleNumber } });
+  return { success: true, puzzleNumber };
+}
+
+/**
+ * Fetch today's puzzle number (for player display).
+ */
+export async function fetchTodaysPuzzleNumber(): Promise<number | null> {
+  const today = new Date().toISOString().split('T')[0];
+  const { data } = await supabase
+    .from('daily_schedule')
+    .select('puzzle_number')
+    .eq('scheduled_date', today)
+    .maybeSingle();
+
+  return data?.puzzle_number ?? null;
 }
 
 /**

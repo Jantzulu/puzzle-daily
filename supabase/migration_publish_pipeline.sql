@@ -25,3 +25,14 @@ CREATE POLICY "Allow update to daily_schedule" ON daily_schedule
 -- Allow dev tool to delete from daily schedule (unschedule)
 CREATE POLICY "Allow delete from daily_schedule" ON daily_schedule
   FOR DELETE USING (true);
+
+-- Add puzzle_number column to daily_schedule for persistent sequential numbering
+ALTER TABLE daily_schedule ADD COLUMN IF NOT EXISTS puzzle_number INTEGER UNIQUE;
+
+-- Backfill puzzle_number for existing rows (ordered by scheduled_date)
+WITH numbered AS (
+  SELECT id, ROW_NUMBER() OVER (ORDER BY scheduled_date) AS rn
+  FROM daily_schedule
+)
+UPDATE daily_schedule SET puzzle_number = numbered.rn
+FROM numbered WHERE daily_schedule.id = numbered.id;

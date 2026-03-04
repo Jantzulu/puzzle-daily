@@ -20,7 +20,7 @@ import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../..
 import { WarningModal } from '../shared/WarningModal';
 import { preloadImages } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
-import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supabaseService';
+import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -78,6 +78,9 @@ export const Game: React.FC = () => {
     message: '',
   });
 
+  // Cloud puzzle number (from daily_schedule)
+  const [puzzleNumber, setPuzzleNumber] = useState<number | null>(null);
+
   // Shimmer animation key for Quest text - triggers on puzzle change
   const [shimmerKey, setShimmerKey] = useState(0);
   const prevPuzzleIdForShimmerRef = useRef<string | null>(null);
@@ -94,8 +97,13 @@ export const Game: React.FC = () => {
   // Try to load today's puzzle from cloud (daily_schedule)
   useEffect(() => {
     let cancelled = false;
-    fetchCloudTodaysPuzzle().then(cloudPuzzle => {
-      if (cancelled || !cloudPuzzle) return;
+    Promise.all([
+      fetchCloudTodaysPuzzle(),
+      fetchTodaysPuzzleNumber(),
+    ]).then(([cloudPuzzle, num]) => {
+      if (cancelled) return;
+      if (num) setPuzzleNumber(num);
+      if (!cloudPuzzle) return;
       // Only switch if we're still on the default puzzle (haven't manually selected one)
       setCurrentPuzzle(prev => {
         // If user has already switched puzzles, don't override
@@ -854,7 +862,14 @@ export const Game: React.FC = () => {
                   {/* Triangle at corner */}
                   <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
                 </svg>
-                {/* Quest Row */}
+                {/* Puzzle Number & Quest Row */}
+                {puzzleNumber && (
+                  <div className="text-center mb-0.5">
+                    <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-copper-400/70">
+                      Puzzle #{puzzleNumber}
+                    </span>
+                  </div>
+                )}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
                     <HelpButton sectionId="game_general" />
                     <span key={shimmerKey} className="shimmer-container">

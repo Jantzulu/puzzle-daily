@@ -59,6 +59,7 @@ CREATE TABLE daily_schedule (
   id SERIAL PRIMARY KEY,
   puzzle_id TEXT REFERENCES puzzles_live(id),
   scheduled_date DATE UNIQUE NOT NULL,
+  puzzle_number INTEGER UNIQUE,  -- Sequential puzzle number (Puzzle #1, #2, etc.)
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
