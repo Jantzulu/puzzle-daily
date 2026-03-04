@@ -701,27 +701,34 @@ export const Game: React.FC = () => {
     // Headless mode resolves projectiles instantly so each snapshot is complete
     initialState.headlessMode = true;
 
-    const history: GameState[] = [JSON.parse(JSON.stringify(initialState))];
+    // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys
+    const deepCopyState = (state: GameState): GameState => {
+      const copy = JSON.parse(JSON.stringify(state));
+      copy.tileStates = new Map();
+      if (state.tileStates) {
+        state.tileStates.forEach((value: any, key: string) => {
+          copy.tileStates.set(key, {
+            ...value,
+            damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+          });
+        });
+      }
+      if (state.tilesBeingVacated) {
+        copy.tilesBeingVacated = new Set(state.tilesBeingVacated);
+      }
+      return copy;
+    };
+
+    const history: GameState[] = [deepCopyState(initialState)];
     let current = initialState;
 
     const maxIterations = (puzzleCopy.maxTurns || 200) + 10;
     for (let i = 0; i < maxIterations; i++) {
       if (current.gameStatus !== 'running') break;
 
-      // Deep copy with Map/Set restoration (same pattern as simulation loop)
-      const stateCopy = JSON.parse(JSON.stringify(current));
-      stateCopy.tileStates = new Map();
-      if (current.tileStates) {
-        current.tileStates.forEach((value: any, key: string) => {
-          stateCopy.tileStates.set(key, {
-            ...value,
-            damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
-          });
-        });
-      }
-
+      const stateCopy = deepCopyState(current);
       current = executeTurn(stateCopy);
-      history.push(JSON.parse(JSON.stringify(current)));
+      history.push(deepCopyState(current));
     }
 
     return history;

@@ -51,41 +51,41 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           <button
             onClick={() => onSeek(0)}
             disabled={atStart}
-            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed"
             title="Jump to start"
           >
-            &#x23EE;
+            {'|<'}
           </button>
           <button
             onClick={onStepBack}
             disabled={atStart}
-            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
             title="Step back"
           >
-            &#x23F4;
+            {'<'}
           </button>
           <button
             onClick={onPlayPause}
-            className="w-12 h-10 flex items-center justify-center rounded dungeon-btn-primary text-base font-bold"
+            className="w-12 h-10 flex items-center justify-center rounded dungeon-btn-primary text-sm font-bold"
             title={isPlaying ? 'Pause' : 'Play'}
           >
-            {isPlaying ? '&#x23F8;' : '&#x25B6;'}
+            {isPlaying ? 'II' : '\u25B6'}
           </button>
           <button
             onClick={onStepForward}
             disabled={atEnd}
-            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
             title="Step forward"
           >
-            &#x23F5;
+            {'>'}
           </button>
           <button
             onClick={() => onSeek(totalTurns)}
             disabled={atEnd}
-            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm disabled:opacity-30 disabled:cursor-not-allowed"
+            className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-xs font-bold disabled:opacity-30 disabled:cursor-not-allowed"
             title="Jump to end"
           >
-            &#x23ED;
+            {'>|'}
           </button>
         </div>
 
