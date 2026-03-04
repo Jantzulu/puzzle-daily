@@ -7,6 +7,8 @@ interface PublishDependencyModalProps {
   puzzleName: string;
   dependencies: AssetDependency[];
   onPublish: () => Promise<void>;
+  /** Called when the user wants to strip missing asset references from the puzzle, then re-check deps */
+  onRemoveMissing?: (missingDeps: AssetDependency[]) => void;
 }
 
 const TYPE_ICONS: Record<string, string> = {
@@ -37,6 +39,7 @@ export const PublishDependencyModal: React.FC<PublishDependencyModalProps> = ({
   puzzleName,
   dependencies,
   onPublish,
+  onRemoveMissing,
 }) => {
   const [isPublishing, setIsPublishing] = useState(false);
 
@@ -72,7 +75,10 @@ export const PublishDependencyModal: React.FC<PublishDependencyModalProps> = ({
           {/* Missing assets */}
           {missing.length > 0 && (
             <div>
-              <h3 className="text-sm font-medium text-red-400 mb-2">⚠ Missing Assets ({missing.length})</h3>
+              <h3 className="text-sm font-medium text-red-400 mb-2">Missing Assets ({missing.length})</h3>
+              <p className="text-xs text-stone-500 mb-2">
+                These assets were referenced but no longer exist locally. Remove them from the puzzle to proceed.
+              </p>
               <div className="space-y-1">
                 {missing.map(dep => (
                   <div key={dep.assetId} className="flex items-center gap-2 text-sm text-red-300 bg-red-900/20 rounded px-2 py-1">
@@ -83,6 +89,14 @@ export const PublishDependencyModal: React.FC<PublishDependencyModalProps> = ({
                   </div>
                 ))}
               </div>
+              {onRemoveMissing && (
+                <button
+                  onClick={() => onRemoveMissing(missing)}
+                  className="mt-2 w-full px-3 py-1.5 text-sm bg-red-600/30 hover:bg-red-600/50 text-red-300 rounded border border-red-600/30 font-medium"
+                >
+                  Remove {missing.length} Missing Reference{missing.length !== 1 ? 's' : ''} from Puzzle
+                </button>
+              )}
             </div>
           )}
 

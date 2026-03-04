@@ -3847,6 +3847,73 @@ export const MapEditor: React.FC = () => {
                 >
                   Generate Puzzle
                 </button>
+
+                {/* Publishing */}
+                <div className="border-t border-stone-700 pt-3 mt-1">
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="text-sm font-medium">Publishing</label>
+                    {publishStatus === 'published' && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/30 text-green-400 border border-green-500/30">
+                        Published
+                      </span>
+                    )}
+                    {publishStatus === 'draft' && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-stone-600/30 text-stone-400 border border-stone-500/30">
+                        Draft
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setPublishStatus('checking');
+                        try {
+                          const puzzle = getCurrentPuzzle();
+                          const deps = await getPuzzleDependencies(puzzle);
+                          setPublishDeps(deps);
+                          setShowPublishModal(true);
+                        } catch (err) {
+                          toast.error('Failed to check dependencies');
+                          console.error(err);
+                        }
+                        setPublishStatus(publishStatus);
+                      }}
+                      className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
+                      disabled={publishStatus === 'checking'}
+                    >
+                      {publishStatus === 'checking' ? 'Checking...' : '🚀 Publish'}
+                    </button>
+                    {publishStatus === 'published' && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          if (!confirm('Unpublish this puzzle? It will be removed from the live site.')) return;
+                          const success = await unpublishPuzzle(state.puzzleId);
+                          if (success) {
+                            setPublishStatus('draft');
+                            toast.success('Puzzle unpublished');
+                          } else {
+                            toast.error('Failed to unpublish');
+                          }
+                        }}
+                        className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-red-600/80 rounded text-stone-400 hover:text-white"
+                      >
+                        Unpublish
+                      </button>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const isLive = await isPuzzlePublished(state.puzzleId);
+                      setPublishStatus(isLive ? 'published' : 'draft');
+                    }}
+                    className="text-xs text-stone-500 hover:text-stone-300 mt-1"
+                  >
+                    Check status
+                  </button>
+                </div>
               </div>
 
               {/* Puzzle Info - Below Actions */}
@@ -3901,72 +3968,6 @@ export const MapEditor: React.FC = () => {
                     />
                   </div>
 
-                  {/* Publishing */}
-                  <div className="border-t border-stone-700 pt-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="text-sm font-medium">Publishing</label>
-                      {publishStatus === 'published' && (
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/30 text-green-400 border border-green-500/30">
-                          Published
-                        </span>
-                      )}
-                      {publishStatus === 'draft' && (
-                        <span className="px-2 py-0.5 text-xs rounded-full bg-stone-600/30 text-stone-400 border border-stone-500/30">
-                          Draft
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={async () => {
-                          setPublishStatus('checking');
-                          try {
-                            const puzzle = getCurrentPuzzle();
-                            const deps = await getPuzzleDependencies(puzzle);
-                            setPublishDeps(deps);
-                            setShowPublishModal(true);
-                          } catch (err) {
-                            toast.error('Failed to check dependencies');
-                            console.error(err);
-                          }
-                          setPublishStatus(publishStatus);
-                        }}
-                        className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
-                        disabled={publishStatus === 'checking'}
-                      >
-                        {publishStatus === 'checking' ? 'Checking...' : '🚀 Publish'}
-                      </button>
-                      {publishStatus === 'published' && (
-                        <button
-                          type="button"
-                          onClick={async () => {
-                            if (!confirm('Unpublish this puzzle? It will be removed from the live site.')) return;
-                            const success = await unpublishPuzzle(state.puzzleId);
-                            if (success) {
-                              setPublishStatus('draft');
-                              toast.success('Puzzle unpublished');
-                            } else {
-                              toast.error('Failed to unpublish');
-                            }
-                          }}
-                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-red-600/80 rounded text-stone-400 hover:text-white"
-                        >
-                          Unpublish
-                        </button>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        const isLive = await isPuzzlePublished(state.puzzleId);
-                        setPublishStatus(isLive ? 'published' : 'draft');
-                      }}
-                      className="text-xs text-stone-500 hover:text-stone-300 mt-1"
-                    >
-                      Check status
-                    </button>
-                  </div>
                   <div>
                     <label className="block text-sm mb-1">Visual Skin</label>
                     <select
@@ -4434,6 +4435,75 @@ export const MapEditor: React.FC = () => {
             toast.error('Failed to publish puzzle');
           }
           setShowPublishModal(false);
+        }}
+        onRemoveMissing={async (missingDeps) => {
+          const missingIds = new Set(missingDeps.map(d => d.assetId));
+          const missingByType = new Map<string, Set<string>>();
+          for (const dep of missingDeps) {
+            if (!missingByType.has(dep.type)) missingByType.set(dep.type, new Set());
+            missingByType.get(dep.type)!.add(dep.assetId);
+          }
+
+          setState(prev => {
+            const next = { ...prev };
+            // Remove missing enemies
+            if (missingByType.has('enemy')) {
+              const badIds = missingByType.get('enemy')!;
+              next.enemies = prev.enemies.filter(e => !badIds.has(e.enemyId));
+            }
+            // Remove missing characters
+            if (missingByType.has('character')) {
+              const badIds = missingByType.get('character')!;
+              next.availableCharacters = prev.availableCharacters.filter(id => !badIds.has(id));
+            }
+            // Remove missing collectibles
+            if (missingByType.has('collectible')) {
+              const badIds = missingByType.get('collectible')!;
+              next.collectibles = prev.collectibles.filter(c => !c.collectibleId || !badIds.has(c.collectibleId));
+            }
+            // Remove missing objects
+            if (missingByType.has('object')) {
+              const badIds = missingByType.get('object')!;
+              next.placedObjects = prev.placedObjects.filter(o => !badIds.has(o.objectId));
+            }
+            // Clear missing skin
+            if (missingByType.has('skin') && prev.skinId && missingIds.has(prev.skinId)) {
+              next.skinId = '';
+            }
+            // Clear missing background music
+            if (missingByType.has('sound') && prev.backgroundMusicId && missingIds.has(prev.backgroundMusicId)) {
+              next.backgroundMusicId = '';
+            }
+            // Clear missing custom tile types from grid
+            if (missingByType.has('tile_type')) {
+              const badIds = missingByType.get('tile_type')!;
+              next.tiles = prev.tiles.map(row =>
+                row.map(tile => {
+                  if (!tile || typeof tile !== 'object') return tile;
+                  const tileAny = tile as Record<string, unknown>;
+                  const tileTypeId = (tileAny.customType as string) || tile.customTileTypeId;
+                  if (tileTypeId && badIds.has(tileTypeId)) {
+                    return { ...tile, customType: undefined, customTileTypeId: undefined } as typeof tile;
+                  }
+                  return tile;
+                })
+              );
+            }
+            return next;
+          });
+
+          toast.success(`Removed ${missingDeps.length} missing reference${missingDeps.length !== 1 ? 's' : ''} from puzzle`);
+
+          // Re-check dependencies after removal
+          setTimeout(async () => {
+            try {
+              const puzzle = getCurrentPuzzle();
+              const deps = await getPuzzleDependencies(puzzle);
+              setPublishDeps(deps);
+            } catch (err) {
+              console.error('Failed to re-check deps:', err);
+            }
+          }, 100);
         }}
       />
 
