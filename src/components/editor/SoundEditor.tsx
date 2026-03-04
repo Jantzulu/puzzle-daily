@@ -374,7 +374,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    <div className="flex items-center gap-3 min-w-0">
+                    <div className="flex items-start gap-3 min-w-0">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(sound.id)}

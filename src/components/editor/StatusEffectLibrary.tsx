@@ -200,7 +200,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                     onClick={() => handleSelect(effect)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-start gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(effect.id)}
@@ -228,7 +228,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                         )}
                         <div className="min-w-0">
                           <h3 className={`font-bold flex flex-wrap items-center gap-1 ${scaledNameClass(effect.name || 'Unnamed')}`}>
-                            <span className="line-clamp-2">{effect.name || 'Unnamed'}</span>
+                            <span>{effect.name || 'Unnamed'}</span>
                             {effect.isBuiltIn && (
                               <span className="text-xs bg-stone-600 px-1 rounded flex-shrink-0">Built-in</span>
                             )}
