@@ -111,7 +111,9 @@ export const TrainingGrounds: React.FC = () => {
     const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(puzzle));
     setOriginalPuzzle(puzzleCopy);
     setSelectedPuzzle(puzzle);
-    setGameState(initializeGameState(JSON.parse(JSON.stringify(puzzle))));
+    const state = initializeGameState(JSON.parse(JSON.stringify(puzzle)));
+    state.testMode = true; // Skip win/loss condition checks — training is a sandbox
+    setGameState(state);
     setIsSimulating(false);
     setSelectedCharacterId(null);
     setPlayStartCharacters([]);
@@ -220,6 +222,7 @@ export const TrainingGrounds: React.FC = () => {
     if (!originalPuzzle) return;
     const resetPuzzle: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const resetState = initializeGameState(resetPuzzle);
+    resetState.testMode = true;
     resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
       const cd = getCharacter(char.characterId);
       return { ...char, actionIndex: 0, currentHealth: cd ? cd.health : char.currentHealth, dead: false, active: true };
@@ -234,6 +237,7 @@ export const TrainingGrounds: React.FC = () => {
     if (!originalPuzzle) return;
     const wipedPuzzle: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const wipedState = initializeGameState(wipedPuzzle);
+    wipedState.testMode = true;
     wipedState.placedCharacters = [];
     wipedState.gameStatus = 'setup';
     setGameState(wipedState);
@@ -261,7 +265,7 @@ export const TrainingGrounds: React.FC = () => {
         }
         copy.gameStatus = 'running';
         const next = executeTurn(copy);
-        if (next.gameStatus !== 'running') setIsSimulating(false);
+        if (next.gameStatus !== 'running' || next.currentTurn >= 100) setIsSimulating(false);
         return next;
       });
     }
@@ -287,7 +291,7 @@ export const TrainingGrounds: React.FC = () => {
           });
         }
         const next = executeTurn(copy);
-        if (next.gameStatus !== 'running') setIsSimulating(false);
+        if (next.gameStatus !== 'running' || next.currentTurn >= 100) setIsSimulating(false);
         return next;
       });
     }, TURN_INTERVAL_MS);
@@ -503,6 +507,9 @@ export const TrainingGrounds: React.FC = () => {
         {/* Transport controls (when not replaying) */}
         {!replayMode && (
           <div className="flex items-center justify-center gap-2">
+            {isRunning && (
+              <span className="text-xs text-stone-400 font-mono mr-1">Turn {gameState.currentTurn}/100</span>
+            )}
             {isSetup && (
               <button onClick={handlePlay} className="dungeon-btn-primary px-5 py-2 text-sm font-bold" disabled={gameState.placedCharacters.length === 0}>
                 Play
