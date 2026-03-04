@@ -132,7 +132,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row gap-4 md:gap-8">
           {/* Effect List - Left Sidebar */}
-          <div className="w-full md:w-72 space-y-4">
+          <div className="w-full md:w-72 space-y-4 overflow-hidden">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold font-medieval text-copper-400">Enchantments</h2>
               <button

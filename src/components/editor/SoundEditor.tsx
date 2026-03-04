@@ -269,7 +269,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col md:flex-row gap-4 md:gap-8">
           {/* Left Panel - Sound Library */}
-      <div className="w-full md:w-72 space-y-4">
+      <div className="w-full md:w-72 space-y-4 overflow-hidden">
         {/* Tabs */}
         <div className="flex gap-2 mb-4">
           <button
