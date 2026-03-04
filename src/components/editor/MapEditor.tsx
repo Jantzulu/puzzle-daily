@@ -3269,7 +3269,7 @@ export const MapEditor: React.FC = () => {
                   className="w-full flex items-center justify-between text-lg font-bold"
                 >
                   <span>Tools</span>
-                  <span className={`md:hidden transition-transform text-sm text-stone-400 ${toolsPanelOpen ? 'rotate-90' : ''}`}>▶</span>
+                  <span className="md:hidden text-sm text-stone-400">{toolsPanelOpen ? '▾' : '▸'}</span>
                 </button>
                 {toolsPanelOpen && <div className="grid grid-cols-4 gap-2 mt-3">
                   <button
@@ -3828,7 +3828,7 @@ export const MapEditor: React.FC = () => {
                   className="w-full flex items-center justify-between text-lg font-bold"
                 >
                   <span>Actions</span>
-                  <span className={`md:hidden transition-transform text-sm text-stone-400 ${actionsPanelOpen ? 'rotate-90' : ''}`}>▶</span>
+                  <span className="md:hidden text-sm text-stone-400">{actionsPanelOpen ? '▾' : '▸'}</span>
                 </button>
                 {actionsPanelOpen && <div className="space-y-2 mt-2">
                 <button
@@ -4121,7 +4121,7 @@ export const MapEditor: React.FC = () => {
                   className="w-full flex items-center justify-between text-lg font-bold"
                 >
                   <span>Puzzle Info</span>
-                  <span className={`md:hidden transition-transform text-sm text-stone-400 ${puzzleInfoPanelOpen ? 'rotate-90' : ''}`}>▶</span>
+                  <span className="md:hidden text-sm text-stone-400">{puzzleInfoPanelOpen ? '▾' : '▸'}</span>
                 </button>
                 {puzzleInfoPanelOpen && <div className="space-y-3 mt-3">
                   <div>
