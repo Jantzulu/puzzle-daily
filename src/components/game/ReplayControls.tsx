@@ -174,7 +174,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
       <div>
         {/* Event marker dots above scrubber */}
         {markers.length > 0 && (
-          <div className="relative h-2 mx-1">
+          <div className="relative h-1.5 mx-1 -mb-0.5">
             {markers.map(({ turn, color, label }) => (
               <button
                 key={turn}
