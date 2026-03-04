@@ -23,13 +23,11 @@ import { preloadImages } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
 import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
-import { useSearchParams } from 'react-router-dom';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
 
 export const Game: React.FC = () => {
-  const [searchParams] = useSearchParams();
   const officialPuzzles = getAllPuzzles();
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
 
@@ -105,24 +103,6 @@ export const Game: React.FC = () => {
     }
     prevPuzzleIdForShimmerRef.current = currentPuzzleId;
   }, [currentPuzzle.id]);
-
-  // Auto-select puzzle from URL search params (e.g., ?puzzle=PUZZLE_ID from Training Grounds)
-  const urlPuzzleHandledRef = useRef(false);
-  useEffect(() => {
-    if (urlPuzzleHandledRef.current) return;
-    const puzzleId = searchParams.get('puzzle');
-    if (puzzleId) {
-      const puzzle = allPuzzles.find(p => p.id === puzzleId);
-      if (puzzle) {
-        urlPuzzleHandledRef.current = true;
-        const puzzleCopy = JSON.parse(JSON.stringify(puzzle));
-        setOriginalPuzzle(puzzleCopy);
-        setCurrentPuzzle(puzzle);
-        setGameState(initializeGameState(puzzle));
-        setLivesRemaining(puzzle.isTraining ? 0 : (puzzle.lives ?? 3));
-      }
-    }
-  }, [searchParams, allPuzzles]);
 
   // Try to load today's puzzle from cloud (daily_schedule)
   useEffect(() => {
