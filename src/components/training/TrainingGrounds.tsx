@@ -44,11 +44,9 @@ const ArenaCard: React.FC<{ puzzle: Puzzle; onClick: () => void }> = ({ puzzle, 
       className="dungeon-panel p-3 hover:border-copper-500/50 transition-colors cursor-pointer"
       onClick={onClick}
     >
-      {/* Mini board preview */}
-      <div className="w-full h-36 md:h-44 overflow-hidden rounded mb-2 bg-stone-900/50 flex items-center justify-center">
-        <div className="transform scale-[0.4] origin-center pointer-events-none" style={{ width: puzzle.width * 48 + 80, height: puzzle.height * 48 + 80 }}>
-          <ResponsiveGameBoard gameState={previewState} />
-        </div>
+      {/* Board preview — let ResponsiveGameBoard fill the card */}
+      <div className="w-full aspect-square overflow-hidden rounded mb-2 pointer-events-none">
+        <ResponsiveGameBoard gameState={previewState} />
       </div>
       <h3 className="font-medieval text-copper-300 text-lg truncate">{puzzle.name}</h3>
       {puzzle.description && (
@@ -57,7 +55,6 @@ const ArenaCard: React.FC<{ puzzle: Puzzle; onClick: () => void }> = ({ puzzle, 
       <div className="flex items-center gap-3 mt-1.5 text-xs text-stone-500">
         <span>{puzzle.width}x{puzzle.height}</span>
         <span>{puzzle.enemies.length} {puzzle.enemies.length === 1 ? 'enemy' : 'enemies'}</span>
-        <span>{puzzle.maxCharacters} hero slots</span>
       </div>
     </div>
   );
