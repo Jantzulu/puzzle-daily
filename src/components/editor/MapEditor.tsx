@@ -2224,23 +2224,24 @@ export const MapEditor: React.FC = () => {
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
   // Calculate scale factor for editor canvas
-  // For puzzles wider than MAX_DISPLAY_WIDTH_TILES, scale down to fit within that width
-  let editorScale = 1;
+  // Constrain by MAX_DISPLAY_WIDTH_TILES and then by mobile container width
   const maxDisplayGridWidth = MAX_DISPLAY_WIDTH_TILES * TILE_SIZE;
   const maxDisplayCanvasWidth = hasBorder ? maxDisplayGridWidth + (SIDE_BORDER_SIZE * 2) : maxDisplayGridWidth;
 
-  if (state.gridWidth > MAX_DISPLAY_WIDTH_TILES) {
-    // Scale down to fit within max display width
-    editorScale = maxDisplayCanvasWidth / canvasWidth;
-  } else if (editorMaxWidth && editorMaxWidth < canvasWidth) {
-    // For smaller puzzles, still respect container constraints
-    editorScale = editorMaxWidth / canvasWidth;
+  let targetWidth = canvasWidth;
+
+  // Cap at max display width for very wide puzzles
+  if (state.gridWidth > MAX_DISPLAY_WIDTH_TILES && targetWidth > maxDisplayCanvasWidth) {
+    targetWidth = maxDisplayCanvasWidth;
   }
 
-  // For puzzles > 15 tiles, use the max display width; otherwise use actual scaled width
-  const scaledCanvasWidth = state.gridWidth > MAX_DISPLAY_WIDTH_TILES
-    ? maxDisplayCanvasWidth
-    : canvasWidth * editorScale;
+  // Also cap at container width on mobile so the grid never overflows the screen
+  if (editorMaxWidth && editorMaxWidth < targetWidth) {
+    targetWidth = editorMaxWidth;
+  }
+
+  const editorScale = targetWidth / canvasWidth;
+  const scaledCanvasWidth = targetWidth;
   const scaledCanvasHeight = canvasHeight * editorScale;
 
   // Helper to render lives hearts (for playtest mode)
@@ -3269,7 +3270,7 @@ export const MapEditor: React.FC = () => {
                   className="w-full flex items-center justify-between text-lg font-bold"
                 >
                   <span>Tools</span>
-                  <span className="md:hidden text-sm text-stone-400">{toolsPanelOpen ? '▾' : '▸'}</span>
+                  <span className="md:hidden text-lg text-stone-400">{toolsPanelOpen ? '▾' : '▸'}</span>
                 </button>
                 {toolsPanelOpen && <div className="grid grid-cols-4 gap-2 mt-3">
                   <button
@@ -3828,7 +3829,7 @@ export const MapEditor: React.FC = () => {
                   className="w-full flex items-center justify-between text-lg font-bold"
                 >
                   <span>Actions</span>
-                  <span className="md:hidden text-sm text-stone-400">{actionsPanelOpen ? '▾' : '▸'}</span>
+                  <span className="md:hidden text-lg text-stone-400">{actionsPanelOpen ? '▾' : '▸'}</span>
                 </button>
                 {actionsPanelOpen && <div className="space-y-2 mt-2">
                 <button
@@ -4121,7 +4122,7 @@ export const MapEditor: React.FC = () => {
                   className="w-full flex items-center justify-between text-lg font-bold"
                 >
                   <span>Puzzle Info</span>
-                  <span className="md:hidden text-sm text-stone-400">{puzzleInfoPanelOpen ? '▾' : '▸'}</span>
+                  <span className="md:hidden text-lg text-stone-400">{puzzleInfoPanelOpen ? '▾' : '▸'}</span>
                 </button>
                 {puzzleInfoPanelOpen && <div className="space-y-3 mt-3">
                   <div>
