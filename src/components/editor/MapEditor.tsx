@@ -3019,7 +3019,9 @@ export const MapEditor: React.FC = () => {
         {/* Header - stacks on mobile */}
         <div className="mb-4 md:mb-6 space-y-3 md:space-y-0 md:flex md:items-center md:gap-4">
           <div className="flex items-center justify-between md:justify-start gap-4">
-            <h1 className="text-2xl md:text-4xl font-bold">Map Editor</h1>
+            <h1 className="text-2xl md:text-4xl font-bold truncate max-w-[300px] md:max-w-[500px]" title={state.puzzleName || 'Map Editor'}>
+              {state.puzzleName || 'Map Editor'}
+            </h1>
             <button
               onClick={handlePlaytest}
               className="px-3 py-1.5 md:px-4 md:py-2 bg-arcane-600 rounded hover:bg-arcane-700 font-bold text-sm md:text-base"
