@@ -12,6 +12,7 @@ import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
 import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { ItemsDisplay } from './ItemsDisplay';
+import { ReplayControls } from './ReplayControls';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy, loadObject, loadPuzzleSkin, loadSpellAsset, extractSpriteImageUrls, extractSpriteReferenceUrls } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
@@ -80,6 +81,13 @@ export const Game: React.FC = () => {
 
   // Cloud puzzle number (from daily_schedule)
   const [puzzleNumber, setPuzzleNumber] = useState<number | null>(null);
+
+  // Replay system state
+  const [replayMode, setReplayMode] = useState(false);
+  const [replayTurnIndex, setReplayTurnIndex] = useState(0);
+  const [replayPlaying, setReplayPlaying] = useState(false);
+  const [replaySpeed, setReplaySpeed] = useState(1);
+  const turnHistoryRef = useRef<GameState[]>([]);
 
   // Shimmer animation key for Quest text - triggers on puzzle change
   const [shimmerKey, setShimmerKey] = useState(0);
@@ -380,9 +388,7 @@ export const Game: React.FC = () => {
           } else {
             playGameSound('life_lost');
             vibrate('lifeLost');
-            setTimeout(() => {
-              handleAutoReset();
-            }, 3000);
+            // Defeat panel stays visible with "Watch Replay" / "Try Again" buttons
           }
         }
       }
@@ -390,6 +396,39 @@ export const Game: React.FC = () => {
 
     return () => clearInterval(interval);
   }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining, livesRemaining, currentPuzzle.lives]);
+
+  // Replay playback timer
+  useEffect(() => {
+    if (!replayMode || !replayPlaying) return;
+
+    const history = turnHistoryRef.current;
+    if (history.length === 0) return;
+
+    const intervalMs = TURN_INTERVAL_MS / replaySpeed;
+
+    const interval = setInterval(() => {
+      setReplayTurnIndex(prev => {
+        const next = prev + 1;
+        if (next >= history.length) {
+          setReplayPlaying(false);
+          return prev;
+        }
+        setGameState(history[next]);
+        return next;
+      });
+    }, intervalMs);
+
+    return () => clearInterval(interval);
+  }, [replayMode, replayPlaying, replaySpeed]);
+
+  // Cancel replay on puzzle change
+  useEffect(() => {
+    if (replayMode) {
+      setReplayMode(false);
+      setReplayPlaying(false);
+      turnHistoryRef.current = [];
+    }
+  }, [currentPuzzle?.id]);
 
   const handleTileClick = useCallback(
     (x: number, y: number) => {
@@ -611,7 +650,7 @@ export const Game: React.FC = () => {
     setDefeatReason(null);
   };
 
-  // Concede current attempt - lose a life and return to setup
+  // Concede current attempt - lose a life and show defeat panel with buttons
   const handleConcede = () => {
     setShowConcedeConfirm(false);
     setIsSimulating(false);
@@ -622,6 +661,9 @@ export const Game: React.FC = () => {
 
     playGameSound('defeat');
 
+    // Set game state to defeat so the defeat overlay appears with buttons
+    setGameState(prev => ({ ...prev, gameStatus: 'defeat' as const }));
+
     if (!isUnlimitedLives) {
       const newLives = livesRemaining - 1;
       setLivesRemaining(newLives);
@@ -631,16 +673,136 @@ export const Game: React.FC = () => {
         setShowGameOver(true);
         playDefeatMusic();
       } else {
-        // Life lost - play sound, haptic, and reset
+        // Life lost - play sound and haptic (defeat panel buttons handle reset)
         playGameSound('life_lost');
         vibrate('lifeLost');
-        handleAutoReset();
+      }
+    }
+    // For unlimited lives: defeat panel appears with buttons, no special handling needed
+  };
+
+  // Generate turn history by re-simulating from saved placements (deterministic)
+  const generateTurnHistory = useCallback((): GameState[] => {
+    const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
+    const initialState = initializeGameState(puzzleCopy);
+
+    // Place characters from the saved placements
+    initialState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
+      const charData = getCharacter(char.characterId);
+      return {
+        ...char,
+        actionIndex: 0,
+        currentHealth: charData ? charData.health : char.currentHealth,
+        dead: false,
+        active: true,
+      };
+    });
+    initialState.gameStatus = 'running';
+    // Headless mode resolves projectiles instantly so each snapshot is complete
+    initialState.headlessMode = true;
+
+    const history: GameState[] = [JSON.parse(JSON.stringify(initialState))];
+    let current = initialState;
+
+    const maxIterations = (puzzleCopy.maxTurns || 200) + 10;
+    for (let i = 0; i < maxIterations; i++) {
+      if (current.gameStatus !== 'running') break;
+
+      // Deep copy with Map/Set restoration (same pattern as simulation loop)
+      const stateCopy = JSON.parse(JSON.stringify(current));
+      stateCopy.tileStates = new Map();
+      if (current.tileStates) {
+        current.tileStates.forEach((value: any, key: string) => {
+          stateCopy.tileStates.set(key, {
+            ...value,
+            damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+          });
+        });
+      }
+
+      current = executeTurn(stateCopy);
+      history.push(JSON.parse(JSON.stringify(current)));
+    }
+
+    return history;
+  }, [originalPuzzle, playStartCharacters]);
+
+  // Enter replay mode
+  const handleWatchReplay = useCallback(() => {
+    const history = generateTurnHistory();
+    turnHistoryRef.current = history;
+
+    setReplayMode(true);
+    setReplayTurnIndex(0);
+    setReplayPlaying(true);
+    setReplaySpeed(1);
+
+    if (history.length > 0) {
+      setGameState(history[0]);
+    }
+  }, [generateTurnHistory]);
+
+  // Exit replay mode - return to appropriate screen
+  const handleExitReplay = useCallback(() => {
+    setReplayMode(false);
+    setReplayPlaying(false);
+    turnHistoryRef.current = [];
+
+    if (livesRemaining <= 0) {
+      // Return to game over screen
+      const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
+      const resetState = initializeGameState(puzzleCopy);
+      resetState.gameStatus = 'defeat';
+      setGameState(resetState);
+      setShowGameOver(true);
+    } else if (puzzleScore) {
+      // Return to victory screen - re-derive the final state
+      const history = generateTurnHistory();
+      if (history.length > 0) {
+        setGameState(history[history.length - 1]);
       }
     } else {
-      // Unlimited lives - just reset
+      // Lives remaining, not victory - return to placement
       handleAutoReset();
     }
-  };
+  }, [livesRemaining, puzzleScore, originalPuzzle, generateTurnHistory, handleAutoReset]);
+
+  // Replay playback controls
+  const handleReplayPlayPause = useCallback(() => {
+    setReplayPlaying(prev => !prev);
+  }, []);
+
+  const handleReplayStepForward = useCallback(() => {
+    setReplayPlaying(false);
+    const history = turnHistoryRef.current;
+    setReplayTurnIndex(prev => {
+      const next = Math.min(prev + 1, history.length - 1);
+      setGameState(history[next]);
+      return next;
+    });
+  }, []);
+
+  const handleReplayStepBack = useCallback(() => {
+    setReplayPlaying(false);
+    const history = turnHistoryRef.current;
+    setReplayTurnIndex(prev => {
+      const next = Math.max(prev - 1, 0);
+      setGameState(history[next]);
+      return next;
+    });
+  }, []);
+
+  const handleReplaySeek = useCallback((turn: number) => {
+    setReplayPlaying(false);
+    const history = turnHistoryRef.current;
+    const clamped = Math.max(0, Math.min(turn, history.length - 1));
+    setGameState(history[clamped]);
+    setReplayTurnIndex(clamped);
+  }, []);
+
+  const handleReplaySpeedChange = useCallback((speed: number) => {
+    setReplaySpeed(speed);
+  }, []);
 
   const handlePuzzleChange = (puzzleId: string) => {
     const puzzle = allPuzzles.find(p => p.id === puzzleId);
@@ -959,7 +1121,7 @@ export const Game: React.FC = () => {
               <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
 
               {/* Defeat Overlay - appears on top of the game board */}
-              {gameState.gameStatus === 'defeat' && !showGameOver && (
+              {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
                 <div
                   className="absolute inset-0 flex items-center justify-center z-10"
                   style={{
@@ -995,12 +1157,28 @@ export const Game: React.FC = () => {
                         ? 'You ran out of turns before completing the objective.'
                         : 'Your heroes have fallen in battle.'}
                     </p>
+                    {playStartCharacters.length > 0 && (
+                      <div className="mt-3 flex gap-3 justify-center">
+                        <button
+                          onClick={handleWatchReplay}
+                          className="dungeon-btn px-4 py-2 text-sm font-bold"
+                        >
+                          Watch Replay
+                        </button>
+                        <button
+                          onClick={handleAutoReset}
+                          className="dungeon-btn-primary px-4 py-2 text-sm font-bold"
+                        >
+                          Try Again
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Game Over Overlay */}
-              {showGameOver && (
+              {showGameOver && !replayMode && (
                 <div
                   className="absolute inset-0 flex items-center justify-center z-10"
                   style={{
@@ -1034,26 +1212,36 @@ export const Game: React.FC = () => {
                     >
                       No lives remaining!
                     </p>
-                    <button
-                      onClick={handleRestartPuzzle}
-                      className={`mt-4 px-6 py-3 font-bold text-lg ${
-                        themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
-                      }`}
-                      style={{
-                        ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
-                        ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                        ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
-                      }}
-                    >
-                      Try Again
-                    </button>
+                    <div className="mt-4 flex gap-3 justify-center">
+                      {playStartCharacters.length > 0 && (
+                        <button
+                          onClick={handleWatchReplay}
+                          className="dungeon-btn px-4 py-3 font-bold text-sm"
+                        >
+                          Watch Replay
+                        </button>
+                      )}
+                      <button
+                        onClick={handleRestartPuzzle}
+                        className={`px-6 py-3 font-bold text-lg ${
+                          themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
+                        }`}
+                        style={{
+                          ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
+                          ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                          ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
+                        }}
+                      >
+                        Try Again
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
             </div>
 
             {/* Victory Message - still below the game board */}
-            {gameState.gameStatus === 'victory' && puzzleScore && (
+            {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && (
               <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-2xl">
                 {/* Trophy and Rank */}
                 <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
@@ -1126,6 +1314,16 @@ export const Game: React.FC = () => {
                       return quest?.title || qid;
                     }).join(', ')}
                   </div>
+                )}
+
+                {/* Watch Replay */}
+                {playStartCharacters.length > 0 && (
+                  <button
+                    onClick={handleWatchReplay}
+                    className="mt-3 dungeon-btn px-4 py-2 text-sm font-bold"
+                  >
+                    Watch Replay
+                  </button>
                 )}
               </div>
             )}
@@ -1217,7 +1415,7 @@ export const Game: React.FC = () => {
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+            {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
                 <div className="grid grid-cols-3 items-center mb-1">
                   {/* Left: Lives - centered in left third */}
@@ -1391,42 +1589,58 @@ export const Game: React.FC = () => {
               </>
             )}
 
-            {/* Heroes and Dungeon Details - dimmed during play/test */}
-            <div className={`transition-opacity ${dimmedPanelClass}`}>
-              {/* Character Selector - visible during setup, running, defeat, and test mode */}
-              {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-                <CharacterSelector
-                  availableCharacterIds={gameState.puzzle.availableCharacters}
-                  selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
-                  onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? (id: string | null) => { setSelectedCharacterId(id); if (id) vibrate('heroSelect'); } : () => {}}
-                  placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
-                  maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
-                  onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
-                  onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
+            {/* Replay Controls - replace hero placement area during replay */}
+            {replayMode ? (
+              <ReplayControls
+                currentTurn={replayTurnIndex}
+                totalTurns={turnHistoryRef.current.length - 1}
+                isPlaying={replayPlaying}
+                speed={replaySpeed}
+                onPlayPause={handleReplayPlayPause}
+                onStepForward={handleReplayStepForward}
+                onStepBack={handleReplayStepBack}
+                onSeek={handleReplaySeek}
+                onSpeedChange={handleReplaySpeedChange}
+                onExit={handleExitReplay}
+              />
+            ) : (
+              /* Heroes and Dungeon Details - dimmed during play/test */
+              <div className={`transition-opacity ${dimmedPanelClass}`}>
+                {/* Character Selector - visible during setup, running, defeat, and test mode */}
+                {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+                  <CharacterSelector
+                    availableCharacterIds={gameState.puzzle.availableCharacters}
+                    selectedCharacterId={testMode === 'none' && gameState.gameStatus === 'setup' ? selectedCharacterId : null}
+                    onSelectCharacter={testMode === 'none' && gameState.gameStatus === 'setup' ? (id: string | null) => { setSelectedCharacterId(id); if (id) vibrate('heroSelect'); } : () => {}}
+                    placedCharacterIds={gameState.placedCharacters.map(c => c.characterId)}
+                    maxPlaceable={gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters}
+                    onClearAll={testMode === 'none' && gameState.gameStatus === 'setup' ? handleWipe : undefined}
+                    onTest={testMode === 'none' && gameState.gameStatus === 'setup' ? handleTestCharactersWithScroll : undefined}
+                    themeAssets={themeAssets}
+                    disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
+                    noPanel
+                  />
+                )}
+
+                {/* Enemies Display */}
+                <EnemyDisplay
+                  enemies={gameState.puzzle.enemies}
+                  onTest={handleTestEnemiesWithScroll}
+                  showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
                   themeAssets={themeAssets}
-                  disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                   noPanel
                 />
-              )}
 
-              {/* Enemies Display */}
-              <EnemyDisplay
-                enemies={gameState.puzzle.enemies}
-                onTest={handleTestEnemiesWithScroll}
-                showTestButton={gameState.gameStatus === 'setup' && testMode === 'none'}
-                themeAssets={themeAssets}
-                noPanel
-              />
+                {/* Items Display - only shown if puzzle has items */}
+                <ItemsDisplay puzzle={gameState.puzzle} noPanel />
 
-              {/* Items Display - only shown if puzzle has items */}
-              <ItemsDisplay puzzle={gameState.puzzle} noPanel />
+                {/* Status Effects Display - only shown if puzzle has status effects */}
+                <StatusEffectsDisplay puzzle={gameState.puzzle} noPanel />
 
-              {/* Status Effects Display - only shown if puzzle has status effects */}
-              <StatusEffectsDisplay puzzle={gameState.puzzle} noPanel />
-
-              {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
-              <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
-            </div>
+                {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
+                <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
+              </div>
+            )}
           </div>
 
           {/* Puzzle Selector - at bottom for dev use */}
