@@ -8,9 +8,11 @@ import { SkinEditor } from './SkinEditor';
 import { TileTypeEditor } from './TileTypeEditor';
 import { ObjectEditor } from './ObjectEditor';
 import { CollectibleEditor } from './CollectibleEditor';
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles';
+import { MediaLibraryTab } from './MediaLibraryTab';
 
-const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles'];
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'media';
+
+const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'media'];
 
 export const AssetManager: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -83,6 +85,9 @@ export const AssetManager: React.FC = () => {
               <button onClick={() => setActiveTab('collectibles')} className={tabClass('collectibles')}>
                 💎 Items
               </button>
+              <button onClick={() => setActiveTab('media')} className={tabClass('media')}>
+                ☁️ Media
+              </button>
             </div>
           </div>
         </div>
@@ -98,6 +103,7 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'tiles' && <TileTypeEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'objects' && <ObjectEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'collectibles' && <CollectibleEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'media' && <MediaLibraryTab />}
       </div>
 
       {/* Clear Cache Confirmation Dialog */}

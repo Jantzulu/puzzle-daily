@@ -3,12 +3,11 @@ import { useSearchParams } from 'react-router-dom';
 import { SoundEditor } from './SoundEditor';
 import { ThemeAssetsEditor } from './ThemeAssetsEditor';
 import { HelpContentEditor } from './HelpContentEditor';
-import { MediaLibraryTab } from './MediaLibraryTab';
 import { ActivityFeed } from './ActivityFeed';
 
-type SettingsTab = 'sounds' | 'theme' | 'help' | 'media' | 'activity';
+type SettingsTab = 'sounds' | 'theme' | 'help' | 'activity';
 
-const VALID_TABS: SettingsTab[] = ['sounds', 'theme', 'help', 'media', 'activity'];
+const VALID_TABS: SettingsTab[] = ['sounds', 'theme', 'help', 'activity'];
 
 export const SettingsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -51,9 +50,6 @@ export const SettingsPage: React.FC = () => {
               <button onClick={() => setActiveTab('help')} className={tabClass('help')}>
                 ❓ Help
               </button>
-              <button onClick={() => setActiveTab('media')} className={tabClass('media')}>
-                ☁️ Media
-              </button>
               <button onClick={() => setActiveTab('activity')} className={tabClass('activity')}>
                 📜 Activity
               </button>
@@ -71,7 +67,6 @@ export const SettingsPage: React.FC = () => {
             <HelpContentEditor />
           </div>
         )}
-        {activeTab === 'media' && <MediaLibraryTab />}
         {activeTab === 'activity' && (
           <div className="max-w-2xl mx-auto px-4 md:px-8 py-4 md:py-6">
             <ActivityFeed />
