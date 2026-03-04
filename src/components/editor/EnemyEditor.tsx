@@ -197,7 +197,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               }}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
               {filteredEnemies.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No enemies match your search.' : 'No enemies yet.'}
@@ -214,7 +214,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     onClick={() => handleSelect(enemy.id)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(enemy.id)}
@@ -228,9 +228,9 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         >
                           <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" />
                         </div>
-                        <div>
+                        <div className="min-w-0">
                           <div className="flex items-center gap-2">
-                            <h3 className="font-bold">{enemy.name}</h3>
+                            <h3 className="font-bold truncate">{enemy.name}</h3>
                             {enemy.isBoss && (
                               <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium">
                                 BOSS

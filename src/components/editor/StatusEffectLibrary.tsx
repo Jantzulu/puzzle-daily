@@ -179,7 +179,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
               }}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
               {filteredEffects.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No matches' : 'No status effects yet.'}
@@ -199,7 +199,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                     onClick={() => handleSelect(effect)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(effect.id)}
@@ -225,11 +225,11 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                             </span>
                           </div>
                         )}
-                        <div>
+                        <div className="min-w-0">
                           <h3 className="font-bold flex items-center gap-1">
-                            {effect.name || 'Unnamed'}
+                            <span className="truncate">{effect.name || 'Unnamed'}</span>
                             {effect.isBuiltIn && (
-                              <span className="text-xs bg-stone-600 px-1 rounded">Built-in</span>
+                              <span className="text-xs bg-stone-600 px-1 rounded flex-shrink-0">Built-in</span>
                             )}
                           </h3>
                           <p className="text-xs text-stone-400 capitalize">

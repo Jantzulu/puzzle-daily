@@ -408,7 +408,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
               }}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
               {filteredSkins.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No skins match your search.' : 'No puzzle skins yet.'}
@@ -428,7 +428,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                   onClick={() => handleSelectSkin(skin.id)}
                 >
                   <div className="flex justify-between items-start">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(skin.id)}
@@ -453,8 +453,8 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                           );
                         })()}
                       </div>
-                      <div>
-                        <h3 className="font-bold">
+                      <div className="min-w-0">
+                        <h3 className="font-bold truncate">
                           {skin.name}
                           {skin.isBuiltIn && (
                             <span className="ml-2 text-xs text-stone-400">(Built-in)</span>

@@ -222,7 +222,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
               }}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto dungeon-scrollbar">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden dungeon-scrollbar">
               {filteredCharacters.length === 0 ? (
                 <div className="dungeon-panel p-4 text-center text-stone-400 text-sm">
                   {searchTerm ? 'No heroes match your search.' : 'No heroes yet.'}
@@ -242,7 +242,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                     onClick={() => handleSelect(char.id)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(char.id)}
@@ -256,8 +256,8 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         >
                           <SpriteThumbnail sprite={char.customSprite} size={selectedId === char.id ? 56 : 40} previewType="entity" />
                         </div>
-                        <div>
-                          <h3 className="font-bold text-parchment-200">{char.name}</h3>
+                        <div className="min-w-0">
+                          <h3 className="font-bold text-parchment-200 truncate">{char.name}</h3>
                           <p className="text-xs text-stone-400">
                             HP: {char.health} • {char.behavior.length} actions
                           </p>

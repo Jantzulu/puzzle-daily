@@ -714,7 +714,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
               }}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
               {filteredTileTypes.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No tile types match your search.' : 'No custom tile types yet.'}
@@ -734,7 +734,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                     onClick={() => handleSelect(tileType.id)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(tileType.id)}
@@ -756,8 +756,8 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             </span>
                           )}
                         </div>
-                        <div>
-                          <h3 className="font-bold">{tileType.name}</h3>
+                        <div className="min-w-0">
+                          <h3 className="font-bold truncate">{tileType.name}</h3>
                           <p className="text-xs text-stone-400">
                             {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
                           </p>

@@ -231,7 +231,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
               }}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
               {filteredObjects.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No objects match your search.' : 'No objects yet.'}
@@ -251,7 +251,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                     onClick={() => handleSelect(obj.id)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(obj.id)}
@@ -266,8 +266,8 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                         >
                           <SpriteThumbnail sprite={obj.customSprite} size={selectedId === obj.id ? 56 : 40} />
                         </div>
-                        <div>
-                          <h3 className="font-bold">{obj.name}</h3>
+                        <div className="min-w-0">
+                          <h3 className="font-bold truncate">{obj.name}</h3>
                           <p className="text-xs text-stone-400 capitalize">
                             {obj.effects.length > 0 ? `${obj.effects.length} effect${obj.effects.length !== 1 ? 's' : ''}` : 'Decorative'}
                           </p>

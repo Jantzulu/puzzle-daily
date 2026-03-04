@@ -152,7 +152,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
               }}
             />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto">
+            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
               {filteredSpells.length === 0 ? (
                 <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
                   {searchTerm ? 'No matches' : 'No spells yet.'}
@@ -172,7 +172,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                     onClick={() => handleSelect(spell)}
                   >
                     <div className="flex justify-between items-start">
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 min-w-0">
                         <input
                           type="checkbox"
                           checked={bulk.isSelected(spell.id)}
@@ -195,8 +195,8 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                             ?
                           </div>
                         )}
-                        <div>
-                          <h3 className="font-bold">{spell.name || 'Unnamed'}</h3>
+                        <div className="min-w-0">
+                          <h3 className="font-bold truncate">{spell.name || 'Unnamed'}</h3>
                           <p className="text-xs text-stone-400 capitalize">
                             {spell.templateType.replace('_', ' ')}
                           </p>

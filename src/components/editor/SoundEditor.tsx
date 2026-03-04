@@ -373,7 +373,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         : 'bg-stone-700 hover:bg-stone-600'
                     }`}
                   >
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
                       <input
                         type="checkbox"
                         checked={bulk.isSelected(sound.id)}
@@ -393,8 +393,8 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072M12 6.253v11.494m0 0A5.001 5.001 0 0012 12m0 5.747V6.253m0 0A5.001 5.001 0 0012 12m0-5.747L8 9H5a1 1 0 00-1 1v4a1 1 0 001 1h3l4 2.747" />
                         </svg>
                       </div>
-                      <div>
-                        <p className="text-parchment-100 text-sm font-medium">{sound.name}</p>
+                      <div className="min-w-0">
+                        <p className="text-parchment-100 text-sm font-medium truncate">{sound.name}</p>
                         <p className="text-stone-400 text-xs">{formatDuration(sound.duration)}</p>
                       </div>
                     </div>
