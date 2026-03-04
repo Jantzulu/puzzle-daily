@@ -1168,7 +1168,7 @@ export const Game: React.FC = () => {
                       const puzzleLives = currentPuzzle.lives ?? 3;
                       const isUnlimited = puzzleLives === 0;
                       if (isUnlimited) return null;
-                      const remaining = livesRemaining - 1;
+                      const remaining = livesRemaining;
                       return (
                         <p className={`mt-1 text-xs ${themeAssets.defeatPanelMessageText ? '' : 'text-stone-400'}`}
                           style={{ ...(themeAssets.defeatPanelMessageText && { color: themeAssets.defeatPanelMessageText }) }}
