@@ -1,10 +1,12 @@
 import React from 'react';
+import type { LogEventType } from '../../engine/combatLog';
 
 interface ReplayControlsProps {
   currentTurn: number;
   totalTurns: number;
   isPlaying: boolean;
   speed: number;
+  events?: Map<number, Set<LogEventType>>;
   onPlayPause: () => void;
   onStepForward: () => void;
   onStepBack: () => void;
@@ -16,45 +18,67 @@ interface ReplayControlsProps {
 const SPEEDS = [0.5, 1, 2];
 
 // Inline SVG icons — render consistently on all platforms (no emoji rendering)
-const IconSkipBack = () => (
-  <svg width="22" height="18" viewBox="0 0 16 14" fill="currentColor">
+// Use className for sizing so Tailwind responsive classes work
+const IconSkipBack = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 16 14" fill="currentColor">
     <rect x="0" y="1" width="2.5" height="12" />
     <polygon points="15,1 5,7 15,13" />
   </svg>
 );
-const IconStepBack = () => (
-  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
+const IconStepBack = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 12 14" fill="currentColor">
     <polygon points="12,1 2,7 12,13" />
   </svg>
 );
-const IconPlay = () => (
-  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
+const IconPlay = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 12 14" fill="currentColor">
     <polygon points="0,0 12,7 0,14" />
   </svg>
 );
-const IconPause = () => (
-  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
+const IconPause = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 12 14" fill="currentColor">
     <rect x="0" y="0" width="4" height="14" />
     <rect x="8" y="0" width="4" height="14" />
   </svg>
 );
-const IconStepForward = () => (
-  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
+const IconStepForward = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 12 14" fill="currentColor">
     <polygon points="0,1 10,7 0,13" />
   </svg>
 );
-const IconSkipForward = () => (
-  <svg width="22" height="18" viewBox="0 0 16 14" fill="currentColor">
+const IconSkipForward = ({ className }: { className?: string }) => (
+  <svg className={className} viewBox="0 0 16 14" fill="currentColor">
     <polygon points="1,1 11,7 1,13" />
     <rect x="13.5" y="1" width="2.5" height="12" />
   </svg>
 );
+
+// Event marker colors — priority order (first match wins when multiple events on same turn)
+// These are placeholder colors; can be made configurable later via icon settings
+const EVENT_PRIORITY: { type: LogEventType; color: string; label: string }[] = [
+  { type: 'death', color: 'bg-red-500', label: 'Death' },
+  { type: 'damage', color: 'bg-orange-400', label: 'Damage' },
+  { type: 'collect', color: 'bg-yellow-400', label: 'Collected' },
+  { type: 'spell', color: 'bg-purple-400', label: 'Spell' },
+  { type: 'game', color: 'bg-amber-400', label: 'Game Event' },
+  { type: 'status', color: 'bg-green-400', label: 'Status' },
+];
+
+function getMarkerStyle(eventTypes: Set<LogEventType>): { color: string; label: string } | null {
+  for (const entry of EVENT_PRIORITY) {
+    if (eventTypes.has(entry.type)) return entry;
+  }
+  return null;
+}
+
+const iconClass = 'w-[18px] h-[18px] md:w-[22px] md:h-[22px]';
 
 export const ReplayControls: React.FC<ReplayControlsProps> = ({
   currentTurn,
   totalTurns,
   isPlaying,
   speed,
+  events,
   onPlayPause,
   onStepForward,
   onStepBack,
@@ -64,6 +88,15 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
 }) => {
   const atStart = currentTurn <= 0;
   const atEnd = currentTurn >= totalTurns;
+
+  // Build event markers
+  const markers: { turn: number; color: string; label: string }[] = [];
+  if (events && totalTurns > 0) {
+    events.forEach((types, turn) => {
+      const style = getMarkerStyle(types);
+      if (style) markers.push({ turn, ...style });
+    });
+  }
 
   return (
     <div className="dungeon-panel p-3 space-y-2">
@@ -102,7 +135,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Jump to start"
         >
-          <IconSkipBack />
+          <IconSkipBack className={iconClass} />
         </button>
         <button
           onClick={onStepBack}
@@ -110,14 +143,14 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Step back"
         >
-          <IconStepBack />
+          <IconStepBack className={iconClass} />
         </button>
         <button
           onClick={onPlayPause}
           className="w-12 h-10 flex items-center justify-center rounded dungeon-btn-primary"
           title={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? <IconPause /> : <IconPlay />}
+          {isPlaying ? <IconPause className={iconClass} /> : <IconPlay className={iconClass} />}
         </button>
         <button
           onClick={onStepForward}
@@ -125,7 +158,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Step forward"
         >
-          <IconStepForward />
+          <IconStepForward className={iconClass} />
         </button>
         <button
           onClick={() => onSeek(totalTurns)}
@@ -133,16 +166,26 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Jump to end"
         >
-          <IconSkipForward />
+          <IconSkipForward className={iconClass} />
         </button>
       </div>
 
-      {/* Row 3: Scrubber */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between text-xs text-stone-400">
-          <span>Turn {currentTurn}</span>
-          <span>{totalTurns}</span>
-        </div>
+      {/* Row 3: Event markers + Scrubber + Turn counter */}
+      <div className="space-y-0.5">
+        {/* Event marker dots above scrubber */}
+        {markers.length > 0 && (
+          <div className="relative h-3 mx-1">
+            {markers.map(({ turn, color, label }) => (
+              <button
+                key={turn}
+                onClick={() => onSeek(turn)}
+                className={`absolute top-0.5 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${color} hover:scale-150 transition-transform -translate-x-1/2`}
+                style={{ left: `${(turn / totalTurns) * 100}%` }}
+                title={`Turn ${turn}: ${label}`}
+              />
+            ))}
+          </div>
+        )}
         <input
           type="range"
           min={0}
@@ -151,6 +194,10 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           onChange={e => onSeek(Number(e.target.value))}
           className="w-full h-2 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-copper-500"
         />
+        <div className="flex items-center justify-between text-xs text-stone-400">
+          <span>Turn {currentTurn}</span>
+          <span>{totalTurns}</span>
+        </div>
       </div>
     </div>
   );

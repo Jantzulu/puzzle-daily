@@ -21,6 +21,7 @@ import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../..
 import { WarningModal } from '../shared/WarningModal';
 import { preloadImages } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
+import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
 
 // Test mode types
@@ -88,6 +89,7 @@ export const Game: React.FC = () => {
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(1);
   const turnHistoryRef = useRef<GameState[]>([]);
+  const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
 
   // Shimmer animation key for Quest text - triggers on puzzle change
   const [shimmerKey, setShimmerKey] = useState(0);
@@ -427,6 +429,7 @@ export const Game: React.FC = () => {
       setReplayMode(false);
       setReplayPlaying(false);
       turnHistoryRef.current = [];
+      replayEventsRef.current = new Map();
     }
   }, [currentPuzzle?.id]);
 
@@ -739,6 +742,17 @@ export const Game: React.FC = () => {
     const history = generateTurnHistory();
     turnHistoryRef.current = history;
 
+    // Compute notable events per turn for timeline markers
+    const events = new Map<number, Set<import('../../engine/combatLog').LogEventType>>();
+    for (let i = 1; i < history.length; i++) {
+      const entries = diffTurn(history[i - 1], history[i]);
+      const notable = entries.filter(e => e.type !== 'move' && !(e.type === 'game' && e.text === 'No notable events'));
+      if (notable.length > 0) {
+        events.set(i, new Set(notable.map(e => e.type)));
+      }
+    }
+    replayEventsRef.current = events;
+
     setReplayMode(true);
     setReplayTurnIndex(0);
     setReplayPlaying(false);
@@ -754,6 +768,7 @@ export const Game: React.FC = () => {
     setReplayMode(false);
     setReplayPlaying(false);
     turnHistoryRef.current = [];
+    replayEventsRef.current = new Map();
 
     if (livesRemaining <= 0) {
       // Return to game over screen
@@ -1618,6 +1633,7 @@ export const Game: React.FC = () => {
                 totalTurns={turnHistoryRef.current.length - 1}
                 isPlaying={replayPlaying}
                 speed={replaySpeed}
+                events={replayEventsRef.current}
                 onPlayPause={handleReplayPlayPause}
                 onStepForward={handleReplayStepForward}
                 onStepBack={handleReplayStepBack}
