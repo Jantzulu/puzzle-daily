@@ -300,32 +300,56 @@ export function isTileActive(tile: Tile, gameState: GameState): boolean {
 }
 
 /**
- * Process all tile behaviors when a character steps on a tile
- * Returns the updated character (may have moved due to teleport/ice)
+ * Check if a tile blocks movement, considering:
+ * - Static TileType.WALL
+ * - Custom tile baseType === 'wall' (with cadence awareness)
+ * - Custom tile onStateBlocksMovement (blocks when active/on)
+ * - Null/void tiles
  */
-function processTileBehaviors(
+export function isTileBlockingMovement(
+  tile: Tile | null | undefined,
+  gameState: GameState
+): boolean {
+  if (!tile) return true; // void/null treated as wall
+  if (tile.type === TileType.WALL) return true;
+
+  if (tile.customTileTypeId) {
+    const customType = loadTileType(tile.customTileTypeId);
+    if (!customType) return false;
+
+    const isActive = isTileActive(tile, gameState);
+
+    // Static wall base type: blocks when on, passable when off (if toggling)
+    if (customType.baseType === 'wall') {
+      if (customType.cadence?.enabled || customType.canBeTriggered) {
+        return isActive;
+      }
+      return true; // Always wall (no toggling)
+    }
+
+    // Dynamic wall mode: empty tile that blocks when on
+    if (customType.onStateBlocksMovement) {
+      return isActive;
+    }
+  }
+
+  return false;
+}
+
+/**
+ * Run a list of tile behaviors on a character.
+ * Shared by both on-state and off-state processing.
+ */
+function runBehaviors(
   character: PlacedCharacter,
   tile: Tile,
+  behaviors: TileBehaviorConfig[],
   movementDirection: Direction,
   gameState: GameState
 ): PlacedCharacter {
-  if (!tile.customTileTypeId) {
-    return character;
-  }
-
-  const tileType = loadTileType(tile.customTileTypeId);
-  if (!tileType || !tileType.behaviors || tileType.behaviors.length === 0) {
-    return character;
-  }
-
-  // Check if tile is currently inactive (due to cadence or trigger group override)
-  if (!isTileActive(tile, gameState)) {
-    return character; // Skip ALL behaviors this turn - tile is "off"
-  }
-
   let updatedChar = { ...character };
 
-  for (const behavior of tileType.behaviors) {
+  for (const behavior of behaviors) {
     switch (behavior.type) {
       case 'damage':
         updatedChar = processDamageBehavior(updatedChar, tile, behavior, gameState);
@@ -346,13 +370,39 @@ function processTileBehaviors(
         break;
     }
 
-    // Stop processing if character died
-    if (updatedChar.dead) {
-      break;
-    }
+    if (updatedChar.dead) break;
   }
 
   return updatedChar;
+}
+
+/**
+ * Process all tile behaviors when a character steps on a tile.
+ * When tile is ON → runs normal behaviors.
+ * When tile is OFF → runs offStateBehaviors (if any).
+ */
+function processTileBehaviors(
+  character: PlacedCharacter,
+  tile: Tile,
+  movementDirection: Direction,
+  gameState: GameState
+): PlacedCharacter {
+  if (!tile.customTileTypeId) return character;
+
+  const tileType = loadTileType(tile.customTileTypeId);
+  if (!tileType) return character;
+
+  const isActive = isTileActive(tile, gameState);
+
+  if (isActive) {
+    // ON state: run normal behaviors
+    if (!tileType.behaviors || tileType.behaviors.length === 0) return character;
+    return runBehaviors(character, tile, tileType.behaviors, movementDirection, gameState);
+  } else {
+    // OFF state: run off-state behaviors if defined
+    if (!tileType.offStateBehaviors || tileType.offStateBehaviors.length === 0) return character;
+    return runBehaviors(character, tile, tileType.offStateBehaviors, movementDirection, gameState);
+  }
 }
 
 /**
@@ -473,16 +523,8 @@ function processIceBehavior(
     }
 
     const nextTile = gameState.puzzle.tiles[nextY]?.[nextX];
-    if (!nextTile || nextTile.type === TileType.WALL) {
-      break; // Hit wall or void
-    }
-
-    // Check for custom tile type that's a wall
-    if (nextTile.customTileTypeId) {
-      const nextTileType = loadTileType(nextTile.customTileTypeId);
-      if (nextTileType?.baseType === 'wall') {
-        break; // Hit custom wall
-      }
+    if (isTileBlockingMovement(nextTile, gameState)) {
+      break; // Hit wall, void, or blocking custom tile
     }
 
     // Check for blocking entities
@@ -666,11 +708,8 @@ function moveCharacter(
   const firstX = updatedChar.x + firstDx;
   const firstY = updatedChar.y + firstDy;
 
-  let willHitWall =
-    !isInBounds(firstX, firstY, gameState.puzzle.width, gameState.puzzle.height) ||
-    gameState.puzzle.tiles[firstY]?.[firstX] === null ||
-    gameState.puzzle.tiles[firstY]?.[firstX] === undefined ||
-    gameState.puzzle.tiles[firstY]?.[firstX]?.type === TileType.WALL;
+  let willHitWall = !isInBounds(firstX, firstY, gameState.puzzle.width, gameState.puzzle.height) ||
+    isTileBlockingMovement(gameState.puzzle.tiles[firstY]?.[firstX], gameState);
 
   // Also check for entities that behave like walls
   if (!willHitWall && isInBounds(firstX, firstY, gameState.puzzle.width, gameState.puzzle.height)) {
@@ -761,11 +800,9 @@ function moveCharacter(
     const newX = updatedChar.x + dx;
     const newY = updatedChar.y + dy;
 
-    // Check for wall conditions
-    const isWallCollision =
-      !isInBounds(newX, newY, gameState.puzzle.width, gameState.puzzle.height) ||
-      !gameState.puzzle.tiles[newY][newX] ||
-      gameState.puzzle.tiles[newY][newX]?.type === TileType.WALL;
+    // Check for wall conditions (includes custom tiles with wall baseType, onStateBlocksMovement, cadence)
+    const isWallCollision = !isInBounds(newX, newY, gameState.puzzle.width, gameState.puzzle.height) ||
+      isTileBlockingMovement(gameState.puzzle.tiles[newY]?.[newX], gameState);
 
     if (isWallCollision) {
       // Handle wall collision based on behavior
@@ -1061,11 +1098,8 @@ function moveCharacter(
     const nextX = updatedChar.x + nextDx;
     const nextY = updatedChar.y + nextDy;
 
-    let willHitWallNext =
-      !isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height) ||
-      gameState.puzzle.tiles[nextY]?.[nextX] === null ||
-      gameState.puzzle.tiles[nextY]?.[nextX] === undefined ||
-      gameState.puzzle.tiles[nextY]?.[nextX]?.type === TileType.WALL;
+    let willHitWallNext = !isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height) ||
+      isTileBlockingMovement(gameState.puzzle.tiles[nextY]?.[nextX], gameState);
 
     // Also check for entities that behave like walls
     if (!willHitWallNext && isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height)) {
@@ -1230,8 +1264,7 @@ function handleIfWall(
 
   const isWall =
     !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height) ||
-    !tile ||
-    tile.type === TileType.WALL ||
+    isTileBlockingMovement(tile, gameState) ||
     (!canOverlapCharacter && isWallLikeCharacter) ||
     (!canOverlapCorpse && isBlockingCorpse);
 
@@ -2957,24 +2990,9 @@ function executePushSpell(
   const offset = getDirectionOffset(castDirection);
   console.log('[PUSH SPELL] Direction offset:', offset);
 
-  // Helper to check if a tile acts as a wall (including custom tiles with baseType='wall')
-  const isTileWall = (tile: Tile | null | undefined): boolean => {
-    if (!tile) return true; // void/null is treated as wall
-    if (tile.type === TileType.WALL) return true;
-
-    // Check for custom tile with wall base type
-    if (tile.customTileTypeId) {
-      const customType = loadTileType(tile.customTileTypeId);
-      if (customType?.baseType === 'wall') {
-        // If it has cadence, check if it's currently "on" (acting as wall)
-        if (customType.cadence?.enabled) {
-          return isTileActive(tile, gameState);
-        }
-        return true;
-      }
-    }
-    return false;
-  };
+  // Helper using shared wall-check logic
+  const isTileWall = (tile: Tile | null | undefined): boolean =>
+    isTileBlockingMovement(tile, gameState);
 
   // Find all entities in range along the spell direction
   const entitiesToPush: Array<{ entity: PlacedCharacter | PlacedEnemy; x: number; y: number; isEnemy: boolean }> = [];
@@ -3267,8 +3285,8 @@ export function checkTriggerCondition(
         return char.x === character.x && char.y === character.y;
       });
 
-    case 'wall_ahead':
-      // Check if there's a wall in front of the character
+    case 'wall_ahead': {
+      // Check if there's a wall in front of the character (includes custom wall tiles)
       const { dx, dy } = getDirectionOffset(character.facing);
       const checkX = character.x + dx;
       const checkY = character.y + dy;
@@ -3277,8 +3295,8 @@ export function checkTriggerCondition(
         return true;
       }
 
-      const tile = gameState.puzzle.tiles[checkY]?.[checkX];
-      return !tile || tile.type === TileType.WALL;
+      return isTileBlockingMovement(gameState.puzzle.tiles[checkY]?.[checkX], gameState);
+    }
 
     case 'health_below_50':
       // Check if character health is below 50%

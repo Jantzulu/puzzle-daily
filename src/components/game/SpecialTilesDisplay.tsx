@@ -109,12 +109,14 @@ function getSpecialTiles(puzzle: Puzzle): SpecialTileInfo[] {
       const tileType = loadTileType(tile.customTileTypeId);
       if (!tileType) continue;
 
-      // Include tiles that have behaviors OR prevent placement OR behave like wall
+      // Include tiles that have behaviors, off-state behaviors, prevent placement, wall mode, or wall base type
       const hasBehaviors = tileType.behaviors && tileType.behaviors.length > 0;
+      const hasOffStateBehaviors = tileType.offStateBehaviors && tileType.offStateBehaviors.length > 0;
       const preventPlacement = tileType.preventPlacement || false;
       const behavesLikeWall = tileType.baseType === 'wall';
+      const hasWallMode = tileType.onStateBlocksMovement || false;
 
-      if (!hasBehaviors && !preventPlacement && !behavesLikeWall) continue;
+      if (!hasBehaviors && !hasOffStateBehaviors && !preventPlacement && !behavesLikeWall && !hasWallMode) continue;
 
       seenTileIds.add(tile.customTileTypeId);
 
@@ -294,8 +296,20 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
                 <div className="text-xs lg:text-sm text-stone-400">
                   {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}
                 </div>
+                {/* Off-state behaviors */}
+                {info.tileType.offStateBehaviors && info.tileType.offStateBehaviors.length > 0 && (
+                  <div className="text-xs lg:text-sm text-stone-500 mt-0.5">
+                    Off state: {getBehaviorDescription(info.tileType.offStateBehaviors)}
+                  </div>
+                )}
+                {/* On-state blocks movement */}
+                {info.tileType.onStateBlocksMovement && (
+                  <div className="text-xs lg:text-sm text-rust-400/70 mt-0.5">
+                    Blocks movement when active (on)
+                  </div>
+                )}
                 {/* Show wall behavior info */}
-                {info.behavesLikeWall && (
+                {info.behavesLikeWall && !info.tileType.onStateBlocksMovement && (
                   <div className="text-xs lg:text-sm text-rust-400/70 mt-0.5">
                     Blocks movement (behaves like wall)
                   </div>

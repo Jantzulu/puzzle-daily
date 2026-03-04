@@ -346,6 +346,8 @@ export interface CustomTileType {
   description?: string;
   baseType: 'empty' | 'wall';
   behaviors: TileBehaviorConfig[];  // Multiple behaviors allowed (stacking)
+  offStateBehaviors?: TileBehaviorConfig[];  // Behaviors when tile is in "off" state
+  onStateBlocksMovement?: boolean;  // When on, blocks movement like a wall (for toggling barriers)
   customSprite?: CustomSprite;
   offStateSprite?: CustomSprite;    // Sprite when tile is in "off" state (for cadence)
   cadence?: CadenceConfig;          // Optional cadence configuration (on/off toggle)

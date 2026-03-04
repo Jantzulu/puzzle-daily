@@ -536,6 +536,31 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setEditing({ ...editing, behaviors: newBehaviors });
   };
 
+  // Off-state behavior handlers
+  const handleAddOffStateBehavior = (type: TileBehaviorType) => {
+    if (!editing) return;
+    const newBehavior: TileBehaviorConfig = { type };
+    if (type === 'damage') newBehavior.damageAmount = 1;
+    else if (type === 'teleport') newBehavior.teleportGroupId = 'A';
+    else if (type === 'direction_change') newBehavior.newFacing = 'south';
+    else if (type === 'pressure_plate') newBehavior.pressurePlateEffects = [];
+    setEditing({ ...editing, offStateBehaviors: [...(editing.offStateBehaviors || []), newBehavior] });
+  };
+
+  const handleUpdateOffStateBehavior = (index: number, behavior: TileBehaviorConfig) => {
+    if (!editing) return;
+    const newBehaviors = [...(editing.offStateBehaviors || [])];
+    newBehaviors[index] = behavior;
+    setEditing({ ...editing, offStateBehaviors: newBehaviors });
+  };
+
+  const handleRemoveOffStateBehavior = (index: number) => {
+    if (!editing) return;
+    const newBehaviors = [...(editing.offStateBehaviors || [])];
+    newBehaviors.splice(index, 1);
+    setEditing({ ...editing, offStateBehaviors: newBehaviors });
+  };
+
   const handleSpriteUpload = async (file: File) => {
     if (!editing) return;
     const base64 = await fileToBase64(file);
@@ -850,7 +875,9 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
 
                 {/* Behaviors */}
                 <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">Behaviors</h3>
+                  <h3 className="text-lg font-bold mb-4">
+                    {(editing.cadence?.enabled || editing.canBeTriggered) ? 'Behaviors (On State)' : 'Behaviors'}
+                  </h3>
                   {editing.behaviors.length === 0 ? (
                     <p className="text-stone-400 text-sm mb-3">
                       No behaviors added. Add behaviors to make this tile interactive.
@@ -1078,6 +1105,66 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                     </div>
                   )}
                 </div>
+
+                {/* On State Blocks Movement + Off State Behaviors (only when cadence or trigger enabled) */}
+                {(editing.cadence?.enabled || editing.canBeTriggered) && (
+                  <>
+                    {/* On State Blocks Movement */}
+                    <div className="dungeon-panel p-4 rounded">
+                      <h3 className="text-lg font-bold mb-4">State-Based Movement</h3>
+                      <label className="flex items-center text-sm text-stone-300 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={editing.onStateBlocksMovement || false}
+                          onChange={e => setEditing({ ...editing, onStateBlocksMovement: e.target.checked })}
+                          className="mr-2"
+                        />
+                        On state blocks movement (acts like wall)
+                      </label>
+                      <p className="text-xs text-stone-500 mt-1 ml-5">
+                        When active (on), entities cannot walk through this tile. When off, it becomes passable.
+                      </p>
+                    </div>
+
+                    {/* Off State Behaviors */}
+                    <div className="dungeon-panel p-4 rounded">
+                      <h3 className="text-lg font-bold mb-4">Behaviors (Off State)</h3>
+                      <p className="text-sm text-stone-400 mb-3">
+                        These behaviors fire when the tile is in its off state.
+                      </p>
+                      {(!editing.offStateBehaviors || editing.offStateBehaviors.length === 0) ? (
+                        <p className="text-stone-500 text-sm mb-3">
+                          No off-state behaviors. The tile will be inert when off.
+                        </p>
+                      ) : (
+                        editing.offStateBehaviors.map((behavior, idx) => (
+                          <BehaviorEditor
+                            key={idx}
+                            behavior={behavior}
+                            onChange={b => handleUpdateOffStateBehavior(idx, b)}
+                            onRemove={() => handleRemoveOffStateBehavior(idx)}
+                          />
+                        ))
+                      )}
+                      <select
+                        value=""
+                        onChange={e => {
+                          if (!e.target.value) return;
+                          handleAddOffStateBehavior(e.target.value as TileBehaviorType);
+                          e.target.value = '';
+                        }}
+                        className="w-full px-3 py-2 bg-stone-700 rounded"
+                      >
+                        <option value="">+ Add Off-State Behavior...</option>
+                        {BEHAVIOR_OPTIONS.map(opt => (
+                          <option key={opt.type} value={opt.type}>
+                            {opt.label} - {opt.description}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </>
+                )}
 
                 {/* Tile Sprite */}
                 <div className="dungeon-panel p-4 rounded">
