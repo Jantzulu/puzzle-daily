@@ -1142,16 +1142,16 @@ export const Game: React.FC = () => {
             <div className="relative w-full max-w-[900px] overflow-hidden">
               <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
 
-              {/* Defeat Overlay - appears on top of the game board */}
+              {/* Defeat Overlay - fixed to viewport like concede modal */}
               {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
                 <div
-                  className="absolute inset-0 flex items-center justify-center z-10"
+                  className="fixed inset-0 flex items-center justify-center z-50"
                   style={{
                     backgroundColor: themeAssets.defeatPanelOverlayBg || 'rgba(0, 0, 0, 0.75)',
                   }}
                 >
                   <div
-                    className={`p-4 rounded-pixel-lg text-center max-w-[90%] ${
+                    className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${
                       themeAssets.defeatPanelBg ? '' : 'defeat-panel'
                     }`}
                     style={{

@@ -171,15 +171,15 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
       </div>
 
       {/* Row 3: Event markers + Scrubber + Turn counter */}
-      <div className="space-y-0.5">
+      <div>
         {/* Event marker dots above scrubber */}
         {markers.length > 0 && (
-          <div className="relative h-3 mx-1">
+          <div className="relative h-2.5 mx-1 mb-0.5">
             {markers.map(({ turn, color, label }) => (
               <button
                 key={turn}
                 onClick={() => onSeek(turn)}
-                className={`absolute top-0.5 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${color} hover:scale-150 transition-transform -translate-x-1/2`}
+                className={`absolute bottom-0 w-1.5 h-1.5 md:w-2 md:h-2 rounded-full ${color} hover:scale-150 transition-transform -translate-x-1/2`}
                 style={{ left: `${(turn / totalTurns) * 100}%` }}
                 title={`Turn ${turn}: ${label}`}
               />
