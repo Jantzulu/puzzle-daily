@@ -206,7 +206,7 @@ function Navigation() {
     >
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title */}
-        <div className="flex items-center gap-2 md:gap-3">
+        <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline">
           {/* Custom logo or default torch icon */}
           {(() => {
             // Check for randomized logo first
@@ -267,7 +267,7 @@ function Navigation() {
               </span>
             )}
           </div>
-        </div>
+        </Link>
 
         {/* Desktop navigation - closer to title */}
         <div className="hidden md:flex items-center gap-2 ml-4">
