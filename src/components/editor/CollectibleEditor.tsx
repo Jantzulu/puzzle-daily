@@ -265,7 +265,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                           <SpriteThumbnail sprite={collectible.customSprite} size={selectedId === collectible.id ? 56 : 40} />
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold truncate">{collectible.name}</h3>
+                          <h3 className="font-bold line-clamp-2 break-words">{collectible.name}</h3>
                           <p className="text-xs text-stone-400">
                             {getEffectSummary(collectible.effects)}
                           </p>

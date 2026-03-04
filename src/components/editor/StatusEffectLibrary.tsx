@@ -226,8 +226,8 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                           </div>
                         )}
                         <div className="min-w-0">
-                          <h3 className="font-bold flex items-center gap-1">
-                            <span className="truncate">{effect.name || 'Unnamed'}</span>
+                          <h3 className="font-bold flex flex-wrap items-center gap-1">
+                            <span className="line-clamp-2 break-words">{effect.name || 'Unnamed'}</span>
                             {effect.isBuiltIn && (
                               <span className="text-xs bg-stone-600 px-1 rounded flex-shrink-0">Built-in</span>
                             )}

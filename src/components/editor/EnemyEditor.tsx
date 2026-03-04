@@ -229,10 +229,10 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" />
                         </div>
                         <div className="min-w-0">
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-bold truncate">{enemy.name}</h3>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h3 className="font-bold line-clamp-2 break-words">{enemy.name}</h3>
                             {enemy.isBoss && (
-                              <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium">
+                              <span className="px-1.5 py-0.5 text-xs bg-blood-800 text-blood-200 rounded font-medium flex-shrink-0">
                                 BOSS
                               </span>
                             )}

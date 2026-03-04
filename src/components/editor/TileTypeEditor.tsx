@@ -757,7 +757,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           )}
                         </div>
                         <div className="min-w-0">
-                          <h3 className="font-bold truncate">{tileType.name}</h3>
+                          <h3 className="font-bold line-clamp-2 break-words">{tileType.name}</h3>
                           <p className="text-xs text-stone-400">
                             {tileType.baseType} • {tileType.behaviors.length} behavior{tileType.behaviors.length !== 1 ? 's' : ''}
                           </p>
