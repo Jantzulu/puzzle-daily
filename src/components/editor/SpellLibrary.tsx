@@ -4,6 +4,7 @@ import { scaledNameClass } from '../../utils/textScale';
 import type { SpellAsset } from '../../types/game';
 import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
+import { AssetEditorLayout } from './AssetEditorLayout';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 
@@ -101,169 +102,168 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
     spell.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleBack = () => handleCancel();
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          {/* Spell List - Left Sidebar */}
-          <div className="w-full md:w-72 space-y-4 overflow-hidden">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Spells</h2>
-              <button
-                onClick={handleNew}
-                className="dungeon-btn-success text-sm"
-              >
-                + New
-              </button>
-            </div>
+    <AssetEditorLayout
+      isEditing={isCreating || !!editingSpell}
+      onBack={handleBack}
+      listTitle="Spells"
+      listPanel={
+        <>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold font-medieval text-copper-400">Spells</h2>
+            <button
+              onClick={handleNew}
+              className="dungeon-btn-success text-sm"
+            >
+              + New
+            </button>
+          </div>
 
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dungeon-input text-sm"
-            />
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="dungeon-input text-sm"
+          />
 
-            {/* Folder Filter */}
-            <FolderDropdown
-              category="spells"
-              selectedFolderId={selectedFolderId}
-              onFolderSelect={setSelectedFolderId}
-            />
+          {/* Folder Filter */}
+          <FolderDropdown
+            category="spells"
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={setSelectedFolderId}
+          />
 
-            <BulkActionBar
-              count={bulk.count}
-              totalCount={filteredSpells.length}
-              onSelectAll={() => bulk.selectAll(filteredSpells.map(s => s.id))}
-              onClear={bulk.clear}
-              onDelete={() => {
-                const nameMap = new Map(spells.map(s => [s.id, s.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], 'spell', deleteSpellAsset, nameMap);
-                if (deleted.length) { loadSpells(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingSpell(null); } }
-              }}
-              onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], 'spells', (id: string) => spells.find(s => s.id === id), saveSpellAsset);
-                loadSpells(); bulk.clear();
-              }}
-              onExport={() => {
-                const items = spells.filter(s => bulk.selectedIds.has(s.id));
-                bulkExport(items, 'spells-export.json');
-              }}
-            />
+          <BulkActionBar
+            count={bulk.count}
+            totalCount={filteredSpells.length}
+            onSelectAll={() => bulk.selectAll(filteredSpells.map(s => s.id))}
+            onClear={bulk.clear}
+            onDelete={() => {
+              const nameMap = new Map(spells.map(s => [s.id, s.name]));
+              const deleted = bulkDelete([...bulk.selectedIds], 'spell', deleteSpellAsset, nameMap);
+              if (deleted.length) { loadSpells(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingSpell(null); } }
+            }}
+            onMoveToFolder={() => {
+              bulkMoveToFolder([...bulk.selectedIds], 'spells', (id: string) => spells.find(s => s.id === id), saveSpellAsset);
+              loadSpells(); bulk.clear();
+            }}
+            onExport={() => {
+              const items = spells.filter(s => bulk.selectedIds.has(s.id));
+              bulkExport(items, 'spells-export.json');
+            }}
+          />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
-              {filteredSpells.length === 0 ? (
-                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                  {searchTerm ? 'No matches' : 'No spells yet.'}
-                  <br />
-                  {!searchTerm && 'Click "+ New" to create one.'}
-                </div>
-              ) : (
-                filteredSpells.map(spell => (
-                  <div
-                    key={spell.id}
-                    className={`p-3 rounded cursor-pointer transition-colors ${
-                      bulk.isSelected(spell.id) ? 'bg-blue-900/40 border border-blue-500' :
-                      selectedId === spell.id
-                        ? 'bg-copper-700/50 border border-copper-500'
-                        : 'dungeon-panel hover:bg-stone-700'
-                    }`}
-                    onClick={() => handleSelect(spell)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-start gap-2 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={bulk.isSelected(spell.id)}
-                          onChange={() => bulk.toggle(spell.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="accent-blue-500 flex-shrink-0"
+          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+            {filteredSpells.length === 0 ? (
+              <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
+                {searchTerm ? 'No matches' : 'No spells yet.'}
+                <br />
+                {!searchTerm && 'Click "+ New" to create one.'}
+              </div>
+            ) : (
+              filteredSpells.map(spell => (
+                <div
+                  key={spell.id}
+                  className={`p-3 rounded cursor-pointer transition-colors ${
+                    bulk.isSelected(spell.id) ? 'bg-blue-900/40 border border-blue-500' :
+                    selectedId === spell.id
+                      ? 'bg-copper-700/50 border border-copper-500'
+                      : 'dungeon-panel hover:bg-stone-700'
+                  }`}
+                  onClick={() => handleSelect(spell)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={bulk.isSelected(spell.id)}
+                        onChange={() => bulk.toggle(spell.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="accent-blue-500 flex-shrink-0"
+                      />
+                      {spell.thumbnailIcon ? (
+                        <img
+                          src={spell.thumbnailIcon}
+                          alt={spell.name}
+                          className="object-contain bg-stone-900 rounded flex-shrink-0 transition-all duration-150"
+                          style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
                         />
-                        {spell.thumbnailIcon ? (
-                          <img
-                            src={spell.thumbnailIcon}
-                            alt={spell.name}
-                            className="object-contain bg-stone-900 rounded flex-shrink-0 transition-all duration-150"
-                            style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
-                          />
-                        ) : (
-                          <div
-                            className="bg-stone-600 rounded flex items-center justify-center text-stone-400 text-xs flex-shrink-0 transition-all duration-150"
-                            style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
-                          >
-                            ?
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h3 className={`font-bold ${scaledNameClass(spell.name || 'Unnamed')}`}>{spell.name || 'Unnamed'}</h3>
-                          <p className="text-xs text-stone-400 capitalize">
-                            {spell.templateType.replace('_', ' ')}
-                          </p>
+                      ) : (
+                        <div
+                          className="bg-stone-600 rounded flex items-center justify-center text-stone-400 text-xs flex-shrink-0 transition-all duration-150"
+                          style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
+                        >
+                          ?
                         </div>
-                      </div>
-                      <div className="flex flex-col gap-0.5 flex-shrink-0">
-                        <InlineFolderPicker
-                          category="spells"
-                          currentFolderId={spell.folderId}
-                          onFolderChange={(folderId) => handleFolderChange(spell.id, folderId)}
-                        />
-                        <button
-                          onClick={(e) => handleDuplicate(spell, e)}
-                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                          title="Duplicate"
-                        >
-                          ⎘
-                        </button>
-                        <button
-                          onClick={(e) => handleDelete(spell.id, e)}
-                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                          title="Delete"
-                        >
-                          ✕
-                        </button>
+                      )}
+                      <div className="min-w-0">
+                        <h3 className={`font-bold ${scaledNameClass(spell.name || 'Unnamed')}`}>{spell.name || 'Unnamed'}</h3>
+                        <p className="text-xs text-stone-400 capitalize">
+                          {spell.templateType.replace('_', ' ')}
+                        </p>
                       </div>
                     </div>
-                    {/* Quick stats */}
-                    <div className="flex gap-2 mt-2 text-xs text-stone-400">
-                      <span>Dmg: {spell.damage}</span>
-                      {spell.range && <span>Range: {spell.range}</span>}
-                      {spell.radius && <span>Radius: {spell.radius}</span>}
+                    <div className="flex flex-col gap-0.5 flex-shrink-0">
+                      <InlineFolderPicker
+                        category="spells"
+                        currentFolderId={spell.folderId}
+                        onFolderChange={(folderId) => handleFolderChange(spell.id, folderId)}
+                      />
+                      <button
+                        onClick={(e) => handleDuplicate(spell, e)}
+                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
+                        title="Duplicate"
+                      >
+                        ⎘
+                      </button>
+                      <button
+                        onClick={(e) => handleDelete(spell.id, e)}
+                        className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
+                        title="Delete"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Spell Editor - Right Panel */}
-          <div className="flex-1">
-            {(isCreating || editingSpell) ? (
-              <SpellAssetBuilder
-                spell={editingSpell || undefined}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              />
-            ) : (
-              <div className="dungeon-panel p-8 rounded text-center">
-                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Spell Editor</h2>
-                <p className="text-stone-400 mb-6">
-                  Create spell assets that can be equipped to heroes and enemies.
-                  <br />
-                  Select a spell from the list or create a new one.
-                </p>
-                <button
-                  onClick={handleNew}
-                  className="dungeon-btn-success text-lg"
-                >
-                  + Create New Spell
-                </button>
-              </div>
+                  {/* Quick stats */}
+                  <div className="flex gap-2 mt-2 text-xs text-stone-400">
+                    <span>Dmg: {spell.damage}</span>
+                    {spell.range && <span>Range: {spell.range}</span>}
+                    {spell.radius && <span>Radius: {spell.radius}</span>}
+                  </div>
+                </div>
+              ))
             )}
           </div>
+        </>
+      }
+      detailPanel={
+        <SpellAssetBuilder
+          spell={editingSpell || undefined}
+          onSave={handleSave}
+          onCancel={handleCancel}
+        />
+      }
+      emptyState={
+        <div className="dungeon-panel p-8 rounded text-center">
+          <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Spell Editor</h2>
+          <p className="text-stone-400 mb-6">
+            Create spell assets that can be equipped to heroes and enemies.
+            <br />
+            Select a spell from the list or create a new one.
+          </p>
+          <button
+            onClick={handleNew}
+            className="dungeon-btn-success text-lg"
+          >
+            + Create New Spell
+          </button>
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 };

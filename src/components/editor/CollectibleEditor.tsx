@@ -10,6 +10,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
+import { AssetEditorLayout } from './AssetEditorLayout';
 
 // Effect type options with icons
 const EFFECT_TYPES: { value: CollectibleEffectType; label: string; icon: string }[] = [
@@ -178,342 +179,345 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
     }).join(', ');
   };
 
+  const handleBack = () => {
+    setSelectedId(null);
+    setEditing(null);
+    setIsCreating(false);
+  };
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          {/* Collectible List */}
-          <div className="w-full md:w-72 space-y-4 overflow-hidden">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Items</h2>
-              <button
-                onClick={handleNew}
-                className="dungeon-btn-success text-sm"
-              >
-                + New
-              </button>
-            </div>
-
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dungeon-input w-full"
-            />
-
-            {/* Folder Filter */}
-            <FolderDropdown
-              category="collectibles"
-              selectedFolderId={selectedFolderId}
-              onFolderSelect={setSelectedFolderId}
-            />
-
-            <BulkActionBar
-              count={bulk.count}
-              totalCount={filteredCollectibles.length}
-              onSelectAll={() => bulk.selectAll(filteredCollectibles.map(c => c.id))}
-              onClear={bulk.clear}
-              onDelete={() => {
-                const nameMap = new Map(collectibles.map(c => [c.id, c.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], 'collectible', deleteCollectible, nameMap);
-                if (deleted.length) { refreshCollectibles(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
-              }}
-              onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], 'collectibles', (id: string) => collectibles.find(c => c.id === id), saveCollectible);
-                refreshCollectibles(); bulk.clear();
-              }}
-              onExport={() => {
-                const items = collectibles.filter(c => bulk.selectedIds.has(c.id));
-                bulkExport(items, 'collectibles-export.json');
-              }}
-            />
-
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
-              {filteredCollectibles.length === 0 ? (
-                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                  {searchTerm ? 'No items match your search.' : 'No items yet.'}
-                  <br />
-                  {!searchTerm && 'Click "+ New" to create one.'}
-                </div>
-              ) : (
-                filteredCollectibles.map(collectible => (
-                  <div
-                    key={collectible.id}
-                    className={`p-3 rounded cursor-pointer transition-colors ${
-                      bulk.isSelected(collectible.id) ? 'bg-blue-900/40 border border-blue-500' :
-                      selectedId === collectible.id
-                        ? 'bg-arcane-700'
-                        : 'dungeon-panel hover:bg-stone-700'
-                    }`}
-                    onClick={() => handleSelect(collectible.id)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-start gap-2 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={bulk.isSelected(collectible.id)}
-                          onChange={() => bulk.toggle(collectible.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="accent-blue-500 flex-shrink-0"
-                        />
-                        {/* Preview thumbnail */}
-                        <div
-                          className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
-                          style={{ width: selectedId === collectible.id ? 56 : 40, height: selectedId === collectible.id ? 56 : 40 }}
-                        >
-                          <SpriteThumbnail sprite={collectible.customSprite} size={selectedId === collectible.id ? 56 : 40} />
-                        </div>
-                        <div className="min-w-0">
-                          <h3 className={`font-bold ${scaledNameClass(collectible.name)}`}>{collectible.name}</h3>
-                          <p className="text-xs text-stone-400">
-                            {getEffectSummary(collectible.effects)}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-0.5 flex-shrink-0">
-                        <InlineFolderPicker
-                          category="collectibles"
-                          currentFolderId={collectible.folderId}
-                          onFolderChange={(folderId) => handleFolderChange(collectible.id, folderId)}
-                        />
-                        <button
-                          onClick={(e) => handleDuplicate(collectible, e)}
-                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                          title="Duplicate"
-                        >
-                          ⎘
-                        </button>
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(collectible.id);
-                          }}
-                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                        >
-                          ✕
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
+    <AssetEditorLayout
+      isEditing={!!editing}
+      onBack={handleBack}
+      listTitle="Items"
+      listPanel={
+        <>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold font-medieval text-copper-400">Items</h2>
+            <button
+              onClick={handleNew}
+              className="dungeon-btn-success text-sm"
+            >
+              + New
+            </button>
           </div>
 
-          {/* Edit Panel */}
-          <div className="flex-1">
-            {editing ? (
-              <div className="space-y-6">
-                {/* Header */}
-                <div className="flex justify-between items-center">
-                  <h2 className="text-2xl font-bold">
-                    {isCreating ? 'Create Item' : 'Edit Item'}
-                  </h2>
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
-                  >
-                    Save Item
-                  </button>
-                </div>
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="dungeon-input w-full"
+          />
 
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  {/* Left Column */}
-                  <div className="space-y-6">
-                    {/* Basic Info */}
-                    <div className="dungeon-panel p-4 rounded space-y-3">
-                      <div className="flex items-center gap-4">
-                        <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
-                          <SpriteThumbnail sprite={editing.customSprite} size={64} />
-                        </div>
-                        <div>
-                          <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Item'}</h3>
-                          <p className="text-xs text-stone-400">{editing.effects.length > 0 ? `${editing.effects.length} effect${editing.effects.length !== 1 ? 's' : ''}` : 'No effects'}</p>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Name</label>
-                        <input
-                          type="text"
-                          value={editing.name}
-                          onChange={e => setEditing({ ...editing, name: e.target.value })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Description</label>
-                        <RichTextEditor
-                          value={editing.description || ''}
-                          onChange={(value) => setEditing({ ...editing, description: value })}
-                          placeholder="Optional description..."
-                          multiline
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm mb-1">Folder</label>
-                        <select
-                          value={editing.folderId || ''}
-                          onChange={e => setEditing({ ...editing, folderId: e.target.value || undefined })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        >
-                          <option value="">Uncategorized</option>
-                          {getFolders('collectibles').map(folder => (
-                            <option key={folder.id} value={folder.id}>{folder.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+          {/* Folder Filter */}
+          <FolderDropdown
+            category="collectibles"
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={setSelectedFolderId}
+          />
 
-                    {/* Pickup Behavior */}
-                    <div className="dungeon-panel p-4 rounded space-y-3">
-                      <h3 className="text-lg font-bold">Pickup Behavior</h3>
-                      <div>
-                        <label className="block text-sm mb-1">Pickup Method</label>
-                        <select
-                          value={editing.pickupMethod}
-                          onChange={e => setEditing({ ...editing, pickupMethod: e.target.value as 'step_on' })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        >
-                          <option value="step_on">Step On Tile (Automatic)</option>
-                        </select>
-                        <p className="text-xs text-stone-400 mt-1">Collected when an entity walks onto the tile</p>
+          <BulkActionBar
+            count={bulk.count}
+            totalCount={filteredCollectibles.length}
+            onSelectAll={() => bulk.selectAll(filteredCollectibles.map(c => c.id))}
+            onClear={bulk.clear}
+            onDelete={() => {
+              const nameMap = new Map(collectibles.map(c => [c.id, c.name]));
+              const deleted = bulkDelete([...bulk.selectedIds], 'collectible', deleteCollectible, nameMap);
+              if (deleted.length) { refreshCollectibles(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditing(null); } }
+            }}
+            onMoveToFolder={() => {
+              bulkMoveToFolder([...bulk.selectedIds], 'collectibles', (id: string) => collectibles.find(c => c.id === id), saveCollectible);
+              refreshCollectibles(); bulk.clear();
+            }}
+            onExport={() => {
+              const items = collectibles.filter(c => bulk.selectedIds.has(c.id));
+              bulkExport(items, 'collectibles-export.json');
+            }}
+          />
+
+          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+            {filteredCollectibles.length === 0 ? (
+              <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
+                {searchTerm ? 'No items match your search.' : 'No items yet.'}
+                <br />
+                {!searchTerm && 'Click "+ New" to create one.'}
+              </div>
+            ) : (
+              filteredCollectibles.map(collectible => (
+                <div
+                  key={collectible.id}
+                  className={`p-3 rounded cursor-pointer transition-colors ${
+                    bulk.isSelected(collectible.id) ? 'bg-blue-900/40 border border-blue-500' :
+                    selectedId === collectible.id
+                      ? 'bg-arcane-700'
+                      : 'dungeon-panel hover:bg-stone-700'
+                  }`}
+                  onClick={() => handleSelect(collectible.id)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={bulk.isSelected(collectible.id)}
+                        onChange={() => bulk.toggle(collectible.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="accent-blue-500 flex-shrink-0"
+                      />
+                      {/* Preview thumbnail */}
+                      <div
+                        className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
+                        style={{ width: selectedId === collectible.id ? 56 : 40, height: selectedId === collectible.id ? 56 : 40 }}
+                      >
+                        <SpriteThumbnail sprite={collectible.customSprite} size={selectedId === collectible.id ? 56 : 40} />
                       </div>
-                      <div className="space-y-2">
-                        <label className="block text-sm">Who Can Collect</label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editing.pickupPermissions.characters}
-                            onChange={e => setEditing({
-                              ...editing,
-                              pickupPermissions: { ...editing.pickupPermissions, characters: e.target.checked }
-                            })}
-                            className="rounded"
-                          />
-                          <span>Characters (Players)</span>
-                        </label>
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editing.pickupPermissions.enemies}
-                            onChange={e => setEditing({
-                              ...editing,
-                              pickupPermissions: { ...editing.pickupPermissions, enemies: e.target.checked }
-                            })}
-                            className="rounded"
-                          />
-                          <span>Enemies</span>
-                        </label>
-                      </div>
-                      <div className="pt-2 border-t border-stone-700">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editing.preventPlacement || false}
-                            onChange={e => setEditing({ ...editing, preventPlacement: e.target.checked })}
-                            className="rounded"
-                          />
-                          <span>Prevent Character Placement</span>
-                        </label>
-                        <p className="text-xs text-stone-400 mt-1 ml-6">
-                          If enabled, characters cannot be placed on tiles with this collectible during setup (they can still walk over it)
+                      <div className="min-w-0">
+                        <h3 className={`font-bold ${scaledNameClass(collectible.name)}`}>{collectible.name}</h3>
+                        <p className="text-xs text-stone-400">
+                          {getEffectSummary(collectible.effects)}
                         </p>
                       </div>
                     </div>
-
-                    {/* Sound */}
-                    <div className="dungeon-panel p-4 rounded space-y-3">
-                      <h3 className="text-lg font-bold">Sound</h3>
-                      <div>
-                        <label className="block text-sm mb-1">Pickup Sound</label>
-                        <select
-                          value={editing.pickupSound || ''}
-                          onChange={e => setEditing({ ...editing, pickupSound: e.target.value || undefined })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded"
-                        >
-                          <option value="">None</option>
-                          {getSoundAssets().map(sound => (
-                            <option key={sound.id} value={sound.id}>{sound.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    {/* Sprite */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <h3 className="text-lg font-bold mb-4">Sprite</h3>
-                      <StaticSpriteEditor
-                        sprite={editing.customSprite || {
-                          id: 'sprite_' + Date.now(),
-                          name: 'Collectible Sprite',
-                          type: 'simple',
-                          shape: 'star',
-                          primaryColor: '#ffd700',
-                          size: 0.6,
-                          createdAt: new Date().toISOString(),
-                        }}
-                        onChange={updateSprite}
+                    <div className="flex flex-col gap-0.5 flex-shrink-0">
+                      <InlineFolderPicker
+                        category="collectibles"
+                        currentFolderId={collectible.folderId}
+                        onFolderChange={(folderId) => handleFolderChange(collectible.id, folderId)}
                       />
-                    </div>
-
-                    {/* Effects */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <div className="flex justify-between items-center mb-4">
-                        <h3 className="text-lg font-bold">Effects</h3>
-                        <button
-                          onClick={addEffect}
-                          className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
-                        >
-                          + Add Effect
-                        </button>
-                      </div>
-                      <p className="text-xs text-stone-400 mb-3">
-                        Effects are applied when the collectible is picked up. You can add multiple effects.
-                      </p>
-                      <div className="space-y-3">
-                        {editing.effects.map((effect, index) => (
-                          <CollectibleEffectEditor
-                            key={index}
-                            effect={effect}
-                            onChange={(e) => updateEffect(index, e)}
-                            onRemove={() => removeEffect(index)}
-                          />
-                        ))}
-                        {editing.effects.length === 0 && (
-                          <p className="text-stone-500 text-sm italic">
-                            No effects. This collectible will be purely decorative.
-                          </p>
-                        )}
-                      </div>
+                      <button
+                        onClick={(e) => handleDuplicate(collectible, e)}
+                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
+                        title="Duplicate"
+                      >
+                        ⎘
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDelete(collectible.id);
+                        }}
+                        className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            ) : (
-              <div className="dungeon-panel p-8 rounded text-center">
-                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Item Editor</h2>
-                <p className="text-stone-400 mb-6">
-                  Create collectible items with custom sprites and effects.
-                  <br />
-                  Select an item from the list or create a new one.
-                </p>
-                <button
-                  onClick={handleNew}
-                  className="dungeon-btn-success text-lg"
-                >
-                  + Create New Item
-                </button>
-              </div>
+              ))
             )}
           </div>
+        </>
+      }
+      detailPanel={editing ? (
+        <>
+          {/* Header */}
+          <div className="flex justify-between items-center">
+            <h2 className="text-2xl font-bold">
+              {isCreating ? 'Create Item' : 'Edit Item'}
+            </h2>
+            <button
+              onClick={handleSave}
+              className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
+            >
+              Save Item
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left Column */}
+            <div className="space-y-6">
+              {/* Basic Info */}
+              <div className="dungeon-panel p-4 rounded space-y-3">
+                <div className="flex items-center gap-4">
+                  <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <SpriteThumbnail sprite={editing.customSprite} size={64} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-bold text-parchment-200">{editing.name || 'Unnamed Item'}</h3>
+                    <p className="text-xs text-stone-400">{editing.effects.length > 0 ? `${editing.effects.length} effect${editing.effects.length !== 1 ? 's' : ''}` : 'No effects'}</p>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Name</label>
+                  <input
+                    type="text"
+                    value={editing.name}
+                    onChange={e => setEditing({ ...editing, name: e.target.value })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Description</label>
+                  <RichTextEditor
+                    value={editing.description || ''}
+                    onChange={(value) => setEditing({ ...editing, description: value })}
+                    placeholder="Optional description..."
+                    multiline
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm mb-1">Folder</label>
+                  <select
+                    value={editing.folderId || ''}
+                    onChange={e => setEditing({ ...editing, folderId: e.target.value || undefined })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded"
+                  >
+                    <option value="">Uncategorized</option>
+                    {getFolders('collectibles').map(folder => (
+                      <option key={folder.id} value={folder.id}>{folder.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Pickup Behavior */}
+              <div className="dungeon-panel p-4 rounded space-y-3">
+                <h3 className="text-lg font-bold">Pickup Behavior</h3>
+                <div>
+                  <label className="block text-sm mb-1">Pickup Method</label>
+                  <select
+                    value={editing.pickupMethod}
+                    onChange={e => setEditing({ ...editing, pickupMethod: e.target.value as 'step_on' })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded"
+                  >
+                    <option value="step_on">Step On Tile (Automatic)</option>
+                  </select>
+                  <p className="text-xs text-stone-400 mt-1">Collected when an entity walks onto the tile</p>
+                </div>
+                <div className="space-y-2">
+                  <label className="block text-sm">Who Can Collect</label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editing.pickupPermissions.characters}
+                      onChange={e => setEditing({
+                        ...editing,
+                        pickupPermissions: { ...editing.pickupPermissions, characters: e.target.checked }
+                      })}
+                      className="rounded"
+                    />
+                    <span>Characters (Players)</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editing.pickupPermissions.enemies}
+                      onChange={e => setEditing({
+                        ...editing,
+                        pickupPermissions: { ...editing.pickupPermissions, enemies: e.target.checked }
+                      })}
+                      className="rounded"
+                    />
+                    <span>Enemies</span>
+                  </label>
+                </div>
+                <div className="pt-2 border-t border-stone-700">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editing.preventPlacement || false}
+                      onChange={e => setEditing({ ...editing, preventPlacement: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span>Prevent Character Placement</span>
+                  </label>
+                  <p className="text-xs text-stone-400 mt-1 ml-6">
+                    If enabled, characters cannot be placed on tiles with this collectible during setup (they can still walk over it)
+                  </p>
+                </div>
+              </div>
+
+              {/* Sound */}
+              <div className="dungeon-panel p-4 rounded space-y-3">
+                <h3 className="text-lg font-bold">Sound</h3>
+                <div>
+                  <label className="block text-sm mb-1">Pickup Sound</label>
+                  <select
+                    value={editing.pickupSound || ''}
+                    onChange={e => setEditing({ ...editing, pickupSound: e.target.value || undefined })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded"
+                  >
+                    <option value="">None</option>
+                    {getSoundAssets().map(sound => (
+                      <option key={sound.id} value={sound.id}>{sound.name}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="space-y-6">
+              {/* Sprite */}
+              <div className="dungeon-panel p-4 rounded">
+                <h3 className="text-lg font-bold mb-4">Sprite</h3>
+                <StaticSpriteEditor
+                  sprite={editing.customSprite || {
+                    id: 'sprite_' + Date.now(),
+                    name: 'Collectible Sprite',
+                    type: 'simple',
+                    shape: 'star',
+                    primaryColor: '#ffd700',
+                    size: 0.6,
+                    createdAt: new Date().toISOString(),
+                  }}
+                  onChange={updateSprite}
+                />
+              </div>
+
+              {/* Effects */}
+              <div className="dungeon-panel p-4 rounded">
+                <div className="flex justify-between items-center mb-4">
+                  <h3 className="text-lg font-bold">Effects</h3>
+                  <button
+                    onClick={addEffect}
+                    className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
+                  >
+                    + Add Effect
+                  </button>
+                </div>
+                <p className="text-xs text-stone-400 mb-3">
+                  Effects are applied when the collectible is picked up. You can add multiple effects.
+                </p>
+                <div className="space-y-3">
+                  {editing.effects.map((effect, index) => (
+                    <CollectibleEffectEditor
+                      key={index}
+                      effect={effect}
+                      onChange={(e) => updateEffect(index, e)}
+                      onRemove={() => removeEffect(index)}
+                    />
+                  ))}
+                  {editing.effects.length === 0 && (
+                    <p className="text-stone-500 text-sm italic">
+                      No effects. This collectible will be purely decorative.
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </>
+      ) : null}
+      emptyState={
+        <div className="dungeon-panel p-8 rounded text-center">
+          <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Item Editor</h2>
+          <p className="text-stone-400 mb-6">
+            Create collectible items with custom sprites and effects.
+            <br />
+            Select an item from the list or create a new one.
+          </p>
+          <button
+            onClick={handleNew}
+            className="dungeon-btn-success text-lg"
+          >
+            + Create New Item
+          </button>
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 };
 

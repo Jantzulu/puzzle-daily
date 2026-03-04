@@ -17,6 +17,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
+import { AssetEditorLayout } from './AssetEditorLayout';
 
 export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   // Helper to ensure all characters have a default customSprite
@@ -171,12 +172,20 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
     setEditing({ ...editing, behavior });
   };
 
+  const handleBack = () => {
+    setSelectedId(null);
+    setEditing(null);
+    setIsCreating(false);
+  };
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          {/* Character List - Left Sidebar */}
-          <div className="w-full md:w-72 space-y-4 overflow-hidden">
+    <>
+      <AssetEditorLayout
+        isEditing={!!editing}
+        onBack={handleBack}
+        listTitle="Heroes"
+        listPanel={
+          <>
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold font-medieval text-copper-400">Heroes</h2>
               <button
@@ -292,51 +301,52 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                 ))
               )}
             </div>
-          </div>
-
-          {/* Character Editor - Right Panel */}
-          <div className="flex-1">
-            {editing ? (
-              <div className="space-y-4">
-                {/* Persistent Header */}
-                <div className="dungeon-panel p-4 rounded">
-                  <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0">
-                        <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
-                      </div>
-                      <div>
-                        <h2 className="text-2xl font-bold font-medieval text-copper-400">
-                          {editing.name || 'Unnamed Hero'}
-                        </h2>
-                        <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior.length} actions</p>
-                      </div>
+          </>
+        }
+        detailPanel={
+          editing ? (
+            <>
+              {/* Persistent Header */}
+              <div className="dungeon-panel p-3 md:p-4 rounded">
+                <div className="flex justify-between items-center gap-2">
+                  <div className="flex items-center gap-2 md:gap-4 min-w-0">
+                    <div className="hidden md:flex w-16 h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
+                      <SpriteThumbnail sprite={editing.customSprite} size={64} previewType="entity" />
                     </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={async () => {
-                          const result = await createVersionSnapshot(editing.id, 'character', editing.name, editing as unknown as object);
-                          if (result.success) toast.success(`Saved version #${result.versionNumber}`);
-                          else toast.error('Failed to save version');
-                        }}
-                        className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
-                        title="Save version snapshot"
-                      >
-                        📸
-                      </button>
-                      <button
-                        onClick={() => setShowVersionHistory(true)}
-                        className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
-                        title="Version history"
-                      >
-                        History
-                      </button>
-                      <button onClick={handleSave} className="dungeon-btn-success">
-                        Save Hero
-                      </button>
+                    <div className="min-w-0">
+                      <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
+                        {editing.name || 'Unnamed Hero'}
+                      </h2>
+                      <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior.length} actions</p>
                     </div>
                   </div>
+                  <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
+                    <button
+                      onClick={async () => {
+                        const result = await createVersionSnapshot(editing.id, 'character', editing.name, editing as unknown as object);
+                        if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                        else toast.error('Failed to save version');
+                      }}
+                      className="p-2 md:px-3 md:py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                      title="Save version snapshot"
+                    >
+                      📸
+                    </button>
+                    <button
+                      onClick={() => setShowVersionHistory(true)}
+                      className="p-2 md:px-3 md:py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                      title="Version history"
+                    >
+                      <span className="md:hidden">📜</span>
+                      <span className="hidden md:inline">History</span>
+                    </button>
+                    <button onClick={handleSave} className="dungeon-btn-success text-sm">
+                      <span className="md:hidden">💾</span>
+                      <span className="hidden md:inline">Save Hero</span>
+                    </button>
+                  </div>
                 </div>
+              </div>
 
                 {showVersionHistory && editing && (
                   <VersionHistoryModal
@@ -657,26 +667,26 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                     )}
                   </div>
                 )}
-              </div>
-            ) : (
-              <div className="dungeon-panel p-8 rounded text-center">
-                <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Hero Editor</h2>
-                <p className="text-stone-400 mb-6">
-                  Create and customize heroes with unique sprites and behaviors.
-                  <br />
-                  Select a hero from the list or create a new one.
-                </p>
-                <button
-                  onClick={handleNew}
-                  className="dungeon-btn-success text-lg"
-                >
-                  + Create New Hero
-                </button>
-              </div>
-            )}
+            </>
+          ) : null
+        }
+        emptyState={
+          <div className="dungeon-panel p-8 rounded text-center">
+            <h2 className="text-2xl font-bold font-medieval text-copper-400 mb-4">Hero Editor</h2>
+            <p className="text-stone-400 mb-6">
+              Create and customize heroes with unique sprites and behaviors.
+              <br />
+              Select a hero from the list or create a new one.
+            </p>
+            <button
+              onClick={handleNew}
+              className="dungeon-btn-success text-lg"
+            >
+              + Create New Hero
+            </button>
           </div>
-        </div>
-      </div>
+        }
+      />
 
       {/* Spell Picker Modal */}
       {showSpellPicker !== null && editing && (
@@ -711,7 +721,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
           onCancel={() => setEditingAttack(null)}
         />
       )}
-    </div>
+    </>
   );
 };
 

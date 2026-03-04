@@ -6,6 +6,7 @@ import type { StatusEffectAsset } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
 import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, getFolders, type CustomSprite } from '../../utils/assetStorage';
 import { StatusEffectEditor } from './StatusEffectEditor';
+import { AssetEditorLayout } from './AssetEditorLayout';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
@@ -128,179 +129,180 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
     effect.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const handleBack = () => handleCancel();
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          {/* Effect List - Left Sidebar */}
-          <div className="w-full md:w-72 space-y-4 overflow-hidden">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-bold font-medieval text-copper-400">Enchantments</h2>
-              <button
-                onClick={handleNew}
-                className="dungeon-btn-success text-sm"
-              >
-                + New
-              </button>
-            </div>
+    <AssetEditorLayout
+      isEditing={isCreating || !!editingEffect}
+      onBack={handleBack}
+      listTitle="Enchantments"
+      listPanel={
+        <>
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-bold font-medieval text-copper-400">Enchantments</h2>
+            <button
+              onClick={handleNew}
+              className="dungeon-btn-success text-sm"
+            >
+              + New
+            </button>
+          </div>
 
-            {/* Search */}
-            <input
-              type="text"
-              placeholder="Search..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="dungeon-input w-full"
-            />
+          {/* Search */}
+          <input
+            type="text"
+            placeholder="Search..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="dungeon-input w-full"
+          />
 
-            {/* Folder Filter */}
-            <FolderDropdown
-              category="status_effects"
-              selectedFolderId={selectedFolderId}
-              onFolderSelect={setSelectedFolderId}
-            />
+          {/* Folder Filter */}
+          <FolderDropdown
+            category="status_effects"
+            selectedFolderId={selectedFolderId}
+            onFolderSelect={setSelectedFolderId}
+          />
 
-            <BulkActionBar
-              count={bulk.count}
-              totalCount={filteredEffects.length}
-              onSelectAll={() => bulk.selectAll(filteredEffects.map(e => e.id))}
-              onClear={bulk.clear}
-              onDelete={() => {
-                const nameMap = new Map(effects.map(e => [e.id, e.name]));
-                const deleted = bulkDelete([...bulk.selectedIds], 'status_effect', deleteStatusEffectAsset, nameMap);
-                if (deleted.length) { loadEffects(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingEffect(null); } }
-              }}
-              onMoveToFolder={() => {
-                bulkMoveToFolder([...bulk.selectedIds], 'status_effects', (id: string) => effects.find(e => e.id === id), saveStatusEffectAsset);
-                loadEffects(); bulk.clear();
-              }}
-              onExport={() => {
-                const items = effects.filter(e => bulk.selectedIds.has(e.id));
-                bulkExport(items, 'status-effects-export.json');
-              }}
-            />
+          <BulkActionBar
+            count={bulk.count}
+            totalCount={filteredEffects.length}
+            onSelectAll={() => bulk.selectAll(filteredEffects.map(e => e.id))}
+            onClear={bulk.clear}
+            onDelete={() => {
+              const nameMap = new Map(effects.map(e => [e.id, e.name]));
+              const deleted = bulkDelete([...bulk.selectedIds], 'status_effect', deleteStatusEffectAsset, nameMap);
+              if (deleted.length) { loadEffects(); bulk.clear(); if (selectedId && deleted.includes(selectedId)) { setSelectedId(null); setEditingEffect(null); } }
+            }}
+            onMoveToFolder={() => {
+              bulkMoveToFolder([...bulk.selectedIds], 'status_effects', (id: string) => effects.find(e => e.id === id), saveStatusEffectAsset);
+              loadEffects(); bulk.clear();
+            }}
+            onExport={() => {
+              const items = effects.filter(e => bulk.selectedIds.has(e.id));
+              bulkExport(items, 'status-effects-export.json');
+            }}
+          />
 
-            <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
-              {filteredEffects.length === 0 ? (
-                <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
-                  {searchTerm ? 'No matches' : 'No status effects yet.'}
-                  <br />
-                  {!searchTerm && 'Click "+ New" to create one.'}
-                </div>
-              ) : (
-                filteredEffects.map(effect => (
-                  <div
-                    key={effect.id}
-                    className={`p-3 rounded cursor-pointer transition-colors ${
-                      bulk.isSelected(effect.id) ? 'bg-blue-900/40 border border-blue-500' :
-                      selectedId === effect.id
-                        ? 'bg-arcane-700'
-                        : 'dungeon-panel hover:bg-stone-700'
-                    }`}
-                    onClick={() => handleSelect(effect)}
-                  >
-                    <div className="flex justify-between items-start">
-                      <div className="flex items-start gap-2 min-w-0">
-                        <input
-                          type="checkbox"
-                          checked={bulk.isSelected(effect.id)}
-                          onChange={() => bulk.toggle(effect.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="accent-blue-500 flex-shrink-0"
-                        />
-                        {/* Icon - use SpriteThumbnail if iconSprite has sprite data */}
-                        {effect.iconSprite?.type === 'inline' && effect.iconSprite.spriteData ? (
-                          <div
-                            className="flex-shrink-0 transition-all duration-150"
-                            style={{ width: selectedId === effect.id ? 48 : 32, height: selectedId === effect.id ? 48 : 32 }}
-                          >
-                            <SpriteThumbnail sprite={effect.iconSprite.spriteData as CustomSprite} size={selectedId === effect.id ? 48 : 32} />
-                          </div>
-                        ) : (
-                          <div
-                            className={`${getEffectTypeColor(effect.type)} rounded flex items-center justify-center flex-shrink-0 transition-all duration-150 ${selectedId === effect.id ? 'text-sm' : 'text-xs'}`}
-                            style={{ width: selectedId === effect.id ? 48 : 32, height: selectedId === effect.id ? 48 : 32 }}
-                          >
-                            <span className="text-white font-bold">
-                              {effect.type.charAt(0).toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className="min-w-0">
-                          <h3 className={`font-bold ${scaledNameClass(effect.name || 'Unnamed')}`}>{effect.name || 'Unnamed'}</h3>
-                          <p className="text-xs text-stone-400 capitalize">
-                            {effect.isBuiltIn && <span className="text-stone-500 mr-1">Built-in</span>}
-                            {effect.type.replace('_', ' ')}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-0.5 flex-shrink-0">
-                        {!effect.isBuiltIn && (
-                          <InlineFolderPicker
-                            category="status_effects"
-                            currentFolderId={effect.folderId}
-                            onFolderChange={(folderId) => handleFolderChange(effect.id, folderId)}
-                          />
-                        )}
-                        <button
-                          onClick={(e) => handleDuplicate(effect, e)}
-                          className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
-                          title="Duplicate"
+          <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">
+            {filteredEffects.length === 0 ? (
+              <div className="dungeon-panel p-4 rounded text-center text-stone-400 text-sm">
+                {searchTerm ? 'No matches' : 'No status effects yet.'}
+                <br />
+                {!searchTerm && 'Click "+ New" to create one.'}
+              </div>
+            ) : (
+              filteredEffects.map(effect => (
+                <div
+                  key={effect.id}
+                  className={`p-3 rounded cursor-pointer transition-colors ${
+                    bulk.isSelected(effect.id) ? 'bg-blue-900/40 border border-blue-500' :
+                    selectedId === effect.id
+                      ? 'bg-arcane-700'
+                      : 'dungeon-panel hover:bg-stone-700'
+                  }`}
+                  onClick={() => handleSelect(effect)}
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex items-start gap-2 min-w-0">
+                      <input
+                        type="checkbox"
+                        checked={bulk.isSelected(effect.id)}
+                        onChange={() => bulk.toggle(effect.id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="accent-blue-500 flex-shrink-0"
+                      />
+                      {/* Icon - use SpriteThumbnail if iconSprite has sprite data */}
+                      {effect.iconSprite?.type === 'inline' && effect.iconSprite.spriteData ? (
+                        <div
+                          className="flex-shrink-0 transition-all duration-150"
+                          style={{ width: selectedId === effect.id ? 48 : 32, height: selectedId === effect.id ? 48 : 32 }}
                         >
-                          ⎘
-                        </button>
-                        {!effect.isBuiltIn && (
-                          <button
-                            onClick={(e) => handleDelete(effect.id, e)}
-                            className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                            title="Delete"
-                          >
-                            ✕
-                          </button>
-                        )}
+                          <SpriteThumbnail sprite={effect.iconSprite.spriteData as CustomSprite} size={selectedId === effect.id ? 48 : 32} />
+                        </div>
+                      ) : (
+                        <div
+                          className={`${getEffectTypeColor(effect.type)} rounded flex items-center justify-center flex-shrink-0 transition-all duration-150 ${selectedId === effect.id ? 'text-sm' : 'text-xs'}`}
+                          style={{ width: selectedId === effect.id ? 48 : 32, height: selectedId === effect.id ? 48 : 32 }}
+                        >
+                          <span className="text-white font-bold">
+                            {effect.type.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className="min-w-0">
+                        <h3 className={`font-bold ${scaledNameClass(effect.name || 'Unnamed')}`}>{effect.name || 'Unnamed'}</h3>
+                        <p className="text-xs text-stone-400 capitalize">
+                          {effect.isBuiltIn && <span className="text-stone-500 mr-1">Built-in</span>}
+                          {effect.type.replace('_', ' ')}
+                        </p>
                       </div>
                     </div>
-                    {/* Quick stats */}
-                    <div className="flex gap-2 mt-2 text-xs text-stone-400">
-                      <span>Duration: {effect.defaultDuration}</span>
-                      {effect.defaultValue && <span>Value: {effect.defaultValue}</span>}
-                      <span className="capitalize">{effect.stackingBehavior}</span>
+                    <div className="flex flex-col gap-0.5 flex-shrink-0">
+                      {!effect.isBuiltIn && (
+                        <InlineFolderPicker
+                          category="status_effects"
+                          currentFolderId={effect.folderId}
+                          onFolderChange={(folderId) => handleFolderChange(effect.id, folderId)}
+                        />
+                      )}
+                      <button
+                        onClick={(e) => handleDuplicate(effect, e)}
+                        className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
+                        title="Duplicate"
+                      >
+                        ⎘
+                      </button>
+                      {!effect.isBuiltIn && (
+                        <button
+                          onClick={(e) => handleDelete(effect.id, e)}
+                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
+                          title="Delete"
+                        >
+                          ✕
+                        </button>
+                      )}
                     </div>
                   </div>
-                ))
-              )}
-            </div>
-          </div>
-
-          {/* Effect Editor - Right Panel */}
-          <div className="flex-1">
-            {(isCreating || editingEffect) ? (
-              <StatusEffectEditor
-                effect={editingEffect || undefined}
-                onSave={handleSave}
-                onCancel={handleCancel}
-              />
-            ) : (
-              <div className="dungeon-panel p-8 rounded text-center">
-                <h2 className="text-2xl font-bold mb-4">Status Effect Editor</h2>
-                <p className="text-stone-400 mb-6">
-                  Create status effects that can be applied by spells.
-                  <br />
-                  Effects like poison, stun, sleep, and more can be configured here.
-                  <br />
-                  Select an effect from the list or create a new one.
-                </p>
-                <button
-                  onClick={handleNew}
-                  className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
-                >
-                  + Create New Status Effect
-                </button>
-              </div>
+                  {/* Quick stats */}
+                  <div className="flex gap-2 mt-2 text-xs text-stone-400">
+                    <span>Duration: {effect.defaultDuration}</span>
+                    {effect.defaultValue && <span>Value: {effect.defaultValue}</span>}
+                    <span className="capitalize">{effect.stackingBehavior}</span>
+                  </div>
+                </div>
+              ))
             )}
           </div>
+        </>
+      }
+      detailPanel={
+        <>
+          <StatusEffectEditor
+            effect={editingEffect || undefined}
+            onSave={handleSave}
+            onCancel={handleCancel}
+          />
+        </>
+      }
+      emptyState={
+        <div className="dungeon-panel p-8 rounded text-center">
+          <h2 className="text-2xl font-bold mb-4">Status Effect Editor</h2>
+          <p className="text-stone-400 mb-6">
+            Create status effects that can be applied by spells.
+            <br />
+            Effects like poison, stun, sleep, and more can be configured here.
+            <br />
+            Select an effect from the list or create a new one.
+          </p>
+          <button
+            onClick={handleNew}
+            className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
+          >
+            + Create New Status Effect
+          </button>
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 };

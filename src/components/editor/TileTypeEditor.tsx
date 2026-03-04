@@ -11,6 +11,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
+import { AssetEditorLayout } from './AssetEditorLayout';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -486,6 +487,12 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setIsCreating(true);
   };
 
+  const handleBack = () => {
+    setSelectedId(null);
+    setEditing(null);
+    setIsCreating(false);
+  };
+
   const handleSave = () => {
     if (!editing) return;
     saveTileType(editing);
@@ -664,11 +671,11 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
   };
 
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          {/* Tile Type List */}
-          <div className="w-full md:w-72 space-y-4 overflow-hidden">
+    <AssetEditorLayout
+      isEditing={!!editing}
+      onBack={handleBack}
+      listTitle="Tile Types"
+      listPanel={<>
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold font-medieval text-copper-400">Custom Tile Types</h2>
               <button
@@ -792,12 +799,8 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                 ))
               )}
             </div>
-          </div>
-
-          {/* Tile Type Editor */}
-          <div className="flex-1">
-            {editing ? (
-              <div className="space-y-6">
+      </>}
+      detailPanel={editing ? (<>
                 {/* Header */}
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">
@@ -1417,8 +1420,8 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                     )}
                   </div>
                 )}
-              </div>
-            ) : (
+      </>) : null}
+      emptyState={
               <div className="dungeon-panel p-8 rounded text-center">
                 <h2 className="text-2xl font-bold mb-4">Custom Tile Type Editor</h2>
                 <p className="text-stone-400 mb-6">
@@ -1432,11 +1435,8 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                   + Create New Tile Type
                 </button>
               </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
+      }
+    />
   );
 };
 

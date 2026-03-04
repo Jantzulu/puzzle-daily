@@ -11,6 +11,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
+import { AssetEditorLayout } from './AssetEditorLayout';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -357,12 +358,19 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
 
   const isBuiltIn = editingSkin?.isBuiltIn || false;
 
+  const handleBack = () => {
+    setSelectedSkinId(null);
+    setEditingSkin(null);
+    setIsCreating(false);
+  };
+
   return (
-    <div className="p-4 md:p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="flex flex-col md:flex-row gap-4 md:gap-8">
-          {/* Skin List */}
-          <div className="w-full md:w-72 space-y-4 overflow-hidden">
+    <AssetEditorLayout
+      isEditing={!!editingSkin}
+      onBack={handleBack}
+      listTitle="Skins"
+      listPanel={
+        <>
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-bold font-medieval text-copper-400">Puzzle Skins</h2>
               <button
@@ -494,12 +502,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
               ))
               )}
             </div>
-          </div>
-
-          {/* Skin Editor */}
-          <div className="flex-1">
-            {editingSkin ? (
-              <div className="space-y-6">
+        </>
+      }
+      detailPanel={
+        editingSkin ? (
+          <>
                 {/* Header */}
                 <div className="flex justify-between items-center">
                   <h2 className="text-2xl font-bold">
@@ -1114,25 +1121,24 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                     </div>
                   )}
                 </div>
-              </div>
-            ) : (
-              <div className="dungeon-panel p-8 rounded text-center">
-                <h2 className="text-2xl font-bold mb-4">Puzzle Skin Editor</h2>
-                <p className="text-stone-400 mb-6">
-                  Create custom visual themes for your puzzles. Skins include border decorations
-                  and tile appearances that can be applied to any puzzle.
-                </p>
-                <button
-                  onClick={handleNewSkin}
-                  className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
-                >
-                  + Create New Skin
-                </button>
-              </div>
-            )}
-          </div>
+          </>
+        ) : null
+      }
+      emptyState={
+        <div className="dungeon-panel p-8 rounded text-center">
+          <h2 className="text-2xl font-bold mb-4">Puzzle Skin Editor</h2>
+          <p className="text-stone-400 mb-6">
+            Create custom visual themes for your puzzles. Skins include border decorations
+            and tile appearances that can be applied to any puzzle.
+          </p>
+          <button
+            onClick={handleNewSkin}
+            className="px-6 py-3 bg-moss-700 rounded text-lg hover:bg-moss-600"
+          >
+            + Create New Skin
+          </button>
         </div>
-      </div>
-    </div>
+      }
+    />
   );
 };
