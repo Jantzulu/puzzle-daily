@@ -18,7 +18,7 @@ interface BookLayoutProps {
  */
 export const BookLayout: React.FC<BookLayoutProps> = ({ leftPage, rightPage, chapterTabs, className = '' }) => {
   return (
-    <div className={`relative ${className}`}>
+    <div className={`compendium-wrapper relative ${className}`}>
       {/* Chapter tabs on right edge */}
       {chapterTabs}
 
@@ -61,7 +61,7 @@ interface SinglePageLayoutProps {
  */
 export const SinglePageLayout: React.FC<SinglePageLayoutProps> = ({ children, chapterTabs, className = '' }) => {
   return (
-    <div className={className}>
+    <div className={`compendium-wrapper ${className}`}>
       {/* Horizontal chapter tabs above */}
       {chapterTabs}
 

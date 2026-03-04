@@ -695,20 +695,23 @@ html body.theme-font-active,
    COMPENDIUM BOOK STYLES
    ============================================ */
 
-/* Compendium book container — the open book with two pages */
-.compendium-book {
-  --page-bg: #f2e0b5;
-  --page-bg-dark: #e8d3a0;
+/* Shared compendium variables — available to both desktop and mobile layouts */
+.compendium-wrapper {
+  --page-bg: #c4a67a;
+  --page-bg-dark: #b89768;
   --text-primary: #2a2118;
-  --text-heading: #6b4a24;
-  --text-muted: #8b7a5e;
-  --section-bg: rgba(74, 51, 24, 0.06);
-  --border-warm: rgba(139, 101, 48, 0.25);
+  --text-heading: #4a3318;
+  --text-muted: #6b5a42;
+  --section-bg: rgba(74, 51, 24, 0.08);
+  --border-warm: rgba(74, 51, 24, 0.3);
   --spine-dark: #3d2e1a;
   --spine-light: #5a4530;
-  --corner-color: rgba(139, 101, 48, 0.35);
+  --corner-color: rgba(74, 51, 24, 0.4);
   --page-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+}
 
+/* Compendium book container — the open book with two pages */
+.compendium-book {
   display: flex;
   position: relative;
   background: var(--spine-dark);
@@ -724,6 +727,9 @@ html body.theme-font-active,
   display: block;
   border-radius: 4px;
   background: var(--page-bg);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.3);
 }
 
 /* Book page — left or right */
@@ -859,7 +865,7 @@ html body.theme-font-active,
 
 .compendium-chapter-tab--active {
   background: var(--page-bg);
-  color: #4a3318;
+  color: #3a2510;
   border-bottom-color: transparent;
   font-weight: 700;
 }
@@ -878,9 +884,9 @@ html body.theme-font-active,
 .compendium-chapter-tabs--vertical .compendium-chapter-tab {
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  border-radius: 0 4px 4px 0;
-  padding: 0.75rem 0.4rem;
-  font-size: 0.75rem;
+  border-radius: 0 6px 6px 0;
+  padding: 1rem 0.5rem;
+  font-size: 0.85rem;
   border-left-color: transparent;
 }
 
@@ -962,7 +968,7 @@ html body.theme-font-active,
   width: 100%;
   padding: 0.4rem 0.75rem;
   font-size: 0.875rem;
-  background: rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.2);
   border: 1px solid var(--border-warm);
   border-radius: 3px;
   color: var(--text-primary);
@@ -975,16 +981,16 @@ html body.theme-font-active,
 }
 
 .compendium-search:focus {
-  border-color: rgba(139, 101, 48, 0.5);
-  background: rgba(255, 255, 255, 0.5);
+  border-color: rgba(74, 51, 24, 0.5);
+  background: rgba(255, 255, 255, 0.3);
 }
 
 /* Category accent colors on parchment */
-.compendium-accent-heroes { color: #7a4f1e; }
-.compendium-accent-enemies { color: #8b2020; }
-.compendium-accent-enchantments { color: #5a3a7e; }
-.compendium-accent-tiles { color: #6b4a24; }
-.compendium-accent-items { color: #4a6b30; }
+.compendium-accent-heroes { color: #5c3a10; }
+.compendium-accent-enemies { color: #7a1a1a; }
+.compendium-accent-enchantments { color: #4a2d6a; }
+.compendium-accent-tiles { color: #4a3318; }
+.compendium-accent-items { color: #3a5520; }
 
 /* Empty/placeholder state on parchment */
 .compendium-empty {
