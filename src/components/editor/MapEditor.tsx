@@ -46,6 +46,7 @@ import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/comba
 import { WarningModal } from '../shared/WarningModal';
 import GeneratorDialog from './GeneratorDialog';
 import { vibrate } from '../../utils/haptics';
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -346,6 +347,7 @@ const createDefaultEditorState = (): EditorState => ({
 });
 
 export const MapEditor: React.FC = () => {
+  const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [editorMaxWidth, setEditorMaxWidth] = useState<number | undefined>(undefined);
@@ -442,6 +444,9 @@ export const MapEditor: React.FC = () => {
   const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
   const [showCombatLog, setShowCombatLog] = useState(false);
   const [showDevTools, setShowDevTools] = useState(true);
+  const [toolsPanelOpen, setToolsPanelOpen] = useState(true);
+  const [actionsPanelOpen, setActionsPanelOpen] = useState(true);
+  const [puzzleInfoPanelOpen, setPuzzleInfoPanelOpen] = useState(true);
   const combatLogEndRef = useRef<HTMLDivElement>(null);
   const playtestBoardRef = useRef<HTMLDivElement>(null);
   /** Wraps executeTurn to capture combat log diffs. Call inside setGameState callbacks. */
@@ -3016,63 +3021,35 @@ export const MapEditor: React.FC = () => {
           </div>
         )}
 
-        {/* Header - stacks on mobile */}
-        <div className="mb-4 md:mb-6 space-y-3 md:space-y-0 md:flex md:items-center md:gap-4">
-          <div className="flex items-center justify-between md:justify-start gap-4">
-            <h1 className="text-2xl md:text-4xl font-bold truncate max-w-[300px] md:max-w-[500px]" title={state.puzzleName || 'Map Editor'}>
-              {state.puzzleName || 'Map Editor'}
-            </h1>
-            <button
-              onClick={handlePlaytest}
-              className="px-3 py-1.5 md:px-4 md:py-2 bg-arcane-600 rounded hover:bg-arcane-700 font-bold text-sm md:text-base"
-            >
-              ▶ Play
-            </button>
-          </div>
-
-          {/* Grid Size and Undo/Redo - row on mobile */}
-          <div className="flex items-center gap-2 md:gap-4 flex-wrap">
+        {/* Header - Mobile: centered stack, Desktop: horizontal row */}
+        {/* Mobile header */}
+        <div className="md:hidden mb-4 flex flex-col items-center gap-2">
+          <h1 className="text-xl font-bold font-medieval text-copper-400 truncate max-w-[300px] text-center" title={state.puzzleName || 'Map Editor'}>
+            {state.puzzleName || 'Map Editor'}
+          </h1>
+          <div className="flex items-center gap-2">
             {/* Grid Size */}
-            <div className="flex items-center gap-2 md:gap-3 bg-stone-800 px-3 py-1.5 md:px-4 md:py-2 rounded">
-              <span className="text-xs md:text-sm font-medium text-parchment-300">Grid:</span>
+            <div className="flex items-center gap-2 bg-stone-800 px-3 py-1.5 rounded">
+              <span className="text-xs font-medium text-parchment-300">Grid:</span>
               <div className="flex items-center gap-1">
                 <label className="text-xs text-stone-400">W</label>
                 <div className="flex items-center">
                   <button
                     onClick={() => handleResize(state.gridWidth - 1, state.gridHeight)}
                     disabled={state.gridWidth <= 3}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={widthInput}
+                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                  >−</button>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={widthInput}
                     onChange={(e) => setWidthInput(e.target.value)}
-                    onBlur={() => {
-                      const val = parseInt(widthInput, 10);
-                      if (!isNaN(val) && val >= 3 && val <= 20) {
-                        handleResize(val, state.gridHeight);
-                      } else {
-                        setWidthInput(String(state.gridWidth));
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        (e.target as HTMLInputElement).blur();
-                      }
-                    }}
-                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
+                    onBlur={() => { const val = parseInt(widthInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(val, state.gridHeight); else setWidthInput(String(state.gridWidth)); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    className="w-8 h-7 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
                   />
                   <button
                     onClick={() => handleResize(state.gridWidth + 1, state.gridHeight)}
                     disabled={state.gridWidth >= 20}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
-                  >
-                    +
-                  </button>
+                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                  >+</button>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -3081,70 +3058,111 @@ export const MapEditor: React.FC = () => {
                   <button
                     onClick={() => handleResize(state.gridWidth, state.gridHeight - 1)}
                     disabled={state.gridHeight <= 3}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
-                  >
-                    −
-                  </button>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    pattern="[0-9]*"
-                    value={heightInput}
+                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                  >−</button>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={heightInput}
                     onChange={(e) => setHeightInput(e.target.value)}
-                    onBlur={() => {
-                      const val = parseInt(heightInput, 10);
-                      if (!isNaN(val) && val >= 3 && val <= 20) {
-                        handleResize(state.gridWidth, val);
-                      } else {
-                        setHeightInput(String(state.gridHeight));
-                      }
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') {
-                        (e.target as HTMLInputElement).blur();
-                      }
-                    }}
-                    className="w-8 md:w-10 h-7 md:h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
+                    onBlur={() => { const val = parseInt(heightInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(state.gridWidth, val); else setHeightInput(String(state.gridHeight)); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    className="w-8 h-7 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
                   />
                   <button
                     onClick={() => handleResize(state.gridWidth, state.gridHeight + 1)}
                     disabled={state.gridHeight >= 20}
-                    className="w-6 h-7 md:w-7 md:h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
-                  >
-                    +
-                  </button>
+                    className="w-6 h-7 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                  >+</button>
+                </div>
+              </div>
+            </div>
+            {/* Undo/Redo */}
+            <div className="flex items-center gap-1 bg-stone-800 px-2 py-1 rounded">
+              <button onClick={handleUndo} disabled={!canUndo}
+                className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${canUndo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
+                title="Undo">↩</button>
+              <button onClick={handleRedo} disabled={!canRedo}
+                className={`px-2 py-1.5 rounded text-xs font-medium transition-colors ${canRedo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
+                title="Redo">↪</button>
+            </div>
+          </div>
+          <button
+            onClick={handlePlaytest}
+            className="w-full max-w-xs px-4 py-2.5 bg-arcane-600 rounded hover:bg-arcane-700 font-bold text-sm"
+          >
+            ▶ Playtest
+          </button>
+        </div>
+
+        {/* Desktop header (unchanged) */}
+        <div className="hidden md:flex mb-6 items-center gap-4">
+          <div className="flex items-center justify-start gap-4">
+            <h1 className="text-4xl font-bold truncate max-w-[500px]" title={state.puzzleName || 'Map Editor'}>
+              {state.puzzleName || 'Map Editor'}
+            </h1>
+            <button
+              onClick={handlePlaytest}
+              className="px-4 py-2 bg-arcane-600 rounded hover:bg-arcane-700 font-bold text-base"
+            >
+              ▶ Play
+            </button>
+          </div>
+          <div className="flex items-center gap-4 flex-wrap">
+            {/* Grid Size */}
+            <div className="flex items-center gap-3 bg-stone-800 px-4 py-2 rounded">
+              <span className="text-sm font-medium text-parchment-300">Grid:</span>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-stone-400">W</label>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleResize(state.gridWidth - 1, state.gridHeight)}
+                    disabled={state.gridWidth <= 3}
+                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                  >−</button>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={widthInput}
+                    onChange={(e) => setWidthInput(e.target.value)}
+                    onBlur={() => { const val = parseInt(widthInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(val, state.gridHeight); else setWidthInput(String(state.gridWidth)); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    className="w-10 h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
+                  />
+                  <button
+                    onClick={() => handleResize(state.gridWidth + 1, state.gridHeight)}
+                    disabled={state.gridWidth >= 20}
+                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                  >+</button>
+                </div>
+              </div>
+              <div className="flex items-center gap-1">
+                <label className="text-xs text-stone-400">H</label>
+                <div className="flex items-center">
+                  <button
+                    onClick={() => handleResize(state.gridWidth, state.gridHeight - 1)}
+                    disabled={state.gridHeight <= 3}
+                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-l text-sm font-bold"
+                  >−</button>
+                  <input type="text" inputMode="numeric" pattern="[0-9]*" value={heightInput}
+                    onChange={(e) => setHeightInput(e.target.value)}
+                    onBlur={() => { const val = parseInt(heightInput, 10); if (!isNaN(val) && val >= 3 && val <= 20) handleResize(state.gridWidth, val); else setHeightInput(String(state.gridHeight)); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
+                    className="w-10 h-8 px-1 bg-stone-700 text-sm text-center border-x border-stone-600"
+                  />
+                  <button
+                    onClick={() => handleResize(state.gridWidth, state.gridHeight + 1)}
+                    disabled={state.gridHeight >= 20}
+                    className="w-7 h-8 bg-stone-700 hover:bg-stone-600 disabled:opacity-50 disabled:cursor-not-allowed rounded-r text-sm font-bold"
+                  >+</button>
                 </div>
               </div>
             </div>
             {/* Undo/Redo buttons */}
             <div className="flex items-center gap-1 bg-stone-800 px-2 py-1 rounded">
-              <button
-                onClick={handleUndo}
-                disabled={!canUndo}
-                className={`px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${
-                  canUndo
-                    ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100'
-                    : 'bg-stone-800 text-stone-500 cursor-not-allowed'
-                }`}
-                title="Undo (Ctrl+Z)"
-              >
-                ↩
-              </button>
-              <button
-                onClick={handleRedo}
-                disabled={!canRedo}
-                className={`px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors ${
-                  canRedo
-                    ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100'
-                    : 'bg-stone-800 text-stone-500 cursor-not-allowed'
-                }`}
-                title="Redo (Ctrl+Y)"
-              >
-                ↪
-              </button>
+              <button onClick={handleUndo} disabled={!canUndo}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${canUndo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
+                title="Undo (Ctrl+Z)">↩</button>
+              <button onClick={handleRedo} disabled={!canRedo}
+                className={`px-3 py-1.5 rounded text-sm font-medium transition-colors ${canRedo ? 'bg-stone-700 hover:bg-stone-600 text-parchment-100' : 'bg-stone-800 text-stone-500 cursor-not-allowed'}`}
+                title="Redo (Ctrl+Y)">↪</button>
               <button
                 onClick={() => setShowShortcuts(true)}
-                className="px-2 md:px-3 py-1.5 rounded text-xs md:text-sm font-medium transition-colors bg-stone-700 hover:bg-stone-600 text-stone-400 hover:text-parchment-100 ml-1"
+                className="px-3 py-1.5 rounded text-sm font-medium transition-colors bg-stone-700 hover:bg-stone-600 text-stone-400 hover:text-parchment-100 ml-1"
                 title="Keyboard Shortcuts (?)"
               >
                 {'\u2328'} ?
@@ -3246,8 +3264,14 @@ export const MapEditor: React.FC = () => {
             <div className="space-y-4">
               {/* Tools - At top of left column */}
               <div className="bg-stone-800 p-4 rounded">
-                <h2 className="text-lg font-bold mb-3">Tools</h2>
-                <div className="grid grid-cols-4 gap-2">
+                <button
+                  onClick={() => setToolsPanelOpen(!toolsPanelOpen)}
+                  className="w-full flex items-center justify-between text-lg font-bold"
+                >
+                  <span>Tools</span>
+                  <span className={`md:hidden transition-transform text-sm text-stone-400 ${toolsPanelOpen ? 'rotate-90' : ''}`}>▶</span>
+                </button>
+                {toolsPanelOpen && <div className="grid grid-cols-4 gap-2 mt-3">
                   <button
                     onClick={() => {
                       setCustomTileTypes(getCustomTileTypes()); // Refresh list
@@ -3292,9 +3316,11 @@ export const MapEditor: React.FC = () => {
                   >
                     <span className="text-[10px] opacity-50 mr-0.5">5</span> Heroes
                   </button>
-                </div>
+                </div>}
               </div>
 
+              {/* Tool-specific panels - hidden when Tools panel is collapsed */}
+              {toolsPanelOpen && <>
               {/* Tile Selector - Shows when Tile tool is selected */}
               {(state.selectedTool === 'custom' || state.selectedTool === 'void' || state.selectedTool === 'empty' || state.selectedTool === 'wall') && (() => {
                 const currentSkin = state.skinId ? loadPuzzleSkin(state.skinId) : null;
@@ -3790,13 +3816,21 @@ export const MapEditor: React.FC = () => {
                   )}
                 </div>
               )}
+              </>}
             </div>
 
             {/* Column 2 (Right) - Actions, Puzzle Info, Library */}
             <div className="space-y-4">
               {/* Actions - At top of right column */}
-              <div className="bg-stone-800 p-4 rounded space-y-2">
-                <h2 className="text-lg font-bold mb-2">Actions</h2>
+              <div className="bg-stone-800 p-4 rounded">
+                <button
+                  onClick={() => setActionsPanelOpen(!actionsPanelOpen)}
+                  className="w-full flex items-center justify-between text-lg font-bold"
+                >
+                  <span>Actions</span>
+                  <span className={`md:hidden transition-transform text-sm text-stone-400 ${actionsPanelOpen ? 'rotate-90' : ''}`}>▶</span>
+                </button>
+                {actionsPanelOpen && <div className="space-y-2 mt-2">
                 <button
                   onClick={handleNewPuzzle}
                   className="w-full px-4 py-2 bg-stone-600 rounded hover:bg-stone-700"
@@ -4077,12 +4111,19 @@ export const MapEditor: React.FC = () => {
                     Check status
                   </button>
                 </div>
+                </div>}
               </div>
 
               {/* Puzzle Info - Below Actions */}
               <div className="bg-stone-800 p-4 rounded">
-                <h2 className="text-lg font-bold mb-3">Puzzle Info</h2>
-                <div className="space-y-3">
+                <button
+                  onClick={() => setPuzzleInfoPanelOpen(!puzzleInfoPanelOpen)}
+                  className="w-full flex items-center justify-between text-lg font-bold"
+                >
+                  <span>Puzzle Info</span>
+                  <span className={`md:hidden transition-transform text-sm text-stone-400 ${puzzleInfoPanelOpen ? 'rotate-90' : ''}`}>▶</span>
+                </button>
+                {puzzleInfoPanelOpen && <div className="space-y-3 mt-3">
                   <div>
                     <label className="block text-sm mb-1">Name</label>
                     <input
@@ -4557,7 +4598,7 @@ export const MapEditor: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                </div>
+                </div>}
               </div>
 
             </div>
