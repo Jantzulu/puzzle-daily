@@ -71,7 +71,7 @@ function getMarkerStyle(eventTypes: Set<LogEventType>): { color: string; label: 
   return null;
 }
 
-const iconClass = 'w-[18px] h-[18px] md:w-[22px] md:h-[22px]';
+const iconClass = 'w-5 h-5 md:w-7 md:h-7';
 
 export const ReplayControls: React.FC<ReplayControlsProps> = ({
   currentTurn,
@@ -132,7 +132,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={() => onSeek(0)}
           disabled={atStart}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Jump to start"
         >
           <IconSkipBack className={iconClass} />
@@ -140,14 +140,14 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={onStepBack}
           disabled={atStart}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Step back"
         >
           <IconStepBack className={iconClass} />
         </button>
         <button
           onClick={onPlayPause}
-          className="w-12 h-10 flex items-center justify-center rounded dungeon-btn-primary"
+          className="w-12 h-10 md:w-14 md:h-12 flex items-center justify-center rounded dungeon-btn-primary"
           title={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? <IconPause className={iconClass} /> : <IconPlay className={iconClass} />}
@@ -155,7 +155,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={onStepForward}
           disabled={atEnd}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Step forward"
         >
           <IconStepForward className={iconClass} />
@@ -163,7 +163,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={() => onSeek(totalTurns)}
           disabled={atEnd}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Jump to end"
         >
           <IconSkipForward className={iconClass} />
