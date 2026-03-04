@@ -15,6 +15,7 @@ import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
 import { SchedulingDashboard } from './components/editor/SchedulingDashboard';
 import { SettingsPage } from './components/editor/SettingsPage';
+import { TrainingGrounds } from './components/training/TrainingGrounds';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -277,6 +278,9 @@ function Navigation() {
           <Link to="/compendium" className={linkClass('/compendium')}>
             <span className="mr-1">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
+          <Link to="/training" className={linkClass('/training')}>
+            <span className="mr-1">{'\uD83C\uDFAF'}</span> Training
+          </Link>
           <Link to="/editor" className={linkClass('/editor')}>
             <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
           </Link>
@@ -345,6 +349,13 @@ function Navigation() {
             onClick={() => setMobileMenuOpen(false)}
           >
             <span className="mr-2">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
+          </Link>
+          <Link
+            to="/training"
+            className={`block ${linkClass('/training')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">{'\uD83C\uDFAF'}</span> Training
           </Link>
           <Link
             to="/editor"
@@ -429,6 +440,7 @@ function App() {
           <Route path="/" element={<Game />} />
           <Route path="/login" element={<LoginPage />} />
           <Route path="/compendium" element={<Compendium />} />
+          <Route path="/training" element={<TrainingGrounds />} />
           <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
           <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
           <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />

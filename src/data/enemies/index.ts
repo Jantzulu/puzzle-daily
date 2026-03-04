@@ -2,12 +2,14 @@ import type { Enemy } from '../../types/game';
 import { getCustomEnemies, isAssetHidden, type CustomEnemy } from '../../utils/assetStorage';
 import { migrateActions } from '../../utils/actionMigration';
 import goblinData from './goblin.json';
+import targetDummyData from './target-dummy.json';
 
 // Type that includes both base Enemy and optional customSprite
 export type EnemyWithSprite = Enemy & { customSprite?: CustomEnemy['customSprite'] };
 
 const officialEnemies: Record<string, Enemy> = {
   [goblinData.id]: goblinData as Enemy,
+  [targetDummyData.id]: targetDummyData as Enemy,
 };
 
 export const getEnemy = (id: string): EnemyWithSprite | undefined => {

@@ -308,6 +308,9 @@ interface EditorState {
   tags: string[];
   description: string;
 
+  // Training arena
+  isTraining: boolean;
+
   // Editor state
   selectedTool: ToolType;
   isDrawing: boolean;
@@ -340,6 +343,9 @@ const createDefaultEditorState = (): EditorState => ({
   // Tags & description
   tags: [],
   description: '',
+
+  // Training arena
+  isTraining: false,
 
   selectedTool: 'wall',
   isDrawing: false,
@@ -1379,6 +1385,7 @@ export const MapEditor: React.FC = () => {
       sideQuests: state.sideQuests.length > 0 ? state.sideQuests : undefined,
       tags: state.tags.length > 0 ? state.tags : undefined,
       description: state.description || undefined,
+      isTraining: state.isTraining || undefined,
     };
   };
 
@@ -1470,6 +1477,7 @@ export const MapEditor: React.FC = () => {
       sideQuests: puzzle.sideQuests || [],
       tags: puzzle.tags || [],
       description: puzzle.description || '',
+      isTraining: puzzle.isTraining ?? false,
     }));
 
     setShowLibrary(false);
@@ -1516,6 +1524,7 @@ export const MapEditor: React.FC = () => {
       sideQuests: puzzle.sideQuests || [],
       tags: puzzle.tags || [],
       description: puzzle.description || '',
+      isTraining: puzzle.isTraining ?? false,
     }));
     clearAutoSave();
     setRecoveryData(null);
@@ -1584,6 +1593,7 @@ export const MapEditor: React.FC = () => {
         sideQuests: puzzle.sideQuests || [],
         tags: puzzle.tags || [],
         description: puzzle.description || '',
+        isTraining: puzzle.isTraining ?? false,
       }));
 
       toast.success('Puzzle loaded successfully!');
@@ -4268,6 +4278,18 @@ export const MapEditor: React.FC = () => {
                   </div>
                   <p className="text-xs text-stone-400 mt-1">Lives: 0 = unlimited attempts</p>
 
+                  {/* Training Arena toggle */}
+                  <label className="flex items-center gap-2 mt-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={state.isTraining}
+                      onChange={(e) => setState(prev => ({ ...prev, isTraining: e.target.checked }))}
+                      className="w-4 h-4 accent-copper-500"
+                    />
+                    <span className="text-sm">Training Arena</span>
+                  </label>
+                  <p className="text-xs text-stone-400 mt-0.5">Show in Training Grounds page</p>
+
                   {/* Win Conditions - moved into Puzzle Info */}
                   <div className="pt-3 border-t border-stone-700">
                     <h3 className="text-sm font-semibold mb-2">Win Conditions</h3>
@@ -4744,6 +4766,7 @@ export const MapEditor: React.FC = () => {
             sideQuests: puzzle.sideQuests || [],
             tags: puzzle.tags || [],
             description: puzzle.description || '',
+            isTraining: puzzle.isTraining ?? false,
           }));
           logActivity({
             action: 'update',

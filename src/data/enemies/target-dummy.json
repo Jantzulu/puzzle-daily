@@ -1,0 +1,11 @@
+{
+  "id": "target_dummy_01",
+  "name": "Target Dummy",
+  "spriteId": "",
+  "health": 3,
+  "attackDamage": 0,
+  "behavior": {
+    "type": "static",
+    "defaultFacing": "south"
+  }
+}

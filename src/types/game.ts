@@ -513,6 +513,9 @@ export interface Puzzle {
   // Metadata — tags and description for organization
   tags?: string[];        // User-defined tags (e.g., "tutorial", "hard", "boss")
   description?: string;   // Short description shown in library
+
+  // Training arena flag — shown in Training Grounds page
+  isTraining?: boolean;
 }
 
 export interface PlacedCharacter {
