@@ -15,6 +15,41 @@ interface ReplayControlsProps {
 
 const SPEEDS = [0.5, 1, 2];
 
+// Inline SVG icons — render consistently on all platforms (no emoji rendering)
+const IconSkipBack = () => (
+  <svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor">
+    <rect x="0" y="1" width="2.5" height="12" />
+    <polygon points="15,1 5,7 15,13" />
+  </svg>
+);
+const IconStepBack = () => (
+  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+    <polygon points="12,1 2,7 12,13" />
+  </svg>
+);
+const IconPlay = () => (
+  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+    <polygon points="0,0 12,7 0,14" />
+  </svg>
+);
+const IconPause = () => (
+  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+    <rect x="0" y="0" width="4" height="14" />
+    <rect x="8" y="0" width="4" height="14" />
+  </svg>
+);
+const IconStepForward = () => (
+  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+    <polygon points="0,1 10,7 0,13" />
+  </svg>
+);
+const IconSkipForward = () => (
+  <svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor">
+    <polygon points="1,1 11,7 1,13" />
+    <rect x="13.5" y="1" width="2.5" height="12" />
+  </svg>
+);
+
 export const ReplayControls: React.FC<ReplayControlsProps> = ({
   currentTurn,
   totalTurns,
@@ -64,41 +99,41 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={() => onSeek(0)}
           disabled={atStart}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Jump to start"
         >
-          {'|\u25C0'}
+          <IconSkipBack />
         </button>
         <button
           onClick={onStepBack}
           disabled={atStart}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Step back"
         >
-          {'\u25C0'}
+          <IconStepBack />
         </button>
         <button
           onClick={onPlayPause}
-          className="w-12 h-10 flex items-center justify-center rounded dungeon-btn-primary text-base font-bold"
+          className="w-12 h-10 flex items-center justify-center rounded dungeon-btn-primary"
           title={isPlaying ? 'Pause' : 'Play'}
         >
-          {isPlaying ? '\u275A\u275A' : '\u25B6'}
+          {isPlaying ? <IconPause /> : <IconPlay />}
         </button>
         <button
           onClick={onStepForward}
           disabled={atEnd}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Step forward"
         >
-          {'\u25B6'}
+          <IconStepForward />
         </button>
         <button
           onClick={() => onSeek(totalTurns)}
           disabled={atEnd}
-          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn text-sm font-bold disabled:opacity-30 disabled:cursor-not-allowed"
+          className="w-10 h-10 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
           title="Jump to end"
         >
-          {'\u25B6|'}
+          <IconSkipForward />
         </button>
       </div>
 
