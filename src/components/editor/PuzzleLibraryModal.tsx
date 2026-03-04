@@ -2,7 +2,7 @@ import React, { useState, useMemo, useEffect } from 'react';
 import type { SavedPuzzle } from '../../utils/puzzleStorage';
 import { getPuzzleFolders, addPuzzleFolder, deletePuzzleFolder, setPuzzleFolder } from '../../utils/puzzleStorage';
 import { collectAllTags } from '../shared/TagInput';
-import { publishPuzzle, publishAsset, unpublishPuzzle } from '../../services/supabaseService';
+import { publishPuzzle, publishAsset, unpublishPuzzle, fetchAllPuzzles, submitPuzzleForReview, approvePuzzle } from '../../services/supabaseService';
 import { getPuzzleDependencies } from '../../utils/publishDependencies';
 import { PublishDependencyModal } from './PublishDependencyModal';
 import type { AssetDependency } from '../../utils/publishDependencies';
@@ -43,11 +43,13 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
   const [publishingPuzzle, setPublishingPuzzle] = useState<string | null>(null);
   const [publishDeps, setPublishDeps] = useState<AssetDependency[]>([]);
   const [publishModalPuzzle, setPublishModalPuzzle] = useState<SavedPuzzle | null>(null);
+  const [cloudStatuses, setCloudStatuses] = useState<Record<string, string>>({});
+  const [statusFilter, setStatusFilter] = useState<string | null>(null);
 
   // Collect all unique tags across puzzles
   const allTags = useMemo(() => collectAllTags(puzzles), [puzzles]);
 
-  // Load folders when modal opens
+  // Load folders and cloud statuses when modal opens
   useEffect(() => {
     if (isOpen) {
       setFolders(getPuzzleFolders());
@@ -59,6 +61,13 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
       setMovingPuzzle(null);
       setShowMobileFolders(false);
       setSelectedTags([]);
+      setStatusFilter(null);
+      // Fetch cloud statuses
+      fetchAllPuzzles().then(dbPuzzles => {
+        const statuses: Record<string, string> = {};
+        dbPuzzles.forEach(p => { statuses[p.id] = p.status; });
+        setCloudStatuses(statuses);
+      }).catch(() => {});
     }
   }, [isOpen]);
 
@@ -108,6 +117,11 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
       );
     }
 
+    // Filter by cloud status
+    if (statusFilter) {
+      result = result.filter(p => cloudStatuses[p.id] === statusFilter);
+    }
+
     // Sort
     switch (sortBy) {
       case 'name':
@@ -125,7 +139,7 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
     }
 
     return result;
-  }, [puzzles, searchQuery, sortBy, selectedFolder, folders, selectedTags]);
+  }, [puzzles, searchQuery, sortBy, selectedFolder, folders, selectedTags, statusFilter, cloudStatuses]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -495,6 +509,38 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                 </div>
               )}
 
+              {/* Status filter pills */}
+              {Object.keys(cloudStatuses).length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {([
+                    { key: 'draft', label: 'Draft', color: 'stone' },
+                    { key: 'pending_review', label: 'In Review', color: 'amber' },
+                    { key: 'approved', label: 'Approved', color: 'green' },
+                    { key: 'published', label: 'Published', color: 'copper' },
+                  ] as const).map(({ key, label, color }) => (
+                    <button
+                      key={key}
+                      onClick={() => setStatusFilter(prev => prev === key ? null : key)}
+                      className={`px-2 py-0.5 text-xs rounded-full border transition-colors ${
+                        statusFilter === key
+                          ? `bg-${color}-600/40 border-${color}-500/50 text-${color}-300`
+                          : 'bg-stone-800 border-stone-600 text-stone-400 hover:border-stone-500'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                  {statusFilter && (
+                    <button
+                      onClick={() => setStatusFilter(null)}
+                      className="px-2 py-0.5 text-xs text-stone-500 hover:text-stone-300"
+                    >
+                      Clear
+                    </button>
+                  )}
+                </div>
+              )}
+
               {/* Stats - hidden on mobile, shown in desktop sidebar context */}
               <div className="hidden sm:flex items-center justify-between text-sm text-stone-400">
                 <span className="md:hidden">{getFolderDisplayName()}</span>
@@ -607,6 +653,19 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                                   {puzzle.folder}
                                 </span>
                               )}
+                              {cloudStatuses[puzzle.id] && cloudStatuses[puzzle.id] !== 'draft' && (
+                                <span className={`px-1.5 py-0.5 text-xs rounded flex-shrink-0 ${
+                                  cloudStatuses[puzzle.id] === 'published' ? 'bg-copper-600/30 text-copper-400' :
+                                  cloudStatuses[puzzle.id] === 'approved' ? 'bg-green-600/30 text-green-400' :
+                                  cloudStatuses[puzzle.id] === 'pending_review' ? 'bg-amber-600/30 text-amber-400' :
+                                  'bg-stone-700 text-stone-400'
+                                }`}>
+                                  {cloudStatuses[puzzle.id] === 'published' ? 'Published' :
+                                   cloudStatuses[puzzle.id] === 'approved' ? 'Approved' :
+                                   cloudStatuses[puzzle.id] === 'pending_review' ? 'In Review' :
+                                   cloudStatuses[puzzle.id]}
+                                </span>
+                              )}
                             </div>
                             <div className="flex items-center gap-2 sm:gap-3 text-xs sm:text-sm text-stone-400 mt-1">
                               <span>{puzzle.width}x{puzzle.height}</span>
@@ -636,24 +695,76 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
                               </svg>
                             </button>
-                            <button
-                              onClick={async () => {
-                                setPublishingPuzzle(puzzle.id);
-                                try {
-                                  const deps = await getPuzzleDependencies(puzzle);
-                                  setPublishDeps(deps);
-                                  setPublishModalPuzzle(puzzle);
-                                } catch {
-                                  toast.error('Failed to check dependencies');
-                                }
-                                setPublishingPuzzle(null);
-                              }}
-                              className="p-2 sm:px-2 sm:py-1.5 text-sm bg-green-700/50 rounded hover:bg-green-600 text-green-400 hover:text-white"
-                              title="Publish puzzle"
-                              disabled={publishingPuzzle === puzzle.id}
-                            >
-                              {publishingPuzzle === puzzle.id ? '⏳' : '🚀'}
-                            </button>
+                            {/* Status-aware action button */}
+                            {cloudStatuses[puzzle.id] === 'approved' ? (
+                              <button
+                                onClick={async () => {
+                                  setPublishingPuzzle(puzzle.id);
+                                  try {
+                                    const deps = await getPuzzleDependencies(puzzle);
+                                    setPublishDeps(deps);
+                                    setPublishModalPuzzle(puzzle);
+                                  } catch {
+                                    toast.error('Failed to check dependencies');
+                                  }
+                                  setPublishingPuzzle(null);
+                                }}
+                                className="p-2 sm:px-2 sm:py-1.5 text-sm bg-green-700/50 rounded hover:bg-green-600 text-green-400 hover:text-white"
+                                title="Publish puzzle"
+                                disabled={publishingPuzzle === puzzle.id}
+                              >
+                                {publishingPuzzle === puzzle.id ? '⏳' : '🚀'}
+                              </button>
+                            ) : cloudStatuses[puzzle.id] === 'published' ? (
+                              <button
+                                onClick={async () => {
+                                  if (!confirm('Unpublish this puzzle?')) return;
+                                  const success = await unpublishPuzzle(puzzle.id);
+                                  if (success) {
+                                    setCloudStatuses(prev => ({ ...prev, [puzzle.id]: 'draft' }));
+                                    toast.success('Unpublished');
+                                  } else {
+                                    toast.error('Failed to unpublish');
+                                  }
+                                }}
+                                className="p-2 sm:px-2 sm:py-1.5 text-sm bg-stone-700 rounded hover:bg-red-600/80 text-stone-400 hover:text-white"
+                                title="Unpublish puzzle"
+                              >
+                                ▼
+                              </button>
+                            ) : (cloudStatuses[puzzle.id] === 'draft' || !cloudStatuses[puzzle.id]) ? (
+                              <button
+                                onClick={async () => {
+                                  const success = await submitPuzzleForReview(puzzle.id, puzzle.name);
+                                  if (success) {
+                                    setCloudStatuses(prev => ({ ...prev, [puzzle.id]: 'pending_review' }));
+                                    toast.success('Submitted for review');
+                                  } else {
+                                    toast.error('Failed to submit');
+                                  }
+                                }}
+                                className="p-2 sm:px-2 sm:py-1.5 text-sm bg-amber-700/50 rounded hover:bg-amber-600 text-amber-400 hover:text-white"
+                                title="Submit for review"
+                              >
+                                📋
+                              </button>
+                            ) : cloudStatuses[puzzle.id] === 'pending_review' ? (
+                              <button
+                                onClick={async () => {
+                                  const success = await approvePuzzle(puzzle.id, puzzle.name);
+                                  if (success) {
+                                    setCloudStatuses(prev => ({ ...prev, [puzzle.id]: 'approved' }));
+                                    toast.success('Approved!');
+                                  } else {
+                                    toast.error('Failed to approve');
+                                  }
+                                }}
+                                className="p-2 sm:px-2 sm:py-1.5 text-sm bg-green-700/50 rounded hover:bg-green-600 text-green-400 hover:text-white"
+                                title="Approve puzzle"
+                              >
+                                ✓
+                              </button>
+                            ) : null}
                             <button
                               onClick={() => handleLoad(puzzle.id)}
                               className="flex-1 sm:flex-none px-4 py-2 sm:py-1.5 text-sm bg-blue-600 rounded hover:bg-blue-700 font-medium"

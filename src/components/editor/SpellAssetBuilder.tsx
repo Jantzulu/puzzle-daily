@@ -5,6 +5,8 @@ import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
+import { VersionHistoryModal } from './VersionHistoryModal';
+import { createVersionSnapshot } from '../../services/versionService';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -710,6 +712,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   });
 
   const thumbnailInputRef = useRef<HTMLInputElement>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   // Thumbnail URL state
   const [showThumbnailUrl, setShowThumbnailUrl] = useState(false);
@@ -826,6 +829,28 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           </h2>
         </div>
         <div className="flex gap-3">
+          {spell && (
+            <>
+              <button
+                onClick={async () => {
+                  const result = await createVersionSnapshot(editedSpell.id, 'spell', editedSpell.name, editedSpell as unknown as object);
+                  if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                  else toast.error('Failed to save version');
+                }}
+                className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                title="Save version snapshot"
+              >
+                📸
+              </button>
+              <button
+                onClick={() => setShowVersionHistory(true)}
+                className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                title="Version history"
+              >
+                History
+              </button>
+            </>
+          )}
           <button
             onClick={handleSave}
             className="px-4 py-2 bg-green-600 rounded hover:bg-green-700"
@@ -840,6 +865,18 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           </button>
         </div>
       </div>
+
+      {showVersionHistory && spell && (
+        <VersionHistoryModal
+          isOpen={showVersionHistory}
+          onClose={() => setShowVersionHistory(false)}
+          assetId={editedSpell.id}
+          assetType="spell"
+          assetName={editedSpell.name}
+          currentData={editedSpell as unknown as object}
+          onRestore={(data) => setEditedSpell(data as unknown as SpellAsset)}
+        />
+      )}
 
         <div className="space-y-6">
           {/* Basic Info */}

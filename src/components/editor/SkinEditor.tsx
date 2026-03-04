@@ -8,6 +8,8 @@ import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderD
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
+import { VersionHistoryModal } from './VersionHistoryModal';
+import { createVersionSnapshot } from '../../services/versionService';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -59,6 +61,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const bulk = useBulkSelect();
 
@@ -506,14 +509,50 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                     {isCreating ? 'Create New Skin' : `Edit: ${editingSkin.name}`}
                   </h2>
                   {!isBuiltIn && (
-                    <button
-                      onClick={handleSaveSkin}
-                      className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
-                    >
-                      Save Skin
-                    </button>
+                    <div className="flex gap-2">
+                      {!isCreating && (
+                        <>
+                          <button
+                            onClick={async () => {
+                              const result = await createVersionSnapshot(editingSkin.id, 'skin', editingSkin.name, editingSkin as unknown as object);
+                              if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                              else toast.error('Failed to save version');
+                            }}
+                            className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                            title="Save version snapshot"
+                          >
+                            📸
+                          </button>
+                          <button
+                            onClick={() => setShowVersionHistory(true)}
+                            className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                            title="Version history"
+                          >
+                            History
+                          </button>
+                        </>
+                      )}
+                      <button
+                        onClick={handleSaveSkin}
+                        className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
+                      >
+                        Save Skin
+                      </button>
+                    </div>
                   )}
                 </div>
+
+                {showVersionHistory && editingSkin && !isBuiltIn && (
+                  <VersionHistoryModal
+                    isOpen={showVersionHistory}
+                    onClose={() => setShowVersionHistory(false)}
+                    assetId={editingSkin.id}
+                    assetType="skin"
+                    assetName={editingSkin.name}
+                    currentData={editingSkin as unknown as object}
+                    onRestore={(data) => setEditingSkin(data as unknown as PuzzleSkin)}
+                  />
+                )}
 
                 {isBuiltIn && (
                   <div className="bg-yellow-900/50 p-3 rounded text-yellow-200 text-sm">

@@ -31,8 +31,11 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { TagInput, collectAllTags } from '../shared/TagInput';
 import { suggestTags } from '../../utils/puzzleTagSuggestions';
 import { getPuzzleDependencies, type AssetDependency } from '../../utils/publishDependencies';
-import { publishPuzzle, publishAsset, unpublishPuzzle, isPuzzlePublished } from '../../services/supabaseService';
+import { publishPuzzle, publishAsset, unpublishPuzzle, isPuzzlePublished, getPuzzleDraftStatus, submitPuzzleForReview, approvePuzzle, requestPuzzleChanges } from '../../services/supabaseService';
 import { PublishDependencyModal } from './PublishDependencyModal';
+import { VersionHistoryModal } from './VersionHistoryModal';
+import { createVersionSnapshot } from '../../services/versionService';
+import { logActivity } from '../../services/activityLogService';
 import { createHistoryManager } from '../../utils/historyManager';
 import { loadImage, subscribeToImageLoads } from '../../utils/imageLoader';
 import { subscribeToSpriteImageLoads } from './SpriteEditor';
@@ -395,9 +398,14 @@ export const MapEditor: React.FC = () => {
   const [showLibrary, setShowLibrary] = useState(false);
 
   // Publishing state
-  const [publishStatus, setPublishStatus] = useState<'draft' | 'published' | 'checking' | null>(null);
+  const [publishStatus, setPublishStatus] = useState<'draft' | 'pending_review' | 'approved' | 'published' | 'checking' | null>(null);
+  const [reviewNotes, setReviewNotes] = useState('');
+  const [showReviewNotes, setShowReviewNotes] = useState(false);
   const [showPublishModal, setShowPublishModal] = useState(false);
   const [publishDeps, setPublishDeps] = useState<AssetDependency[]>([]);
+
+  // Version history state
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   // History manager for undo/redo
   const historyRef = useRef(createHistoryManager({
@@ -3848,42 +3856,155 @@ export const MapEditor: React.FC = () => {
                   Generate Puzzle
                 </button>
 
-                {/* Publishing */}
+                {/* Version History */}
+                <div className="border-t border-stone-700 pt-3 mt-1">
+                  <label className="text-sm font-medium block mb-2">Versions</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        const puzzle = getCurrentPuzzle();
+                        const result = await createVersionSnapshot(
+                          state.puzzleId,
+                          'puzzle',
+                          state.puzzleName || 'Untitled',
+                          puzzle as unknown as object
+                        );
+                        if (result.success) {
+                          toast.success(`Saved version #${result.versionNumber}`);
+                          logActivity({
+                            action: 'update',
+                            asset_type: 'puzzle',
+                            asset_id: state.puzzleId,
+                            asset_name: state.puzzleName,
+                            details: { saved_version: result.versionNumber },
+                          });
+                        } else {
+                          toast.error('Failed to save version');
+                        }
+                      }}
+                      className="flex-1 px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30 font-medium"
+                    >
+                      📸 Save Version
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowVersionHistory(true)}
+                      className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                    >
+                      History
+                    </button>
+                  </div>
+                </div>
+
+                {/* Publishing & Review Workflow */}
                 <div className="border-t border-stone-700 pt-3 mt-1">
                   <div className="flex items-center justify-between mb-2">
                     <label className="text-sm font-medium">Publishing</label>
                     {publishStatus === 'published' && (
-                      <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/30 text-green-400 border border-green-500/30">
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-copper-600/30 text-copper-400 border border-copper-500/30">
                         Published
                       </span>
                     )}
-                    {publishStatus === 'draft' && (
+                    {publishStatus === 'approved' && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-green-600/30 text-green-400 border border-green-500/30">
+                        Approved
+                      </span>
+                    )}
+                    {publishStatus === 'pending_review' && (
+                      <span className="px-2 py-0.5 text-xs rounded-full bg-amber-600/30 text-amber-400 border border-amber-500/30">
+                        In Review
+                      </span>
+                    )}
+                    {(publishStatus === 'draft' || publishStatus === null) && publishStatus !== 'checking' && (
                       <span className="px-2 py-0.5 text-xs rounded-full bg-stone-600/30 text-stone-400 border border-stone-500/30">
                         Draft
                       </span>
                     )}
                   </div>
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={async () => {
-                        setPublishStatus('checking');
-                        try {
-                          const puzzle = getCurrentPuzzle();
-                          const deps = await getPuzzleDependencies(puzzle);
-                          setPublishDeps(deps);
-                          setShowPublishModal(true);
-                        } catch (err) {
-                          toast.error('Failed to check dependencies');
-                          console.error(err);
-                        }
-                        setPublishStatus(publishStatus);
-                      }}
-                      className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
-                      disabled={publishStatus === 'checking'}
-                    >
-                      {publishStatus === 'checking' ? 'Checking...' : '🚀 Publish'}
-                    </button>
+
+                  <div className="space-y-2">
+                    {/* Draft state: Submit for Review */}
+                    {(publishStatus === 'draft' || publishStatus === null) && (
+                      <button
+                        type="button"
+                        onClick={async () => {
+                          const success = await submitPuzzleForReview(state.puzzleId, state.puzzleName);
+                          if (success) {
+                            setPublishStatus('pending_review');
+                            toast.success('Submitted for review');
+                          } else {
+                            toast.error('Failed to submit for review');
+                          }
+                        }}
+                        className="w-full px-3 py-1.5 text-sm bg-amber-600/80 hover:bg-amber-600 rounded font-medium text-white"
+                      >
+                        📋 Submit for Review
+                      </button>
+                    )}
+
+                    {/* Pending Review state: Approve / Request Changes */}
+                    {publishStatus === 'pending_review' && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            const success = await approvePuzzle(state.puzzleId, state.puzzleName);
+                            if (success) {
+                              setPublishStatus('approved');
+                              toast.success('Puzzle approved!');
+                            } else {
+                              toast.error('Failed to approve');
+                            }
+                          }}
+                          className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
+                        >
+                          ✓ Approve
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowReviewNotes(true)}
+                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                        >
+                          Request Changes
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Approved state: Publish / Request Changes */}
+                    {publishStatus === 'approved' && (
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            setPublishStatus('checking');
+                            try {
+                              const puzzle = getCurrentPuzzle();
+                              const deps = await getPuzzleDependencies(puzzle);
+                              setPublishDeps(deps);
+                              setShowPublishModal(true);
+                            } catch (err) {
+                              toast.error('Failed to check dependencies');
+                              console.error(err);
+                            }
+                            setPublishStatus('approved');
+                          }}
+                          className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
+                          disabled={publishStatus === 'checking'}
+                        >
+                          🚀 Publish
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowReviewNotes(true)}
+                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                        >
+                          Request Changes
+                        </button>
+                      </div>
+                    )}
+
+                    {/* Published state: Unpublish */}
                     {publishStatus === 'published' && (
                       <button
                         type="button"
@@ -3897,17 +4018,57 @@ export const MapEditor: React.FC = () => {
                             toast.error('Failed to unpublish');
                           }
                         }}
-                        className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-red-600/80 rounded text-stone-400 hover:text-white"
+                        className="w-full px-3 py-1.5 text-sm bg-stone-700 hover:bg-red-600/80 rounded text-stone-400 hover:text-white"
                       >
                         Unpublish
                       </button>
                     )}
+
+                    {/* Review notes input */}
+                    {showReviewNotes && (
+                      <div className="bg-stone-800/50 rounded p-2 space-y-2 border border-stone-700/50">
+                        <textarea
+                          value={reviewNotes}
+                          onChange={(e) => setReviewNotes(e.target.value)}
+                          placeholder="What needs to change?"
+                          rows={2}
+                          className="w-full px-2 py-1.5 bg-stone-700 rounded text-sm resize-none"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              const success = await requestPuzzleChanges(state.puzzleId, state.puzzleName, reviewNotes || undefined);
+                              if (success) {
+                                setPublishStatus('draft');
+                                setShowReviewNotes(false);
+                                setReviewNotes('');
+                                toast.success('Sent back for changes');
+                              } else {
+                                toast.error('Failed to request changes');
+                              }
+                            }}
+                            className="flex-1 px-2 py-1 text-xs bg-red-600/30 hover:bg-red-600/50 text-red-300 rounded border border-red-500/30"
+                          >
+                            Send Back
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => { setShowReviewNotes(false); setReviewNotes(''); }}
+                            className="px-2 py-1 text-xs bg-stone-700 hover:bg-stone-600 rounded"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    )}
                   </div>
+
                   <button
                     type="button"
                     onClick={async () => {
-                      const isLive = await isPuzzlePublished(state.puzzleId);
-                      setPublishStatus(isLive ? 'published' : 'draft');
+                      const status = await getPuzzleDraftStatus(state.puzzleId);
+                      setPublishStatus(status || 'draft');
                     }}
                     className="text-xs text-stone-500 hover:text-stone-300 mt-1"
                   >
@@ -4504,6 +4665,49 @@ export const MapEditor: React.FC = () => {
               console.error('Failed to re-check deps:', err);
             }
           }, 100);
+        }}
+      />
+
+      {/* Version History Modal */}
+      <VersionHistoryModal
+        isOpen={showVersionHistory}
+        onClose={() => setShowVersionHistory(false)}
+        assetId={state.puzzleId}
+        assetType="puzzle"
+        assetName={state.puzzleName || 'Untitled'}
+        currentData={getCurrentPuzzle() as unknown as object}
+        onRestore={(data) => {
+          const puzzle = data as unknown as Puzzle;
+          setState(prev => ({
+            ...prev,
+            gridWidth: puzzle.width,
+            gridHeight: puzzle.height,
+            tiles: puzzle.tiles,
+            enemies: puzzle.enemies,
+            collectibles: puzzle.collectibles,
+            placedObjects: puzzle.placedObjects || [],
+            puzzleName: puzzle.name,
+            maxCharacters: puzzle.maxCharacters,
+            maxPlaceableCharacters: puzzle.maxPlaceableCharacters,
+            maxTurns: puzzle.maxTurns,
+            lives: puzzle.lives ?? 3,
+            availableCharacters: puzzle.availableCharacters.filter(id => getCharacter(id) != null),
+            winConditions: puzzle.winConditions,
+            skinId: puzzle.skinId || 'builtin_dungeon',
+            backgroundMusicId: puzzle.backgroundMusicId,
+            parCharacters: puzzle.parCharacters,
+            parTurns: puzzle.parTurns,
+            sideQuests: puzzle.sideQuests || [],
+            tags: puzzle.tags || [],
+            description: puzzle.description || '',
+          }));
+          logActivity({
+            action: 'update',
+            asset_type: 'puzzle',
+            asset_id: state.puzzleId,
+            asset_name: state.puzzleName,
+            details: { restored_from_version: true },
+          });
         }}
       />
 

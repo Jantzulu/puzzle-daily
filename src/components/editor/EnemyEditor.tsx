@@ -13,6 +13,8 @@ import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderD
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
+import { VersionHistoryModal } from './VersionHistoryModal';
+import { createVersionSnapshot } from '../../services/versionService';
 
 export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const refreshEnemies = () => getAllEnemies().map(e => ({
@@ -30,6 +32,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const bulk = useBulkSelect();
 
   // Filter enemies based on folder and search term
@@ -289,11 +292,43 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         <p className="text-xs text-stone-400">HP: {editing.health} • {editing.behavior?.type || 'static'}</p>
                       </div>
                     </div>
-                    <button onClick={handleSave} className="dungeon-btn-success">
-                      Save Enemy
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                          const result = await createVersionSnapshot(editing.id, 'enemy', editing.name, editing as unknown as object);
+                          if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                          else toast.error('Failed to save version');
+                        }}
+                        className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                        title="Save version snapshot"
+                      >
+                        📸
+                      </button>
+                      <button
+                        onClick={() => setShowVersionHistory(true)}
+                        className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                        title="Version history"
+                      >
+                        History
+                      </button>
+                      <button onClick={handleSave} className="dungeon-btn-success">
+                        Save Enemy
+                      </button>
+                    </div>
                   </div>
                 </div>
+
+                {showVersionHistory && editing && (
+                  <VersionHistoryModal
+                    isOpen={showVersionHistory}
+                    onClose={() => setShowVersionHistory(false)}
+                    assetId={editing.id}
+                    assetType="enemy"
+                    assetName={editing.name}
+                    currentData={editing as unknown as object}
+                    onRestore={(data) => setEditing(data as unknown as CustomEnemy)}
+                  />
+                )}
 
                 {/* Tab Bar */}
                 <div className="flex gap-1">

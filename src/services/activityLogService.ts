@@ -2,7 +2,7 @@ import { supabase } from '../lib/supabase';
 
 export interface ActivityEntry {
   user_id?: string;
-  action: 'create' | 'update' | 'delete' | 'publish' | 'unpublish' | 'batch_publish' | 'schedule' | 'unschedule' | 'sync_push' | 'sync_pull';
+  action: 'create' | 'update' | 'delete' | 'publish' | 'unpublish' | 'batch_publish' | 'schedule' | 'unschedule' | 'sync_push' | 'sync_pull' | 'submit_review' | 'approve' | 'request_changes';
   asset_type?: string;
   asset_id?: string;
   asset_name?: string;

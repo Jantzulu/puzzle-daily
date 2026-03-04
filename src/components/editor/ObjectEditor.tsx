@@ -8,6 +8,8 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
+import { VersionHistoryModal } from './VersionHistoryModal';
+import { createVersionSnapshot } from '../../services/versionService';
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
   { value: 'center', label: 'Center', description: 'Sprite center aligned to tile center' },
@@ -41,6 +43,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
   const bulk = useBulkSelect();
 
   // Filter objects based on folder and search term
@@ -309,13 +312,49 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                   <h2 className="text-2xl font-bold">
                     {isCreating ? 'Create New Object' : `Edit: ${editing.name}`}
                   </h2>
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
-                  >
-                    Save Object
-                  </button>
+                  <div className="flex gap-2">
+                    {!isCreating && (
+                      <>
+                        <button
+                          onClick={async () => {
+                            const result = await createVersionSnapshot(editing.id, 'object', editing.name, editing as unknown as object);
+                            if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                            else toast.error('Failed to save version');
+                          }}
+                          className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                          title="Save version snapshot"
+                        >
+                          📸
+                        </button>
+                        <button
+                          onClick={() => setShowVersionHistory(true)}
+                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                          title="Version history"
+                        >
+                          History
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={handleSave}
+                      className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
+                    >
+                      Save Object
+                    </button>
+                  </div>
                 </div>
+
+                {showVersionHistory && editing && (
+                  <VersionHistoryModal
+                    isOpen={showVersionHistory}
+                    onClose={() => setShowVersionHistory(false)}
+                    assetId={editing.id}
+                    assetType="object"
+                    assetName={editing.name}
+                    currentData={editing as unknown as object}
+                    onRestore={(data) => setEditing(data as unknown as CustomObject)}
+                  />
+                )}
 
                 {/* Basic Info */}
                 <div className="dungeon-panel p-4 rounded space-y-3">

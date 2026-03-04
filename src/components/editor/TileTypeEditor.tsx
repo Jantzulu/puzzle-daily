@@ -8,6 +8,8 @@ import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderD
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
+import { VersionHistoryModal } from './VersionHistoryModal';
+import { createVersionSnapshot } from '../../services/versionService';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -434,6 +436,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
   const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showVersionHistory, setShowVersionHistory] = useState(false);
 
   // URL input states for sprite uploads
   const [showSpriteUrl, setShowSpriteUrl] = useState(false);
@@ -799,13 +802,49 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                   <h2 className="text-2xl font-bold">
                     {isCreating ? 'Create New Tile Type' : `Edit: ${editing.name}`}
                   </h2>
-                  <button
-                    onClick={handleSave}
-                    className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
-                  >
-                    Save Tile Type
-                  </button>
+                  <div className="flex gap-2">
+                    {!isCreating && (
+                      <>
+                        <button
+                          onClick={async () => {
+                            const result = await createVersionSnapshot(editing.id, 'tile_type', editing.name, editing as unknown as object);
+                            if (result.success) toast.success(`Saved version #${result.versionNumber}`);
+                            else toast.error('Failed to save version');
+                          }}
+                          className="px-3 py-1.5 text-sm bg-copper-600/20 hover:bg-copper-600/30 text-copper-300 rounded border border-copper-500/30"
+                          title="Save version snapshot"
+                        >
+                          📸
+                        </button>
+                        <button
+                          onClick={() => setShowVersionHistory(true)}
+                          className="px-3 py-1.5 text-sm bg-stone-700 hover:bg-stone-600 rounded"
+                          title="Version history"
+                        >
+                          History
+                        </button>
+                      </>
+                    )}
+                    <button
+                      onClick={handleSave}
+                      className="px-4 py-2 bg-moss-700 rounded hover:bg-moss-600"
+                    >
+                      Save Tile Type
+                    </button>
+                  </div>
                 </div>
+
+                {showVersionHistory && editing && (
+                  <VersionHistoryModal
+                    isOpen={showVersionHistory}
+                    onClose={() => setShowVersionHistory(false)}
+                    assetId={editing.id}
+                    assetType="tile_type"
+                    assetName={editing.name}
+                    currentData={editing as unknown as object}
+                    onRestore={(data) => setEditing(data as unknown as CustomTileType)}
+                  />
+                )}
 
                 {/* Basic Info */}
                 <div className="dungeon-panel p-4 rounded space-y-3">

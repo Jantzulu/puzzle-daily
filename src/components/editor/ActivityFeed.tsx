@@ -12,6 +12,9 @@ const ACTION_COLORS: Record<string, string> = {
   unschedule: 'text-amber-400',
   sync_push: 'text-sky-400',
   sync_pull: 'text-amber-400',
+  submit_review: 'text-amber-400',
+  approve: 'text-green-400',
+  request_changes: 'text-red-400',
 };
 
 const ACTION_ICONS: Record<string, string> = {
@@ -25,6 +28,9 @@ const ACTION_ICONS: Record<string, string> = {
   unschedule: '📅',
   sync_push: '↑',
   sync_pull: '↓',
+  submit_review: '📋',
+  approve: '✓',
+  request_changes: '↩',
 };
 
 function formatRelativeTime(dateStr: string): string {
@@ -54,6 +60,9 @@ function formatAction(record: ActivityRecord): string {
     : record.action === 'unschedule' ? 'unscheduled'
     : record.action === 'sync_push' ? 'pushed to cloud'
     : record.action === 'sync_pull' ? 'pulled from cloud'
+    : record.action === 'submit_review' ? 'submitted for review'
+    : record.action === 'approve' ? 'approved'
+    : record.action === 'request_changes' ? 'requested changes on'
     : record.action;
 
   const type = record.asset_type?.replace(/_/g, ' ') || '';
@@ -148,6 +157,11 @@ export const ActivityFeed: React.FC = () => {
                     {formatAction(record)}
                   </span>
                 </div>
+                {record.details && (record.details as Record<string, unknown>).notes && (
+                  <div className="text-[10px] text-stone-500 italic mt-0.5 truncate">
+                    "{String((record.details as Record<string, unknown>).notes)}"
+                  </div>
+                )}
                 <div className="text-[10px] text-stone-600">
                   {formatRelativeTime(record.created_at)}
                 </div>

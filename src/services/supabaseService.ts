@@ -108,6 +108,34 @@ export async function updatePuzzleStatus(id: string, status: DbPuzzle['status'])
 }
 
 // ============================================
+// REVIEW WORKFLOW
+// ============================================
+
+export async function submitPuzzleForReview(id: string, name?: string): Promise<boolean> {
+  const success = await updatePuzzleStatus(id, 'pending_review');
+  if (success) {
+    logActivity({ action: 'submit_review', asset_type: 'puzzle', asset_id: id, asset_name: name });
+  }
+  return success;
+}
+
+export async function approvePuzzle(id: string, name?: string, notes?: string): Promise<boolean> {
+  const success = await updatePuzzleStatus(id, 'approved');
+  if (success) {
+    logActivity({ action: 'approve', asset_type: 'puzzle', asset_id: id, asset_name: name, details: notes ? { notes } : undefined });
+  }
+  return success;
+}
+
+export async function requestPuzzleChanges(id: string, name?: string, notes?: string): Promise<boolean> {
+  const success = await updatePuzzleStatus(id, 'draft');
+  if (success) {
+    logActivity({ action: 'request_changes', asset_type: 'puzzle', asset_id: id, asset_name: name, details: notes ? { notes } : undefined });
+  }
+  return success;
+}
+
+// ============================================
 // ASSET OPERATIONS
 // ============================================
 
@@ -206,6 +234,12 @@ export async function publishPuzzle(puzzleId: string, scheduledDate?: string): P
   const puzzle = await fetchPuzzle(puzzleId);
   if (!puzzle) {
     console.error('Puzzle not found:', puzzleId);
+    return false;
+  }
+
+  // Publish guard: only approved puzzles can be published
+  if (puzzle.status !== 'approved' && puzzle.status !== 'published') {
+    console.error('Cannot publish: puzzle must be approved first. Current status:', puzzle.status);
     return false;
   }
 
