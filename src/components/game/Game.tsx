@@ -1164,6 +1164,21 @@ export const Game: React.FC = () => {
                         ? 'You ran out of turns before completing the objective.'
                         : 'Your heroes have fallen in battle.'}
                     </p>
+                    {(() => {
+                      const puzzleLives = currentPuzzle.lives ?? 3;
+                      const isUnlimited = puzzleLives === 0;
+                      if (isUnlimited) return null;
+                      const remaining = livesRemaining - 1;
+                      return (
+                        <p className={`mt-1 text-xs ${themeAssets.defeatPanelMessageText ? '' : 'text-stone-400'}`}
+                          style={{ ...(themeAssets.defeatPanelMessageText && { color: themeAssets.defeatPanelMessageText }) }}
+                        >
+                          {remaining <= 0
+                            ? 'No lives remaining.'
+                            : `${remaining} ${remaining === 1 ? 'life' : 'lives'} remaining.`}
+                        </p>
+                      );
+                    })()}
                     {playStartCharacters.length > 0 && (
                       <div className="mt-3 flex gap-3 justify-center">
                         <button
