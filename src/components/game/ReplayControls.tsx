@@ -17,34 +17,34 @@ const SPEEDS = [0.5, 1, 2];
 
 // Inline SVG icons — render consistently on all platforms (no emoji rendering)
 const IconSkipBack = () => (
-  <svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor">
+  <svg width="22" height="18" viewBox="0 0 16 14" fill="currentColor">
     <rect x="0" y="1" width="2.5" height="12" />
     <polygon points="15,1 5,7 15,13" />
   </svg>
 );
 const IconStepBack = () => (
-  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
     <polygon points="12,1 2,7 12,13" />
   </svg>
 );
 const IconPlay = () => (
-  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
     <polygon points="0,0 12,7 0,14" />
   </svg>
 );
 const IconPause = () => (
-  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
     <rect x="0" y="0" width="4" height="14" />
     <rect x="8" y="0" width="4" height="14" />
   </svg>
 );
 const IconStepForward = () => (
-  <svg width="12" height="14" viewBox="0 0 12 14" fill="currentColor">
+  <svg width="18" height="18" viewBox="0 0 12 14" fill="currentColor">
     <polygon points="0,1 10,7 0,13" />
   </svg>
 );
 const IconSkipForward = () => (
-  <svg width="16" height="14" viewBox="0 0 16 14" fill="currentColor">
+  <svg width="22" height="18" viewBox="0 0 16 14" fill="currentColor">
     <polygon points="1,1 11,7 1,13" />
     <rect x="13.5" y="1" width="2.5" height="12" />
   </svg>

@@ -741,7 +741,7 @@ export const Game: React.FC = () => {
 
     setReplayMode(true);
     setReplayTurnIndex(0);
-    setReplayPlaying(true);
+    setReplayPlaying(false);
     setReplaySpeed(1);
 
     if (history.length > 0) {
