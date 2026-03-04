@@ -174,7 +174,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
       <div>
         {/* Event marker dots above scrubber */}
         {markers.length > 0 && (
-          <div className="relative h-1.5 mx-1 -mb-0.5">
+          <div className="relative h-3 mx-1" style={{ marginBottom: '-2px' }}>
             {markers.map(({ turn, color, label }) => (
               <button
                 key={turn}
@@ -193,6 +193,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           value={currentTurn}
           onChange={e => onSeek(Number(e.target.value))}
           className="w-full h-2 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-copper-500"
+          style={{ margin: 0, padding: 0 }}
         />
         <div className="flex items-center justify-between text-xs text-stone-400">
           <span>Turn {currentTurn}</span>
