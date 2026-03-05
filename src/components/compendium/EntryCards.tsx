@@ -69,11 +69,11 @@ export const CharacterCard: React.FC<CardProps & { character: CustomCharacter }>
       className={`compendium-entry ${isSelected ? 'compendium-entry--selected' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 compendium-entry-sprite">
           {character.customSprite ? (
-            <SpriteThumbnail sprite={character.customSprite} size={40} previewType="entity" />
+            <SpriteThumbnail sprite={character.customSprite} size={56} previewType="entity" />
           ) : (
-            <div className="w-10 h-10 rounded-pixel flex items-center justify-center text-xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
+            <div className="w-14 h-14 rounded-pixel flex items-center justify-center text-2xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
               ⚔️
             </div>
           )}
@@ -101,11 +101,11 @@ export const EnemyCard: React.FC<CardProps & { enemy: CustomEnemy }> = ({ enemy,
       className={`compendium-entry ${isSelected ? 'compendium-entry--selected' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 compendium-entry-sprite">
           {enemy.customSprite ? (
-            <SpriteThumbnail sprite={enemy.customSprite} size={40} previewType="entity" />
+            <SpriteThumbnail sprite={enemy.customSprite} size={56} previewType="entity" />
           ) : (
-            <div className="w-10 h-10 rounded-pixel flex items-center justify-center text-xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
+            <div className="w-14 h-14 rounded-pixel flex items-center justify-center text-2xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
               👹
             </div>
           )}
@@ -133,8 +133,8 @@ export const StatusEffectCard: React.FC<CardProps & { effect: StatusEffectAsset 
       className={`compendium-entry ${isSelected ? 'compendium-entry--selected' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0">
-          <StatusEffectIcon effect={effect} size={36} />
+        <div className="flex-shrink-0 compendium-entry-sprite">
+          <StatusEffectIcon effect={effect} size={48} />
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medieval font-semibold compendium-accent-enchantments truncate">{effect.name}</div>
@@ -172,12 +172,12 @@ export const TileCard: React.FC<CardProps & { tile: CustomTileType }> = ({ tile,
       className={`compendium-entry ${isSelected ? 'compendium-entry--selected' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 compendium-entry-sprite">
           {tile.customSprite ? (
-            <SpriteThumbnail sprite={tile.customSprite} size={40} previewType="asset" />
+            <SpriteThumbnail sprite={tile.customSprite} size={56} previewType="asset" />
           ) : (
             <div
-              className="w-10 h-10 rounded-pixel flex items-center justify-center text-xl"
+              className="w-14 h-14 rounded-pixel flex items-center justify-center text-2xl"
               style={{ background: tile.baseType === 'wall' ? 'rgba(74, 51, 24, 0.15)' : 'rgba(74, 51, 24, 0.08)' }}
             >
               🧱
@@ -225,11 +225,11 @@ export const ItemCard: React.FC<CardProps & { item: CustomCollectible }> = ({ it
       className={`compendium-entry ${isSelected ? 'compendium-entry--selected' : ''}`}
     >
       <div className="flex items-center gap-3">
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 compendium-entry-sprite">
           {item.customSprite ? (
-            <SpriteThumbnail sprite={item.customSprite} size={40} previewType="asset" />
+            <SpriteThumbnail sprite={item.customSprite} size={56} previewType="asset" />
           ) : (
-            <div className="w-10 h-10 rounded-pixel flex items-center justify-center text-xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
+            <div className="w-14 h-14 rounded-pixel flex items-center justify-center text-2xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
               💎
             </div>
           )}

@@ -765,38 +765,39 @@ html body.theme-font-active,
   padding: 1rem;
 }
 
-/* Spine divider between pages */
+/* Spine divider between pages — deeper shadow for more dimensional depth */
 .compendium-spine {
-  width: 16px;
+  width: 18px;
   flex-shrink: 0;
   background: linear-gradient(
     to right,
     var(--spine-dark),
-    var(--spine-light) 40%,
-    var(--spine-light) 60%,
+    var(--spine-light) 35%,
+    var(--spine-light) 65%,
     var(--spine-dark)
   );
   box-shadow:
-    inset 1px 0 2px rgba(0, 0, 0, 0.4),
-    inset -1px 0 2px rgba(0, 0, 0, 0.4);
+    inset 2px 0 4px rgba(0, 0, 0, 0.5),
+    inset -2px 0 4px rgba(0, 0, 0, 0.5),
+    inset 0 0 8px rgba(0, 0, 0, 0.2);
   position: relative;
 }
 
-/* Spine stitching dots */
+/* Spine stitching — dashed line effect */
 .compendium-spine::after {
   content: '';
   position: absolute;
   left: 50%;
-  top: 8%;
-  bottom: 8%;
+  top: 6%;
+  bottom: 6%;
   width: 2px;
   transform: translateX(-50%);
   background: repeating-linear-gradient(
     to bottom,
-    rgba(255, 220, 160, 0.3) 0px,
-    rgba(255, 220, 160, 0.3) 4px,
-    transparent 4px,
-    transparent 12px
+    rgba(255, 220, 160, 0.35) 0px,
+    rgba(255, 220, 160, 0.35) 5px,
+    transparent 5px,
+    transparent 14px
   );
 }
 
@@ -868,6 +869,7 @@ html body.theme-font-active,
   color: #3a2510;
   border-bottom-color: transparent;
   font-weight: 700;
+  position: relative;
 }
 
 /* Desktop: vertical tabs on right edge */
@@ -892,7 +894,31 @@ html body.theme-font-active,
 
 .compendium-chapter-tabs--vertical .compendium-chapter-tab--active {
   border-left-color: transparent;
-  box-shadow: -2px 0 4px rgba(0, 0, 0, 0.1);
+  box-shadow:
+    -2px 0 4px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.compendium-chapter-tabs--vertical .compendium-chapter-tab--active::after {
+  content: '';
+  position: absolute;
+  left: -1px;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: linear-gradient(to bottom, #5c3a10, #8b6530, #5c3a10);
+  border-radius: 0 2px 2px 0;
+}
+
+.compendium-chapter-tabs--horizontal .compendium-chapter-tab--active::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(to right, #5c3a10, #8b6530, #5c3a10);
+  border-radius: 2px 2px 0 0;
 }
 
 /* Mobile: horizontal tabs above book */
@@ -992,13 +1018,179 @@ html body.theme-font-active,
 .compendium-accent-tiles { color: #4a3318; }
 .compendium-accent-items { color: #3a5520; }
 
-/* Empty/placeholder state on parchment */
+/* Sprite showcase frame — decorative border for detail view sprites */
+.compendium-sprite-showcase {
+  display: flex;
+  justify-content: center;
+  padding: 0.75rem 0;
+}
+
+.compendium-sprite-frame {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 8px;
+  border: 2px solid var(--border-warm);
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 0 12px rgba(139, 101, 48, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.compendium-sprite-frame::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  border: 1px solid rgba(74, 51, 24, 0.2);
+  border-radius: 2px;
+  pointer-events: none;
+}
+
+/* Hero frame — warm copper glow */
+.compendium-sprite-frame--hero {
+  border-color: rgba(92, 58, 16, 0.5);
+  box-shadow:
+    inset 0 0 16px rgba(139, 101, 48, 0.2),
+    0 0 12px rgba(139, 101, 48, 0.15),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Enemy frame — blood red accent */
+.compendium-sprite-frame--enemy {
+  border-color: rgba(122, 26, 26, 0.5);
+  box-shadow:
+    inset 0 0 16px rgba(122, 26, 26, 0.12),
+    0 0 12px rgba(122, 26, 26, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Tile frame — stone accent */
+.compendium-sprite-frame--tile {
+  border-color: rgba(74, 51, 24, 0.5);
+}
+
+/* Item frame — green accent */
+.compendium-sprite-frame--item {
+  border-color: rgba(58, 85, 32, 0.5);
+  box-shadow:
+    inset 0 0 16px rgba(58, 85, 32, 0.12),
+    0 0 12px rgba(58, 85, 32, 0.1),
+    0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Enchantment icon pulse glow */
+.compendium-enchantment-glow {
+  position: relative;
+  display: inline-flex;
+}
+
+.compendium-enchantment-glow::after {
+  content: '';
+  position: absolute;
+  inset: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(74, 45, 106, 0.2), transparent 70%);
+  animation: enchantment-pulse 2.5s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes enchantment-pulse {
+  0%, 100% { opacity: 0.4; transform: scale(0.95); }
+  50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Drop cap — medieval illuminated first letter */
+.compendium-drop-cap::first-letter {
+  float: left;
+  font-family: 'Almendra', serif;
+  font-size: 2.5em;
+  line-height: 0.8;
+  font-weight: 700;
+  color: var(--text-heading);
+  margin-right: 0.15em;
+  margin-top: 0.05em;
+}
+
+/* Decorative section divider */
+.compendium-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  margin: 0.75rem 0;
+  user-select: none;
+}
+
+.compendium-divider::before,
+.compendium-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, var(--border-warm), transparent);
+}
+
+.compendium-divider-ornament {
+  font-size: 0.6rem;
+  color: var(--corner-color);
+  letter-spacing: 0.2em;
+}
+
+/* Page edge aging — subtle darker edges overlaid on texture */
+.compendium-page,
+.compendium-page--single {
+  background-image:
+    radial-gradient(ellipse at top left, rgba(74, 51, 24, 0.06) 0%, transparent 40%),
+    radial-gradient(ellipse at bottom right, rgba(74, 51, 24, 0.06) 0%, transparent 40%),
+    radial-gradient(ellipse at top right, rgba(74, 51, 24, 0.04) 0%, transparent 35%),
+    radial-gradient(ellipse at bottom left, rgba(74, 51, 24, 0.04) 0%, transparent 35%),
+    var(--page-texture);
+}
+
+/* Entry card hover — sprite scale */
+.compendium-entry .compendium-entry-sprite {
+  transition: transform 0.2s ease;
+}
+
+.compendium-entry:hover .compendium-entry-sprite {
+  transform: scale(1.1);
+}
+
+/* Page number styling */
+.compendium-page-number {
+  text-align: center;
+  font-family: 'Almendra', serif;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  padding-top: 1rem;
+  margin-top: auto;
+  opacity: 0.5;
+  user-select: none;
+}
+
+/* Enhanced empty state with ornamental tildes */
 .compendium-empty {
   text-align: center;
   padding: 3rem 1rem;
   color: var(--text-muted);
   font-style: italic;
   font-family: 'Almendra', serif;
+}
+
+.compendium-empty::before {
+  content: '~';
+  display: block;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+  opacity: 0.3;
+}
+
+.compendium-empty::after {
+  content: '~';
+  display: block;
+  font-size: 1.5rem;
+  margin-top: 0.5rem;
+  opacity: 0.3;
 }
 
 /* Badge on parchment */

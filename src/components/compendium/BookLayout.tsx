@@ -29,16 +29,18 @@ export const BookLayout: React.FC<BookLayoutProps> = ({ leftPage, rightPage, cha
         <div className="compendium-corner compendium-corner--bl" />
 
         {/* Left page — entry list */}
-        <div className="compendium-page compendium-page--left">
-          {leftPage}
+        <div className="compendium-page compendium-page--left" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="flex-1">{leftPage}</div>
+          <div className="compendium-page-number">— Index —</div>
         </div>
 
         {/* Spine */}
         <div className="compendium-spine" />
 
         {/* Right page — detail */}
-        <div className="compendium-page compendium-page--right">
-          {rightPage}
+        <div className="compendium-page compendium-page--right" style={{ display: 'flex', flexDirection: 'column' }}>
+          <div className="flex-1">{rightPage}</div>
+          <div className="compendium-page-number">— Details —</div>
         </div>
 
         {/* Decorative corners — right page */}

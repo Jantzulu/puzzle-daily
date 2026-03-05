@@ -11,41 +11,53 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { TileSpritePreview, StatusEffectIcon } from './EntryCards';
 
+// ============ SHARED UI HELPERS ============
+
+const Divider: React.FC = () => (
+  <div className="compendium-divider">
+    <span className="compendium-divider-ornament">◆ ◆ ◆</span>
+  </div>
+);
+
 // ============ DETAIL COMPONENTS ============
 // Styled for the parchment book context using compendium-detail-section
 
 export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ character }) => {
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">
+      {/* Sprite Showcase */}
+      <div className="compendium-sprite-showcase">
+        <div className="compendium-sprite-frame compendium-sprite-frame--hero">
           {character.customSprite ? (
-            <SpriteThumbnail sprite={character.customSprite} size={72} previewType="entity" />
+            <SpriteThumbnail sprite={character.customSprite} size={120} previewType="entity" />
           ) : (
-            <div className="w-[72px] h-[72px] rounded-pixel flex items-center justify-center text-4xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
+            <div className="w-[120px] h-[120px] flex items-center justify-center text-6xl">
               ⚔️
             </div>
           )}
         </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold font-medieval compendium-accent-heroes">{character.name}</h2>
-          {character.title && (
-            <p className="italic mt-0.5" style={{ color: 'var(--text-muted)' }}>{character.title}</p>
-          )}
-          <div className="mt-2 text-sm">
-            <span style={{ color: 'var(--text-muted)' }}>Health:</span>{' '}
-            <span className="compendium-accent-enemies">{'❤️'.repeat(Math.min(character.health, 10))}</span>{' '}
-            <span style={{ color: 'var(--text-muted)' }}>({character.health})</span>
-          </div>
+      </div>
+
+      {/* Name & Title */}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold font-medieval compendium-accent-heroes">{character.name}</h2>
+        {character.title && (
+          <p className="italic mt-0.5" style={{ color: 'var(--text-muted)' }}>{character.title}</p>
+        )}
+        <div className="mt-2 text-sm">
+          <span style={{ color: 'var(--text-muted)' }}>Health:</span>{' '}
+          <span className="compendium-accent-enemies">{'❤️'.repeat(Math.min(character.health, 10))}</span>{' '}
+          <span style={{ color: 'var(--text-muted)' }}>({character.health})</span>
         </div>
       </div>
+
+      <Divider />
 
       {/* Description */}
       {character.description && (
         <div className="compendium-detail-section">
           <h3>Description</h3>
-          <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{character.description}</p>
+          <p className="text-sm compendium-drop-cap" style={{ color: 'var(--text-primary)' }}>{character.description}</p>
         </div>
       )}
 
@@ -67,35 +79,39 @@ export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ char
 export const EnemyDetail: React.FC<{ enemy: CustomEnemy }> = ({ enemy }) => {
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">
+      {/* Sprite Showcase */}
+      <div className="compendium-sprite-showcase">
+        <div className="compendium-sprite-frame compendium-sprite-frame--enemy">
           {enemy.customSprite ? (
-            <SpriteThumbnail sprite={enemy.customSprite} size={72} previewType="entity" />
+            <SpriteThumbnail sprite={enemy.customSprite} size={120} previewType="entity" />
           ) : (
-            <div className="w-[72px] h-[72px] rounded-pixel flex items-center justify-center text-4xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
+            <div className="w-[120px] h-[120px] flex items-center justify-center text-6xl">
               👹
             </div>
           )}
         </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold font-medieval compendium-accent-enemies">{enemy.name}</h2>
-          {enemy.title && (
-            <p className="italic mt-0.5" style={{ color: 'var(--text-muted)' }}>{enemy.title}</p>
-          )}
-          <div className="mt-2 text-sm">
-            <span style={{ color: 'var(--text-muted)' }}>Health:</span>{' '}
-            <span className="compendium-accent-enemies">{'❤️'.repeat(Math.min(enemy.health, 10))}</span>{' '}
-            <span style={{ color: 'var(--text-muted)' }}>({enemy.health})</span>
-          </div>
+      </div>
+
+      {/* Name & Title */}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold font-medieval compendium-accent-enemies">{enemy.name}</h2>
+        {enemy.title && (
+          <p className="italic mt-0.5" style={{ color: 'var(--text-muted)' }}>{enemy.title}</p>
+        )}
+        <div className="mt-2 text-sm">
+          <span style={{ color: 'var(--text-muted)' }}>Health:</span>{' '}
+          <span className="compendium-accent-enemies">{'❤️'.repeat(Math.min(enemy.health, 10))}</span>{' '}
+          <span style={{ color: 'var(--text-muted)' }}>({enemy.health})</span>
         </div>
       </div>
+
+      <Divider />
 
       {/* Description */}
       {enemy.description && (
         <div className="compendium-detail-section">
           <h3>Description</h3>
-          <p className="text-sm" style={{ color: 'var(--text-primary)' }}>{enemy.description}</p>
+          <p className="text-sm compendium-drop-cap" style={{ color: 'var(--text-primary)' }}>{enemy.description}</p>
         </div>
       )}
 
@@ -121,16 +137,20 @@ export const StatusEffectDetail: React.FC<{ effect: StatusEffectAsset }> = ({ ef
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">
-          <StatusEffectIcon effect={effect} size={56} />
-        </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold font-medieval compendium-accent-enchantments">{effect.name}</h2>
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{effect.description}</p>
+      {/* Enchantment Icon Showcase */}
+      <div className="compendium-sprite-showcase">
+        <div className="compendium-enchantment-glow">
+          <StatusEffectIcon effect={effect} size={80} />
         </div>
       </div>
+
+      {/* Name & Description */}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold font-medieval compendium-accent-enchantments">{effect.name}</h2>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{effect.description}</p>
+      </div>
+
+      <Divider />
 
       {/* Stats */}
       <div className="compendium-detail-section">
@@ -221,37 +241,38 @@ export const TileDetail: React.FC<{ tile: CustomTileType }> = ({ tile }) => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">
+      {/* Sprite Showcase */}
+      <div className="compendium-sprite-showcase">
+        <div className="compendium-sprite-frame compendium-sprite-frame--tile">
           {tile.customSprite ? (
-            <SpriteThumbnail sprite={tile.customSprite} size={72} previewType="asset" />
+            <SpriteThumbnail sprite={tile.customSprite} size={120} previewType="asset" />
           ) : (
-            <div
-              className="w-[72px] h-[72px] rounded-pixel flex items-center justify-center text-4xl"
-              style={{ background: tile.baseType === 'wall' ? 'rgba(74, 51, 24, 0.15)' : 'rgba(74, 51, 24, 0.08)' }}
-            >
+            <div className="w-[120px] h-[120px] flex items-center justify-center text-6xl">
               🧱
             </div>
           )}
         </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold font-medieval compendium-accent-tiles">{tile.name}</h2>
-          {tile.description && (
-            <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{tile.description}</p>
-          )}
-          <div className="mt-2">
-            <span className="compendium-badge">
-              {tile.baseType === 'wall' ? 'Wall (blocks movement)' : 'Floor'}
-            </span>
-          </div>
-          {tile.preventPlacement && (
-            <div className="text-xs mt-2 compendium-accent-enemies">
-              Cannot place heroes on this tile
-            </div>
-          )}
-        </div>
       </div>
+
+      {/* Name & Info */}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold font-medieval compendium-accent-tiles">{tile.name}</h2>
+        {tile.description && (
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{tile.description}</p>
+        )}
+        <div className="mt-2">
+          <span className="compendium-badge">
+            {tile.baseType === 'wall' ? 'Wall (blocks movement)' : 'Floor'}
+          </span>
+        </div>
+        {tile.preventPlacement && (
+          <div className="text-xs mt-2 compendium-accent-enemies">
+            Cannot place heroes on this tile
+          </div>
+        )}
+      </div>
+
+      <Divider />
 
       {/* Behaviors (On State) */}
       {tile.behaviors.length > 0 && (
@@ -367,33 +388,37 @@ export const ItemDetail: React.FC<{ item: CustomCollectible }> = ({ item }) => {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
-      <div className="flex items-start gap-4">
-        <div className="flex-shrink-0">
+      {/* Sprite Showcase */}
+      <div className="compendium-sprite-showcase">
+        <div className="compendium-sprite-frame compendium-sprite-frame--item">
           {item.customSprite ? (
-            <SpriteThumbnail sprite={item.customSprite} size={72} previewType="asset" />
+            <SpriteThumbnail sprite={item.customSprite} size={96} previewType="asset" />
           ) : (
-            <div className="w-[72px] h-[72px] rounded-pixel flex items-center justify-center text-4xl" style={{ background: 'rgba(74, 51, 24, 0.1)' }}>
+            <div className="w-[96px] h-[96px] flex items-center justify-center text-5xl">
               💎
             </div>
           )}
         </div>
-        <div className="flex-1">
-          <h2 className="text-2xl font-bold font-medieval compendium-accent-items">{item.name}</h2>
-          {item.description && (
-            <div
-              className="mt-1 text-sm"
-              style={{ color: 'var(--text-primary)' }}
-              dangerouslySetInnerHTML={{ __html: item.description }}
-            />
-          )}
-          {item.preventPlacement && (
-            <div className="text-xs mt-2 compendium-accent-enemies">
-              Cannot place heroes on this tile
-            </div>
-          )}
-        </div>
       </div>
+
+      {/* Name & Description */}
+      <div className="text-center">
+        <h2 className="text-2xl font-bold font-medieval compendium-accent-items">{item.name}</h2>
+        {item.description && (
+          <div
+            className="mt-1 text-sm"
+            style={{ color: 'var(--text-primary)' }}
+            dangerouslySetInnerHTML={{ __html: item.description }}
+          />
+        )}
+        {item.preventPlacement && (
+          <div className="text-xs mt-2 compendium-accent-enemies">
+            Cannot place heroes on this tile
+          </div>
+        )}
+      </div>
+
+      <Divider />
 
       {/* Effects */}
       {item.effects.length > 0 && (

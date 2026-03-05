@@ -36,11 +36,11 @@ export const ChapterNav: React.FC<ChapterNavProps> = ({ tabs, activeTab, onTabCh
           }`}
           title={`${tab.label} (${tab.count})`}
         >
-          <span className="inline-flex items-center gap-1">
+          <span className="inline-flex items-center gap-1.5">
             <span>{tab.icon}</span>
-            {orientation === 'horizontal' && (
-              <span className="hidden sm:inline">{tab.label}</span>
-            )}
+            <span className={orientation === 'horizontal' ? 'hidden sm:inline' : ''}>
+              {tab.label}
+            </span>
           </span>
         </button>
       ))}
