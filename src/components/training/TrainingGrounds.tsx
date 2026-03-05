@@ -32,40 +32,16 @@ function deepCopyState(state: GameState): GameState {
   return copy;
 }
 
-// ============================================================
-// ARENA SELECTION VIEW
-// ============================================================
-
-const ArenaCard: React.FC<{ puzzle: Puzzle; onClick: () => void }> = ({ puzzle, onClick }) => {
-  const previewState = useMemo(() => initializeGameState(JSON.parse(JSON.stringify(puzzle))), [puzzle]);
-
-  return (
-    <div className="cursor-pointer group" onClick={onClick}>
-      {/* Board preview — unclipped, outside the panel */}
-      <div className="w-full pointer-events-none mb-1">
-        <ResponsiveGameBoard gameState={previewState} />
-      </div>
-      {/* Info panel below */}
-      <div className="dungeon-panel p-2.5 group-hover:border-copper-500/50 transition-colors">
-        <h3 className="font-medieval text-copper-300 text-lg truncate">{puzzle.name}</h3>
-        {puzzle.description && (
-          <p className="text-stone-400 text-sm mt-0.5 line-clamp-2">{puzzle.description}</p>
-        )}
-        <div className="flex items-center gap-3 mt-1.5 text-xs text-stone-500">
-          <span>{puzzle.width}x{puzzle.height}</span>
-          <span>{puzzle.enemies.length} {puzzle.enemies.length === 1 ? 'enemy' : 'enemies'}</span>
-        </div>
-      </div>
-    </div>
-  );
-};
+type TrainingView = 'landing' | 'sandbox';
 
 // ============================================================
 // MAIN COMPONENT
 // ============================================================
 
 export const TrainingGrounds: React.FC = () => {
-  // -- Arena list --
+  const [view, setView] = useState<TrainingView>('landing');
+
+  // -- Training puzzle list --
   const trainingPuzzles = useMemo(() => {
     const official = getAllPuzzles();
     const saved = getSavedPuzzles();
@@ -104,7 +80,7 @@ export const TrainingGrounds: React.FC = () => {
   // ARENA SELECTION
   // ============================================================
 
-  const handleSelectArena = (puzzle: Puzzle) => {
+  const handleSelectArena = useCallback((puzzle: Puzzle) => {
     const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(puzzle));
     setOriginalPuzzle(puzzleCopy);
     setSelectedPuzzle(puzzle);
@@ -117,9 +93,17 @@ export const TrainingGrounds: React.FC = () => {
     setReplayMode(false);
     turnHistoryRef.current = [];
     replayEventsRef.current = new Map();
-  };
+  }, []);
 
-  const handleBackToArenas = () => {
+  const handleEnterSandbox = useCallback(() => {
+    setView('sandbox');
+    if (trainingPuzzles.length > 0) {
+      handleSelectArena(trainingPuzzles[0]);
+    }
+  }, [trainingPuzzles, handleSelectArena]);
+
+  const handleBackToLanding = () => {
+    setView('landing');
     setSelectedPuzzle(null);
     setOriginalPuzzle(null);
     setGameState(null);
@@ -131,6 +115,11 @@ export const TrainingGrounds: React.FC = () => {
     turnHistoryRef.current = [];
     replayEventsRef.current = new Map();
   };
+
+  const handlePuzzleChange = useCallback((puzzleId: string) => {
+    const puzzle = trainingPuzzles.find(p => p.id === puzzleId);
+    if (puzzle) handleSelectArena(puzzle);
+  }, [trainingPuzzles, handleSelectArena]);
 
   // ============================================================
   // TILE CLICK (placement / removal)
@@ -391,39 +380,86 @@ export const TrainingGrounds: React.FC = () => {
   }, [replayMode, replayPlaying, replaySpeed]);
 
   // ============================================================
-  // RENDER — ARENA SELECTION
+  // RENDER — LANDING PAGE
   // ============================================================
 
-  if (!selectedPuzzle || !gameState) {
+  if (view === 'landing') {
     return (
       <div className="min-h-screen p-4 md:p-8">
-        <div className="max-w-4xl mx-auto">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl md:text-3xl font-medieval text-copper-400">Training Grounds</h1>
-            <p className="text-sm text-stone-400 mt-1">Practice arenas to learn hero abilities and tactics</p>
+        <div className="max-w-3xl mx-auto">
+          <div className="text-center mb-8">
+            <h1 className="text-3xl md:text-4xl font-medieval text-copper-400">Training Grounds</h1>
+            <p className="text-stone-400 mt-2">Sharpen your skills and master the dungeon</p>
           </div>
 
-          {trainingPuzzles.length === 0 ? (
-            <div className="dungeon-panel p-8 text-center">
-              <p className="text-stone-400 text-lg mb-2">No training arenas yet</p>
-              <p className="text-stone-500 text-sm">
-                Create a puzzle in the Editor and check "Training Arena" to add it here.
-              </p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+            {/* Tutorial Levels — Coming Soon */}
+            <div className="dungeon-panel p-6 opacity-60 cursor-not-allowed relative">
+              <div className="absolute top-3 right-3">
+                <span className="text-[0.65rem] font-bold uppercase tracking-wider bg-stone-700/80 text-stone-300 px-2 py-0.5 rounded">
+                  Coming Soon
+                </span>
+              </div>
+              <div className="text-center space-y-3">
+                <div className="text-4xl">📜</div>
+                <h2 className="font-medieval text-copper-400 text-xl">Tutorial Levels</h2>
+                <p className="text-stone-400 text-sm">
+                  Learn the basics step by step with guided lessons on movement, combat, and strategy.
+                </p>
+              </div>
             </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {trainingPuzzles.map(puzzle => (
-                <ArenaCard key={puzzle.id} puzzle={puzzle} onClick={() => handleSelectArena(puzzle)} />
-              ))}
+
+            {/* Training Sandbox */}
+            <div
+              onClick={handleEnterSandbox}
+              className="dungeon-panel p-6 cursor-pointer hover:border-copper-500/50 transition-colors"
+            >
+              <div className="text-center space-y-3">
+                <div className="text-4xl">⚔️</div>
+                <h2 className="font-medieval text-copper-400 text-xl">Training Sandbox</h2>
+                <p className="text-stone-400 text-sm">
+                  Practice freely with training puzzles. Experiment with heroes, test strategies, and replay your runs.
+                </p>
+                {trainingPuzzles.length > 0 ? (
+                  <p className="text-xs text-stone-500">{trainingPuzzles.length} arena{trainingPuzzles.length !== 1 ? 's' : ''} available</p>
+                ) : (
+                  <p className="text-xs text-stone-500">No arenas yet — create one in the Editor</p>
+                )}
+              </div>
             </div>
-          )}
+          </div>
         </div>
       </div>
     );
   }
 
   // ============================================================
-  // RENDER — TRAINING GAME
+  // RENDER — SANDBOX (no puzzle loaded yet)
+  // ============================================================
+
+  if (!selectedPuzzle || !gameState) {
+    return (
+      <div className="min-h-screen p-4 md:p-8">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex items-center gap-3 mb-6">
+            <button onClick={handleBackToLanding} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1">
+              <span>&larr;</span> Back
+            </button>
+            <h1 className="text-2xl font-medieval text-copper-400">Training Sandbox</h1>
+          </div>
+          <div className="dungeon-panel p-8 text-center">
+            <p className="text-stone-400 text-lg mb-2">No training arenas available</p>
+            <p className="text-stone-500 text-sm">
+              Create a puzzle in the Editor and check "Training Arena" to add it here.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ============================================================
+  // RENDER — SANDBOX GAME
   // ============================================================
 
   const status = gameState.gameStatus;
@@ -434,14 +470,40 @@ export const TrainingGrounds: React.FC = () => {
   return (
     <div className="min-h-screen text-parchment-200 px-4 pb-4 md:px-8 md:pb-8">
       <div className="max-w-5xl mx-auto space-y-3 pt-2">
-        {/* Header row */}
-        <div className="flex items-center justify-between">
-          <button onClick={handleBackToArenas} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1">
-            <span>&larr;</span> Arenas
+        {/* Header row with back button */}
+        <div className="flex items-center gap-3">
+          <button onClick={handleBackToLanding} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1 shrink-0">
+            <span>&larr;</span> Back
           </button>
-          <h2 className="font-medieval text-copper-400 text-lg md:text-xl truncate mx-3">{selectedPuzzle.name}</h2>
-          <div className="text-xs text-stone-500 shrink-0">{selectedPuzzle.width}x{selectedPuzzle.height}</div>
+          <h2 className="font-medieval text-copper-400 text-lg md:text-xl shrink-0">Training Sandbox</h2>
         </div>
+
+        {/* Puzzle selector dropdown */}
+        {trainingPuzzles.length > 1 && (
+          <div className="dungeon-panel p-2.5">
+            <div className="flex items-center gap-3">
+              <label className="text-sm font-bold text-copper-400 shrink-0">Arena</label>
+              <select
+                value={selectedPuzzle.id}
+                onChange={(e) => handlePuzzleChange(e.target.value)}
+                className="dungeon-select w-full"
+              >
+                {trainingPuzzles.map((puzzle) => (
+                  <option key={puzzle.id} value={puzzle.id}>
+                    {puzzle.name} ({puzzle.width}x{puzzle.height})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
+
+        {/* Puzzle name + description (when only 1 puzzle, show name since no dropdown) */}
+        {trainingPuzzles.length <= 1 && (
+          <div className="text-center">
+            <h3 className="font-medieval text-copper-300 text-lg">{selectedPuzzle.name}</h3>
+          </div>
+        )}
 
         {selectedPuzzle.description && (
           <p className="text-sm text-stone-400 text-center">{selectedPuzzle.description}</p>
@@ -474,9 +536,6 @@ export const TrainingGrounds: React.FC = () => {
                   )}
                   <button onClick={handleReset} className="dungeon-btn-primary px-4 py-2 text-sm font-bold w-full">
                     Try Again
-                  </button>
-                  <button onClick={handleBackToArenas} className="dungeon-btn px-4 py-2 text-sm font-bold w-full">
-                    Back to Arenas
                   </button>
                 </div>
               </div>
@@ -535,7 +594,7 @@ export const TrainingGrounds: React.FC = () => {
           </div>
         )}
 
-        {/* Character selector — all heroes, no panel wrapper */}
+        {/* Character selector — all heroes */}
         {!replayMode && (
           <div className="dungeon-panel p-3">
             <CharacterSelector
