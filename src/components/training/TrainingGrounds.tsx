@@ -470,40 +470,27 @@ export const TrainingGrounds: React.FC = () => {
   return (
     <div className="min-h-screen text-parchment-200 px-4 pb-4 md:px-8 md:pb-8">
       <div className="max-w-5xl mx-auto space-y-3 pt-2">
-        {/* Header row with back button */}
+        {/* Header row with back button + puzzle selector */}
         <div className="flex items-center gap-3">
           <button onClick={handleBackToLanding} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1 shrink-0">
             <span>&larr;</span> Back
           </button>
-          <h2 className="font-medieval text-copper-400 text-lg md:text-xl shrink-0">Training Sandbox</h2>
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            <h2 className="font-medieval text-copper-400 text-lg md:text-xl shrink-0">Training Sandbox</h2>
+            <span className="text-stone-600 shrink-0">—</span>
+            <select
+              value={selectedPuzzle.id}
+              onChange={(e) => handlePuzzleChange(e.target.value)}
+              className="dungeon-select min-w-0 flex-1"
+            >
+              {trainingPuzzles.map((puzzle) => (
+                <option key={puzzle.id} value={puzzle.id}>
+                  {puzzle.name} ({puzzle.width}x{puzzle.height})
+                </option>
+              ))}
+            </select>
+          </div>
         </div>
-
-        {/* Puzzle selector dropdown */}
-        {trainingPuzzles.length > 1 && (
-          <div className="dungeon-panel p-2.5">
-            <div className="flex items-center gap-3">
-              <label className="text-sm font-bold text-copper-400 shrink-0">Arena</label>
-              <select
-                value={selectedPuzzle.id}
-                onChange={(e) => handlePuzzleChange(e.target.value)}
-                className="dungeon-select w-full"
-              >
-                {trainingPuzzles.map((puzzle) => (
-                  <option key={puzzle.id} value={puzzle.id}>
-                    {puzzle.name} ({puzzle.width}x{puzzle.height})
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-        )}
-
-        {/* Puzzle name + description (when only 1 puzzle, show name since no dropdown) */}
-        {trainingPuzzles.length <= 1 && (
-          <div className="text-center">
-            <h3 className="font-medieval text-copper-300 text-lg">{selectedPuzzle.name}</h3>
-          </div>
-        )}
 
         {selectedPuzzle.description && (
           <p className="text-sm text-stone-400 text-center">{selectedPuzzle.description}</p>
