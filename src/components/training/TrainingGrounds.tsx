@@ -470,26 +470,27 @@ export const TrainingGrounds: React.FC = () => {
   return (
     <div className="min-h-screen text-parchment-200 px-4 pb-4 md:px-8 md:pb-8">
       <div className="max-w-5xl mx-auto space-y-3 pt-2">
-        {/* Header row with back button + puzzle selector */}
-        <div className="flex items-center gap-3">
-          <button onClick={handleBackToLanding} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1 shrink-0">
+        {/* Back button + centered title */}
+        <div className="relative flex items-center">
+          <button onClick={handleBackToLanding} className="dungeon-btn px-3 py-1.5 text-sm font-bold flex items-center gap-1 absolute left-0">
             <span>&larr;</span> Back
           </button>
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <h2 className="font-medieval text-copper-400 text-lg md:text-xl shrink-0">Training Sandbox</h2>
-            <span className="text-stone-600 shrink-0">—</span>
-            <select
-              value={selectedPuzzle.id}
-              onChange={(e) => handlePuzzleChange(e.target.value)}
-              className="dungeon-select min-w-0 flex-1"
-            >
-              {trainingPuzzles.map((puzzle) => (
-                <option key={puzzle.id} value={puzzle.id}>
-                  {puzzle.name} ({puzzle.width}x{puzzle.height})
-                </option>
-              ))}
-            </select>
-          </div>
+          <h2 className="font-medieval text-copper-400 text-lg md:text-xl text-center flex-1">Training Sandbox</h2>
+        </div>
+
+        {/* Centered puzzle selector */}
+        <div className="text-center">
+          <select
+            value={selectedPuzzle.id}
+            onChange={(e) => handlePuzzleChange(e.target.value)}
+            className="dungeon-select mx-auto"
+          >
+            {trainingPuzzles.map((puzzle) => (
+              <option key={puzzle.id} value={puzzle.id}>
+                {puzzle.name}
+              </option>
+            ))}
+          </select>
         </div>
 
         {selectedPuzzle.description && (
