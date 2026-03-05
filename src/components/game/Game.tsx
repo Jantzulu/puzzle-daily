@@ -23,6 +23,8 @@ import { preloadImages } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
 import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
+import { submitCompletion } from '../../services/statsService';
+import { CommunityStats } from './CommunityStats';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -70,6 +72,10 @@ export const Game: React.FC = () => {
 
   // Concede confirmation state
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+
+  // Analytics: attempt timing and duplicate guard
+  const attemptStartRef = useRef<number>(0);
+  const submittedRef = useRef(false);
 
   // Track defeat reason
   const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
@@ -347,12 +353,46 @@ export const Game: React.FC = () => {
           if (newState.gameStatus === 'victory') {
             const score = calculateScore(newState, livesRemaining, currentPuzzle.lives ?? 3);
             setPuzzleScore(score);
+
+            // Submit analytics (fire-and-forget, only for scheduled/daily puzzles)
+            if (currentPuzzle.date && !submittedRef.current) {
+              submittedRef.current = true;
+              submitCompletion({
+                puzzleId: currentPuzzle.id,
+                puzzleDate: currentPuzzle.date,
+                outcome: 'victory',
+                score,
+                charactersUsed: score.stats.charactersUsed,
+                characterIds: newState.placedCharacters.map(c => c.characterId),
+                turnsUsed: score.stats.turnsUsed,
+                livesRemaining: livesRemaining,
+                attemptDurationMs: Date.now() - attemptStartRef.current,
+              });
+            }
           }
 
           if (newState.gameStatus === 'defeat') {
             const maxTurns = currentPuzzle.maxTurns || 1000;
             const ranOutOfTurns = newState.currentTurn >= maxTurns;
-            setDefeatReason(ranOutOfTurns ? 'turns' : 'damage');
+            const reason = ranOutOfTurns ? 'turns' : 'damage';
+            setDefeatReason(reason);
+
+            // Submit analytics (fire-and-forget, only for scheduled/daily puzzles)
+            if (currentPuzzle.date && !submittedRef.current) {
+              submittedRef.current = true;
+              submitCompletion({
+                puzzleId: currentPuzzle.id,
+                puzzleDate: currentPuzzle.date,
+                outcome: 'defeat',
+                charactersUsed: newState.placedCharacters.length,
+                characterIds: newState.placedCharacters.map(c => c.characterId),
+                turnsUsed: newState.currentTurn,
+                livesRemaining: livesRemaining - 1,
+                defeatReason: reason,
+                defeatTurn: newState.currentTurn,
+                attemptDurationMs: Date.now() - attemptStartRef.current,
+              });
+            }
 
             const puzzleLives = currentPuzzle.lives ?? 3;
             const isUnlimitedLives = puzzleLives === 0;
@@ -556,6 +596,22 @@ export const Game: React.FC = () => {
       // Calculate and store score
       const score = calculateScore(gameState, livesRemaining, currentPuzzle.lives ?? 3);
       setPuzzleScore(score);
+
+      // Submit analytics (fire-and-forget)
+      if (currentPuzzle.date && !submittedRef.current) {
+        submittedRef.current = true;
+        submitCompletion({
+          puzzleId: currentPuzzle.id,
+          puzzleDate: currentPuzzle.date,
+          outcome: 'victory',
+          score,
+          charactersUsed: score.stats.charactersUsed,
+          characterIds: gameState.placedCharacters.map(c => c.characterId),
+          turnsUsed: score.stats.turnsUsed,
+          livesRemaining: livesRemaining,
+          attemptDurationMs: Date.now() - attemptStartRef.current,
+        });
+      }
     }
   }, [gameState, livesRemaining, currentPuzzle.lives]);
 
@@ -569,6 +625,8 @@ export const Game: React.FC = () => {
     setPlayStartCharacters(JSON.parse(JSON.stringify(gameState.placedCharacters)));
     setGameState((prev) => ({ ...prev, gameStatus: 'running' }));
     setIsSimulating(true);
+    attemptStartRef.current = Date.now();
+    submittedRef.current = false;
     playGameSound('simulation_start');
     vibrate('playButton');
   };
@@ -658,6 +716,23 @@ export const Game: React.FC = () => {
     setShowConcedeConfirm(false);
     setIsSimulating(false);
     setDefeatReason('damage'); // Conceding counts as damage death
+
+    // Submit analytics (fire-and-forget)
+    if (currentPuzzle.date && !submittedRef.current) {
+      submittedRef.current = true;
+      submitCompletion({
+        puzzleId: currentPuzzle.id,
+        puzzleDate: currentPuzzle.date,
+        outcome: 'defeat',
+        charactersUsed: gameState.placedCharacters.length,
+        characterIds: gameState.placedCharacters.map(c => c.characterId),
+        turnsUsed: gameState.currentTurn,
+        livesRemaining: livesRemaining - 1,
+        defeatReason: 'concede',
+        defeatTurn: gameState.currentTurn,
+        attemptDurationMs: Date.now() - attemptStartRef.current,
+      });
+    }
 
     const puzzleLives = currentPuzzle.lives ?? 3;
     const isUnlimitedLives = puzzleLives === 0;
@@ -1210,6 +1285,26 @@ export const Game: React.FC = () => {
                         </button>
                       </div>
                     )}
+
+                    {/* Community Stats */}
+                    {currentPuzzle.date && (
+                      <CommunityStats
+                        puzzleId={currentPuzzle.id}
+                        playerScore={puzzleScore ?? {
+                          rank: 'bronze' as const,
+                          totalPoints: 0,
+                          breakdown: { basePoints: 0, characterBonus: 0, turnBonus: 0, livesBonus: 0, sideQuestPoints: 0 },
+                          completedSideQuests: [],
+                          parMet: { characters: false, turns: false },
+                          stats: {
+                            charactersUsed: gameState.placedCharacters.length,
+                            turnsUsed: gameState.currentTurn,
+                            livesRemaining: livesRemaining,
+                          },
+                        }}
+                        playerOutcome="defeat"
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -1361,6 +1456,15 @@ export const Game: React.FC = () => {
                   >
                     Watch Replay
                   </button>
+                )}
+
+                {/* Community Stats */}
+                {currentPuzzle.date && (
+                  <CommunityStats
+                    puzzleId={currentPuzzle.id}
+                    playerScore={puzzleScore}
+                    playerOutcome="victory"
+                  />
                 )}
               </div>
             )}

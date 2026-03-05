@@ -176,6 +176,53 @@ CREATE POLICY "Allow all access to asset_versions" ON asset_versions
   FOR ALL USING (true) WITH CHECK (true);
 
 -- ============================================
+-- PUZZLE COMPLETIONS (Statistics & Analytics)
+-- ============================================
+
+-- Stores victory AND defeat records for all players
+CREATE TABLE puzzle_completions (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  player_id TEXT NOT NULL,
+  user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  puzzle_id TEXT NOT NULL,
+  puzzle_date DATE,
+  outcome TEXT NOT NULL CHECK (outcome IN ('victory', 'defeat')),
+  rank TEXT CHECK (rank IN ('bronze', 'silver', 'gold')),
+  total_points INTEGER,
+  base_points INTEGER,
+  character_bonus INTEGER,
+  turn_bonus INTEGER,
+  lives_bonus INTEGER,
+  side_quest_points INTEGER,
+  completed_side_quests TEXT[] DEFAULT '{}',
+  par_met_characters BOOLEAN,
+  par_met_turns BOOLEAN,
+  characters_used INTEGER NOT NULL,
+  character_ids TEXT[] NOT NULL DEFAULT '{}',
+  turns_used INTEGER NOT NULL,
+  lives_remaining INTEGER,
+  defeat_reason TEXT CHECK (defeat_reason IN ('damage', 'turns', 'concede')),
+  defeat_turn INTEGER,
+  attempt_duration_ms INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_completions_puzzle_id ON puzzle_completions(puzzle_id);
+CREATE INDEX idx_completions_puzzle_date ON puzzle_completions(puzzle_date);
+CREATE INDEX idx_completions_player_id ON puzzle_completions(player_id);
+CREATE INDEX idx_completions_outcome ON puzzle_completions(outcome);
+CREATE INDEX idx_completions_created_at ON puzzle_completions(created_at DESC);
+CREATE INDEX idx_completions_puzzle_outcome ON puzzle_completions(puzzle_id, outcome);
+
+ALTER TABLE puzzle_completions ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Anyone can insert completions" ON puzzle_completions
+  FOR INSERT WITH CHECK (true);
+
+CREATE POLICY "Anyone can read completions" ON puzzle_completions
+  FOR SELECT USING (true);
+
+-- ============================================
 -- STORAGE BUCKET FOR IMAGES (optional - for large sprites)
 -- ============================================
 

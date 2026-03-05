@@ -14,6 +14,7 @@ import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
 import { SchedulingDashboard } from './components/editor/SchedulingDashboard';
+import { StatsDashboard } from './components/editor/StatsDashboard';
 import { SettingsPage } from './components/editor/SettingsPage';
 import { TrainingGrounds } from './components/training/TrainingGrounds';
 
@@ -287,6 +288,9 @@ function Navigation() {
           <Link to="/schedule" className={linkClass('/schedule')}>
             <span className="mr-1">📅</span> Schedule
           </Link>
+          <Link to="/stats" className={linkClass('/stats')}>
+            <span className="mr-1">📊</span> Stats
+          </Link>
           <Link to="/assets" className={linkClass('/assets')}>
             <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
@@ -372,6 +376,13 @@ function Navigation() {
             <span className="mr-2">📅</span> Schedule
           </Link>
           <Link
+            to="/stats"
+            className={`block ${linkClass('/stats')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">📊</span> Stats
+          </Link>
+          <Link
             to="/assets"
             className={`block ${linkClass('/assets')}`}
             onClick={() => setMobileMenuOpen(false)}
@@ -443,6 +454,7 @@ function App() {
           <Route path="/training" element={<TrainingGrounds />} />
           <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
           <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
+          <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
           <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         </Routes>
