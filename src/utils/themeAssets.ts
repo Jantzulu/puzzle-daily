@@ -779,18 +779,33 @@ export function applyThemeAssets(): void {
   if (faviconLink) {
     if (assets.favicon) {
       const img = new Image();
+      // Allow cross-origin for Supabase Storage URLs so canvas isn't tainted
+      if (!assets.favicon.startsWith('data:')) {
+        img.crossOrigin = 'anonymous';
+      }
       img.onload = () => {
-        const size = 32;
-        const canvas = document.createElement('canvas');
-        canvas.width = size;
-        canvas.height = size;
-        const ctx = canvas.getContext('2d');
-        if (ctx) {
-          ctx.imageSmoothingEnabled = false;
-          ctx.drawImage(img, 0, 0, size, size);
-          faviconLink.href = canvas.toDataURL('image/png');
+        try {
+          const size = 32;
+          const canvas = document.createElement('canvas');
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(img, 0, 0, size, size);
+            faviconLink.href = canvas.toDataURL('image/png');
+            faviconLink.type = 'image/png';
+          }
+        } catch {
+          // Canvas tainted or toDataURL failed — fall back to direct URL
+          faviconLink.href = assets.favicon!;
           faviconLink.type = 'image/png';
         }
+      };
+      img.onerror = () => {
+        // Image failed to load (e.g. CORS blocked) — use URL directly
+        faviconLink.href = assets.favicon!;
+        faviconLink.type = 'image/png';
       };
       img.src = assets.favicon;
     } else {
