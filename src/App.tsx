@@ -6,6 +6,7 @@ import { AssetManager } from './components/editor/AssetManager';
 import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
+import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
@@ -18,6 +19,30 @@ import { StatsDashboard } from './components/editor/StatsDashboard';
 import { SettingsPage } from './components/editor/SettingsPage';
 import { TrainingGrounds } from './components/training/TrainingGrounds';
 import { BugReportViewer } from './components/editor/BugReportViewer';
+
+// Page title mapping per route
+const PAGE_TITLES: Record<string, string> = {
+  '/': 'Play',
+  '/login': 'Sign In',
+  '/compendium': 'Compendium',
+  '/training': 'Training Sandbox',
+  '/editor': 'Map Editor',
+  '/schedule': 'Schedule',
+  '/stats': 'Stats',
+  '/bug-reports': 'Bug Reports',
+  '/assets': 'Assets',
+  '/settings': 'Settings',
+};
+
+const SITE_NAME = 'Puzzle Daily';
+
+function usePageTitle() {
+  const location = useLocation();
+  useEffect(() => {
+    const pageTitle = PAGE_TITLES[location.pathname];
+    document.title = pageTitle ? `${pageTitle} | ${SITE_NAME}` : SITE_NAME;
+  }, [location.pathname]);
+}
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -160,6 +185,9 @@ function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
   const [searchOpen, setSearchOpen] = useState(false);
+
+  // Update page title on route change
+  usePageTitle();
 
   // Ctrl+K / Cmd+K to open search (only when logged in)
   useEffect(() => {
@@ -455,24 +483,28 @@ function App() {
   }, []);
 
   return (
-    <BrowserRouter>
-      <div className="min-h-screen theme-root">
-        <Navigation />
-        <Routes>
-          <Route path="/" element={<Game />} />
-          <Route path="/login" element={<LoginPage />} />
-          <Route path="/compendium" element={<Compendium />} />
-          <Route path="/training" element={<TrainingGrounds />} />
-          <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
-          <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
-          <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
-          <Route path="/bug-reports" element={<ProtectedRoute><BugReportViewer /></ProtectedRoute>} />
-          <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
-          <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-        </Routes>
-        <ToastContainer />
-      </div>
-    </BrowserRouter>
+    <ErrorBoundary>
+      <BrowserRouter>
+        <div className="min-h-screen theme-root">
+          <Navigation />
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/" element={<Game />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/compendium" element={<Compendium />} />
+              <Route path="/training" element={<TrainingGrounds />} />
+              <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
+              <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
+              <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
+              <Route path="/bug-reports" element={<ProtectedRoute><BugReportViewer /></ProtectedRoute>} />
+              <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
+              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+            </Routes>
+          </ErrorBoundary>
+          <ToastContainer />
+        </div>
+      </BrowserRouter>
+    </ErrorBoundary>
   );
 }
 
