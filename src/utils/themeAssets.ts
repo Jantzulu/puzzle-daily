@@ -772,13 +772,27 @@ export function applyThemeAssets(): void {
     root.style.setProperty(key, value);
   }
 
-  // Apply favicon if set
+  // Apply favicon if set — render onto a 32x32 canvas with nearest-neighbor
+  // scaling to preserve pixel-art crispness
   const assets = loadThemeAssets();
   const faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
   if (faviconLink) {
     if (assets.favicon) {
-      faviconLink.href = assets.favicon;
-      faviconLink.type = assets.favicon.startsWith('data:image/png') ? 'image/png' : 'image/x-icon';
+      const img = new Image();
+      img.onload = () => {
+        const size = 32;
+        const canvas = document.createElement('canvas');
+        canvas.width = size;
+        canvas.height = size;
+        const ctx = canvas.getContext('2d');
+        if (ctx) {
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(img, 0, 0, size, size);
+          faviconLink.href = canvas.toDataURL('image/png');
+          faviconLink.type = 'image/png';
+        }
+      };
+      img.src = assets.favicon;
     } else {
       faviconLink.href = '/vite.svg';
       faviconLink.type = 'image/svg+xml';
