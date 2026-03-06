@@ -39,6 +39,7 @@ export interface ThemeAssets {
   siteSubtitle?: string; // Secondary title shown next to main title
   siteSubtitleColor?: string; // Subtitle text color
   siteSubtitleSize?: string; // Subtitle font size (small, medium, large)
+  favicon?: string; // Favicon image URL or data URL for browser tab icon
 
   // Navigation labels (customizable button text)
   navLabelPlay?: string;       // "Play" button label
@@ -227,6 +228,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   siteSubtitle: { label: 'Site Subtitle', description: 'Secondary title shown next to main title (e.g., "The Daily Dungeon Puzzle")', category: 'branding', inputType: 'text' },
   siteSubtitleColor: { label: 'Subtitle Color', description: 'Color for the subtitle text', category: 'branding', inputType: 'color' },
   siteSubtitleSize: { label: 'Subtitle Size', description: 'Font size for the subtitle (small, medium, large)', category: 'branding', inputType: 'select' },
+  favicon: { label: 'Favicon', description: 'Browser tab icon. Upload a small square image (32x32 or 64x64 recommended).', category: 'branding', inputType: 'image' },
   navLabelPlay: { label: 'Play Button Label', description: 'Text for Play navigation button (default: "Play")', category: 'branding', inputType: 'text' },
   navLabelCompendium: { label: 'Compendium Button Label', description: 'Text for Compendium navigation button (default: "Compendium")', category: 'branding', inputType: 'text' },
   navLabelEditor: { label: 'Editor Button Label', description: 'Text for Map Editor navigation button (default: "Map Editor")', category: 'branding', inputType: 'text' },
@@ -768,6 +770,19 @@ export function applyThemeAssets(): void {
   // Then set only the ones that have values
   for (const [key, value] of Object.entries(properties)) {
     root.style.setProperty(key, value);
+  }
+
+  // Apply favicon if set
+  const assets = loadThemeAssets();
+  const faviconLink = document.querySelector('link[rel="icon"]') as HTMLLinkElement | null;
+  if (faviconLink) {
+    if (assets.favicon) {
+      faviconLink.href = assets.favicon;
+      faviconLink.type = assets.favicon.startsWith('data:image/png') ? 'image/png' : 'image/x-icon';
+    } else {
+      faviconLink.href = '/vite.svg';
+      faviconLink.type = 'image/svg+xml';
+    }
   }
 }
 
