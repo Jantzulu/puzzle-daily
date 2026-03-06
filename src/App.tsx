@@ -1,9 +1,6 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
-import { MapEditor } from './components/editor/MapEditor';
-import { AssetManager } from './components/editor/AssetManager';
-import { Compendium } from './components/compendium/Compendium';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
@@ -14,11 +11,16 @@ import { LoginPage } from './components/auth/LoginPage';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
-import { SchedulingDashboard } from './components/editor/SchedulingDashboard';
-import { StatsDashboard } from './components/editor/StatsDashboard';
-import { SettingsPage } from './components/editor/SettingsPage';
-import { TrainingGrounds } from './components/training/TrainingGrounds';
-import { BugReportViewer } from './components/editor/BugReportViewer';
+
+// Lazy-loaded routes — only downloaded when navigated to
+const MapEditor = lazy(() => import('./components/editor/MapEditor').then(m => ({ default: m.MapEditor })));
+const AssetManager = lazy(() => import('./components/editor/AssetManager').then(m => ({ default: m.AssetManager })));
+const Compendium = lazy(() => import('./components/compendium/Compendium').then(m => ({ default: m.Compendium })));
+const SchedulingDashboard = lazy(() => import('./components/editor/SchedulingDashboard').then(m => ({ default: m.SchedulingDashboard })));
+const StatsDashboard = lazy(() => import('./components/editor/StatsDashboard').then(m => ({ default: m.StatsDashboard })));
+const SettingsPage = lazy(() => import('./components/editor/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds').then(m => ({ default: m.TrainingGrounds })));
+const BugReportViewer = lazy(() => import('./components/editor/BugReportViewer').then(m => ({ default: m.BugReportViewer })));
 
 // Page title mapping per route
 const PAGE_TITLES: Record<string, string> = {
@@ -488,18 +490,24 @@ function App() {
         <div className="min-h-screen theme-root">
           <Navigation />
           <ErrorBoundary>
-            <Routes>
-              <Route path="/" element={<Game />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/compendium" element={<Compendium />} />
-              <Route path="/training" element={<TrainingGrounds />} />
-              <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
-              <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
-              <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
-              <Route path="/bug-reports" element={<ProtectedRoute><BugReportViewer /></ProtectedRoute>} />
-              <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
-              <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
-            </Routes>
+            <Suspense fallback={
+              <div className="flex items-center justify-center p-12">
+                <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
+              </div>
+            }>
+              <Routes>
+                <Route path="/" element={<Game />} />
+                <Route path="/login" element={<LoginPage />} />
+                <Route path="/compendium" element={<Compendium />} />
+                <Route path="/training" element={<TrainingGrounds />} />
+                <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
+                <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
+                <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
+                <Route path="/bug-reports" element={<ProtectedRoute><BugReportViewer /></ProtectedRoute>} />
+                <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+              </Routes>
+            </Suspense>
           </ErrorBoundary>
           <ToastContainer />
         </div>
