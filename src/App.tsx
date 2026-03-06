@@ -283,6 +283,9 @@ function Navigation() {
           <Link to="/training" className={linkClass('/training')}>
             <span className="mr-1">{'\uD83C\uDFAF'}</span> Training
           </Link>
+          <Link to="/assets" className={linkClass('/assets')}>
+            <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
+          </Link>
           <Link to="/editor" className={linkClass('/editor')}>
             <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
           </Link>
@@ -294,9 +297,6 @@ function Navigation() {
           </Link>
           <Link to="/bug-reports" className={linkClass('/bug-reports')}>
             <span className="mr-1">🐛</span> Bugs
-          </Link>
-          <Link to="/assets" className={linkClass('/assets')}>
-            <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
           <Link to="/settings" className={linkClass('/settings')}>
             <span className="mr-1">⚙️</span> Settings
@@ -366,6 +366,13 @@ function Navigation() {
             <span className="mr-2">{'\uD83C\uDFAF'}</span> Training
           </Link>
           <Link
+            to="/assets"
+            className={`block ${linkClass('/assets')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
+          </Link>
+          <Link
             to="/editor"
             className={`block ${linkClass('/editor')}`}
             onClick={() => setMobileMenuOpen(false)}
@@ -392,13 +399,6 @@ function Navigation() {
             onClick={() => setMobileMenuOpen(false)}
           >
             <span className="mr-2">🐛</span> Bug Reports
-          </Link>
-          <Link
-            to="/assets"
-            className={`block ${linkClass('/assets')}`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
           <Link
             to="/settings"
