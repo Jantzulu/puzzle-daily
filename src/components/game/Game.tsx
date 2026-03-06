@@ -1323,31 +1323,12 @@ export const Game: React.FC = () => {
                         </div>
                         {trackedRuns.length > 0 && (
                           <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
-                            Report Bug
+                            Report Bug {themeAssets.iconBugReport || '\uD83D\uDC1B'}
                           </button>
                         )}
                       </div>
                     )}
 
-                    {/* Community Stats */}
-                    {currentPuzzle.date && (
-                      <CommunityStats
-                        puzzleId={currentPuzzle.id}
-                        playerScore={puzzleScore ?? {
-                          rank: 'bronze' as const,
-                          totalPoints: 0,
-                          breakdown: { basePoints: 0, characterBonus: 0, turnBonus: 0, livesBonus: 0, sideQuestPoints: 0 },
-                          completedSideQuests: [],
-                          parMet: { characters: false, turns: false },
-                          stats: {
-                            charactersUsed: gameState.placedCharacters.length,
-                            turnsUsed: gameState.currentTurn,
-                            livesRemaining: livesRemaining,
-                          },
-                        }}
-                        playerOutcome="defeat"
-                      />
-                    )}
                   </div>
                 </div>
               )}
@@ -1413,10 +1394,30 @@ export const Game: React.FC = () => {
                       </div>
                       {trackedRuns.length > 0 && (
                         <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
-                          Report Bug
+                          Report Bug {themeAssets.iconBugReport || '\uD83D\uDC1B'}
                         </button>
                       )}
                     </div>
+
+                    {/* Community Stats - only on game over, not per-attempt defeats */}
+                    {currentPuzzle.date && (
+                      <CommunityStats
+                        puzzleId={currentPuzzle.id}
+                        playerScore={puzzleScore ?? {
+                          rank: 'bronze' as const,
+                          totalPoints: 0,
+                          breakdown: { basePoints: 0, characterBonus: 0, turnBonus: 0, livesBonus: 0, sideQuestPoints: 0 },
+                          completedSideQuests: [],
+                          parMet: { characters: false, turns: false },
+                          stats: {
+                            charactersUsed: gameState.placedCharacters.length,
+                            turnsUsed: gameState.currentTurn,
+                            livesRemaining: 0,
+                          },
+                        }}
+                        playerOutcome="defeat"
+                      />
+                    )}
                   </div>
                 </div>
               )}
@@ -1509,7 +1510,7 @@ export const Game: React.FC = () => {
                     </button>
                     {trackedRuns.length > 0 && (
                       <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
-                        Report Bug
+                        Report Bug {themeAssets.iconBugReport || '\uD83D\uDC1B'}
                       </button>
                     )}
                   </div>
