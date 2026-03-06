@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import type { Puzzle } from '../../types/game';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { loadCollectible, type CustomSprite, type CustomCollectible } from '../../utils/assetStorage';
@@ -188,7 +189,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                 {collectible.description && (
                   <div
                     className="text-xs lg:text-sm text-stone-400 mt-0.5"
-                    dangerouslySetInnerHTML={{ __html: collectible.description }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeHtml(collectible.description) }}
                   />
                 )}
                 {/* Show placement restriction info - separate line like SpecialTilesDisplay */}

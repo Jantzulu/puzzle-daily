@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { sanitizeRichHtml } from '../../utils/sanitizeHtml';
 import { toast } from '../shared/Toast';
 import {
   getAllHelpSections,
@@ -180,7 +181,7 @@ export const HelpContentEditor: React.FC = () => {
                   <h3 className="text-lg font-bold mb-3">{editing.title}</h3>
                   <div
                     className="text-parchment-300 help-preview"
-                    dangerouslySetInnerHTML={{ __html: editing.content }}
+                    dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(editing.content) }}
                   />
                 </div>
               </div>

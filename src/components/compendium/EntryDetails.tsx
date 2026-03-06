@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import {
   getAllPuzzleSkins,
   type CustomCharacter,
@@ -408,7 +409,7 @@ export const ItemDetail: React.FC<{ item: CustomCollectible }> = ({ item }) => {
           <div
             className="mt-1 text-sm"
             style={{ color: 'var(--text-primary)' }}
-            dangerouslySetInnerHTML={{ __html: item.description }}
+            dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
           />
         )}
         {item.preventPlacement && (

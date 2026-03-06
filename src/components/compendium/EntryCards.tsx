@@ -1,4 +1,5 @@
 import React, { useMemo } from 'react';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import {
   getAllPuzzleSkins,
   type CustomCharacter,
@@ -240,7 +241,7 @@ export const ItemCard: React.FC<CardProps & { item: CustomCollectible }> = ({ it
             <div
               className="text-xs truncate"
               style={{ color: 'var(--text-muted)' }}
-              dangerouslySetInnerHTML={{ __html: item.description }}
+              dangerouslySetInnerHTML={{ __html: sanitizeHtml(item.description) }}
             />
           ) : (
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>

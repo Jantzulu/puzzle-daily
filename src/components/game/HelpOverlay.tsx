@@ -1,6 +1,7 @@
 import React, { useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHelpSection, type HelpSectionId } from '../../utils/assetStorage';
+import { sanitizeRichHtml } from '../../utils/sanitizeHtml';
 
 interface HelpOverlayProps {
   sectionId: HelpSectionId;
@@ -84,7 +85,7 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
           ref={contentRef}
           className="flex-1 overflow-y-auto p-4 text-parchment-300 help-content"
           onClick={handleContentClick}
-          dangerouslySetInnerHTML={{ __html: helpContent.content }}
+          dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(helpContent.content) }}
         />
 
         {/* Footer with close button for mobile */}

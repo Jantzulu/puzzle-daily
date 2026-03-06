@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useState } from 'react';
+import { sanitizeHtml } from '../../utils/sanitizeHtml';
 
 interface RichTextEditorProps {
   value: string;
@@ -234,41 +235,6 @@ export const RichTextRenderer: React.FC<{ html: string; className?: string }> = 
   html,
   className = '',
 }) => {
-  // Sanitize HTML to only allow safe formatting tags
-  const sanitizeHtml = (input: string): string => {
-    // Create a temporary element to parse
-    const temp = document.createElement('div');
-    temp.innerHTML = input;
-
-    // Walk through and remove any non-allowed elements
-    const allowedTags = ['B', 'I', 'U', 'S', 'STRONG', 'EM', 'SPAN', 'FONT', 'BR', 'A'];
-    const walkAndClean = (node: Node) => {
-      const children = Array.from(node.childNodes);
-      for (const child of children) {
-        if (child.nodeType === Node.ELEMENT_NODE) {
-          const el = child as Element;
-          if (!allowedTags.includes(el.tagName)) {
-            // Replace disallowed element with its text content
-            const text = document.createTextNode(el.textContent || '');
-            node.replaceChild(text, child);
-          } else {
-            // Clean attributes except safe ones
-            const attrs = Array.from(el.attributes);
-            for (const attr of attrs) {
-              if (attr.name === 'style' || attr.name === 'color') continue;
-              if (el.tagName === 'A' && attr.name === 'href') continue;
-              el.removeAttribute(attr.name);
-            }
-            walkAndClean(child);
-          }
-        }
-      }
-    };
-
-    walkAndClean(temp);
-    return temp.innerHTML;
-  };
-
   return (
     <span
       className={className}
