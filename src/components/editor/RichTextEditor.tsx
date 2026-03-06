@@ -170,6 +170,33 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
 
         <div className="w-px bg-stone-600 mx-1" />
 
+        {/* Link */}
+        <button
+          type="button"
+          onMouseDown={(e) => e.preventDefault()}
+          onClick={() => {
+            const selection = window.getSelection();
+            const selectedText = selection?.toString() || '';
+            const url = prompt('Link URL (e.g. /compendium, /training):', '/');
+            if (url) {
+              const text = selectedText || prompt('Link text:', 'click here') || 'link';
+              if (selectedText) {
+                execCommand('createLink', url);
+              } else {
+                // Insert a new link at cursor
+                const link = `<a href="${url}">${text}</a>`;
+                execCommand('insertHTML', link);
+              }
+            }
+          }}
+          className="px-2 py-1 text-sm rounded hover:bg-stone-600 text-parchment-300"
+          title="Insert Link"
+        >
+          🔗
+        </button>
+
+        <div className="w-px bg-stone-600 mx-1" />
+
         {/* Clear formatting */}
         <button
           type="button"
@@ -214,7 +241,7 @@ export const RichTextRenderer: React.FC<{ html: string; className?: string }> = 
     temp.innerHTML = input;
 
     // Walk through and remove any non-allowed elements
-    const allowedTags = ['B', 'I', 'U', 'S', 'STRONG', 'EM', 'SPAN', 'FONT', 'BR'];
+    const allowedTags = ['B', 'I', 'U', 'S', 'STRONG', 'EM', 'SPAN', 'FONT', 'BR', 'A'];
     const walkAndClean = (node: Node) => {
       const children = Array.from(node.childNodes);
       for (const child of children) {
@@ -225,12 +252,12 @@ export const RichTextRenderer: React.FC<{ html: string; className?: string }> = 
             const text = document.createTextNode(el.textContent || '');
             node.replaceChild(text, child);
           } else {
-            // Clean attributes except style (for colors) and color
+            // Clean attributes except safe ones
             const attrs = Array.from(el.attributes);
             for (const attr of attrs) {
-              if (attr.name !== 'style' && attr.name !== 'color') {
-                el.removeAttribute(attr.name);
-              }
+              if (attr.name === 'style' || attr.name === 'color') continue;
+              if (el.tagName === 'A' && attr.name === 'href') continue;
+              el.removeAttribute(attr.name);
             }
             walkAndClean(child);
           }

@@ -1,4 +1,5 @@
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { getHelpSection, type HelpSectionId } from '../../utils/assetStorage';
 
 interface HelpOverlayProps {
@@ -13,6 +14,25 @@ interface HelpOverlayProps {
  */
 export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onClose }) => {
   const helpContent = getHelpSection(sectionId);
+  const navigate = useNavigate();
+  const contentRef = useRef<HTMLDivElement>(null);
+
+  // Intercept clicks on internal links for client-side navigation
+  const handleContentClick = useCallback((e: React.MouseEvent) => {
+    const target = e.target as HTMLElement;
+    const anchor = target.closest('a');
+    if (!anchor) return;
+
+    const href = anchor.getAttribute('href');
+    if (!href) return;
+
+    // Internal links start with /
+    if (href.startsWith('/')) {
+      e.preventDefault();
+      onClose();
+      navigate(href);
+    }
+  }, [navigate, onClose]);
 
   // Close on Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -61,7 +81,9 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
 
         {/* Content */}
         <div
+          ref={contentRef}
           className="flex-1 overflow-y-auto p-4 text-parchment-300 help-content"
+          onClick={handleContentClick}
           dangerouslySetInnerHTML={{ __html: helpContent.content }}
         />
 
@@ -106,6 +128,14 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
           margin-top: 1rem;
           margin-bottom: 0.5rem;
           color: white;
+        }
+        .help-content a {
+          color: #60a5fa;
+          text-decoration: underline;
+          cursor: pointer;
+        }
+        .help-content a:hover {
+          color: #93bbfd;
         }
       `}</style>
     </div>
