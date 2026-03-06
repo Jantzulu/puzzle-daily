@@ -17,6 +17,7 @@ import { SchedulingDashboard } from './components/editor/SchedulingDashboard';
 import { StatsDashboard } from './components/editor/StatsDashboard';
 import { SettingsPage } from './components/editor/SettingsPage';
 import { TrainingGrounds } from './components/training/TrainingGrounds';
+import { BugReportViewer } from './components/editor/BugReportViewer';
 
 // Get a random logo from variants (selected once per session)
 let cachedRandomLogo: { image: string; frameCount: number; frameRate: number } | null = null;
@@ -291,6 +292,9 @@ function Navigation() {
           <Link to="/stats" className={linkClass('/stats')}>
             <span className="mr-1">📊</span> Stats
           </Link>
+          <Link to="/bug-reports" className={linkClass('/bug-reports')}>
+            <span className="mr-1">🐛</span> Bugs
+          </Link>
           <Link to="/assets" className={linkClass('/assets')}>
             <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
@@ -383,6 +387,13 @@ function Navigation() {
             <span className="mr-2">📊</span> Stats
           </Link>
           <Link
+            to="/bug-reports"
+            className={`block ${linkClass('/bug-reports')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">🐛</span> Bug Reports
+          </Link>
+          <Link
             to="/assets"
             className={`block ${linkClass('/assets')}`}
             onClick={() => setMobileMenuOpen(false)}
@@ -455,6 +466,7 @@ function App() {
           <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
           <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
           <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
+          <Route path="/bug-reports" element={<ProtectedRoute><BugReportViewer /></ProtectedRoute>} />
           <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
           <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         </Routes>

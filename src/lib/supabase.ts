@@ -39,6 +39,25 @@ export interface Profile {
   updated_at: string;
 }
 
+export interface DbBugReport {
+  id: string;
+  player_id: string;
+  puzzle_id: string;
+  puzzle_name: string | null;
+  placements: object; // PlacedCharacter[] as JSONB
+  outcome: 'victory' | 'defeat';
+  turns_used: number | null;
+  asset_type: string | null;
+  asset_id: string | null;
+  asset_name: string | null;
+  description: string;
+  status: 'new' | 'reviewed' | 'resolved';
+  dev_notes: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}
+
 export interface DbSpriteImage {
   id: string;
   asset_id: string;

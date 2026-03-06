@@ -25,6 +25,8 @@ import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
 import { submitCompletion } from '../../services/statsService';
 import { CommunityStats } from './CommunityStats';
+import { BugReportModal } from './BugReportModal';
+import type { TrackedRun } from '../../types/bugReport';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -96,6 +98,10 @@ export const Game: React.FC = () => {
   const [replaySpeed, setReplaySpeed] = useState(1);
   const turnHistoryRef = useRef<GameState[]>([]);
   const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
+
+  // Bug report system
+  const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
+  const [showBugReport, setShowBugReport] = useState(false);
 
   // Shimmer animation key for Quest text - triggers on puzzle change
   const [shimmerKey, setShimmerKey] = useState(0);
@@ -434,6 +440,17 @@ export const Game: React.FC = () => {
           }
         }
       }
+
+      // Track run for bug reporting
+      if (outcome) {
+        setTrackedRuns(prev => [...prev, {
+          id: crypto.randomUUID(),
+          placements: JSON.parse(JSON.stringify(playStartCharacters)),
+          outcome,
+          turnsUsed: gameState.currentTurn,
+          timestamp: Date.now(),
+        }]);
+      }
     }, TURN_INTERVAL_MS);
 
     return () => clearInterval(interval);
@@ -612,6 +629,15 @@ export const Game: React.FC = () => {
           attemptDurationMs: Date.now() - attemptStartRef.current,
         });
       }
+
+      // Track run for bug reporting
+      setTrackedRuns(prev => [...prev, {
+        id: crypto.randomUUID(),
+        placements: JSON.parse(JSON.stringify(playStartCharacters)),
+        outcome: 'victory',
+        turnsUsed: gameState.currentTurn,
+        timestamp: Date.now(),
+      }]);
     }
   }, [gameState, livesRemaining, currentPuzzle.lives]);
 
@@ -733,6 +759,15 @@ export const Game: React.FC = () => {
         attemptDurationMs: Date.now() - attemptStartRef.current,
       });
     }
+
+    // Track run for bug reporting
+    setTrackedRuns(prev => [...prev, {
+      id: crypto.randomUUID(),
+      placements: JSON.parse(JSON.stringify(playStartCharacters)),
+      outcome: 'defeat',
+      turnsUsed: gameState.currentTurn,
+      timestamp: Date.now(),
+    }]);
 
     const puzzleLives = currentPuzzle.lives ?? 3;
     const isUnlimitedLives = puzzleLives === 0;
@@ -916,6 +951,7 @@ export const Game: React.FC = () => {
       setShowGameOver(false);
       setPlayStartCharacters([]);
       setPuzzleScore(null);
+      setTrackedRuns([]);
     }
   };
 
@@ -1270,19 +1306,26 @@ export const Game: React.FC = () => {
                       );
                     })()}
                     {playStartCharacters.length > 0 && (
-                      <div className="mt-3 flex gap-3 justify-center">
-                        <button
-                          onClick={handleWatchReplay}
-                          className="dungeon-btn px-4 py-2 text-sm font-bold"
-                        >
-                          Watch Replay
-                        </button>
-                        <button
-                          onClick={handleAutoReset}
-                          className="dungeon-btn-primary px-4 py-2 text-sm font-bold"
-                        >
-                          Try Again
-                        </button>
+                      <div className="mt-3 flex flex-col items-center gap-2">
+                        <div className="flex gap-3">
+                          <button
+                            onClick={handleWatchReplay}
+                            className="dungeon-btn px-4 py-2 text-sm font-bold"
+                          >
+                            Watch Replay
+                          </button>
+                          <button
+                            onClick={handleAutoReset}
+                            className="dungeon-btn-primary px-4 py-2 text-sm font-bold"
+                          >
+                            Try Again
+                          </button>
+                        </div>
+                        {trackedRuns.length > 0 && (
+                          <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
+                            Report Bug
+                          </button>
+                        )}
                       </div>
                     )}
 
@@ -1344,28 +1387,35 @@ export const Game: React.FC = () => {
                     >
                       No lives remaining!
                     </p>
-                    <div className="mt-4 flex gap-3 justify-center">
-                      {playStartCharacters.length > 0 && (
+                    <div className="mt-4 flex flex-col items-center gap-2">
+                      <div className="flex gap-3">
+                        {playStartCharacters.length > 0 && (
+                          <button
+                            onClick={handleWatchReplay}
+                            className="dungeon-btn px-4 py-3 font-bold text-sm"
+                          >
+                            Watch Replay
+                          </button>
+                        )}
                         <button
-                          onClick={handleWatchReplay}
-                          className="dungeon-btn px-4 py-3 font-bold text-sm"
+                          onClick={handleRestartPuzzle}
+                          className={`px-6 py-3 font-bold text-lg ${
+                            themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
+                          }`}
+                          style={{
+                            ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
+                            ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                            ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
+                          }}
                         >
-                          Watch Replay
+                          Try Again
+                        </button>
+                      </div>
+                      {trackedRuns.length > 0 && (
+                        <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
+                          Report Bug
                         </button>
                       )}
-                      <button
-                        onClick={handleRestartPuzzle}
-                        className={`px-6 py-3 font-bold text-lg ${
-                          themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
-                        }`}
-                        style={{
-                          ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
-                          ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                          ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
-                        }}
-                      >
-                        Try Again
-                      </button>
                     </div>
                   </div>
                 </div>
@@ -1448,14 +1498,21 @@ export const Game: React.FC = () => {
                   </div>
                 )}
 
-                {/* Watch Replay */}
+                {/* Watch Replay + Report Bug */}
                 {playStartCharacters.length > 0 && (
-                  <button
-                    onClick={handleWatchReplay}
-                    className="mt-3 dungeon-btn px-4 py-2 text-sm font-bold"
-                  >
-                    Watch Replay
-                  </button>
+                  <div className="mt-3 flex flex-col items-center gap-2">
+                    <button
+                      onClick={handleWatchReplay}
+                      className="dungeon-btn px-4 py-2 text-sm font-bold"
+                    >
+                      Watch Replay
+                    </button>
+                    {trackedRuns.length > 0 && (
+                      <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
+                        Report Bug
+                      </button>
+                    )}
+                  </div>
                 )}
 
                 {/* Community Stats */}
@@ -1828,6 +1885,13 @@ export const Game: React.FC = () => {
         onClose={() => setWarningModal({ isOpen: false, message: '' })}
         title="Hold On!"
         message={warningModal.message}
+      />
+
+      <BugReportModal
+        isOpen={showBugReport}
+        onClose={() => setShowBugReport(false)}
+        puzzle={currentPuzzle}
+        trackedRuns={trackedRuns}
       />
     </div>
   );
