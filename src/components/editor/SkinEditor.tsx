@@ -124,10 +124,23 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [showPreview, setShowPreview] = useState(true);
+  // Desktop magnifier state
   const [magnifierOn, setMagnifierOn] = useState(false);
   const [magnifierZoom, setMagnifierZoom] = useState(3);
   const [magnifierOrigin, setMagnifierOrigin] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
+
+  // Mobile pinch-to-zoom state
+  const [touchZoom, setTouchZoom] = useState(1);
+  const [touchPan, setTouchPan] = useState({ x: 0, y: 0 });
+  const touchStateRef = useRef<{
+    initialDistance: number;
+    initialZoom: number;
+    initialPan: { x: number; y: number };
+    initialMidpoint: { x: number; y: number };
+    lastMidpoint: { x: number; y: number };
+    isPinching: boolean;
+  } | null>(null);
 
   const handlePreviewMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     if (!magnifierOn || !previewRef.current) return;
@@ -155,6 +168,70 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
     el.addEventListener('wheel', onWheel, { passive: false });
     return () => el.removeEventListener('wheel', onWheel);
   }, [magnifierOn]);
+
+  // Mobile pinch-to-zoom + pan via touch events
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el || !isMobile) return;
+
+    const getDistance = (t1: Touch, t2: Touch) =>
+      Math.hypot(t2.clientX - t1.clientX, t2.clientY - t1.clientY);
+    const getMidpoint = (t1: Touch, t2: Touch) => ({
+      x: (t1.clientX + t2.clientX) / 2,
+      y: (t1.clientY + t2.clientY) / 2,
+    });
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const d = getDistance(e.touches[0], e.touches[1]);
+        const mid = getMidpoint(e.touches[0], e.touches[1]);
+        touchStateRef.current = {
+          initialDistance: d,
+          initialZoom: touchZoom,
+          initialPan: { ...touchPan },
+          initialMidpoint: mid,
+          lastMidpoint: mid,
+          isPinching: true,
+        };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (e.touches.length === 2 && touchStateRef.current?.isPinching) {
+        e.preventDefault();
+        const d = getDistance(e.touches[0], e.touches[1]);
+        const mid = getMidpoint(e.touches[0], e.touches[1]);
+        const state = touchStateRef.current;
+        const scale = d / state.initialDistance;
+        const newZoom = Math.min(8, Math.max(1, state.initialZoom * scale));
+        const dx = mid.x - state.initialMidpoint.x;
+        const dy = mid.y - state.initialMidpoint.y;
+        setTouchZoom(Math.round(newZoom * 10) / 10);
+        setTouchPan({
+          x: state.initialPan.x + dx,
+          y: state.initialPan.y + dy,
+        });
+        state.lastMidpoint = mid;
+      }
+    };
+
+    const onTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2 && touchStateRef.current?.isPinching) {
+        touchStateRef.current.isPinching = false;
+        touchStateRef.current = null;
+      }
+    };
+
+    el.addEventListener('touchstart', onTouchStart, { passive: false });
+    el.addEventListener('touchmove', onTouchMove, { passive: false });
+    el.addEventListener('touchend', onTouchEnd);
+    return () => {
+      el.removeEventListener('touchstart', onTouchStart);
+      el.removeEventListener('touchmove', onTouchMove);
+      el.removeEventListener('touchend', onTouchEnd);
+    };
+  }, [isMobile, touchZoom, touchPan]);
   const bulk = useBulkSelect();
 
   // Live preview game state — rebuilds when editing skin or custom tile types change
@@ -687,43 +764,65 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       </button>
                       {showPreview && (
                         <>
-                          <div className="mt-2 flex items-center justify-center gap-2">
-                            <button
-                              onClick={() => setMagnifierOn(m => !m)}
-                              className={`px-2 py-0.5 text-sm rounded ${
-                                magnifierOn
-                                  ? 'bg-arcane-700 text-parchment-100 border border-arcane-500'
-                                  : 'dungeon-button'
-                              }`}
-                              title={magnifierOn ? 'Disable magnifier' : 'Enable magnifier — hover to zoom into tiles'}
-                            >🔍</button>
-                            {magnifierOn && (
-                              <>
-                                <input
-                                  type="range"
-                                  min="1.5"
-                                  max="8"
-                                  step="0.5"
-                                  value={magnifierZoom}
-                                  onChange={(e) => setMagnifierZoom(parseFloat(e.target.value))}
-                                  className="w-24 accent-arcane-500"
-                                  title="Magnifier zoom level"
-                                />
-                                <span className="text-xs text-stone-400 w-8">{magnifierZoom}×</span>
-                              </>
-                            )}
-                          </div>
+                          {/* Desktop: magnifier toggle + slider */}
+                          {!isMobile && (
+                            <div className="mt-2 flex items-center justify-center gap-2">
+                              <button
+                                onClick={() => setMagnifierOn(m => !m)}
+                                className={`px-2 py-0.5 text-sm rounded ${
+                                  magnifierOn
+                                    ? 'bg-arcane-700 text-parchment-100 border border-arcane-500'
+                                    : 'dungeon-button'
+                                }`}
+                                title={magnifierOn ? 'Disable magnifier' : 'Enable magnifier — hover to zoom into tiles'}
+                              >🔍</button>
+                              {magnifierOn && (
+                                <>
+                                  <input
+                                    type="range"
+                                    min="1.5"
+                                    max="8"
+                                    step="0.5"
+                                    value={magnifierZoom}
+                                    onChange={(e) => setMagnifierZoom(parseFloat(e.target.value))}
+                                    className="w-24 accent-arcane-500"
+                                    title="Magnifier zoom level"
+                                  />
+                                  <span className="text-xs text-stone-400 w-8">{magnifierZoom}×</span>
+                                </>
+                              )}
+                            </div>
+                          )}
+
+                          {/* Mobile: pinch hint + reset button */}
+                          {isMobile && (
+                            <div className="mt-2 flex items-center justify-center gap-2">
+                              <span className="text-xs text-stone-400">Pinch to zoom</span>
+                              {touchZoom > 1 && (
+                                <button
+                                  onClick={() => { setTouchZoom(1); setTouchPan({ x: 0, y: 0 }); }}
+                                  className="dungeon-button px-2 py-0.5 text-xs"
+                                >Reset {touchZoom.toFixed(1)}×</button>
+                              )}
+                            </div>
+                          )}
+
                           <div
                             ref={previewRef}
                             className="mt-2 bg-stone-900 rounded p-2 flex justify-center overflow-hidden"
                             style={{
-                              cursor: magnifierOn ? 'crosshair' : undefined,
+                              cursor: magnifierOn && !isMobile ? 'crosshair' : undefined,
+                              touchAction: isMobile ? 'none' : undefined,
                             }}
-                            onMouseMove={handlePreviewMouseMove}
-                            onMouseLeave={handlePreviewMouseLeave}
+                            onMouseMove={!isMobile ? handlePreviewMouseMove : undefined}
+                            onMouseLeave={!isMobile ? handlePreviewMouseLeave : undefined}
                           >
                             <div
-                              style={{
+                              style={isMobile ? {
+                                transition: touchStateRef.current?.isPinching ? 'none' : 'transform 0.2s ease-out',
+                                transform: `scale(${touchZoom}) translate(${touchPan.x / touchZoom}px, ${touchPan.y / touchZoom}px)`,
+                                transformOrigin: 'center center',
+                              } : {
                                 transition: magnifierOrigin ? 'none' : 'transform 0.2s ease-out',
                                 transform: magnifierOn && magnifierOrigin ? `scale(${magnifierZoom})` : 'scale(1)',
                                 transformOrigin: magnifierOrigin || 'center center',
