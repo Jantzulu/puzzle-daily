@@ -12,6 +12,7 @@ import { RichTextEditor } from './RichTextEditor';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 const ANCHOR_POINTS: { value: ObjectAnchorPoint; label: string; description: string }[] = [
@@ -375,7 +376,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
           )}
 
           {/* Basic Info */}
-          <div className="dungeon-panel p-4 rounded space-y-3">
+          <CollapsiblePanel title="Basic Info" className="space-y-3">
             <div className="flex items-center gap-4">
               <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                 <SpriteThumbnail sprite={editing.customSprite} size={64} />
@@ -416,22 +417,20 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                 ))}
               </select>
             </div>
-          </div>
+          </CollapsiblePanel>
 
           {/* Sprite */}
-          <div className="dungeon-panel p-4 rounded">
-            <h3 className="text-lg font-bold mb-4">Sprite</h3>
+          <CollapsiblePanel title="Sprite">
             {editing.customSprite && (
               <StaticSpriteEditor
                 sprite={editing.customSprite}
                 onChange={updateSprite}
               />
             )}
-          </div>
+          </CollapsiblePanel>
 
           {/* Positioning */}
-          <div className="dungeon-panel p-4 rounded space-y-3">
-            <h3 className="text-lg font-bold">Positioning</h3>
+          <CollapsiblePanel title="Positioning" className="space-y-3">
             <div>
               <label className="block text-sm mb-1">Anchor Point</label>
               <select
@@ -458,12 +457,11 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                 <option value="above_entities">Above Entities</option>
               </select>
             </div>
-          </div>
+          </CollapsiblePanel>
 
           {/* Effects */}
-          <div className="dungeon-panel p-4 rounded">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-bold">Effects</h3>
+          <CollapsiblePanel title="Effects">
+            <div className="flex justify-end mb-4">
               <button
                 onClick={addEffect}
                 className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
@@ -568,7 +566,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                 ))}
               </div>
             )}
-          </div>
+          </CollapsiblePanel>
         </>
       ) : null}
       emptyState={

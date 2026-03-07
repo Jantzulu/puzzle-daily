@@ -11,6 +11,7 @@ import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderD
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Effect type options with icons
@@ -341,7 +342,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
             {/* Left Column */}
             <div className="space-y-6">
               {/* Basic Info */}
-              <div className="dungeon-panel p-4 rounded space-y-3">
+              <CollapsiblePanel title="Basic Info" className="space-y-3">
                 <div className="flex items-center gap-4">
                   <div className="w-16 h-16 bg-stone-700 rounded flex items-center justify-center overflow-hidden flex-shrink-0">
                     <SpriteThumbnail sprite={editing.customSprite} size={64} />
@@ -382,11 +383,10 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                     ))}
                   </select>
                 </div>
-              </div>
+              </CollapsiblePanel>
 
               {/* Pickup Behavior */}
-              <div className="dungeon-panel p-4 rounded space-y-3">
-                <h3 className="text-lg font-bold">Pickup Behavior</h3>
+              <CollapsiblePanel title="Pickup Behavior" className="space-y-3">
                 <div>
                   <label className="block text-sm mb-1">Pickup Method</label>
                   <select
@@ -439,11 +439,10 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                     If enabled, characters cannot be placed on tiles with this collectible during setup (they can still walk over it)
                   </p>
                 </div>
-              </div>
+              </CollapsiblePanel>
 
               {/* Sound */}
-              <div className="dungeon-panel p-4 rounded space-y-3">
-                <h3 className="text-lg font-bold">Sound</h3>
+              <CollapsiblePanel title="Sound" className="space-y-3">
                 <div>
                   <label className="block text-sm mb-1">Pickup Sound</label>
                   <select
@@ -457,14 +456,13 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                     ))}
                   </select>
                 </div>
-              </div>
+              </CollapsiblePanel>
             </div>
 
             {/* Right Column */}
             <div className="space-y-6">
               {/* Sprite */}
-              <div className="dungeon-panel p-4 rounded">
-                <h3 className="text-lg font-bold mb-4">Sprite</h3>
+              <CollapsiblePanel title="Sprite">
                 <StaticSpriteEditor
                   sprite={editing.customSprite || {
                     id: 'sprite_' + Date.now(),
@@ -477,12 +475,11 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                   }}
                   onChange={updateSprite}
                 />
-              </div>
+              </CollapsiblePanel>
 
               {/* Effects */}
-              <div className="dungeon-panel p-4 rounded">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-lg font-bold">Effects</h3>
+              <CollapsiblePanel title="Effects">
+                <div className="flex justify-end mb-4">
                   <button
                     onClick={addEffect}
                     className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
@@ -508,7 +505,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                     </p>
                   )}
                 </div>
-              </div>
+              </CollapsiblePanel>
             </div>
           </div>
         </>

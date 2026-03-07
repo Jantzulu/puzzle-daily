@@ -14,6 +14,7 @@ import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { CollapsiblePanel } from './CollapsiblePanel';
 
 // Helper to convert file to base64
 function fileToBase64(file: File): Promise<string> {
@@ -863,8 +864,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                 )}
 
                 {/* Basic Info */}
-                <div className="dungeon-panel p-4 rounded space-y-3">
-                  <h3 className="text-lg font-bold">Basic Info</h3>
+                <CollapsiblePanel title="Basic Info" className="space-y-3">
                   <div>
                     <label className="block text-sm mb-1">Name</label>
                     <input
@@ -926,13 +926,10 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       Characters cannot be placed on this tile during setup, but can still walk on it during gameplay.
                     </p>
                   </div>
-                </div>
+                </CollapsiblePanel>
 
                 {/* Behaviors */}
-                <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">
-                    {(editing.cadence?.enabled || editing.canBeTriggered) ? 'Behaviors (On State)' : 'Behaviors'}
-                  </h3>
+                <CollapsiblePanel title={(editing.cadence?.enabled || editing.canBeTriggered) ? 'Behaviors (On State)' : 'Behaviors'}>
                   {editing.behaviors.length === 0 ? (
                     <p className="text-stone-400 text-sm mb-3">
                       No behaviors added. Add behaviors to make this tile interactive.
@@ -963,11 +960,10 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       </option>
                     ))}
                   </select>
-                </div>
+                </CollapsiblePanel>
 
                 {/* Cadence Configuration */}
-                <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">On/Off Cadence</h3>
+                <CollapsiblePanel title="On/Off Cadence">
                   <p className="text-sm text-stone-400 mb-4">
                     Make tile behaviors toggle on and off based on turn count.
                   </p>
@@ -1159,14 +1155,13 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       </p>
                     </div>
                   )}
-                </div>
+                </CollapsiblePanel>
 
                 {/* On State Blocks Movement + Off State Behaviors (only when cadence or trigger enabled) */}
                 {(editing.cadence?.enabled || editing.canBeTriggered) && (
                   <>
                     {/* On State Blocks Movement */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <h3 className="text-lg font-bold mb-4">State-Based Movement</h3>
+                    <CollapsiblePanel title="State-Based Movement">
                       <label className="flex items-center text-sm text-stone-300 cursor-pointer">
                         <input
                           type="checkbox"
@@ -1179,11 +1174,10 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       <p className="text-xs text-stone-500 mt-1 ml-5">
                         When active (on), entities cannot walk through this tile. When off, it becomes passable.
                       </p>
-                    </div>
+                    </CollapsiblePanel>
 
                     {/* Off State Behaviors */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <h3 className="text-lg font-bold mb-4">Behaviors (Off State)</h3>
+                    <CollapsiblePanel title="Behaviors (Off State)">
                       <p className="text-sm text-stone-400 mb-3">
                         These behaviors fire when the tile is in its off state.
                       </p>
@@ -1217,15 +1211,12 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           </option>
                         ))}
                       </select>
-                    </div>
+                    </CollapsiblePanel>
                   </>
                 )}
 
                 {/* Tile Sprite */}
-                <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">
-                    {(editing.cadence?.enabled || editing.canBeTriggered) ? 'On State Sprite' : 'Tile Sprite'}
-                  </h3>
+                <CollapsiblePanel title={(editing.cadence?.enabled || editing.canBeTriggered) ? 'On State Sprite' : 'Tile Sprite'}>
                   <p className="text-sm text-stone-400 mb-4">
                     Upload a custom sprite for this tile type. If not set, a default visual will be used based on behaviors.
                   </p>
@@ -1333,12 +1324,11 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                       Hides the default overlays (purple for teleport, blue for ice, etc.) when the tile has a custom sprite.
                     </p>
                   </div>
-                </div>
+                </CollapsiblePanel>
 
                 {/* Off State Sprite (shown when cadence or trigger enabled) */}
                 {(editing.cadence?.enabled || editing.canBeTriggered) && (
-                  <div className="dungeon-panel p-4 rounded">
-                    <h3 className="text-lg font-bold mb-4">Off State Sprite</h3>
+                  <CollapsiblePanel title="Off State Sprite">
                     <p className="text-sm text-stone-400 mb-4">
                       Sprite shown when tile is in "off" state. If not set, the on state sprite will be used (or greyed out).
                     </p>
@@ -1430,7 +1420,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                         )}
                       </div>
                     )}
-                  </div>
+                  </CollapsiblePanel>
                 )}
       </>) : null}
       emptyState={

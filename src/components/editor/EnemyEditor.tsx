@@ -17,6 +17,7 @@ import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
@@ -354,7 +355,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               {activeTab === 'details' && (
                 <div className="space-y-6">
                   {/* Basic Info */}
-                  <div className="dungeon-panel p-4 rounded space-y-3">
+                  <CollapsiblePanel title="Basic Info" className="space-y-3">
                     <div>
                       <label className="block text-sm mb-1">Name</label>
                       <input type="text" value={editing.name}
@@ -482,11 +483,10 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           className="w-full px-3 py-2 bg-stone-700 rounded" />
                       </div>
                     </div>
-                  </div>
+                  </CollapsiblePanel>
 
                   {/* Properties */}
-                  <div className="dungeon-panel p-4 rounded space-y-2">
-                    <h3 className="text-lg font-bold mb-3">Properties</h3>
+                  <CollapsiblePanel title="Properties" className="space-y-2">
                     <label className="flex items-center gap-2 p-2 rounded bg-blood-900/30 border border-blood-700/50">
                       <input type="checkbox" checked={editing.isBoss || false}
                         onChange={(e) => updateEnemy({ isBoss: e.target.checked })} className="w-4 h-4" />
@@ -528,11 +528,10 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         onChange={(e) => updateEnemy({ immuneToPush: e.target.checked })} className="w-4 h-4" />
                       <span className="text-sm">Immune to Push</span>
                     </label>
-                  </div>
+                  </CollapsiblePanel>
 
                   {/* Sound Effects */}
-                  <div className="dungeon-panel p-4 rounded">
-                    <h3 className="text-lg font-bold mb-3">Sound Effects</h3>
+                  <CollapsiblePanel title="Sound Effects">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm mb-1">Death Sound</label>
@@ -557,11 +556,10 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         </select>
                       </div>
                     </div>
-                  </div>
+                  </CollapsiblePanel>
 
                   {/* Death Drop */}
-                  <div className="dungeon-panel p-4 rounded">
-                    <h3 className="text-lg font-bold mb-3">Death Drop</h3>
+                  <CollapsiblePanel title="Death Drop">
                     <p className="text-xs text-stone-400 mb-3">Select a collectible to drop when this enemy dies.</p>
                     <select value={editing.droppedCollectibleId || ''}
                       onChange={(e) => updateEnemy({ droppedCollectibleId: e.target.value || undefined })}
@@ -571,14 +569,13 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         <option key={coll.id} value={coll.id}>{coll.name}</option>
                       ))}
                     </select>
-                  </div>
+                  </CollapsiblePanel>
                 </div>
               )}
 
               {/* Behavior Tab */}
               {activeTab === 'behavior' && (
-                <div className="dungeon-panel p-4 rounded space-y-3">
-                  <h3 className="text-lg font-bold">Behavior</h3>
+                <CollapsiblePanel title="Behavior" className="space-y-3">
                   <div>
                     <label className="block text-sm mb-1">Type</label>
                     <select
@@ -622,13 +619,12 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       />
                     </>
                   )}
-                </div>
+                </CollapsiblePanel>
               )}
 
               {/* Sprite Tab */}
               {activeTab === 'sprite' && (
-                <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">Sprite</h3>
+                <CollapsiblePanel title="Sprite">
                   <div className="mb-4">
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={editing.allowOversizedSprite || false}
@@ -645,7 +641,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       allowOversized={editing.allowOversizedSprite}
                     />
                   )}
-                </div>
+                </CollapsiblePanel>
               )}
             </>
           ) : null

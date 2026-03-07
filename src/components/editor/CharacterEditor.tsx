@@ -18,6 +18,7 @@ import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
@@ -379,7 +380,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                 {activeTab === 'details' && (
                   <div className="space-y-6">
                     {/* Basic Info */}
-                    <div className="dungeon-panel p-4 rounded space-y-3">
+                    <CollapsiblePanel title="Basic Info" className="space-y-3">
                       <div>
                         <label className="block text-sm mb-1">Name</label>
                         <input
@@ -544,11 +545,10 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           </select>
                         </div>
                       </div>
-                    </div>
+                    </CollapsiblePanel>
 
                     {/* Properties */}
-                    <div className="dungeon-panel p-4 rounded space-y-2">
-                      <h3 className="text-lg font-bold mb-3">Properties</h3>
+                    <CollapsiblePanel title="Properties" className="space-y-2">
                       <label className="flex items-center gap-2">
                         <input type="checkbox" checked={editing.canOverlapEntities || false}
                           onChange={(e) => updateCharacter({ canOverlapEntities: e.target.checked })} className="w-4 h-4" />
@@ -579,11 +579,10 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           onChange={(e) => updateCharacter({ immuneToPush: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Immune to Push</span>
                       </label>
-                    </div>
+                    </CollapsiblePanel>
 
                     {/* Sound Effects */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <h3 className="text-lg font-bold mb-3">Sound Effects</h3>
+                    <CollapsiblePanel title="Sound Effects">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
                           <label className="block text-sm mb-1">Death Sound</label>
@@ -612,11 +611,10 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           </select>
                         </div>
                       </div>
-                    </div>
+                    </CollapsiblePanel>
 
                     {/* Death Drop */}
-                    <div className="dungeon-panel p-4 rounded">
-                      <h3 className="text-lg font-bold mb-3">Death Drop</h3>
+                    <CollapsiblePanel title="Death Drop">
                       <p className="text-xs text-stone-400 mb-3">Select a collectible to drop when this character dies.</p>
                       <select
                         value={editing.droppedCollectibleId || ''}
@@ -628,26 +626,25 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           <option key={coll.id} value={coll.id}>{coll.name}</option>
                         ))}
                       </select>
-                    </div>
+                    </CollapsiblePanel>
                   </div>
                 )}
 
                 {/* Behavior Tab */}
                 {activeTab === 'behavior' && (
-                  <div className="dungeon-panel p-4 rounded">
+                  <CollapsiblePanel title="Behavior">
                     <BehaviorSequenceBuilder
                       actions={editing.behavior}
                       onChange={updateBehaviorActions}
                       onSelectSpell={(index) => setShowSpellPicker(index)}
                       context="character"
                     />
-                  </div>
+                  </CollapsiblePanel>
                 )}
 
                 {/* Sprite Tab */}
                 {activeTab === 'sprite' && (
-                  <div className="dungeon-panel p-4 rounded">
-                    <h3 className="text-lg font-bold mb-4">Sprite</h3>
+                  <CollapsiblePanel title="Sprite">
                     <div className="mb-4">
                       <label className="flex items-center gap-2 cursor-pointer">
                         <input
@@ -667,7 +664,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         allowOversized={editing.allowOversizedSprite}
                       />
                     )}
-                  </div>
+                  </CollapsiblePanel>
                 )}
             </>
           ) : null

@@ -14,6 +14,7 @@ import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { AssetEditorLayout } from './AssetEditorLayout';
+import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Helper to convert file to base64
@@ -691,7 +692,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                   )}
 
                   {/* Basic Info */}
-                  <div className="dungeon-panel p-4 rounded space-y-3 flex-1 min-w-0">
+                  <CollapsiblePanel title="Basic Info" className="space-y-3 flex-1 min-w-0">
                     <div className="flex items-center gap-4">
                       <div className="w-16 h-16 bg-stone-700 rounded overflow-hidden flex-shrink-0 grid grid-cols-2 grid-rows-2">
                         {(() => {
@@ -754,12 +755,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                         ))}
                       </select>
                     </div>
-                  </div>
+                  </CollapsiblePanel>
                 </div>
 
                 {/* Border Sprites */}
-                <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">Border Sprites</h3>
+                <CollapsiblePanel title="Border Sprites">
                   <p className="text-sm text-stone-400 mb-4">
                     Upload sprites for the walls around the puzzle. Leave empty to use default rendering.
                   </p>
@@ -867,11 +867,10 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       </div>
                     ))}
                   </div>
-                </div>
+                </CollapsiblePanel>
 
                 {/* Tile Sprites */}
-                <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">Tile Sprites</h3>
+                <CollapsiblePanel title="Tile Sprites">
                   <p className="text-sm text-stone-400 mb-4">
                     Upload sprites for the floor and wall tiles inside the puzzle. Leave empty to use default colors.
                   </p>
@@ -978,11 +977,10 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       </div>
                     ))}
                   </div>
-                </div>
+                </CollapsiblePanel>
 
                 {/* Custom Tile Types */}
-                <div className="dungeon-panel p-4 rounded">
-                  <h3 className="text-lg font-bold mb-4">Custom Tile Types</h3>
+                <CollapsiblePanel title="Custom Tile Types">
                   <p className="text-sm text-stone-400 mb-4">
                     Upload custom sprites for your custom tile types within this skin.
                     If no sprite is set, the tile type's default sprite will be used.
@@ -1247,7 +1245,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       })}
                     </div>
                   )}
-                </div>
+                </CollapsiblePanel>
           </>
         ) : null
       }
