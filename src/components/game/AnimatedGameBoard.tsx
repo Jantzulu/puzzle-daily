@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle, PuzzleSkin } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -47,6 +47,7 @@ interface AnimatedGameBoardProps {
   maxWidth?: number;   // Maximum width in pixels for responsive scaling
   maxHeight?: number;  // Maximum height in pixels for responsive scaling
   onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
+  skinOverride?: PuzzleSkin;  // Override skin instead of loading from localStorage
 }
 
 const TILE_SIZE = 48;
@@ -493,7 +494,7 @@ interface SpawnAnimationState {
   y: number;
 }
 
-export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill }) => {
+export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
@@ -907,8 +908,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       ctx.save();
       ctx.scale(puzzleScale * dpr, puzzleScale * dpr);
 
-      // Load skin for tile sprites
-      const skin = gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null;
+      // Load skin for tile sprites (use override if provided, e.g. for SkinEditor live preview)
+      const skin = skinOverride ?? (gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null);
       const tileSprites = skin?.tileSprites;
       const customTileSprites = skin?.customTileSprites;
 
@@ -3844,6 +3845,7 @@ interface ResponsiveGameBoardProps {
   onTileClick?: (x: number, y: number) => void;
   isEditor?: boolean;
   onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
+  skinOverride?: PuzzleSkin;  // Override skin instead of loading from localStorage
 }
 
 // Maximum dimensions for the puzzle board on desktop

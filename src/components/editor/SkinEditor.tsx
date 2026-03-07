@@ -1,8 +1,10 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
-import type { PuzzleSkin, CustomBorderSprites, TileSprites } from '../../types/game';
+import type { PuzzleSkin, CustomBorderSprites, TileSprites, GameState, Puzzle, BorderConfig, Tile, TileOrNull } from '../../types/game';
+import { TileType } from '../../types/game';
+import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -57,6 +59,59 @@ const TILE_SPRITE_SLOTS: { key: keyof TileSprites; label: string; description: s
   { key: 'goal', label: 'Goal Tile', description: 'Goal/exit tile (48x48)' },
 ];
 
+/** Build a minimal GameState for the live skin preview */
+function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType[]): GameState {
+  const width = 4;
+  const height = 4;
+
+  const hasBorderSprites = Object.keys(skin.borderSprites).length > 0;
+  const borderConfig: BorderConfig | undefined = {
+    style: hasBorderSprites ? 'custom' : 'dungeon',
+    customBorderSprites: hasBorderSprites ? skin.borderSprites : undefined,
+  };
+
+  const tiles: TileOrNull[][] = [];
+  for (let y = 0; y < height; y++) {
+    const row: TileOrNull[] = [];
+    for (let x = 0; x < width; x++) {
+      const isEdge = x === 0 || x === width - 1 || y === 0 || y === height - 1;
+      const isGoal = x === 2 && y === 2;
+      const tile: Tile = { x, y, type: isEdge ? TileType.WALL : isGoal ? TileType.GOAL : TileType.EMPTY, content: undefined };
+      // Show first custom tile type in one interior cell
+      if (!isEdge && !isGoal && customTileTypes.length > 0 && x === 1 && y === 1) {
+        tile.customTileTypeId = customTileTypes[0].id;
+      }
+      row.push(tile);
+    }
+    tiles.push(row);
+  }
+
+  const puzzle: Puzzle = {
+    id: '__skin_preview__',
+    date: '',
+    name: 'Skin Preview',
+    width,
+    height,
+    tiles,
+    enemies: [],
+    collectibles: [],
+    availableCharacters: [],
+    winConditions: [],
+    maxCharacters: 0,
+    borderConfig,
+    skinId: skin.id,
+  };
+
+  return {
+    puzzle,
+    placedCharacters: [],
+    currentTurn: 0,
+    simulationRunning: false,
+    gameStatus: 'setup',
+    score: 0,
+  };
+}
+
 export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const isMobile = useIsMobile();
   const [skins, setSkins] = useState<PuzzleSkin[]>(() => getAllPuzzleSkins());
@@ -67,7 +122,14 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
+  const [showPreview, setShowPreview] = useState(true);
   const bulk = useBulkSelect();
+
+  // Live preview game state — rebuilds when editing skin or custom tile types change
+  const previewGameState = useMemo(
+    () => editingSkin ? buildPreviewGameState(editingSkin, customTileTypes) : null,
+    [editingSkin, customTileTypes]
+  );
 
   // URL input states - track which slot is showing URL input and the current input value
   const [showUrlInput, setShowUrlInput] = useState<string | null>(null);
@@ -579,69 +641,95 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                   </div>
                 )}
 
-                {/* Basic Info */}
-                <div className="dungeon-panel p-4 rounded space-y-3">
-                  <div className="flex items-center gap-4">
-                    <div className="w-16 h-16 bg-stone-700 rounded overflow-hidden flex-shrink-0 grid grid-cols-2 grid-rows-2">
-                      {(() => {
-                        const sprites = [
-                          editingSkin.borderSprites?.wallFront,
-                          editingSkin.borderSprites?.wallBottomOuter,
-                          editingSkin.tileSprites?.wall,
-                          editingSkin.tileSprites?.empty,
-                        ];
-                        if (!sprites.some(Boolean)) {
-                          return <div className="col-span-2 row-span-2 flex items-center justify-center text-2xl">🎨</div>;
-                        }
-                        return sprites.map((src, i) =>
-                          src ? <img key={i} src={src} alt="" className="w-8 h-8 object-cover" style={{ imageRendering: 'pixelated' as const }} />
-                               : <div key={i} className="w-8 h-8 bg-stone-600" />
-                        );
-                      })()}
+                {/* Live Preview + Basic Info — side by side on desktop */}
+                <div className="flex flex-col lg:flex-row gap-4">
+                  {/* Live Skin Preview */}
+                  {previewGameState && (
+                    <div className="dungeon-panel p-4 rounded lg:flex-shrink-0">
+                      <button
+                        onClick={() => setShowPreview(!showPreview)}
+                        className="w-full flex items-center justify-between text-lg font-bold"
+                      >
+                        <span>Live Preview</span>
+                        <span className="text-lg text-stone-400">{showPreview ? '▾' : '▸'}</span>
+                      </button>
+                      {showPreview && (
+                        <div className="mt-3 flex justify-center bg-stone-900 rounded p-2">
+                          <AnimatedGameBoard
+                            gameState={previewGameState}
+                            skinOverride={editingSkin!}
+                            maxWidth={280}
+                            maxHeight={280}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Basic Info */}
+                  <div className="dungeon-panel p-4 rounded space-y-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-4">
+                      <div className="w-16 h-16 bg-stone-700 rounded overflow-hidden flex-shrink-0 grid grid-cols-2 grid-rows-2">
+                        {(() => {
+                          const sprites = [
+                            editingSkin.borderSprites?.wallFront,
+                            editingSkin.borderSprites?.wallBottomOuter,
+                            editingSkin.tileSprites?.wall,
+                            editingSkin.tileSprites?.empty,
+                          ];
+                          if (!sprites.some(Boolean)) {
+                            return <div className="col-span-2 row-span-2 flex items-center justify-center text-2xl">🎨</div>;
+                          }
+                          return sprites.map((src, i) =>
+                            src ? <img key={i} src={src} alt="" className="w-8 h-8 object-cover" style={{ imageRendering: 'pixelated' as const }} />
+                                 : <div key={i} className="w-8 h-8 bg-stone-600" />
+                          );
+                        })()}
+                      </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-parchment-200">{editingSkin.name || 'Unnamed Skin'}</h3>
+                        <p className="text-xs text-stone-400">{editingSkin.isBuiltIn ? 'Built-in' : 'Custom'}</p>
+                      </div>
                     </div>
                     <div>
-                      <h3 className="text-lg font-bold text-parchment-200">{editingSkin.name || 'Unnamed Skin'}</h3>
-                      <p className="text-xs text-stone-400">{editingSkin.isBuiltIn ? 'Built-in' : 'Custom'}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <label className="block text-sm mb-1">Name</label>
-                    <input
-                      type="text"
-                      value={editingSkin.name}
-                      onChange={(e) => setEditingSkin({ ...editingSkin, name: e.target.value })}
-                      disabled={isBuiltIn}
-                      className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-sm mb-1">Description</label>
-                    {isBuiltIn ? (
-                      <div className="w-full px-3 py-2 bg-stone-700 rounded opacity-50 text-stone-400">
-                        {editingSkin.description || 'No description'}
-                      </div>
-                    ) : (
-                      <RichTextEditor
-                        value={editingSkin.description || ''}
-                        onChange={(value) => setEditingSkin({ ...editingSkin, description: value })}
-                        placeholder="Optional description..."
-                        multiline
+                      <label className="block text-sm mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={editingSkin.name}
+                        onChange={(e) => setEditingSkin({ ...editingSkin, name: e.target.value })}
+                        disabled={isBuiltIn}
+                        className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
                       />
-                    )}
-                  </div>
-                  <div>
-                    <label className="block text-sm mb-1">Folder</label>
-                    <select
-                      value={editingSkin.folderId || ''}
-                      onChange={(e) => setEditingSkin({ ...editingSkin, folderId: e.target.value || undefined })}
-                      disabled={isBuiltIn}
-                      className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
-                    >
-                      <option value="">Uncategorized</option>
-                      {getFolders('skins').map(folder => (
-                        <option key={folder.id} value={folder.id}>{folder.name}</option>
-                      ))}
-                    </select>
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Description</label>
+                      {isBuiltIn ? (
+                        <div className="w-full px-3 py-2 bg-stone-700 rounded opacity-50 text-stone-400">
+                          {editingSkin.description || 'No description'}
+                        </div>
+                      ) : (
+                        <RichTextEditor
+                          value={editingSkin.description || ''}
+                          onChange={(value) => setEditingSkin({ ...editingSkin, description: value })}
+                          placeholder="Optional description..."
+                          multiline
+                        />
+                      )}
+                    </div>
+                    <div>
+                      <label className="block text-sm mb-1">Folder</label>
+                      <select
+                        value={editingSkin.folderId || ''}
+                        onChange={(e) => setEditingSkin({ ...editingSkin, folderId: e.target.value || undefined })}
+                        disabled={isBuiltIn}
+                        className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
+                      >
+                        <option value="">Uncategorized</option>
+                        {getFolders('skins').map(folder => (
+                          <option key={folder.id} value={folder.id}>{folder.name}</option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
                 </div>
 
