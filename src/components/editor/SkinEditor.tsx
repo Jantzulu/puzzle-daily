@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useRef, useEffect } from 'react';
+import React, { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -124,7 +124,21 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [showPreview, setShowPreview] = useState(true);
-  const [previewZoom, setPreviewZoom] = useState(1);
+  const [magnifierOn, setMagnifierOn] = useState(false);
+  const [magnifierOrigin, setMagnifierOrigin] = useState<string | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
+
+  const handlePreviewMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    if (!magnifierOn || !previewRef.current) return;
+    const rect = previewRef.current.getBoundingClientRect();
+    const xPct = ((e.clientX - rect.left) / rect.width) * 100;
+    const yPct = ((e.clientY - rect.top) / rect.height) * 100;
+    setMagnifierOrigin(`${xPct}% ${yPct}%`);
+  }, [magnifierOn]);
+
+  const handlePreviewMouseLeave = useCallback(() => {
+    setMagnifierOrigin(null);
+  }, []);
   const bulk = useBulkSelect();
 
   // Live preview game state — rebuilds when editing skin or custom tile types change
@@ -657,32 +671,38 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       </button>
                       {showPreview && (
                         <>
-                          <div className="mt-2 flex items-center justify-center gap-2">
+                          <div className="mt-2 flex items-center justify-center gap-1">
                             <button
-                              onClick={() => setPreviewZoom(z => Math.max(0.5, z - 0.25))}
-                              className="dungeon-button px-2 py-0.5 text-sm"
-                              disabled={previewZoom <= 0.5}
-                            >−</button>
-                            <span className="text-sm text-stone-400 w-12 text-center">{Math.round(previewZoom * 100)}%</span>
-                            <button
-                              onClick={() => setPreviewZoom(z => Math.min(3, z + 0.25))}
-                              className="dungeon-button px-2 py-0.5 text-sm"
-                              disabled={previewZoom >= 3}
-                            >+</button>
-                            {previewZoom !== 1 && (
-                              <button
-                                onClick={() => setPreviewZoom(1)}
-                                className="dungeon-button px-2 py-0.5 text-sm"
-                              >Reset</button>
-                            )}
+                              onClick={() => setMagnifierOn(m => !m)}
+                              className={`px-2 py-0.5 text-sm rounded ${
+                                magnifierOn
+                                  ? 'bg-arcane-700 text-parchment-100 border border-arcane-500'
+                                  : 'dungeon-button'
+                              }`}
+                              title={magnifierOn ? 'Disable magnifier' : 'Enable magnifier — hover to zoom into tiles'}
+                            >🔍 {magnifierOn ? 'On' : 'Off'}</button>
                           </div>
-                          <div className="mt-2 overflow-auto bg-stone-900 rounded p-2" style={{ maxHeight: 400 }}>
-                            <div className="flex justify-center" style={{ minWidth: previewZoom > 1 ? 280 * previewZoom : undefined }}>
+                          <div
+                            ref={previewRef}
+                            className="mt-2 bg-stone-900 rounded p-2 flex justify-center overflow-hidden"
+                            style={{
+                              cursor: magnifierOn ? 'crosshair' : undefined,
+                            }}
+                            onMouseMove={handlePreviewMouseMove}
+                            onMouseLeave={handlePreviewMouseLeave}
+                          >
+                            <div
+                              style={{
+                                transition: magnifierOrigin ? 'none' : 'transform 0.2s ease-out',
+                                transform: magnifierOn && magnifierOrigin ? 'scale(3)' : 'scale(1)',
+                                transformOrigin: magnifierOrigin || 'center center',
+                              }}
+                            >
                               <AnimatedGameBoard
                                 gameState={previewGameState}
                                 skinOverride={editingSkin!}
-                                maxWidth={Math.round(280 * previewZoom)}
-                                maxHeight={Math.round(280 * previewZoom)}
+                                maxWidth={280}
+                                maxHeight={280}
                               />
                             </div>
                           </div>
