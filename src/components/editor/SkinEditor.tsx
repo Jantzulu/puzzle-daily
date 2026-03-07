@@ -123,6 +123,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [showPreview, setShowPreview] = useState(true);
+  const [previewZoom, setPreviewZoom] = useState(1);
   const bulk = useBulkSelect();
 
   // Live preview game state — rebuilds when editing skin or custom tile types change
@@ -654,14 +655,37 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                         <span className="text-lg text-stone-400">{showPreview ? '▾' : '▸'}</span>
                       </button>
                       {showPreview && (
-                        <div className="mt-3 flex justify-center bg-stone-900 rounded p-2">
-                          <AnimatedGameBoard
-                            gameState={previewGameState}
-                            skinOverride={editingSkin!}
-                            maxWidth={280}
-                            maxHeight={280}
-                          />
-                        </div>
+                        <>
+                          <div className="mt-2 flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => setPreviewZoom(z => Math.max(0.5, z - 0.25))}
+                              className="dungeon-button px-2 py-0.5 text-sm"
+                              disabled={previewZoom <= 0.5}
+                            >−</button>
+                            <span className="text-sm text-stone-400 w-12 text-center">{Math.round(previewZoom * 100)}%</span>
+                            <button
+                              onClick={() => setPreviewZoom(z => Math.min(3, z + 0.25))}
+                              className="dungeon-button px-2 py-0.5 text-sm"
+                              disabled={previewZoom >= 3}
+                            >+</button>
+                            {previewZoom !== 1 && (
+                              <button
+                                onClick={() => setPreviewZoom(1)}
+                                className="dungeon-button px-2 py-0.5 text-sm"
+                              >Reset</button>
+                            )}
+                          </div>
+                          <div className="mt-2 overflow-auto bg-stone-900 rounded p-2" style={{ maxHeight: 400 }}>
+                            <div className="flex justify-center" style={{ minWidth: previewZoom > 1 ? 280 * previewZoom : undefined }}>
+                              <AnimatedGameBoard
+                                gameState={previewGameState}
+                                skinOverride={editingSkin!}
+                                maxWidth={Math.round(280 * previewZoom)}
+                                maxHeight={Math.round(280 * previewZoom)}
+                              />
+                            </div>
+                          </div>
+                        </>
                       )}
                     </div>
                   )}
