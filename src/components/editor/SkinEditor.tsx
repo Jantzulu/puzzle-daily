@@ -125,6 +125,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [showPreview, setShowPreview] = useState(true);
   const [magnifierOn, setMagnifierOn] = useState(false);
+  const [magnifierZoom, setMagnifierZoom] = useState(3);
   const [magnifierOrigin, setMagnifierOrigin] = useState<string | null>(null);
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -139,6 +140,21 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const handlePreviewMouseLeave = useCallback(() => {
     setMagnifierOrigin(null);
   }, []);
+
+  // Scroll wheel adjusts magnifier zoom when hovering over the preview
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el || !magnifierOn) return;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      setMagnifierZoom(z => {
+        const delta = e.deltaY > 0 ? -0.5 : 0.5;
+        return Math.round(Math.min(8, Math.max(1.5, z + delta)) * 10) / 10;
+      });
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [magnifierOn]);
   const bulk = useBulkSelect();
 
   // Live preview game state — rebuilds when editing skin or custom tile types change
@@ -671,7 +687,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                       </button>
                       {showPreview && (
                         <>
-                          <div className="mt-2 flex items-center justify-center gap-1">
+                          <div className="mt-2 flex items-center justify-center gap-2">
                             <button
                               onClick={() => setMagnifierOn(m => !m)}
                               className={`px-2 py-0.5 text-sm rounded ${
@@ -680,7 +696,22 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                   : 'dungeon-button'
                               }`}
                               title={magnifierOn ? 'Disable magnifier' : 'Enable magnifier — hover to zoom into tiles'}
-                            >🔍 {magnifierOn ? 'On' : 'Off'}</button>
+                            >🔍</button>
+                            {magnifierOn && (
+                              <>
+                                <input
+                                  type="range"
+                                  min="1.5"
+                                  max="8"
+                                  step="0.5"
+                                  value={magnifierZoom}
+                                  onChange={(e) => setMagnifierZoom(parseFloat(e.target.value))}
+                                  className="w-24 accent-arcane-500"
+                                  title="Magnifier zoom level"
+                                />
+                                <span className="text-xs text-stone-400 w-8">{magnifierZoom}×</span>
+                              </>
+                            )}
                           </div>
                           <div
                             ref={previewRef}
@@ -694,7 +725,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             <div
                               style={{
                                 transition: magnifierOrigin ? 'none' : 'transform 0.2s ease-out',
-                                transform: magnifierOn && magnifierOrigin ? 'scale(3)' : 'scale(1)',
+                                transform: magnifierOn && magnifierOrigin ? `scale(${magnifierZoom})` : 'scale(1)',
                                 transformOrigin: magnifierOrigin || 'center center',
                               }}
                             >
