@@ -915,15 +915,20 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         if (puzzleScale < 0.1) puzzleScale = 0.1;
       }
 
+      // Quantize scale so each tile = integer physical pixels (prevents sub-pixel warping on mobile)
+      const rawEffectiveScale = puzzleScale * dpr;
+      const physicalTileSize = Math.max(1, Math.round(TILE_SIZE * rawEffectiveScale));
+      const quantizedScale = physicalTileSize / TILE_SIZE;
+
       // Disable image smoothing for crisp pixel art
       ctx.imageSmoothingEnabled = false;
 
       // Clear entire canvas (at full resolution)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Scale context for both puzzle scale and high-DPI rendering
+      // Scale context — quantized so tiles land on exact physical pixel boundaries
       ctx.save();
-      ctx.scale(puzzleScale * dpr, puzzleScale * dpr);
+      ctx.scale(quantizedScale, quantizedScale);
 
       // Load skin for tile sprites (use override if provided, e.g. for SkinEditor live preview)
       const skin = skinOverride ?? (gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null);
@@ -1272,15 +1277,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     const canvasWidthPx = hasBorder ? gridWidthPx + (SIDE_BORDER_SIZE * 2) : gridWidthPx;
     const canvasHeightPx = hasBorder ? gridHeightPx + (BORDER_SIZE * 2) : gridHeightPx;
 
-    let currentScale = 1;
-    if (maxWidth || maxHeight) {
-      const scaleX = maxWidth ? maxWidth / canvasWidthPx : Infinity;
-      const scaleY = maxHeight ? maxHeight / canvasHeightPx : Infinity;
-      currentScale = Math.min(scaleX, scaleY);
-      if (currentScale < 0.1) currentScale = 0.1;
-    }
-
     const rect = canvas.getBoundingClientRect();
+    // Derive actual CSS scale from the rendered element size
+    const currentScale = rect.width / canvasWidthPx;
+
     // Account for scale when converting click coordinates
     const clickX = (e.clientX - rect.left) / currentScale - offsetX;
     const clickY = (e.clientY - rect.top) / currentScale - offsetY;
@@ -1316,21 +1316,27 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Get device pixel ratio for crisp rendering on high-DPI displays (e.g., Retina, mobile)
   const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
 
-  const scaledWidth = canvasWidth * scale;
-  const scaledHeight = canvasHeight * scale;
+  // Quantize scale so each tile = integer physical pixels (prevents sub-pixel warping on mobile)
+  const rawEffectiveScale = scale * dpr;
+  const physicalTileSize = Math.max(1, Math.round(TILE_SIZE * rawEffectiveScale));
+  const quantizedScale = physicalTileSize / TILE_SIZE;
 
-  // Canvas resolution accounts for device pixel ratio for crisp text/lines
-  // We render at the scaled size * dpr for maximum quality
-  const canvasResWidth = Math.round(scaledWidth * dpr);
-  const canvasResHeight = Math.round(scaledHeight * dpr);
+  // Canvas resolution from quantized scale — tiles land on exact pixel boundaries
+  const canvasResWidth = Math.round(canvasWidth * quantizedScale);
+  const canvasResHeight = Math.round(canvasHeight * quantizedScale);
+
+  // CSS display size must exactly match canvas resolution / dpr
+  // to prevent the browser from stretching the canvas bitmap
+  const cssWidth = canvasResWidth / dpr;
+  const cssHeight = canvasResHeight / dpr;
 
   return (
     <div
       key={fadeKey}
       className="animate-fade-in-board"
       style={{
-        width: scaledWidth,
-        height: scaledHeight,
+        width: cssWidth,
+        height: cssHeight,
         overflow: 'hidden'
       }}
     >
@@ -1341,8 +1347,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         onClick={handleCanvasClick}
         className="cursor-pointer"
         style={{
-          width: scaledWidth,
-          height: scaledHeight,
+          width: cssWidth,
+          height: cssHeight,
           imageRendering: 'pixelated'
         }}
       />

@@ -17,6 +17,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
+  // Snap CSS display size to match canvas resolution / dpr exactly (prevents sub-pixel stretching on mobile)
+  const dprForCss = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const cssSize = Math.round(size * dprForCss) / dprForCss;
+
   useEffect(() => {
     // Subscribe to image load events to re-render when images finish loading
     const unsubscribe = subscribeToImageLoads(() => {
@@ -45,11 +49,11 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
     // Account for device pixel ratio for sharp rendering on high-DPI displays
     const dpr = window.devicePixelRatio || 1;
-    const scaledSize = size * dpr;
+    const canvasRes = Math.round(size * dpr);
 
-    // Set canvas internal size to scaled size
-    canvas.width = scaledSize;
-    canvas.height = scaledSize;
+    // Set canvas internal size to rounded resolution (prevents sub-pixel mismatch with CSS)
+    canvas.width = canvasRes;
+    canvas.height = canvasRes;
 
     // Scale context to match
     ctx.scale(dpr, dpr);
@@ -208,7 +212,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     return (
       <div
         className={`bg-stone-700 rounded flex items-center justify-center ${className}`}
-        style={{ width: size, height: size }}
+        style={{ width: cssSize, height: cssSize }}
       >
         <span className="text-stone-500 text-xs">No Sprite</span>
       </div>
@@ -221,8 +225,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   const bgTiled = getPreviewBgTiled(previewType);
 
   const backgroundStyle: React.CSSProperties = {
-    width: size,
-    height: size,
+    width: cssSize,
+    height: cssSize,
     backgroundColor: bgColor,
     ...(bgImageUrl && {
       backgroundImage: `url(${bgImageUrl})`,
@@ -237,7 +241,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       <canvas
         ref={canvasRef}
         className="block"
-        style={{ width: size, height: size }}
+        style={{ width: cssSize, height: cssSize, imageRendering: 'pixelated' as const }}
       />
     </div>
   );
