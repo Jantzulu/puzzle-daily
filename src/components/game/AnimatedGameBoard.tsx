@@ -72,6 +72,98 @@ const COLORS = {
 };
 
 // ==========================================
+// PIXEL-PERFECT SPRITE RENDERING
+// ==========================================
+// On mobile, ctx.scale(puzzleScale * dpr) produces non-integer scaling.
+// Even rounded logical coords → fractional physical pixels → pixel art warps.
+// Fix: reset transform to identity, convert coords to physical pixel space
+// (rounded to integers), draw sprite there, then restore transform.
+
+type DrawSpriteArgs = [
+  ctx: CanvasRenderingContext2D,
+  sprite: import('../../utils/assetStorage').CustomSprite,
+  centerX: number,
+  centerY: number,
+  tileSize: number,
+  direction?: import('../../types/game').Direction,
+  isMoving?: boolean,
+  now?: number,
+  isCasting?: boolean,
+];
+
+function drawSpritePixelPerfect(...args: DrawSpriteArgs) {
+  const [ctx, sprite, centerX, centerY, tileSize, direction, isMoving, now, isCasting] = args;
+  const transform = ctx.getTransform();
+  const scale = transform.a; // horizontal scale = puzzleScale * dpr
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+
+  // Scale shadow to physical pixel space
+  if (ctx.shadowColor && ctx.shadowColor !== 'transparent' && ctx.shadowColor !== 'rgba(0, 0, 0, 0)') {
+    ctx.shadowOffsetX = Math.round(ctx.shadowOffsetX * scale);
+    ctx.shadowOffsetY = Math.round(ctx.shadowOffsetY * scale);
+    ctx.shadowBlur = Math.round(ctx.shadowBlur * scale);
+  }
+
+  // Convert to physical pixel coords (rounded = integer physical pixels)
+  const physCenterX = Math.round(centerX * scale);
+  const physCenterY = Math.round(centerY * scale);
+  const physTileSize = Math.round(tileSize * scale);
+
+  drawSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, isMoving, now, isCasting);
+  ctx.restore();
+}
+
+function drawDeathSpritePixelPerfect(
+  ctx: CanvasRenderingContext2D,
+  sprite: import('../../utils/assetStorage').CustomSprite,
+  centerX: number,
+  centerY: number,
+  tileSize: number,
+  direction: import('../../types/game').Direction | undefined,
+  startTime: number
+) {
+  const transform = ctx.getTransform();
+  const scale = transform.a;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+
+  const physCenterX = Math.round(centerX * scale);
+  const physCenterY = Math.round(centerY * scale);
+  const physTileSize = Math.round(tileSize * scale);
+
+  drawDeathSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, startTime);
+  ctx.restore();
+}
+
+function drawSpawnSpritePixelPerfect(
+  ctx: CanvasRenderingContext2D,
+  sprite: import('../../utils/assetStorage').CustomSprite,
+  centerX: number,
+  centerY: number,
+  tileSize: number,
+  startTime: number
+) {
+  const transform = ctx.getTransform();
+  const scale = transform.a;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = false;
+
+  const physCenterX = Math.round(centerX * scale);
+  const physCenterY = Math.round(centerY * scale);
+  const physTileSize = Math.round(tileSize * scale);
+
+  drawSpawnSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, startTime);
+  ctx.restore();
+}
+
+// ==========================================
 // SPELL SPRITE SHEET RENDERING
 // ==========================================
 
@@ -2266,10 +2358,10 @@ function drawEnemy(
 
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
-        drawSpawnSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
+        drawSpawnSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
       } else {
         // Normal sprite (idle/moving/casting)
-        drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+        drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
       }
 
       ctx.shadowColor = 'transparent';
@@ -2284,7 +2376,7 @@ function drawEnemy(
         // Death sprite sheet will animate and stop on final frame (corpse state)
         // Use the death animation start time for proper frame calculation
         const deathStartTime = deathAnimState?.startTime || now;
-        drawDeathSprite(
+        drawDeathSpritePixelPerfect(
           ctx,
           enemyData.customSprite,
           px + TILE_SIZE / 2,
@@ -2296,7 +2388,7 @@ function drawEnemy(
       } else {
         // No death sprite - draw dimmed version with X
         ctx.globalAlpha = 0.3;
-        drawSprite(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
+        drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
         ctx.globalAlpha = 1.0;
         drawDeadX(ctx, px, py);
       }
@@ -2789,8 +2881,8 @@ function drawStatusEffectOverlays(
 
     // Check if it's a spritesheet with animation
     if (spriteData.idleSpriteSheet || spriteData.spriteSheet) {
-      // Use the drawSprite function for animated spritesheets
-      drawSprite(ctx, spriteData, centerX, centerY, TILE_SIZE, undefined, false, now, false);
+      // Use pixel-perfect rendering for animated spritesheets
+      drawSpritePixelPerfect(ctx, spriteData, centerX, centerY, TILE_SIZE, undefined, false, now, false);
     } else if (spriteData.imageData || spriteData.idleImageData) {
       // Static image - draw directly
       const imgData = spriteData.imageData || spriteData.idleImageData;
@@ -2864,7 +2956,7 @@ function drawCharacter(
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
 
-        drawSpawnSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
+        drawSpawnSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
 
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
@@ -2877,7 +2969,7 @@ function drawCharacter(
         ctx.shadowOffsetX = 2;
         ctx.shadowOffsetY = 2;
 
-        drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+        drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
 
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
@@ -2891,7 +2983,7 @@ function drawCharacter(
       if (hasDeathSprite) {
         // Death sprite sheet will animate and stop on final frame (corpse state)
         const deathStartTime = deathAnimState?.startTime || now;
-        drawDeathSprite(
+        drawDeathSpritePixelPerfect(
           ctx,
           charData.customSprite,
           px + TILE_SIZE / 2,
@@ -2903,7 +2995,7 @@ function drawCharacter(
       } else {
         // No death sprite - draw dimmed version with X
         ctx.globalAlpha = 0.3;
-        drawSprite(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
+        drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
         ctx.globalAlpha = 1.0;
         drawDeadX(ctx, px, py);
       }
@@ -3047,8 +3139,8 @@ function drawCollectible(
       centerY = py + TILE_SIZE / 2 - spriteSize / 2 + bobOffset;
     }
 
-    // Draw the sprite
-    drawSprite(ctx, collectibleData.customSprite, centerX, centerY, TILE_SIZE, undefined, imageCache, now);
+    // Draw the sprite (pixel-perfect in physical pixel space)
+    drawSpritePixelPerfect(ctx, collectibleData.customSprite, centerX, centerY, TILE_SIZE);
     return;
   }
 
@@ -3117,7 +3209,7 @@ function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: nu
 
   // Draw custom sprite if available
   if (objectData.customSprite) {
-    drawSprite(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
+    drawSpritePixelPerfect(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
   } else {
     // Fallback: draw a simple brown square
     ctx.fillStyle = '#8b4513';
