@@ -94,7 +94,10 @@ type DrawSpriteArgs = [
 function drawSpritePixelPerfect(...args: DrawSpriteArgs) {
   const [ctx, sprite, centerX, centerY, tileSize, direction, isMoving, now, isCasting] = args;
   const transform = ctx.getTransform();
-  const scale = transform.a; // horizontal scale = puzzleScale * dpr
+  const scale = transform.a; // horizontal scale
+
+  // Transform logical coords to physical pixel space using the full matrix
+  const physPoint = transform.transformPoint(new DOMPoint(centerX, centerY));
 
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -107,9 +110,8 @@ function drawSpritePixelPerfect(...args: DrawSpriteArgs) {
     ctx.shadowBlur = Math.round(ctx.shadowBlur * scale);
   }
 
-  // Convert to physical pixel coords (rounded = integer physical pixels)
-  const physCenterX = Math.round(centerX * scale);
-  const physCenterY = Math.round(centerY * scale);
+  const physCenterX = Math.round(physPoint.x);
+  const physCenterY = Math.round(physPoint.y);
   const physTileSize = Math.round(tileSize * scale);
 
   drawSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, isMoving, now, isCasting);
@@ -127,13 +129,14 @@ function drawDeathSpritePixelPerfect(
 ) {
   const transform = ctx.getTransform();
   const scale = transform.a;
+  const physPoint = transform.transformPoint(new DOMPoint(centerX, centerY));
 
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
 
-  const physCenterX = Math.round(centerX * scale);
-  const physCenterY = Math.round(centerY * scale);
+  const physCenterX = Math.round(physPoint.x);
+  const physCenterY = Math.round(physPoint.y);
   const physTileSize = Math.round(tileSize * scale);
 
   drawDeathSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, startTime);
@@ -150,13 +153,14 @@ function drawSpawnSpritePixelPerfect(
 ) {
   const transform = ctx.getTransform();
   const scale = transform.a;
+  const physPoint = transform.transformPoint(new DOMPoint(centerX, centerY));
 
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.imageSmoothingEnabled = false;
 
-  const physCenterX = Math.round(centerX * scale);
-  const physCenterY = Math.round(centerY * scale);
+  const physCenterX = Math.round(physPoint.x);
+  const physCenterY = Math.round(physPoint.y);
   const physTileSize = Math.round(tileSize * scale);
 
   drawSpawnSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, startTime);
