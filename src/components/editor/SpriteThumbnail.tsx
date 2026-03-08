@@ -79,11 +79,15 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         drawWidth = maxSize * frameAspectRatio;
       }
 
-      const sourceX = frameIndex * frameWidth;
+      const sourceX = Math.round(frameIndex * frameWidth);
+      const sw = Math.round(frameWidth);
+      const sh = Math.round(frameHeight);
+      const dw = Math.round(drawWidth);
+      const dh = Math.round(drawHeight);
       ctx.drawImage(
         img,
-        sourceX, 0, frameWidth, frameHeight,
-        size/2 - drawWidth * ax + ox, size/2 - drawHeight * ay + oy, drawWidth, drawHeight
+        sourceX, 0, sw, sh,
+        Math.round(size/2 - drawWidth * ax + ox), Math.round(size/2 - drawHeight * ay + oy), dw, dh
       );
     };
 
@@ -181,7 +185,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawWidth = maxSize * aspectRatio;
           }
 
-          ctx.drawImage(img, size/2 - drawWidth * imgAx + imgOx, size/2 - drawHeight * imgAy + imgOy, drawWidth, drawHeight);
+          ctx.drawImage(img, Math.round(size/2 - drawWidth * imgAx + imgOx), Math.round(size/2 - drawHeight * imgAy + imgOy), Math.round(drawWidth), Math.round(drawHeight));
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
       } else {

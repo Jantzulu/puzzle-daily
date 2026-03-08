@@ -151,16 +151,17 @@ function drawSpriteSheet(
     finalWidth = displayHeight * scale * frameAspectRatio;
   }
 
-  // Draw the current frame
-  const sourceX = state.currentFrame * frameWidth;
-  const sourceY = 0;
+  // Draw the current frame — round all coords to prevent sub-pixel warping of pixel art
+  const sourceX = Math.round(state.currentFrame * frameWidth);
+  const sw = Math.round(frameWidth);
+  const sh = Math.round(frameHeight);
+  const dw = Math.round(finalWidth);
+  const dh = Math.round(finalHeight);
+  const dx = Math.round(centerX - finalWidth * anchorX + offsetX);
+  const dy = Math.round(centerY - finalHeight * anchorY + offsetY);
 
   try {
-    ctx.drawImage(
-      img,
-      sourceX, sourceY, frameWidth, frameHeight, // Source rectangle
-      centerX - finalWidth * anchorX + offsetX, centerY - finalHeight * anchorY + offsetY, finalWidth, finalHeight // Destination rectangle
-    );
+    ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
   } catch (e) {
     // Image not ready
   }
@@ -227,16 +228,17 @@ function drawSpriteSheetFromStartTime(
     finalWidth = displayHeight * scale * frameAspectRatio;
   }
 
-  // Draw the current frame
-  const sourceX = currentFrame * frameWidth;
-  const sourceY = 0;
+  // Draw the current frame — round all coords to prevent sub-pixel warping of pixel art
+  const sourceX = Math.round(currentFrame * frameWidth);
+  const sw = Math.round(frameWidth);
+  const sh = Math.round(frameHeight);
+  const dw = Math.round(finalWidth);
+  const dh = Math.round(finalHeight);
+  const dx = Math.round(centerX - finalWidth * anchorX + offsetX);
+  const dy = Math.round(centerY - finalHeight * anchorY + offsetY);
 
   try {
-    ctx.drawImage(
-      img,
-      sourceX, sourceY, frameWidth, frameHeight,
-      centerX - finalWidth * anchorX + offsetX, centerY - finalHeight * anchorY + offsetY, finalWidth, finalHeight
-    );
+    ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
   } catch (e) {
     // Image not ready
   }
@@ -4003,7 +4005,7 @@ function drawSpriteConfig(
         }
       }
 
-      ctx.drawImage(img, centerX - drawWidth * ax + ox, centerY - drawHeight * ay + oy, drawWidth, drawHeight);
+      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), Math.round(drawWidth), Math.round(drawHeight));
     } catch (e) {
       // Image not ready yet, will draw on next frame
     }
@@ -4154,7 +4156,7 @@ export function drawSprite(
         }
       }
 
-      ctx.drawImage(img, centerX - drawWidth * ax + ox, centerY - drawHeight * ay + oy, drawWidth, drawHeight);
+      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), Math.round(drawWidth), Math.round(drawHeight));
     } catch (e) {
       // Image not ready yet, will draw on next frame
     }

@@ -155,18 +155,26 @@ function drawSpellSpriteSheet(
       if (rotationConfig.mirror) {
         ctx.scale(-1, 1);
       }
-      // Draw centered at origin
+      // Draw centered at origin (round to avoid sub-pixel warping)
+      const sw = Math.round(frameWidth);
+      const sh = Math.round(frameHeight);
+      const dw = Math.round(finalWidth);
+      const dh = Math.round(finalHeight);
       ctx.drawImage(
         img,
-        sourceX, sourceY, frameWidth, frameHeight,
-        -finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight
+        Math.round(sourceX), sourceY, sw, sh,
+        Math.round(-dw / 2), Math.round(-dh / 2), dw, dh
       );
     } else {
       // No rotation - draw normally centered on position
+      const sw = Math.round(frameWidth);
+      const sh = Math.round(frameHeight);
+      const dw = Math.round(finalWidth);
+      const dh = Math.round(finalHeight);
       ctx.drawImage(
         img,
-        sourceX, sourceY, frameWidth, frameHeight,
-        px - finalWidth / 2, py - finalHeight / 2, finalWidth, finalHeight
+        Math.round(sourceX), sourceY, sw, sh,
+        Math.round(px - dw / 2), Math.round(py - dh / 2), dw, dh
       );
     }
 
@@ -241,16 +249,25 @@ function drawSpellSpriteSheetFromStartTime(
       if (rotationConfig.mirror) {
         ctx.scale(-1, 1);
       }
+      // Round to avoid sub-pixel warping
+      const sw = Math.round(frameWidth);
+      const sh = Math.round(frameHeight);
+      const dw = Math.round(finalWidth);
+      const dh = Math.round(finalHeight);
       ctx.drawImage(
         img,
-        sourceX, sourceY, frameWidth, frameHeight,
-        -finalWidth / 2, -finalHeight / 2, finalWidth, finalHeight
+        Math.round(sourceX), sourceY, sw, sh,
+        Math.round(-dw / 2), Math.round(-dh / 2), dw, dh
       );
     } else {
+      const sw = Math.round(frameWidth);
+      const sh = Math.round(frameHeight);
+      const dw = Math.round(finalWidth);
+      const dh = Math.round(finalHeight);
       ctx.drawImage(
         img,
-        sourceX, sourceY, frameWidth, frameHeight,
-        px - finalWidth / 2, py - finalHeight / 2, finalWidth, finalHeight
+        Math.round(sourceX), sourceY, sw, sh,
+        Math.round(px - dw / 2), Math.round(py - dh / 2), dw, dh
       );
     }
 
@@ -319,8 +336,8 @@ function drawActivationSprite(
     ctx.globalAlpha = opacity;
     ctx.drawImage(
       img,
-      sourceX, sourceY, frameWidth, frameHeight,
-      px, py, tileSize, tileSize
+      Math.round(sourceX), sourceY, Math.round(frameWidth), Math.round(frameHeight),
+      Math.round(px), Math.round(py), Math.round(tileSize), Math.round(tileSize)
     );
     ctx.restore();
     return true;
@@ -3147,10 +3164,12 @@ function drawShape(
           }
 
           // Draw centered at origin
-          ctx.drawImage(img, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+          const s = Math.round(imgSize);
+          ctx.drawImage(img, Math.round(-s / 2), Math.round(-s / 2), s, s);
         } else {
           // No rotation - draw normally
-          ctx.drawImage(img, px - imgSize / 2, py - imgSize / 2, imgSize, imgSize);
+          const s = Math.round(imgSize);
+          ctx.drawImage(img, Math.round(px - s / 2), Math.round(py - s / 2), s, s);
         }
       }
     } catch (e) {
