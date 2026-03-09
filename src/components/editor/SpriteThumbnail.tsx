@@ -109,13 +109,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       const sourceX = Math.round(frameIndex * frameWidth);
       const sw = Math.round(frameWidth);
       const sh = Math.round(frameHeight);
-      // bottomAlign: center horizontally, bottom-align vertically
-      const xPos = bottomAlign
-        ? Math.round(size / 2 - drawWidth / 2)
-        : Math.round(size/2 - drawWidth * ax + ox);
-      const yPos = bottomAlign
-        ? Math.round(size - drawHeight)
-        : Math.round(size/2 - drawHeight * ay + oy);
+      const xPos = Math.round(size/2 - drawWidth * ax + ox);
+      const yPos = Math.round(size/2 - drawHeight * ay + oy);
       ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
     };
 
@@ -228,12 +223,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawHeight = img.height * pixelScale;
           }
 
-          const xPos = bottomAlign
-            ? Math.round(size / 2 - drawWidth / 2)
-            : Math.round(size/2 - drawWidth * imgAx + imgOx);
-          const yPos = bottomAlign
-            ? Math.round(size - drawHeight)
-            : Math.round(size/2 - drawHeight * imgAy + imgOy);
+          const xPos = Math.round(size/2 - drawWidth * imgAx + imgOx);
+          const yPos = Math.round(size/2 - drawHeight * imgAy + imgOy);
           ctx.drawImage(img, xPos, yPos, drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
