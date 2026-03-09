@@ -47,7 +47,7 @@ const CANVAS_SIZE_PRESETS = [8, 16, 24, 32, 48, 64];
 const MAX_CANVAS_SIZE = 100;
 const DEFAULT_ZOOM = 10;
 const MIN_ZOOM = 1;
-const MAX_ZOOM = 40;
+const MAX_ZOOM = 100;
 
 const PALETTE: string[] = [
   // Row 1: darks & grays
