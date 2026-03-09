@@ -1799,8 +1799,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     return (
       <div className="mt-2 p-2 bg-stone-800 rounded border border-stone-600 overflow-hidden">
         <div className="text-[10px] text-stone-400 mb-1 font-bold">Anchor Point</div>
-        <div className="flex flex-wrap items-start gap-3">
-          <div>
+        <div className="flex items-start gap-3">
+          <div className="flex-1 min-w-0">
             <div className="grid grid-cols-3 gap-0.5 w-fit mb-2">
               {anchorPoints.map((pt) => (
                 <button
