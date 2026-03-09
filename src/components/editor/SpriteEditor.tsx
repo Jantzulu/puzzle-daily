@@ -151,12 +151,16 @@ function drawSpriteSheet(
     finalWidth = displayHeight * scale * frameAspectRatio;
   }
 
-  // Draw the current frame — round all coords to prevent sub-pixel warping of pixel art
+  // Snap draw dimensions to integer multiples of source pixel size for crisp pixel art
+  const pixelScale = Math.max(1, Math.round(finalWidth / frameWidth));
+  finalWidth = frameWidth * pixelScale;
+  finalHeight = frameHeight * pixelScale;
+
   const sourceX = Math.round(state.currentFrame * frameWidth);
   const sw = Math.round(frameWidth);
   const sh = Math.round(frameHeight);
-  const dw = Math.round(finalWidth);
-  const dh = Math.round(finalHeight);
+  const dw = finalWidth;
+  const dh = finalHeight;
   const dx = Math.round(centerX - finalWidth * anchorX + offsetX);
   const dy = Math.round(centerY - finalHeight * anchorY + offsetY);
 
@@ -3995,7 +3999,7 @@ function drawSpriteConfig(
       let drawWidth = maxSize;
       let drawHeight = maxSize;
 
-      // If image has loaded, preserve aspect ratio
+      // If image has loaded, preserve aspect ratio and snap to integer pixel multiples
       if (img.naturalWidth > 0 && img.naturalHeight > 0) {
         const aspectRatio = img.naturalWidth / img.naturalHeight;
         if (aspectRatio > 1) {
@@ -4003,9 +4007,13 @@ function drawSpriteConfig(
         } else {
           drawWidth = maxSize * aspectRatio;
         }
+        // Snap to integer multiples of source pixel size for crisp pixel art
+        const pixelScale = Math.max(1, Math.round(drawWidth / img.naturalWidth));
+        drawWidth = img.naturalWidth * pixelScale;
+        drawHeight = img.naturalHeight * pixelScale;
       }
 
-      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), Math.round(drawWidth), Math.round(drawHeight));
+      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);
     } catch (e) {
       // Image not ready yet, will draw on next frame
     }
@@ -4146,7 +4154,7 @@ export function drawSprite(
       let drawWidth = maxSize;
       let drawHeight = maxSize;
 
-      // If image has loaded, preserve aspect ratio
+      // If image has loaded, preserve aspect ratio and snap to integer pixel multiples
       if (img.naturalWidth > 0 && img.naturalHeight > 0) {
         const aspectRatio = img.naturalWidth / img.naturalHeight;
         if (aspectRatio > 1) {
@@ -4154,9 +4162,13 @@ export function drawSprite(
         } else {
           drawWidth = maxSize * aspectRatio;
         }
+        // Snap to integer multiples of source pixel size for crisp pixel art
+        const pixelScale = Math.max(1, Math.round(drawWidth / img.naturalWidth));
+        drawWidth = img.naturalWidth * pixelScale;
+        drawHeight = img.naturalHeight * pixelScale;
       }
 
-      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), Math.round(drawWidth), Math.round(drawHeight));
+      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);
     } catch (e) {
       // Image not ready yet, will draw on next frame
     }

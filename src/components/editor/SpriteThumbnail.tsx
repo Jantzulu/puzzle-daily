@@ -83,13 +83,20 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       let drawWidth: number, drawHeight: number;
 
       if (bottomAlign) {
-        // Size based on height so similar-height entities render at consistent heights
-        const idealScale = Math.max(1, Math.round(maxSize / frameHeight));
-        const maxScaleH = Math.max(1, Math.floor(size / frameHeight));
-        const maxScaleW = Math.max(1, Math.floor(size / frameWidth));
-        const pixelScale = Math.min(idealScale, maxScaleH, maxScaleW);
-        drawWidth = frameWidth * pixelScale;
-        drawHeight = frameHeight * pixelScale;
+        // Size based on height, preserving sprite.size ratio for consistent relative sizing
+        drawHeight = maxSize;
+        drawWidth = maxSize * frameAspectRatio;
+        // Clamp to canvas if width overflows
+        if (drawWidth > size) {
+          drawHeight *= size / drawWidth;
+          drawWidth = size;
+        }
+        if (drawHeight > size) {
+          drawWidth *= size / drawHeight;
+          drawHeight = size;
+        }
+        drawWidth = Math.round(drawWidth);
+        drawHeight = Math.round(drawHeight);
       } else {
         drawWidth = maxSize;
         drawHeight = maxSize;
@@ -202,12 +209,18 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           let drawWidth: number, drawHeight: number;
 
           if (bottomAlign) {
-            const idealScale = Math.max(1, Math.round(maxSize / img.height));
-            const maxScaleH = Math.max(1, Math.floor(size / img.height));
-            const maxScaleW = Math.max(1, Math.floor(size / img.width));
-            const pixelScale = Math.min(idealScale, maxScaleH, maxScaleW);
-            drawWidth = img.width * pixelScale;
-            drawHeight = img.height * pixelScale;
+            drawHeight = maxSize;
+            drawWidth = maxSize * aspectRatio;
+            if (drawWidth > size) {
+              drawHeight *= size / drawWidth;
+              drawWidth = size;
+            }
+            if (drawHeight > size) {
+              drawWidth *= size / drawHeight;
+              drawHeight = size;
+            }
+            drawWidth = Math.round(drawWidth);
+            drawHeight = Math.round(drawHeight);
           } else {
             drawWidth = maxSize;
             drawHeight = maxSize;
