@@ -1799,87 +1799,23 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     return (
       <div className="mt-2 p-2 bg-stone-800 rounded border border-stone-600 overflow-hidden">
         <div className="text-[10px] text-stone-400 mb-1 font-bold">Anchor Point</div>
-        <div className="flex items-start gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="grid grid-cols-3 gap-0.5 w-fit mb-2">
-              {anchorPoints.map((pt) => (
-                <button
-                  key={pt.label}
-                  type="button"
-                  onClick={() => onAnchorChange(pt.x, pt.y)}
-                  className={`w-6 h-6 text-[9px] rounded border ${
-                    anchorX === pt.x && anchorY === pt.y
-                      ? 'bg-arcane-600 border-arcane-400 text-white font-bold'
-                      : 'bg-stone-700 border-stone-600 text-stone-400 hover:bg-stone-600'
-                  }`}
-                >
-                  {pt.label}
-                </button>
-              ))}
-            </div>
-            <div className="space-y-1">
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] text-stone-400 w-10">Off X</label>
-                <input
-                  type="range"
-                  min="-50"
-                  max="50"
-                  value={offsetX}
-                  onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value))}
-                  className="flex-1 h-3"
-                />
-                <input
-                  type="number"
-                  min="-50"
-                  max="50"
-                  value={offsetX}
-                  onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value) || 0)}
-                  className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
-                />
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] text-stone-400 w-10">Off Y</label>
-                <input
-                  type="range"
-                  min="-50"
-                  max="50"
-                  value={offsetY}
-                  onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value))}
-                  className="flex-1 h-3"
-                />
-                <input
-                  type="number"
-                  min="-50"
-                  max="50"
-                  value={offsetY}
-                  onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value) || 0)}
-                  className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
-                />
-              </div>
-              {onScaleChange && (
-                <div className="flex items-center gap-2">
-                  <label className="text-[10px] text-stone-400 w-10">Scale</label>
-                  <input
-                    type="range"
-                    min="0.25"
-                    max="2"
-                    step="0.05"
-                    value={scaleValue}
-                    onChange={(e) => onScaleChange(parseFloat(e.target.value))}
-                    className="flex-1 h-3"
-                  />
-                  <input
-                    type="number"
-                    min="0.25"
-                    max="2"
-                    step="0.05"
-                    value={scaleValue.toFixed(2)}
-                    onChange={(e) => onScaleChange(Math.max(0.25, Math.min(2, parseFloat(e.target.value) || 1)))}
-                    className="w-12 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
-                  />
-                </div>
-              )}
-            </div>
+        {/* Top row: anchor grid + preview side by side */}
+        <div className="flex items-start gap-3 mb-2">
+          <div className="grid grid-cols-3 gap-0.5 w-fit">
+            {anchorPoints.map((pt) => (
+              <button
+                key={pt.label}
+                type="button"
+                onClick={() => onAnchorChange(pt.x, pt.y)}
+                className={`w-6 h-6 text-[9px] rounded border ${
+                  anchorX === pt.x && anchorY === pt.y
+                    ? 'bg-arcane-600 border-arcane-400 text-white font-bold'
+                    : 'bg-stone-700 border-stone-600 text-stone-400 hover:bg-stone-600'
+                }`}
+              >
+                {pt.label}
+              </button>
+            ))}
           </div>
           {/* Inline anchor preview */}
           {imgSrc && (
@@ -1894,6 +1830,70 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               isSpriteSheet={!!previewSpriteSheet}
               frameCount={previewSpriteSheet?.frameCount}
             />
+          )}
+        </div>
+        {/* Sliders below */}
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-stone-400 w-10">Off X</label>
+            <input
+              type="range"
+              min="-50"
+              max="50"
+              value={offsetX}
+              onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value))}
+              className="flex-1 h-3"
+            />
+            <input
+              type="number"
+              min="-50"
+              max="50"
+              value={offsetX}
+              onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value) || 0)}
+              className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-stone-400 w-10">Off Y</label>
+            <input
+              type="range"
+              min="-50"
+              max="50"
+              value={offsetY}
+              onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value))}
+              className="flex-1 h-3"
+            />
+            <input
+              type="number"
+              min="-50"
+              max="50"
+              value={offsetY}
+              onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value) || 0)}
+              className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+            />
+          </div>
+          {onScaleChange && (
+            <div className="flex items-center gap-2">
+              <label className="text-[10px] text-stone-400 w-10">Scale</label>
+              <input
+                type="range"
+                min="0.25"
+                max="2"
+                step="0.05"
+                value={scaleValue}
+                onChange={(e) => onScaleChange(parseFloat(e.target.value))}
+                className="flex-1 h-3"
+              />
+              <input
+                type="number"
+                min="0.25"
+                max="2"
+                step="0.05"
+                value={scaleValue.toFixed(2)}
+                onChange={(e) => onScaleChange(Math.max(0.25, Math.min(2, parseFloat(e.target.value) || 1)))}
+                className="w-12 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+              />
+            </div>
           )}
         </div>
       </div>
