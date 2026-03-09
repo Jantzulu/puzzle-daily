@@ -177,7 +177,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
             >
               {/* Sprite */}
               <div className="relative flex-shrink-0">
-                <SpriteThumbnail sprite={enemyData.customSprite} size={60} previewType="entity" noBackground spriteScale={1.8} />
+                <SpriteThumbnail sprite={enemyData.customSprite} size={60} previewType="entity" noBackground spriteScale={1.8} bottomAlign />
                 {count > 1 && (
                   <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700">
                     {count}

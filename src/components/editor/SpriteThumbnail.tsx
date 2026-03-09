@@ -15,9 +15,11 @@ interface SpriteThumbnailProps {
   noBackground?: boolean;
   /** Multiplier for sprite draw size within the canvas (default 1). Use >1 to fill more of the canvas. */
   spriteScale?: number;
+  /** If true, sizes sprites by height and bottom-aligns them (consistent entity heights, feet line up) */
+  bottomAlign?: boolean;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1 }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
@@ -78,30 +80,43 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       ctx.clearRect(0, 0, size, size);
       const maxSize = (sprite.size || 0.6) * size * sc * uScale * spriteScale;
       const frameAspectRatio = frameWidth / frameHeight;
-      let drawWidth = maxSize;
-      let drawHeight = maxSize;
+      let drawWidth: number, drawHeight: number;
 
-      if (frameAspectRatio > 1) {
-        drawHeight = maxSize / frameAspectRatio;
+      if (bottomAlign) {
+        // Size based on height so similar-height entities render at consistent heights
+        const idealScale = Math.max(1, Math.round(maxSize / frameHeight));
+        const maxScaleH = Math.max(1, Math.floor(size / frameHeight));
+        const maxScaleW = Math.max(1, Math.floor(size / frameWidth));
+        const pixelScale = Math.min(idealScale, maxScaleH, maxScaleW);
+        drawWidth = frameWidth * pixelScale;
+        drawHeight = frameHeight * pixelScale;
       } else {
-        drawWidth = maxSize * frameAspectRatio;
+        drawWidth = maxSize;
+        drawHeight = maxSize;
+        if (frameAspectRatio > 1) {
+          drawHeight = maxSize / frameAspectRatio;
+        } else {
+          drawWidth = maxSize * frameAspectRatio;
+        }
+        // Always use integer multiples of source pixel size for crisp pixel art
+        const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
+        const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
+        const pixelScale = Math.min(idealPixelScale, maxFitScale);
+        drawWidth = frameWidth * pixelScale;
+        drawHeight = frameHeight * pixelScale;
       }
-
-      // Always use integer multiples of source pixel size for crisp pixel art
-      const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
-      const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
-      const pixelScale = Math.min(idealPixelScale, maxFitScale);
-      drawWidth = frameWidth * pixelScale;
-      drawHeight = frameHeight * pixelScale;
 
       const sourceX = Math.round(frameIndex * frameWidth);
       const sw = Math.round(frameWidth);
       const sh = Math.round(frameHeight);
-      ctx.drawImage(
-        img,
-        sourceX, 0, sw, sh,
-        Math.round(size/2 - drawWidth * ax + ox), Math.round(size/2 - drawHeight * ay + oy), drawWidth, drawHeight
-      );
+      // bottomAlign: center horizontally, bottom-align vertically
+      const xPos = bottomAlign
+        ? Math.round(size / 2 - drawWidth / 2)
+        : Math.round(size/2 - drawWidth * ax + ox);
+      const yPos = bottomAlign
+        ? Math.round(size - drawHeight)
+        : Math.round(size/2 - drawHeight * ay + oy);
+      ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
     };
 
     const renderThumbnail = () => {
@@ -189,23 +204,37 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         if (img && isImageReady(img)) {
           const maxSize = (sprite.size || 0.6) * size * imgScale * uScale * spriteScale;
           const aspectRatio = img.width / img.height;
-          let drawWidth = maxSize;
-          let drawHeight = maxSize;
+          let drawWidth: number, drawHeight: number;
 
-          if (aspectRatio > 1) {
-            drawHeight = maxSize / aspectRatio;
+          if (bottomAlign) {
+            const idealScale = Math.max(1, Math.round(maxSize / img.height));
+            const maxScaleH = Math.max(1, Math.floor(size / img.height));
+            const maxScaleW = Math.max(1, Math.floor(size / img.width));
+            const pixelScale = Math.min(idealScale, maxScaleH, maxScaleW);
+            drawWidth = img.width * pixelScale;
+            drawHeight = img.height * pixelScale;
           } else {
-            drawWidth = maxSize * aspectRatio;
+            drawWidth = maxSize;
+            drawHeight = maxSize;
+            if (aspectRatio > 1) {
+              drawHeight = maxSize / aspectRatio;
+            } else {
+              drawWidth = maxSize * aspectRatio;
+            }
+            const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
+            const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
+            const pixelScale = Math.min(idealPixelScale, maxFitScale);
+            drawWidth = img.width * pixelScale;
+            drawHeight = img.height * pixelScale;
           }
 
-          // Always use integer multiples of source pixel size for crisp pixel art
-          const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
-          const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
-          const pixelScale = Math.min(idealPixelScale, maxFitScale);
-          drawWidth = img.width * pixelScale;
-          drawHeight = img.height * pixelScale;
-
-          ctx.drawImage(img, Math.round(size/2 - drawWidth * imgAx + imgOx), Math.round(size/2 - drawHeight * imgAy + imgOy), drawWidth, drawHeight);
+          const xPos = bottomAlign
+            ? Math.round(size / 2 - drawWidth / 2)
+            : Math.round(size/2 - drawWidth * imgAx + imgOx);
+          const yPos = bottomAlign
+            ? Math.round(size - drawHeight)
+            : Math.round(size/2 - drawHeight * imgAy + imgOy);
+          ctx.drawImage(img, xPos, yPos, drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
       } else {
@@ -222,7 +251,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size, previewType, spriteScale, renderTrigger]);
+  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger]);
 
   if (!sprite) {
     return (
