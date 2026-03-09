@@ -39,7 +39,7 @@ import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../..
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'rect' | 'line';
+type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'move' | 'rect' | 'line';
 
 interface LayerState {
   id: string;
@@ -160,6 +160,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   // Layer panel
   const [showLayers, setShowLayers] = useState(!isMobile);
   const [editingLayerName, setEditingLayerName] = useState<string | null>(null);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Theme assets for custom tool icons
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>(loadThemeAssets);
@@ -481,6 +482,29 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
     const coord = getPixelCoord(e);
 
+    // Move tool — always drags selection (creates one if needed)
+    if (tool === 'move') {
+      if (coord) {
+        if (!selection) {
+          // No selection — select entire layer content
+          history.push(getSnapshot());
+          const layer = getActiveLayer();
+          const allData = cloneImageData(layer.data);
+          clearRegion(layer.data, 0, 0, canvasWidth, canvasHeight);
+          setSelection({ x: 0, y: 0, w: canvasWidth, h: canvasHeight, floatingData: allData });
+          bumpLayers();
+        } else if (!selection.floatingData) {
+          liftSelection();
+        }
+        selectionDragRef.current = {
+          startX: coord.x, startY: coord.y,
+          origX: selection?.x ?? 0, origY: selection?.y ?? 0,
+        };
+        isDrawingRef.current = true;
+      }
+      return;
+    }
+
     // Selection tool
     if (tool === 'select') {
       if (selection && coord) {
@@ -547,8 +571,8 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
     if (!isDrawingRef.current) return;
 
-    // Selection drag
-    if (tool === 'select' && selectionDragRef.current && selection) {
+    // Selection/Move drag
+    if ((tool === 'select' || tool === 'move') && selectionDragRef.current && selection) {
       const uc = getPixelCoordUnclamped(e);
       if (uc) {
         const dx = uc.x - selectionDragRef.current.startX;
@@ -609,8 +633,8 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       triggerRender();
     }
 
-    // Selection marquee finish
-    if (tool === 'select') {
+    // Selection/Move finish
+    if (tool === 'select' || tool === 'move') {
       selectionStartRef.current = null;
       selectionDragRef.current = null;
     }
@@ -911,7 +935,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   // ─── Tool Switching Helper ────────────────────────────────────────
 
   const switchTool = useCallback((newTool: Tool) => {
-    if (tool === 'select' && newTool !== 'select') {
+    if ((tool === 'select' || tool === 'move') && newTool !== 'select' && newTool !== 'move') {
       commitFloating();
     }
     setTool(newTool);
@@ -940,7 +964,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selection) { e.preventDefault(); handleDeleteSelection(); }
       } else if (e.key === 'Escape') {
-        if (selection) {
+        if (showShortcuts) {
+          e.preventDefault();
+          setShowShortcuts(false);
+        } else if (selection) {
           e.preventDefault();
           commitFloating();
           setSelection(null);
@@ -952,6 +979,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           case 'g': switchTool('fill'); break;
           case 'i': switchTool('eyedropper'); break;
           case 's': switchTool('select'); break;
+          case 'm': switchTool('move'); break;
           case 'r': switchTool('rect'); break;
           case 'l': switchTool('line'); break;
           case '=': case '+': zoomIn(); break;
@@ -959,12 +987,15 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           case '[': setBrushSize(s => Math.max(1, s - 1)); break;
           case ']': setBrushSize(s => Math.min(16, s + 1)); break;
         }
+        if (e.key === '?') {
+          setShowShortcuts(s => !s);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool]);
+  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool, showShortcuts]);
 
   // ─── Tool Config ────────────────────────────────────────────────
 
@@ -974,6 +1005,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     fill: 'iconPixelFill' as keyof ThemeAssets,
     eyedropper: 'iconPixelEyedropper' as keyof ThemeAssets,
     select: 'iconPixelSelect' as keyof ThemeAssets,
+    move: 'iconPixelMove' as keyof ThemeAssets,
     rect: 'iconPixelRect' as keyof ThemeAssets,
     line: 'iconPixelLine' as keyof ThemeAssets,
   };
@@ -984,6 +1016,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     { id: 'fill', label: 'Fill', icon: '🪣', key: 'G' },
     { id: 'eyedropper', label: 'Eyedropper', icon: '💧', key: 'I' },
     { id: 'select', label: 'Select', icon: '⬚', key: 'S' },
+    { id: 'move', label: 'Move', icon: '✥', key: 'M' },
     { id: 'rect', label: 'Rectangle', icon: '▭', key: 'R' },
     { id: 'line', label: 'Line', icon: '╱', key: 'L' },
   ];
@@ -1012,6 +1045,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
               : 'bg-stone-700 hover:bg-stone-600 text-stone-300'
           }`}
         >
+          <span className="text-[10px] opacity-50 mr-0.5">{t.key}</span>
           {renderToolIcon(t)}
         </button>
       ))}
@@ -1081,8 +1115,101 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       <button onClick={zoomIn} title="Zoom In (+)" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600">
         +
       </button>
+      <div className="w-px bg-stone-600 mx-1" />
+      <button
+        onClick={() => setShowShortcuts(s => !s)}
+        title="Keyboard Shortcuts (?)"
+        className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-400"
+      >
+        ?
+      </button>
     </>
   );
+
+  // ─── Render: Shortcuts Modal ──────────────────────────────────────
+
+  const shortcutsModal = showShortcuts ? (
+    <div
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4"
+      onClick={() => setShowShortcuts(false)}
+    >
+      <div
+        className="bg-stone-800 border border-stone-600 rounded-lg shadow-xl max-w-md w-full p-5 max-h-[80vh] overflow-y-auto"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="text-lg font-bold text-parchment-100">Keyboard Shortcuts</h2>
+          <button
+            onClick={() => setShowShortcuts(false)}
+            className="text-stone-400 hover:text-white text-xl leading-none w-8 h-8 flex items-center justify-center"
+          >
+            {'\u00D7'}
+          </button>
+        </div>
+        <div className="space-y-4 text-sm">
+          {/* Tools */}
+          <div>
+            <h3 className="text-xs font-bold text-stone-400 uppercase mb-2">Tools</h3>
+            <div className="space-y-1.5">
+              {[
+                ['B', 'Pencil'],
+                ['E', 'Eraser'],
+                ['G', 'Fill'],
+                ['I', 'Eyedropper'],
+                ['S', 'Select'],
+                ['M', 'Move'],
+                ['R', 'Rectangle'],
+                ['L', 'Line'],
+              ].map(([key, label]) => (
+                <div key={key} className="flex items-center gap-3">
+                  <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
+                  <span className="text-parchment-200">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Actions */}
+          <div>
+            <h3 className="text-xs font-bold text-stone-400 uppercase mb-2">Actions</h3>
+            <div className="space-y-1.5">
+              {[
+                ['Ctrl+Z', 'Undo'],
+                ['Ctrl+Y', 'Redo'],
+                ['Ctrl+C', 'Copy selection'],
+                ['Ctrl+X', 'Cut selection'],
+                ['Ctrl+V', 'Paste'],
+                ['Del', 'Delete selection'],
+                ['Esc', 'Deselect / commit'],
+              ].map(([key, label]) => (
+                <div key={key} className="flex items-center gap-3">
+                  <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
+                  <span className="text-parchment-200">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* View & Brush */}
+          <div>
+            <h3 className="text-xs font-bold text-stone-400 uppercase mb-2">View &amp; Brush</h3>
+            <div className="space-y-1.5">
+              {[
+                ['+ / -', 'Zoom in / out'],
+                ['Scroll', 'Zoom at cursor'],
+                ['[ / ]', 'Brush size'],
+                ['Middle drag', 'Pan canvas'],
+                ['?', 'This reference'],
+              ].map(([key, label]) => (
+                <div key={key} className="flex items-center gap-3">
+                  <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
+                  <span className="text-parchment-200">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  ) : null;
 
   // ─── Render: Color Palette ────────────────────────────────────────
 
@@ -1303,6 +1430,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   // ─── Canvas cursor style ──────────────────────────────────────────
   const canvasCursor = tool === 'eyedropper' ? 'crosshair'
     : tool === 'select' ? 'crosshair'
+    : tool === 'move' ? 'move'
     : 'default';
 
   // ─── Desktop Layout ─────────────────────────────────────────────
@@ -1384,6 +1512,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
             </div>
           </div>
         </div>
+        {shortcutsModal}
       </div>
     );
   }
@@ -1469,6 +1598,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           )}
         </div>
       </div>
+      {shortcutsModal}
     </div>
   );
 };

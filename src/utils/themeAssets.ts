@@ -97,6 +97,7 @@ export interface ThemeAssets {
   iconPixelFill?: string;       // Custom icon for Fill tool
   iconPixelEyedropper?: string; // Custom icon for Eyedropper tool
   iconPixelSelect?: string;     // Custom icon for Select tool
+  iconPixelMove?: string;       // Custom icon for Move tool
   iconPixelRect?: string;       // Custom icon for Rectangle tool
   iconPixelLine?: string;       // Custom icon for Line tool
 
@@ -278,6 +279,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconPixelFill: { label: 'Pixel Fill Icon', description: 'Custom icon for the Fill tool in Pixel Editor', category: 'icons', inputType: 'image' },
   iconPixelEyedropper: { label: 'Pixel Eyedropper Icon', description: 'Custom icon for the Eyedropper tool in Pixel Editor', category: 'icons', inputType: 'image' },
   iconPixelSelect: { label: 'Pixel Select Icon', description: 'Custom icon for the Select tool in Pixel Editor', category: 'icons', inputType: 'image' },
+  iconPixelMove: { label: 'Pixel Move Icon', description: 'Custom icon for the Move tool in Pixel Editor', category: 'icons', inputType: 'image' },
   iconPixelRect: { label: 'Pixel Rectangle Icon', description: 'Custom icon for the Rectangle tool in Pixel Editor', category: 'icons', inputType: 'image' },
   iconPixelLine: { label: 'Pixel Line Icon', description: 'Custom icon for the Line tool in Pixel Editor', category: 'icons', inputType: 'image' },
   overlayVignette: { label: 'Vignette Overlay', description: 'Edge darkening effect', category: 'effects', inputType: 'image' },
