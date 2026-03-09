@@ -151,10 +151,9 @@ function drawSpriteSheet(
     finalWidth = displayHeight * scale * frameAspectRatio;
   }
 
-  // Snap draw dimensions to integer multiples of source pixel size for crisp pixel art
-  const pixelScale = Math.max(1, Math.round(finalWidth / frameWidth));
-  finalWidth = frameWidth * pixelScale;
-  finalHeight = frameHeight * pixelScale;
+  // Round to nearest pixel for smooth scaling (integer-snap caused discrete jumps)
+  finalWidth = Math.round(finalWidth);
+  finalHeight = Math.round(finalHeight);
 
   const sourceX = Math.round(state.currentFrame * frameWidth);
   const sw = Math.round(frameWidth);
@@ -4007,10 +4006,9 @@ function drawSpriteConfig(
         } else {
           drawWidth = maxSize * aspectRatio;
         }
-        // Snap to integer multiples of source pixel size for crisp pixel art
-        const pixelScale = Math.max(1, Math.round(drawWidth / img.naturalWidth));
-        drawWidth = img.naturalWidth * pixelScale;
-        drawHeight = img.naturalHeight * pixelScale;
+        // Round to nearest pixel for smooth scaling
+        drawWidth = Math.round(drawWidth);
+        drawHeight = Math.round(drawHeight);
       }
 
       ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);
@@ -4162,10 +4160,9 @@ export function drawSprite(
         } else {
           drawWidth = maxSize * aspectRatio;
         }
-        // Snap to integer multiples of source pixel size for crisp pixel art
-        const pixelScale = Math.max(1, Math.round(drawWidth / img.naturalWidth));
-        drawWidth = img.naturalWidth * pixelScale;
-        drawHeight = img.naturalHeight * pixelScale;
+        // Round to nearest pixel for smooth scaling
+        drawWidth = Math.round(drawWidth);
+        drawHeight = Math.round(drawHeight);
       }
 
       ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);

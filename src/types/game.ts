@@ -229,6 +229,7 @@ export interface Character {
   blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
   contactDamage?: number; // Damage dealt when walking into enemies (0 or undefined = no contact damage)
   immuneToPush?: boolean; // If true, cannot be moved by push abilities
+  isFloating?: boolean; // If true, sprite floats/flies — centered in thumbnails instead of bottom-aligned
   // Sound configuration
   sounds?: EntitySoundSet; // Character-specific sounds (death, damage, etc.)
   // Death drop configuration
@@ -252,6 +253,7 @@ export interface Enemy {
   blocksMovementDead?: boolean; // If true, corpse stops entities trying to walk through
   contactDamage?: number; // Damage dealt when walking into characters (0 or undefined = no contact damage)
   immuneToPush?: boolean; // If true, cannot be moved by push abilities
+  isFloating?: boolean; // If true, sprite floats/flies — centered in thumbnails instead of bottom-aligned
 
   // Boss configuration
   isBoss?: boolean; // If true, this enemy is a boss - enables 'defeat_boss' win condition

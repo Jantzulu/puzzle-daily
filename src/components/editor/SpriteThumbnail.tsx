@@ -83,10 +83,15 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       let drawWidth: number, drawHeight: number;
 
       if (bottomAlign) {
-        // Size based on height, preserving sprite.size ratio for consistent relative sizing
+        // Same bounding-box sizing as game board for proportional consistency
+        drawWidth = maxSize;
         drawHeight = maxSize;
-        drawWidth = maxSize * frameAspectRatio;
-        // Clamp to canvas if width overflows
+        if (frameAspectRatio > 1) {
+          drawHeight = maxSize / frameAspectRatio;
+        } else {
+          drawWidth = maxSize * frameAspectRatio;
+        }
+        // Clamp to canvas bounds (spriteScale can push beyond canvas)
         if (drawWidth > size) {
           drawHeight *= size / drawWidth;
           drawWidth = size;
@@ -116,8 +121,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       const sourceX = Math.round(frameIndex * frameWidth);
       const sw = Math.round(frameWidth);
       const sh = Math.round(frameHeight);
-      const xPos = Math.round(size/2 - drawWidth * ax + ox);
-      const yPos = Math.round(size/2 - drawHeight * ay + oy);
+      const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * ax + ox);
+      const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * ay + oy);
       ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
     };
 
@@ -209,8 +214,15 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           let drawWidth: number, drawHeight: number;
 
           if (bottomAlign) {
+            // Same bounding-box sizing as game board for proportional consistency
+            drawWidth = maxSize;
             drawHeight = maxSize;
-            drawWidth = maxSize * aspectRatio;
+            if (aspectRatio > 1) {
+              drawHeight = maxSize / aspectRatio;
+            } else {
+              drawWidth = maxSize * aspectRatio;
+            }
+            // Clamp to canvas bounds (spriteScale can push beyond canvas)
             if (drawWidth > size) {
               drawHeight *= size / drawWidth;
               drawWidth = size;
@@ -236,8 +248,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawHeight = img.height * pixelScale;
           }
 
-          const xPos = Math.round(size/2 - drawWidth * imgAx + imgOx);
-          const yPos = Math.round(size/2 - drawHeight * imgAy + imgOy);
+          const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * imgAx + imgOx);
+          const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * imgAy + imgOy);
           ctx.drawImage(img, xPos, yPos, drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads

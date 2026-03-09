@@ -528,6 +528,11 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         onChange={(e) => updateEnemy({ immuneToPush: e.target.checked })} className="w-4 h-4" />
                       <span className="text-sm">Immune to Push</span>
                     </label>
+                    <label className="flex items-center gap-2">
+                      <input type="checkbox" checked={editing.isFloating || false}
+                        onChange={(e) => updateEnemy({ isFloating: e.target.checked })} className="w-4 h-4" />
+                      <span className="text-sm">Floating/Flying (centers in thumbnail)</span>
+                    </label>
                   </CollapsiblePanel>
 
                   {/* Sound Effects */}

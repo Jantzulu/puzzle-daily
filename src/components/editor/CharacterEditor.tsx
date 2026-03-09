@@ -579,6 +579,11 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           onChange={(e) => updateCharacter({ immuneToPush: e.target.checked })} className="w-4 h-4" />
                         <span className="text-sm">Immune to Push</span>
                       </label>
+                      <label className="flex items-center gap-2">
+                        <input type="checkbox" checked={editing.isFloating || false}
+                          onChange={(e) => updateCharacter({ isFloating: e.target.checked })} className="w-4 h-4" />
+                        <span className="text-sm">Floating/Flying (centers in thumbnail)</span>
+                      </label>
                     </CollapsiblePanel>
 
                     {/* Sound Effects */}
