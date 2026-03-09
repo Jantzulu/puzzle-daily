@@ -308,6 +308,9 @@ export interface CustomSprite {
   imageData?: string; // Will be used as idleImageData if idleImageData not set
   imageUrl?: string; // URL alternative for backwards compat field
 
+  // Pixel editor project URL (companion .project.json in Supabase for re-editing with layers)
+  pixelEditorProjectUrl?: string;
+
   // Universal scale — multiplied on top of all per-state individual scales
   universalScale?: number; // Default 1.0, applied to all states/directions equally
 

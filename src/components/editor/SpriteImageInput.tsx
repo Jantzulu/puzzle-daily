@@ -1,6 +1,7 @@
 import React, { useRef, useState } from 'react';
 import { toast } from '../shared/Toast';
 import { MediaBrowseButton } from './MediaBrowseButton';
+import { PixelEditor } from './PixelEditor';
 
 interface SpriteImageInputProps {
   /** Current base64 image data (if any) */
@@ -63,6 +64,7 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [urlInput, setUrlInput] = useState(imageUrl || '');
   const [showUrlInput, setShowUrlInput] = useState(false);
+  const [pixelEditorOpen, setPixelEditorOpen] = useState(false);
 
   const hasImage = !!(imageData || imageUrl);
   const displaySrc = imageData || imageUrl;
@@ -130,13 +132,29 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
           )}
         </div>
 
-        {/* Cloud Media + URL Input Toggle */}
-        <div className="flex items-center gap-2">
+        {/* Cloud Media + Pixel Editor + URL Input Toggle */}
+        <div className="flex items-center gap-2 flex-wrap">
           <MediaBrowseButton
             onSelect={(url) => onImageChange(undefined, url)}
             label="☁️ Browse Media"
             className="px-2 py-1 text-xs"
           />
+          {hasImage && (
+            <button
+              type="button"
+              onClick={() => setPixelEditorOpen(true)}
+              className="px-2 py-1 text-xs bg-arcane-700 hover:bg-arcane-600 rounded"
+            >
+              ✏️ Edit Pixels
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => setPixelEditorOpen(true)}
+            className="px-2 py-1 text-xs bg-purple-700 hover:bg-purple-600 rounded"
+          >
+            🎨 Draw New
+          </button>
           <button
             type="button"
             onClick={() => setShowUrlInput(!showUrlInput)}
@@ -225,6 +243,18 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
             : 'No image set'}
         </p>
       </div>
+
+      {/* Pixel Editor Modal */}
+      {pixelEditorOpen && (
+        <PixelEditor
+          initialImage={displaySrc}
+          onApply={(base64, cloudProjectUrl) => {
+            onImageChange(base64, undefined);
+            setPixelEditorOpen(false);
+          }}
+          onClose={() => setPixelEditorOpen(false)}
+        />
+      )}
     </div>
   );
 };
