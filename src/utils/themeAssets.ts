@@ -91,6 +91,15 @@ export interface ThemeAssets {
   iconTabTiles?: string;        // Icon for Dungeon Tiles tab (default: 🧱)
   iconTabItems?: string;        // Icon for Items tab (default: 💎)
 
+  // Pixel Editor Tool Icons (custom images)
+  iconPixelPencil?: string;     // Custom icon for Pencil tool
+  iconPixelEraser?: string;     // Custom icon for Eraser tool
+  iconPixelFill?: string;       // Custom icon for Fill tool
+  iconPixelEyedropper?: string; // Custom icon for Eyedropper tool
+  iconPixelSelect?: string;     // Custom icon for Select tool
+  iconPixelRect?: string;       // Custom icon for Rectangle tool
+  iconPixelLine?: string;       // Custom icon for Line tool
+
   // Overlay effects
   overlayVignette?: string;
   overlayNoise?: string;
@@ -264,6 +273,13 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconTabEnchantments: { label: 'Enchantments Tab Icon', description: 'Icon/emoji for Enchantments tab in Compendium (default: ✨)', category: 'icons', inputType: 'text' },
   iconTabTiles: { label: 'Tiles Tab Icon', description: 'Icon/emoji for Dungeon Tiles tab in Compendium (default: 🧱)', category: 'icons', inputType: 'text' },
   iconTabItems: { label: 'Items Tab Icon', description: 'Icon/emoji for Items tab in Compendium (default: 💎)', category: 'icons', inputType: 'text' },
+  iconPixelPencil: { label: 'Pixel Pencil Icon', description: 'Custom icon for the Pencil tool in Pixel Editor', category: 'icons', inputType: 'image' },
+  iconPixelEraser: { label: 'Pixel Eraser Icon', description: 'Custom icon for the Eraser tool in Pixel Editor', category: 'icons', inputType: 'image' },
+  iconPixelFill: { label: 'Pixel Fill Icon', description: 'Custom icon for the Fill tool in Pixel Editor', category: 'icons', inputType: 'image' },
+  iconPixelEyedropper: { label: 'Pixel Eyedropper Icon', description: 'Custom icon for the Eyedropper tool in Pixel Editor', category: 'icons', inputType: 'image' },
+  iconPixelSelect: { label: 'Pixel Select Icon', description: 'Custom icon for the Select tool in Pixel Editor', category: 'icons', inputType: 'image' },
+  iconPixelRect: { label: 'Pixel Rectangle Icon', description: 'Custom icon for the Rectangle tool in Pixel Editor', category: 'icons', inputType: 'image' },
+  iconPixelLine: { label: 'Pixel Line Icon', description: 'Custom icon for the Line tool in Pixel Editor', category: 'icons', inputType: 'image' },
   overlayVignette: { label: 'Vignette Overlay', description: 'Edge darkening effect', category: 'effects', inputType: 'image' },
   overlayNoise: { label: 'Noise Overlay', description: 'Texture noise overlay', category: 'effects', inputType: 'image' },
 

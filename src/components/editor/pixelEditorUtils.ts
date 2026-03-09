@@ -65,6 +65,268 @@ export function createBlankImageData(width: number, height: number): ImageData {
   return new ImageData(width, height);
 }
 
+// ─── Layer Compositing ──────────────────────────────────────────────
+
+/** Alpha-over composite of all visible layers, bottom-to-top. */
+export function compositeLayers(
+  layers: ImageData[],
+  visibilities: boolean[],
+  opacities: number[],
+  width: number,
+  height: number
+): ImageData {
+  const result = new ImageData(width, height);
+  const out = result.data;
+  const total = width * height;
+
+  for (let li = 0; li < layers.length; li++) {
+    if (!visibilities[li]) continue;
+    const src = layers[li].data;
+    const layerOpacity = opacities[li];
+
+    for (let p = 0; p < total; p++) {
+      const i = p * 4;
+      let sa = src[i + 3] * layerOpacity / 255;
+      if (sa === 0) continue;
+
+      const sr = src[i], sg = src[i + 1], sb = src[i + 2];
+      const da = out[i + 3];
+
+      if (da === 0) {
+        // Destination is transparent
+        out[i] = sr;
+        out[i + 1] = sg;
+        out[i + 2] = sb;
+        out[i + 3] = Math.round(sa);
+      } else {
+        // Alpha-over compositing
+        const saF = sa / 255;
+        const daF = da / 255;
+        const outA = saF + daF * (1 - saF);
+        if (outA > 0) {
+          out[i] = Math.round((sr * saF + out[i] * daF * (1 - saF)) / outA);
+          out[i + 1] = Math.round((sg * saF + out[i + 1] * daF * (1 - saF)) / outA);
+          out[i + 2] = Math.round((sb * saF + out[i + 2] * daF * (1 - saF)) / outA);
+          out[i + 3] = Math.round(outA * 255);
+        }
+      }
+    }
+  }
+  return result;
+}
+
+export function cloneLayerStack(layers: ImageData[]): ImageData[] {
+  return layers.map(cloneImageData);
+}
+
+// ─── Shape Drawing ──────────────────────────────────────────────────
+
+export function drawRect(
+  data: ImageData,
+  x0: number, y0: number, x1: number, y1: number,
+  color: RGBA, filled: boolean
+): void {
+  const minX = Math.max(0, Math.min(x0, x1));
+  const maxX = Math.min(data.width - 1, Math.max(x0, x1));
+  const minY = Math.max(0, Math.min(y0, y1));
+  const maxY = Math.min(data.height - 1, Math.max(y0, y1));
+
+  for (let y = minY; y <= maxY; y++) {
+    for (let x = minX; x <= maxX; x++) {
+      if (filled || x === minX || x === maxX || y === minY || y === maxY) {
+        setPixel(data, x, y, color);
+      }
+    }
+  }
+}
+
+export function drawLine(
+  data: ImageData,
+  x0: number, y0: number, x1: number, y1: number,
+  color: RGBA
+): void {
+  const points = bresenhamLine(x0, y0, x1, y1);
+  for (const { x, y } of points) {
+    if (x >= 0 && y >= 0 && x < data.width && y < data.height) {
+      setPixel(data, x, y, color);
+    }
+  }
+}
+
+// ─── Brush ──────────────────────────────────────────────────────────
+
+/** Paint a filled circle of given radius centered at (cx, cy). */
+export function paintBrush(
+  data: ImageData, cx: number, cy: number, radius: number, color: RGBA
+): void {
+  if (radius <= 1) {
+    if (cx >= 0 && cy >= 0 && cx < data.width && cy < data.height) {
+      setPixel(data, cx, cy, color);
+    }
+    return;
+  }
+  const r = radius - 1; // radius=2 → 3x3 area
+  for (let dy = -r; dy <= r; dy++) {
+    for (let dx = -r; dx <= r; dx++) {
+      if (dx * dx + dy * dy <= r * r) {
+        const px = cx + dx, py = cy + dy;
+        if (px >= 0 && py >= 0 && px < data.width && py < data.height) {
+          setPixel(data, px, py, color);
+        }
+      }
+    }
+  }
+}
+
+// ─── Selection Operations ───────────────────────────────────────────
+
+export function extractRegion(
+  data: ImageData, x: number, y: number, w: number, h: number
+): ImageData {
+  const region = new ImageData(w, h);
+  for (let ry = 0; ry < h; ry++) {
+    for (let rx = 0; rx < w; rx++) {
+      const sx = x + rx, sy = y + ry;
+      if (sx >= 0 && sy >= 0 && sx < data.width && sy < data.height) {
+        const si = (sy * data.width + sx) * 4;
+        const di = (ry * w + rx) * 4;
+        region.data[di] = data.data[si];
+        region.data[di + 1] = data.data[si + 1];
+        region.data[di + 2] = data.data[si + 2];
+        region.data[di + 3] = data.data[si + 3];
+      }
+    }
+  }
+  return region;
+}
+
+export function pasteRegion(
+  target: ImageData, source: ImageData, destX: number, destY: number
+): void {
+  for (let y = 0; y < source.height; y++) {
+    for (let x = 0; x < source.width; x++) {
+      const tx = destX + x, ty = destY + y;
+      if (tx >= 0 && ty >= 0 && tx < target.width && ty < target.height) {
+        const si = (y * source.width + x) * 4;
+        if (source.data[si + 3] === 0) continue; // don't paste transparent
+        const di = (ty * target.width + tx) * 4;
+        target.data[di] = source.data[si];
+        target.data[di + 1] = source.data[si + 1];
+        target.data[di + 2] = source.data[si + 2];
+        target.data[di + 3] = source.data[si + 3];
+      }
+    }
+  }
+}
+
+export function clearRegion(
+  data: ImageData, x: number, y: number, w: number, h: number
+): void {
+  for (let ry = 0; ry < h; ry++) {
+    for (let rx = 0; rx < w; rx++) {
+      const px = x + rx, py = y + ry;
+      if (px >= 0 && py >= 0 && px < data.width && py < data.height) {
+        const i = (py * data.width + px) * 4;
+        data.data[i] = data.data[i + 1] = data.data[i + 2] = data.data[i + 3] = 0;
+      }
+    }
+  }
+}
+
+// ─── Mirror / Flip ──────────────────────────────────────────────────
+
+export function flipHorizontal(data: ImageData): ImageData {
+  const result = new ImageData(data.width, data.height);
+  for (let y = 0; y < data.height; y++) {
+    for (let x = 0; x < data.width; x++) {
+      const si = (y * data.width + x) * 4;
+      const di = (y * data.width + (data.width - 1 - x)) * 4;
+      result.data[di] = data.data[si];
+      result.data[di + 1] = data.data[si + 1];
+      result.data[di + 2] = data.data[si + 2];
+      result.data[di + 3] = data.data[si + 3];
+    }
+  }
+  return result;
+}
+
+export function flipVertical(data: ImageData): ImageData {
+  const result = new ImageData(data.width, data.height);
+  for (let y = 0; y < data.height; y++) {
+    for (let x = 0; x < data.width; x++) {
+      const si = (y * data.width + x) * 4;
+      const di = ((data.height - 1 - y) * data.width + x) * 4;
+      result.data[di] = data.data[si];
+      result.data[di + 1] = data.data[si + 1];
+      result.data[di + 2] = data.data[si + 2];
+      result.data[di + 3] = data.data[si + 3];
+    }
+  }
+  return result;
+}
+
+// ─── Rendering Overlays ─────────────────────────────────────────────
+
+export function renderSelectionOverlay(
+  ctx: CanvasRenderingContext2D,
+  sel: { x: number; y: number; w: number; h: number },
+  zoom: number, panX: number, panY: number,
+  animOffset: number
+): void {
+  const sx = panX + sel.x * zoom;
+  const sy = panY + sel.y * zoom;
+  const sw = sel.w * zoom;
+  const sh = sel.h * zoom;
+
+  ctx.save();
+  ctx.setLineDash([4, 4]);
+  ctx.lineDashOffset = -animOffset;
+  ctx.strokeStyle = 'white';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(sx + 0.5, sy + 0.5, sw, sh);
+  ctx.lineDashOffset = -animOffset + 4;
+  ctx.strokeStyle = 'black';
+  ctx.strokeRect(sx + 0.5, sy + 0.5, sw, sh);
+  ctx.restore();
+}
+
+export function renderShapePreview(
+  ctx: CanvasRenderingContext2D,
+  tool: 'rect' | 'line',
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  zoom: number, panX: number, panY: number,
+  color: string, filled: boolean
+): void {
+  ctx.save();
+  ctx.globalAlpha = 0.5;
+
+  if (tool === 'rect') {
+    const x = panX + Math.min(start.x, end.x) * zoom;
+    const y = panY + Math.min(start.y, end.y) * zoom;
+    const w = (Math.abs(end.x - start.x) + 1) * zoom;
+    const h = (Math.abs(end.y - start.y) + 1) * zoom;
+    if (filled) {
+      ctx.fillStyle = color;
+      ctx.fillRect(x, y, w, h);
+    } else {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = zoom;
+      ctx.strokeRect(x + zoom / 2, y + zoom / 2, w - zoom, h - zoom);
+    }
+  } else {
+    ctx.strokeStyle = color;
+    ctx.lineWidth = zoom;
+    ctx.lineCap = 'square';
+    ctx.beginPath();
+    ctx.moveTo(panX + start.x * zoom + zoom / 2, panY + start.y * zoom + zoom / 2);
+    ctx.lineTo(panX + end.x * zoom + zoom / 2, panY + end.y * zoom + zoom / 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
 // ─── Flood Fill (scanline-based) ────────────────────────────────────
 
 export function floodFill(

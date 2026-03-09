@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
-import { usePixelEditorHistory } from '../../hooks/usePixelEditorHistory';
+import { usePixelEditorHistory, type PixelEditorHistorySnapshot } from '../../hooks/usePixelEditorHistory';
 import {
   type RGBA,
   hexToRGBA,
@@ -16,17 +16,43 @@ import {
   imageToPixelData,
   pixelDataToBase64,
   resizePixelData,
-  createProject,
   serializeProject,
   deserializeProject,
+  compositeLayers,
+  cloneLayerStack,
+  drawRect,
+  drawLine,
+  paintBrush,
+  extractRegion,
+  pasteRegion,
+  clearRegion,
+  flipHorizontal,
+  flipVertical,
+  renderSelectionOverlay,
+  renderShapePreview,
   type PixelEditorProject,
+  type PixelEditorLayer,
 } from './pixelEditorUtils';
 import { uploadMediaDataUrl } from '../../utils/mediaStorage';
 import { toast } from '../shared/Toast';
+import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper';
+type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'rect' | 'line';
+
+interface LayerState {
+  id: string;
+  name: string;
+  visible: boolean;
+  opacity: number; // 0-1
+  data: ImageData;
+}
+
+interface Selection {
+  x: number; y: number; w: number; h: number;
+  floatingData?: ImageData;
+}
 
 interface PixelEditorProps {
   initialImage?: string;
@@ -35,9 +61,7 @@ interface PixelEditorProps {
   defaultHeight?: number;
   onApply: (base64: string, projectUrl?: string) => void;
   onClose: () => void;
-  /** 'modal' = full-screen overlay (default), 'page' = fills parent container */
   mode?: 'modal' | 'page';
-  /** Called when user clicks "New" in page mode to reset the editor */
   onNew?: () => void;
 }
 
@@ -50,19 +74,20 @@ const MIN_ZOOM = 1;
 const MAX_ZOOM = 100;
 
 const PALETTE: string[] = [
-  // Row 1: darks & grays
   '#000000', '#222034', '#45283c', '#663931',
   '#8f563b', '#df7126', '#d9a066', '#eec39a',
-  // Row 2: lights & warm
   '#fbf236', '#99e550', '#6abe30', '#37946e',
   '#4b692f', '#524b24', '#323c39', '#3f3f74',
-  // Row 3: blues & purples
   '#306082', '#5b6ee1', '#639bff', '#5fcde4',
   '#cbdbfc', '#ffffff', '#9badb7', '#847e87',
-  // Row 4: reds & pinks
   '#696a6a', '#595652', '#76428a', '#ac3232',
   '#d95763', '#d77bba', '#8f974a', '#8a6f30',
 ];
+
+let nextLayerId = 1;
+function genLayerId() {
+  return `layer-${nextLayerId++}`;
+}
 
 // ─── Component ──────────────────────────────────────────────────────
 
@@ -79,7 +104,18 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const isPage = mode === 'page';
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const pixelDataRef = useRef<ImageData>(createBlankImageData(defaultWidth, defaultHeight));
+
+  // ─── Layer State ────────────────────────────────────────────────
+  const layersRef = useRef<LayerState[]>([{
+    id: genLayerId(),
+    name: 'Background',
+    visible: true,
+    opacity: 1,
+    data: createBlankImageData(defaultWidth, defaultHeight),
+  }]);
+  const [activeLayerIndex, setActiveLayerIndex] = useState(0);
+  const [layerRevision, setLayerRevision] = useState(0); // forces re-render on layer changes
+
   const lastPixelRef = useRef<{ x: number; y: number } | null>(null);
   const isDrawingRef = useRef(false);
   const activePointersRef = useRef<Set<number>>(new Set());
@@ -95,8 +131,25 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const [showGrid, setShowGrid] = useState(true);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [renderKey, setRenderKey] = useState(0);
+  const [brushSize, setBrushSize] = useState(1);
+  const [rectFilled, setRectFilled] = useState(true);
 
-  // Resize inputs (separate from actual canvas size until confirmed)
+  // Selection state
+  const [selection, setSelection] = useState<Selection | null>(null);
+  const selectionStartRef = useRef<{ x: number; y: number } | null>(null);
+  const selectionDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
+  const clipboardRef = useRef<ImageData | null>(null);
+  const selectionAnimRef = useRef(0);
+  const selectionRafRef = useRef<number | null>(null);
+
+  // Shape tool state
+  const shapeStartRef = useRef<{ x: number; y: number } | null>(null);
+  const [shapeEnd, setShapeEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // Custom color palette
+  const [customColors, setCustomColors] = useState<string[]>([]);
+
+  // Resize inputs
   const [resizeW, setResizeW] = useState(defaultWidth);
   const [resizeH, setResizeH] = useState(defaultHeight);
   const [showResizePanel, setShowResizePanel] = useState(false);
@@ -104,7 +157,58 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
+  // Layer panel
+  const [showLayers, setShowLayers] = useState(!isMobile);
+  const [editingLayerName, setEditingLayerName] = useState<string | null>(null);
+
+  // Theme assets for custom tool icons
+  const [themeAssets, setThemeAssets] = useState<ThemeAssets>(loadThemeAssets);
+
   const history = usePixelEditorHistory();
+
+  // ─── Helpers ──────────────────────────────────────────────────────
+
+  const getActiveLayer = useCallback((): LayerState => {
+    return layersRef.current[activeLayerIndex] || layersRef.current[0];
+  }, [activeLayerIndex]);
+
+  const bumpLayers = useCallback(() => {
+    setLayerRevision(r => r + 1);
+  }, []);
+
+  const getSnapshot = useCallback((): PixelEditorHistorySnapshot => {
+    return {
+      layers: layersRef.current.map(l => l.data),
+      activeLayerIndex,
+    };
+  }, [activeLayerIndex]);
+
+  const restoreSnapshot = useCallback((snap: PixelEditorHistorySnapshot) => {
+    for (let i = 0; i < layersRef.current.length && i < snap.layers.length; i++) {
+      layersRef.current[i].data = snap.layers[i];
+    }
+    // If snapshot has different layer count, adjust
+    if (snap.layers.length !== layersRef.current.length) {
+      // Rebuild layer stack from snapshot
+      const newLayers: LayerState[] = snap.layers.map((data, i) => {
+        const existing = layersRef.current[i];
+        return existing
+          ? { ...existing, data }
+          : { id: genLayerId(), name: `Layer ${i + 1}`, visible: true, opacity: 1, data };
+      });
+      layersRef.current = newLayers;
+    }
+    setActiveLayerIndex(Math.min(snap.activeLayerIndex, layersRef.current.length - 1));
+    bumpLayers();
+  }, [bumpLayers]);
+
+  // ─── Theme Assets ─────────────────────────────────────────────────
+
+  useEffect(() => {
+    return subscribeToThemeAssets(() => {
+      setThemeAssets(loadThemeAssets());
+    });
+  }, []);
 
   // ─── Initialize ─────────────────────────────────────────────────
 
@@ -112,21 +216,32 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     if (loaded) return;
 
     const loadContent = async () => {
-      // Try loading project file first
       if (projectUrl) {
         try {
           const resp = await fetch(projectUrl);
           const json = await resp.text();
           const project = deserializeProject(json);
           if (project) {
-            const layer = project.layers[0];
-            if (layer) {
-              const result = await imageToPixelData(layer.data, project.width, project.height);
-              pixelDataRef.current = result.data;
+            // Load all layers
+            const loadedLayers: LayerState[] = [];
+            for (const layerDef of project.layers) {
+              const result = await imageToPixelData(layerDef.data, project.width, project.height);
+              loadedLayers.push({
+                id: layerDef.id || genLayerId(),
+                name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
+                visible: layerDef.visible !== false,
+                opacity: layerDef.opacity ?? 1,
+                data: result.data,
+              });
+            }
+            if (loadedLayers.length > 0) {
+              layersRef.current = loadedLayers;
               setCanvasWidth(project.width);
               setCanvasHeight(project.height);
               setResizeW(project.width);
               setResizeH(project.height);
+              if (project.palette) setCustomColors(project.palette);
+              bumpLayers();
               setLoaded(true);
               centerCanvas(project.width, project.height);
               triggerRender();
@@ -138,26 +253,29 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         }
       }
 
-      // Fall back to loading initial image
       if (initialImage) {
         try {
           const result = await imageToPixelData(initialImage, undefined, undefined);
-          // Clamp to max size
           const w = Math.min(result.width, MAX_CANVAS_SIZE);
           const h = Math.min(result.height, MAX_CANVAS_SIZE);
-          if (w !== result.width || h !== result.height) {
-            pixelDataRef.current = resizePixelData(result.data, w, h);
-          } else {
-            pixelDataRef.current = result.data;
-          }
+          const data = (w !== result.width || h !== result.height)
+            ? resizePixelData(result.data, w, h) : result.data;
+          layersRef.current = [{
+            id: genLayerId(), name: 'Background', visible: true, opacity: 1, data,
+          }];
           setCanvasWidth(w);
           setCanvasHeight(h);
           setResizeW(w);
           setResizeH(h);
+          bumpLayers();
           centerCanvas(w, h);
         } catch (err) {
           console.warn('Failed to load initial image:', err);
-          pixelDataRef.current = createBlankImageData(defaultWidth, defaultHeight);
+          layersRef.current = [{
+            id: genLayerId(), name: 'Background', visible: true, opacity: 1,
+            data: createBlankImageData(defaultWidth, defaultHeight),
+          }];
+          bumpLayers();
           centerCanvas(defaultWidth, defaultHeight);
         }
       } else {
@@ -190,12 +308,56 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     canvas.height = rect.height * dpr;
     ctx.scale(dpr, dpr);
 
-    renderPixelCanvas(ctx, pixelDataRef.current, zoom, panX, panY, showGrid, rect.width, rect.height);
+    // Composite all visible layers
+    const layers = layersRef.current;
+    const composite = compositeLayers(
+      layers.map(l => l.data),
+      layers.map(l => l.visible),
+      layers.map(l => Math.round(l.opacity * 255)),
+      canvasWidth,
+      canvasHeight
+    );
+
+    renderPixelCanvas(ctx, composite, zoom, panX, panY, showGrid, rect.width, rect.height);
+
+    // Shape preview overlay
+    const shapeStart = shapeStartRef.current;
+    if (shapeStart && shapeEnd && (tool === 'rect' || tool === 'line')) {
+      renderShapePreview(ctx, tool, shapeStart, shapeEnd, zoom, panX, panY, color, rectFilled);
+    }
+
+    // Selection overlay
+    if (selection) {
+      renderSelectionOverlay(ctx, selection, zoom, panX, panY, selectionAnimRef.current);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renderKey, zoom, panX, panY, showGrid, canvasWidth, canvasHeight]);
+  }, [renderKey, zoom, panX, panY, showGrid, canvasWidth, canvasHeight, layerRevision, shapeEnd, selection]);
+
+  // ─── Selection Animation ──────────────────────────────────────────
+
+  useEffect(() => {
+    if (!selection) {
+      if (selectionRafRef.current != null) {
+        cancelAnimationFrame(selectionRafRef.current);
+        selectionRafRef.current = null;
+      }
+      return;
+    }
+    let running = true;
+    const animate = () => {
+      if (!running) return;
+      selectionAnimRef.current = (selectionAnimRef.current + 0.5) % 16;
+      triggerRender();
+      selectionRafRef.current = requestAnimationFrame(animate);
+    };
+    selectionRafRef.current = requestAnimationFrame(animate);
+    return () => {
+      running = false;
+      if (selectionRafRef.current != null) cancelAnimationFrame(selectionRafRef.current);
+    };
+  }, [selection, triggerRender]);
 
   const centerCanvas = useCallback((w: number, h: number) => {
-    // Will be called after mount — defer to get canvas size
     requestAnimationFrame(() => {
       const canvas = canvasRef.current;
       if (!canvas) return;
@@ -208,6 +370,28 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     });
   }, [triggerRender]);
 
+  // ─── Selection Helpers ────────────────────────────────────────────
+
+  const commitFloating = useCallback(() => {
+    if (!selection?.floatingData) return;
+    const layer = getActiveLayer();
+    pasteRegion(layer.data, selection.floatingData, selection.x, selection.y);
+    setSelection(null);
+    bumpLayers();
+    triggerRender();
+  }, [selection, getActiveLayer, bumpLayers, triggerRender]);
+
+  const liftSelection = useCallback(() => {
+    if (!selection || selection.floatingData) return;
+    const layer = getActiveLayer();
+    history.push(getSnapshot());
+    const extracted = extractRegion(layer.data, selection.x, selection.y, selection.w, selection.h);
+    clearRegion(layer.data, selection.x, selection.y, selection.w, selection.h);
+    setSelection(prev => prev ? { ...prev, floatingData: extracted } : null);
+    bumpLayers();
+    triggerRender();
+  }, [selection, getActiveLayer, history, getSnapshot, bumpLayers, triggerRender]);
+
   // ─── Coordinate Helpers ─────────────────────────────────────────
 
   const getPixelCoord = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -219,24 +403,46 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     return displayToPixel(x, y, zoom, panX, panY, canvasWidth, canvasHeight);
   }, [zoom, panX, panY, canvasWidth, canvasHeight]);
 
+  // Also get coord even outside canvas bounds (for selection dragging)
+  const getPixelCoordUnclamped = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    return {
+      x: Math.floor((x - panX) / zoom),
+      y: Math.floor((y - panY) / zoom),
+    };
+  }, [zoom, panX, panY]);
+
   // ─── Tool Actions ───────────────────────────────────────────────
 
   const applyTool = useCallback((px: number, py: number) => {
-    const data = pixelDataRef.current;
+    const layer = getActiveLayer();
+    const data = layer.data;
     if (px < 0 || py < 0 || px >= canvasWidth || py >= canvasHeight) return;
 
     switch (tool) {
       case 'pencil':
-        setPixel(data, px, py, hexToRGBA(color));
+        paintBrush(data, px, py, brushSize, hexToRGBA(color));
         break;
       case 'eraser':
-        setPixel(data, px, py, [0, 0, 0, 0]);
+        paintBrush(data, px, py, brushSize, [0, 0, 0, 0]);
         break;
       case 'fill':
         floodFill(data, px, py, hexToRGBA(color));
         break;
       case 'eyedropper': {
-        const sampled = getPixel(data, px, py);
+        // Sample from composite
+        const layers = layersRef.current;
+        const comp = compositeLayers(
+          layers.map(l => l.data),
+          layers.map(l => l.visible),
+          layers.map(l => Math.round(l.opacity * 255)),
+          canvasWidth, canvasHeight
+        );
+        const sampled = getPixel(comp, px, py);
         if (sampled[3] > 0) {
           setColor(rgbaToHex(sampled));
         }
@@ -244,13 +450,12 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       }
     }
     triggerRender();
-  }, [tool, color, canvasWidth, canvasHeight, triggerRender]);
+  }, [tool, color, brushSize, canvasWidth, canvasHeight, getActiveLayer, triggerRender]);
 
   const applyToolWithLine = useCallback((px: number, py: number) => {
     const last = lastPixelRef.current;
     if (last && (tool === 'pencil' || tool === 'eraser')) {
       const points = bresenhamLine(last.x, last.y, px, py);
-      // Skip first point (already drawn on previous move)
       for (let i = 1; i < points.length; i++) {
         applyTool(points[i].x, points[i].y);
       }
@@ -275,14 +480,56 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     }
 
     const coord = getPixelCoord(e);
+
+    // Selection tool
+    if (tool === 'select') {
+      if (selection && coord) {
+        // Check if clicking inside selection
+        const inSel = coord.x >= selection.x && coord.x < selection.x + selection.w &&
+                      coord.y >= selection.y && coord.y < selection.y + selection.h;
+        if (inSel) {
+          // Start dragging selection
+          if (!selection.floatingData) {
+            liftSelection();
+          }
+          selectionDragRef.current = {
+            startX: coord.x, startY: coord.y,
+            origX: selection.x, origY: selection.y,
+          };
+          isDrawingRef.current = true;
+          return;
+        } else {
+          // Click outside — commit floating and start new selection
+          commitFloating();
+        }
+      }
+      if (coord) {
+        selectionStartRef.current = { x: coord.x, y: coord.y };
+        setSelection(null);
+        isDrawingRef.current = true;
+      }
+      return;
+    }
+
+    // Shape tools
+    if (tool === 'rect' || tool === 'line') {
+      if (coord) {
+        history.push(getSnapshot());
+        shapeStartRef.current = { x: coord.x, y: coord.y };
+        setShapeEnd({ x: coord.x, y: coord.y });
+        isDrawingRef.current = true;
+      }
+      return;
+    }
+
     if (!coord) return;
 
-    // Save undo snapshot before stroke
-    history.push(pixelDataRef.current);
+    // Drawing tools
+    history.push(getSnapshot());
     isDrawingRef.current = true;
     lastPixelRef.current = null;
     applyToolWithLine(coord.x, coord.y);
-  }, [panX, panY, getPixelCoord, history, applyToolWithLine]);
+  }, [panX, panY, getPixelCoord, history, getSnapshot, applyToolWithLine, tool, selection, commitFloating, liftSelection]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     // Panning
@@ -298,25 +545,95 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     const coord = getPixelCoord(e);
     setCursorPos(coord);
 
-    if (!isDrawingRef.current || !coord) return;
+    if (!isDrawingRef.current) return;
+
+    // Selection drag
+    if (tool === 'select' && selectionDragRef.current && selection) {
+      const uc = getPixelCoordUnclamped(e);
+      if (uc) {
+        const dx = uc.x - selectionDragRef.current.startX;
+        const dy = uc.y - selectionDragRef.current.startY;
+        setSelection(prev => prev ? {
+          ...prev,
+          x: selectionDragRef.current!.origX + dx,
+          y: selectionDragRef.current!.origY + dy,
+        } : null);
+        triggerRender();
+      }
+      return;
+    }
+
+    // Selection marquee
+    if (tool === 'select' && selectionStartRef.current) {
+      const uc = getPixelCoordUnclamped(e);
+      if (uc) {
+        const sx = selectionStartRef.current.x;
+        const sy = selectionStartRef.current.y;
+        const x = Math.max(0, Math.min(sx, uc.x));
+        const y = Math.max(0, Math.min(sy, uc.y));
+        const x2 = Math.min(canvasWidth - 1, Math.max(sx, uc.x));
+        const y2 = Math.min(canvasHeight - 1, Math.max(sy, uc.y));
+        setSelection({ x, y, w: x2 - x + 1, h: y2 - y + 1 });
+        triggerRender();
+      }
+      return;
+    }
+
+    // Shape preview
+    if ((tool === 'rect' || tool === 'line') && shapeStartRef.current) {
+      if (coord) setShapeEnd(coord);
+      return;
+    }
+
+    if (!coord) return;
     applyToolWithLine(coord.x, coord.y);
-  }, [getPixelCoord, applyToolWithLine, triggerRender]);
+  }, [getPixelCoord, getPixelCoordUnclamped, applyToolWithLine, triggerRender, tool, selection, canvasWidth, canvasHeight]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointersRef.current.delete(e.pointerId);
     panStartRef.current = null;
+
+    // Shape commit
+    if ((tool === 'rect' || tool === 'line') && shapeStartRef.current && shapeEnd && isDrawingRef.current) {
+      const layer = getActiveLayer();
+      if (tool === 'rect') {
+        drawRect(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
+          shapeEnd.x, shapeEnd.y, hexToRGBA(color), rectFilled);
+      } else {
+        drawLine(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
+          shapeEnd.x, shapeEnd.y, hexToRGBA(color));
+      }
+      shapeStartRef.current = null;
+      setShapeEnd(null);
+      bumpLayers();
+      triggerRender();
+    }
+
+    // Selection marquee finish
+    if (tool === 'select') {
+      selectionStartRef.current = null;
+      selectionDragRef.current = null;
+    }
+
     isDrawingRef.current = false;
     lastPixelRef.current = null;
-  }, []);
+  }, [tool, shapeEnd, color, rectFilled, getActiveLayer, bumpLayers, triggerRender]);
 
   // ─── Zoom ───────────────────────────────────────────────────────
 
+  // Prevent wheel from scrolling the page
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const handler = (e: WheelEvent) => { e.preventDefault(); };
+    canvas.addEventListener('wheel', handler, { passive: false });
+    return () => canvas.removeEventListener('wheel', handler);
+  }, []);
+
   const handleWheel = useCallback((e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
     const delta = e.deltaY > 0 ? -1 : 1;
     setZoom(z => {
       const newZ = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z + delta));
-      // Zoom toward cursor
       const canvas = canvasRef.current;
       if (canvas) {
         const rect = canvas.getBoundingClientRect();
@@ -344,20 +661,22 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   // ─── Undo / Redo ───────────────────────────────────────────────
 
   const handleUndo = useCallback(() => {
-    const prev = history.undo(pixelDataRef.current);
+    const prev = history.undo(getSnapshot());
     if (prev) {
-      pixelDataRef.current = prev;
+      restoreSnapshot(prev);
+      setSelection(null);
       triggerRender();
     }
-  }, [history, triggerRender]);
+  }, [history, getSnapshot, restoreSnapshot, triggerRender]);
 
   const handleRedo = useCallback(() => {
-    const next = history.redo(pixelDataRef.current);
+    const next = history.redo(getSnapshot());
     if (next) {
-      pixelDataRef.current = next;
+      restoreSnapshot(next);
+      setSelection(null);
       triggerRender();
     }
-  }, [history, triggerRender]);
+  }, [history, getSnapshot, restoreSnapshot, triggerRender]);
 
   // ─── Canvas Resize ─────────────────────────────────────────────
 
@@ -371,37 +690,157 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       return;
     }
 
-    history.push(pixelDataRef.current);
-    pixelDataRef.current = resizePixelData(pixelDataRef.current, w, h);
+    commitFloating();
+    history.push(getSnapshot());
+    for (const layer of layersRef.current) {
+      layer.data = resizePixelData(layer.data, w, h);
+    }
     setCanvasWidth(w);
     setCanvasHeight(h);
     setShowResizePanel(false);
+    setSelection(null);
+    bumpLayers();
     centerCanvas(w, h);
     history.reset();
-  }, [resizeW, resizeH, canvasWidth, canvasHeight, history, centerCanvas]);
+  }, [resizeW, resizeH, canvasWidth, canvasHeight, history, getSnapshot, centerCanvas, commitFloating, bumpLayers]);
+
+  // ─── Flip ─────────────────────────────────────────────────────────
+
+  const handleFlipH = useCallback(() => {
+    history.push(getSnapshot());
+    if (selection?.floatingData) {
+      setSelection(prev => prev ? { ...prev, floatingData: flipHorizontal(prev.floatingData!) } : null);
+    } else if (selection) {
+      const layer = getActiveLayer();
+      const region = extractRegion(layer.data, selection.x, selection.y, selection.w, selection.h);
+      const flipped = flipHorizontal(region);
+      clearRegion(layer.data, selection.x, selection.y, selection.w, selection.h);
+      pasteRegion(layer.data, flipped, selection.x, selection.y);
+    } else {
+      const layer = getActiveLayer();
+      layer.data = flipHorizontal(layer.data);
+    }
+    bumpLayers();
+    triggerRender();
+  }, [history, getSnapshot, selection, getActiveLayer, bumpLayers, triggerRender]);
+
+  const handleFlipV = useCallback(() => {
+    history.push(getSnapshot());
+    if (selection?.floatingData) {
+      setSelection(prev => prev ? { ...prev, floatingData: flipVertical(prev.floatingData!) } : null);
+    } else if (selection) {
+      const layer = getActiveLayer();
+      const region = extractRegion(layer.data, selection.x, selection.y, selection.w, selection.h);
+      const flipped = flipVertical(region);
+      clearRegion(layer.data, selection.x, selection.y, selection.w, selection.h);
+      pasteRegion(layer.data, flipped, selection.x, selection.y);
+    } else {
+      const layer = getActiveLayer();
+      layer.data = flipVertical(layer.data);
+    }
+    bumpLayers();
+    triggerRender();
+  }, [history, getSnapshot, selection, getActiveLayer, bumpLayers, triggerRender]);
+
+  // ─── Layer Operations ─────────────────────────────────────────────
+
+  const addLayer = useCallback(() => {
+    history.push(getSnapshot());
+    const newLayer: LayerState = {
+      id: genLayerId(),
+      name: `Layer ${layersRef.current.length + 1}`,
+      visible: true,
+      opacity: 1,
+      data: createBlankImageData(canvasWidth, canvasHeight),
+    };
+    layersRef.current.push(newLayer);
+    setActiveLayerIndex(layersRef.current.length - 1);
+    bumpLayers();
+  }, [canvasWidth, canvasHeight, history, getSnapshot, bumpLayers]);
+
+  const deleteLayer = useCallback((idx: number) => {
+    if (layersRef.current.length <= 1) return;
+    history.push(getSnapshot());
+    layersRef.current.splice(idx, 1);
+    setActiveLayerIndex(i => Math.min(i, layersRef.current.length - 1));
+    bumpLayers();
+    triggerRender();
+  }, [history, getSnapshot, bumpLayers, triggerRender]);
+
+  const moveLayer = useCallback((idx: number, dir: -1 | 1) => {
+    const newIdx = idx + dir;
+    if (newIdx < 0 || newIdx >= layersRef.current.length) return;
+    history.push(getSnapshot());
+    const tmp = layersRef.current[idx];
+    layersRef.current[idx] = layersRef.current[newIdx];
+    layersRef.current[newIdx] = tmp;
+    setActiveLayerIndex(newIdx);
+    bumpLayers();
+    triggerRender();
+  }, [history, getSnapshot, bumpLayers, triggerRender]);
+
+  const toggleLayerVisibility = useCallback((idx: number) => {
+    layersRef.current[idx].visible = !layersRef.current[idx].visible;
+    bumpLayers();
+    triggerRender();
+  }, [bumpLayers, triggerRender]);
+
+  const setLayerOpacity = useCallback((idx: number, opacity: number) => {
+    layersRef.current[idx].opacity = Math.max(0, Math.min(1, opacity));
+    bumpLayers();
+    triggerRender();
+  }, [bumpLayers, triggerRender]);
+
+  const renameLayer = useCallback((idx: number, name: string) => {
+    layersRef.current[idx].name = name || `Layer ${idx + 1}`;
+    bumpLayers();
+  }, [bumpLayers]);
 
   // ─── Apply / Save ──────────────────────────────────────────────
 
+  const getComposite = useCallback((): ImageData => {
+    const layers = layersRef.current;
+    return compositeLayers(
+      layers.map(l => l.data),
+      layers.map(l => l.visible),
+      layers.map(l => Math.round(l.opacity * 255)),
+      canvasWidth, canvasHeight
+    );
+  }, [canvasWidth, canvasHeight]);
+
   const handleApply = useCallback(() => {
-    const base64 = pixelDataToBase64(pixelDataRef.current);
+    commitFloating();
+    const base64 = pixelDataToBase64(getComposite());
     onApply(base64);
-  }, [onApply]);
+  }, [onApply, getComposite, commitFloating]);
 
   const handleSaveToCloud = useCallback(async () => {
+    commitFloating();
     setSaving(true);
     try {
-      const base64 = pixelDataToBase64(pixelDataRef.current);
+      const base64 = pixelDataToBase64(getComposite());
       const name = `pixel-${canvasWidth}x${canvasHeight}-${Date.now()}`;
 
-      // Upload PNG
       const pngResult = await uploadMediaDataUrl(base64, name, 'pixel-art');
       if (!pngResult) {
         toast.error('Failed to upload image');
         return;
       }
 
-      // Upload project file
-      const project = createProject(canvasWidth, canvasHeight, pixelDataRef.current);
+      // Build project with all layers
+      const project: PixelEditorProject = {
+        version: 1,
+        width: canvasWidth,
+        height: canvasHeight,
+        layers: layersRef.current.map(l => ({
+          id: l.id,
+          name: l.name,
+          visible: l.visible,
+          opacity: l.opacity,
+          data: pixelDataToBase64(l.data),
+        })),
+        palette: customColors.length > 0 ? customColors : undefined,
+      };
       const projectJson = serializeProject(project);
       const projectBase64 = 'data:application/json;base64,' + btoa(projectJson);
       const projectResult = await uploadMediaDataUrl(projectBase64, name + '.project', 'pixel-art');
@@ -414,13 +853,74 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     } finally {
       setSaving(false);
     }
-  }, [canvasWidth, canvasHeight, onApply]);
+  }, [canvasWidth, canvasHeight, onApply, getComposite, customColors, commitFloating]);
+
+  // ─── Clipboard (Selection) ────────────────────────────────────────
+
+  const handleCopy = useCallback(() => {
+    if (!selection) return;
+    if (selection.floatingData) {
+      clipboardRef.current = cloneImageData(selection.floatingData);
+    } else {
+      clipboardRef.current = extractRegion(getActiveLayer().data, selection.x, selection.y, selection.w, selection.h);
+    }
+    toast.success('Copied to clipboard');
+  }, [selection, getActiveLayer]);
+
+  const handleCut = useCallback(() => {
+    if (!selection) return;
+    handleCopy();
+    history.push(getSnapshot());
+    if (selection.floatingData) {
+      // Just remove the floating data
+      setSelection(null);
+    } else {
+      clearRegion(getActiveLayer().data, selection.x, selection.y, selection.w, selection.h);
+      setSelection(null);
+    }
+    bumpLayers();
+    triggerRender();
+  }, [selection, handleCopy, history, getSnapshot, getActiveLayer, bumpLayers, triggerRender]);
+
+  const handlePaste = useCallback(() => {
+    if (!clipboardRef.current) return;
+    commitFloating();
+    history.push(getSnapshot());
+    const pastedData = cloneImageData(clipboardRef.current);
+    setSelection({
+      x: 0, y: 0,
+      w: pastedData.width, h: pastedData.height,
+      floatingData: pastedData,
+    });
+    triggerRender();
+  }, [commitFloating, history, getSnapshot, triggerRender]);
+
+  const handleDeleteSelection = useCallback(() => {
+    if (!selection) return;
+    history.push(getSnapshot());
+    if (selection.floatingData) {
+      setSelection(null);
+    } else {
+      clearRegion(getActiveLayer().data, selection.x, selection.y, selection.w, selection.h);
+      setSelection(null);
+    }
+    bumpLayers();
+    triggerRender();
+  }, [selection, history, getSnapshot, getActiveLayer, bumpLayers, triggerRender]);
+
+  // ─── Tool Switching Helper ────────────────────────────────────────
+
+  const switchTool = useCallback((newTool: Tool) => {
+    if (tool === 'select' && newTool !== 'select') {
+      commitFloating();
+    }
+    setTool(newTool);
+  }, [tool, commitFloating]);
 
   // ─── Keyboard Shortcuts ─────────────────────────────────────────
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
-      // Ignore if typing in an input
       if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
 
       const ctrl = e.ctrlKey || e.metaKey;
@@ -431,39 +931,80 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       } else if (ctrl && e.key === 'y') {
         e.preventDefault();
         handleRedo();
+      } else if (ctrl && e.key === 'c') {
+        if (selection) { e.preventDefault(); handleCopy(); }
+      } else if (ctrl && e.key === 'x') {
+        if (selection) { e.preventDefault(); handleCut(); }
+      } else if (ctrl && e.key === 'v') {
+        if (clipboardRef.current) { e.preventDefault(); handlePaste(); }
+      } else if (e.key === 'Delete' || e.key === 'Backspace') {
+        if (selection) { e.preventDefault(); handleDeleteSelection(); }
+      } else if (e.key === 'Escape') {
+        if (selection) {
+          e.preventDefault();
+          commitFloating();
+          setSelection(null);
+        }
       } else if (!ctrl) {
         switch (e.key.toLowerCase()) {
-          case 'b': setTool('pencil'); break;
-          case 'e': setTool('eraser'); break;
-          case 'g': setTool('fill'); break;
-          case 'i': setTool('eyedropper'); break;
+          case 'b': switchTool('pencil'); break;
+          case 'e': switchTool('eraser'); break;
+          case 'g': switchTool('fill'); break;
+          case 'i': switchTool('eyedropper'); break;
+          case 's': switchTool('select'); break;
+          case 'r': switchTool('rect'); break;
+          case 'l': switchTool('line'); break;
           case '=': case '+': zoomIn(); break;
           case '-': zoomOut(); break;
+          case '[': setBrushSize(s => Math.max(1, s - 1)); break;
+          case ']': setBrushSize(s => Math.min(16, s + 1)); break;
         }
       }
     };
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleUndo, handleRedo, zoomIn, zoomOut]);
+  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool]);
 
   // ─── Tool Config ────────────────────────────────────────────────
+
+  const toolIconMap: Record<string, keyof ThemeAssets> = {
+    pencil: 'iconPixelPencil' as keyof ThemeAssets,
+    eraser: 'iconPixelEraser' as keyof ThemeAssets,
+    fill: 'iconPixelFill' as keyof ThemeAssets,
+    eyedropper: 'iconPixelEyedropper' as keyof ThemeAssets,
+    select: 'iconPixelSelect' as keyof ThemeAssets,
+    rect: 'iconPixelRect' as keyof ThemeAssets,
+    line: 'iconPixelLine' as keyof ThemeAssets,
+  };
 
   const tools: { id: Tool; label: string; icon: string; key: string }[] = [
     { id: 'pencil', label: 'Pencil', icon: '✏️', key: 'B' },
     { id: 'eraser', label: 'Eraser', icon: '◻', key: 'E' },
     { id: 'fill', label: 'Fill', icon: '🪣', key: 'G' },
     { id: 'eyedropper', label: 'Eyedropper', icon: '💧', key: 'I' },
+    { id: 'select', label: 'Select', icon: '⬚', key: 'S' },
+    { id: 'rect', label: 'Rectangle', icon: '▭', key: 'R' },
+    { id: 'line', label: 'Line', icon: '╱', key: 'L' },
   ];
 
-  // ─── Render ─────────────────────────────────────────────────────
+  const renderToolIcon = (t: { id: Tool; icon: string }) => {
+    const themeKey = toolIconMap[t.id];
+    const customIcon = themeKey ? themeAssets[themeKey] as string | undefined : undefined;
+    if (customIcon) {
+      return <img src={customIcon} alt={t.id} className="w-5 h-5" style={{ imageRendering: 'pixelated' }} />;
+    }
+    return <span>{t.icon}</span>;
+  };
+
+  // ─── Render: Toolbar ──────────────────────────────────────────────
 
   const toolbarButtons = (
     <>
       {tools.map(t => (
         <button
           key={t.id}
-          onClick={() => setTool(t.id)}
+          onClick={() => switchTool(t.id)}
           title={`${t.label} (${t.key})`}
           className={`px-2 py-1.5 rounded text-sm transition-colors ${
             tool === t.id
@@ -471,10 +1012,38 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
               : 'bg-stone-700 hover:bg-stone-600 text-stone-300'
           }`}
         >
-          {t.icon}
+          {renderToolIcon(t)}
         </button>
       ))}
+      {/* Rect filled toggle */}
+      {tool === 'rect' && (
+        <button
+          onClick={() => setRectFilled(f => !f)}
+          title={rectFilled ? 'Filled' : 'Outline'}
+          className="px-2 py-1.5 rounded text-xs bg-stone-700 hover:bg-stone-600 text-stone-300"
+        >
+          {rectFilled ? '■' : '□'}
+        </button>
+      )}
       <div className="w-px bg-stone-600 mx-1" />
+      {/* Brush size (pencil/eraser) */}
+      {(tool === 'pencil' || tool === 'eraser') && (
+        <>
+          <span className="text-xs text-stone-400 self-center">Size:</span>
+          <button
+            onClick={() => setBrushSize(s => Math.max(1, s - 1))}
+            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            title="Decrease brush size ([)"
+          >-</button>
+          <span className="text-xs text-stone-400 self-center min-w-[1.5rem] text-center">{brushSize}</span>
+          <button
+            onClick={() => setBrushSize(s => Math.min(16, s + 1))}
+            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            title="Increase brush size (])"
+          >+</button>
+          <div className="w-px bg-stone-600 mx-1" />
+        </>
+      )}
       <button
         onClick={handleUndo}
         disabled={!history.canUndo}
@@ -491,6 +1060,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       >
         ↪
       </button>
+      <div className="w-px bg-stone-600 mx-1" />
+      {/* Flip buttons */}
+      <button onClick={handleFlipH} title="Flip Horizontal" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300">⇔</button>
+      <button onClick={handleFlipV} title="Flip Vertical" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300">⇕</button>
       <div className="w-px bg-stone-600 mx-1" />
       <button
         onClick={() => setShowGrid(g => !g)}
@@ -511,9 +1084,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     </>
   );
 
+  // ─── Render: Color Palette ────────────────────────────────────────
+
   const colorPalette = (
     <div>
-      {/* Current color */}
       <div className="flex items-center gap-2 mb-2">
         <div
           className="w-8 h-8 rounded border-2 border-white"
@@ -526,8 +1100,18 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           className="w-8 h-8 rounded cursor-pointer bg-transparent"
         />
         <span className="text-xs text-stone-400 font-mono">{color}</span>
+        <button
+          onClick={() => {
+            if (!customColors.includes(color)) {
+              setCustomColors(prev => [...prev, color]);
+            }
+          }}
+          title="Save color to palette"
+          className="px-1.5 py-0.5 rounded text-xs bg-stone-700 hover:bg-stone-600"
+        >
+          +
+        </button>
       </div>
-      {/* Preset swatches */}
       <div className="grid grid-cols-8 gap-0.5">
         {PALETTE.map(c => (
           <button
@@ -541,8 +1125,33 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           />
         ))}
       </div>
+      {/* Custom colors */}
+      {customColors.length > 0 && (
+        <div className="mt-1">
+          <div className="text-xs text-stone-500 mb-0.5">Custom</div>
+          <div className="grid grid-cols-8 gap-0.5">
+            {customColors.map((c, i) => (
+              <button
+                key={`${c}-${i}`}
+                onClick={() => setColor(c)}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  setCustomColors(prev => prev.filter((_, j) => j !== i));
+                }}
+                className={`w-6 h-6 rounded-sm border ${
+                  color === c ? 'border-white border-2' : 'border-stone-600'
+                }`}
+                style={{ backgroundColor: c }}
+                title={`${c} (right-click to remove)`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
+
+  // ─── Render: Canvas Size Controls ─────────────────────────────────
 
   const canvasSizeControls = (
     <div>
@@ -553,7 +1162,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         Canvas: {canvasWidth}x{canvasHeight} {showResizePanel ? '▼' : '▶'}
       </button>
       {showResizePanel && (
-        <div className="flex items-center gap-2 mt-1">
+        <div className="flex items-center gap-2 mt-1 flex-wrap">
           <input
             type="number"
             min="1"
@@ -577,7 +1186,6 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           >
             Apply
           </button>
-          {/* Presets */}
           <div className="flex gap-1 ml-1">
             {CANVAS_SIZE_PRESETS.map(s => (
               <button
@@ -595,6 +1203,107 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       )}
     </div>
   );
+
+  // ─── Render: Layer Panel ──────────────────────────────────────────
+
+  const layerPanel = (
+    <div>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-xs font-bold text-stone-300">Layers</span>
+        <button
+          onClick={addLayer}
+          title="Add Layer"
+          className="px-1.5 py-0.5 rounded text-xs bg-arcane-700 hover:bg-arcane-600"
+        >
+          + Add
+        </button>
+      </div>
+      <div className="space-y-0.5 max-h-48 overflow-y-auto">
+        {/* Render top-to-bottom (last layer = frontmost) */}
+        {[...layersRef.current].reverse().map((layer, revIdx) => {
+          const idx = layersRef.current.length - 1 - revIdx;
+          const isActive = idx === activeLayerIndex;
+          return (
+            <div
+              key={layer.id}
+              onClick={() => {
+                if (activeLayerIndex !== idx && selection) commitFloating();
+                setActiveLayerIndex(idx);
+              }}
+              className={`flex items-center gap-1 px-1.5 py-1 rounded text-xs cursor-pointer ${
+                isActive ? 'bg-arcane-700 text-parchment-100' : 'bg-stone-800 hover:bg-stone-750 text-stone-300'
+              }`}
+            >
+              {/* Visibility toggle */}
+              <button
+                onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(idx); }}
+                className="w-4 text-center"
+                title={layer.visible ? 'Hide' : 'Show'}
+              >
+                {layer.visible ? '👁' : '·'}
+              </button>
+              {/* Name */}
+              {editingLayerName === layer.id ? (
+                <input
+                  autoFocus
+                  defaultValue={layer.name}
+                  onBlur={(e) => { renameLayer(idx, e.target.value); setEditingLayerName(null); }}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') { renameLayer(idx, (e.target as HTMLInputElement).value); setEditingLayerName(null); }
+                    if (e.key === 'Escape') setEditingLayerName(null);
+                  }}
+                  className="flex-1 bg-stone-700 rounded px-1 py-0 text-xs min-w-0"
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                <span
+                  className="flex-1 truncate"
+                  onDoubleClick={() => setEditingLayerName(layer.id)}
+                >
+                  {layer.name}
+                </span>
+              )}
+              {/* Opacity */}
+              <input
+                type="range"
+                min="0" max="100"
+                value={Math.round(layer.opacity * 100)}
+                onChange={(e) => setLayerOpacity(idx, parseInt(e.target.value) / 100)}
+                className="w-12 h-3"
+                onClick={(e) => e.stopPropagation()}
+                title={`Opacity: ${Math.round(layer.opacity * 100)}%`}
+              />
+              {/* Move up/down */}
+              <button
+                onClick={(e) => { e.stopPropagation(); moveLayer(idx, 1); }}
+                disabled={idx === layersRef.current.length - 1}
+                className="text-stone-500 hover:text-white disabled:opacity-20"
+                title="Move Up"
+              >↑</button>
+              <button
+                onClick={(e) => { e.stopPropagation(); moveLayer(idx, -1); }}
+                disabled={idx === 0}
+                className="text-stone-500 hover:text-white disabled:opacity-20"
+                title="Move Down"
+              >↓</button>
+              {/* Delete */}
+              <button
+                onClick={(e) => { e.stopPropagation(); deleteLayer(idx); }}
+                disabled={layersRef.current.length <= 1}
+                className="text-red-500 hover:text-red-400 disabled:opacity-20"
+                title="Delete Layer"
+              >✕</button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  // ─── Canvas cursor style ──────────────────────────────────────────
+  const canvasCursor = tool === 'eyedropper' ? 'crosshair'
+    : tool === 'select' ? 'crosshair'
+    : 'default';
 
   // ─── Desktop Layout ─────────────────────────────────────────────
 
@@ -635,7 +1344,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         </div>
 
         {/* Toolbar */}
-        <div className="flex items-center gap-1 px-4 py-1.5 bg-stone-800 border-b border-stone-700">
+        <div className="flex items-center gap-1 px-4 py-1.5 bg-stone-800 border-b border-stone-700 flex-wrap">
           {toolbarButtons}
         </div>
 
@@ -645,16 +1354,19 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           <div className="w-56 bg-stone-900 border-r border-stone-700 p-3 flex flex-col gap-3 overflow-y-auto">
             {colorPalette}
             <div className="border-t border-stone-700 pt-2">
+              {layerPanel}
+            </div>
+            <div className="border-t border-stone-700 pt-2">
               {canvasSizeControls}
             </div>
           </div>
 
-          {/* Canvas */}
-          <div className="flex-1 relative bg-stone-950 overflow-hidden">
+          {/* Canvas area with horizontal scroll */}
+          <div className="flex-1 relative bg-stone-950 overflow-auto">
             <canvas
               ref={canvasRef}
               className="absolute inset-0 w-full h-full"
-              style={{ touchAction: 'none', cursor: tool === 'eyedropper' ? 'crosshair' : 'default' }}
+              style={{ touchAction: 'none', cursor: canvasCursor }}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -662,11 +1374,13 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
               onWheel={handleWheel}
             />
             {/* Status bar */}
-            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1 bg-stone-900/80 text-xs text-stone-400">
-              <span>Zoom: {zoom}x</span>
+            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1 bg-stone-900/80 text-xs text-stone-400 pointer-events-none">
+              <span>Zoom: {zoom}x | Brush: {brushSize}</span>
               <span>
                 {cursorPos ? `Pos: (${cursorPos.x}, ${cursorPos.y})` : ''}
+                {selection ? ` | Sel: ${selection.w}x${selection.h}` : ''}
               </span>
+              <span>Layer: {getActiveLayer().name}</span>
             </div>
           </div>
         </div>
@@ -729,9 +1443,19 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         />
       </div>
 
-      {/* Bottom bar: palette + controls */}
-      <div className="bg-stone-900 border-t border-stone-700 p-2 space-y-2">
+      {/* Bottom bar: palette + layers + controls */}
+      <div className="bg-stone-900 border-t border-stone-700 p-2 space-y-2 max-h-[45vh] overflow-y-auto">
         {colorPalette}
+        {/* Collapsible layers */}
+        <div className="border-t border-stone-700 pt-1">
+          <button
+            onClick={() => setShowLayers(s => !s)}
+            className="text-xs text-stone-400 hover:text-stone-300 w-full text-left"
+          >
+            Layers {showLayers ? '▼' : '▶'}
+          </button>
+          {showLayers && <div className="mt-1">{layerPanel}</div>}
+        </div>
         <div className="flex items-center justify-between">
           {canvasSizeControls}
           {!isPage && (

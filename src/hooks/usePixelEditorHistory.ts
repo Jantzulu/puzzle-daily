@@ -1,24 +1,33 @@
 import { useCallback, useRef, useState } from 'react';
-import { cloneImageData } from '../components/editor/pixelEditorUtils';
+import { cloneLayerStack } from '../components/editor/pixelEditorUtils';
 
 const MAX_HISTORY = 30;
+
+export interface PixelEditorHistorySnapshot {
+  layers: ImageData[];
+  activeLayerIndex: number;
+}
 
 export interface PixelEditorHistory {
   canUndo: boolean;
   canRedo: boolean;
   /** Save a snapshot before making changes (call on pointerdown). */
-  push: (data: ImageData) => void;
-  /** Undo: pass current data so it can be saved for redo. Returns previous state or null. */
-  undo: (currentData: ImageData) => ImageData | null;
-  /** Redo: pass current data so it can be saved for undo. Returns next state or null. */
-  redo: (currentData: ImageData) => ImageData | null;
+  push: (snapshot: PixelEditorHistorySnapshot) => void;
+  /** Undo: pass current state so it can be saved for redo. Returns previous state or null. */
+  undo: (current: PixelEditorHistorySnapshot) => PixelEditorHistorySnapshot | null;
+  /** Redo: pass current state so it can be saved for undo. Returns next state or null. */
+  redo: (current: PixelEditorHistorySnapshot) => PixelEditorHistorySnapshot | null;
   /** Clear all history (on canvas resize or project load). */
   reset: () => void;
 }
 
+function cloneSnapshot(s: PixelEditorHistorySnapshot): PixelEditorHistorySnapshot {
+  return { layers: cloneLayerStack(s.layers), activeLayerIndex: s.activeLayerIndex };
+}
+
 export function usePixelEditorHistory(): PixelEditorHistory {
-  const undoStack = useRef<ImageData[]>([]);
-  const redoStack = useRef<ImageData[]>([]);
+  const undoStack = useRef<PixelEditorHistorySnapshot[]>([]);
+  const redoStack = useRef<PixelEditorHistorySnapshot[]>([]);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
 
@@ -27,8 +36,8 @@ export function usePixelEditorHistory(): PixelEditorHistory {
     setCanRedo(redoStack.current.length > 0);
   }, []);
 
-  const push = useCallback((data: ImageData) => {
-    undoStack.current.push(cloneImageData(data));
+  const push = useCallback((snapshot: PixelEditorHistorySnapshot) => {
+    undoStack.current.push(cloneSnapshot(snapshot));
     if (undoStack.current.length > MAX_HISTORY) {
       undoStack.current.shift();
     }
@@ -36,18 +45,18 @@ export function usePixelEditorHistory(): PixelEditorHistory {
     sync();
   }, [sync]);
 
-  const undo = useCallback((currentData: ImageData): ImageData | null => {
+  const undo = useCallback((current: PixelEditorHistorySnapshot): PixelEditorHistorySnapshot | null => {
     const prev = undoStack.current.pop();
     if (!prev) return null;
-    redoStack.current.push(cloneImageData(currentData));
+    redoStack.current.push(cloneSnapshot(current));
     sync();
     return prev;
   }, [sync]);
 
-  const redo = useCallback((currentData: ImageData): ImageData | null => {
+  const redo = useCallback((current: PixelEditorHistorySnapshot): PixelEditorHistorySnapshot | null => {
     const next = redoStack.current.pop();
     if (!next) return null;
-    undoStack.current.push(cloneImageData(currentData));
+    undoStack.current.push(cloneSnapshot(current));
     sync();
     return next;
   }, [sync]);
