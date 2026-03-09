@@ -11,9 +11,11 @@ interface SpriteThumbnailProps {
   className?: string;
   /** Type of preview background: 'entity' for heroes/enemies, 'asset' for tiles/items/enchantments */
   previewType?: PreviewType;
+  /** If true, renders with transparent background (no bgColor/bgImage) */
+  noBackground?: boolean;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
@@ -227,12 +229,14 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   const backgroundStyle: React.CSSProperties = {
     width: cssSize,
     height: cssSize,
-    backgroundColor: bgColor,
-    ...(bgImageUrl && {
-      backgroundImage: `url(${bgImageUrl})`,
-      backgroundSize: bgTiled ? 'auto' : 'cover',
-      backgroundRepeat: bgTiled ? 'repeat' : 'no-repeat',
-      backgroundPosition: 'center',
+    ...(noBackground ? {} : {
+      backgroundColor: bgColor,
+      ...(bgImageUrl && {
+        backgroundImage: `url(${bgImageUrl})`,
+        backgroundSize: bgTiled ? 'auto' : 'cover',
+        backgroundRepeat: bgTiled ? 'repeat' : 'no-repeat',
+        backgroundPosition: 'center',
+      }),
     }),
   };
 
