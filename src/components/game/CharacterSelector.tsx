@@ -148,34 +148,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700 hover:border-copper-600 cursor-pointer'
               }`}
             >
-              {/* HP and movement info - above sprite */}
-              {(() => {
-                const moveInfo = getMovementInfo(character.behavior);
-                return (
-                  <div className="flex items-center justify-center mb-0.5 w-full">
-                    {/* HP section */}
-                    <div className={`flex items-center justify-center gap-1 pr-2 border-r border-stone-600`}>
-                      <span className={`text-xs lg:text-sm font-medium ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>HP:</span>
-                      <span className={`text-sm lg:text-base font-bold ${isSelected ? 'text-parchment-100' : ''}`} style={isSelected ? undefined : { color: '#4ade80' }}>{character.health}</span>
-                    </div>
-                    {/* Movement section */}
-                    <div className={`flex items-center justify-center gap-0.5 pl-2 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
-                      {moveInfo ? (
-                        <>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={`opacity-60 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
-                            <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
-                          </svg>
-                          <span className={`text-xs font-medium ${isSelected ? 'text-parchment-100' : 'text-stone-400'}`}>{moveInfo.tilesPerMove}</span>
-                          <DirectionArrow direction={character.defaultFacing} className={isSelected ? 'text-parchment-100' : 'text-copper-400'} size={10} />
-                        </>
-                      ) : (
-                        <span className="text-xs text-stone-500">—</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
-
               {/* Sprite */}
               <div className="relative flex-shrink-0">
                 <SpriteThumbnail sprite={character.customSprite} size={84} previewType="entity" noBackground />
@@ -199,6 +171,34 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   }`}> {character.title}</span>
                 )}
               </div>
+
+              {/* HP and movement info */}
+              {(() => {
+                const moveInfo = getMovementInfo(character.behavior);
+                return (
+                  <div className="flex items-center justify-center mt-0.5 w-full">
+                    {/* HP section */}
+                    <div className={`flex items-center justify-center gap-1 pr-2 border-r border-stone-600`}>
+                      <span className={`text-xs lg:text-sm font-medium ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>HP:</span>
+                      <span className={`text-sm lg:text-base font-bold ${isSelected ? 'text-parchment-100' : ''}`} style={isSelected ? undefined : { color: '#4ade80' }}>{character.health}</span>
+                    </div>
+                    {/* Movement section */}
+                    <div className={`flex items-center justify-center gap-0.5 pl-2 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
+                      {moveInfo ? (
+                        <>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={`opacity-60 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
+                            <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
+                          </svg>
+                          <span className={`text-xs font-medium ${isSelected ? 'text-parchment-100' : 'text-stone-400'}`}>{moveInfo.tilesPerMove}</span>
+                          <DirectionArrow direction={character.defaultFacing} className={isSelected ? 'text-parchment-100' : 'text-copper-400'} size={10} />
+                        </>
+                      ) : (
+                        <span className="text-xs text-stone-500">—</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (

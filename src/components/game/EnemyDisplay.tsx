@@ -175,11 +175,30 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
               key={enemy.enemyId}
               className="px-1 py-1 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
             >
-              {/* HP and movement info - above sprite */}
+              {/* Sprite */}
+              <div className="relative flex-shrink-0">
+                <SpriteThumbnail sprite={enemyData.customSprite} size={72} previewType="entity" noBackground />
+                {count > 1 && (
+                  <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700">
+                    {count}
+                  </span>
+                )}
+              </div>
+              {/* Name and Title */}
+              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px] text-xs lg:text-sm !leading-[1.2]">
+                <span className="font-medium text-blood-300">
+                  {enemyData.name}
+                </span>
+                {enemyData.title && (
+                  <span className="text-parchment-300 italic"> {enemyData.title}</span>
+                )}
+              </div>
+
+              {/* HP and movement info */}
               {(() => {
                 const moveInfo = getEnemyMovementInfo(enemyData.behavior);
                 return (
-                  <div className="flex items-center justify-center mb-0.5 w-full">
+                  <div className="flex items-center justify-center mt-0.5 w-full">
                     {/* HP section */}
                     <div className="flex items-center justify-center gap-1 pr-2 border-r border-stone-600">
                       <span className="text-xs lg:text-sm font-medium text-blood-300">HP:</span>
@@ -202,25 +221,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
                   </div>
                 );
               })()}
-
-              {/* Sprite */}
-              <div className="relative flex-shrink-0">
-                <SpriteThumbnail sprite={enemyData.customSprite} size={72} previewType="entity" noBackground />
-                {count > 1 && (
-                  <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700">
-                    {count}
-                  </span>
-                )}
-              </div>
-              {/* Name and Title */}
-              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px] text-xs lg:text-sm !leading-[1.2]">
-                <span className="font-medium text-blood-300">
-                  {enemyData.name}
-                </span>
-                {enemyData.title && (
-                  <span className="text-parchment-300 italic"> {enemyData.title}</span>
-                )}
-              </div>
 
               {/* Tooltip steps - always visible */}
               {hasTooltipSteps && (
