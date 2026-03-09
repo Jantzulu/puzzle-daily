@@ -1593,26 +1593,20 @@ export const Game: React.FC = () => {
           </div>
 
           {/* Unified Info Panel - combines all info displays */}
-          <div className="w-full max-w-2xl mx-auto dungeon-panel p-1 lg:p-1.5 relative overflow-visible" style={{ borderTopLeftRadius: '40px', borderTopRightRadius: '40px' }}>
-            {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
-            {/* Top-left: L-bracket with triangle */}
+          {/* TEMP-HIDE: removed dungeon-panel class, border, background for layout testing */}
+          <div className="w-full max-w-2xl mx-auto p-1 lg:p-1.5 relative overflow-visible">
+            {/* TEMP-HIDE: ornate corner decorations hidden for layout testing
             <svg className="absolute -top-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
-              {/* Horizontal line at top edge */}
               <path d="M0 0 L40 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Vertical line at left edge */}
               <path d="M0 0 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Triangle at corner */}
               <path d="M0 0 L0 16 Q4 4 16 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
-            {/* Top-right: L-bracket with triangle */}
             <svg className="absolute -top-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
-              {/* Horizontal line at top edge */}
               <path d="M0 0 L40 0" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Vertical line at right edge */}
               <path d="M40 0 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-              {/* Triangle at corner */}
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
+            */}
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
