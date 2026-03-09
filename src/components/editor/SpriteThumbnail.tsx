@@ -87,17 +87,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         drawWidth = maxSize * frameAspectRatio;
       }
 
-      // Snap draw dimensions to integer multiples of source pixel size for crisp pixel art
+      // Always use integer multiples of source pixel size for crisp pixel art
       const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
-      if (frameWidth * idealPixelScale <= size && frameHeight * idealPixelScale <= size) {
-        // Integer scale fits within canvas — use it for crisp pixels
-        drawWidth = frameWidth * idealPixelScale;
-        drawHeight = frameHeight * idealPixelScale;
-      } else {
-        // Would overflow canvas — use raw dimensions clamped to canvas size
-        drawWidth = Math.min(Math.round(drawWidth), size);
-        drawHeight = Math.min(Math.round(drawHeight), size);
-      }
+      const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
+      const pixelScale = Math.min(idealPixelScale, maxFitScale);
+      drawWidth = frameWidth * pixelScale;
+      drawHeight = frameHeight * pixelScale;
 
       const sourceX = Math.round(frameIndex * frameWidth);
       const sw = Math.round(frameWidth);
@@ -203,15 +198,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawWidth = maxSize * aspectRatio;
           }
 
-          // Snap draw dimensions to integer multiples of source pixel size for crisp pixel art
+          // Always use integer multiples of source pixel size for crisp pixel art
           const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
-          if (img.width * idealPixelScale <= size && img.height * idealPixelScale <= size) {
-            drawWidth = img.width * idealPixelScale;
-            drawHeight = img.height * idealPixelScale;
-          } else {
-            drawWidth = Math.min(Math.round(drawWidth), size);
-            drawHeight = Math.min(Math.round(drawHeight), size);
-          }
+          const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
+          const pixelScale = Math.min(idealPixelScale, maxFitScale);
+          drawWidth = img.width * pixelScale;
+          drawHeight = img.height * pixelScale;
 
           ctx.drawImage(img, Math.round(size/2 - drawWidth * imgAx + imgOx), Math.round(size/2 - drawHeight * imgAy + imgOy), drawWidth, drawHeight);
         }
