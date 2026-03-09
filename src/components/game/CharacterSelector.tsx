@@ -150,7 +150,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             >
               {/* Sprite */}
               <div className="relative flex-shrink-0">
-                <SpriteThumbnail sprite={character.customSprite} size={window.innerWidth >= 1024 ? 84 : 56} previewType="entity" noBackground />
+                <SpriteThumbnail sprite={character.customSprite} size={84} previewType="entity" noBackground />
                 {isPlaced && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
                     <span className="text-copper-400 text-lg">✓</span>
