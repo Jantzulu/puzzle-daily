@@ -85,15 +85,18 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         drawWidth = maxSize * frameAspectRatio;
       }
 
+      // Snap draw dimensions to integer multiples of source pixel size for crisp pixel art
+      const pixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
+      drawWidth = frameWidth * pixelScale;
+      drawHeight = frameHeight * pixelScale;
+
       const sourceX = Math.round(frameIndex * frameWidth);
       const sw = Math.round(frameWidth);
       const sh = Math.round(frameHeight);
-      const dw = Math.round(drawWidth);
-      const dh = Math.round(drawHeight);
       ctx.drawImage(
         img,
         sourceX, 0, sw, sh,
-        Math.round(size/2 - drawWidth * ax + ox), Math.round(size/2 - drawHeight * ay + oy), dw, dh
+        Math.round(size/2 - drawWidth * ax + ox), Math.round(size/2 - drawHeight * ay + oy), drawWidth, drawHeight
       );
     };
 
@@ -191,7 +194,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawWidth = maxSize * aspectRatio;
           }
 
-          ctx.drawImage(img, Math.round(size/2 - drawWidth * imgAx + imgOx), Math.round(size/2 - drawHeight * imgAy + imgOy), Math.round(drawWidth), Math.round(drawHeight));
+          // Snap draw dimensions to integer multiples of source pixel size for crisp pixel art
+          const pixelScale = Math.max(1, Math.round(drawWidth / img.width));
+          drawWidth = img.width * pixelScale;
+          drawHeight = img.height * pixelScale;
+
+          ctx.drawImage(img, Math.round(size/2 - drawWidth * imgAx + imgOx), Math.round(size/2 - drawHeight * imgAy + imgOy), drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
       } else {
