@@ -96,8 +96,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           )}
         </div>
         {/* Center: Help + Title */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
-          <HelpButton sectionId="characters" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+          <div className="absolute right-full mr-1">
+            <HelpButton sectionId="characters" />
+          </div>
           <h3 className="text-lg lg:text-xl font-bold text-purple-400">Heroes</h3>
         </div>
         {/* Right: Count + Clear button */}

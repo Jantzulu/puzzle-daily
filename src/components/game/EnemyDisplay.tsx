@@ -85,9 +85,13 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
   const emptyContent = (
     <>
       {divider}
-      <div className="flex items-center justify-center gap-2 mb-2">
-        <HelpButton sectionId="enemies" />
-        <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
+      <div className="flex items-center justify-center mb-2">
+        <div className="relative flex items-center">
+          <div className="absolute right-full mr-1">
+            <HelpButton sectionId="enemies" />
+          </div>
+          <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
+        </div>
       </div>
       <p className="text-sm lg:text-base text-stone-500 text-center">No enemies remaining</p>
     </>
@@ -147,8 +151,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
           )}
         </div>
         {/* Center: Help + Title */}
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
-          <HelpButton sectionId="enemies" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+          <div className="absolute right-full mr-1">
+            <HelpButton sectionId="enemies" />
+          </div>
           <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
         </div>
         {/* Right: Count indicator */}

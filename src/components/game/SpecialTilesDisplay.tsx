@@ -245,8 +245,10 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
       {divider}
       <div className="relative flex items-center justify-between mb-3">
         <div className="min-w-[60px]" />
-        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
-          <HelpButton sectionId="special_tiles" />
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
+          <div className="absolute right-full mr-1">
+            <HelpButton sectionId="special_tiles" />
+          </div>
           <h3 className="text-lg lg:text-xl font-bold text-rust-400">Dungeon Tiles</h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
