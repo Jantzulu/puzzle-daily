@@ -58,48 +58,48 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     <>
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-2">
-        {/* Left: Help + Title */}
-        <div className="flex items-center gap-2">
+        {/* Left: Test button */}
+        <div className="flex items-center gap-2 min-w-[60px]">
+          {onTest && !disabled && (
+            themeAssets.actionButtonTestHeroesImage ? (
+              <button
+                onClick={onTest}
+                className="transition-all hover:scale-105 active:scale-95"
+                title="Test your heroes without enemies for 5 turns"
+              >
+                <img
+                  src={themeAssets.actionButtonTestHeroesImage}
+                  alt="Test Heroes"
+                  className="h-5 lg:h-6 w-auto"
+                  style={{ imageRendering: 'pixelated' }}
+                />
+              </button>
+            ) : (
+              <button
+                onClick={onTest}
+                className={`px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
+                  themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
+                } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
+                style={{
+                  ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
+                  ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                  ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
+                }}
+                title="Test your heroes without enemies for 5 turns"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                  <path d="M8 5v14l11-7z"/>
+                </svg>
+                Test
+              </button>
+            )
+          )}
+        </div>
+        {/* Center: Help + Title */}
+        <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2">
           <HelpButton sectionId="characters" />
           <h3 className="text-lg lg:text-xl font-bold text-purple-400">Heroes</h3>
         </div>
-        {/* Center: Test button (centered on both mobile and desktop) */}
-        {onTest && !disabled && (
-          themeAssets.actionButtonTestHeroesImage ? (
-            // Custom image button
-            <button
-              onClick={onTest}
-              className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 transition-all hover:scale-105 active:scale-95"
-              title="Test your heroes without enemies for 5 turns"
-            >
-              <img
-                src={themeAssets.actionButtonTestHeroesImage}
-                alt="Test Heroes"
-                className="h-5 lg:h-6 w-auto"
-                style={{ imageRendering: 'pixelated' }}
-              />
-            </button>
-          ) : (
-            // Default styled button
-            <button
-              onClick={onTest}
-              className={`absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
-                themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
-              } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
-              style={{
-                ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
-                ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
-              }}
-              title="Test your heroes without enemies for 5 turns"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                <path d="M8 5v14l11-7z"/>
-              </svg>
-              Test
-            </button>
-          )
-        )}
         {/* Right: Count + Clear button */}
         <div className="flex items-center gap-2">
           <span className={`text-sm lg:text-base ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
