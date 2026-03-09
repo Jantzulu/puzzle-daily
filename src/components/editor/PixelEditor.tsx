@@ -35,6 +35,10 @@ interface PixelEditorProps {
   defaultHeight?: number;
   onApply: (base64: string, projectUrl?: string) => void;
   onClose: () => void;
+  /** 'modal' = full-screen overlay (default), 'page' = fills parent container */
+  mode?: 'modal' | 'page';
+  /** Called when user clicks "New" in page mode to reset the editor */
+  onNew?: () => void;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -69,7 +73,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   defaultHeight = 32,
   onApply,
   onClose,
+  mode = 'modal',
+  onNew,
 }) => {
+  const isPage = mode === 'page';
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const pixelDataRef = useRef<ImageData>(createBlankImageData(defaultWidth, defaultHeight));
@@ -593,28 +600,36 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   if (!isMobile) {
     return (
-      <div className="fixed inset-0 bg-black/80 flex flex-col z-50">
+      <div className={isPage ? 'flex flex-col h-[calc(100vh-60px)] bg-stone-950' : 'fixed inset-0 bg-black/80 flex flex-col z-50'}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 bg-stone-900 border-b border-stone-700">
-          <button onClick={onClose} className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm">
-            ✕ Close
-          </button>
+          {isPage ? (
+            <button onClick={onNew} className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-sm">
+              + New
+            </button>
+          ) : (
+            <button onClick={onClose} className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm">
+              ✕ Close
+            </button>
+          )}
           <span className="text-sm text-parchment-100 font-bold">
             Pixel Editor — {canvasWidth}x{canvasHeight}
           </span>
           <div className="flex gap-2">
-            <button
-              onClick={handleApply}
-              className="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-sm"
-            >
-              Apply
-            </button>
+            {!isPage && (
+              <button
+                onClick={handleApply}
+                className="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-sm"
+              >
+                Apply
+              </button>
+            )}
             <button
               onClick={handleSaveToCloud}
               disabled={saving}
               className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm disabled:opacity-50"
             >
-              {saving ? 'Saving...' : '☁ Save'}
+              {saving ? 'Saving...' : '☁ Save to Cloud'}
             </button>
           </div>
         </div>
@@ -662,21 +677,37 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   // ─── Mobile Layout ──────────────────────────────────────────────
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col z-50">
+    <div className={isPage ? 'flex flex-col h-[calc(100vh-60px)] bg-stone-950' : 'fixed inset-0 bg-black flex flex-col z-50'}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-stone-900 border-b border-stone-700">
-        <button onClick={onClose} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
-          ✕
-        </button>
+        {isPage ? (
+          <button onClick={onNew} className="px-2 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs">
+            + New
+          </button>
+        ) : (
+          <button onClick={onClose} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
+            ✕
+          </button>
+        )}
         <span className="text-xs text-parchment-100 font-bold">
           {canvasWidth}x{canvasHeight}
         </span>
-        <button
-          onClick={handleApply}
-          className="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-xs"
-        >
-          Apply
-        </button>
+        {!isPage ? (
+          <button
+            onClick={handleApply}
+            className="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-xs"
+          >
+            Apply
+          </button>
+        ) : (
+          <button
+            onClick={handleSaveToCloud}
+            disabled={saving}
+            className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
+          >
+            {saving ? '...' : '☁ Save'}
+          </button>
+        )}
       </div>
 
       {/* Toolbar */}
@@ -703,13 +734,15 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         {colorPalette}
         <div className="flex items-center justify-between">
           {canvasSizeControls}
-          <button
-            onClick={handleSaveToCloud}
-            disabled={saving}
-            className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
-          >
-            {saving ? '...' : '☁ Save'}
-          </button>
+          {!isPage && (
+            <button
+              onClick={handleSaveToCloud}
+              disabled={saving}
+              className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
+            >
+              {saving ? '...' : '☁ Save'}
+            </button>
+          )}
         </div>
       </div>
     </div>

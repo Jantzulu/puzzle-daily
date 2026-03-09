@@ -21,6 +21,7 @@ const StatsDashboard = lazy(() => import('./components/editor/StatsDashboard').t
 const SettingsPage = lazy(() => import('./components/editor/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds').then(m => ({ default: m.TrainingGrounds })));
 const BugReportViewer = lazy(() => import('./components/editor/BugReportViewer').then(m => ({ default: m.BugReportViewer })));
+const PixelEditorPage = lazy(() => import('./components/editor/PixelEditorPage').then(m => ({ default: m.PixelEditorPage })));
 
 // Page title mapping per route
 const PAGE_TITLES: Record<string, string> = {
@@ -33,6 +34,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/stats': 'Stats',
   '/bug-reports': 'Bug Reports',
   '/assets': 'Assets',
+  '/pixel-editor': 'Pixel Editor',
   '/settings': 'Settings',
 };
 
@@ -319,6 +321,9 @@ function Navigation() {
           <Link to="/editor" className={linkClass('/editor')}>
             <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
           </Link>
+          <Link to="/pixel-editor" className={linkClass('/pixel-editor')}>
+            <span className="mr-1">🎨</span> Pixel Editor
+          </Link>
           <Link to="/schedule" className={linkClass('/schedule')}>
             <span className="mr-1">📅</span> Schedule
           </Link>
@@ -408,6 +413,13 @@ function Navigation() {
             onClick={() => setMobileMenuOpen(false)}
           >
             <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
+          </Link>
+          <Link
+            to="/pixel-editor"
+            className={`block ${linkClass('/pixel-editor')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">🎨</span> Pixel Editor
           </Link>
           <Link
             to="/schedule"
@@ -505,6 +517,7 @@ function App() {
                 <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
                 <Route path="/bug-reports" element={<ProtectedRoute><BugReportViewer /></ProtectedRoute>} />
                 <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
+                <Route path="/pixel-editor" element={<ProtectedRoute><PixelEditorPage /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               </Routes>
             </Suspense>
