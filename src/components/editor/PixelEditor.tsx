@@ -451,7 +451,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   const tools: { id: Tool; label: string; icon: string; key: string }[] = [
     { id: 'pencil', label: 'Pencil', icon: '✏️', key: 'B' },
-    { id: 'eraser', label: 'Eraser', icon: '🧹', key: 'E' },
+    { id: 'eraser', label: 'Eraser', icon: '◻', key: 'E' },
     { id: 'fill', label: 'Fill', icon: '🪣', key: 'G' },
     { id: 'eyedropper', label: 'Eyedropper', icon: '💧', key: 'I' },
   ];
