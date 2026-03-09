@@ -2384,33 +2384,62 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           </div>
 
           {/* UNIVERSAL SCALE — single multiplier applied to all states/directions equally */}
-          <div className="bg-stone-800 p-3 rounded border border-stone-600">
-            <h3 className="text-sm font-bold text-copper-400 mb-2">Universal Scale</h3>
-            <div className="flex items-center gap-2">
-              <input
-                type="range"
-                min="0.25"
-                max="3"
-                step="0.05"
-                value={sprite.universalScale ?? 1}
-                onChange={(e) => onChange({ ...sprite, universalScale: parseFloat(e.target.value) === 1 ? undefined : parseFloat(e.target.value) })}
-                className="flex-1 h-3"
-              />
-              <input
-                type="number"
-                min="0.25"
-                max="3"
-                step="0.05"
-                value={(sprite.universalScale ?? 1).toFixed(2)}
-                onChange={(e) => {
-                  const val = Math.max(0.25, Math.min(3, parseFloat(e.target.value) || 1));
-                  onChange({ ...sprite, universalScale: val === 1 ? undefined : val });
-                }}
-                className="w-14 text-xs text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
-              />
-            </div>
-            <p className="text-[10px] text-stone-500 mt-1">Scales all sprites equally. Use per-state scale below to match individual sprites first.</p>
-          </div>
+          {(() => {
+            // Resolve idle sprite for preview (same sprite thumbnails use)
+            const defaultDir = sprite.directionalSprites?.default;
+            const uniPreviewSheet = defaultDir?.idleSpriteSheet || sprite.idleSpriteSheet;
+            const uniPreviewSrc = uniPreviewSheet
+              ? (uniPreviewSheet.imageData || uniPreviewSheet.imageUrl)
+              : defaultDir
+                ? (defaultDir.idleImageData || defaultDir.imageData || defaultDir.idleImageUrl || defaultDir.imageUrl)
+                : (sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl);
+            return (
+              <div className="bg-stone-800 p-3 rounded border border-stone-600">
+                <h3 className="text-sm font-bold text-copper-400 mb-2">Universal Scale</h3>
+                <div className="flex items-start gap-3">
+                  {uniPreviewSrc && (
+                    <AnchorPreview
+                      imageSrc={uniPreviewSrc}
+                      anchorX={0.5}
+                      anchorY={0.5}
+                      offsetX={0}
+                      offsetY={0}
+                      spriteSize={currentConfig.size || sprite.size || 0.6}
+                      scale={sprite.universalScale ?? 1}
+                      isSpriteSheet={!!uniPreviewSheet}
+                      frameCount={uniPreviewSheet?.frameCount}
+                    />
+                  )}
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="range"
+                        min="0.25"
+                        max="3"
+                        step="0.05"
+                        value={sprite.universalScale ?? 1}
+                        onChange={(e) => onChange({ ...sprite, universalScale: parseFloat(e.target.value) === 1 ? undefined : parseFloat(e.target.value) })}
+                        className="flex-1 h-3"
+                      />
+                      <input
+                        type="number"
+                        min="0.25"
+                        max="3"
+                        step="0.05"
+                        value={(sprite.universalScale ?? 1).toFixed(2)}
+                        onChange={(e) => {
+                          const val = Math.max(0.25, Math.min(3, parseFloat(e.target.value) || 1));
+                          onChange({ ...sprite, universalScale: val === 1 ? undefined : val });
+                        }}
+                        className="w-14 text-xs text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
+                      />
+                    </div>
+                    <p className="text-[10px] text-stone-500 mt-1">Scales all sprites equally. Use per-state scale below to match individual sprites first.</p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* IDLE & MOVING STATES */}
           <div className="bg-green-950 bg-opacity-30 p-4 rounded border-2 border-green-900">
