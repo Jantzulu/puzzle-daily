@@ -1160,6 +1160,11 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       triggerRender();
     }
 
+    // Drawing tools (pencil, eraser, fill) — signal layer data changed
+    if (isDrawingRef.current && (tool === 'pencil' || tool === 'eraser' || tool === 'fill')) {
+      bumpLayers();
+    }
+
     // Selection/Move finish
     if (tool === 'select' || tool === 'move') {
       selectionStartRef.current = null;
