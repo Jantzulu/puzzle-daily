@@ -7,7 +7,9 @@
 
 export type RGBA = [number, number, number, number];
 
-export interface PixelEditorProject {
+// ─── V1 Project (single frame) ────────────────────────────────────
+
+export interface PixelEditorProjectV1 {
   version: 1;
   name?: string;
   width: number;
@@ -22,6 +24,45 @@ export interface PixelEditorLayer {
   visible: boolean;
   opacity: number; // 0-1
   data: string;    // base64 PNG of this layer's pixels
+}
+
+// ─── V2 Project (multi-frame animation) ──────────────────────────
+
+export interface PixelEditorFrame {
+  id: string;
+  layers: PixelEditorLayer[];
+  duration?: number;  // optional per-frame ms override
+}
+
+export interface PixelEditorProjectV2 {
+  version: 2;
+  name?: string;
+  width: number;
+  height: number;
+  frames: PixelEditorFrame[];
+  frameRate: number;
+  palette?: string[];
+  loop?: boolean;
+}
+
+/** Union type — deserializeProject always returns V2 (V1 auto-migrates). */
+export type PixelEditorProject = PixelEditorProjectV2;
+
+/** Convert a V1 project (single layer stack) to V2 (one frame). */
+export function migrateProjectToV2(v1: PixelEditorProjectV1): PixelEditorProjectV2 {
+  return {
+    version: 2,
+    name: v1.name,
+    width: v1.width,
+    height: v1.height,
+    frames: [{
+      id: 'frame-1',
+      layers: v1.layers,
+    }],
+    frameRate: 10,
+    palette: v1.palette,
+    loop: true,
+  };
 }
 
 // ─── Pixel Access ───────────────────────────────────────────────────
@@ -615,35 +656,130 @@ export function pixelDataToBase64(data: ImageData): string {
 
 // ─── Project Serialization ──────────────────────────────────────────
 
-export function createProject(width: number, height: number, pixelData: ImageData): PixelEditorProject {
+export function createProject(width: number, height: number, pixelData: ImageData): PixelEditorProjectV2 {
   return {
-    version: 1,
+    version: 2,
     width,
     height,
-    layers: [{
-      id: 'layer-1',
-      name: 'Background',
-      visible: true,
-      opacity: 1,
-      data: pixelDataToBase64(pixelData),
+    frames: [{
+      id: 'frame-1',
+      layers: [{
+        id: 'layer-1',
+        name: 'Background',
+        visible: true,
+        opacity: 1,
+        data: pixelDataToBase64(pixelData),
+      }],
     }],
+    frameRate: 10,
+    loop: true,
   };
 }
 
-export function serializeProject(project: PixelEditorProject): string {
+export function serializeProject(project: PixelEditorProjectV2): string {
   return JSON.stringify(project);
 }
 
-export function deserializeProject(json: string): PixelEditorProject | null {
+/**
+ * Deserialize a project JSON string.
+ * V1 projects are automatically migrated to V2 format.
+ */
+export function deserializeProject(json: string): PixelEditorProjectV2 | null {
   try {
     const parsed = JSON.parse(json);
     if (parsed.version === 1 && Array.isArray(parsed.layers)) {
-      return parsed as PixelEditorProject;
+      return migrateProjectToV2(parsed as PixelEditorProjectV1);
+    }
+    if (parsed.version === 2 && Array.isArray(parsed.frames)) {
+      return parsed as PixelEditorProjectV2;
     }
     return null;
   } catch {
     return null;
   }
+}
+
+// ─── Sprite Sheet Export ─────────────────────────────────────────
+
+/**
+ * Composite all frames into a horizontal sprite sheet.
+ * Each frame is composited (all visible layers merged) then placed
+ * left-to-right in a single ImageData strip.
+ *
+ * @param frameLayers - Array of frames, each containing layer ImageData arrays + metadata
+ * @param width - Canvas width per frame
+ * @param height - Canvas height per frame
+ * @returns Horizontal sprite sheet ImageData (width * frameCount, height)
+ */
+export function compositeFramesToSpriteSheet(
+  frameLayers: Array<{ data: ImageData[]; visibilities: boolean[]; opacities: number[] }>,
+  width: number,
+  height: number,
+): ImageData {
+  const frameCount = frameLayers.length;
+  const sheetWidth = width * frameCount;
+  const result = new ImageData(sheetWidth, height);
+
+  for (let fi = 0; fi < frameCount; fi++) {
+    const { data, visibilities, opacities } = frameLayers[fi];
+    const frameComposite = compositeLayers(data, visibilities, opacities, width, height);
+
+    // Copy frame pixels into the sprite sheet at horizontal offset
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const si = (y * width + x) * 4;
+        const di = (y * sheetWidth + fi * width + x) * 4;
+        result.data[di] = frameComposite.data[si];
+        result.data[di + 1] = frameComposite.data[si + 1];
+        result.data[di + 2] = frameComposite.data[si + 2];
+        result.data[di + 3] = frameComposite.data[si + 3];
+      }
+    }
+  }
+
+  return result;
+}
+
+/** Generate a small thumbnail of a frame's composited layers. */
+export function generateFrameThumbnail(
+  layers: ImageData[],
+  visibilities: boolean[],
+  opacities: number[],
+  width: number,
+  height: number,
+  thumbSize: number = 48,
+): string {
+  const composite = compositeLayers(layers, visibilities, opacities, width, height);
+  const canvas = document.createElement('canvas');
+  canvas.width = thumbSize;
+  canvas.height = thumbSize;
+  const ctx = canvas.getContext('2d')!;
+  ctx.imageSmoothingEnabled = false;
+
+  // Fit within thumbSize maintaining aspect ratio
+  const scale = Math.min(thumbSize / width, thumbSize / height);
+  const dw = Math.round(width * scale);
+  const dh = Math.round(height * scale);
+  const dx = Math.round((thumbSize - dw) / 2);
+  const dy = Math.round((thumbSize - dh) / 2);
+
+  // Draw checkerboard background
+  const checkSize = Math.max(2, Math.floor(thumbSize / 8));
+  for (let y = 0; y < thumbSize; y += checkSize) {
+    for (let x = 0; x < thumbSize; x += checkSize) {
+      ctx.fillStyle = ((x / checkSize + y / checkSize) % 2 === 0) ? '#3a3a3a' : '#2a2a2a';
+      ctx.fillRect(x, y, checkSize, checkSize);
+    }
+  }
+
+  // Draw composite
+  const tmp = document.createElement('canvas');
+  tmp.width = width;
+  tmp.height = height;
+  tmp.getContext('2d')!.putImageData(composite, 0, 0);
+  ctx.drawImage(tmp, dx, dy, dw, dh);
+
+  return canvas.toDataURL('image/png');
 }
 
 /** Resize pixel data by cropping or expanding (no scaling). Existing pixels placed at (0,0). */

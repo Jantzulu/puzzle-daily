@@ -4,6 +4,7 @@ import { cloneLayerStack } from '../components/editor/pixelEditorUtils';
 const MAX_HISTORY = 30;
 
 export interface PixelEditorHistorySnapshot {
+  frameIndex: number;
   layers: ImageData[];
   activeLayerIndex: number;
 }
@@ -19,10 +20,14 @@ export interface PixelEditorHistory {
   redo: (current: PixelEditorHistorySnapshot) => PixelEditorHistorySnapshot | null;
   /** Clear all history (on canvas resize or project load). */
   reset: () => void;
+  /** Get the raw stacks (for serialization when switching tabs). */
+  getStacks: () => { undo: PixelEditorHistorySnapshot[]; redo: PixelEditorHistorySnapshot[] };
+  /** Replace stacks (for restoring when switching tabs). */
+  setStacks: (stacks: { undo: PixelEditorHistorySnapshot[]; redo: PixelEditorHistorySnapshot[] }) => void;
 }
 
 function cloneSnapshot(s: PixelEditorHistorySnapshot): PixelEditorHistorySnapshot {
-  return { layers: cloneLayerStack(s.layers), activeLayerIndex: s.activeLayerIndex };
+  return { frameIndex: s.frameIndex, layers: cloneLayerStack(s.layers), activeLayerIndex: s.activeLayerIndex };
 }
 
 export function usePixelEditorHistory(): PixelEditorHistory {
@@ -67,5 +72,16 @@ export function usePixelEditorHistory(): PixelEditorHistory {
     sync();
   }, [sync]);
 
-  return { canUndo, canRedo, push, undo, redo, reset };
+  const getStacks = useCallback(() => ({
+    undo: undoStack.current.map(cloneSnapshot),
+    redo: redoStack.current.map(cloneSnapshot),
+  }), []);
+
+  const setStacks = useCallback((stacks: { undo: PixelEditorHistorySnapshot[]; redo: PixelEditorHistorySnapshot[] }) => {
+    undoStack.current = stacks.undo.map(cloneSnapshot);
+    redoStack.current = stacks.redo.map(cloneSnapshot);
+    sync();
+  }, [sync]);
+
+  return { canUndo, canRedo, push, undo, redo, reset, getStacks, setStacks };
 }

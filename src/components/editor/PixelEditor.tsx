@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState, forwardRef } from 'react';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { usePixelEditorHistory, type PixelEditorHistorySnapshot } from '../../hooks/usePixelEditorHistory';
 import {
@@ -31,14 +31,19 @@ import {
   renderBrushOutline,
   renderSelectionOverlay,
   renderShapePreview,
+  compositeFramesToSpriteSheet,
+  generateFrameThumbnail,
   type PixelEditorProject,
   type PixelEditorLayer,
 } from './pixelEditorUtils';
+import { PixelEditorTimeline } from './PixelEditorTimeline';
+import { PixelEditorAnimationPreview } from './PixelEditorAnimationPreview';
 import { uploadMediaDataUrl, uploadMediaDataUrlToPath } from '../../utils/mediaStorage';
 import { PixelEditorOpenModal } from './PixelEditorOpenModal';
 import { toast } from '../shared/Toast';
 import { writePixelAutoSave, readPixelAutoSave, clearPixelAutoSave, AUTOSAVE_INTERVAL_MS, type PixelAutoSaveData } from '../../utils/pixelEditorAutoSave';
 import { cachePixelEditorState, getCachedPixelEditorState } from '../../utils/pixelEditorState';
+import { setGlobalClipboard, getGlobalClipboard, hasGlobalClipboard } from '../../utils/pixelEditorClipboard';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -68,6 +73,28 @@ interface PixelEditorProps {
   mode?: 'modal' | 'page';
   onNew?: () => void;
   onProjectUrlChange?: (url: string) => void;
+  /** Called whenever the project name or dirty state changes (for tab display). */
+  onMetadataChange?: (meta: { projectName: string; dirty: boolean }) => void;
+}
+
+/** Imperative handle exposed to PixelEditorPage for tab serialization. */
+export interface PixelEditorHandle {
+  /** Serialize the current editor state for tab persistence. */
+  serializeState: () => {
+    projectJson: string;
+    projectName: string;
+    dirty: boolean;
+    currentPngPath: string | null;
+    currentProjectPath: string | null;
+    currentProjectUrl: string | null;
+    zoom: number;
+    panX: number;
+    panY: number;
+    showGrid: boolean;
+    activeFrameIndex: number;
+    activeLayerIndex: number;
+    customColors: string[];
+  };
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -94,9 +121,14 @@ function genLayerId() {
   return `layer-${nextLayerId++}`;
 }
 
+let nextFrameId = 1;
+function genFrameId() {
+  return `frame-${nextFrameId++}`;
+}
+
 // ─── Component ──────────────────────────────────────────────────────
 
-export const PixelEditor: React.FC<PixelEditorProps> = ({
+export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   initialImage,
   projectUrl,
   defaultWidth = 32,
@@ -106,7 +138,8 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   mode = 'modal',
   onNew,
   onProjectUrlChange,
-}) => {
+  onMetadataChange,
+}, ref) => {
   const isPage = mode === 'page';
   const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -121,6 +154,24 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   }]);
   const [activeLayerIndex, setActiveLayerIndex] = useState(0);
   const [layerRevision, setLayerRevision] = useState(0); // forces re-render on layer changes
+
+  // ─── Frame State (Animation) ──────────────────────────────────
+  // framesRef stores all frames. layersRef always points to the active frame's layers.
+  // Frame 0's layers are initialized from layersRef's initial value.
+  interface FrameData { id: string; layers: LayerState[]; duration?: number }
+  const framesRef = useRef<FrameData[]>([{
+    id: 'frame-1',
+    layers: layersRef.current,
+  }]);
+  const [activeFrameIndex, setActiveFrameIndex] = useState(0);
+  const [frameRevision, setFrameRevision] = useState(0); // forces timeline re-render
+  const [animFrameRate, setAnimFrameRate] = useState(10);
+  const [animLoop, setAnimLoop] = useState(true);
+  const [isAnimPlaying, setIsAnimPlaying] = useState(false);
+  const [onionSkinning, setOnionSkinning] = useState({
+    enabled: false, before: 1, after: 0, opacity: 0.25,
+  });
+  const [showTimeline, setShowTimeline] = useState(false);
 
   const lastPixelRef = useRef<{ x: number; y: number } | null>(null);
   const isDrawingRef = useRef(false);
@@ -147,7 +198,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const [selection, setSelection] = useState<Selection | null>(null);
   const selectionStartRef = useRef<{ x: number; y: number } | null>(null);
   const selectionDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
-  const clipboardRef = useRef<ImageData | null>(null);
+  // Clipboard is now global (pixelEditorClipboard.ts) for cross-tab support
   const shiftSelectRef = useRef<Selection | null>(null); // previous selection for Shift+additive
   const selectionAnimRef = useRef(0);
   const selectionRafRef = useRef<number | null>(null);
@@ -197,12 +248,17 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     setLayerRevision(r => r + 1);
   }, []);
 
+  const bumpFrames = useCallback(() => {
+    setFrameRevision(r => r + 1);
+  }, []);
+
   const getSnapshot = useCallback((): PixelEditorHistorySnapshot => {
     return {
+      frameIndex: activeFrameIndex,
       layers: layersRef.current.map(l => l.data),
       activeLayerIndex,
     };
-  }, [activeLayerIndex]);
+  }, [activeLayerIndex, activeFrameIndex]);
 
   const restoreSnapshot = useCallback((snap: PixelEditorHistorySnapshot) => {
     for (let i = 0; i < layersRef.current.length && i < snap.layers.length; i++) {
@@ -262,26 +318,44 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         toast.error('Invalid project file');
         return false;
       }
-      const loadedLayers: LayerState[] = [];
-      for (const layerDef of project.layers) {
-        const result = await imageToPixelData(layerDef.data, project.width, project.height);
-        loadedLayers.push({
-          id: layerDef.id || genLayerId(),
-          name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
-          visible: layerDef.visible !== false,
-          opacity: layerDef.opacity ?? 1,
-          data: result.data,
-        });
-      }
-      if (loadedLayers.length === 0) return false;
+      if (!project.frames.length) return false;
 
-      layersRef.current = loadedLayers;
+      // Load ALL frames
+      const loadedFrames: FrameData[] = [];
+      for (const frameDef of project.frames) {
+        const frameLayers: LayerState[] = [];
+        for (const layerDef of frameDef.layers) {
+          const result = await imageToPixelData(layerDef.data, project.width, project.height);
+          frameLayers.push({
+            id: layerDef.id || genLayerId(),
+            name: layerDef.name || `Layer ${frameLayers.length + 1}`,
+            visible: layerDef.visible !== false,
+            opacity: layerDef.opacity ?? 1,
+            data: result.data,
+          });
+        }
+        if (frameLayers.length > 0) {
+          loadedFrames.push({
+            id: frameDef.id || genFrameId(),
+            layers: frameLayers,
+            duration: frameDef.duration,
+          });
+        }
+      }
+      if (loadedFrames.length === 0) return false;
+
+      framesRef.current = loadedFrames;
+      layersRef.current = loadedFrames[0].layers;
+      setActiveFrameIndex(0);
       setCanvasWidth(project.width);
       setCanvasHeight(project.height);
       setResizeW(project.width);
       setResizeH(project.height);
       if (project.name) setProjectName(project.name);
       if (project.palette) setCustomColors(project.palette);
+      if (project.frameRate) setAnimFrameRate(project.frameRate);
+      if (project.loop !== undefined) setAnimLoop(project.loop);
+      setShowTimeline(loadedFrames.length > 1);
       setCurrentProjectUrl(url);
       // Extract storage paths from URL for Save overwrite
       try {
@@ -290,7 +364,6 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         if (pathMatch) {
           const projPath = pathMatch[1];
           setCurrentProjectPath(projPath);
-          // Derive PNG path: same folder, same base name without .project extension
           setCurrentPngPath(projPath.replace(/\.project$/, ''));
         }
       } catch { /* ignore URL parse errors */ }
@@ -298,6 +371,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       setActiveLayerIndex(0);
       history.reset();
       bumpLayers();
+      bumpFrames();
       centerCanvas(project.width, project.height);
       triggerRender();
       return true;
@@ -306,24 +380,81 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       toast.error('Failed to load project');
       return false;
     }
-  }, [bumpLayers, centerCanvas, triggerRender, history]);
+  }, [bumpLayers, bumpFrames, centerCanvas, triggerRender, history]);
 
   // ─── Build Project Helper (declared early for autosave effects) ──
 
-  const buildCurrentProject = useCallback((): PixelEditorProject => ({
-    version: 1,
-    name: projectName,
-    width: canvasWidth,
-    height: canvasHeight,
-    layers: layersRef.current.map(l => ({
-      id: l.id,
-      name: l.name,
-      visible: l.visible,
-      opacity: l.opacity,
-      data: pixelDataToBase64(l.data),
-    })),
-    palette: customColors.length > 0 ? customColors : undefined,
-  }), [projectName, canvasWidth, canvasHeight, customColors]);
+  const buildCurrentProject = useCallback((): PixelEditorProject => {
+    // Sync current frame's layers before building
+    framesRef.current[activeFrameIndex].layers = layersRef.current;
+    return {
+      version: 2,
+      name: projectName,
+      width: canvasWidth,
+      height: canvasHeight,
+      frames: framesRef.current.map(frame => ({
+        id: frame.id,
+        layers: frame.layers.map(l => ({
+          id: l.id,
+          name: l.name,
+          visible: l.visible,
+          opacity: l.opacity,
+          data: pixelDataToBase64(l.data),
+        })),
+        ...(frame.duration != null ? { duration: frame.duration } : {}),
+      })),
+      frameRate: animFrameRate,
+      palette: customColors.length > 0 ? customColors : undefined,
+      loop: animLoop,
+    };
+  }, [projectName, canvasWidth, canvasHeight, customColors, animFrameRate, animLoop, activeFrameIndex]);
+
+  // ─── Imperative Handle (for tab serialization) ──────────────────
+
+  const dirtyRef = useRef(false);
+
+  // Track changes for dirty state
+  const markDirty = useCallback(() => {
+    if (!dirtyRef.current) {
+      dirtyRef.current = true;
+      onMetadataChange?.({ projectName, dirty: true });
+    }
+  }, [projectName, onMetadataChange]);
+
+  useImperativeHandle(ref, () => ({
+    serializeState: () => ({
+      projectJson: serializeProject(buildCurrentProject()),
+      projectName,
+      dirty: dirtyRef.current,
+      currentPngPath,
+      currentProjectPath,
+      currentProjectUrl,
+      zoom,
+      panX,
+      panY,
+      showGrid,
+      activeFrameIndex,
+      activeLayerIndex,
+      customColors,
+    }),
+  }), [buildCurrentProject, projectName, currentPngPath, currentProjectPath, currentProjectUrl, zoom, panX, panY, showGrid, activeFrameIndex, activeLayerIndex, customColors]);
+
+  // Notify parent of metadata changes
+  useEffect(() => {
+    onMetadataChange?.({ projectName, dirty: dirtyRef.current });
+  }, [projectName, onMetadataChange]);
+
+  // Mark dirty on layer changes (after initial load)
+  const initialLoadDoneRef = useRef(false);
+  useEffect(() => {
+    if (!loaded) return;
+    if (!initialLoadDoneRef.current) {
+      initialLoadDoneRef.current = true;
+      return;
+    }
+    markDirty();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [layerRevision]);
 
   // ─── Initialize ─────────────────────────────────────────────────
 
@@ -346,31 +477,43 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         if (cached) {
           try {
             const project = deserializeProject(cached.projectJson);
-            if (project) {
-              const loadedLayers: LayerState[] = [];
-              for (const layerDef of project.layers) {
-                const result = await imageToPixelData(layerDef.data, project.width, project.height);
-                loadedLayers.push({
-                  id: layerDef.id || genLayerId(),
-                  name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
-                  visible: layerDef.visible !== false,
-                  opacity: layerDef.opacity ?? 1,
-                  data: result.data,
-                });
+            if (project && project.frames.length > 0) {
+              const loadedFrames: FrameData[] = [];
+              for (const frameDef of project.frames) {
+                const frameLayers: LayerState[] = [];
+                for (const layerDef of frameDef.layers) {
+                  const result = await imageToPixelData(layerDef.data, project.width, project.height);
+                  frameLayers.push({
+                    id: layerDef.id || genLayerId(),
+                    name: layerDef.name || `Layer ${frameLayers.length + 1}`,
+                    visible: layerDef.visible !== false,
+                    opacity: layerDef.opacity ?? 1,
+                    data: result.data,
+                  });
+                }
+                if (frameLayers.length > 0) {
+                  loadedFrames.push({ id: frameDef.id || genFrameId(), layers: frameLayers, duration: frameDef.duration });
+                }
               }
-              if (loadedLayers.length > 0) {
-                layersRef.current = loadedLayers;
+              if (loadedFrames.length > 0) {
+                framesRef.current = loadedFrames;
+                layersRef.current = loadedFrames[0].layers;
+                setActiveFrameIndex(0);
                 setCanvasWidth(project.width);
                 setCanvasHeight(project.height);
                 setResizeW(project.width);
                 setResizeH(project.height);
                 if (project.name) setProjectName(project.name);
                 if (project.palette) setCustomColors(project.palette);
+                if (project.frameRate) setAnimFrameRate(project.frameRate);
+                if (project.loop !== undefined) setAnimLoop(project.loop);
+                setShowTimeline(loadedFrames.length > 1);
                 setCurrentPngPath(cached.currentPngPath);
                 setCurrentProjectPath(cached.currentProjectPath);
                 setCurrentProjectUrl(cached.currentProjectUrl);
                 setActiveLayerIndex(0);
                 bumpLayers();
+                bumpFrames();
                 centerCanvas(project.width, project.height);
                 setLoaded(true);
                 triggerRender();
@@ -486,31 +629,43 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         setRecoveryData(null);
         return;
       }
-      const loadedLayers: LayerState[] = [];
-      for (const layerDef of project.layers) {
-        const result = await imageToPixelData(layerDef.data, project.width, project.height);
-        loadedLayers.push({
-          id: layerDef.id || genLayerId(),
-          name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
-          visible: layerDef.visible !== false,
-          opacity: layerDef.opacity ?? 1,
-          data: result.data,
-        });
+      const loadedFrames: FrameData[] = [];
+      for (const frameDef of project.frames) {
+        const frameLayers: LayerState[] = [];
+        for (const layerDef of frameDef.layers) {
+          const result = await imageToPixelData(layerDef.data, project.width, project.height);
+          frameLayers.push({
+            id: layerDef.id || genLayerId(),
+            name: layerDef.name || `Layer ${frameLayers.length + 1}`,
+            visible: layerDef.visible !== false,
+            opacity: layerDef.opacity ?? 1,
+            data: result.data,
+          });
+        }
+        if (frameLayers.length > 0) {
+          loadedFrames.push({ id: frameDef.id || genFrameId(), layers: frameLayers, duration: frameDef.duration });
+        }
       }
-      if (loadedLayers.length > 0) {
-        layersRef.current = loadedLayers;
+      if (loadedFrames.length > 0) {
+        framesRef.current = loadedFrames;
+        layersRef.current = loadedFrames[0].layers;
+        setActiveFrameIndex(0);
         setCanvasWidth(project.width);
         setCanvasHeight(project.height);
         setResizeW(project.width);
         setResizeH(project.height);
         if (project.name) setProjectName(project.name);
         if (project.palette) setCustomColors(project.palette);
+        if (project.frameRate) setAnimFrameRate(project.frameRate);
+        if (project.loop !== undefined) setAnimLoop(project.loop);
+        setShowTimeline(loadedFrames.length > 1);
         setCurrentPngPath(recoveryData.currentPngPath);
         setCurrentProjectPath(recoveryData.currentProjectPath);
         setCurrentProjectUrl(recoveryData.currentProjectUrl);
         setActiveLayerIndex(0);
         history.reset();
         bumpLayers();
+        bumpFrames();
         centerCanvas(project.width, project.height);
         triggerRender();
         toast.success(`Recovered "${project.name || 'Untitled'}"`);
@@ -521,7 +676,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     }
     clearPixelAutoSave();
     setRecoveryData(null);
-  }, [recoveryData, bumpLayers, centerCanvas, triggerRender, history]);
+  }, [recoveryData, bumpLayers, bumpFrames, centerCanvas, triggerRender, history]);
 
   // ─── Rendering ──────────────────────────────────────────────────
 
@@ -554,6 +709,49 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
     renderPixelCanvas(ctx, composite, zoom, panX, panY, showGrid, rect.width, rect.height);
 
+    // ── Onion skinning: render ghost frames before/after ──
+    if (onionSkinning.enabled && framesRef.current.length > 1) {
+      const ghostCanvas = document.createElement('canvas');
+      ghostCanvas.width = canvasWidth;
+      ghostCanvas.height = canvasHeight;
+      const ghostCtx = ghostCanvas.getContext('2d')!;
+
+      const renderGhostFrame = (frameIdx: number, tint: [number, number, number]) => {
+        const frame = framesRef.current[frameIdx];
+        if (!frame) return;
+        const ghostComposite = compositeLayers(
+          frame.layers.map(l => l.data),
+          frame.layers.map(l => l.visible),
+          frame.layers.map(l => Math.round(l.opacity * 255)),
+          canvasWidth, canvasHeight,
+        );
+        // Apply tint to the ghost composite
+        for (let i = 0; i < ghostComposite.data.length; i += 4) {
+          if (ghostComposite.data[i + 3] > 0) {
+            ghostComposite.data[i] = Math.round(ghostComposite.data[i] * 0.5 + tint[0] * 0.5);
+            ghostComposite.data[i + 1] = Math.round(ghostComposite.data[i + 1] * 0.5 + tint[1] * 0.5);
+            ghostComposite.data[i + 2] = Math.round(ghostComposite.data[i + 2] * 0.5 + tint[2] * 0.5);
+            ghostComposite.data[i + 3] = Math.round(ghostComposite.data[i + 3] * onionSkinning.opacity);
+          }
+        }
+        ghostCtx.putImageData(ghostComposite, 0, 0);
+        // Draw ghost onto main canvas
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(ghostCanvas, panX, panY, canvasWidth * zoom, canvasHeight * zoom);
+      };
+
+      // Render previous frames (red tint)
+      for (let i = 1; i <= onionSkinning.before; i++) {
+        const idx = activeFrameIndex - i;
+        if (idx >= 0) renderGhostFrame(idx, [255, 100, 100]);
+      }
+      // Render next frames (blue tint)
+      for (let i = 1; i <= onionSkinning.after; i++) {
+        const idx = activeFrameIndex + i;
+        if (idx < framesRef.current.length) renderGhostFrame(idx, [100, 100, 255]);
+      }
+    }
+
     // Shape preview overlay
     const shapeStart = shapeStartRef.current;
     if (shapeStart && shapeEnd && (tool === 'rect' || tool === 'line')) {
@@ -570,7 +768,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       renderBrushOutline(ctx, cursorPos.x, cursorPos.y, brushSize, zoom, panX, panY, canvasWidth, canvasHeight);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renderKey, zoom, panX, panY, showGrid, canvasWidth, canvasHeight, layerRevision, shapeEnd, selection, cursorPos, tool, brushSize]);
+  }, [renderKey, zoom, panX, panY, showGrid, canvasWidth, canvasHeight, layerRevision, frameRevision, shapeEnd, selection, cursorPos, tool, brushSize, onionSkinning, activeFrameIndex]);
 
   // ─── Selection Animation ──────────────────────────────────────────
 
@@ -1008,17 +1206,23 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
     commitFloating();
     history.push(getSnapshot());
-    for (const layer of layersRef.current) {
-      layer.data = resizePixelData(layer.data, w, h);
+    // Sync current frame and resize ALL frames' layers
+    framesRef.current[activeFrameIndex].layers = layersRef.current;
+    for (const frame of framesRef.current) {
+      for (const layer of frame.layers) {
+        layer.data = resizePixelData(layer.data, w, h);
+      }
     }
+    layersRef.current = framesRef.current[activeFrameIndex].layers;
     setCanvasWidth(w);
     setCanvasHeight(h);
     setShowResizePanel(false);
     setSelection(null);
     bumpLayers();
+    bumpFrames();
     centerCanvas(w, h);
     history.reset();
-  }, [resizeW, resizeH, canvasWidth, canvasHeight, history, getSnapshot, centerCanvas, commitFloating, bumpLayers]);
+  }, [resizeW, resizeH, canvasWidth, canvasHeight, history, getSnapshot, centerCanvas, commitFloating, bumpLayers, bumpFrames, activeFrameIndex]);
 
   // ─── Flip ─────────────────────────────────────────────────────────
 
@@ -1145,6 +1349,155 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     bumpLayers();
   }, [bumpLayers]);
 
+  // ─── Frame Operations (Animation) ────────────────────────────────
+
+  /** Sync layersRef back into the active frame before switching. */
+  const syncCurrentFrame = useCallback(() => {
+    framesRef.current[activeFrameIndex].layers = layersRef.current;
+  }, [activeFrameIndex]);
+
+  const switchFrame = useCallback((newIndex: number) => {
+    if (newIndex === activeFrameIndex || newIndex < 0 || newIndex >= framesRef.current.length) return;
+    commitFloating();
+    // Save current frame's layers
+    syncCurrentFrame();
+    // Switch to new frame
+    layersRef.current = framesRef.current[newIndex].layers;
+    setActiveFrameIndex(newIndex);
+    setActiveLayerIndex(Math.min(activeLayerIndex, framesRef.current[newIndex].layers.length - 1));
+    bumpLayers();
+    bumpFrames();
+    triggerRender();
+  }, [activeFrameIndex, activeLayerIndex, commitFloating, syncCurrentFrame, bumpLayers, bumpFrames, triggerRender]);
+
+  const addFrame = useCallback(() => {
+    commitFloating();
+    syncCurrentFrame();
+    const newFrame: FrameData = {
+      id: genFrameId(),
+      layers: [{
+        id: genLayerId(),
+        name: 'Background',
+        visible: true,
+        opacity: 1,
+        data: createBlankImageData(canvasWidth, canvasHeight),
+      }],
+    };
+    const insertIdx = activeFrameIndex + 1;
+    framesRef.current.splice(insertIdx, 0, newFrame);
+    layersRef.current = newFrame.layers;
+    setActiveFrameIndex(insertIdx);
+    setActiveLayerIndex(0);
+    bumpLayers();
+    bumpFrames();
+    triggerRender();
+    markDirty();
+  }, [activeFrameIndex, canvasWidth, canvasHeight, commitFloating, syncCurrentFrame, bumpLayers, bumpFrames, triggerRender, markDirty]);
+
+  const duplicateFrame = useCallback((sourceIdx: number) => {
+    commitFloating();
+    syncCurrentFrame();
+    const source = framesRef.current[sourceIdx];
+    const clonedLayers: LayerState[] = source.layers.map(l => ({
+      id: genLayerId(),
+      name: l.name,
+      visible: l.visible,
+      opacity: l.opacity,
+      data: cloneImageData(l.data),
+    }));
+    const newFrame: FrameData = {
+      id: genFrameId(),
+      layers: clonedLayers,
+      duration: source.duration,
+    };
+    const insertIdx = sourceIdx + 1;
+    framesRef.current.splice(insertIdx, 0, newFrame);
+    layersRef.current = newFrame.layers;
+    setActiveFrameIndex(insertIdx);
+    setActiveLayerIndex(0);
+    bumpLayers();
+    bumpFrames();
+    triggerRender();
+    markDirty();
+  }, [commitFloating, syncCurrentFrame, bumpLayers, bumpFrames, triggerRender, markDirty]);
+
+  const deleteFrame = useCallback((idx: number) => {
+    if (framesRef.current.length <= 1) return;
+    commitFloating();
+    syncCurrentFrame();
+    framesRef.current.splice(idx, 1);
+    const newActiveIdx = Math.min(activeFrameIndex, framesRef.current.length - 1);
+    layersRef.current = framesRef.current[newActiveIdx].layers;
+    setActiveFrameIndex(newActiveIdx);
+    setActiveLayerIndex(Math.min(activeLayerIndex, layersRef.current.length - 1));
+    bumpLayers();
+    bumpFrames();
+    triggerRender();
+    markDirty();
+  }, [activeFrameIndex, activeLayerIndex, commitFloating, syncCurrentFrame, bumpLayers, bumpFrames, triggerRender, markDirty]);
+
+  const reorderFrame = useCallback((fromIdx: number, toIdx: number) => {
+    if (fromIdx === toIdx) return;
+    syncCurrentFrame();
+    const [moved] = framesRef.current.splice(fromIdx, 1);
+    framesRef.current.splice(toIdx, 0, moved);
+    // Track active frame
+    let newActiveIdx = activeFrameIndex;
+    if (fromIdx === activeFrameIndex) {
+      newActiveIdx = toIdx;
+    } else if (fromIdx < activeFrameIndex && toIdx >= activeFrameIndex) {
+      newActiveIdx = activeFrameIndex - 1;
+    } else if (fromIdx > activeFrameIndex && toIdx <= activeFrameIndex) {
+      newActiveIdx = activeFrameIndex + 1;
+    }
+    layersRef.current = framesRef.current[newActiveIdx].layers;
+    setActiveFrameIndex(newActiveIdx);
+    bumpFrames();
+    markDirty();
+  }, [activeFrameIndex, syncCurrentFrame, bumpFrames, markDirty]);
+
+  const handleAnimPlayPause = useCallback(() => {
+    setIsAnimPlaying(p => !p);
+  }, []);
+
+  const handleAnimFrameChange = useCallback((idx: number) => {
+    // Sync from preview playback
+    if (idx !== activeFrameIndex) {
+      switchFrame(idx);
+    }
+  }, [activeFrameIndex, switchFrame]);
+
+  // Frame thumbnails for timeline
+  const frameInfos = useMemo(() => {
+    // Sync current frame before computing thumbnails
+    framesRef.current[activeFrameIndex].layers = layersRef.current;
+    return framesRef.current.map(frame => ({
+      id: frame.id,
+      thumbnail: generateFrameThumbnail(
+        frame.layers.map(l => l.data),
+        frame.layers.map(l => l.visible),
+        frame.layers.map(l => Math.round(l.opacity * 255)),
+        canvasWidth, canvasHeight,
+      ),
+    }));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameRevision, layerRevision, canvasWidth, canvasHeight, activeFrameIndex]);
+
+  // Composited frame data URLs for animation preview
+  const frameCompositeUrls = useMemo(() => {
+    framesRef.current[activeFrameIndex].layers = layersRef.current;
+    return framesRef.current.map(frame => {
+      const composite = compositeLayers(
+        frame.layers.map(l => l.data),
+        frame.layers.map(l => l.visible),
+        frame.layers.map(l => Math.round(l.opacity * 255)),
+        canvasWidth, canvasHeight,
+      );
+      return pixelDataToBase64(composite);
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [frameRevision, layerRevision, canvasWidth, canvasHeight, activeFrameIndex]);
+
   // ─── Apply / Save ──────────────────────────────────────────────
 
   const getComposite = useCallback((): ImageData => {
@@ -1187,6 +1540,8 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       }
       onApply(pngResult.url, projectResult?.url);
       clearPixelAutoSave();
+      dirtyRef.current = false;
+      onMetadataChange?.({ projectName, dirty: false });
       toast.success(`Saved "${projectName}"`);
     } catch (err) {
       console.error('Cloud save failed:', err);
@@ -1221,14 +1576,63 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     await doSave(pngPath, projPath);
   }, [projectName, doSave]);
 
+  // ─── Export Sprite Sheet ─────────────────────────────────────────
+
+  const handleExportSpriteSheet = useCallback(async () => {
+    if (framesRef.current.length <= 1) {
+      toast.info('Need 2+ frames to export a sprite sheet');
+      return;
+    }
+    commitFloating();
+    syncCurrentFrame();
+    setSaving(true);
+    try {
+      const frameLayers = framesRef.current.map(f => ({
+        data: f.layers.map(l => l.data),
+        visibilities: f.layers.map(l => l.visible),
+        opacities: f.layers.map(l => Math.round(l.opacity * 255)),
+      }));
+      const sheetData = compositeFramesToSpriteSheet(frameLayers, canvasWidth, canvasHeight);
+      const sheetBase64 = pixelDataToBase64(sheetData);
+
+      const safeName = projectName.trim().replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase() || 'untitled';
+      const ts = Date.now();
+      const sheetPath = `pixel-art/${safeName}/${ts}-${safeName}-spritesheet.png`;
+      const result = await uploadMediaDataUrlToPath(sheetBase64, sheetPath);
+      if (result?.url) {
+        // Copy SpriteSheetConfig metadata to clipboard
+        const config = {
+          imageUrl: result.url,
+          frameWidth: canvasWidth,
+          frameHeight: canvasHeight,
+          frameCount: framesRef.current.length,
+          frameDuration: Math.round(1000 / animFrameRate),
+        };
+        try {
+          await navigator.clipboard.writeText(JSON.stringify(config, null, 2));
+          toast.success(`Sprite sheet exported! Config copied to clipboard.`);
+        } catch {
+          toast.success(`Sprite sheet exported to ${result.url}`);
+        }
+      } else {
+        toast.error('Failed to upload sprite sheet');
+      }
+    } catch (err) {
+      console.error('Sprite sheet export failed:', err);
+      toast.error('Sprite sheet export failed');
+    } finally {
+      setSaving(false);
+    }
+  }, [commitFloating, syncCurrentFrame, canvasWidth, canvasHeight, projectName, animFrameRate]);
+
   // ─── Clipboard (Selection) ────────────────────────────────────────
 
   const handleCopy = useCallback(() => {
     if (!selection) return;
     if (selection.floatingData) {
-      clipboardRef.current = cloneImageData(selection.floatingData);
+      setGlobalClipboard(selection.floatingData);
     } else {
-      clipboardRef.current = extractRegion(getActiveLayer().data, selection.x, selection.y, selection.w, selection.h);
+      setGlobalClipboard(extractRegion(getActiveLayer().data, selection.x, selection.y, selection.w, selection.h));
     }
     toast.success('Copied to clipboard');
   }, [selection, getActiveLayer]);
@@ -1249,10 +1653,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   }, [selection, handleCopy, history, getSnapshot, getActiveLayer, bumpLayers, triggerRender]);
 
   const handlePaste = useCallback(() => {
-    if (!clipboardRef.current) return;
+    const pastedData = getGlobalClipboard();
+    if (!pastedData) return;
     commitFloating();
     history.push(getSnapshot());
-    const pastedData = cloneImageData(clipboardRef.current);
     setSelection({
       x: 0, y: 0,
       w: pastedData.width, h: pastedData.height,
@@ -1302,7 +1706,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       } else if (ctrl && e.key === 'x') {
         if (selection) { e.preventDefault(); handleCut(); }
       } else if (ctrl && e.key === 'v') {
-        if (clipboardRef.current) { e.preventDefault(); handlePaste(); }
+        if (hasGlobalClipboard()) { e.preventDefault(); handlePaste(); }
+      } else if (ctrl && e.shiftKey && (e.key === 'd' || e.key === 'D')) {
+        e.preventDefault();
+        duplicateFrame(activeFrameIndex);
       } else if (e.key === 'Delete' || e.key === 'Backspace') {
         if (selection) { e.preventDefault(); handleDeleteSelection(); }
       } else if (e.key === 'Escape') {
@@ -1328,6 +1735,18 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           case '-': zoomOut(); break;
           case '[': setBrushSize(s => Math.max(1, s - 1)); break;
           case ']': setBrushSize(s => Math.min(16, s + 1)); break;
+          case ',': case '<':
+            // Previous frame
+            if (framesRef.current.length > 1) {
+              switchFrame(Math.max(0, activeFrameIndex - 1));
+            }
+            break;
+          case '.': case '>':
+            // Next frame
+            if (framesRef.current.length > 1) {
+              switchFrame(Math.min(framesRef.current.length - 1, activeFrameIndex + 1));
+            }
+            break;
         }
         if (e.key === '?') {
           setShowShortcuts(s => !s);
@@ -1337,7 +1756,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool, showShortcuts]);
+  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool, showShortcuts, switchFrame, duplicateFrame, activeFrameIndex]);
 
   // ─── Tool Config ────────────────────────────────────────────────
 
@@ -1582,6 +2001,22 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
                 ['[ / ]', 'Brush size'],
                 ['Middle drag', 'Pan canvas'],
                 ['?', 'This reference'],
+              ].map(([key, label]) => (
+                <div key={key} className="flex items-center gap-3">
+                  <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
+                  <span className="text-parchment-200">{label}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+          {/* Animation */}
+          <div>
+            <h3 className="text-xs font-bold text-stone-400 uppercase mb-2">Animation</h3>
+            <div className="space-y-1.5">
+              {[
+                ['< / ,', 'Previous frame'],
+                ['> / .', 'Next frame'],
+                ['Ctrl+Shift+D', 'Duplicate frame'],
               ].map(([key, label]) => (
                 <div key={key} className="flex items-center gap-3">
                   <kbd className="bg-stone-700 border border-stone-600 rounded px-2 py-0.5 text-xs font-mono min-w-[28px] text-center">{key}</kbd>
@@ -1960,12 +2395,33 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
                 Save As
               </button>
             )}
+            {framesRef.current.length > 1 && (
+              <button
+                onClick={handleExportSpriteSheet}
+                disabled={saving}
+                className="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-sm disabled:opacity-50"
+                title="Export as horizontal sprite sheet PNG"
+              >
+                Export Sheet
+              </button>
+            )}
           </div>
         </div>
 
         {/* Toolbar */}
         <div className="flex items-center gap-1 px-4 py-1.5 bg-stone-800 border-b border-stone-700 flex-wrap">
           {toolbarButtons}
+          {/* Timeline toggle */}
+          <span className="text-stone-600 mx-1">|</span>
+          <button
+            onClick={() => setShowTimeline(s => !s)}
+            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+              showTimeline ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+            }`}
+            title="Toggle animation timeline"
+          >
+            🎬 Timeline
+          </button>
         </div>
 
         {/* Main content */}
@@ -1981,29 +2437,67 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
             </div>
           </div>
 
-          {/* Canvas area with horizontal scroll */}
-          <div className="flex-1 relative bg-stone-950 overflow-auto">
-            <canvas
-              ref={canvasRef}
-              className="absolute inset-0 w-full h-full"
-              style={{ touchAction: 'none', cursor: canvasCursor }}
-              onPointerDown={handlePointerDown}
-              onPointerMove={handlePointerMove}
-              onPointerUp={handlePointerUp}
-              onPointerCancel={handlePointerUp}
-              onWheel={handleWheel}
-            />
-            {/* Status bar */}
-            <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1 bg-stone-900/80 text-xs text-stone-400 pointer-events-none">
-              <span>Zoom: {zoom}x | Brush: {brushSize}</span>
-              <span>
-                {cursorPos ? `Pos: (${cursorPos.x}, ${cursorPos.y})` : ''}
-                {selection ? ` | Sel: ${selection.w}x${selection.h}` : ''}
-              </span>
-              <span>Layer: {getActiveLayer().name}</span>
+          {/* Canvas + Timeline column */}
+          <div className="flex-1 flex flex-col min-h-0">
+            {/* Canvas area */}
+            <div className="flex-1 relative bg-stone-950 overflow-auto">
+              <canvas
+                ref={canvasRef}
+                className="absolute inset-0 w-full h-full"
+                style={{ touchAction: 'none', cursor: canvasCursor }}
+                onPointerDown={handlePointerDown}
+                onPointerMove={handlePointerMove}
+                onPointerUp={handlePointerUp}
+                onPointerCancel={handlePointerUp}
+                onWheel={handleWheel}
+              />
+              {/* Status bar */}
+              <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1 bg-stone-900/80 text-xs text-stone-400 pointer-events-none">
+                <span>Zoom: {zoom}x | Brush: {brushSize}</span>
+                <span>
+                  {cursorPos ? `Pos: (${cursorPos.x}, ${cursorPos.y})` : ''}
+                  {selection ? ` | Sel: ${selection.w}x${selection.h}` : ''}
+                </span>
+                <span>
+                  Frame: {activeFrameIndex + 1}/{framesRef.current.length}
+                  {' | '}Layer: {getActiveLayer().name}
+                </span>
+              </div>
             </div>
+
+            {/* Timeline */}
+            {showTimeline && (
+              <PixelEditorTimeline
+                frames={frameInfos}
+                activeFrameIndex={activeFrameIndex}
+                frameRate={animFrameRate}
+                isPlaying={isAnimPlaying}
+                onionSkinning={onionSkinning}
+                onSelectFrame={switchFrame}
+                onAddFrame={addFrame}
+                onDuplicateFrame={duplicateFrame}
+                onDeleteFrame={deleteFrame}
+                onReorderFrame={reorderFrame}
+                onSetFrameRate={setAnimFrameRate}
+                onPlayPause={handleAnimPlayPause}
+                onSetOnionSkinning={setOnionSkinning}
+              />
+            )}
           </div>
         </div>
+
+        {/* Animation Preview (floating) */}
+        {showTimeline && framesRef.current.length > 1 && (
+          <PixelEditorAnimationPreview
+            frameThumbnails={frameCompositeUrls}
+            frameRate={animFrameRate}
+            loop={animLoop}
+            canvasWidth={canvasWidth}
+            canvasHeight={canvasHeight}
+            onFrameChange={handleAnimFrameChange}
+          />
+        )}
+
         {shortcutsModal}
         {openModal}
       </div>
@@ -2070,6 +2564,15 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 py-1 bg-stone-800 border-b border-stone-700 flex-wrap">
         {toolbarButtons}
+        <button
+          onClick={() => setShowTimeline(s => !s)}
+          className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+            showTimeline ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-700 text-stone-400'
+          }`}
+          title="Timeline"
+        >
+          🎬
+        </button>
       </div>
 
       {/* Canvas */}
@@ -2085,6 +2588,25 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           onWheel={handleWheel}
         />
       </div>
+
+      {/* Timeline (mobile) */}
+      {showTimeline && (
+        <PixelEditorTimeline
+          frames={frameInfos}
+          activeFrameIndex={activeFrameIndex}
+          frameRate={animFrameRate}
+          isPlaying={isAnimPlaying}
+          onionSkinning={onionSkinning}
+          onSelectFrame={switchFrame}
+          onAddFrame={addFrame}
+          onDuplicateFrame={duplicateFrame}
+          onDeleteFrame={deleteFrame}
+          onReorderFrame={reorderFrame}
+          onSetFrameRate={setAnimFrameRate}
+          onPlayPause={handleAnimPlayPause}
+          onSetOnionSkinning={setOnionSkinning}
+        />
+      )}
 
       {/* Bottom bar: palette + layers + controls */}
       <div className="bg-stone-900 border-t border-stone-700 p-2 space-y-2 max-h-[45vh] overflow-y-auto">
@@ -2115,4 +2637,6 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       {shortcutsModal}
     </div>
   );
-};
+});
+
+PixelEditor.displayName = 'PixelEditor';
