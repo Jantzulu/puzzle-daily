@@ -12,7 +12,19 @@ import { MediaLibraryTab } from './MediaLibraryTab';
 
 type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'media';
 
-const VALID_TABS: AssetTab[] = ['characters', 'enemies', 'spells', 'status_effects', 'skins', 'tiles', 'objects', 'collectibles', 'media'];
+const TABS: { id: AssetTab; label: string; icon: string }[] = [
+  { id: 'characters', label: 'Heroes', icon: '\u2694\uFE0F' },
+  { id: 'enemies', label: 'Enemies', icon: '\uD83D\uDC79' },
+  { id: 'spells', label: 'Spells', icon: '\u2728' },
+  { id: 'status_effects', label: 'Enchantments', icon: '\uD83D\uDD2E' },
+  { id: 'tiles', label: 'Tiles', icon: '\uD83E\uDDF1' },
+  { id: 'skins', label: 'Skins', icon: '\uD83C\uDFA8' },
+  { id: 'objects', label: 'Objects', icon: '\uD83C\uDFFA' },
+  { id: 'collectibles', label: 'Items', icon: '\uD83D\uDC8E' },
+  { id: 'media', label: 'Media', icon: '\u2601\uFE0F' },
+];
+
+const VALID_TABS = TABS.map(t => t.id);
 
 export const AssetManager: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -33,68 +45,38 @@ export const AssetManager: React.FC = () => {
   const handleClearCache = () => {
     localStorage.clear();
     setShowClearConfirm(false);
-    // Reload to reset all state
     window.location.reload();
   };
 
-  const tabClass = (tab: AssetTab) => `
-    dungeon-tab whitespace-nowrap
-    ${activeTab === tab ? 'dungeon-tab-active' : ''}
-  `;
-
   return (
-    <div className="min-h-screen theme-root text-parchment-200">
-      {/* Header with tabs */}
-      <div className="bg-stone-900 border-b-2 border-stone-700">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4">
-          <div className="mb-3 md:mb-4 flex items-center justify-between">
-            <h1 className="text-2xl md:text-3xl font-bold font-medieval text-copper-400 text-shadow-dungeon">Asset Manager</h1>
-            <button
-              onClick={() => setShowClearConfirm(true)}
-              className="dungeon-btn-danger text-xs px-2 py-1"
-              title="Clear all localStorage data"
-            >
-              🗑️ Clear Cache
-            </button>
-          </div>
-
-          {/* Tabs - horizontally scrollable on mobile */}
-          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 dungeon-scrollbar">
-            <div className="flex gap-1 md:gap-2 min-w-max">
-              <button onClick={() => setActiveTab('characters')} className={tabClass('characters')}>
-                ⚔️ Heroes
-              </button>
-              <button onClick={() => setActiveTab('enemies')} className={tabClass('enemies')}>
-                👹 Enemies
-              </button>
-              <button onClick={() => setActiveTab('spells')} className={tabClass('spells')}>
-                ✨ Spells
-              </button>
-              <button onClick={() => setActiveTab('status_effects')} className={tabClass('status_effects')}>
-                🔮 Enchantments
-              </button>
-              <button onClick={() => setActiveTab('tiles')} className={tabClass('tiles')}>
-                🧱 Tiles
-              </button>
-              <button onClick={() => setActiveTab('skins')} className={tabClass('skins')}>
-                🎨 Skins
-              </button>
-              <button onClick={() => setActiveTab('objects')} className={tabClass('objects')}>
-                🏺 Objects
-              </button>
-              <button onClick={() => setActiveTab('collectibles')} className={tabClass('collectibles')}>
-                💎 Items
-              </button>
-              <button onClick={() => setActiveTab('media')} className={tabClass('media')}>
-                ☁️ Media
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-col h-[calc(100vh-60px)]">
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 px-4 py-1 bg-stone-800 border-b border-stone-700 overflow-x-auto dungeon-scrollbar">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors border-b-2 whitespace-nowrap ${
+              activeTab === tab.id
+                ? 'bg-stone-700 text-parchment-100 border-arcane-500'
+                : 'text-stone-400 hover:text-stone-200 border-transparent hover:bg-stone-750'
+            }`}
+          >
+            <span className="mr-1.5">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+        <button
+          onClick={() => setShowClearConfirm(true)}
+          className="dungeon-btn-danger text-xs px-2 py-1 ml-auto flex-shrink-0"
+          title="Clear all localStorage data"
+        >
+          Clear Cache
+        </button>
       </div>
 
       {/* Tab content */}
-      <div>
+      <div className="flex-1 min-h-0 overflow-auto">
         {activeTab === 'characters' && <CharacterEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'enemies' && <EnemyEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'spells' && <SpellLibrary initialSelectedId={searchParams.get('id') || undefined} />}
@@ -122,7 +104,7 @@ export const AssetManager: React.FC = () => {
               <li>All other localStorage data</li>
             </ul>
             <p className="text-amber-400 text-sm mb-4">
-              ⚠️ Make sure you've pushed to cloud if you want to keep your data!
+              Make sure you've pushed to cloud if you want to keep your data!
             </p>
             <div className="flex gap-3 justify-end">
               <button

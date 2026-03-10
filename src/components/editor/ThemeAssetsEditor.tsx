@@ -928,14 +928,6 @@ export const ThemeAssetsEditor: React.FC = () => {
 
   return (
     <div className="max-w-4xl mx-auto px-4 md:px-8 py-4 md:py-6">
-      {/* Header */}
-      <div className="mb-6">
-        <h2 className="text-xl font-bold font-medieval text-copper-400 mb-2">Theme Assets</h2>
-        <p className="text-sm text-stone-400">
-          Customize colors, styles, and upload images to personalize the look of your game. Changes apply to both the editor and player-facing game.
-        </p>
-      </div>
-
       {/* Error message */}
       {error && (
         <div className="mb-4 p-3 bg-blood-900/50 border border-blood-600 rounded-pixel text-blood-200 text-sm">
@@ -943,58 +935,48 @@ export const ThemeAssetsEditor: React.FC = () => {
         </div>
       )}
 
-      {/* Import/Export */}
-      <div className="flex gap-2 mb-6">
-        <button onClick={handleExport} className="dungeon-btn text-sm">
-          Export All Assets
-        </button>
-        <button onClick={() => importInputRef.current?.click()} className="dungeon-btn text-sm">
-          Import Assets
-        </button>
-        <input
-          ref={importInputRef}
-          type="file"
-          accept=".json"
-          onChange={handleImport}
-          className="hidden"
-        />
-      </div>
-
-      {/* Category tabs */}
-      <div className="flex flex-wrap gap-2 mb-6 border-b-2 border-stone-700 pb-4">
+      {/* Category tabs + actions */}
+      <div className="flex flex-wrap items-center gap-1 mb-4 pb-2 border-b border-stone-700">
         {ASSET_CATEGORIES.map((category) => (
           <button
             key={category}
             onClick={() => setActiveCategory(category)}
-            className={`dungeon-tab flex items-center gap-1 ${activeCategory === category ? 'dungeon-tab-active' : ''}`}
+            className={`px-3 py-1.5 text-xs font-medium rounded transition-colors border-b-2 ${
+              activeCategory === category
+                ? 'bg-stone-700 text-parchment-100 border-arcane-500'
+                : 'text-stone-400 hover:text-stone-200 border-transparent hover:bg-stone-750'
+            }`}
           >
-            <span>{categoryIcons[category]}</span>
-            <span>{categoryLabels[category]}</span>
+            <span className="mr-1">{categoryIcons[category]}</span>
+            {categoryLabels[category]}
           </button>
         ))}
+        <div className="flex gap-1 ml-auto flex-shrink-0">
+          {activeCategory === 'colors' && (
+            <button onClick={handleResetAllColors} className="dungeon-btn-danger text-xs px-2 py-1">
+              Reset Colors
+            </button>
+          )}
+          {activeCategory === 'styles' && (
+            <button onClick={handleResetAllStyles} className="dungeon-btn-danger text-xs px-2 py-1">
+              Reset Styles
+            </button>
+          )}
+          <button onClick={handleExport} className="dungeon-btn text-xs px-2 py-1">
+            Export
+          </button>
+          <button onClick={() => importInputRef.current?.click()} className="dungeon-btn text-xs px-2 py-1">
+            Import
+          </button>
+          <input
+            ref={importInputRef}
+            type="file"
+            accept=".json"
+            onChange={handleImport}
+            className="hidden"
+          />
+        </div>
       </div>
-
-      {/* Reset buttons for colors and styles */}
-      {activeCategory === 'colors' && (
-        <div className="mb-4">
-          <button
-            onClick={handleResetAllColors}
-            className="dungeon-btn-danger text-sm"
-          >
-            Reset All Colors to Default
-          </button>
-        </div>
-      )}
-      {activeCategory === 'styles' && (
-        <div className="mb-4">
-          <button
-            onClick={handleResetAllStyles}
-            className="dungeon-btn-danger text-sm"
-          >
-            Reset All Styles to Default
-          </button>
-        </div>
-      )}
 
       {/* Asset grid */}
       <div className={`grid gap-4 ${

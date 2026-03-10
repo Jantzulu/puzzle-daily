@@ -7,7 +7,14 @@ import { ActivityFeed } from './ActivityFeed';
 
 type SettingsTab = 'sounds' | 'theme' | 'help' | 'activity';
 
-const VALID_TABS: SettingsTab[] = ['sounds', 'theme', 'help', 'activity'];
+const TABS: { id: SettingsTab; label: string; icon: string }[] = [
+  { id: 'sounds', label: 'Sounds', icon: '\uD83D\uDD0A' },
+  { id: 'theme', label: 'Theme', icon: '\uD83D\uDDBC\uFE0F' },
+  { id: 'help', label: 'Help', icon: '\u2753' },
+  { id: 'activity', label: 'Activity', icon: '\uD83D\uDCDC' },
+];
+
+const VALID_TABS = TABS.map(t => t.id);
 
 export const SettingsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
@@ -24,46 +31,32 @@ export const SettingsPage: React.FC = () => {
     }
   }, [searchParams]);
 
-  const tabClass = (tab: SettingsTab) => `
-    dungeon-tab whitespace-nowrap
-    ${activeTab === tab ? 'dungeon-tab-active' : ''}
-  `;
-
   return (
-    <div className="min-h-screen theme-root text-parchment-200">
-      {/* Header with tabs */}
-      <div className="bg-stone-900 border-b-2 border-stone-700">
-        <div className="max-w-7xl mx-auto px-4 md:px-8 py-3 md:py-4">
-          <div className="mb-3 md:mb-4">
-            <h1 className="text-2xl md:text-3xl font-bold font-medieval text-copper-400 text-shadow-dungeon">Settings</h1>
-          </div>
-
-          {/* Tabs */}
-          <div className="overflow-x-auto -mx-4 px-4 md:mx-0 md:px-0 dungeon-scrollbar">
-            <div className="flex gap-1 md:gap-2 min-w-max">
-              <button onClick={() => setActiveTab('sounds')} className={tabClass('sounds')}>
-                🔊 Sounds
-              </button>
-              <button onClick={() => setActiveTab('theme')} className={tabClass('theme')}>
-                🖼️ Theme
-              </button>
-              <button onClick={() => setActiveTab('help')} className={tabClass('help')}>
-                ❓ Help
-              </button>
-              <button onClick={() => setActiveTab('activity')} className={tabClass('activity')}>
-                📜 Activity
-              </button>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-col h-[calc(100vh-60px)]">
+      {/* Tab bar */}
+      <div className="flex items-center gap-1 px-4 py-1 bg-stone-800 border-b border-stone-700">
+        {TABS.map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id)}
+            className={`px-4 py-2 text-sm font-medium rounded-t transition-colors border-b-2 ${
+              activeTab === tab.id
+                ? 'bg-stone-700 text-parchment-100 border-arcane-500'
+                : 'text-stone-400 hover:text-stone-200 border-transparent hover:bg-stone-750'
+            }`}
+          >
+            <span className="mr-1.5">{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
       </div>
 
       {/* Tab content */}
-      <div>
+      <div className="flex-1 min-h-0 overflow-auto">
         {activeTab === 'sounds' && <SoundEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'theme' && <ThemeAssetsEditor />}
         {activeTab === 'help' && (
-          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6" style={{ height: 'calc(100vh - 130px)' }}>
+          <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6 h-full">
             <HelpContentEditor />
           </div>
         )}
