@@ -305,6 +305,23 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     }
   }, [bumpLayers, centerCanvas, triggerRender, history]);
 
+  // ─── Build Project Helper (declared early for autosave effects) ──
+
+  const buildCurrentProject = useCallback((): PixelEditorProject => ({
+    version: 1,
+    name: projectName,
+    width: canvasWidth,
+    height: canvasHeight,
+    layers: layersRef.current.map(l => ({
+      id: l.id,
+      name: l.name,
+      visible: l.visible,
+      opacity: l.opacity,
+      data: pixelDataToBase64(l.data),
+    })),
+    palette: customColors.length > 0 ? customColors : undefined,
+  }), [projectName, canvasWidth, canvasHeight, customColors]);
+
   // ─── Initialize ─────────────────────────────────────────────────
 
   useEffect(() => {
@@ -1109,21 +1126,6 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     const base64 = pixelDataToBase64(getComposite());
     onApply(base64);
   }, [onApply, getComposite, commitFloating]);
-
-  const buildCurrentProject = useCallback((): PixelEditorProject => ({
-    version: 1,
-    name: projectName,
-    width: canvasWidth,
-    height: canvasHeight,
-    layers: layersRef.current.map(l => ({
-      id: l.id,
-      name: l.name,
-      visible: l.visible,
-      opacity: l.opacity,
-      data: pixelDataToBase64(l.data),
-    })),
-    palette: customColors.length > 0 ? customColors : undefined,
-  }), [projectName, canvasWidth, canvasHeight, customColors]);
 
   const doSave = useCallback(async (pngPath: string, projPath: string) => {
     commitFloating();

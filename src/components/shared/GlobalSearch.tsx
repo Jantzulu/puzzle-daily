@@ -24,7 +24,7 @@ const CATEGORIES = [
   { key: 'skins', icon: '🎨', label: 'Skins', route: '/assets', tab: 'skins' },
   { key: 'objects', icon: '🏺', label: 'Objects', route: '/assets', tab: 'objects' },
   { key: 'collectibles', icon: '💎', label: 'Items', route: '/assets', tab: 'collectibles' },
-  { key: 'sounds', icon: '🔊', label: 'Sounds', route: '/settings', tab: 'sounds' },
+  { key: 'sounds', icon: '🔊', label: 'Sounds', route: '/assets', tab: 'sounds' },
 ];
 
 function loadAllAssets(): SearchResult[] {

@@ -9,8 +9,9 @@ import { TileTypeEditor } from './TileTypeEditor';
 import { ObjectEditor } from './ObjectEditor';
 import { CollectibleEditor } from './CollectibleEditor';
 import { MediaLibraryTab } from './MediaLibraryTab';
+import { SoundEditor } from './SoundEditor';
 
-type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'media';
+type AssetTab = 'characters' | 'enemies' | 'spells' | 'status_effects' | 'skins' | 'tiles' | 'objects' | 'collectibles' | 'sounds' | 'media';
 
 const TABS: { id: AssetTab; label: string; icon: string }[] = [
   { id: 'characters', label: 'Heroes', icon: '\u2694\uFE0F' },
@@ -21,6 +22,7 @@ const TABS: { id: AssetTab; label: string; icon: string }[] = [
   { id: 'skins', label: 'Skins', icon: '\uD83C\uDFA8' },
   { id: 'objects', label: 'Objects', icon: '\uD83C\uDFFA' },
   { id: 'collectibles', label: 'Items', icon: '\uD83D\uDC8E' },
+  { id: 'sounds', label: 'Sounds', icon: '\uD83D\uDD0A' },
   { id: 'media', label: 'Media', icon: '\u2601\uFE0F' },
 ];
 
@@ -85,6 +87,7 @@ export const AssetManager: React.FC = () => {
         {activeTab === 'tiles' && <TileTypeEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'objects' && <ObjectEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'collectibles' && <CollectibleEditor initialSelectedId={searchParams.get('id') || undefined} />}
+        {activeTab === 'sounds' && <SoundEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'media' && <MediaLibraryTab />}
       </div>
 

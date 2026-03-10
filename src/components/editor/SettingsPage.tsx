@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { SoundEditor } from './SoundEditor';
 import { ThemeAssetsEditor } from './ThemeAssetsEditor';
 import { HelpContentEditor } from './HelpContentEditor';
 import { ActivityFeed } from './ActivityFeed';
 
-type SettingsTab = 'sounds' | 'theme' | 'help' | 'activity';
+type SettingsTab = 'theme' | 'help' | 'activity';
 
 const TABS: { id: SettingsTab; label: string; icon: string }[] = [
-  { id: 'sounds', label: 'Sounds', icon: '\uD83D\uDD0A' },
   { id: 'theme', label: 'Theme', icon: '\uD83D\uDDBC\uFE0F' },
   { id: 'help', label: 'Help', icon: '\u2753' },
   { id: 'activity', label: 'Activity', icon: '\uD83D\uDCDC' },
@@ -20,7 +18,7 @@ export const SettingsPage: React.FC = () => {
   const [searchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const tab = searchParams.get('tab') as SettingsTab;
-    return tab && VALID_TABS.includes(tab) ? tab : 'sounds';
+    return tab && VALID_TABS.includes(tab) ? tab : 'theme';
   });
 
   // Sync URL params when navigated to from global search
@@ -53,7 +51,6 @@ export const SettingsPage: React.FC = () => {
 
       {/* Tab content */}
       <div className="flex-1 min-h-0 overflow-auto">
-        {activeTab === 'sounds' && <SoundEditor initialSelectedId={searchParams.get('id') || undefined} />}
         {activeTab === 'theme' && <ThemeAssetsEditor />}
         {activeTab === 'help' && (
           <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6 h-full">
