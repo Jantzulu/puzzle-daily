@@ -28,6 +28,7 @@ import {
   clearRegion,
   flipHorizontal,
   flipVertical,
+  renderFloatingPixels,
   renderSelectionOverlay,
   renderShapePreview,
   type PixelEditorProject,
@@ -139,6 +140,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const selectionStartRef = useRef<{ x: number; y: number } | null>(null);
   const selectionDragRef = useRef<{ startX: number; startY: number; origX: number; origY: number } | null>(null);
   const clipboardRef = useRef<ImageData | null>(null);
+  const shiftSelectRef = useRef<Selection | null>(null); // previous selection for Shift+additive
   const selectionAnimRef = useRef(0);
   const selectionRafRef = useRef<number | null>(null);
 
@@ -320,6 +322,11 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     );
 
     renderPixelCanvas(ctx, composite, zoom, panX, panY, showGrid, rect.width, rect.height);
+
+    // Floating selection pixels (render on top of composite so user sees them during move)
+    if (selection?.floatingData) {
+      renderFloatingPixels(ctx, selection.floatingData, selection.x, selection.y, zoom, panX, panY);
+    }
 
     // Shape preview overlay
     const shapeStart = shapeStartRef.current;
@@ -508,28 +515,37 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     // Selection tool
     if (tool === 'select') {
       if (selection && coord) {
-        // Check if clicking inside selection
-        const inSel = coord.x >= selection.x && coord.x < selection.x + selection.w &&
-                      coord.y >= selection.y && coord.y < selection.y + selection.h;
-        if (inSel) {
-          // Start dragging selection
-          if (!selection.floatingData) {
-            liftSelection();
+        // Check if clicking inside selection (only when not holding Shift for additive)
+        if (!e.shiftKey) {
+          const inSel = coord.x >= selection.x && coord.x < selection.x + selection.w &&
+                        coord.y >= selection.y && coord.y < selection.y + selection.h;
+          if (inSel) {
+            // Start dragging selection
+            if (!selection.floatingData) {
+              liftSelection();
+            }
+            selectionDragRef.current = {
+              startX: coord.x, startY: coord.y,
+              origX: selection.x, origY: selection.y,
+            };
+            isDrawingRef.current = true;
+            return;
+          } else {
+            // Click outside — commit floating and start new selection
+            commitFloating();
           }
-          selectionDragRef.current = {
-            startX: coord.x, startY: coord.y,
-            origX: selection.x, origY: selection.y,
-          };
-          isDrawingRef.current = true;
-          return;
         } else {
-          // Click outside — commit floating and start new selection
+          // Shift held — commit floating before additive selection
           commitFloating();
         }
       }
       if (coord) {
         selectionStartRef.current = { x: coord.x, y: coord.y };
-        setSelection(null);
+        // When Shift is held, keep the previous selection for union on pointerUp
+        if (!e.shiftKey) {
+          setSelection(null);
+        }
+        shiftSelectRef.current = e.shiftKey && selection ? { ...selection } : null;
         isDrawingRef.current = true;
       }
       return;
@@ -593,10 +609,20 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       if (uc) {
         const sx = selectionStartRef.current.x;
         const sy = selectionStartRef.current.y;
-        const x = Math.max(0, Math.min(sx, uc.x));
-        const y = Math.max(0, Math.min(sy, uc.y));
-        const x2 = Math.min(canvasWidth - 1, Math.max(sx, uc.x));
-        const y2 = Math.min(canvasHeight - 1, Math.max(sy, uc.y));
+        let x = Math.max(0, Math.min(sx, uc.x));
+        let y = Math.max(0, Math.min(sy, uc.y));
+        let x2 = Math.min(canvasWidth - 1, Math.max(sx, uc.x));
+        let y2 = Math.min(canvasHeight - 1, Math.max(sy, uc.y));
+
+        // Shift+select: union with previous selection
+        const prev = shiftSelectRef.current;
+        if (prev) {
+          x = Math.min(x, prev.x);
+          y = Math.min(y, prev.y);
+          x2 = Math.max(x2, prev.x + prev.w - 1);
+          y2 = Math.max(y2, prev.y + prev.h - 1);
+        }
+
         setSelection({ x, y, w: x2 - x + 1, h: y2 - y + 1 });
         triggerRender();
       }
@@ -637,6 +663,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     if (tool === 'select' || tool === 'move') {
       selectionStartRef.current = null;
       selectionDragRef.current = null;
+      shiftSelectRef.current = null;
     }
 
     isDrawingRef.current = false;
@@ -1121,7 +1148,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         title="Keyboard Shortcuts (?)"
         className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-400"
       >
-        ?
+        {'\u2328'} ?
       </button>
     </>
   );
@@ -1178,6 +1205,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
                 ['Ctrl+C', 'Copy selection'],
                 ['Ctrl+X', 'Cut selection'],
                 ['Ctrl+V', 'Paste'],
+                ['Shift+drag', 'Add to selection'],
                 ['Del', 'Delete selection'],
                 ['Esc', 'Deselect / commit'],
               ].map(([key, label]) => (

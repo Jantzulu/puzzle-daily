@@ -267,6 +267,31 @@ export function flipVertical(data: ImageData): ImageData {
 
 // ─── Rendering Overlays ─────────────────────────────────────────────
 
+/** Render floating selection pixels as a semi-transparent overlay. */
+export function renderFloatingPixels(
+  ctx: CanvasRenderingContext2D,
+  floatingData: ImageData,
+  selX: number, selY: number,
+  zoom: number, panX: number, panY: number
+): void {
+  // Create a temporary canvas from the floating ImageData
+  const tmp = document.createElement('canvas');
+  tmp.width = floatingData.width;
+  tmp.height = floatingData.height;
+  const tmpCtx = tmp.getContext('2d')!;
+  tmpCtx.putImageData(floatingData, 0, 0);
+
+  const screenX = panX + selX * zoom;
+  const screenY = panY + selY * zoom;
+  const screenW = floatingData.width * zoom;
+  const screenH = floatingData.height * zoom;
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+  ctx.drawImage(tmp, screenX, screenY, screenW, screenH);
+  ctx.restore();
+}
+
 export function renderSelectionOverlay(
   ctx: CanvasRenderingContext2D,
   sel: { x: number; y: number; w: number; h: number },
