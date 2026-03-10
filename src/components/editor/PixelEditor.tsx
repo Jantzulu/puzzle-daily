@@ -594,6 +594,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           centerCanvas(defaultWidth, defaultHeight);
         }
       } else {
+        bumpLayers(); // Ensure layerRevision bumps so initialLoadDoneRef guard is consumed
         centerCanvas(defaultWidth, defaultHeight);
       }
 
