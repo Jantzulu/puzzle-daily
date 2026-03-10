@@ -1744,28 +1744,29 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
                 min="0" max="100"
                 value={Math.round(layer.opacity * 100)}
                 onChange={(e) => setLayerOpacity(idx, parseInt(e.target.value) / 100)}
-                className="w-12 h-3"
+                className="w-12 h-3 accent-arcane-500"
                 onClick={(e) => e.stopPropagation()}
                 title={`Opacity: ${Math.round(layer.opacity * 100)}%`}
               />
+              <span className="text-[10px] text-stone-400 w-7 text-right tabular-nums">{Math.round(layer.opacity * 100)}%</span>
               {/* Move up/down */}
               <button
                 onClick={(e) => { e.stopPropagation(); moveLayer(idx, 1); }}
                 disabled={idx === layersRef.current.length - 1}
-                className="text-stone-500 hover:text-white disabled:opacity-20"
+                className="text-stone-300 hover:text-white disabled:opacity-20 px-0.5"
                 title="Move Up"
               >↑</button>
               <button
                 onClick={(e) => { e.stopPropagation(); moveLayer(idx, -1); }}
                 disabled={idx === 0}
-                className="text-stone-500 hover:text-white disabled:opacity-20"
+                className="text-stone-300 hover:text-white disabled:opacity-20 px-0.5"
                 title="Move Down"
               >↓</button>
               {/* Delete */}
               <button
                 onClick={(e) => { e.stopPropagation(); deleteLayer(idx); }}
                 disabled={layersRef.current.length <= 1}
-                className="text-red-500 hover:text-red-400 disabled:opacity-20"
+                className="text-red-400 hover:text-red-300 disabled:opacity-20 px-0.5"
                 title="Delete Layer"
               >✕</button>
             </div>
