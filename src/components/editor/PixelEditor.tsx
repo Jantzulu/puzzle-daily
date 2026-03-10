@@ -66,6 +66,8 @@ interface Selection {
 interface PixelEditorProps {
   initialImage?: string;
   projectUrl?: string;
+  /** Pre-serialized project JSON to restore (used by tab system to bypass global cache). */
+  initialProjectJson?: string;
   defaultWidth?: number;
   defaultHeight?: number;
   onApply: (base64: string, projectUrl?: string) => void;
@@ -131,6 +133,7 @@ function genFrameId() {
 export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   initialImage,
   projectUrl,
+  initialProjectJson,
   defaultWidth = 32,
   defaultHeight = 32,
   onApply,
@@ -461,8 +464,80 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   useEffect(() => {
     if (loaded) return;
 
+    /** Helper to hydrate a project from serialized JSON. Returns true on success. */
+    const hydrateFromJson = async (
+      json: string,
+      extra?: { pngPath?: string | null; projPath?: string | null; projUrl?: string | null },
+    ): Promise<boolean> => {
+      try {
+        const project = deserializeProject(json);
+        if (!project || project.frames.length === 0) return false;
+        const loadedFrames: FrameData[] = [];
+        for (const frameDef of project.frames) {
+          const frameLayers: LayerState[] = [];
+          for (const layerDef of frameDef.layers) {
+            const result = await imageToPixelData(layerDef.data, project.width, project.height);
+            frameLayers.push({
+              id: layerDef.id || genLayerId(),
+              name: layerDef.name || `Layer ${frameLayers.length + 1}`,
+              visible: layerDef.visible !== false,
+              opacity: layerDef.opacity ?? 1,
+              data: result.data,
+            });
+          }
+          if (frameLayers.length > 0) {
+            loadedFrames.push({ id: frameDef.id || genFrameId(), layers: frameLayers, duration: frameDef.duration });
+          }
+        }
+        if (loadedFrames.length === 0) return false;
+        framesRef.current = loadedFrames;
+        layersRef.current = loadedFrames[0].layers;
+        setActiveFrameIndex(0);
+        setCanvasWidth(project.width);
+        setCanvasHeight(project.height);
+        setResizeW(project.width);
+        setResizeH(project.height);
+        if (project.name) setProjectName(project.name);
+        if (project.palette) setCustomColors(project.palette);
+        if (project.frameRate) setAnimFrameRate(project.frameRate);
+        if (project.loop !== undefined) setAnimLoop(project.loop);
+        setShowTimeline(loadedFrames.length > 1);
+        if (extra?.pngPath !== undefined) setCurrentPngPath(extra.pngPath);
+        if (extra?.projPath !== undefined) setCurrentProjectPath(extra.projPath);
+        if (extra?.projUrl !== undefined) setCurrentProjectUrl(extra.projUrl);
+        setActiveLayerIndex(0);
+        bumpLayers();
+        bumpFrames();
+        centerCanvas(project.width, project.height);
+        triggerRender();
+        return true;
+      } catch { return false; }
+    };
+
     const loadContent = async () => {
-      // 1. Check for explicit project URL (from page params)
+      // 1. Check for initialProjectJson (tab system — contains latest serialized state
+      //    including unsaved edits, so it takes priority over projectUrl for tab-switching)
+      if (initialProjectJson) {
+        const ok = await hydrateFromJson(initialProjectJson);
+        if (ok) {
+          // Restore save paths from the tab's project URL
+          if (projectUrl) {
+            setCurrentProjectUrl(projectUrl);
+            try {
+              const u = new URL(projectUrl);
+              const pathMatch = u.pathname.match(/\/object\/public\/[^/]+\/(.+)/);
+              if (pathMatch) {
+                setCurrentProjectPath(pathMatch[1]);
+                setCurrentPngPath(pathMatch[1].replace(/\.project$/, ''));
+              }
+            } catch { /* ignore */ }
+          }
+          setLoaded(true);
+          return;
+        }
+      }
+
+      // 2. Check for explicit project URL (first load from browser/URL param)
       if (projectUrl) {
         const ok = await loadProjectFromUrl(projectUrl);
         if (ok) {
@@ -471,59 +546,22 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         }
       }
 
-      // 2. Check for cached state (tab switching persistence)
-      if (isPage) {
+      // 3. Check for cached state (legacy: non-tab page mode, e.g., modal editors)
+      if (isPage && !initialProjectJson) {
         const cached = getCachedPixelEditorState();
         if (cached) {
-          try {
-            const project = deserializeProject(cached.projectJson);
-            if (project && project.frames.length > 0) {
-              const loadedFrames: FrameData[] = [];
-              for (const frameDef of project.frames) {
-                const frameLayers: LayerState[] = [];
-                for (const layerDef of frameDef.layers) {
-                  const result = await imageToPixelData(layerDef.data, project.width, project.height);
-                  frameLayers.push({
-                    id: layerDef.id || genLayerId(),
-                    name: layerDef.name || `Layer ${frameLayers.length + 1}`,
-                    visible: layerDef.visible !== false,
-                    opacity: layerDef.opacity ?? 1,
-                    data: result.data,
-                  });
-                }
-                if (frameLayers.length > 0) {
-                  loadedFrames.push({ id: frameDef.id || genFrameId(), layers: frameLayers, duration: frameDef.duration });
-                }
-              }
-              if (loadedFrames.length > 0) {
-                framesRef.current = loadedFrames;
-                layersRef.current = loadedFrames[0].layers;
-                setActiveFrameIndex(0);
-                setCanvasWidth(project.width);
-                setCanvasHeight(project.height);
-                setResizeW(project.width);
-                setResizeH(project.height);
-                if (project.name) setProjectName(project.name);
-                if (project.palette) setCustomColors(project.palette);
-                if (project.frameRate) setAnimFrameRate(project.frameRate);
-                if (project.loop !== undefined) setAnimLoop(project.loop);
-                setShowTimeline(loadedFrames.length > 1);
-                setCurrentPngPath(cached.currentPngPath);
-                setCurrentProjectPath(cached.currentProjectPath);
-                setCurrentProjectUrl(cached.currentProjectUrl);
-                setActiveLayerIndex(0);
-                bumpLayers();
-                bumpFrames();
-                centerCanvas(project.width, project.height);
-                setLoaded(true);
-                triggerRender();
-                return;
-              }
-            }
-          } catch { /* fall through */ }
+          const ok = await hydrateFromJson(cached.projectJson, {
+            pngPath: cached.currentPngPath,
+            projPath: cached.currentProjectPath,
+            projUrl: cached.currentProjectUrl,
+          });
+          if (ok) {
+            setLoaded(true);
+            return;
+          }
         }
 
-        // 3. Check for autosave recovery (crash/refresh recovery)
+        // 4. Check for autosave recovery (crash/refresh recovery)
         const autoSave = readPixelAutoSave();
         if (autoSave) {
           setRecoveryData(autoSave);

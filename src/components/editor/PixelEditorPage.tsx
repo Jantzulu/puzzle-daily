@@ -81,6 +81,12 @@ export const PixelEditorPage: React.FC = () => {
 
   // Handle "New" from within the editor
   const handleNew = useCallback(() => {
+    // Prompt to save if dirty
+    if (activeTab.dirty) {
+      if (!window.confirm('Current project has unsaved changes. Discard and create a new project?')) {
+        return;
+      }
+    }
     clearCachedPixelEditorState();
     clearPixelAutoSave();
     // Instead of creating a whole new tab, reset the current one
@@ -94,7 +100,7 @@ export const PixelEditorPage: React.FC = () => {
     });
     setEditorKey(k => k + 1);
     setSearchParams({});
-  }, [setSearchParams, updateActiveTab]);
+  }, [setSearchParams, updateActiveTab, activeTab.dirty]);
 
   const handleApply = useCallback((_base64: string, _projectUrl?: string) => {
     // Save handled inside PixelEditor — toast shown there
@@ -153,6 +159,7 @@ export const PixelEditorPage: React.FC = () => {
           key={`${activeTabId}-${editorKey}`}
           mode="page"
           projectUrl={activeTab.currentProjectUrl || projectUrlFromParams}
+          initialProjectJson={activeTab.projectJson || undefined}
           onApply={handleApply}
           onClose={() => {}}
           onNew={handleNew}
