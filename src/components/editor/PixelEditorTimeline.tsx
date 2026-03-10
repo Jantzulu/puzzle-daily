@@ -231,11 +231,11 @@ export const PixelEditorTimeline: React.FC<PixelEditorTimelineProps> = ({
         })}
       </div>
 
-      {/* Context menu */}
+      {/* Context menu — opens upward since timeline is near bottom of screen */}
       {contextMenu && (
         <div
           className="fixed bg-stone-800 border border-stone-600 rounded shadow-xl z-50 py-1 min-w-[120px]"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          style={{ left: contextMenu.x, bottom: window.innerHeight - contextMenu.y }}
         >
           <button
             onClick={() => { onDuplicateFrame(contextMenu.frameIndex); setContextMenu(null); }}
