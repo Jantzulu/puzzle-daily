@@ -1,6 +1,8 @@
 import React, { useCallback, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { PixelEditor } from './PixelEditor';
+import { clearCachedPixelEditorState } from '../../utils/pixelEditorState';
+import { clearPixelAutoSave } from '../../utils/pixelEditorAutoSave';
 
 /**
  * Standalone page wrapper for the Pixel Editor.
@@ -20,6 +22,8 @@ export const PixelEditorPage: React.FC = () => {
   }, []);
 
   const handleNew = useCallback(() => {
+    clearCachedPixelEditorState();
+    clearPixelAutoSave();
     setEditorKey(k => k + 1);
     setSearchParams({});
   }, [setSearchParams]);

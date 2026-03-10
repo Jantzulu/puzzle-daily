@@ -1434,11 +1434,12 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   // ─── Render: Open Project Modal ──────────────────────────────────
 
-  const handleOpenProject = useCallback(async (projectUrl: string, projectPath: string, pngPath: string | null) => {
+  const handleOpenProject = useCallback(async (projectUrl: string, projectPath: string, pngPath: string | null, projectName: string) => {
     const ok = await loadProjectFromUrl(projectUrl);
     if (ok) {
       setCurrentProjectPath(projectPath);
       if (pngPath) setCurrentPngPath(pngPath);
+      setProjectName(projectName);
       toast.success('Project loaded!');
     }
   }, [loadProjectFromUrl]);
