@@ -170,6 +170,9 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   // Layer panel
   const [showLayers, setShowLayers] = useState(!isMobile);
   const [editingLayerName, setEditingLayerName] = useState<string | null>(null);
+  const [expandedLayerId, setExpandedLayerId] = useState<string | null>(null);
+  const [dragLayerIdx, setDragLayerIdx] = useState<number | null>(null);
+  const [dragOverLayerIdx, setDragOverLayerIdx] = useState<number | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
   const [projectName, setProjectName] = useState('Untitled');
   const [editingProjectName, setEditingProjectName] = useState(false);
@@ -1092,6 +1095,39 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     triggerRender();
   }, [history, getSnapshot, bumpLayers, triggerRender]);
 
+  // Drag-and-drop layer reordering
+  const handleLayerDragStart = useCallback((idx: number) => {
+    setDragLayerIdx(idx);
+  }, []);
+
+  const handleLayerDragOver = useCallback((e: React.DragEvent, idx: number) => {
+    e.preventDefault();
+    setDragOverLayerIdx(idx);
+  }, []);
+
+  const handleLayerDrop = useCallback((targetIdx: number) => {
+    if (dragLayerIdx === null || dragLayerIdx === targetIdx) {
+      setDragLayerIdx(null);
+      setDragOverLayerIdx(null);
+      return;
+    }
+    history.push(getSnapshot());
+    const layers = layersRef.current;
+    const [dragged] = layers.splice(dragLayerIdx, 1);
+    layers.splice(targetIdx, 0, dragged);
+    // Update active layer index to follow the dragged layer
+    setActiveLayerIndex(targetIdx);
+    setDragLayerIdx(null);
+    setDragOverLayerIdx(null);
+    bumpLayers();
+    triggerRender();
+  }, [dragLayerIdx, history, getSnapshot, bumpLayers, triggerRender]);
+
+  const handleLayerDragEnd = useCallback(() => {
+    setDragLayerIdx(null);
+    setDragOverLayerIdx(null);
+  }, []);
+
   const toggleLayerVisibility = useCallback((idx: number) => {
     layersRef.current[idx].visible = !layersRef.current[idx].visible;
     bumpLayers();
@@ -1698,77 +1734,120 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         {[...layersRef.current].reverse().map((layer, revIdx) => {
           const idx = layersRef.current.length - 1 - revIdx;
           const isActive = idx === activeLayerIndex;
+          const isExpanded = expandedLayerId === layer.id;
+          const isDragging = dragLayerIdx === idx;
+          const isDragOver = dragOverLayerIdx === idx && dragLayerIdx !== idx;
           return (
             <div
               key={layer.id}
-              onClick={() => {
-                if (activeLayerIndex !== idx && selection) commitFloating();
-                setActiveLayerIndex(idx);
-              }}
-              className={`flex items-center gap-1 px-1.5 py-1 rounded text-xs cursor-pointer ${
-                isActive ? 'bg-arcane-700 text-parchment-100' : 'bg-stone-800 hover:bg-stone-750 text-stone-300'
-              }`}
+              className={`rounded overflow-hidden transition-opacity ${isDragging ? 'opacity-40' : ''}`}
+              draggable
+              onDragStart={() => handleLayerDragStart(idx)}
+              onDragOver={(e) => handleLayerDragOver(e, idx)}
+              onDrop={() => handleLayerDrop(idx)}
+              onDragEnd={handleLayerDragEnd}
             >
-              {/* Visibility toggle */}
-              <button
-                onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(idx); }}
-                className="w-4 text-center"
-                title={layer.visible ? 'Hide' : 'Show'}
+              {/* Primary row: drag handle, visibility, name, expand toggle */}
+              <div
+                onClick={() => {
+                  if (activeLayerIndex !== idx && selection) commitFloating();
+                  setActiveLayerIndex(idx);
+                }}
+                className={`flex items-center gap-1 px-1 py-1 text-xs cursor-pointer ${
+                  isActive ? 'bg-arcane-700 text-parchment-100' : 'bg-stone-800 hover:bg-stone-750 text-stone-300'
+                } ${isDragOver ? 'ring-1 ring-arcane-400 ring-inset' : ''}`}
               >
-                {layer.visible ? '👁' : '·'}
-              </button>
-              {/* Name */}
-              {editingLayerName === layer.id ? (
-                <input
-                  autoFocus
-                  defaultValue={layer.name}
-                  onBlur={(e) => { renameLayer(idx, e.target.value); setEditingLayerName(null); }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') { renameLayer(idx, (e.target as HTMLInputElement).value); setEditingLayerName(null); }
-                    if (e.key === 'Escape') setEditingLayerName(null);
-                  }}
-                  className="flex-1 bg-stone-700 rounded px-1 py-0 text-xs min-w-0"
-                  onClick={(e) => e.stopPropagation()}
-                />
-              ) : (
+                {/* Drag handle */}
                 <span
-                  className="flex-1 truncate"
-                  onDoubleClick={() => setEditingLayerName(layer.id)}
+                  className="flex-shrink-0 cursor-grab active:cursor-grabbing text-stone-500 hover:text-stone-300 select-none px-0.5"
+                  title="Drag to reorder"
                 >
-                  {layer.name}
+                  ⠿
                 </span>
+                {/* Visibility toggle */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); toggleLayerVisibility(idx); }}
+                  className={`w-4 text-center flex-shrink-0 ${layer.visible ? '' : 'opacity-40'}`}
+                  title={layer.visible ? 'Hide' : 'Show'}
+                >
+                  {layer.visible ? '👁' : '👁'}
+                </button>
+                {/* Name */}
+                {editingLayerName === layer.id ? (
+                  <input
+                    autoFocus
+                    defaultValue={layer.name}
+                    onBlur={(e) => { renameLayer(idx, e.target.value); setEditingLayerName(null); }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') { renameLayer(idx, (e.target as HTMLInputElement).value); setEditingLayerName(null); }
+                      if (e.key === 'Escape') setEditingLayerName(null);
+                    }}
+                    className="flex-1 bg-stone-700 rounded px-1 py-0 text-xs min-w-0"
+                    onClick={(e) => e.stopPropagation()}
+                  />
+                ) : (
+                  <span
+                    className="flex-1 truncate"
+                    onDoubleClick={() => setEditingLayerName(layer.id)}
+                  >
+                    {layer.name}
+                  </span>
+                )}
+                {/* Opacity badge (compact) */}
+                {layer.opacity < 1 && (
+                  <span className="text-[10px] text-stone-400 tabular-nums flex-shrink-0">{Math.round(layer.opacity * 100)}%</span>
+                )}
+                {/* Expand toggle */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); setExpandedLayerId(isExpanded ? null : layer.id); }}
+                  className={`flex-shrink-0 w-5 text-center rounded hover:bg-white/10 ${isExpanded ? 'text-parchment-100' : 'text-stone-400 hover:text-stone-200'}`}
+                  title="Layer options"
+                >
+                  ⋯
+                </button>
+              </div>
+              {/* Expanded options row */}
+              {isExpanded && (
+                <div
+                  className={`flex items-center gap-2 px-2 py-1.5 text-xs border-t ${
+                    isActive ? 'bg-arcane-700/70 border-arcane-600/50' : 'bg-stone-800/70 border-stone-700/50'
+                  }`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Opacity slider */}
+                  <label className="text-[10px] text-stone-400 flex-shrink-0">Opacity</label>
+                  <input
+                    type="range"
+                    min="0" max="100"
+                    value={Math.round(layer.opacity * 100)}
+                    onChange={(e) => setLayerOpacity(idx, parseInt(e.target.value) / 100)}
+                    className="flex-1 h-3 accent-arcane-500 min-w-0"
+                  />
+                  <span className="text-[10px] text-stone-300 w-7 text-right tabular-nums flex-shrink-0">{Math.round(layer.opacity * 100)}%</span>
+                  {/* Divider */}
+                  <span className="text-stone-600">|</span>
+                  {/* Move up/down */}
+                  <button
+                    onClick={() => moveLayer(idx, 1)}
+                    disabled={idx === layersRef.current.length - 1}
+                    className="text-stone-200 hover:text-white disabled:opacity-20 px-1 py-0.5 rounded hover:bg-white/10"
+                    title="Move Up"
+                  >↑</button>
+                  <button
+                    onClick={() => moveLayer(idx, -1)}
+                    disabled={idx === 0}
+                    className="text-stone-200 hover:text-white disabled:opacity-20 px-1 py-0.5 rounded hover:bg-white/10"
+                    title="Move Down"
+                  >↓</button>
+                  {/* Delete */}
+                  <button
+                    onClick={() => deleteLayer(idx)}
+                    disabled={layersRef.current.length <= 1}
+                    className="text-red-400 hover:text-red-300 hover:bg-red-500/10 disabled:opacity-20 px-1 py-0.5 rounded"
+                    title="Delete Layer"
+                  >✕</button>
+                </div>
               )}
-              {/* Opacity */}
-              <input
-                type="range"
-                min="0" max="100"
-                value={Math.round(layer.opacity * 100)}
-                onChange={(e) => setLayerOpacity(idx, parseInt(e.target.value) / 100)}
-                className="w-12 h-3 accent-arcane-500"
-                onClick={(e) => e.stopPropagation()}
-                title={`Opacity: ${Math.round(layer.opacity * 100)}%`}
-              />
-              <span className="text-[10px] text-stone-400 w-7 text-right tabular-nums">{Math.round(layer.opacity * 100)}%</span>
-              {/* Move up/down */}
-              <button
-                onClick={(e) => { e.stopPropagation(); moveLayer(idx, 1); }}
-                disabled={idx === layersRef.current.length - 1}
-                className="text-stone-300 hover:text-white disabled:opacity-20 px-0.5"
-                title="Move Up"
-              >↑</button>
-              <button
-                onClick={(e) => { e.stopPropagation(); moveLayer(idx, -1); }}
-                disabled={idx === 0}
-                className="text-stone-300 hover:text-white disabled:opacity-20 px-0.5"
-                title="Move Down"
-              >↓</button>
-              {/* Delete */}
-              <button
-                onClick={(e) => { e.stopPropagation(); deleteLayer(idx); }}
-                disabled={layersRef.current.length <= 1}
-                className="text-red-400 hover:text-red-300 disabled:opacity-20 px-0.5"
-                title="Delete Layer"
-              >✕</button>
             </div>
           );
         })}
