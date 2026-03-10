@@ -34,9 +34,11 @@ import {
   type PixelEditorProject,
   type PixelEditorLayer,
 } from './pixelEditorUtils';
-import { uploadMediaDataUrl } from '../../utils/mediaStorage';
-import { MediaLibraryModal } from './MediaLibrary';
+import { uploadMediaDataUrl, uploadMediaDataUrlToPath } from '../../utils/mediaStorage';
+import { PixelEditorOpenModal } from './PixelEditorOpenModal';
 import { toast } from '../shared/Toast';
+import { writePixelAutoSave, readPixelAutoSave, clearPixelAutoSave, AUTOSAVE_INTERVAL_MS, type PixelAutoSaveData } from '../../utils/pixelEditorAutoSave';
+import { cachePixelEditorState, getCachedPixelEditorState } from '../../utils/pixelEditorState';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 
 // ─── Types ──────────────────────────────────────────────────────────
@@ -124,6 +126,9 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const isDrawingRef = useRef(false);
   const activePointersRef = useRef<Set<number>>(new Set());
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
+  const pointerPositionsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const pinchStartDistRef = useRef<number | null>(null);
+  const pinchStartZoomRef = useRef<number>(DEFAULT_ZOOM);
 
   const [canvasWidth, setCanvasWidth] = useState(defaultWidth);
   const [canvasHeight, setCanvasHeight] = useState(defaultHeight);
@@ -170,6 +175,9 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const [editingProjectName, setEditingProjectName] = useState(false);
   const [showOpenModal, setShowOpenModal] = useState(false);
   const [currentProjectUrl, setCurrentProjectUrl] = useState<string | null>(projectUrl || null);
+  const [currentPngPath, setCurrentPngPath] = useState<string | null>(null);
+  const [currentProjectPath, setCurrentProjectPath] = useState<string | null>(null);
+  const [recoveryData, setRecoveryData] = useState<PixelAutoSaveData | null>(null);
 
   // Theme assets for custom tool icons
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>(loadThemeAssets);
@@ -272,6 +280,17 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       if (project.name) setProjectName(project.name);
       if (project.palette) setCustomColors(project.palette);
       setCurrentProjectUrl(url);
+      // Extract storage paths from URL for Save overwrite
+      try {
+        const u = new URL(url);
+        const pathMatch = u.pathname.match(/\/object\/public\/[^/]+\/(.+)/);
+        if (pathMatch) {
+          const projPath = pathMatch[1];
+          setCurrentProjectPath(projPath);
+          // Derive PNG path: same folder, same base name without .project extension
+          setCurrentPngPath(projPath.replace(/\.project$/, ''));
+        }
+      } catch { /* ignore URL parse errors */ }
       setSelection(null);
       setActiveLayerIndex(0);
       history.reset();
@@ -292,11 +311,59 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     if (loaded) return;
 
     const loadContent = async () => {
+      // 1. Check for explicit project URL (from page params)
       if (projectUrl) {
         const ok = await loadProjectFromUrl(projectUrl);
         if (ok) {
           setLoaded(true);
           return;
+        }
+      }
+
+      // 2. Check for cached state (tab switching persistence)
+      if (isPage) {
+        const cached = getCachedPixelEditorState();
+        if (cached) {
+          try {
+            const project = deserializeProject(cached.projectJson);
+            if (project) {
+              const loadedLayers: LayerState[] = [];
+              for (const layerDef of project.layers) {
+                const result = await imageToPixelData(layerDef.data, project.width, project.height);
+                loadedLayers.push({
+                  id: layerDef.id || genLayerId(),
+                  name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
+                  visible: layerDef.visible !== false,
+                  opacity: layerDef.opacity ?? 1,
+                  data: result.data,
+                });
+              }
+              if (loadedLayers.length > 0) {
+                layersRef.current = loadedLayers;
+                setCanvasWidth(project.width);
+                setCanvasHeight(project.height);
+                setResizeW(project.width);
+                setResizeH(project.height);
+                if (project.name) setProjectName(project.name);
+                if (project.palette) setCustomColors(project.palette);
+                setCurrentPngPath(cached.currentPngPath);
+                setCurrentProjectPath(cached.currentProjectPath);
+                setCurrentProjectUrl(cached.currentProjectUrl);
+                setActiveLayerIndex(0);
+                bumpLayers();
+                centerCanvas(project.width, project.height);
+                setLoaded(true);
+                triggerRender();
+                return;
+              }
+            }
+          } catch { /* fall through */ }
+        }
+
+        // 3. Check for autosave recovery (crash/refresh recovery)
+        const autoSave = readPixelAutoSave();
+        if (autoSave) {
+          setRecoveryData(autoSave);
         }
       }
 
@@ -336,6 +403,105 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     loadContent();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // ─── Autosave & Tab Persistence ────────────────────────────────
+
+  // Periodic autosave (30s)
+  useEffect(() => {
+    if (!isPage || !loaded) return;
+    const timer = setInterval(() => {
+      const project = buildCurrentProject();
+      writePixelAutoSave({
+        projectJson: serializeProject(project),
+        projectName,
+        currentPngPath,
+        currentProjectPath,
+        currentProjectUrl,
+        savedAt: new Date().toISOString(),
+      });
+    }, AUTOSAVE_INTERVAL_MS);
+    return () => clearInterval(timer);
+  }, [isPage, loaded, buildCurrentProject, projectName, currentPngPath, currentProjectPath, currentProjectUrl]);
+
+  // Cache state for tab switching
+  useEffect(() => {
+    if (!isPage || !loaded) return;
+    const project = buildCurrentProject();
+    cachePixelEditorState({
+      projectJson: serializeProject(project),
+      projectName,
+      currentPngPath,
+      currentProjectPath,
+      currentProjectUrl,
+    });
+  }, [isPage, loaded, buildCurrentProject, projectName, currentPngPath, currentProjectPath, currentProjectUrl, layerRevision]);
+
+  // Page leave warning + autosave flush
+  useEffect(() => {
+    if (!isPage) return;
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const project = buildCurrentProject();
+      writePixelAutoSave({
+        projectJson: serializeProject(project),
+        projectName,
+        currentPngPath,
+        currentProjectPath,
+        currentProjectUrl,
+        savedAt: new Date().toISOString(),
+      });
+      e.preventDefault();
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isPage, buildCurrentProject, projectName, currentPngPath, currentProjectPath, currentProjectUrl]);
+
+  // Recovery handlers
+  const handleRecoverAutoSave = useCallback(async () => {
+    if (!recoveryData) return;
+    try {
+      const project = deserializeProject(recoveryData.projectJson);
+      if (!project) {
+        toast.error('Recovery data is corrupt');
+        clearPixelAutoSave();
+        setRecoveryData(null);
+        return;
+      }
+      const loadedLayers: LayerState[] = [];
+      for (const layerDef of project.layers) {
+        const result = await imageToPixelData(layerDef.data, project.width, project.height);
+        loadedLayers.push({
+          id: layerDef.id || genLayerId(),
+          name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
+          visible: layerDef.visible !== false,
+          opacity: layerDef.opacity ?? 1,
+          data: result.data,
+        });
+      }
+      if (loadedLayers.length > 0) {
+        layersRef.current = loadedLayers;
+        setCanvasWidth(project.width);
+        setCanvasHeight(project.height);
+        setResizeW(project.width);
+        setResizeH(project.height);
+        if (project.name) setProjectName(project.name);
+        if (project.palette) setCustomColors(project.palette);
+        setCurrentPngPath(recoveryData.currentPngPath);
+        setCurrentProjectPath(recoveryData.currentProjectPath);
+        setCurrentProjectUrl(recoveryData.currentProjectUrl);
+        setActiveLayerIndex(0);
+        history.reset();
+        bumpLayers();
+        centerCanvas(project.width, project.height);
+        triggerRender();
+        toast.success(`Recovered "${project.name || 'Untitled'}"`);
+      }
+    } catch (err) {
+      console.error('Recovery failed:', err);
+      toast.error('Recovery failed');
+    }
+    clearPixelAutoSave();
+    setRecoveryData(null);
+  }, [recoveryData, bumpLayers, centerCanvas, triggerRender, history]);
 
   // ─── Rendering ──────────────────────────────────────────────────
 
@@ -512,10 +678,22 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     if (!canvas) return;
     canvas.setPointerCapture(e.pointerId);
     activePointersRef.current.add(e.pointerId);
+    pointerPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // Middle click or two fingers = pan
+    // Middle click or two fingers = pan/pinch
     if (e.button === 1 || activePointersRef.current.size > 1) {
-      panStartRef.current = { x: e.clientX, y: e.clientY, panX, panY };
+      const pointers = Array.from(pointerPositionsRef.current.values());
+      if (pointers.length >= 2) {
+        const [p1, p2] = pointers;
+        const dist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        pinchStartDistRef.current = dist;
+        pinchStartZoomRef.current = zoom;
+        const midX = (p1.x + p2.x) / 2;
+        const midY = (p1.y + p2.y) / 2;
+        panStartRef.current = { x: midX, y: midY, panX, panY };
+      } else {
+        panStartRef.current = { x: e.clientX, y: e.clientY, panX, panY };
+      }
       return;
     }
 
@@ -604,7 +782,38 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   }, [panX, panY, getPixelCoord, history, getSnapshot, applyToolWithLine, tool, selection, commitFloating, liftSelection]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
-    // Panning
+    pointerPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // Pinch-to-zoom + pan with two fingers
+    if (panStartRef.current && activePointersRef.current.size >= 2 && pinchStartDistRef.current !== null) {
+      const pointers = Array.from(pointerPositionsRef.current.values());
+      if (pointers.length >= 2) {
+        const [p1, p2] = pointers;
+        const newDist = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+        const ratio = newDist / pinchStartDistRef.current;
+        const newZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.round(pinchStartZoomRef.current * ratio)));
+
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          const midX = (p1.x + p2.x) / 2 - rect.left;
+          const midY = (p1.y + p2.y) / 2 - rect.top;
+          // Pan: zoom-center adjustment + midpoint drift
+          const startMidX = panStartRef.current.x - rect.left;
+          const startMidY = panStartRef.current.y - rect.top;
+          const scale = newZoom / pinchStartZoomRef.current;
+          const newPanX = Math.round(midX - (startMidX - panStartRef.current.panX) * scale);
+          const newPanY = Math.round(midY - (startMidY - panStartRef.current.panY) * scale);
+          setZoom(newZoom);
+          setPanX(newPanX);
+          setPanY(newPanY);
+        }
+        triggerRender();
+      }
+      return;
+    }
+
+    // Single-pointer panning (middle click)
     if (panStartRef.current) {
       const dx = e.clientX - panStartRef.current.x;
       const dy = e.clientY - panStartRef.current.y;
@@ -673,7 +882,11 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     activePointersRef.current.delete(e.pointerId);
+    pointerPositionsRef.current.delete(e.pointerId);
     panStartRef.current = null;
+    if (activePointersRef.current.size < 2) {
+      pinchStartDistRef.current = null;
+    }
 
     // Shape commit
     if ((tool === 'rect' || tool === 'line') && shapeStartRef.current && shapeEnd && isDrawingRef.current) {
@@ -897,54 +1110,78 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     onApply(base64);
   }, [onApply, getComposite, commitFloating]);
 
-  const handleSaveToCloud = useCallback(async () => {
+  const buildCurrentProject = useCallback((): PixelEditorProject => ({
+    version: 1,
+    name: projectName,
+    width: canvasWidth,
+    height: canvasHeight,
+    layers: layersRef.current.map(l => ({
+      id: l.id,
+      name: l.name,
+      visible: l.visible,
+      opacity: l.opacity,
+      data: pixelDataToBase64(l.data),
+    })),
+    palette: customColors.length > 0 ? customColors : undefined,
+  }), [projectName, canvasWidth, canvasHeight, customColors]);
+
+  const doSave = useCallback(async (pngPath: string, projPath: string) => {
     commitFloating();
     setSaving(true);
     try {
       const base64 = pixelDataToBase64(getComposite());
-      // Sanitize project name for folder/filename
-      const safeName = projectName.trim().replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase() || 'untitled';
-      const folderPath = `pixel-art/${safeName}`;
-      const fileName = safeName;
+      const project = buildCurrentProject();
+      const projectJson = serializeProject(project);
+      const projectBase64 = 'data:application/json;base64,' + btoa(projectJson);
 
-      const pngResult = await uploadMediaDataUrl(base64, fileName, folderPath);
+      const pngResult = await uploadMediaDataUrlToPath(base64, pngPath);
       if (!pngResult) {
         toast.error('Failed to upload image');
         return;
       }
+      const projectResult = await uploadMediaDataUrlToPath(projectBase64, projPath);
 
-      // Build project with all layers
-      const project: PixelEditorProject = {
-        version: 1,
-        name: projectName,
-        width: canvasWidth,
-        height: canvasHeight,
-        layers: layersRef.current.map(l => ({
-          id: l.id,
-          name: l.name,
-          visible: l.visible,
-          opacity: l.opacity,
-          data: pixelDataToBase64(l.data),
-        })),
-        palette: customColors.length > 0 ? customColors : undefined,
-      };
-      const projectJson = serializeProject(project);
-      const projectBase64 = 'data:application/json;base64,' + btoa(projectJson);
-      const projectResult = await uploadMediaDataUrl(projectBase64, fileName + '.project', folderPath);
-
+      setCurrentPngPath(pngPath);
+      setCurrentProjectPath(projPath);
       if (projectResult?.url) {
         setCurrentProjectUrl(projectResult.url);
         onProjectUrlChange?.(projectResult.url);
       }
       onApply(pngResult.url, projectResult?.url);
-      toast.success(`Saved "${projectName}" to cloud!`);
+      clearPixelAutoSave();
+      toast.success(`Saved "${projectName}"`);
     } catch (err) {
       console.error('Cloud save failed:', err);
       toast.error('Cloud save failed');
     } finally {
       setSaving(false);
     }
-  }, [canvasWidth, canvasHeight, onApply, getComposite, customColors, commitFloating, projectName, onProjectUrlChange]);
+  }, [getComposite, buildCurrentProject, commitFloating, projectName, onApply, onProjectUrlChange]);
+
+  const handleSave = useCallback(async () => {
+    if (currentPngPath && currentProjectPath) {
+      // Overwrite existing files
+      await doSave(currentPngPath, currentProjectPath);
+    } else {
+      // No existing paths — generate new ones (same as Save As)
+      const safeName = projectName.trim().replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase() || 'untitled';
+      const ts = Date.now();
+      const pngPath = `pixel-art/${safeName}/${ts}-${safeName}.png`;
+      const projPath = `pixel-art/${safeName}/${ts}-${safeName}.png.project`;
+      await doSave(pngPath, projPath);
+    }
+  }, [currentPngPath, currentProjectPath, projectName, doSave]);
+
+  const handleSaveAs = useCallback(async () => {
+    const newName = window.prompt('Save project as:', projectName);
+    if (!newName) return;
+    setProjectName(newName);
+    const safeName = newName.trim().replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase() || 'untitled';
+    const ts = Date.now();
+    const pngPath = `pixel-art/${safeName}/${ts}-${safeName}.png`;
+    const projPath = `pixel-art/${safeName}/${ts}-${safeName}.png.project`;
+    await doSave(pngPath, projPath);
+  }, [projectName, doSave]);
 
   // ─── Clipboard (Selection) ────────────────────────────────────────
 
@@ -1195,25 +1432,41 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   // ─── Render: Open Project Modal ──────────────────────────────────
 
-  const handleOpenProject = useCallback(async (url: string) => {
-    // Only load .project files
-    if (!url.includes('.project')) {
-      toast.error('Please select a .project file');
-      return;
-    }
-    setShowOpenModal(false);
-    const ok = await loadProjectFromUrl(url);
+  const handleOpenProject = useCallback(async (projectUrl: string, projectPath: string, pngPath: string | null) => {
+    const ok = await loadProjectFromUrl(projectUrl);
     if (ok) {
+      setCurrentProjectPath(projectPath);
+      if (pngPath) setCurrentPngPath(pngPath);
       toast.success('Project loaded!');
     }
   }, [loadProjectFromUrl]);
 
+  const handleImportPng = useCallback((imageData: ImageData, width: number, height: number) => {
+    layersRef.current = [{
+      id: genLayerId(), name: 'Background', visible: true, opacity: 1, data: imageData,
+    }];
+    setCanvasWidth(width);
+    setCanvasHeight(height);
+    setResizeW(width);
+    setResizeH(height);
+    setCurrentPngPath(null);
+    setCurrentProjectPath(null);
+    setCurrentProjectUrl(null);
+    setSelection(null);
+    setActiveLayerIndex(0);
+    history.reset();
+    bumpLayers();
+    centerCanvas(width, height);
+    triggerRender();
+    toast.success('PNG imported!');
+  }, [bumpLayers, centerCanvas, triggerRender, history]);
+
   const openModal = (
-    <MediaLibraryModal
+    <PixelEditorOpenModal
       isOpen={showOpenModal}
       onClose={() => setShowOpenModal(false)}
-      onSelect={handleOpenProject}
-      initialPath="pixel-art"
+      onSelectProject={handleOpenProject}
+      onImportPng={handleImportPng}
     />
   );
 
@@ -1525,11 +1778,39 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     : tool === 'move' ? 'move'
     : 'default';
 
+  // ─── Recovery Banner ────────────────────────────────────────────
+
+  const recoveryBanner = recoveryData && (
+    <div className="flex items-center justify-between px-4 py-2 bg-amber-900/90 border-b border-amber-500 text-sm">
+      <div>
+        <span className="text-amber-100 font-medium">Unsaved work found: &quot;{recoveryData.projectName}&quot;</span>
+        <span className="text-amber-300/80 text-xs ml-2">
+          {new Date(recoveryData.savedAt).toLocaleString()}
+        </span>
+      </div>
+      <div className="flex gap-2">
+        <button
+          onClick={handleRecoverAutoSave}
+          className="px-3 py-1 bg-amber-700 hover:bg-amber-600 rounded text-xs text-amber-100 font-medium"
+        >
+          Restore
+        </button>
+        <button
+          onClick={() => { clearPixelAutoSave(); setRecoveryData(null); }}
+          className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs text-stone-300"
+        >
+          Dismiss
+        </button>
+      </div>
+    </div>
+  );
+
   // ─── Desktop Layout ─────────────────────────────────────────────
 
   if (!isMobile) {
     return (
       <div className={isPage ? 'flex flex-col h-full bg-stone-950' : 'fixed inset-0 bg-black/80 flex flex-col z-50'}>
+        {recoveryBanner}
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 bg-stone-900 border-b border-stone-700">
           <div className="flex items-center gap-2">
@@ -1581,12 +1862,21 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
               </button>
             )}
             <button
-              onClick={handleSaveToCloud}
+              onClick={handleSave}
               disabled={saving}
               className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm disabled:opacity-50"
             >
-              {saving ? 'Saving...' : '☁ Save'}
+              {saving ? 'Saving...' : 'Save'}
             </button>
+            {isPage && (
+              <button
+                onClick={handleSaveAs}
+                disabled={saving}
+                className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm disabled:opacity-50"
+              >
+                Save As
+              </button>
+            )}
           </div>
         </div>
 
@@ -1641,6 +1931,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   return (
     <div className={isPage ? 'flex flex-col h-full bg-stone-950' : 'fixed inset-0 bg-black flex flex-col z-50'}>
+      {recoveryBanner}
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-stone-900 border-b border-stone-700">
         <div className="flex items-center gap-1">
@@ -1674,13 +1965,22 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
             Apply
           </button>
         ) : (
-          <button
-            onClick={handleSaveToCloud}
-            disabled={saving}
-            className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
-          >
-            {saving ? '...' : '☁ Save'}
-          </button>
+          <div className="flex gap-1">
+            <button
+              onClick={handleSave}
+              disabled={saving}
+              className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
+            >
+              {saving ? '...' : 'Save'}
+            </button>
+            <button
+              onClick={handleSaveAs}
+              disabled={saving}
+              className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs disabled:opacity-50"
+            >
+              As
+            </button>
+          </div>
         )}
       </div>
 
@@ -1720,11 +2020,11 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           {canvasSizeControls}
           {!isPage && (
             <button
-              onClick={handleSaveToCloud}
+              onClick={handleSave}
               disabled={saving}
               className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
             >
-              {saving ? '...' : '☁ Save'}
+              {saving ? '...' : 'Save'}
             </button>
           )}
         </div>

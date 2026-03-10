@@ -122,6 +122,48 @@ export async function uploadMedia(
 }
 
 /**
+ * Upload a data URL to a specific exact path with upsert (overwrite).
+ */
+export async function uploadMediaDataUrlToPath(
+  dataUrl: string,
+  fullPath: string,
+): Promise<{ url: string; path: string } | null> {
+  try {
+    const [header, base64] = dataUrl.split(',');
+    const mimeMatch = header.match(/:(.*?);/);
+    const mime = mimeMatch ? mimeMatch[1] : 'image/png';
+    const binary = atob(base64);
+    const array = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      array[i] = binary.charCodeAt(i);
+    }
+    const blob = new Blob([array], { type: mime });
+    const file = new File([blob], fullPath.split('/').pop() || 'file', { type: mime });
+
+    const { error } = await supabase.storage
+      .from(BUCKET)
+      .upload(fullPath, file, {
+        cacheControl: '3600',
+        upsert: true,
+      });
+
+    if (error) {
+      console.error('[MediaStorage] Upsert upload failed:', error);
+      return null;
+    }
+
+    const { data: urlData } = supabase.storage
+      .from(BUCKET)
+      .getPublicUrl(fullPath);
+
+    return { url: urlData.publicUrl, path: fullPath };
+  } catch (e) {
+    console.error('[MediaStorage] Upsert upload error:', e);
+    return null;
+  }
+}
+
+/**
  * Upload a data URL (base64) to Supabase Storage.
  */
 export async function uploadMediaDataUrl(
