@@ -15,7 +15,7 @@ interface SearchResult {
 }
 
 const CATEGORIES = [
-  { key: 'puzzles', icon: '🗺️', label: 'Puzzles', route: '/editor' },
+  { key: 'puzzles', icon: '🗺️', label: 'Puzzles', route: '/editors' },
   { key: 'characters', icon: '⚔️', label: 'Heroes', route: '/assets', tab: 'characters' },
   { key: 'enemies', icon: '👹', label: 'Enemies', route: '/assets', tab: 'enemies' },
   { key: 'spells', icon: '✨', label: 'Spells', route: '/assets', tab: 'spells' },
@@ -37,7 +37,7 @@ function loadAllAssets(): SearchResult[] {
       name: p.name || 'Untitled Puzzle',
       category: 'puzzles',
       icon: '🗺️',
-      route: '/editor',
+      route: '/editors',
       subtitle: p.tags?.length ? `${p.width}×${p.height} · ${p.tags.join(', ')}` : `${p.width}×${p.height}`,
       tags: p.tags,
     });

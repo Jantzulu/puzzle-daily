@@ -220,6 +220,26 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     });
   }, []);
 
+  // ─── Rendering Trigger & Canvas Centering ────────────────────────
+  // (declared early so loadProjectFromUrl can reference them)
+
+  const triggerRender = useCallback(() => {
+    setRenderKey(k => k + 1);
+  }, []);
+
+  const centerCanvas = useCallback((w: number, h: number) => {
+    requestAnimationFrame(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const rect = canvas.getBoundingClientRect();
+      const fitZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.floor(Math.min(rect.width * 0.8 / w, rect.height * 0.8 / h))));
+      setZoom(fitZoom);
+      setPanX(Math.round(rect.width / 2 - (w * fitZoom) / 2));
+      setPanY(Math.round(rect.height / 2 - (h * fitZoom) / 2));
+      triggerRender();
+    });
+  }, [triggerRender]);
+
   // ─── Load Project From URL ────────────────────────────────────────
 
   const loadProjectFromUrl = useCallback(async (url: string) => {
@@ -319,10 +339,6 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   // ─── Rendering ──────────────────────────────────────────────────
 
-  const triggerRender = useCallback(() => {
-    setRenderKey(k => k + 1);
-  }, []);
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -393,19 +409,6 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       if (selectionRafRef.current != null) cancelAnimationFrame(selectionRafRef.current);
     };
   }, [selection, triggerRender]);
-
-  const centerCanvas = useCallback((w: number, h: number) => {
-    requestAnimationFrame(() => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-      const rect = canvas.getBoundingClientRect();
-      const fitZoom = Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, Math.floor(Math.min(rect.width * 0.8 / w, rect.height * 0.8 / h))));
-      setZoom(fitZoom);
-      setPanX(Math.round(rect.width / 2 - (w * fitZoom) / 2));
-      setPanY(Math.round(rect.height / 2 - (h * fitZoom) / 2));
-      triggerRender();
-    });
-  }, [triggerRender]);
 
   // ─── Selection Helpers ────────────────────────────────────────────
 
@@ -1526,7 +1529,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
   if (!isMobile) {
     return (
-      <div className={isPage ? 'flex flex-col h-[calc(100vh-60px)] bg-stone-950' : 'fixed inset-0 bg-black/80 flex flex-col z-50'}>
+      <div className={isPage ? 'flex flex-col h-full bg-stone-950' : 'fixed inset-0 bg-black/80 flex flex-col z-50'}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 bg-stone-900 border-b border-stone-700">
           <div className="flex items-center gap-2">
@@ -1637,7 +1640,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   // ─── Mobile Layout ──────────────────────────────────────────────
 
   return (
-    <div className={isPage ? 'flex flex-col h-[calc(100vh-60px)] bg-stone-950' : 'fixed inset-0 bg-black flex flex-col z-50'}>
+    <div className={isPage ? 'flex flex-col h-full bg-stone-950' : 'fixed inset-0 bg-black flex flex-col z-50'}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-stone-900 border-b border-stone-700">
         <div className="flex items-center gap-1">

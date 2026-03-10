@@ -21,7 +21,7 @@ export const LoginPage: React.FC = () => {
         toast.error(error);
       } else {
         toast.success('Signed in');
-        navigate('/editor');
+        navigate('/editors');
       }
     } finally {
       setSubmitting(false);

@@ -13,15 +13,12 @@ import { UserMenu } from './components/auth/UserMenu';
 import { useAuth } from './contexts/AuthContext';
 
 // Lazy-loaded routes — only downloaded when navigated to
-const MapEditor = lazy(() => import('./components/editor/MapEditor').then(m => ({ default: m.MapEditor })));
 const AssetManager = lazy(() => import('./components/editor/AssetManager').then(m => ({ default: m.AssetManager })));
 const Compendium = lazy(() => import('./components/compendium/Compendium').then(m => ({ default: m.Compendium })));
-const SchedulingDashboard = lazy(() => import('./components/editor/SchedulingDashboard').then(m => ({ default: m.SchedulingDashboard })));
-const StatsDashboard = lazy(() => import('./components/editor/StatsDashboard').then(m => ({ default: m.StatsDashboard })));
 const SettingsPage = lazy(() => import('./components/editor/SettingsPage').then(m => ({ default: m.SettingsPage })));
 const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds').then(m => ({ default: m.TrainingGrounds })));
-const BugReportViewer = lazy(() => import('./components/editor/BugReportViewer').then(m => ({ default: m.BugReportViewer })));
-const PixelEditorPage = lazy(() => import('./components/editor/PixelEditorPage').then(m => ({ default: m.PixelEditorPage })));
+const EditorsPage = lazy(() => import('./components/editor/EditorsPage').then(m => ({ default: m.EditorsPage })));
+const PuzzleResourcesPage = lazy(() => import('./components/editor/PuzzleResourcesPage').then(m => ({ default: m.PuzzleResourcesPage })));
 
 // Page title mapping per route
 const PAGE_TITLES: Record<string, string> = {
@@ -29,12 +26,9 @@ const PAGE_TITLES: Record<string, string> = {
   '/login': 'Sign In',
   '/compendium': 'Compendium',
   '/training': 'Training Sandbox',
-  '/editor': 'Map Editor',
-  '/schedule': 'Schedule',
-  '/stats': 'Stats',
-  '/bug-reports': 'Bug Reports',
+  '/editors': 'Editors',
+  '/puzzle-resources': 'Puzzle Resources',
   '/assets': 'Assets',
-  '/pixel-editor': 'Pixel Editor',
   '/settings': 'Settings',
 };
 
@@ -318,20 +312,11 @@ function Navigation() {
           <Link to="/assets" className={linkClass('/assets')}>
             <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
-          <Link to="/editor" className={linkClass('/editor')}>
-            <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
+          <Link to="/editors" className={linkClass('/editors')}>
+            <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
           </Link>
-          <Link to="/pixel-editor" className={linkClass('/pixel-editor')}>
-            <span className="mr-1">🎨</span> Pixel Editor
-          </Link>
-          <Link to="/schedule" className={linkClass('/schedule')}>
-            <span className="mr-1">📅</span> Schedule
-          </Link>
-          <Link to="/stats" className={linkClass('/stats')}>
-            <span className="mr-1">📊</span> Stats
-          </Link>
-          <Link to="/bug-reports" className={linkClass('/bug-reports')}>
-            <span className="mr-1">🐛</span> Bugs
+          <Link to="/puzzle-resources" className={linkClass('/puzzle-resources')}>
+            <span className="mr-1">{'\uD83D\uDCCA'}</span> Puzzle Resources
           </Link>
           <Link to="/settings" className={linkClass('/settings')}>
             <span className="mr-1">⚙️</span> Settings
@@ -408,39 +393,18 @@ function Navigation() {
             <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
           <Link
-            to="/editor"
-            className={`block ${linkClass('/editor')}`}
+            to="/editors"
+            className={`block ${linkClass('/editors')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Map Editor'}
+            <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
           </Link>
           <Link
-            to="/pixel-editor"
-            className={`block ${linkClass('/pixel-editor')}`}
+            to="/puzzle-resources"
+            className={`block ${linkClass('/puzzle-resources')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="mr-2">🎨</span> Pixel Editor
-          </Link>
-          <Link
-            to="/schedule"
-            className={`block ${linkClass('/schedule')}`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            <span className="mr-2">📅</span> Schedule
-          </Link>
-          <Link
-            to="/stats"
-            className={`block ${linkClass('/stats')}`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            <span className="mr-2">📊</span> Stats
-          </Link>
-          <Link
-            to="/bug-reports"
-            className={`block ${linkClass('/bug-reports')}`}
-            onClick={() => setMobileMenuOpen(false)}
-          >
-            <span className="mr-2">🐛</span> Bug Reports
+            <span className="mr-2">{'\uD83D\uDCCA'}</span> Puzzle Resources
           </Link>
           <Link
             to="/settings"
@@ -512,12 +476,9 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/compendium" element={<Compendium />} />
                 <Route path="/training" element={<TrainingGrounds />} />
-                <Route path="/editor" element={<ProtectedRoute><MapEditor /></ProtectedRoute>} />
-                <Route path="/schedule" element={<ProtectedRoute><SchedulingDashboard /></ProtectedRoute>} />
-                <Route path="/stats" element={<ProtectedRoute><StatsDashboard /></ProtectedRoute>} />
-                <Route path="/bug-reports" element={<ProtectedRoute><BugReportViewer /></ProtectedRoute>} />
+                <Route path="/editors" element={<ProtectedRoute><EditorsPage /></ProtectedRoute>} />
+                <Route path="/puzzle-resources" element={<ProtectedRoute><PuzzleResourcesPage /></ProtectedRoute>} />
                 <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
-                <Route path="/pixel-editor" element={<ProtectedRoute><PixelEditorPage /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
               </Routes>
             </Suspense>
