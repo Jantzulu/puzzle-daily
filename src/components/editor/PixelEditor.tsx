@@ -28,13 +28,14 @@ import {
   clearRegion,
   flipHorizontal,
   flipVertical,
-  renderFloatingPixels,
+  renderBrushOutline,
   renderSelectionOverlay,
   renderShapePreview,
   type PixelEditorProject,
   type PixelEditorLayer,
 } from './pixelEditorUtils';
 import { uploadMediaDataUrl } from '../../utils/mediaStorage';
+import { MediaLibraryModal } from './MediaLibrary';
 import { toast } from '../shared/Toast';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 
@@ -64,6 +65,7 @@ interface PixelEditorProps {
   onClose: () => void;
   mode?: 'modal' | 'page';
   onNew?: () => void;
+  onProjectUrlChange?: (url: string) => void;
 }
 
 // ─── Constants ──────────────────────────────────────────────────────
@@ -101,6 +103,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   onClose,
   mode = 'modal',
   onNew,
+  onProjectUrlChange,
 }) => {
   const isPage = mode === 'page';
   const isMobile = useIsMobile();
@@ -163,6 +166,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
   const [showLayers, setShowLayers] = useState(!isMobile);
   const [editingLayerName, setEditingLayerName] = useState<string | null>(null);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [projectName, setProjectName] = useState('Untitled');
+  const [editingProjectName, setEditingProjectName] = useState(false);
+  const [showOpenModal, setShowOpenModal] = useState(false);
+  const [currentProjectUrl, setCurrentProjectUrl] = useState<string | null>(projectUrl || null);
 
   // Theme assets for custom tool icons
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>(loadThemeAssets);
@@ -213,6 +220,52 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     });
   }, []);
 
+  // ─── Load Project From URL ────────────────────────────────────────
+
+  const loadProjectFromUrl = useCallback(async (url: string) => {
+    try {
+      const resp = await fetch(url);
+      const json = await resp.text();
+      const project = deserializeProject(json);
+      if (!project) {
+        toast.error('Invalid project file');
+        return false;
+      }
+      const loadedLayers: LayerState[] = [];
+      for (const layerDef of project.layers) {
+        const result = await imageToPixelData(layerDef.data, project.width, project.height);
+        loadedLayers.push({
+          id: layerDef.id || genLayerId(),
+          name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
+          visible: layerDef.visible !== false,
+          opacity: layerDef.opacity ?? 1,
+          data: result.data,
+        });
+      }
+      if (loadedLayers.length === 0) return false;
+
+      layersRef.current = loadedLayers;
+      setCanvasWidth(project.width);
+      setCanvasHeight(project.height);
+      setResizeW(project.width);
+      setResizeH(project.height);
+      if (project.name) setProjectName(project.name);
+      if (project.palette) setCustomColors(project.palette);
+      setCurrentProjectUrl(url);
+      setSelection(null);
+      setActiveLayerIndex(0);
+      history.reset();
+      bumpLayers();
+      centerCanvas(project.width, project.height);
+      triggerRender();
+      return true;
+    } catch (err) {
+      console.warn('Failed to load pixel editor project:', err);
+      toast.error('Failed to load project');
+      return false;
+    }
+  }, [bumpLayers, centerCanvas, triggerRender, history]);
+
   // ─── Initialize ─────────────────────────────────────────────────
 
   useEffect(() => {
@@ -220,39 +273,10 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
 
     const loadContent = async () => {
       if (projectUrl) {
-        try {
-          const resp = await fetch(projectUrl);
-          const json = await resp.text();
-          const project = deserializeProject(json);
-          if (project) {
-            // Load all layers
-            const loadedLayers: LayerState[] = [];
-            for (const layerDef of project.layers) {
-              const result = await imageToPixelData(layerDef.data, project.width, project.height);
-              loadedLayers.push({
-                id: layerDef.id || genLayerId(),
-                name: layerDef.name || `Layer ${loadedLayers.length + 1}`,
-                visible: layerDef.visible !== false,
-                opacity: layerDef.opacity ?? 1,
-                data: result.data,
-              });
-            }
-            if (loadedLayers.length > 0) {
-              layersRef.current = loadedLayers;
-              setCanvasWidth(project.width);
-              setCanvasHeight(project.height);
-              setResizeW(project.width);
-              setResizeH(project.height);
-              if (project.palette) setCustomColors(project.palette);
-              bumpLayers();
-              setLoaded(true);
-              centerCanvas(project.width, project.height);
-              triggerRender();
-              return;
-            }
-          }
-        } catch (err) {
-          console.warn('Failed to load pixel editor project:', err);
+        const ok = await loadProjectFromUrl(projectUrl);
+        if (ok) {
+          setLoaded(true);
+          return;
         }
       }
 
@@ -321,12 +345,12 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       canvasHeight
     );
 
-    renderPixelCanvas(ctx, composite, zoom, panX, panY, showGrid, rect.width, rect.height);
-
-    // Floating selection pixels (render on top of composite so user sees them during move)
+    // Bake floating selection pixels into the composite so they render through the same pipeline
     if (selection?.floatingData) {
-      renderFloatingPixels(ctx, selection.floatingData, selection.x, selection.y, zoom, panX, panY);
+      pasteRegion(composite, selection.floatingData, selection.x, selection.y);
     }
+
+    renderPixelCanvas(ctx, composite, zoom, panX, panY, showGrid, rect.width, rect.height);
 
     // Shape preview overlay
     const shapeStart = shapeStartRef.current;
@@ -338,8 +362,13 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     if (selection) {
       renderSelectionOverlay(ctx, selection, zoom, panX, panY, selectionAnimRef.current);
     }
+
+    // Brush outline on hover
+    if ((tool === 'pencil' || tool === 'eraser') && cursorPos) {
+      renderBrushOutline(ctx, cursorPos.x, cursorPos.y, brushSize, zoom, panX, panY, canvasWidth, canvasHeight);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [renderKey, zoom, panX, panY, showGrid, canvasWidth, canvasHeight, layerRevision, shapeEnd, selection]);
+  }, [renderKey, zoom, panX, panY, showGrid, canvasWidth, canvasHeight, layerRevision, shapeEnd, selection, cursorPos, tool, brushSize]);
 
   // ─── Selection Animation ──────────────────────────────────────────
 
@@ -870,9 +899,12 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     setSaving(true);
     try {
       const base64 = pixelDataToBase64(getComposite());
-      const name = `pixel-${canvasWidth}x${canvasHeight}-${Date.now()}`;
+      // Sanitize project name for folder/filename
+      const safeName = projectName.trim().replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase() || 'untitled';
+      const folderPath = `pixel-art/${safeName}`;
+      const fileName = safeName;
 
-      const pngResult = await uploadMediaDataUrl(base64, name, 'pixel-art');
+      const pngResult = await uploadMediaDataUrl(base64, fileName, folderPath);
       if (!pngResult) {
         toast.error('Failed to upload image');
         return;
@@ -881,6 +913,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       // Build project with all layers
       const project: PixelEditorProject = {
         version: 1,
+        name: projectName,
         width: canvasWidth,
         height: canvasHeight,
         layers: layersRef.current.map(l => ({
@@ -894,17 +927,21 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       };
       const projectJson = serializeProject(project);
       const projectBase64 = 'data:application/json;base64,' + btoa(projectJson);
-      const projectResult = await uploadMediaDataUrl(projectBase64, name + '.project', 'pixel-art');
+      const projectResult = await uploadMediaDataUrl(projectBase64, fileName + '.project', folderPath);
 
+      if (projectResult?.url) {
+        setCurrentProjectUrl(projectResult.url);
+        onProjectUrlChange?.(projectResult.url);
+      }
       onApply(pngResult.url, projectResult?.url);
-      toast.success('Saved to cloud!');
+      toast.success(`Saved "${projectName}" to cloud!`);
     } catch (err) {
       console.error('Cloud save failed:', err);
       toast.error('Cloud save failed');
     } finally {
       setSaving(false);
     }
-  }, [canvasWidth, canvasHeight, onApply, getComposite, customColors, commitFloating]);
+  }, [canvasWidth, canvasHeight, onApply, getComposite, customColors, commitFloating, projectName, onProjectUrlChange]);
 
   // ─── Clipboard (Selection) ────────────────────────────────────────
 
@@ -1151,6 +1188,30 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
         {'\u2328'} ?
       </button>
     </>
+  );
+
+  // ─── Render: Open Project Modal ──────────────────────────────────
+
+  const handleOpenProject = useCallback(async (url: string) => {
+    // Only load .project files
+    if (!url.includes('.project')) {
+      toast.error('Please select a .project file');
+      return;
+    }
+    setShowOpenModal(false);
+    const ok = await loadProjectFromUrl(url);
+    if (ok) {
+      toast.success('Project loaded!');
+    }
+  }, [loadProjectFromUrl]);
+
+  const openModal = (
+    <MediaLibraryModal
+      isOpen={showOpenModal}
+      onClose={() => setShowOpenModal(false)}
+      onSelect={handleOpenProject}
+      initialPath="pixel-art"
+    />
   );
 
   // ─── Render: Shortcuts Modal ──────────────────────────────────────
@@ -1468,18 +1529,45 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
       <div className={isPage ? 'flex flex-col h-[calc(100vh-60px)] bg-stone-950' : 'fixed inset-0 bg-black/80 flex flex-col z-50'}>
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-2 bg-stone-900 border-b border-stone-700">
-          {isPage ? (
-            <button onClick={onNew} className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-sm">
-              + New
-            </button>
-          ) : (
-            <button onClick={onClose} className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm">
-              ✕ Close
-            </button>
-          )}
-          <span className="text-sm text-parchment-100 font-bold">
-            Pixel Editor — {canvasWidth}x{canvasHeight}
-          </span>
+          <div className="flex items-center gap-2">
+            {isPage ? (
+              <>
+                <button onClick={onNew} className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-sm">
+                  + New
+                </button>
+                <button onClick={() => setShowOpenModal(true)} className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm">
+                  Open
+                </button>
+              </>
+            ) : (
+              <button onClick={onClose} className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm">
+                ✕ Close
+              </button>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {editingProjectName ? (
+              <input
+                autoFocus
+                defaultValue={projectName}
+                onBlur={(e) => { setProjectName(e.target.value || 'Untitled'); setEditingProjectName(false); }}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') { setProjectName((e.target as HTMLInputElement).value || 'Untitled'); setEditingProjectName(false); }
+                  if (e.key === 'Escape') setEditingProjectName(false);
+                }}
+                className="bg-stone-700 rounded px-2 py-0.5 text-sm text-parchment-100 font-bold text-center min-w-[120px]"
+              />
+            ) : (
+              <span
+                onClick={() => setEditingProjectName(true)}
+                className="text-sm text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 transition-colors"
+                title="Click to rename"
+              >
+                {projectName}
+              </span>
+            )}
+            <span className="text-xs text-stone-500">{canvasWidth}x{canvasHeight}</span>
+          </div>
           <div className="flex gap-2">
             {!isPage && (
               <button
@@ -1494,7 +1582,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
               disabled={saving}
               className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm disabled:opacity-50"
             >
-              {saving ? 'Saving...' : '☁ Save to Cloud'}
+              {saving ? 'Saving...' : '☁ Save'}
             </button>
           </div>
         </div>
@@ -1541,6 +1629,7 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
           </div>
         </div>
         {shortcutsModal}
+        {openModal}
       </div>
     );
   }
@@ -1551,17 +1640,28 @@ export const PixelEditor: React.FC<PixelEditorProps> = ({
     <div className={isPage ? 'flex flex-col h-[calc(100vh-60px)] bg-stone-950' : 'fixed inset-0 bg-black flex flex-col z-50'}>
       {/* Header */}
       <div className="flex items-center justify-between px-3 py-2 bg-stone-900 border-b border-stone-700">
-        {isPage ? (
-          <button onClick={onNew} className="px-2 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs">
-            + New
-          </button>
-        ) : (
-          <button onClick={onClose} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
-            ✕
-          </button>
-        )}
-        <span className="text-xs text-parchment-100 font-bold">
-          {canvasWidth}x{canvasHeight}
+        <div className="flex items-center gap-1">
+          {isPage ? (
+            <>
+              <button onClick={onNew} className="px-2 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs">
+                + New
+              </button>
+              <button onClick={() => setShowOpenModal(true)} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
+                Open
+              </button>
+            </>
+          ) : (
+            <button onClick={onClose} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
+              ✕
+            </button>
+          )}
+        </div>
+        <span
+          onClick={() => setEditingProjectName(true)}
+          className="text-xs text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 truncate max-w-[120px]"
+          title="Click to rename"
+        >
+          {projectName}
         </span>
         {!isPage ? (
           <button

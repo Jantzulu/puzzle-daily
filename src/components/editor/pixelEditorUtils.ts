@@ -9,6 +9,7 @@ export type RGBA = [number, number, number, number];
 
 export interface PixelEditorProject {
   version: 1;
+  name?: string;
   width: number;
   height: number;
   layers: PixelEditorLayer[];
@@ -266,6 +267,45 @@ export function flipVertical(data: ImageData): ImageData {
 }
 
 // ─── Rendering Overlays ─────────────────────────────────────────────
+
+/** Render brush outline showing size/shape at cursor position. */
+export function renderBrushOutline(
+  ctx: CanvasRenderingContext2D,
+  cx: number, cy: number,
+  brushSize: number,
+  zoom: number, panX: number, panY: number,
+  canvasWidth: number, canvasHeight: number
+): void {
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255,255,255,0.6)';
+  ctx.lineWidth = 1;
+
+  if (brushSize <= 1) {
+    // Single pixel — outline one cell
+    const sx = panX + cx * zoom;
+    const sy = panY + cy * zoom;
+    ctx.strokeRect(sx + 0.5, sy + 0.5, zoom - 1, zoom - 1);
+  } else {
+    // Circle brush — outline each pixel that would be painted
+    const r = brushSize - 1;
+    ctx.beginPath();
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx * dx + dy * dy <= r * r) {
+          const px = cx + dx, py = cy + dy;
+          if (px >= 0 && py >= 0 && px < canvasWidth && py < canvasHeight) {
+            const sx = panX + px * zoom;
+            const sy = panY + py * zoom;
+            ctx.rect(sx + 0.5, sy + 0.5, zoom - 1, zoom - 1);
+          }
+        }
+      }
+    }
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
 
 /** Render floating selection pixels as a semi-transparent overlay. */
 export function renderFloatingPixels(

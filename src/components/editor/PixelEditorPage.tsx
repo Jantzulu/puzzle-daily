@@ -1,34 +1,42 @@
 import React, { useCallback, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { PixelEditor } from './PixelEditor';
-import { toast } from '../shared/Toast';
 
 /**
  * Standalone page wrapper for the Pixel Editor.
- * Handles cloud save results and provides a "New" workflow.
+ * Handles cloud save results, "New" workflow, and URL-based project loading.
+ *
+ * URL params:
+ *   ?project=<url>  — opens a saved .project file
  */
 export const PixelEditorPage: React.FC = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const [editorKey, setEditorKey] = useState(0);
-  const [lastSavedUrl, setLastSavedUrl] = useState<string | null>(null);
 
-  const handleApply = useCallback((base64: string, projectUrl?: string) => {
-    if (projectUrl) {
-      setLastSavedUrl(projectUrl);
-    }
-    toast.success('Image saved to cloud! Browse it from the Assets media library.');
+  const projectUrlFromParams = searchParams.get('project') || undefined;
+
+  const handleApply = useCallback((_base64: string, _projectUrl?: string) => {
+    // Save handled inside PixelEditor — toast shown there
   }, []);
 
   const handleNew = useCallback(() => {
     setEditorKey(k => k + 1);
-    setLastSavedUrl(null);
-  }, []);
+    setSearchParams({});
+  }, [setSearchParams]);
+
+  const handleProjectUrlChange = useCallback((url: string) => {
+    setSearchParams({ project: url }, { replace: true });
+  }, [setSearchParams]);
 
   return (
     <PixelEditor
       key={editorKey}
       mode="page"
+      projectUrl={projectUrlFromParams}
       onApply={handleApply}
-      onClose={() => {}} // no-op in page mode — handled by nav
+      onClose={() => {}}
       onNew={handleNew}
+      onProjectUrlChange={handleProjectUrlChange}
     />
   );
 };
