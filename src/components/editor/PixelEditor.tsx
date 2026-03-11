@@ -2737,7 +2737,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 {projectName}
               </button>
             )}
-            <div className="relative">
+            <div className="relative inline-flex">
               <button
                 onClick={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); setResizeAnchorX(0); setResizeAnchorY(0); setShowResizePanel(s => !s); }}
                 className="text-xs text-stone-300 px-1.5 py-0.5 rounded bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 transition-colors cursor-pointer"
