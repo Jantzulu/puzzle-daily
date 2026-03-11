@@ -81,8 +81,11 @@ export const PixelEditorPage: React.FC = () => {
 
   // Handle "New" from within the editor
   const handleNew = useCallback(() => {
-    // Prompt to save if dirty
-    if (activeTab.dirty) {
+    // Check dirty state from both the tab state AND the live editor ref
+    // (the tab state may lag behind if React hasn't re-rendered yet)
+    const editorDirty = editorRef.current?.serializeState()?.dirty ?? false;
+    const isDirty = activeTab.dirty || editorDirty;
+    if (isDirty) {
       if (!window.confirm('Current project has unsaved changes. Discard and create a new project?')) {
         return;
       }
