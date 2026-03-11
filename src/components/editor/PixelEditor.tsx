@@ -1947,7 +1947,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           }`}
         >
           {renderToolIcon(t)}
-          <span className="absolute bottom-0 right-0.5 text-[8px] leading-none font-bold opacity-70">{t.key}</span>
+          <span className="absolute bottom-0 right-0.5 text-[8px] leading-none font-bold opacity-70" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>{t.key}</span>
         </button>
       ))}
       {/* Rect filled toggle */}
@@ -2729,18 +2729,18 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 className="bg-stone-700 rounded px-2 py-0.5 text-xs text-parchment-100 font-bold text-center min-w-[100px]"
               />
             ) : (
-              <span
+              <button
                 onClick={() => setEditingProjectName(true)}
-                className="text-xs text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 transition-colors leading-none"
+                className="text-xs text-parchment-100 font-bold cursor-pointer hover:border-stone-500 transition-colors px-2 py-0.5 rounded bg-stone-800 border border-stone-700 hover:bg-stone-700"
                 title="Click to rename"
               >
                 {projectName}
-              </span>
+              </button>
             )}
             <div className="relative">
               <button
                 onClick={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); setResizeAnchorX(0); setResizeAnchorY(0); setShowResizePanel(s => !s); }}
-                className="text-xs text-stone-300 px-1.5 py-0.5 rounded bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 transition-colors cursor-pointer leading-none"
+                className="text-xs text-stone-300 px-1.5 py-0.5 rounded bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 transition-colors cursor-pointer"
                 title="Canvas size (click to resize)"
               >
                 {canvasWidth}x{canvasHeight} ▾
