@@ -2684,24 +2684,38 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     return (
       <div className={isPage ? 'flex flex-col h-full bg-stone-950' : 'fixed inset-0 bg-black/80 flex flex-col z-50'}>
         {recoveryBanner}
-        {/* Header */}
-        <div className="flex items-center justify-between px-4 py-2 bg-stone-900 border-b border-stone-700">
-          <div className="flex items-center gap-2">
-            {isPage ? (
-              <>
-                <button onClick={onNew} className="px-3 py-1 bg-purple-700 hover:bg-purple-600 rounded text-sm">
-                  + New
-                </button>
-                <button onClick={() => setShowOpenModal(true)} className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm">
-                  Open
-                </button>
-              </>
-            ) : (
-              <button onClick={onClose} className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm">
-                ✕ Close
+        {/* Unified Toolbar */}
+        <div className="flex items-center gap-1 px-3 py-1 bg-stone-900 border-b border-stone-700">
+          {/* Left: New/Open + actions */}
+          {isPage ? (
+            <>
+              <button onClick={onNew} className="px-2 py-1 bg-purple-700 hover:bg-purple-600 rounded text-xs">
+                + New
               </button>
-            )}
-          </div>
+              <button onClick={() => setShowOpenModal(true)} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
+                Open
+              </button>
+            </>
+          ) : (
+            <button onClick={onClose} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
+              ✕ Close
+            </button>
+          )}
+          <div className="w-px h-5 bg-stone-700 mx-1" />
+          {actionBar}
+          <span className="text-stone-600 mx-1">|</span>
+          <button
+            onClick={() => setShowTimeline(s => !s)}
+            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
+              showTimeline ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
+            }`}
+            title="Toggle animation timeline"
+          >
+            🎬 Timeline
+          </button>
+
+          {/* Center: Title + Dimensions */}
+          <div className="flex-1" />
           <div className="flex items-center gap-2">
             {editingProjectName ? (
               <input
@@ -2712,12 +2726,12 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                   if (e.key === 'Enter') { setProjectName((e.target as HTMLInputElement).value || 'Untitled'); setEditingProjectName(false); }
                   if (e.key === 'Escape') setEditingProjectName(false);
                 }}
-                className="bg-stone-700 rounded px-2 py-0.5 text-sm text-parchment-100 font-bold text-center min-w-[120px]"
+                className="bg-stone-700 rounded px-2 py-0.5 text-xs text-parchment-100 font-bold text-center min-w-[100px]"
               />
             ) : (
               <span
                 onClick={() => setEditingProjectName(true)}
-                className="text-sm text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 transition-colors"
+                className="text-xs text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 transition-colors"
                 title="Click to rename"
               >
                 {projectName}
@@ -2726,10 +2740,10 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             <div className="relative">
               <button
                 onClick={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); setResizeAnchorX(0); setResizeAnchorY(0); setShowResizePanel(s => !s); }}
-                className="text-xs text-stone-500 hover:text-stone-300 transition-colors px-1.5 py-0.5 rounded hover:bg-stone-700"
+                className="text-[10px] text-stone-300 px-1.5 py-0.5 rounded bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 transition-colors cursor-pointer"
                 title="Canvas size (click to resize)"
               >
-                {canvasWidth}x{canvasHeight}
+                {canvasWidth}x{canvasHeight} ▾
               </button>
               {/* Resize popover */}
               {showResizePanel && (
@@ -2739,7 +2753,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                   onClick={e => e.stopPropagation()}
                 >
                   <div className="text-xs font-bold text-stone-300 mb-2">Canvas Size</div>
-                  {/* Dimension inputs */}
                   <div className="flex items-center gap-2 mb-2">
                     <div className="flex flex-col gap-0.5">
                       <label className="text-[10px] text-stone-500">Width</label>
@@ -2766,7 +2779,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                       />
                     </div>
                   </div>
-                  {/* Presets */}
                   <div className="flex gap-1 mb-2">
                     {CANVAS_SIZE_PRESETS.map(s => (
                       <button
@@ -2780,7 +2792,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                       </button>
                     ))}
                   </div>
-                  {/* Anchor point grid */}
                   <div className="flex items-center gap-3 mb-2">
                     <div className="text-[10px] text-stone-500">Anchor</div>
                     <div className="grid grid-cols-3 gap-0.5">
@@ -2800,7 +2811,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                       )}
                     </div>
                   </div>
-                  {/* Apply / Cancel */}
                   <div className="flex gap-2">
                     <button
                       onClick={handleResize}
@@ -2821,11 +2831,14 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               )}
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex-1" />
+
+          {/* Right: Save buttons */}
+          <div className="flex gap-1">
             {!isPage && (
               <button
                 onClick={handleApply}
-                className="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-sm"
+                className="px-2 py-1 bg-green-700 hover:bg-green-600 rounded text-xs"
               >
                 Apply
               </button>
@@ -2833,15 +2846,15 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             <button
               onClick={handleSave}
               disabled={saving}
-              className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm disabled:opacity-50"
+              className="px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
             >
-              {saving ? 'Saving...' : 'Save'}
+              {saving ? '...' : 'Save'}
             </button>
             {isPage && (
               <button
                 onClick={handleSaveAs}
                 disabled={saving}
-                className="px-3 py-1 bg-stone-700 hover:bg-stone-600 rounded text-sm disabled:opacity-50"
+                className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs disabled:opacity-50"
               >
                 Save As
               </button>
@@ -2850,29 +2863,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               <button
                 onClick={handleExportSpriteSheet}
                 disabled={saving}
-                className="px-3 py-1 bg-green-700 hover:bg-green-600 rounded text-sm disabled:opacity-50"
+                className="px-2 py-1 bg-green-700 hover:bg-green-600 rounded text-xs disabled:opacity-50"
                 title="Export as horizontal sprite sheet PNG"
               >
-                Export Sheet
+                Export
               </button>
             )}
           </div>
-        </div>
-
-        {/* Action Bar */}
-        <div className="flex items-center gap-1 px-4 py-1 bg-stone-800 border-b border-stone-700">
-          {actionBar}
-          {/* Timeline toggle */}
-          <span className="text-stone-600 mx-1">|</span>
-          <button
-            onClick={() => setShowTimeline(s => !s)}
-            className={`px-2 py-1 rounded text-xs font-medium transition-colors ${
-              showTimeline ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-700 text-stone-300 hover:bg-stone-600'
-            }`}
-            title="Toggle animation timeline"
-          >
-            🎬 Timeline
-          </button>
         </div>
 
         {/* Main content */}
