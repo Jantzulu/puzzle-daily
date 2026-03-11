@@ -2921,6 +2921,17 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 onWheel={handleWheel}
                 onContextMenu={(e) => e.preventDefault()}
               />
+              {/* Animation Preview — floats above status bar */}
+              {showTimeline && framesRef.current.length > 1 && (
+                <PixelEditorAnimationPreview
+                  frameThumbnails={frameCompositeUrls}
+                  frameRate={animFrameRate}
+                  loop={animLoop}
+                  canvasWidth={canvasWidth}
+                  canvasHeight={canvasHeight}
+                  onFrameChange={handleAnimFrameChange}
+                />
+              )}
               {/* Status bar */}
               <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1 bg-stone-900/80 text-xs text-stone-400 pointer-events-none">
                 <span>Zoom: {zoom}x | Brush: {brushSize}</span>
@@ -2935,17 +2946,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               </div>
             </div>
 
-            {/* Animation Preview + Timeline */}
-            {showTimeline && framesRef.current.length > 1 && (
-              <PixelEditorAnimationPreview
-                frameThumbnails={frameCompositeUrls}
-                frameRate={animFrameRate}
-                loop={animLoop}
-                canvasWidth={canvasWidth}
-                canvasHeight={canvasHeight}
-                onFrameChange={handleAnimFrameChange}
-              />
-            )}
+            {/* Timeline */}
             {showTimeline && (
               <PixelEditorTimeline
                 frames={frameInfos}

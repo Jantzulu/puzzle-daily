@@ -104,12 +104,13 @@ export const PixelEditorAnimationPreview: React.FC<PixelEditorAnimationPreviewPr
     });
   }, []);
 
+  // Collapsed: small floating button in bottom-right of canvas
   if (!isOpen) {
     return (
-      <div className="bg-stone-900 border-t border-stone-700 flex justify-end px-2 py-1">
+      <div className="absolute bottom-7 right-2 z-10">
         <button
           onClick={() => setIsOpen(true)}
-          className="bg-stone-800 border border-stone-600 rounded px-3 py-1 text-xs text-stone-300 hover:text-parchment-100 hover:bg-arcane-700"
+          className="bg-stone-800/90 border border-stone-600 rounded px-2 py-0.5 text-xs text-stone-300 hover:text-parchment-100 hover:bg-arcane-700 shadow-lg backdrop-blur-sm"
           title="Animation preview"
         >
           🎬 Preview
@@ -118,21 +119,22 @@ export const PixelEditorAnimationPreview: React.FC<PixelEditorAnimationPreviewPr
     );
   }
 
+  // Expanded: floating panel in bottom-right of canvas
   return (
-    <div className="bg-stone-900 border-t border-stone-700 overflow-hidden">
+    <div className="absolute bottom-7 right-2 z-10 bg-stone-900/95 border border-stone-700 rounded-lg shadow-xl backdrop-blur-sm overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 py-1 bg-stone-900 border-b border-stone-700">
-        <span className="text-xs text-stone-300 font-bold">Animation Preview</span>
+      <div className="flex items-center justify-between px-2 py-1 border-b border-stone-700">
+        <span className="text-[10px] text-stone-300 font-bold">Preview</span>
         <button
           onClick={() => { setIsOpen(false); setIsPlaying(false); }}
-          className="text-stone-500 hover:text-stone-300 text-xs"
+          className="text-stone-500 hover:text-stone-300 text-xs leading-none ml-3"
         >
           ✕
         </button>
       </div>
 
       {/* Canvas */}
-      <div className="p-2">
+      <div className="p-1.5">
         <canvas
           ref={canvasRef}
           width={previewSize}
@@ -143,7 +145,7 @@ export const PixelEditorAnimationPreview: React.FC<PixelEditorAnimationPreviewPr
       </div>
 
       {/* Controls */}
-      <div className="flex items-center gap-2 px-2 pb-2">
+      <div className="flex items-center gap-2 px-2 pb-1.5">
         <button
           onClick={togglePlay}
           className={`px-2 py-0.5 rounded text-xs font-bold ${
