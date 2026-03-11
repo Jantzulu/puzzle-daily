@@ -782,19 +782,26 @@ export function generateFrameThumbnail(
   return canvas.toDataURL('image/png');
 }
 
-/** Resize pixel data by cropping or expanding (no scaling). Existing pixels placed at (0,0). */
+/** Resize pixel data by cropping or expanding (no scaling).
+ *  anchorX/anchorY = pixel offset where old content is placed in new canvas.
+ *  Default (0,0) = top-left anchor. */
 export function resizePixelData(
   data: ImageData,
   newWidth: number,
-  newHeight: number
+  newHeight: number,
+  anchorX: number = 0,
+  anchorY: number = 0,
 ): ImageData {
   const newData = new ImageData(newWidth, newHeight);
-  const copyW = Math.min(data.width, newWidth);
-  const copyH = Math.min(data.height, newHeight);
-  for (let y = 0; y < copyH; y++) {
-    for (let x = 0; x < copyW; x++) {
+  const offX = Math.round(anchorX);
+  const offY = Math.round(anchorY);
+  for (let y = 0; y < data.height; y++) {
+    for (let x = 0; x < data.width; x++) {
+      const dstX = x + offX;
+      const dstY = y + offY;
+      if (dstX < 0 || dstX >= newWidth || dstY < 0 || dstY >= newHeight) continue;
       const srcI = (y * data.width + x) * 4;
-      const dstI = (y * newWidth + x) * 4;
+      const dstI = (dstY * newWidth + dstX) * 4;
       newData.data[dstI] = data.data[srcI];
       newData.data[dstI + 1] = data.data[srcI + 1];
       newData.data[dstI + 2] = data.data[srcI + 2];

@@ -227,6 +227,9 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const [resizeW, setResizeW] = useState(defaultWidth);
   const [resizeH, setResizeH] = useState(defaultHeight);
   const [showResizePanel, setShowResizePanel] = useState(false);
+  // Anchor point: 0=start, 0.5=center, 1=end for each axis
+  const [resizeAnchorX, setResizeAnchorX] = useState(0);
+  const [resizeAnchorY, setResizeAnchorY] = useState(0);
 
   // Keep resize inputs in sync with actual canvas dimensions
   useEffect(() => { setResizeW(canvasWidth); }, [canvasWidth]);
@@ -1269,13 +1272,17 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       return;
     }
 
+    // Compute pixel offset from anchor point
+    const anchorOffX = Math.round((w - canvasWidth) * resizeAnchorX);
+    const anchorOffY = Math.round((h - canvasHeight) * resizeAnchorY);
+
     commitFloating();
     history.push(getSnapshot());
     // Sync current frame and resize ALL frames' layers
     framesRef.current[activeFrameIndex].layers = layersRef.current;
     for (const frame of framesRef.current) {
       for (const layer of frame.layers) {
-        layer.data = resizePixelData(layer.data, w, h);
+        layer.data = resizePixelData(layer.data, w, h, anchorOffX, anchorOffY);
       }
     }
     layersRef.current = framesRef.current[activeFrameIndex].layers;
@@ -1287,7 +1294,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     bumpFrames();
     centerCanvas(w, h);
     history.reset();
-  }, [resizeW, resizeH, canvasWidth, canvasHeight, history, getSnapshot, centerCanvas, commitFloating, bumpLayers, bumpFrames, activeFrameIndex]);
+  }, [resizeW, resizeH, canvasWidth, canvasHeight, resizeAnchorX, resizeAnchorY, history, getSnapshot, centerCanvas, commitFloating, bumpLayers, bumpFrames, activeFrameIndex]);
 
   // ─── Flip ─────────────────────────────────────────────────────────
 
@@ -2716,36 +2723,101 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 {projectName}
               </span>
             )}
-            <div className="flex items-center gap-1">
-              <input
-                type="number"
-                min="1"
-                max={MAX_CANVAS_SIZE}
-                value={resizeW}
-                onChange={e => setResizeW(parseInt(e.target.value) || 1)}
-                onFocus={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); }}
-                className="w-10 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center"
-                title="Canvas width"
-              />
-              <span className="text-xs text-stone-500">x</span>
-              <input
-                type="number"
-                min="1"
-                max={MAX_CANVAS_SIZE}
-                value={resizeH}
-                onChange={e => setResizeH(parseInt(e.target.value) || 1)}
-                onFocus={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); }}
-                className="w-10 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center"
-                title="Canvas height"
-              />
-              {(resizeW !== canvasWidth || resizeH !== canvasHeight) && (
-                <button
-                  onClick={handleResize}
-                  className="px-1.5 py-0.5 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
-                  title="Apply new dimensions"
+            <div className="relative">
+              <button
+                onClick={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); setResizeAnchorX(0); setResizeAnchorY(0); setShowResizePanel(s => !s); }}
+                className="text-xs text-stone-500 hover:text-stone-300 transition-colors px-1.5 py-0.5 rounded hover:bg-stone-700"
+                title="Canvas size (click to resize)"
+              >
+                {canvasWidth}x{canvasHeight}
+              </button>
+              {/* Resize popover */}
+              {showResizePanel && (
+                <>
+                <div className="fixed inset-0 z-40" onClick={() => setShowResizePanel(false)} />
+                <div className="absolute top-full mt-1 left-1/2 -translate-x-1/2 bg-stone-800 border border-stone-600 rounded-lg shadow-xl z-50 p-3 min-w-[220px]"
+                  onClick={e => e.stopPropagation()}
                 >
-                  ✓
-                </button>
+                  <div className="text-xs font-bold text-stone-300 mb-2">Canvas Size</div>
+                  {/* Dimension inputs */}
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] text-stone-500">Width</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={MAX_CANVAS_SIZE}
+                        value={resizeW}
+                        onChange={e => setResizeW(parseInt(e.target.value) || 1)}
+                        className="w-14 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center"
+                        autoFocus
+                      />
+                    </div>
+                    <span className="text-xs text-stone-500 mt-3">x</span>
+                    <div className="flex flex-col gap-0.5">
+                      <label className="text-[10px] text-stone-500">Height</label>
+                      <input
+                        type="number"
+                        min="1"
+                        max={MAX_CANVAS_SIZE}
+                        value={resizeH}
+                        onChange={e => setResizeH(parseInt(e.target.value) || 1)}
+                        className="w-14 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center"
+                      />
+                    </div>
+                  </div>
+                  {/* Presets */}
+                  <div className="flex gap-1 mb-2">
+                    {CANVAS_SIZE_PRESETS.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => { setResizeW(s); setResizeH(s); }}
+                        className={`px-1.5 py-0.5 rounded text-xs ${
+                          resizeW === s && resizeH === s ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-700 hover:bg-stone-600 text-stone-300'
+                        }`}
+                      >
+                        {s}
+                      </button>
+                    ))}
+                  </div>
+                  {/* Anchor point grid */}
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="text-[10px] text-stone-500">Anchor</div>
+                    <div className="grid grid-cols-3 gap-0.5">
+                      {[0, 0.5, 1].flatMap(ay =>
+                        [0, 0.5, 1].map(ax => (
+                          <button
+                            key={`${ax}-${ay}`}
+                            onClick={() => { setResizeAnchorX(ax); setResizeAnchorY(ay); }}
+                            className={`w-4 h-4 rounded-sm border transition-colors ${
+                              resizeAnchorX === ax && resizeAnchorY === ay
+                                ? 'bg-arcane-500 border-arcane-400'
+                                : 'bg-stone-700 border-stone-600 hover:bg-stone-600'
+                            }`}
+                            title={`Anchor: ${ax === 0 ? 'left' : ax === 0.5 ? 'center' : 'right'}-${ay === 0 ? 'top' : ay === 0.5 ? 'middle' : 'bottom'}`}
+                          />
+                        ))
+                      )}
+                    </div>
+                  </div>
+                  {/* Apply / Cancel */}
+                  <div className="flex gap-2">
+                    <button
+                      onClick={handleResize}
+                      disabled={resizeW === canvasWidth && resizeH === canvasHeight}
+                      className="flex-1 px-2 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-30 disabled:cursor-not-allowed"
+                    >
+                      Apply
+                    </button>
+                    <button
+                      onClick={() => setShowResizePanel(false)}
+                      className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs text-stone-300"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+                </>
               )}
             </div>
           </div>
