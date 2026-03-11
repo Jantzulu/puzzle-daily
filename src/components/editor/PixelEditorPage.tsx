@@ -119,21 +119,35 @@ export const PixelEditorPage: React.FC = () => {
     });
   }, [updateActiveTab]);
 
-  // Persist tabs periodically and on key changes
+  // Persist tabs on tab switch
   useEffect(() => {
-    serializeCurrentTab();
+    // The tab switch already serialized and called updateActiveTab,
+    // so a debounced persist here is fine (state will be updated by next render)
     persistTabs();
   }, [activeTabId]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Persist on unmount / beforeunload
+  // Persist on unmount (React Router navigation) and beforeunload (page close/refresh)
+  // Use a ref so the cleanup always has the latest persistTabs
+  const persistTabsRef = useRef(persistTabs);
+  persistTabsRef.current = persistTabs;
+  const editorRefForPersist = editorRef;
+
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      serializeCurrentTab();
-      persistTabs();
+    const handlePersist = () => {
+      if (editorRefForPersist.current) {
+        const editorState = editorRefForPersist.current.serializeState();
+        persistTabsRef.current(editorState);
+      } else {
+        persistTabsRef.current();
+      }
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
-  }, [serializeCurrentTab, persistTabs]);
+    window.addEventListener('beforeunload', handlePersist);
+    return () => {
+      window.removeEventListener('beforeunload', handlePersist);
+      // Also persist on component unmount (React Router navigation)
+      handlePersist();
+    };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Build tab info for the tab bar
   const tabInfos: TabInfo[] = tabs.map(t => ({

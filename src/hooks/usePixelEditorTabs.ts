@@ -83,8 +83,8 @@ export interface PixelEditorTabsHook {
   /** Replace the active tab entirely (after editor state changes) */
   replaceActiveTab: (tab: SerializedTab) => void;
 
-  /** Save all tabs to localStorage */
-  persistTabs: () => void;
+  /** Save all tabs to localStorage. Pass overrides to merge into active tab synchronously (for beforeunload). */
+  persistTabs: (overrides?: Partial<SerializedTab>) => void;
 
   /** Check if a tab has unsaved changes */
   isTabDirty: (tabId: string) => boolean;
@@ -179,8 +179,27 @@ export function usePixelEditorTabs(): PixelEditorTabsHook {
     }));
   }, []);
 
-  const persistTabs = useCallback(() => {
-    // Debounce persistence writes
+  const persistTabs = useCallback((overrides?: Partial<SerializedTab>) => {
+    // If overrides provided (e.g. from beforeunload), write synchronously
+    // with the latest editor state merged into the active tab
+    if (overrides) {
+      if (persistTimeoutRef.current) {
+        clearTimeout(persistTimeoutRef.current);
+        persistTimeoutRef.current = null;
+      }
+      const mergedTabs = state.tabs.map(t =>
+        t.id === state.activeTabId ? { ...t, ...overrides } : t
+      );
+      const data: PersistedTabsData = {
+        version: 1,
+        activeTabId: state.activeTabId,
+        tabs: mergedTabs,
+        savedAt: new Date().toISOString(),
+      };
+      writeTabsPersistence(data);
+      return;
+    }
+    // Debounce persistence writes for non-critical saves
     if (persistTimeoutRef.current) {
       clearTimeout(persistTimeoutRef.current);
     }
