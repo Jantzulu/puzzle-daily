@@ -1947,7 +1947,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           }`}
         >
           {renderToolIcon(t)}
-          <span className="absolute bottom-0 right-0.5 text-[7px] leading-none opacity-50">{t.key}</span>
+          <span className="absolute bottom-0 right-0.5 text-[8px] leading-none font-bold opacity-70">{t.key}</span>
         </button>
       ))}
       {/* Rect filled toggle */}
@@ -2716,7 +2716,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           </button>
 
           {/* Center: Title + Dimensions (absolutely centered) */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-2 z-10">
             {editingProjectName ? (
               <input
                 autoFocus
