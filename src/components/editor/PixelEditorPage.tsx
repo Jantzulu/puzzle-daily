@@ -81,14 +81,10 @@ export const PixelEditorPage: React.FC = () => {
 
   // Handle "New" from within the editor
   const handleNew = useCallback(() => {
-    // Check dirty state from both the tab state AND the live editor ref
-    // (the tab state may lag behind if React hasn't re-rendered yet)
-    const editorDirty = editorRef.current?.serializeState()?.dirty ?? false;
-    const isDirty = activeTab.dirty || editorDirty;
-    if (isDirty) {
-      if (!window.confirm('Current project has unsaved changes. Discard and create a new project?')) {
-        return;
-      }
+    // Always confirm before discarding — even if the project hasn't been
+    // explicitly "saved", the user may have drawn something they want to keep.
+    if (!window.confirm('Discard current project and create a new one?')) {
+      return;
     }
     clearCachedPixelEditorState();
     clearPixelAutoSave();
@@ -103,7 +99,7 @@ export const PixelEditorPage: React.FC = () => {
     });
     setEditorKey(k => k + 1);
     setSearchParams({});
-  }, [setSearchParams, updateActiveTab, activeTab.dirty]);
+  }, [setSearchParams, updateActiveTab]);
 
   const handleApply = useCallback((_base64: string, _projectUrl?: string) => {
     // Save handled inside PixelEditor — toast shown there
@@ -147,8 +143,15 @@ export const PixelEditorPage: React.FC = () => {
     window.addEventListener('beforeunload', handlePersist);
     return () => {
       window.removeEventListener('beforeunload', handlePersist);
-      // Also persist on component unmount (React Router navigation)
-      handlePersist();
+      // Persist on component unmount (React Router navigation) — but ONLY if
+      // the editor ref is still available. During HMR / hot reload, React
+      // unmounts children first (PixelEditor → editorRef becomes null), then
+      // fires the parent cleanup. Writing in that case would overwrite good
+      // saved data with stale / blank state.  The beforeunload handler already
+      // covers real page close / refresh (fires before any unmounting).
+      if (editorRefForPersist.current) {
+        handlePersist();
+      }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
