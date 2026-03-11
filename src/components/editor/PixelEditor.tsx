@@ -2603,6 +2603,9 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                     isActive ? 'bg-arcane-700/70 border-arcane-600/50' : 'bg-stone-800/70 border-stone-700/50'
                   }`}
                   onClick={(e) => e.stopPropagation()}
+                  onDragStart={(e) => e.stopPropagation()}
+                  draggable={false}
+                  onPointerDown={(e) => e.stopPropagation()}
                 >
                   {/* Opacity slider */}
                   <label className="text-[10px] text-stone-400 flex-shrink-0">Opacity</label>
