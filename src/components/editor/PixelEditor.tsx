@@ -21,6 +21,7 @@ import {
   compositeLayers,
   cloneLayerStack,
   drawRect,
+  drawEllipse,
   drawLine,
   paintBrush,
   extractRegion,
@@ -48,7 +49,7 @@ import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../..
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'move' | 'rect' | 'line';
+type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'move' | 'rect' | 'circle' | 'line';
 
 interface LayerState {
   id: string;
@@ -206,6 +207,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const [renderKey, setRenderKey] = useState(0);
   const [brushSize, setBrushSize] = useState(1);
   const [rectFilled, setRectFilled] = useState(true);
+  const [circleFilled, setCircleFilled] = useState(true);
 
   // Selection state
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -810,8 +812,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     // Shape preview overlay
     const shapeStart = shapeStartRef.current;
-    if (shapeStart && shapeEnd && (tool === 'rect' || tool === 'line')) {
-      renderShapePreview(ctx, tool, shapeStart, shapeEnd, zoom, panX, panY, color, rectFilled);
+    if (shapeStart && shapeEnd && (tool === 'rect' || tool === 'circle' || tool === 'line')) {
+      renderShapePreview(ctx, tool, shapeStart, shapeEnd, zoom, panX, panY, color, tool === 'circle' ? circleFilled : rectFilled);
     }
 
     // Selection overlay
@@ -1043,7 +1045,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     }
 
     // Shape tools
-    if (tool === 'rect' || tool === 'line') {
+    if (tool === 'rect' || tool === 'circle' || tool === 'line') {
       if (coord) {
         history.push(getSnapshot());
         shapeStartRef.current = { x: coord.x, y: coord.y };
@@ -1152,7 +1154,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     }
 
     // Shape preview
-    if ((tool === 'rect' || tool === 'line') && shapeStartRef.current) {
+    if ((tool === 'rect' || tool === 'circle' || tool === 'line') && shapeStartRef.current) {
       if (coord) setShapeEnd(coord);
       return;
     }
@@ -1170,11 +1172,14 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     }
 
     // Shape commit
-    if ((tool === 'rect' || tool === 'line') && shapeStartRef.current && shapeEnd && isDrawingRef.current) {
+    if ((tool === 'rect' || tool === 'circle' || tool === 'line') && shapeStartRef.current && shapeEnd && isDrawingRef.current) {
       const layer = getActiveLayer();
       if (tool === 'rect') {
         drawRect(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
           shapeEnd.x, shapeEnd.y, hexToRGBA(color), rectFilled);
+      } else if (tool === 'circle') {
+        drawEllipse(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
+          shapeEnd.x, shapeEnd.y, hexToRGBA(color), circleFilled);
       } else {
         drawLine(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
           shapeEnd.x, shapeEnd.y, hexToRGBA(color));
@@ -1199,7 +1204,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     isDrawingRef.current = false;
     lastPixelRef.current = null;
-  }, [tool, shapeEnd, color, rectFilled, getActiveLayer, bumpLayers, triggerRender]);
+  }, [tool, shapeEnd, color, rectFilled, circleFilled, getActiveLayer, bumpLayers, triggerRender]);
 
   // ─── Zoom ───────────────────────────────────────────────────────
 
@@ -1809,6 +1814,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           case 's': switchTool('select'); break;
           case 'm': switchTool('move'); break;
           case 'r': switchTool('rect'); break;
+          case 'o': switchTool('circle'); break;
           case 'l': switchTool('line'); break;
           case '=': case '+': zoomIn(); break;
           case '-': zoomOut(); break;
@@ -1908,6 +1914,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     select: 'iconPixelSelect' as keyof ThemeAssets,
     move: 'iconPixelMove' as keyof ThemeAssets,
     rect: 'iconPixelRect' as keyof ThemeAssets,
+    circle: 'iconPixelCircle' as keyof ThemeAssets,
     line: 'iconPixelLine' as keyof ThemeAssets,
   };
 
@@ -1919,6 +1926,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     { id: 'select', label: 'Select', icon: '⬚', key: 'S' },
     { id: 'move', label: 'Move', icon: '✥', key: 'M' },
     { id: 'rect', label: 'Rectangle', icon: '▭', key: 'R' },
+    { id: 'circle', label: 'Circle', icon: '◯', key: 'O' },
     { id: 'line', label: 'Line', icon: '╱', key: 'L' },
   ];
 
@@ -1958,6 +1966,16 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           className="w-8 h-8 rounded flex items-center justify-center text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 flex-shrink-0"
         >
           {rectFilled ? '■' : '□'}
+        </button>
+      )}
+      {/* Circle filled toggle */}
+      {tool === 'circle' && (
+        <button
+          onClick={() => setCircleFilled(f => !f)}
+          title={circleFilled ? 'Filled' : 'Outline'}
+          className="w-8 h-8 rounded flex items-center justify-center text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 flex-shrink-0"
+        >
+          {circleFilled ? '●' : '○'}
         </button>
       )}
       {/* Brush size (pencil/eraser) */}
@@ -2157,6 +2175,15 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           className="px-2 py-1.5 rounded text-xs bg-stone-700 hover:bg-stone-600 text-stone-300"
         >
           {rectFilled ? '■' : '□'}
+        </button>
+      )}
+      {tool === 'circle' && (
+        <button
+          onClick={() => setCircleFilled(f => !f)}
+          title={circleFilled ? 'Filled' : 'Outline'}
+          className="px-2 py-1.5 rounded text-xs bg-stone-700 hover:bg-stone-600 text-stone-300"
+        >
+          {circleFilled ? '●' : '○'}
         </button>
       )}
       <div className="w-px bg-stone-600 mx-1" />
@@ -2908,7 +2935,17 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               </div>
             </div>
 
-            {/* Timeline */}
+            {/* Animation Preview + Timeline */}
+            {showTimeline && framesRef.current.length > 1 && (
+              <PixelEditorAnimationPreview
+                frameThumbnails={frameCompositeUrls}
+                frameRate={animFrameRate}
+                loop={animLoop}
+                canvasWidth={canvasWidth}
+                canvasHeight={canvasHeight}
+                onFrameChange={handleAnimFrameChange}
+              />
+            )}
             {showTimeline && (
               <PixelEditorTimeline
                 frames={frameInfos}
@@ -2934,17 +2971,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           </div>
         </div>
 
-        {/* Animation Preview (floating) */}
-        {showTimeline && framesRef.current.length > 1 && (
-          <PixelEditorAnimationPreview
-            frameThumbnails={frameCompositeUrls}
-            frameRate={animFrameRate}
-            loop={animLoop}
-            canvasWidth={canvasWidth}
-            canvasHeight={canvasHeight}
-            onFrameChange={handleAnimFrameChange}
-          />
-        )}
 
         {shortcutsModal}
         {openModal}

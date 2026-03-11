@@ -182,6 +182,99 @@ export function drawRect(
   }
 }
 
+/** Draw an axis-aligned ellipse bounded by (x0,y0)–(x1,y1) using midpoint algorithm. */
+export function drawEllipse(
+  data: ImageData,
+  x0: number, y0: number, x1: number, y1: number,
+  color: RGBA, filled: boolean
+): void {
+  const minX = Math.min(x0, x1);
+  const maxX = Math.max(x0, x1);
+  const minY = Math.min(y0, y1);
+  const maxY = Math.max(y0, y1);
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+  const rx = (maxX - minX) / 2;
+  const ry = (maxY - minY) / 2;
+
+  if (rx < 0.5 && ry < 0.5) {
+    // Single pixel
+    const px = Math.round(cx);
+    const py = Math.round(cy);
+    if (px >= 0 && py >= 0 && px < data.width && py < data.height) {
+      setPixel(data, px, py, color);
+    }
+    return;
+  }
+
+  const putPixel = (px: number, py: number) => {
+    if (px >= 0 && py >= 0 && px < data.width && py < data.height) {
+      setPixel(data, px, py, color);
+    }
+  };
+
+  if (filled) {
+    // Scanline fill using ellipse equation
+    for (let y = minY; y <= maxY; y++) {
+      if (ry === 0) {
+        // Flat horizontal line
+        for (let x = minX; x <= maxX; x++) putPixel(x, y);
+        continue;
+      }
+      const dy = y - cy;
+      const halfW = rx * Math.sqrt(Math.max(0, 1 - (dy * dy) / (ry * ry)));
+      const left = Math.round(cx - halfW);
+      const right = Math.round(cx + halfW);
+      for (let x = left; x <= right; x++) putPixel(x, y);
+    }
+  } else {
+    // Bresenham-style outline using the midpoint ellipse algorithm
+    // Plot 4 quadrants symmetrically
+    const plotQuad = (dx: number, dy: number) => {
+      putPixel(Math.round(cx + dx), Math.round(cy + dy));
+      putPixel(Math.round(cx - dx), Math.round(cy + dy));
+      putPixel(Math.round(cx + dx), Math.round(cy - dy));
+      putPixel(Math.round(cx - dx), Math.round(cy - dy));
+    };
+
+    const a = Math.max(rx, 0.5);
+    const b = Math.max(ry, 0.5);
+    const a2 = a * a;
+    const b2 = b * b;
+    let x = 0, y = b;
+    let d1 = b2 - a2 * b + 0.25 * a2;
+
+    // Region 1
+    let dx = 0, dy = 2 * a2 * y;
+    while (dx < dy) {
+      plotQuad(x, y);
+      x++;
+      dx += 2 * b2;
+      if (d1 < 0) {
+        d1 += dx + b2;
+      } else {
+        y--;
+        dy -= 2 * a2;
+        d1 += dx - dy + b2;
+      }
+    }
+    // Region 2
+    let d2 = b2 * (x + 0.5) * (x + 0.5) + a2 * (y - 1) * (y - 1) - a2 * b2;
+    while (y >= 0) {
+      plotQuad(x, y);
+      y--;
+      dy -= 2 * a2;
+      if (d2 > 0) {
+        d2 += a2 - dy;
+      } else {
+        x++;
+        dx += 2 * b2;
+        d2 += dx - dy + a2;
+      }
+    }
+  }
+}
+
 export function drawLine(
   data: ImageData,
   x0: number, y0: number, x1: number, y1: number,
@@ -398,7 +491,7 @@ export function renderSelectionOverlay(
 
 export function renderShapePreview(
   ctx: CanvasRenderingContext2D,
-  tool: 'rect' | 'line',
+  tool: 'rect' | 'circle' | 'line',
   start: { x: number; y: number },
   end: { x: number; y: number },
   zoom: number, panX: number, panY: number,
@@ -419,6 +512,23 @@ export function renderShapePreview(
       ctx.strokeStyle = color;
       ctx.lineWidth = zoom;
       ctx.strokeRect(x + zoom / 2, y + zoom / 2, w - zoom, h - zoom);
+    }
+  } else if (tool === 'circle') {
+    const x = panX + Math.min(start.x, end.x) * zoom;
+    const y = panY + Math.min(start.y, end.y) * zoom;
+    const w = (Math.abs(end.x - start.x) + 1) * zoom;
+    const h = (Math.abs(end.y - start.y) + 1) * zoom;
+    const cx = x + w / 2;
+    const cy = y + h / 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, w / 2, h / 2, 0, 0, Math.PI * 2);
+    if (filled) {
+      ctx.fillStyle = color;
+      ctx.fill();
+    } else {
+      ctx.strokeStyle = color;
+      ctx.lineWidth = zoom;
+      ctx.stroke();
     }
   } else {
     ctx.strokeStyle = color;

@@ -106,18 +106,20 @@ export const PixelEditorAnimationPreview: React.FC<PixelEditorAnimationPreviewPr
 
   if (!isOpen) {
     return (
-      <button
-        onClick={() => setIsOpen(true)}
-        className="fixed bottom-36 right-4 z-30 bg-stone-800 border border-stone-600 rounded-lg px-3 py-1.5 text-xs text-stone-300 hover:text-parchment-100 hover:bg-arcane-700 shadow-lg"
-        title="Animation preview"
-      >
-        🎬 Preview
-      </button>
+      <div className="bg-stone-900 border-t border-stone-700 flex justify-end px-2 py-1">
+        <button
+          onClick={() => setIsOpen(true)}
+          className="bg-stone-800 border border-stone-600 rounded px-3 py-1 text-xs text-stone-300 hover:text-parchment-100 hover:bg-arcane-700"
+          title="Animation preview"
+        >
+          🎬 Preview
+        </button>
+      </div>
     );
   }
 
   return (
-    <div className="fixed bottom-36 right-4 z-30 bg-stone-800 border border-stone-600 rounded-lg shadow-xl overflow-hidden">
+    <div className="bg-stone-900 border-t border-stone-700 overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-2 py-1 bg-stone-900 border-b border-stone-700">
         <span className="text-xs text-stone-300 font-bold">Animation Preview</span>
