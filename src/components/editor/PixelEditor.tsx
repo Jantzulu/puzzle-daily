@@ -178,6 +178,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
   const lastPixelRef = useRef<{ x: number; y: number } | null>(null);
   const isDrawingRef = useRef(false);
+  const pointerButtonRef = useRef(0);
   const activePointersRef = useRef<Set<number>>(new Set());
   const panStartRef = useRef<{ x: number; y: number; panX: number; panY: number } | null>(null);
   const pointerPositionsRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -195,6 +196,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const [canvasHeight, setCanvasHeight] = useState(defaultHeight);
   const [tool, setTool] = useState<Tool>('pencil');
   const [color, setColor] = useState('#000000');
+  const [secondaryColor, setSecondaryColor] = useState('#ffffff');
+  const [showPalette, setShowPalette] = useState(false);
   const [zoom, setZoom] = useState(DEFAULT_ZOOM);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
@@ -904,7 +907,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         floodFill(data, px, py, hexToRGBA(color));
         break;
       case 'eyedropper': {
-        // Sample from composite
+        // Sample from composite; right-click picks secondary color
         const layers = layersRef.current;
         const comp = compositeLayers(
           layers.map(l => l.data),
@@ -914,7 +917,12 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         );
         const sampled = getPixel(comp, px, py);
         if (sampled[3] > 0) {
-          setColor(rgbaToHex(sampled));
+          const hex = rgbaToHex(sampled);
+          if (pointerButtonRef.current === 2) {
+            setSecondaryColor(hex);
+          } else {
+            setColor(hex);
+          }
         }
         break;
       }
@@ -943,6 +951,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     canvas.setPointerCapture(e.pointerId);
     activePointersRef.current.add(e.pointerId);
     pointerPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    pointerButtonRef.current = e.button;
 
     // Middle click, two fingers, or Space held = pan/pinch
     if (e.button === 1 || activePointersRef.current.size > 1 || spaceHeldRef.current) {
@@ -1738,6 +1748,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     setTool(newTool);
   }, [tool, commitFloating]);
 
+  const swapColors = useCallback(() => {
+    setColor(prev => {
+      setSecondaryColor(prev);
+      return secondaryColor;
+    });
+  }, [secondaryColor]);
+
   // ─── Keyboard Shortcuts ─────────────────────────────────────────
 
   useEffect(() => {
@@ -1798,6 +1815,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               switchFrame(Math.min(framesRef.current.length - 1, activeFrameIndex + 1));
             }
             break;
+          case 'x': swapColors(); break;
+          case 'c': setShowPalette(s => !s); break;
         }
         if (e.key === '?') {
           setShowShortcuts(s => !s);
@@ -1807,7 +1826,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     window.addEventListener('keydown', handleKey);
     return () => window.removeEventListener('keydown', handleKey);
-  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool, showShortcuts, switchFrame, duplicateFrame, activeFrameIndex]);
+  }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool, showShortcuts, switchFrame, duplicateFrame, activeFrameIndex, swapColors]);
 
   // ─── Tool Hold (Spring-loaded Tools) ───────────────────────────
   // Hold Alt → eyedropper, hold Space → pan. Release snaps back.
@@ -1901,22 +1920,21 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     return <span>{t.icon}</span>;
   };
 
-  // ─── Render: Toolbar ──────────────────────────────────────────────
+  // ─── Render: Vertical Tool Strip (desktop) ──────────────────────
 
-  const toolbarButtons = (
-    <>
+  const verticalToolbar = (
+    <div className="w-10 bg-stone-900 border-r border-stone-700 flex flex-col items-center py-1.5 gap-0.5 flex-shrink-0">
       {tools.map(t => (
         <button
           key={t.id}
           onClick={() => switchTool(t.id)}
           title={`${t.label} (${t.key})`}
-          className={`px-2 py-1.5 rounded text-sm transition-colors ${
+          className={`w-8 h-8 rounded flex items-center justify-center text-sm transition-colors ${
             tool === t.id
               ? 'bg-arcane-600 text-parchment-100'
-              : 'bg-stone-700 hover:bg-stone-600 text-stone-300'
+              : 'bg-stone-800 hover:bg-stone-700 text-stone-300'
           }`}
         >
-          <span className="text-[10px] opacity-50 mr-0.5">{t.key}</span>
           {renderToolIcon(t)}
         </button>
       ))}
@@ -1925,30 +1943,35 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         <button
           onClick={() => setRectFilled(f => !f)}
           title={rectFilled ? 'Filled' : 'Outline'}
-          className="px-2 py-1.5 rounded text-xs bg-stone-700 hover:bg-stone-600 text-stone-300"
+          className="w-8 h-8 rounded flex items-center justify-center text-xs bg-stone-800 hover:bg-stone-700 text-stone-300"
         >
           {rectFilled ? '■' : '□'}
         </button>
       )}
-      <div className="w-px bg-stone-600 mx-1" />
       {/* Brush size (pencil/eraser) */}
       {(tool === 'pencil' || tool === 'eraser') && (
         <>
-          <span className="text-xs text-stone-400 self-center">Size:</span>
+          <div className="w-6 h-px bg-stone-700 my-0.5" />
           <button
             onClick={() => setBrushSize(s => Math.max(1, s - 1))}
-            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700"
             title="Decrease brush size ([)"
           >-</button>
-          <span className="text-xs text-stone-400 self-center min-w-[1.5rem] text-center">{brushSize}</span>
+          <span className="text-[10px] text-stone-400">{brushSize}</span>
           <button
             onClick={() => setBrushSize(s => Math.min(16, s + 1))}
-            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700"
             title="Increase brush size (])"
           >+</button>
-          <div className="w-px bg-stone-600 mx-1" />
         </>
       )}
+    </div>
+  );
+
+  // ─── Render: Action Bar (desktop, horizontal above canvas) ─────
+
+  const actionBar = (
+    <>
       <button
         onClick={handleUndo}
         disabled={!history.canUndo}
@@ -1966,7 +1989,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         ↪
       </button>
       <div className="w-px bg-stone-600 mx-1" />
-      {/* Flip buttons */}
       <button onClick={handleFlipH} title="Flip Horizontal" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300">⇔</button>
       <button onClick={handleFlipV} title="Flip Vertical" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300">⇕</button>
       <div className="w-px bg-stone-600 mx-1" />
@@ -1994,6 +2016,65 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       >
         {'\u2328'} ?
       </button>
+    </>
+  );
+
+  // ─── Render: Mobile Toolbar (horizontal, all controls) ─────────
+
+  const mobileToolbar = (
+    <>
+      {tools.map(t => (
+        <button
+          key={t.id}
+          onClick={() => switchTool(t.id)}
+          title={`${t.label} (${t.key})`}
+          className={`px-2 py-1.5 rounded text-sm transition-colors ${
+            tool === t.id
+              ? 'bg-arcane-600 text-parchment-100'
+              : 'bg-stone-700 hover:bg-stone-600 text-stone-300'
+          }`}
+        >
+          {renderToolIcon(t)}
+        </button>
+      ))}
+      {tool === 'rect' && (
+        <button
+          onClick={() => setRectFilled(f => !f)}
+          title={rectFilled ? 'Filled' : 'Outline'}
+          className="px-2 py-1.5 rounded text-xs bg-stone-700 hover:bg-stone-600 text-stone-300"
+        >
+          {rectFilled ? '■' : '□'}
+        </button>
+      )}
+      <div className="w-px bg-stone-600 mx-1" />
+      {(tool === 'pencil' || tool === 'eraser') && (
+        <>
+          <button
+            onClick={() => setBrushSize(s => Math.max(1, s - 1))}
+            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            title="Decrease brush size ([)"
+          >-</button>
+          <span className="text-xs text-stone-400 self-center min-w-[1.5rem] text-center">{brushSize}</span>
+          <button
+            onClick={() => setBrushSize(s => Math.min(16, s + 1))}
+            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            title="Increase brush size (])"
+          >+</button>
+          <div className="w-px bg-stone-600 mx-1" />
+        </>
+      )}
+      <button
+        onClick={handleUndo}
+        disabled={!history.canUndo}
+        title="Undo"
+        className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
+      >↩</button>
+      <button
+        onClick={handleRedo}
+        disabled={!history.canRedo}
+        title="Redo"
+        className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
+      >↪</button>
     </>
   );
 
@@ -2109,6 +2190,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 ['+ / -', 'Zoom in / out'],
                 ['Scroll', 'Zoom at cursor'],
                 ['[ / ]', 'Brush size'],
+                ['X', 'Swap primary/secondary color'],
+                ['C', 'Toggle color palette'],
                 ['Hold Space', 'Pan canvas (drag)'],
                 ['Hold Alt', 'Eyedropper (temporary)'],
                 ['Middle drag', 'Pan canvas'],
@@ -2146,64 +2229,111 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
   const colorPalette = (
     <div>
-      <div className="flex items-center gap-2 mb-2">
-        <div
-          className="w-8 h-8 rounded border-2 border-white"
-          style={{ backgroundColor: color }}
-        />
-        <input
-          type="color"
-          value={color}
-          onChange={e => setColor(e.target.value)}
-          className="w-8 h-8 rounded cursor-pointer bg-transparent"
-        />
-        <span className="text-xs text-stone-400 font-mono">{color}</span>
+      {/* Primary/Secondary color swatches + toggle */}
+      <div className="flex items-center gap-3 mb-2">
+        {/* Stacked color swatches (Photoshop-style) */}
+        <div className="relative w-10 h-10 flex-shrink-0">
+          {/* Secondary (background) — behind, offset */}
+          <div
+            className="absolute bottom-0 right-0 w-7 h-7 rounded border border-stone-500 cursor-pointer"
+            style={{ backgroundColor: secondaryColor }}
+            onClick={() => { setColor(secondaryColor); setSecondaryColor(color); }}
+            title={`Secondary: ${secondaryColor}`}
+          />
+          {/* Primary (foreground) — front, top-left */}
+          <div
+            className="absolute top-0 left-0 w-7 h-7 rounded border-2 border-white cursor-pointer z-10"
+            style={{ backgroundColor: color }}
+            title={`Primary: ${color}`}
+          />
+          {/* Swap arrow */}
+          <button
+            onClick={swapColors}
+            className="absolute top-0 right-0 w-4 h-4 bg-stone-700 hover:bg-stone-600 rounded-sm flex items-center justify-center text-[9px] text-stone-300 z-20"
+            title="Swap colors (X)"
+          >
+            ⇄
+          </button>
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] text-stone-500 font-mono">{color}</span>
+          <span className="text-[10px] text-stone-600 font-mono">{secondaryColor}</span>
+        </div>
         <button
-          onClick={() => {
-            if (!customColors.includes(color)) {
-              setCustomColors(prev => [...prev, color]);
-            }
-          }}
-          title="Save color to palette"
-          className="px-1.5 py-0.5 rounded text-xs bg-stone-700 hover:bg-stone-600"
+          onClick={() => setShowPalette(s => !s)}
+          className={`ml-auto px-1.5 py-0.5 rounded text-xs transition-colors ${
+            showPalette ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-700 hover:bg-stone-600 text-stone-400'
+          }`}
+          title="Toggle palette (C)"
         >
-          +
+          {showPalette ? '▼' : '▶'} Palette
         </button>
       </div>
-      <div className="grid grid-cols-8 gap-0.5">
-        {PALETTE.map(c => (
-          <button
-            key={c}
-            onClick={() => setColor(c)}
-            className={`w-6 h-6 rounded-sm border ${
-              color === c ? 'border-white border-2' : 'border-stone-600'
-            }`}
-            style={{ backgroundColor: c }}
-            title={c}
-          />
-        ))}
-      </div>
-      {/* Custom colors */}
-      {customColors.length > 0 && (
-        <div className="mt-1">
-          <div className="text-xs text-stone-500 mb-0.5">Custom</div>
+      {/* Expanded palette */}
+      {showPalette && (
+        <div>
+          {/* Color picker + hex + add */}
+          <div className="flex items-center gap-2 mb-1.5">
+            <input
+              type="color"
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              className="w-7 h-7 rounded cursor-pointer bg-transparent"
+            />
+            <button
+              onClick={() => {
+                if (!customColors.includes(color)) {
+                  setCustomColors(prev => [...prev, color]);
+                }
+              }}
+              title="Save color to palette"
+              className="px-1.5 py-0.5 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            >
+              + Save
+            </button>
+          </div>
+          {/* Default palette */}
           <div className="grid grid-cols-8 gap-0.5">
-            {customColors.map((c, i) => (
+            {PALETTE.map(c => (
               <button
-                key={`${c}-${i}`}
+                key={c}
                 onClick={() => setColor(c)}
-                onContextMenu={(e) => {
-                  e.preventDefault();
-                  setCustomColors(prev => prev.filter((_, j) => j !== i));
-                }}
+                onContextMenu={(e) => { e.preventDefault(); setSecondaryColor(c); }}
                 className={`w-6 h-6 rounded-sm border ${
-                  color === c ? 'border-white border-2' : 'border-stone-600'
+                  color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
                 }`}
                 style={{ backgroundColor: c }}
-                title={`${c} (right-click to remove)`}
+                title={`${c} (right-click: secondary)`}
               />
             ))}
           </div>
+          {/* Custom colors */}
+          {customColors.length > 0 && (
+            <div className="mt-1">
+              <div className="text-xs text-stone-500 mb-0.5">Custom</div>
+              <div className="grid grid-cols-8 gap-0.5">
+                {customColors.map((c, i) => (
+                  <button
+                    key={`${c}-${i}`}
+                    onClick={() => setColor(c)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      if (e.shiftKey) {
+                        setCustomColors(prev => prev.filter((_, j) => j !== i));
+                      } else {
+                        setSecondaryColor(c);
+                      }
+                    }}
+                    className={`w-6 h-6 rounded-sm border ${
+                      color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
+                    }`}
+                    style={{ backgroundColor: c }}
+                    title={`${c} (right-click: secondary, Shift+right-click: remove)`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
@@ -2521,9 +2651,9 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           </div>
         </div>
 
-        {/* Toolbar */}
-        <div className="flex items-center gap-1 px-4 py-1.5 bg-stone-800 border-b border-stone-700 flex-wrap">
-          {toolbarButtons}
+        {/* Action Bar */}
+        <div className="flex items-center gap-1 px-4 py-1 bg-stone-800 border-b border-stone-700">
+          {actionBar}
           {/* Timeline toggle */}
           <span className="text-stone-600 mx-1">|</span>
           <button
@@ -2539,16 +2669,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
         {/* Main content */}
         <div className="flex flex-1 min-h-0">
-          {/* Sidebar */}
-          <div className="w-56 bg-stone-900 border-r border-stone-700 p-3 flex flex-col gap-3 overflow-y-auto">
-            {colorPalette}
-            <div className="border-t border-stone-700 pt-2">
-              {layerPanel}
-            </div>
-            <div className="border-t border-stone-700 pt-2">
-              {canvasSizeControls}
-            </div>
-          </div>
+          {/* Vertical Tool Strip */}
+          {verticalToolbar}
 
           {/* Canvas + Timeline column */}
           <div className="flex-1 flex flex-col min-h-0">
@@ -2563,6 +2685,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 onPointerUp={handlePointerUp}
                 onPointerCancel={handlePointerUp}
                 onWheel={handleWheel}
+                onContextMenu={(e) => e.preventDefault()}
               />
               {/* Status bar */}
               <div className="absolute bottom-0 left-0 right-0 flex items-center justify-between px-3 py-1 bg-stone-900/80 text-xs text-stone-400 pointer-events-none">
@@ -2596,6 +2719,17 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 onSetOnionSkinning={setOnionSkinning}
               />
             )}
+          </div>
+
+          {/* Right Sidebar */}
+          <div className="w-56 bg-stone-900 border-l border-stone-700 p-3 flex flex-col gap-3 overflow-y-auto">
+            {colorPalette}
+            <div className="border-t border-stone-700 pt-2">
+              {layerPanel}
+            </div>
+            <div className="border-t border-stone-700 pt-2">
+              {canvasSizeControls}
+            </div>
           </div>
         </div>
 
@@ -2676,7 +2810,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
       {/* Toolbar */}
       <div className="flex items-center gap-1 px-2 py-1 bg-stone-800 border-b border-stone-700 flex-wrap">
-        {toolbarButtons}
+        {mobileToolbar}
         <button
           onClick={() => setShowTimeline(s => !s)}
           className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
@@ -2699,6 +2833,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           onPointerUp={handlePointerUp}
           onPointerCancel={handlePointerUp}
           onWheel={handleWheel}
+          onContextMenu={(e) => e.preventDefault()}
         />
       </div>
 
