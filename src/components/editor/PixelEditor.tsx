@@ -184,6 +184,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const pinchStartDistRef = useRef<number | null>(null);
   const pinchStartZoomRef = useRef<number>(DEFAULT_ZOOM);
 
+  // Tool hold (spring-loaded): hold Alt→eyedropper. Release snaps back.
+  const heldToolRef = useRef<Tool | null>(null);
+  const preHoldToolRef = useRef<Tool>('pencil');
+  // Space hold → pan mode (like middle-click drag)
+  const spaceHeldRef = useRef(false);
+  const [spaceHeld, setSpaceHeld] = useState(false); // for cursor rendering
+
   const [canvasWidth, setCanvasWidth] = useState(defaultWidth);
   const [canvasHeight, setCanvasHeight] = useState(defaultHeight);
   const [tool, setTool] = useState<Tool>('pencil');
@@ -937,8 +944,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     activePointersRef.current.add(e.pointerId);
     pointerPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
 
-    // Middle click or two fingers = pan/pinch
-    if (e.button === 1 || activePointersRef.current.size > 1) {
+    // Middle click, two fingers, or Space held = pan/pinch
+    if (e.button === 1 || activePointersRef.current.size > 1 || spaceHeldRef.current) {
       const pointers = Array.from(pointerPositionsRef.current.values());
       if (pointers.length >= 2) {
         const [p1, p2] = pointers;
@@ -1802,6 +1809,65 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     return () => window.removeEventListener('keydown', handleKey);
   }, [handleUndo, handleRedo, handleCopy, handleCut, handlePaste, handleDeleteSelection, commitFloating, selection, zoomIn, zoomOut, switchTool, showShortcuts, switchFrame, duplicateFrame, activeFrameIndex]);
 
+  // ─── Tool Hold (Spring-loaded Tools) ───────────────────────────
+  // Hold Alt → eyedropper, hold Space → pan. Release snaps back.
+
+  useEffect(() => {
+    const handleHoldDown = (e: KeyboardEvent) => {
+      if (e.repeat) return;
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      // Space → pan mode (handled via spaceHeldRef, not tool switch)
+      if (e.key === ' ' && !spaceHeldRef.current) {
+        e.preventDefault();
+        spaceHeldRef.current = true;
+        setSpaceHeld(true);
+        return;
+      }
+
+      // Alt → eyedropper
+      if (e.key === 'Alt' && !heldToolRef.current) {
+        e.preventDefault();
+        preHoldToolRef.current = tool;
+        heldToolRef.current = 'eyedropper';
+        setTool('eyedropper');
+      }
+    };
+
+    const handleHoldUp = (e: KeyboardEvent) => {
+      if (e.key === ' ') {
+        spaceHeldRef.current = false;
+        setSpaceHeld(false);
+        return;
+      }
+
+      if (e.key === 'Alt' && heldToolRef.current === 'eyedropper') {
+        e.preventDefault();
+        setTool(preHoldToolRef.current);
+        heldToolRef.current = null;
+      }
+    };
+
+    // Release all holds on window blur (e.g., Alt+Tab)
+    const handleBlur = () => {
+      spaceHeldRef.current = false;
+      setSpaceHeld(false);
+      if (heldToolRef.current) {
+        setTool(preHoldToolRef.current);
+        heldToolRef.current = null;
+      }
+    };
+
+    window.addEventListener('keydown', handleHoldDown);
+    window.addEventListener('keyup', handleHoldUp);
+    window.addEventListener('blur', handleBlur);
+    return () => {
+      window.removeEventListener('keydown', handleHoldDown);
+      window.removeEventListener('keyup', handleHoldUp);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, [tool]);
+
   // ─── Tool Config ────────────────────────────────────────────────
 
   const toolIconMap: Record<string, keyof ThemeAssets> = {
@@ -2043,6 +2109,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 ['+ / -', 'Zoom in / out'],
                 ['Scroll', 'Zoom at cursor'],
                 ['[ / ]', 'Brush size'],
+                ['Hold Space', 'Pan canvas (drag)'],
+                ['Hold Alt', 'Eyedropper (temporary)'],
                 ['Middle drag', 'Pan canvas'],
                 ['?', 'This reference'],
               ].map(([key, label]) => (
@@ -2335,7 +2403,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   );
 
   // ─── Canvas cursor style ──────────────────────────────────────────
-  const canvasCursor = tool === 'eyedropper' ? 'crosshair'
+  const canvasCursor = spaceHeld ? 'grab'
+    : tool === 'eyedropper' ? 'crosshair'
     : tool === 'select' ? 'crosshair'
     : tool === 'move' ? 'move'
     : 'default';
