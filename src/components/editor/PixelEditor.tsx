@@ -1940,13 +1940,14 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           key={t.id}
           onClick={() => switchTool(t.id)}
           title={`${t.label} (${t.key})`}
-          className={`w-8 h-8 rounded flex items-center justify-center text-sm transition-colors flex-shrink-0 ${
+          className={`w-8 h-8 rounded flex flex-col items-center justify-center text-sm transition-colors flex-shrink-0 relative ${
             tool === t.id
               ? 'bg-arcane-600 text-parchment-100'
               : 'bg-stone-800 hover:bg-stone-700 text-stone-300'
           }`}
         >
           {renderToolIcon(t)}
+          <span className="absolute bottom-0 right-0.5 text-[7px] leading-none opacity-50">{t.key}</span>
         </button>
       ))}
       {/* Rect filled toggle */}
@@ -2685,7 +2686,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       <div className={isPage ? 'flex flex-col h-full bg-stone-950' : 'fixed inset-0 bg-black/80 flex flex-col z-50'}>
         {recoveryBanner}
         {/* Unified Toolbar */}
-        <div className="flex items-center gap-1 px-3 py-1 bg-stone-900 border-b border-stone-700">
+        <div className="relative flex items-center gap-1 px-3 py-1 bg-stone-900 border-b border-stone-700">
           {/* Left: New/Open + actions */}
           {isPage ? (
             <>
@@ -2714,9 +2715,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             🎬 Timeline
           </button>
 
-          {/* Center: Title + Dimensions */}
-          <div className="flex-1" />
-          <div className="flex items-center gap-2">
+          {/* Center: Title + Dimensions (absolutely centered) */}
+          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
             {editingProjectName ? (
               <input
                 autoFocus
@@ -2731,7 +2731,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             ) : (
               <span
                 onClick={() => setEditingProjectName(true)}
-                className="text-xs text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 transition-colors"
+                className="text-xs text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 transition-colors leading-none"
                 title="Click to rename"
               >
                 {projectName}
@@ -2740,7 +2740,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             <div className="relative">
               <button
                 onClick={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); setResizeAnchorX(0); setResizeAnchorY(0); setShowResizePanel(s => !s); }}
-                className="text-[10px] text-stone-300 px-1.5 py-0.5 rounded bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 transition-colors cursor-pointer"
+                className="text-xs text-stone-300 px-1.5 py-0.5 rounded bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 transition-colors cursor-pointer leading-none"
                 title="Canvas size (click to resize)"
               >
                 {canvasWidth}x{canvasHeight} ▾
@@ -2832,7 +2832,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             </div>
           </div>
           <div className="flex-1" />
-
           {/* Right: Save buttons */}
           <div className="flex gap-1">
             {!isPage && (
