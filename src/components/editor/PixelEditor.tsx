@@ -20,6 +20,7 @@ import {
   deserializeProject,
   compositeLayers,
   cloneLayerStack,
+  constrainShapeEnd,
   drawRect,
   drawEllipse,
   drawLine,
@@ -34,6 +35,11 @@ import {
   renderShapePreview,
   compositeFramesToSpriteSheet,
   generateFrameThumbnail,
+  hitTestTransformHandle,
+  renderTransformHandles,
+  scaleImageData,
+  getTransformCursor,
+  type TransformHandle,
   type PixelEditorProject,
   type PixelEditorLayer,
 } from './pixelEditorUtils';
@@ -47,9 +53,19 @@ import { cachePixelEditorState, getCachedPixelEditorState } from '../../utils/pi
 import { setGlobalClipboard, getGlobalClipboard, hasGlobalClipboard } from '../../utils/pixelEditorClipboard';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 
+// ─── Inline SVG Icons ────────────────────────────────────────────────
+
+const ChevronUp = () => <svg viewBox="0 0 12 12" className="w-3 h-3 inline-block"><polyline points="2,8 6,4 10,8" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const ChevronDown = () => <svg viewBox="0 0 12 12" className="w-3 h-3 inline-block"><polyline points="2,4 6,8 10,4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const ChevronRight = () => <svg viewBox="0 0 12 12" className="w-3 h-3 inline-block"><polyline points="4,2 8,6 4,10" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const UndoIcon = () => <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 inline-block"><path d="M3,3 L1,5.5 L3,8 M1,5.5 H8 A2.5,2.5 0 0 1 8,10.5 H6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const RedoIcon = () => <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 inline-block"><path d="M9,3 L11,5.5 L9,8 M11,5.5 H4 A2.5,2.5 0 0 0 4,10.5 H6" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const FlipHIcon = () => <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 inline-block"><path d="M1,6 L3.5,4 M1,6 L3.5,8 M1,6 H11 M11,6 L8.5,4 M11,6 L8.5,8" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+const FlipVIcon = () => <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 inline-block"><path d="M6,1 L4,3.5 M6,1 L8,3.5 M6,1 V11 M6,11 L4,8.5 M6,11 L8,8.5" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+
 // ─── Types ──────────────────────────────────────────────────────────
 
-type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'move' | 'rect' | 'circle' | 'line';
+type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'move' | 'transform' | 'rect' | 'circle' | 'line';
 
 interface LayerState {
   id: string;
@@ -206,8 +222,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
   const [renderKey, setRenderKey] = useState(0);
   const [brushSize, setBrushSize] = useState(1);
-  const [rectFilled, setRectFilled] = useState(true);
-  const [circleFilled, setCircleFilled] = useState(true);
+  const [shapeFilled, setShapeFilled] = useState(true);
 
   // Selection state
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -218,9 +233,26 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const selectionAnimRef = useRef(0);
   const selectionRafRef = useRef<number | null>(null);
 
+  // Transform tool state
+  const transformStateRef = useRef<{
+    handle: TransformHandle;
+    startScreenX: number;
+    startScreenY: number;
+    origSel: { x: number; y: number; w: number; h: number };
+  } | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<TransformHandle | null>(null);
+
   // Shape tool state
   const shapeStartRef = useRef<{ x: number; y: number } | null>(null);
   const [shapeEnd, setShapeEnd] = useState<{ x: number; y: number } | null>(null);
+
+  // Touch delay — prevent accidental drawing when pinch/pan gesture starts
+  const touchDelayTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingTouchActionRef = useRef<{
+    coord: { x: number; y: number };
+    tool: Tool;
+    pointerEvent: React.PointerEvent<HTMLCanvasElement>;
+  } | null>(null);
 
   // Custom color palette
   const [customColors, setCustomColors] = useState<string[]>([]);
@@ -762,7 +794,14 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     // Bake floating selection pixels into the composite so they render through the same pipeline
     if (selection?.floatingData) {
-      pasteRegion(composite, selection.floatingData, selection.x, selection.y);
+      const fd = selection.floatingData;
+      if (fd.width !== selection.w || fd.height !== selection.h) {
+        // Scaled transform — resample for preview
+        const scaled = scaleImageData(fd, Math.max(1, selection.w), Math.max(1, selection.h));
+        pasteRegion(composite, scaled, selection.x, selection.y);
+      } else {
+        pasteRegion(composite, fd, selection.x, selection.y);
+      }
     }
 
     renderPixelCanvas(ctx, composite, zoom, panX, panY, showGrid, rect.width, rect.height);
@@ -813,12 +852,16 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     // Shape preview overlay
     const shapeStart = shapeStartRef.current;
     if (shapeStart && shapeEnd && (tool === 'rect' || tool === 'circle' || tool === 'line')) {
-      renderShapePreview(ctx, tool, shapeStart, shapeEnd, zoom, panX, panY, color, tool === 'circle' ? circleFilled : rectFilled);
+      renderShapePreview(ctx, tool, shapeStart, shapeEnd, zoom, panX, panY, color, shapeFilled);
     }
 
     // Selection overlay
     if (selection) {
       renderSelectionOverlay(ctx, selection, zoom, panX, panY, selectionAnimRef.current);
+      // Transform handles
+      if (tool === 'transform') {
+        renderTransformHandles(ctx, selection, zoom, panX, panY);
+      }
     }
 
     // Brush outline on hover
@@ -857,7 +900,14 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const commitFloating = useCallback(() => {
     if (!selection?.floatingData) return;
     const layer = getActiveLayer();
-    pasteRegion(layer.data, selection.floatingData, selection.x, selection.y);
+    const fd = selection.floatingData;
+    // If dimensions changed (transform scaling), resample the floating data
+    if (fd.width !== selection.w || fd.height !== selection.h) {
+      const scaled = scaleImageData(fd, Math.max(1, selection.w), Math.max(1, selection.h));
+      pasteRegion(layer.data, scaled, selection.x, selection.y);
+    } else {
+      pasteRegion(layer.data, fd, selection.x, selection.y);
+    }
     setSelection(null);
     bumpLayers();
     triggerRender();
@@ -965,6 +1015,17 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     // Middle click, two fingers, or Space held = pan/pinch
     if (e.button === 1 || activePointersRef.current.size > 1 || spaceHeldRef.current) {
+      // Cancel any pending touch action — user is panning/pinching, not drawing
+      if (touchDelayTimerRef.current) {
+        clearTimeout(touchDelayTimerRef.current);
+        touchDelayTimerRef.current = null;
+        pendingTouchActionRef.current = null;
+        // Undo the snapshot if it was already pushed
+        if (isDrawingRef.current) {
+          history.undo();
+          isDrawingRef.current = false;
+        }
+      }
       const pointers = Array.from(pointerPositionsRef.current.values());
       if (pointers.length >= 2) {
         const [p1, p2] = pointers;
@@ -981,6 +1042,10 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     }
 
     const coord = getPixelCoord(e);
+
+    // For touch input, defer drawing/shape tool actions to allow second finger for pan
+    const isTouch = e.pointerType === 'touch';
+    const TOUCH_DELAY_MS = 120;
 
     // Move tool — always drags selection (creates one if needed)
     if (tool === 'move') {
@@ -1001,6 +1066,55 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           origX: selection?.x ?? 0, origY: selection?.y ?? 0,
         };
         isDrawingRef.current = true;
+      }
+      return;
+    }
+
+    // Transform tool — drag handles to resize selection
+    if (tool === 'transform') {
+      if (!selection && coord) {
+        // No selection: select entire layer, like move tool
+        history.push(getSnapshot());
+        const layer = getActiveLayer();
+        const allData = cloneImageData(layer.data);
+        clearRegion(layer.data, 0, 0, canvasWidth, canvasHeight);
+        setSelection({ x: 0, y: 0, w: canvasWidth, h: canvasHeight, floatingData: allData });
+        bumpLayers();
+      }
+      if (selection) {
+        const canvas = canvasRef.current!;
+        const rect = canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const handle = hitTestTransformHandle(screenX, screenY, selection, zoom, panX, panY);
+        if (handle) {
+          // Start handle drag
+          if (!selection.floatingData) liftSelection();
+          history.push(getSnapshot());
+          transformStateRef.current = {
+            handle,
+            startScreenX: e.clientX,
+            startScreenY: e.clientY,
+            origSel: { x: selection.x, y: selection.y, w: selection.w, h: selection.h },
+          };
+          isDrawingRef.current = true;
+        } else if (coord) {
+          // Check if inside selection — drag to move
+          const inSel = coord.x >= selection.x && coord.x < selection.x + selection.w &&
+                        coord.y >= selection.y && coord.y < selection.y + selection.h;
+          if (inSel) {
+            if (!selection.floatingData) liftSelection();
+            selectionDragRef.current = {
+              startX: coord.x, startY: coord.y,
+              origX: selection.x, origY: selection.y,
+            };
+            isDrawingRef.current = true;
+          } else {
+            // Click outside — commit transform and clear selection
+            commitFloating();
+            setSelection(null);
+          }
+        }
       }
       return;
     }
@@ -1047,25 +1161,78 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     // Shape tools
     if (tool === 'rect' || tool === 'circle' || tool === 'line') {
       if (coord) {
-        history.push(getSnapshot());
-        shapeStartRef.current = { x: coord.x, y: coord.y };
-        setShapeEnd({ x: coord.x, y: coord.y });
-        isDrawingRef.current = true;
+        const startShape = () => {
+          history.push(getSnapshot());
+          shapeStartRef.current = { x: coord.x, y: coord.y };
+          setShapeEnd({ x: coord.x, y: coord.y });
+          isDrawingRef.current = true;
+        };
+        if (isTouch) {
+          pendingTouchActionRef.current = { coord, tool, pointerEvent: e };
+          touchDelayTimerRef.current = setTimeout(() => {
+            touchDelayTimerRef.current = null;
+            pendingTouchActionRef.current = null;
+            startShape();
+          }, TOUCH_DELAY_MS);
+        } else {
+          startShape();
+        }
       }
       return;
     }
 
     if (!coord) return;
 
-    // Drawing tools
-    history.push(getSnapshot());
-    isDrawingRef.current = true;
-    lastPixelRef.current = null;
-    applyToolWithLine(coord.x, coord.y);
+    // Drawing tools (pencil, eraser, fill, eyedropper)
+    const startDrawing = () => {
+      history.push(getSnapshot());
+      isDrawingRef.current = true;
+      lastPixelRef.current = null;
+      applyToolWithLine(coord.x, coord.y);
+    };
+    if (isTouch) {
+      pendingTouchActionRef.current = { coord, tool, pointerEvent: e };
+      touchDelayTimerRef.current = setTimeout(() => {
+        touchDelayTimerRef.current = null;
+        pendingTouchActionRef.current = null;
+        startDrawing();
+      }, TOUCH_DELAY_MS);
+    } else {
+      startDrawing();
+    }
   }, [panX, panY, getPixelCoord, history, getSnapshot, applyToolWithLine, tool, selection, commitFloating, liftSelection]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
     pointerPositionsRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    // If touch action is pending and finger moved enough, commit immediately (user is drawing)
+    if (pendingTouchActionRef.current && touchDelayTimerRef.current) {
+      const pending = pendingTouchActionRef.current;
+      const coord = getPixelCoord(e);
+      if (coord) {
+        const dx = coord.x - pending.coord.x;
+        const dy = coord.y - pending.coord.y;
+        if (Math.abs(dx) > 2 || Math.abs(dy) > 2) {
+          clearTimeout(touchDelayTimerRef.current);
+          touchDelayTimerRef.current = null;
+          pendingTouchActionRef.current = null;
+          // Commit the pending action
+          if (pending.tool === 'rect' || pending.tool === 'circle' || pending.tool === 'line') {
+            history.push(getSnapshot());
+            shapeStartRef.current = { x: pending.coord.x, y: pending.coord.y };
+            setShapeEnd(coord);
+            isDrawingRef.current = true;
+          } else {
+            history.push(getSnapshot());
+            isDrawingRef.current = true;
+            lastPixelRef.current = null;
+            applyToolWithLine(pending.coord.x, pending.coord.y);
+            applyToolWithLine(coord.x, coord.y);
+          }
+        }
+      }
+      return;
+    }
 
     // Pinch-to-zoom + pan with two fingers
     if (panStartRef.current && activePointersRef.current.size >= 2 && pinchStartDistRef.current !== null) {
@@ -1111,8 +1278,53 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     if (!isDrawingRef.current) return;
 
-    // Selection/Move drag
-    if ((tool === 'select' || tool === 'move') && selectionDragRef.current && selection) {
+    // Transform handle drag
+    if (tool === 'transform' && transformStateRef.current && selection && isDrawingRef.current) {
+      const ts = transformStateRef.current;
+      const dxScreen = e.clientX - ts.startScreenX;
+      const dyScreen = e.clientY - ts.startScreenY;
+      const dxPixel = Math.round(dxScreen / zoom);
+      const dyPixel = Math.round(dyScreen / zoom);
+      const h = ts.handle;
+      let { x, y, w, h: height } = ts.origSel;
+
+      // Compute new bounds based on which handle is dragged
+      if (h === 'e' || h === 'ne' || h === 'se') w = Math.max(1, ts.origSel.w + dxPixel);
+      if (h === 'w' || h === 'nw' || h === 'sw') { x = ts.origSel.x + dxPixel; w = Math.max(1, ts.origSel.w - dxPixel); }
+      if (h === 's' || h === 'se' || h === 'sw') height = Math.max(1, ts.origSel.h + dyPixel);
+      if (h === 'n' || h === 'ne' || h === 'nw') { y = ts.origSel.y + dyPixel; height = Math.max(1, ts.origSel.h - dyPixel); }
+
+      // Shift = maintain aspect ratio
+      if (e.shiftKey && selection.floatingData) {
+        const aspect = ts.origSel.w / ts.origSel.h;
+        if (h === 'n' || h === 's') { w = Math.max(1, Math.round(height * aspect)); }
+        else if (h === 'e' || h === 'w') { height = Math.max(1, Math.round(w / aspect)); }
+        else { // corner
+          const newAspect = w / height;
+          if (newAspect > aspect) { w = Math.max(1, Math.round(height * aspect)); }
+          else { height = Math.max(1, Math.round(w / aspect)); }
+        }
+      }
+
+      setSelection(prev => prev ? { ...prev, x, y, w, h: height } : null);
+      triggerRender();
+      return;
+    }
+
+    // Transform hover cursor (when not dragging)
+    if (tool === 'transform' && selection && !isDrawingRef.current) {
+      const canvas = canvasRef.current;
+      if (canvas) {
+        const rect = canvas.getBoundingClientRect();
+        const screenX = e.clientX - rect.left;
+        const screenY = e.clientY - rect.top;
+        const h = hitTestTransformHandle(screenX, screenY, selection, zoom, panX, panY);
+        setHoveredHandle(h);
+      }
+    }
+
+    // Selection/Move/Transform drag (move within selection)
+    if ((tool === 'select' || tool === 'move' || tool === 'transform') && selectionDragRef.current && selection) {
       const uc = getPixelCoordUnclamped(e);
       if (uc) {
         const dx = uc.x - selectionDragRef.current.startX;
@@ -1155,7 +1367,11 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     // Shape preview
     if ((tool === 'rect' || tool === 'circle' || tool === 'line') && shapeStartRef.current) {
-      if (coord) setShapeEnd(coord);
+      if (coord) {
+        setShapeEnd(e.shiftKey
+          ? constrainShapeEnd(shapeStartRef.current, coord, tool as 'rect' | 'circle' | 'line')
+          : coord);
+      }
       return;
     }
 
@@ -1171,18 +1387,54 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       pinchStartDistRef.current = null;
     }
 
+    // Cancel any pending touch delay on pointer up (light tap without drawing)
+    if (touchDelayTimerRef.current) {
+      clearTimeout(touchDelayTimerRef.current);
+      touchDelayTimerRef.current = null;
+      // If it was a tap (no movement), execute the action immediately
+      const pending = pendingTouchActionRef.current;
+      pendingTouchActionRef.current = null;
+      if (pending) {
+        if (pending.tool === 'rect' || pending.tool === 'circle' || pending.tool === 'line') {
+          // Tap with shape tool — just place a single-pixel shape
+          history.push(getSnapshot());
+          const layer = getActiveLayer();
+          if (pending.tool === 'rect') {
+            drawRect(layer.data, pending.coord.x, pending.coord.y, pending.coord.x, pending.coord.y, hexToRGBA(color), shapeFilled);
+          } else if (pending.tool === 'circle') {
+            drawEllipse(layer.data, pending.coord.x, pending.coord.y, pending.coord.x, pending.coord.y, hexToRGBA(color), shapeFilled);
+          } else {
+            drawLine(layer.data, pending.coord.x, pending.coord.y, pending.coord.x, pending.coord.y, hexToRGBA(color));
+          }
+          bumpLayers();
+          triggerRender();
+        } else {
+          // Tap with drawing tool — apply once at tap point
+          history.push(getSnapshot());
+          lastPixelRef.current = null;
+          applyToolWithLine(pending.coord.x, pending.coord.y);
+          bumpLayers();
+        }
+      }
+      isDrawingRef.current = false;
+      return;
+    }
+
     // Shape commit
     if ((tool === 'rect' || tool === 'circle' || tool === 'line') && shapeStartRef.current && shapeEnd && isDrawingRef.current) {
+      const finalEnd = e.shiftKey
+        ? constrainShapeEnd(shapeStartRef.current, shapeEnd, tool as 'rect' | 'circle' | 'line')
+        : shapeEnd;
       const layer = getActiveLayer();
       if (tool === 'rect') {
         drawRect(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
-          shapeEnd.x, shapeEnd.y, hexToRGBA(color), rectFilled);
+          finalEnd.x, finalEnd.y, hexToRGBA(color), shapeFilled);
       } else if (tool === 'circle') {
         drawEllipse(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
-          shapeEnd.x, shapeEnd.y, hexToRGBA(color), circleFilled);
+          finalEnd.x, finalEnd.y, hexToRGBA(color), shapeFilled);
       } else {
         drawLine(layer.data, shapeStartRef.current.x, shapeStartRef.current.y,
-          shapeEnd.x, shapeEnd.y, hexToRGBA(color));
+          finalEnd.x, finalEnd.y, hexToRGBA(color));
       }
       shapeStartRef.current = null;
       setShapeEnd(null);
@@ -1195,16 +1447,17 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       bumpLayers();
     }
 
-    // Selection/Move finish
-    if (tool === 'select' || tool === 'move') {
+    // Selection/Move/Transform finish
+    if (tool === 'select' || tool === 'move' || tool === 'transform') {
       selectionStartRef.current = null;
       selectionDragRef.current = null;
       shiftSelectRef.current = null;
+      transformStateRef.current = null;
     }
 
     isDrawingRef.current = false;
     lastPixelRef.current = null;
-  }, [tool, shapeEnd, color, rectFilled, circleFilled, getActiveLayer, bumpLayers, triggerRender]);
+  }, [tool, shapeEnd, color, shapeFilled, getActiveLayer, bumpLayers, triggerRender]);
 
   // ─── Zoom ───────────────────────────────────────────────────────
 
@@ -1758,9 +2011,11 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   // ─── Tool Switching Helper ────────────────────────────────────────
 
   const switchTool = useCallback((newTool: Tool) => {
-    if ((tool === 'select' || tool === 'move') && newTool !== 'select' && newTool !== 'move') {
+    if ((tool === 'select' || tool === 'move' || tool === 'transform') && newTool !== 'select' && newTool !== 'move' && newTool !== 'transform') {
       commitFloating();
     }
+    transformStateRef.current = null;
+    setHoveredHandle(null);
     setTool(newTool);
   }, [tool, commitFloating]);
 
@@ -1813,6 +2068,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           case 'i': switchTool('eyedropper'); break;
           case 's': switchTool('select'); break;
           case 'm': switchTool('move'); break;
+          case 't': switchTool('transform'); break;
           case 'r': switchTool('rect'); break;
           case 'o': switchTool('circle'); break;
           case 'l': switchTool('line'); break;
@@ -1925,6 +2181,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     { id: 'eyedropper', label: 'Eyedropper', icon: '💧', key: 'I' },
     { id: 'select', label: 'Select', icon: '⬚', key: 'S' },
     { id: 'move', label: 'Move', icon: '✥', key: 'M' },
+    { id: 'transform', label: 'Transform', icon: '⊡', key: 'T' },
     { id: 'rect', label: 'Rectangle', icon: '▭', key: 'R' },
     { id: 'circle', label: 'Circle', icon: '◯', key: 'O' },
     { id: 'line', label: 'Line', icon: '╱', key: 'L' },
@@ -1958,24 +2215,14 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           <span className="absolute bottom-0 right-0.5 text-[8px] leading-none font-bold opacity-70" style={{ fontFamily: 'Arial, Helvetica, sans-serif' }}>{t.key}</span>
         </button>
       ))}
-      {/* Rect filled toggle */}
-      {tool === 'rect' && (
+      {/* Shape filled toggle */}
+      {(tool === 'rect' || tool === 'circle') && (
         <button
-          onClick={() => setRectFilled(f => !f)}
-          title={rectFilled ? 'Filled' : 'Outline'}
+          onClick={() => setShapeFilled(f => !f)}
+          title={shapeFilled ? 'Filled' : 'Outline'}
           className="w-8 h-8 rounded flex items-center justify-center text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 flex-shrink-0"
         >
-          {rectFilled ? '■' : '□'}
-        </button>
-      )}
-      {/* Circle filled toggle */}
-      {tool === 'circle' && (
-        <button
-          onClick={() => setCircleFilled(f => !f)}
-          title={circleFilled ? 'Filled' : 'Outline'}
-          className="w-8 h-8 rounded flex items-center justify-center text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 flex-shrink-0"
-        >
-          {circleFilled ? '●' : '○'}
+          {shapeFilled ? '■' : '□'}
         </button>
       )}
       {/* Brush size (pencil/eraser) */}
@@ -2109,7 +2356,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         title="Undo (Ctrl+Z)"
         className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
       >
-        ↩
+        <UndoIcon />
       </button>
       <button
         onClick={handleRedo}
@@ -2117,11 +2364,11 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         title="Redo (Ctrl+Y)"
         className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
       >
-        ↪
+        <RedoIcon />
       </button>
       <div className="w-px bg-stone-600 mx-1" />
-      <button onClick={handleFlipH} title="Flip Horizontal" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300">⇔</button>
-      <button onClick={handleFlipV} title="Flip Vertical" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300">⇕</button>
+      <button onClick={handleFlipH} title="Flip Horizontal" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300"><FlipHIcon /></button>
+      <button onClick={handleFlipV} title="Flip Vertical" className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 text-stone-300"><FlipVIcon /></button>
       <div className="w-px bg-stone-600 mx-1" />
       <button
         onClick={() => setShowGrid(g => !g)}
@@ -2168,22 +2415,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           {renderToolIcon(t)}
         </button>
       ))}
-      {tool === 'rect' && (
+      {(tool === 'rect' || tool === 'circle') && (
         <button
-          onClick={() => setRectFilled(f => !f)}
-          title={rectFilled ? 'Filled' : 'Outline'}
+          onClick={() => setShapeFilled(f => !f)}
+          title={shapeFilled ? 'Filled' : 'Outline'}
           className="px-2 py-1.5 rounded text-xs bg-stone-700 hover:bg-stone-600 text-stone-300"
         >
-          {rectFilled ? '■' : '□'}
-        </button>
-      )}
-      {tool === 'circle' && (
-        <button
-          onClick={() => setCircleFilled(f => !f)}
-          title={circleFilled ? 'Filled' : 'Outline'}
-          className="px-2 py-1.5 rounded text-xs bg-stone-700 hover:bg-stone-600 text-stone-300"
-        >
-          {circleFilled ? '●' : '○'}
+          {shapeFilled ? '■' : '□'}
         </button>
       )}
       <div className="w-px bg-stone-600 mx-1" />
@@ -2208,13 +2446,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         disabled={!history.canUndo}
         title="Undo"
         className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
-      >↩</button>
+      ><UndoIcon /></button>
       <button
         onClick={handleRedo}
         disabled={!history.canRedo}
         title="Redo"
         className="px-2 py-1.5 rounded text-sm bg-stone-700 hover:bg-stone-600 disabled:opacity-30 disabled:cursor-not-allowed"
-      >↪</button>
+      ><RedoIcon /></button>
     </>
   );
 
@@ -2406,7 +2644,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           }`}
           title="Toggle palette (C)"
         >
-          {showPalette ? '▼' : '▶'} Palette
+          {showPalette ? <ChevronDown /> : <ChevronRight />} Palette
         </button>
       </div>
       {/* Expanded palette */}
@@ -2487,7 +2725,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         onClick={() => { setShowResizePanel(p => !p); setResizeW(canvasWidth); setResizeH(canvasHeight); }}
         className="text-xs text-stone-400 hover:text-stone-300"
       >
-        Canvas: {canvasWidth}x{canvasHeight} {showResizePanel ? '▼' : '▶'}
+        Canvas: {canvasWidth}x{canvasHeight} {showResizePanel ? <ChevronDown /> : <ChevronRight />}
       </button>
       {showResizePanel && (
         <div className="flex items-center gap-2 mt-1 flex-wrap">
@@ -2652,13 +2890,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                     disabled={idx === layersRef.current.length - 1}
                     className="text-stone-200 hover:text-white disabled:opacity-20 px-1 py-0.5 rounded hover:bg-white/10"
                     title="Move Up"
-                  >↑</button>
+                  ><ChevronUp /></button>
                   <button
                     onClick={() => moveLayer(idx, -1)}
                     disabled={idx === 0}
                     className="text-stone-200 hover:text-white disabled:opacity-20 px-1 py-0.5 rounded hover:bg-white/10"
                     title="Move Down"
-                  >↓</button>
+                  ><ChevronDown /></button>
                   {/* Delete */}
                   <button
                     onClick={() => deleteLayer(idx)}
@@ -2680,6 +2918,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     : tool === 'eyedropper' ? 'crosshair'
     : tool === 'select' ? 'crosshair'
     : tool === 'move' ? 'move'
+    : tool === 'transform' && hoveredHandle ? getTransformCursor(hoveredHandle)
+    : tool === 'transform' ? 'default'
     : 'default';
 
   // ─── Recovery Banner ────────────────────────────────────────────
@@ -2773,7 +3013,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 className="text-xs text-stone-300 px-1.5 py-0.5 rounded bg-stone-700 hover:bg-stone-600 border border-stone-600 hover:border-stone-500 transition-colors cursor-pointer"
                 title="Canvas size (click to resize)"
               >
-                {canvasWidth}x{canvasHeight} ▾
+                {canvasWidth}x{canvasHeight} <ChevronDown />
               </button>
               {/* Resize popover */}
               {showResizePanel && (
@@ -3002,13 +3242,52 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             </button>
           )}
         </div>
-        <span
-          onClick={() => setEditingProjectName(true)}
-          className="text-xs text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 truncate max-w-[120px]"
-          title="Click to rename"
-        >
-          {projectName}
-        </span>
+        <div className="flex items-center gap-1.5 relative">
+          {editingProjectName ? (
+            <input
+              autoFocus
+              defaultValue={projectName}
+              onBlur={(e) => { setProjectName(e.target.value || 'Untitled'); setEditingProjectName(false); }}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') { setProjectName((e.target as HTMLInputElement).value || 'Untitled'); setEditingProjectName(false); }
+                if (e.key === 'Escape') setEditingProjectName(false);
+              }}
+              className="bg-stone-700 rounded px-2 py-0.5 text-xs text-parchment-100 font-bold text-center max-w-[120px]"
+            />
+          ) : (
+            <span
+              onClick={() => setEditingProjectName(true)}
+              className="text-xs text-parchment-100 font-bold cursor-pointer hover:text-arcane-400 truncate max-w-[120px]"
+              title="Click to rename"
+            >
+              {projectName}
+            </span>
+          )}
+          <button
+            onClick={() => { setShowResizePanel(p => !p); setResizeW(canvasWidth); setResizeH(canvasHeight); }}
+            className={`px-1.5 py-0.5 rounded text-[10px] ${
+              showResizePanel ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-700 text-stone-400'
+            }`}
+            title="Canvas size"
+          >
+            {canvasWidth}x{canvasHeight}
+          </button>
+          {showResizePanel && (
+            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 z-30 bg-stone-800 border border-stone-600 rounded-lg p-2 shadow-xl min-w-[200px]">
+              <div className="flex items-center gap-2">
+                <input type="number" min="1" max={MAX_CANVAS_SIZE} value={resizeW} onChange={e => setResizeW(parseInt(e.target.value) || 1)} className="w-14 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center" />
+                <span className="text-xs text-stone-500">x</span>
+                <input type="number" min="1" max={MAX_CANVAS_SIZE} value={resizeH} onChange={e => setResizeH(parseInt(e.target.value) || 1)} className="w-14 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center" />
+                <button onClick={() => { handleResize(); setShowResizePanel(false); }} className="px-2 py-0.5 bg-arcane-700 hover:bg-arcane-600 rounded text-xs">Apply</button>
+              </div>
+              <div className="flex gap-1 mt-1.5">
+                {CANVAS_SIZE_PRESETS.map(s => (
+                  <button key={s} onClick={() => { setResizeW(s); setResizeH(s); }} className={`px-1.5 py-0.5 rounded text-xs ${resizeW === s && resizeH === s ? 'bg-arcane-600' : 'bg-stone-700 hover:bg-stone-600'}`}>{s}</button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
         {!isPage ? (
           <button
             onClick={handleApply}
@@ -3050,7 +3329,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         </button>
       </div>
 
-      {/* Canvas */}
+      {/* Canvas + floating layers panel */}
       <div className="flex-1 relative bg-stone-950 overflow-hidden">
         <canvas
           ref={canvasRef}
@@ -3063,6 +3342,26 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           onWheel={handleWheel}
           onContextMenu={(e) => e.preventDefault()}
         />
+        {/* Collapsible layers side panel */}
+        <div
+          className={`absolute top-0 right-0 h-full z-20 flex transition-transform duration-200 ${
+            showLayers ? 'translate-x-0' : 'translate-x-[calc(100%-24px)]'
+          }`}
+        >
+          {/* Tab handle */}
+          <button
+            onClick={() => setShowLayers(s => !s)}
+            className="self-start mt-8 bg-stone-800/90 border border-stone-600 border-r-0 rounded-l px-0.5 py-4 text-[10px] text-stone-400 hover:text-stone-200 flex-shrink-0"
+            style={{ writingMode: 'vertical-lr' }}
+          >
+            {showLayers ? <ChevronRight /> : 'Layers'}
+          </button>
+          {/* Panel content */}
+          <div className="h-full w-44 bg-stone-900/95 border-l border-stone-700 p-2 overflow-y-auto backdrop-blur-sm">
+            <div className="text-[10px] text-stone-400 font-bold mb-1.5">Layers</div>
+            {layerPanel}
+          </div>
+        </div>
       </div>
 
       {/* Timeline (mobile) */}
@@ -3084,31 +3383,9 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         />
       )}
 
-      {/* Bottom bar: palette + layers + controls */}
-      <div className="bg-stone-900 border-t border-stone-700 p-2 space-y-2 max-h-[45vh] overflow-y-auto">
+      {/* Bottom bar: palette */}
+      <div className="bg-stone-900 border-t border-stone-700 p-2 max-h-[35vh] overflow-y-auto">
         {colorPalette}
-        {/* Collapsible layers */}
-        <div className="border-t border-stone-700 pt-1">
-          <button
-            onClick={() => setShowLayers(s => !s)}
-            className="text-xs text-stone-400 hover:text-stone-300 w-full text-left"
-          >
-            Layers {showLayers ? '▼' : '▶'}
-          </button>
-          {showLayers && <div className="mt-1">{layerPanel}</div>}
-        </div>
-        <div className="flex items-center justify-between">
-          {canvasSizeControls}
-          {!isPage && (
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-xs disabled:opacity-50"
-            >
-              {saving ? '...' : 'Save'}
-            </button>
-          )}
-        </div>
       </div>
       {shortcutsModal}
     </div>

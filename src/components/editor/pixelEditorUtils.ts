@@ -161,6 +161,39 @@ export function cloneLayerStack(layers: ImageData[]): ImageData[] {
   return layers.map(cloneImageData);
 }
 
+// ─── Shape Constraint ────────────────────────────────────────────────
+
+/**
+ * Constrain shape end point when Shift is held:
+ * - rect/circle: force square bounding box (|dx| === |dy|)
+ * - line: snap to nearest 45° increment
+ */
+export function constrainShapeEnd(
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  tool: 'rect' | 'circle' | 'line',
+): { x: number; y: number } {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+
+  if (tool === 'line') {
+    const angle = Math.atan2(dy, dx);
+    const snapped = Math.round(angle / (Math.PI / 4)) * (Math.PI / 4);
+    const len = Math.max(Math.abs(dx), Math.abs(dy));
+    return {
+      x: start.x + Math.round(Math.cos(snapped) * len),
+      y: start.y + Math.round(Math.sin(snapped) * len),
+    };
+  }
+
+  // rect / circle: square bounding box
+  const size = Math.max(Math.abs(dx), Math.abs(dy));
+  return {
+    x: start.x + size * Math.sign(dx || 1),
+    y: start.y + size * Math.sign(dy || 1),
+  };
+}
+
 // ─── Shape Drawing ──────────────────────────────────────────────────
 
 export function drawRect(
@@ -919,4 +952,93 @@ export function resizePixelData(
     }
   }
   return newData;
+}
+
+// ─── Transform Utilities ──────────────────────────────────────────────
+
+export type TransformHandle = 'nw' | 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w';
+
+const HANDLE_POSITIONS: { id: TransformHandle; fx: number; fy: number }[] = [
+  { id: 'nw', fx: 0,   fy: 0 },
+  { id: 'n',  fx: 0.5, fy: 0 },
+  { id: 'ne', fx: 1,   fy: 0 },
+  { id: 'e',  fx: 1,   fy: 0.5 },
+  { id: 'se', fx: 1,   fy: 1 },
+  { id: 's',  fx: 0.5, fy: 1 },
+  { id: 'sw', fx: 0,   fy: 1 },
+  { id: 'w',  fx: 0,   fy: 0.5 },
+];
+
+/** Hit-test transform handles in screen coordinates. Returns handle ID or null. */
+export function hitTestTransformHandle(
+  screenX: number, screenY: number,
+  sel: { x: number; y: number; w: number; h: number },
+  zoom: number, panX: number, panY: number,
+  handleSize: number = 8,
+): TransformHandle | null {
+  const half = handleSize / 2;
+  for (const h of HANDLE_POSITIONS) {
+    const hx = panX + (sel.x + sel.w * h.fx) * zoom;
+    const hy = panY + (sel.y + sel.h * h.fy) * zoom;
+    if (screenX >= hx - half && screenX <= hx + half &&
+        screenY >= hy - half && screenY <= hy + half) {
+      return h.id;
+    }
+  }
+  return null;
+}
+
+/** Draw transform handles on the canvas. */
+export function renderTransformHandles(
+  ctx: CanvasRenderingContext2D,
+  sel: { x: number; y: number; w: number; h: number },
+  zoom: number, panX: number, panY: number,
+): void {
+  const size = 6;
+  const half = size / 2;
+  ctx.save();
+  for (const h of HANDLE_POSITIONS) {
+    const hx = panX + (sel.x + sel.w * h.fx) * zoom;
+    const hy = panY + (sel.y + sel.h * h.fy) * zoom;
+    ctx.fillStyle = '#ffffff';
+    ctx.strokeStyle = '#000000';
+    ctx.lineWidth = 1;
+    ctx.fillRect(hx - half, hy - half, size, size);
+    ctx.strokeRect(hx - half, hy - half, size, size);
+  }
+  ctx.restore();
+}
+
+/** Nearest-neighbor scale ImageData to new dimensions. */
+export function scaleImageData(
+  src: ImageData,
+  newW: number,
+  newH: number,
+): ImageData {
+  const dst = new ImageData(newW, newH);
+  const xRatio = src.width / newW;
+  const yRatio = src.height / newH;
+  for (let y = 0; y < newH; y++) {
+    const srcY = Math.floor(y * yRatio);
+    for (let x = 0; x < newW; x++) {
+      const srcX = Math.floor(x * xRatio);
+      const srcI = (srcY * src.width + srcX) * 4;
+      const dstI = (y * newW + x) * 4;
+      dst.data[dstI]     = src.data[srcI];
+      dst.data[dstI + 1] = src.data[srcI + 1];
+      dst.data[dstI + 2] = src.data[srcI + 2];
+      dst.data[dstI + 3] = src.data[srcI + 3];
+    }
+  }
+  return dst;
+}
+
+/** Get cursor CSS for a transform handle. */
+export function getTransformCursor(handle: TransformHandle): string {
+  switch (handle) {
+    case 'nw': case 'se': return 'nwse-resize';
+    case 'ne': case 'sw': return 'nesw-resize';
+    case 'n': case 's': return 'ns-resize';
+    case 'e': case 'w': return 'ew-resize';
+  }
 }
