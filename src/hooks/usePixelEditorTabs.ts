@@ -138,10 +138,10 @@ export function usePixelEditorTabs(): PixelEditorTabsHook {
 
   const closeTab = useCallback((tabId: string): boolean => {
     const tab = state.tabs.find(t => t.id === tabId);
-    if (tab?.dirty) {
-      if (!window.confirm(`"${tab.projectName}" has unsaved changes. Close anyway?`)) {
-        return false;
-      }
+    const name = tab?.projectName || 'Untitled';
+    // Always confirm — easy to accidentally click the close button
+    if (!window.confirm(`Close "${name}"? Any unsaved work will be lost.`)) {
+      return false;
     }
 
     setState(prev => {
