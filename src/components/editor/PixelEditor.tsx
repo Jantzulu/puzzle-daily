@@ -228,6 +228,10 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const [resizeH, setResizeH] = useState(defaultHeight);
   const [showResizePanel, setShowResizePanel] = useState(false);
 
+  // Keep resize inputs in sync with actual canvas dimensions
+  useEffect(() => { setResizeW(canvasWidth); }, [canvasWidth]);
+  useEffect(() => { setResizeH(canvasHeight); }, [canvasHeight]);
+
   const [saving, setSaving] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -1923,13 +1927,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   // ─── Render: Vertical Tool Strip (desktop) ──────────────────────
 
   const verticalToolbar = (
-    <div className="w-10 bg-stone-900 border-r border-stone-700 flex flex-col items-center py-1.5 gap-0.5 flex-shrink-0">
+    <div className="w-10 bg-stone-900 border-r border-stone-700 flex flex-col items-center py-1.5 gap-0.5 flex-shrink-0 overflow-y-auto">
       {tools.map(t => (
         <button
           key={t.id}
           onClick={() => switchTool(t.id)}
           title={`${t.label} (${t.key})`}
-          className={`w-8 h-8 rounded flex items-center justify-center text-sm transition-colors ${
+          className={`w-8 h-8 rounded flex items-center justify-center text-sm transition-colors flex-shrink-0 ${
             tool === t.id
               ? 'bg-arcane-600 text-parchment-100'
               : 'bg-stone-800 hover:bg-stone-700 text-stone-300'
@@ -1943,7 +1947,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         <button
           onClick={() => setRectFilled(f => !f)}
           title={rectFilled ? 'Filled' : 'Outline'}
-          className="w-8 h-8 rounded flex items-center justify-center text-xs bg-stone-800 hover:bg-stone-700 text-stone-300"
+          className="w-8 h-8 rounded flex items-center justify-center text-xs bg-stone-800 hover:bg-stone-700 text-stone-300 flex-shrink-0"
         >
           {rectFilled ? '■' : '□'}
         </button>
@@ -1951,19 +1955,120 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       {/* Brush size (pencil/eraser) */}
       {(tool === 'pencil' || tool === 'eraser') && (
         <>
-          <div className="w-6 h-px bg-stone-700 my-0.5" />
+          <div className="w-6 h-px bg-stone-700 my-0.5 flex-shrink-0" />
           <button
             onClick={() => setBrushSize(s => Math.max(1, s - 1))}
-            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700"
+            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700 flex-shrink-0"
             title="Decrease brush size ([)"
           >-</button>
-          <span className="text-[10px] text-stone-400">{brushSize}</span>
+          <span className="text-[10px] text-stone-400 flex-shrink-0">{brushSize}</span>
           <button
             onClick={() => setBrushSize(s => Math.min(16, s + 1))}
-            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700"
+            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700 flex-shrink-0"
             title="Increase brush size (])"
           >+</button>
         </>
+      )}
+      {/* Color swatches + palette */}
+      <div className="w-6 h-px bg-stone-700 my-0.5 flex-shrink-0" />
+      {/* Primary/Secondary stacked swatches */}
+      <div className="relative w-8 h-8 flex-shrink-0">
+        <div
+          className="absolute bottom-0 right-0 w-5 h-5 rounded-sm border border-stone-500 cursor-pointer"
+          style={{ backgroundColor: secondaryColor }}
+          onClick={swapColors}
+          title={`Secondary: ${secondaryColor} (click to swap)`}
+        />
+        <div
+          className="absolute top-0 left-0 w-5 h-5 rounded-sm border-2 border-white cursor-pointer z-10"
+          style={{ backgroundColor: color }}
+          title={`Primary: ${color}`}
+        />
+        <button
+          onClick={swapColors}
+          className="absolute top-0 right-0 w-3 h-3 bg-stone-700 hover:bg-stone-600 rounded-sm flex items-center justify-center text-[7px] text-stone-300 z-20"
+          title="Swap (X)"
+        >
+          ⇄
+        </button>
+      </div>
+      {/* Palette toggle */}
+      <button
+        onClick={() => setShowPalette(s => !s)}
+        className={`w-8 h-6 rounded flex items-center justify-center text-[10px] transition-colors flex-shrink-0 ${
+          showPalette ? 'bg-arcane-600 text-parchment-100' : 'bg-stone-800 hover:bg-stone-700 text-stone-400'
+        }`}
+        title="Toggle palette (C)"
+      >
+        🎨
+      </button>
+      {/* Expanded palette (popout to the right) */}
+      {showPalette && (
+        <div className="absolute left-10 top-0 bottom-0 w-52 bg-stone-900 border-r border-stone-700 p-2 overflow-y-auto z-30 shadow-xl">
+          {/* Color picker + save */}
+          <div className="flex items-center gap-2 mb-1.5">
+            <input
+              type="color"
+              value={color}
+              onChange={e => setColor(e.target.value)}
+              className="w-7 h-7 rounded cursor-pointer bg-transparent"
+            />
+            <span className="text-[10px] text-stone-500 font-mono">{color}</span>
+            <button
+              onClick={() => {
+                if (!customColors.includes(color)) {
+                  setCustomColors(prev => [...prev, color]);
+                }
+              }}
+              title="Save color to palette"
+              className="px-1.5 py-0.5 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            >
+              + Save
+            </button>
+          </div>
+          {/* Default palette */}
+          <div className="grid grid-cols-8 gap-0.5">
+            {PALETTE.map(c => (
+              <button
+                key={c}
+                onClick={() => setColor(c)}
+                onContextMenu={(e) => { e.preventDefault(); setSecondaryColor(c); }}
+                className={`w-6 h-6 rounded-sm border ${
+                  color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
+                }`}
+                style={{ backgroundColor: c }}
+                title={`${c} (right-click: secondary)`}
+              />
+            ))}
+          </div>
+          {/* Custom colors */}
+          {customColors.length > 0 && (
+            <div className="mt-1">
+              <div className="text-xs text-stone-500 mb-0.5">Custom</div>
+              <div className="grid grid-cols-8 gap-0.5">
+                {customColors.map((c, i) => (
+                  <button
+                    key={`${c}-${i}`}
+                    onClick={() => setColor(c)}
+                    onContextMenu={(e) => {
+                      e.preventDefault();
+                      if (e.shiftKey) {
+                        setCustomColors(prev => prev.filter((_, j) => j !== i));
+                      } else {
+                        setSecondaryColor(c);
+                      }
+                    }}
+                    className={`w-6 h-6 rounded-sm border ${
+                      color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
+                    }`}
+                    style={{ backgroundColor: c }}
+                    title={`${c} (right-click: secondary, Shift+right-click: remove)`}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );
@@ -2611,7 +2716,38 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 {projectName}
               </span>
             )}
-            <span className="text-xs text-stone-500">{canvasWidth}x{canvasHeight}</span>
+            <div className="flex items-center gap-1">
+              <input
+                type="number"
+                min="1"
+                max={MAX_CANVAS_SIZE}
+                value={resizeW}
+                onChange={e => setResizeW(parseInt(e.target.value) || 1)}
+                onFocus={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); }}
+                className="w-10 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center"
+                title="Canvas width"
+              />
+              <span className="text-xs text-stone-500">x</span>
+              <input
+                type="number"
+                min="1"
+                max={MAX_CANVAS_SIZE}
+                value={resizeH}
+                onChange={e => setResizeH(parseInt(e.target.value) || 1)}
+                onFocus={() => { setResizeW(canvasWidth); setResizeH(canvasHeight); }}
+                className="w-10 px-1 py-0.5 bg-stone-700 rounded text-xs text-parchment-100 text-center"
+                title="Canvas height"
+              />
+              {(resizeW !== canvasWidth || resizeH !== canvasHeight) && (
+                <button
+                  onClick={handleResize}
+                  className="px-1.5 py-0.5 bg-arcane-700 hover:bg-arcane-600 rounded text-xs"
+                  title="Apply new dimensions"
+                >
+                  ✓
+                </button>
+              )}
+            </div>
           </div>
           <div className="flex gap-2">
             {!isPage && (
@@ -2668,7 +2804,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         </div>
 
         {/* Main content */}
-        <div className="flex flex-1 min-h-0">
+        <div className="flex flex-1 min-h-0 relative">
           {/* Vertical Tool Strip */}
           {verticalToolbar}
 
@@ -2723,13 +2859,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
           {/* Right Sidebar */}
           <div className="w-56 bg-stone-900 border-l border-stone-700 p-3 flex flex-col gap-3 overflow-y-auto">
-            {colorPalette}
-            <div className="border-t border-stone-700 pt-2">
-              {layerPanel}
-            </div>
-            <div className="border-t border-stone-700 pt-2">
-              {canvasSizeControls}
-            </div>
+            {layerPanel}
           </div>
         </div>
 
