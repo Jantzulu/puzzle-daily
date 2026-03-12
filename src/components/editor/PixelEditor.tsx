@@ -2888,8 +2888,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                   {/* Opacity slider */}
                   <label className="text-[10px] text-stone-400 flex-shrink-0">Opacity</label>
                   <div
-                    className="flex-1 min-w-0 relative cursor-pointer select-none"
-                    style={{ height: 16 }}
+                    className="flex-1 relative cursor-pointer select-none"
+                    style={{ height: 16, minWidth: 80 }}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
