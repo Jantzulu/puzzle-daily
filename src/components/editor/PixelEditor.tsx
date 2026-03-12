@@ -2809,8 +2809,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             <div
               key={layer.id}
               className={`rounded overflow-hidden transition-opacity ${isDragging ? 'opacity-40' : ''}`}
-              draggable
-              onDragStart={() => handleLayerDragStart(idx)}
               onDragOver={(e) => handleLayerDragOver(e, idx)}
               onDrop={() => handleLayerDrop(idx)}
               onDragEnd={handleLayerDragEnd}
@@ -2825,8 +2823,10 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                   isActive ? 'bg-arcane-700 text-parchment-100' : 'bg-stone-800 hover:bg-stone-750 text-stone-300'
                 } ${isDragOver ? 'ring-1 ring-arcane-400 ring-inset' : ''}`}
               >
-                {/* Drag handle */}
+                {/* Drag handle — only this element is draggable */}
                 <span
+                  draggable
+                  onDragStart={(e) => { e.stopPropagation(); handleLayerDragStart(idx); }}
                   className="flex-shrink-0 cursor-grab active:cursor-grabbing text-stone-500 hover:text-stone-300 select-none px-0.5"
                   title="Drag to reorder"
                 >
