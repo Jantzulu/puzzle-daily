@@ -1254,9 +1254,13 @@ html body.theme-font-active,
 .pixel-range {
   -webkit-appearance: none;
   appearance: none;
-  background: transparent;
   cursor: pointer;
-  height: 20px;
+  height: 6px;
+  background: #44403c;
+  border-radius: 3px;
+  outline: none;
+  padding: 0;
+  margin: 7px 0;
 }
 .pixel-range::-webkit-slider-runnable-track {
   height: 6px;
@@ -1277,6 +1281,7 @@ html body.theme-font-active,
   background: #a78bfa;
   border: 2px solid #7c3aed;
   margin-top: -4px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 .pixel-range::-moz-range-thumb {
   width: 14px;
@@ -1284,6 +1289,7 @@ html body.theme-font-active,
   border-radius: 50%;
   background: #a78bfa;
   border: 2px solid #7c3aed;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.4);
 }
 .pixel-range:hover::-webkit-slider-thumb {
   background: #c4b5fd;
