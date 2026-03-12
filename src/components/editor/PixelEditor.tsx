@@ -2930,7 +2930,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                     <span className="text-[10px] text-stone-300 w-7 text-right tabular-nums flex-shrink-0">{Math.round(layer.opacity * 100)}%</span>
                   </div>
                   {/* Actions row */}
-                  <div className="flex items-center gap-1.5">
+                  <div className="flex items-center justify-center gap-1.5">
                     <button
                       onClick={() => moveLayer(idx, 1)}
                       disabled={idx === layersRef.current.length - 1}
