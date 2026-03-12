@@ -3,7 +3,7 @@ import { useSearchParams } from 'react-router-dom';
 import { PixelEditor, type PixelEditorHandle } from './PixelEditor';
 import { PixelEditorTabBar, type TabInfo } from './PixelEditorTabBar';
 import { usePixelEditorTabs } from '../../hooks/usePixelEditorTabs';
-import { clearCachedPixelEditorState } from '../../utils/pixelEditorState';
+import { clearCachedPixelEditorState, getCachedPixelEditorState } from '../../utils/pixelEditorState';
 import { clearPixelAutoSave } from '../../utils/pixelEditorAutoSave';
 
 /**
@@ -143,14 +143,33 @@ export const PixelEditorPage: React.FC = () => {
     window.addEventListener('beforeunload', handlePersist);
     return () => {
       window.removeEventListener('beforeunload', handlePersist);
-      // Persist on component unmount (React Router navigation) — but ONLY if
-      // the editor ref is still available. During HMR / hot reload, React
-      // unmounts children first (PixelEditor → editorRef becomes null), then
-      // fires the parent cleanup. Writing in that case would overwrite good
-      // saved data with stale / blank state.  The beforeunload handler already
-      // covers real page close / refresh (fires before any unmounting).
       if (editorRefForPersist.current) {
+        // Editor ref still available — serialize directly (ideal path)
         handlePersist();
+      } else {
+        // Editor already unmounted (React Router navigation or HMR).
+        // Fall back to the in-memory cache which the editor updates on
+        // every significant change (layer edits, view state, etc.).
+        const cached = getCachedPixelEditorState();
+        if (cached) {
+          persistTabsRef.current({
+            projectJson: cached.projectJson,
+            projectName: cached.projectName,
+            dirty: cached.dirty,
+            currentPngPath: cached.currentPngPath,
+            currentProjectPath: cached.currentProjectPath,
+            currentProjectUrl: cached.currentProjectUrl,
+            zoom: cached.zoom,
+            panX: cached.panX,
+            panY: cached.panY,
+            showGrid: cached.showGrid,
+            activeFrameIndex: cached.activeFrameIndex,
+            activeLayerIndex: cached.activeLayerIndex,
+            customColors: cached.customColors,
+          });
+        } else {
+          persistTabsRef.current();
+        }
       }
     };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps

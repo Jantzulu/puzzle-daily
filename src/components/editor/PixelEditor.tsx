@@ -683,11 +683,19 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     cachePixelEditorState({
       projectJson: serializeProject(project),
       projectName,
+      dirty: dirtyRef.current,
       currentPngPath,
       currentProjectPath,
       currentProjectUrl,
+      zoom,
+      panX,
+      panY,
+      showGrid,
+      activeFrameIndex,
+      activeLayerIndex,
+      customColors,
     });
-  }, [isPage, loaded, buildCurrentProject, projectName, currentPngPath, currentProjectPath, currentProjectUrl, layerRevision]);
+  }, [isPage, loaded, buildCurrentProject, projectName, currentPngPath, currentProjectPath, currentProjectUrl, layerRevision, zoom, panX, panY, showGrid, activeFrameIndex, activeLayerIndex, customColors]);
 
   // Page leave warning + autosave flush
   useEffect(() => {
@@ -2469,9 +2477,13 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   }, [loadProjectFromUrl]);
 
   const handleImportPng = useCallback((imageData: ImageData, width: number, height: number) => {
-    layersRef.current = [{
+    const newLayer = {
       id: genLayerId(), name: 'Background', visible: true, opacity: 1, data: imageData,
-    }];
+    };
+    layersRef.current = [newLayer];
+    // Reset frames to a single frame with the imported layer
+    framesRef.current = [{ id: genLayerId(), layers: [newLayer] }];
+    setActiveFrameIndex(0);
     setCanvasWidth(width);
     setCanvasHeight(height);
     setResizeW(width);
@@ -2483,10 +2495,11 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     setActiveLayerIndex(0);
     history.reset();
     bumpLayers();
+    bumpFrames();
     centerCanvas(width, height);
     triggerRender();
     toast.success('PNG imported!');
-  }, [bumpLayers, centerCanvas, triggerRender, history]);
+  }, [bumpLayers, bumpFrames, centerCanvas, triggerRender, history]);
 
   const openModal = (
     <PixelEditorOpenModal
