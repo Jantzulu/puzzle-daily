@@ -2887,13 +2887,45 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                 >
                   {/* Opacity slider */}
                   <label className="text-[10px] text-stone-400 flex-shrink-0">Opacity</label>
-                  <input
-                    type="range"
-                    min="0" max="100"
-                    value={Math.round(layer.opacity * 100)}
-                    onChange={(e) => setLayerOpacity(idx, parseInt(e.target.value) / 100)}
-                    className="pixel-range flex-1 min-w-0"
-                  />
+                  <div
+                    className="flex-1 min-w-0 relative cursor-pointer select-none"
+                    style={{ height: 16 }}
+                    onPointerDown={(e) => {
+                      e.stopPropagation();
+                      e.preventDefault();
+                      const track = e.currentTarget;
+                      const rect = track.getBoundingClientRect();
+                      const update = (cx: number) => {
+                        const pct = Math.max(0, Math.min(100, Math.round(((cx - rect.left) / rect.width) * 100)));
+                        setLayerOpacity(idx, pct / 100);
+                      };
+                      update(e.clientX);
+                      const onMove = (ev: PointerEvent) => { update(ev.clientX); };
+                      const onUp = () => {
+                        window.removeEventListener('pointermove', onMove);
+                        window.removeEventListener('pointerup', onUp);
+                      };
+                      window.addEventListener('pointermove', onMove);
+                      window.addEventListener('pointerup', onUp);
+                    }}
+                  >
+                    {/* Track background */}
+                    <div style={{ position: 'absolute', top: 5, left: 0, right: 0, height: 6, background: '#44403c', borderRadius: 3 }} />
+                    {/* Filled portion */}
+                    <div style={{ position: 'absolute', top: 5, left: 0, width: `${Math.round(layer.opacity * 100)}%`, height: 6, background: '#7c3aed', borderRadius: 3 }} />
+                    {/* Thumb */}
+                    <div style={{
+                      position: 'absolute',
+                      top: 1,
+                      left: `calc(${Math.round(layer.opacity * 100)}% - 7px)`,
+                      width: 14,
+                      height: 14,
+                      borderRadius: '50%',
+                      background: '#a78bfa',
+                      border: '2px solid #7c3aed',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)',
+                    }} />
+                  </div>
                   <span className="text-[10px] text-stone-300 w-7 text-right tabular-nums flex-shrink-0">{Math.round(layer.opacity * 100)}%</span>
                   {/* Divider */}
                   <span className="text-stone-600">|</span>
