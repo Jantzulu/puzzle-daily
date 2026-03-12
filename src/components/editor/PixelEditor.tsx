@@ -2877,7 +2877,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               {/* Expanded options row */}
               {isExpanded && (
                 <div
-                  className={`flex items-center gap-2 px-2 py-1.5 text-xs border-t ${
+                  className={`flex items-center gap-1.5 px-2 py-1.5 text-xs border-t ${
                     isActive ? 'bg-arcane-700/70 border-arcane-600/50' : 'bg-stone-800/70 border-stone-700/50'
                   }`}
                   onClick={(e) => e.stopPropagation()}
@@ -2888,8 +2888,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                   {/* Opacity slider */}
                   <label className="text-[10px] text-stone-400 flex-shrink-0">Opacity</label>
                   <div
-                    className="flex-1 relative cursor-pointer select-none"
-                    style={{ height: 16, minWidth: 80 }}
+                    className="flex-1 min-w-0 relative cursor-pointer select-none"
+                    style={{ height: 16 }}
                     onPointerDown={(e) => {
                       e.stopPropagation();
                       e.preventDefault();
