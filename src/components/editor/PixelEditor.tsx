@@ -2892,7 +2892,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
                     min="0" max="100"
                     value={Math.round(layer.opacity * 100)}
                     onChange={(e) => setLayerOpacity(idx, parseInt(e.target.value) / 100)}
-                    className="flex-1 h-3 accent-arcane-500 min-w-0"
+                    className="pixel-range flex-1 min-w-0"
                   />
                   <span className="text-[10px] text-stone-300 w-7 text-right tabular-nums flex-shrink-0">{Math.round(layer.opacity * 100)}%</span>
                   {/* Divider */}

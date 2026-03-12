@@ -1250,3 +1250,45 @@ html body.theme-font-active,
     inset var(--shine-offset) 0 50px -20px rgba(255, 255, 255, 0.2);
 }
 
+/* ─── Custom range slider for pixel editor ─── */
+.pixel-range {
+  -webkit-appearance: none;
+  appearance: none;
+  background: transparent;
+  cursor: pointer;
+  height: 20px;
+}
+.pixel-range::-webkit-slider-runnable-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #44403c;
+}
+.pixel-range::-moz-range-track {
+  height: 6px;
+  border-radius: 3px;
+  background: #44403c;
+  border: none;
+}
+.pixel-range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #a78bfa;
+  border: 2px solid #7c3aed;
+  margin-top: -4px;
+}
+.pixel-range::-moz-range-thumb {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #a78bfa;
+  border: 2px solid #7c3aed;
+}
+.pixel-range:hover::-webkit-slider-thumb {
+  background: #c4b5fd;
+}
+.pixel-range:hover::-moz-range-thumb {
+  background: #c4b5fd;
+}
+
