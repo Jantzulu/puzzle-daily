@@ -40,6 +40,7 @@ import {
   scaleImageData,
   getTransformCursor,
   type TransformHandle,
+  magicWandSelect,
   type PixelEditorProject,
   type PixelEditorLayer,
 } from './pixelEditorUtils';
@@ -65,7 +66,7 @@ const FlipVIcon = () => <svg viewBox="0 0 12 12" className="w-3.5 h-3.5 inline-b
 
 // ─── Types ──────────────────────────────────────────────────────────
 
-type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'move' | 'transform' | 'rect' | 'circle' | 'line';
+type Tool = 'pencil' | 'eraser' | 'fill' | 'eyedropper' | 'select' | 'move' | 'transform' | 'wand' | 'rect' | 'circle' | 'line';
 
 interface LayerState {
   id: string;
@@ -223,6 +224,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const [renderKey, setRenderKey] = useState(0);
   const [brushSize, setBrushSize] = useState(1);
   const [shapeFilled, setShapeFilled] = useState(true);
+  const [wandTolerance, setWandTolerance] = useState(0);
 
   // Selection state
   const [selection, setSelection] = useState<Selection | null>(null);
@@ -1166,6 +1168,56 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       return;
     }
 
+    // Magic Wand tool
+    if (tool === 'wand') {
+      if (selection && coord) {
+        const inSel = coord.x >= selection.x && coord.x < selection.x + selection.w &&
+                      coord.y >= selection.y && coord.y < selection.y + selection.h;
+        if (inSel && selection.floatingData) {
+          selectionDragRef.current = {
+            startX: coord.x, startY: coord.y,
+            origX: selection.x, origY: selection.y,
+          };
+          isDrawingRef.current = true;
+          return;
+        }
+      }
+      if (coord) {
+        commitFloating();
+        const layer = getActiveLayer();
+        const result = magicWandSelect(layer.data, coord.x, coord.y, wandTolerance);
+        if (result) {
+          history.push(getSnapshot());
+          const { mask, bounds } = result;
+          // Extract matching pixels into floatingData
+          const floatingData = new ImageData(bounds.w, bounds.h);
+          for (let dy = 0; dy < bounds.h; dy++) {
+            for (let dx = 0; dx < bounds.w; dx++) {
+              const sx = bounds.x + dx;
+              const sy = bounds.y + dy;
+              if (mask[sy * canvasWidth + sx]) {
+                const srcIdx = (sy * canvasWidth + sx) * 4;
+                const dstIdx = (dy * bounds.w + dx) * 4;
+                floatingData.data[dstIdx] = layer.data.data[srcIdx];
+                floatingData.data[dstIdx + 1] = layer.data.data[srcIdx + 1];
+                floatingData.data[dstIdx + 2] = layer.data.data[srcIdx + 2];
+                floatingData.data[dstIdx + 3] = layer.data.data[srcIdx + 3];
+                // Clear from layer
+                layer.data.data[srcIdx] = 0;
+                layer.data.data[srcIdx + 1] = 0;
+                layer.data.data[srcIdx + 2] = 0;
+                layer.data.data[srcIdx + 3] = 0;
+              }
+            }
+          }
+          setSelection({ ...bounds, floatingData });
+          bumpLayers();
+          triggerRender();
+        }
+      }
+      return;
+    }
+
     // Shape tools
     if (tool === 'rect' || tool === 'circle' || tool === 'line') {
       if (coord) {
@@ -1332,7 +1384,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     }
 
     // Selection/Move/Transform drag (move within selection)
-    if ((tool === 'select' || tool === 'move' || tool === 'transform') && selectionDragRef.current && selection) {
+    if ((tool === 'select' || tool === 'move' || tool === 'transform' || tool === 'wand') && selectionDragRef.current && selection) {
       const uc = getPixelCoordUnclamped(e);
       if (uc) {
         const dx = uc.x - selectionDragRef.current.startX;
@@ -1456,7 +1508,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     }
 
     // Selection/Move/Transform finish
-    if (tool === 'select' || tool === 'move' || tool === 'transform') {
+    if (tool === 'select' || tool === 'move' || tool === 'transform' || tool === 'wand') {
       selectionStartRef.current = null;
       selectionDragRef.current = null;
       shiftSelectRef.current = null;
@@ -2019,7 +2071,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   // ─── Tool Switching Helper ────────────────────────────────────────
 
   const switchTool = useCallback((newTool: Tool) => {
-    if ((tool === 'select' || tool === 'move' || tool === 'transform') && newTool !== 'select' && newTool !== 'move' && newTool !== 'transform') {
+    if ((tool === 'select' || tool === 'move' || tool === 'transform' || tool === 'wand') && newTool !== 'select' && newTool !== 'move' && newTool !== 'transform' && newTool !== 'wand') {
       commitFloating();
     }
     transformStateRef.current = null;
@@ -2077,6 +2129,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           case 's': switchTool('select'); break;
           case 'm': switchTool('move'); break;
           case 't': switchTool('transform'); break;
+          case 'w': switchTool('wand'); break;
           case 'r': switchTool('rect'); break;
           case 'o': switchTool('circle'); break;
           case 'l': switchTool('line'); break;
@@ -2190,6 +2243,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     { id: 'select', label: 'Select', icon: '⬚', key: 'S' },
     { id: 'move', label: 'Move', icon: '✥', key: 'M' },
     { id: 'transform', label: 'Transform', icon: '⊡', key: 'T' },
+    { id: 'wand', label: 'Magic Wand', icon: '✦', key: 'W' },
     { id: 'rect', label: 'Rectangle', icon: '▭', key: 'R' },
     { id: 'circle', label: 'Circle', icon: '◯', key: 'O' },
     { id: 'line', label: 'Line', icon: '╱', key: 'L' },
@@ -2247,6 +2301,23 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             onClick={() => setBrushSize(s => Math.min(16, s + 1))}
             className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700 flex-shrink-0"
             title="Increase brush size (])"
+          >+</button>
+        </>
+      )}
+      {tool === 'wand' && (
+        <>
+          <div className="w-6 h-px bg-stone-700 my-0.5 flex-shrink-0" />
+          <span className="text-[9px] text-stone-400 flex-shrink-0">Tol</span>
+          <button
+            onClick={() => setWandTolerance(t => Math.max(0, t - 5))}
+            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700 flex-shrink-0"
+            title="Decrease tolerance"
+          >-</button>
+          <span className="text-[10px] text-stone-400 flex-shrink-0">{wandTolerance}</span>
+          <button
+            onClick={() => setWandTolerance(t => Math.min(100, t + 5))}
+            className="w-8 h-6 rounded text-xs bg-stone-800 hover:bg-stone-700 flex-shrink-0"
+            title="Increase tolerance"
           >+</button>
         </>
       )}
@@ -2445,6 +2516,23 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             onClick={() => setBrushSize(s => Math.min(16, s + 1))}
             className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
             title="Increase brush size (])"
+          >+</button>
+          <div className="w-px bg-stone-600 mx-1" />
+        </>
+      )}
+      {tool === 'wand' && (
+        <>
+          <span className="text-[10px] text-stone-400 self-center">Tol</span>
+          <button
+            onClick={() => setWandTolerance(t => Math.max(0, t - 5))}
+            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            title="Decrease tolerance"
+          >-</button>
+          <span className="text-xs text-stone-400 self-center min-w-[1.5rem] text-center">{wandTolerance}</span>
+          <button
+            onClick={() => setWandTolerance(t => Math.min(100, t + 5))}
+            className="px-1.5 py-1 rounded text-xs bg-stone-700 hover:bg-stone-600"
+            title="Increase tolerance"
           >+</button>
           <div className="w-px bg-stone-600 mx-1" />
         </>
@@ -2964,6 +3052,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
   const canvasCursor = spaceHeld ? 'grab'
     : tool === 'eyedropper' ? 'crosshair'
     : tool === 'select' ? 'crosshair'
+    : tool === 'wand' ? 'crosshair'
     : tool === 'move' ? 'move'
     : tool === 'transform' && hoveredHandle ? getTransformCursor(hoveredHandle)
     : tool === 'transform' ? 'default'

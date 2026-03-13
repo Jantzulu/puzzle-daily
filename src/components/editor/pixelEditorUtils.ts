@@ -635,6 +635,88 @@ export function floodFill(
   }
 }
 
+// ─── Magic Wand Selection (scanline-based) ─────────────────────────
+
+export function colorsMatchTolerance(a: RGBA, b: RGBA, tolerance: number): boolean {
+  if (tolerance === 0) return colorsMatch(a, b);
+  return Math.abs(a[0] - b[0]) <= tolerance &&
+         Math.abs(a[1] - b[1]) <= tolerance &&
+         Math.abs(a[2] - b[2]) <= tolerance &&
+         Math.abs(a[3] - b[3]) <= tolerance;
+}
+
+export function magicWandSelect(
+  data: ImageData,
+  startX: number,
+  startY: number,
+  tolerance: number
+): { mask: Uint8Array; bounds: { x: number; y: number; w: number; h: number } } | null {
+  const { width, height } = data;
+  const targetColor = getPixel(data, startX, startY);
+
+  // Skip fully transparent pixels
+  if (targetColor[3] === 0 && tolerance === 0) return null;
+
+  const mask = new Uint8Array(width * height);
+  const visited = new Uint8Array(width * height);
+  const stack: [number, number][] = [[startX, startY]];
+
+  let minX = startX, maxX = startX, minY = startY, maxY = startY;
+
+  while (stack.length > 0) {
+    let [x, y] = stack.pop()!;
+
+    if (visited[y * width + x]) continue;
+
+    // Scan left
+    while (x > 0 && colorsMatchTolerance(getPixel(data, x - 1, y), targetColor, tolerance) && !visited[y * width + x - 1]) {
+      x--;
+    }
+
+    // Scan right, marking mask as we go
+    let spanAbove = false;
+    let spanBelow = false;
+
+    while (x < width && colorsMatchTolerance(getPixel(data, x, y), targetColor, tolerance) && !visited[y * width + x]) {
+      mask[y * width + x] = 1;
+      visited[y * width + x] = 1;
+
+      if (x < minX) minX = x;
+      if (x > maxX) maxX = x;
+      if (y < minY) minY = y;
+      if (y > maxY) maxY = y;
+
+      if (y > 0) {
+        const aboveMatches = colorsMatchTolerance(getPixel(data, x, y - 1), targetColor, tolerance) && !visited[(y - 1) * width + x];
+        if (aboveMatches && !spanAbove) {
+          stack.push([x, y - 1]);
+          spanAbove = true;
+        } else if (!aboveMatches) {
+          spanAbove = false;
+        }
+      }
+
+      if (y < height - 1) {
+        const belowMatches = colorsMatchTolerance(getPixel(data, x, y + 1), targetColor, tolerance) && !visited[(y + 1) * width + x];
+        if (belowMatches && !spanBelow) {
+          stack.push([x, y + 1]);
+          spanBelow = true;
+        } else if (!belowMatches) {
+          spanBelow = false;
+        }
+      }
+
+      x++;
+    }
+  }
+
+  const w = maxX - minX + 1;
+  const h = maxY - minY + 1;
+  if (w <= 0 || h <= 0) return null;
+
+  return { mask, bounds: { x: minX, y: minY, w, h } };
+}
+
 // ─── Bresenham Line ─────────────────────────────────────────────────
 
 export function bresenhamLine(
