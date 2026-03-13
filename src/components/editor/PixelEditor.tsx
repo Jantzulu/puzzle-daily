@@ -79,6 +79,7 @@ interface LayerState {
 interface Selection {
   x: number; y: number; w: number; h: number;
   floatingData?: ImageData;
+  mask?: Uint8Array;  // Full-canvas bitmask (1 = selected pixel) for pixel-accurate overlay
 }
 
 interface PixelEditorProps {
@@ -867,7 +868,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     // Selection overlay
     if (selection) {
-      renderSelectionOverlay(ctx, selection, zoom, panX, panY, selectionAnimRef.current);
+      renderSelectionOverlay(ctx, selection, zoom, panX, panY, selectionAnimRef.current, canvasWidth);
       // Transform handles
       if (tool === 'transform') {
         renderTransformHandles(ctx, selection, zoom, panX, panY);
@@ -1148,8 +1149,11 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             isDrawingRef.current = true;
             return;
           } else {
-            // Click outside — commit floating and start new selection
+            // Click outside — commit floating and deselect
             commitFloating();
+            setSelection(null);
+            triggerRender();
+            return;
           }
         } else {
           // Shift held — commit floating before additive selection
@@ -1170,7 +1174,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     // Magic Wand tool
     if (tool === 'wand') {
-      if (selection && coord) {
+      if (selection && coord && !e.shiftKey) {
         const inSel = coord.x >= selection.x && coord.x < selection.x + selection.w &&
                       coord.y >= selection.y && coord.y < selection.y + selection.h;
         if (inSel && selection.floatingData) {
@@ -1183,37 +1187,71 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         }
       }
       if (coord) {
-        commitFloating();
+        // Shift+click: commit existing floating back to layer first, then merge
+        if (e.shiftKey && selection) {
+          commitFloating();
+        }
         const layer = getActiveLayer();
         const result = magicWandSelect(layer.data, coord.x, coord.y, wandTolerance);
-        if (result) {
-          history.push(getSnapshot());
-          const { mask, bounds } = result;
-          // Extract matching pixels into floatingData
-          const floatingData = new ImageData(bounds.w, bounds.h);
-          for (let dy = 0; dy < bounds.h; dy++) {
-            for (let dx = 0; dx < bounds.w; dx++) {
-              const sx = bounds.x + dx;
-              const sy = bounds.y + dy;
-              if (mask[sy * canvasWidth + sx]) {
-                const srcIdx = (sy * canvasWidth + sx) * 4;
-                const dstIdx = (dy * bounds.w + dx) * 4;
-                floatingData.data[dstIdx] = layer.data.data[srcIdx];
-                floatingData.data[dstIdx + 1] = layer.data.data[srcIdx + 1];
-                floatingData.data[dstIdx + 2] = layer.data.data[srcIdx + 2];
-                floatingData.data[dstIdx + 3] = layer.data.data[srcIdx + 3];
-                // Clear from layer
-                layer.data.data[srcIdx] = 0;
-                layer.data.data[srcIdx + 1] = 0;
-                layer.data.data[srcIdx + 2] = 0;
-                layer.data.data[srcIdx + 3] = 0;
+        if (!result) {
+          // Clicked empty area — deselect
+          if (selection) {
+            commitFloating();
+            setSelection(null);
+            triggerRender();
+          }
+          return;
+        }
+        history.push(getSnapshot());
+        let { mask, bounds } = result;
+
+        // Shift+click: merge with previous selection mask
+        if (e.shiftKey && selection?.mask) {
+          // OR the masks together
+          for (let i = 0; i < mask.length; i++) {
+            if (selection.mask[i]) mask[i] = 1;
+          }
+          // Recompute bounds from merged mask
+          let minX = canvasWidth, maxX = 0, minY = canvasHeight, maxY = 0;
+          for (let y = 0; y < canvasHeight; y++) {
+            for (let x = 0; x < canvasWidth; x++) {
+              if (mask[y * canvasWidth + x]) {
+                if (x < minX) minX = x;
+                if (x > maxX) maxX = x;
+                if (y < minY) minY = y;
+                if (y > maxY) maxY = y;
               }
             }
           }
-          setSelection({ ...bounds, floatingData });
-          bumpLayers();
-          triggerRender();
+          bounds = { x: minX, y: minY, w: maxX - minX + 1, h: maxY - minY + 1 };
+        } else if (!e.shiftKey) {
+          commitFloating();
         }
+
+        // Extract matching pixels into floatingData
+        const floatingData = new ImageData(bounds.w, bounds.h);
+        for (let dy = 0; dy < bounds.h; dy++) {
+          for (let dx = 0; dx < bounds.w; dx++) {
+            const sx = bounds.x + dx;
+            const sy = bounds.y + dy;
+            if (mask[sy * canvasWidth + sx]) {
+              const srcIdx = (sy * canvasWidth + sx) * 4;
+              const dstIdx = (dy * bounds.w + dx) * 4;
+              floatingData.data[dstIdx] = layer.data.data[srcIdx];
+              floatingData.data[dstIdx + 1] = layer.data.data[srcIdx + 1];
+              floatingData.data[dstIdx + 2] = layer.data.data[srcIdx + 2];
+              floatingData.data[dstIdx + 3] = layer.data.data[srcIdx + 3];
+              // Clear from layer
+              layer.data.data[srcIdx] = 0;
+              layer.data.data[srcIdx + 1] = 0;
+              layer.data.data[srcIdx + 2] = 0;
+              layer.data.data[srcIdx + 3] = 0;
+            }
+          }
+        }
+        setSelection({ ...bounds, floatingData, mask });
+        bumpLayers();
+        triggerRender();
       }
       return;
     }

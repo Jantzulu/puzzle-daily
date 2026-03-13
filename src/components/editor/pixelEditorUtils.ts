@@ -501,24 +501,67 @@ export function renderFloatingPixels(
 
 export function renderSelectionOverlay(
   ctx: CanvasRenderingContext2D,
-  sel: { x: number; y: number; w: number; h: number },
+  sel: { x: number; y: number; w: number; h: number; mask?: Uint8Array },
   zoom: number, panX: number, panY: number,
-  animOffset: number
+  animOffset: number,
+  canvasWidth?: number
 ): void {
-  const sx = panX + sel.x * zoom;
-  const sy = panY + sel.y * zoom;
-  const sw = sel.w * zoom;
-  const sh = sel.h * zoom;
-
   ctx.save();
   ctx.setLineDash([4, 4]);
-  ctx.lineDashOffset = -animOffset;
-  ctx.strokeStyle = 'white';
   ctx.lineWidth = 1;
-  ctx.strokeRect(sx + 0.5, sy + 0.5, sw, sh);
-  ctx.lineDashOffset = -animOffset + 4;
-  ctx.strokeStyle = 'black';
-  ctx.strokeRect(sx + 0.5, sy + 0.5, sw, sh);
+
+  if (sel.mask && canvasWidth) {
+    // Pixel-accurate marching ants: draw edges between masked and unmasked pixels
+    const path = new Path2D();
+    for (let dy = 0; dy < sel.h; dy++) {
+      for (let dx = 0; dx < sel.w; dx++) {
+        const px = sel.x + dx;
+        const py = sel.y + dy;
+        if (!sel.mask[py * canvasWidth + px]) continue;
+        const sx = panX + px * zoom;
+        const sy = panY + py * zoom;
+        // Top edge: if pixel above is not selected
+        if (py === 0 || !sel.mask[(py - 1) * canvasWidth + px]) {
+          path.moveTo(sx, sy + 0.5);
+          path.lineTo(sx + zoom, sy + 0.5);
+        }
+        // Bottom edge
+        if (py === sel.y + sel.h - 1 || !sel.mask[(py + 1) * canvasWidth + px]) {
+          path.moveTo(sx, sy + zoom + 0.5);
+          path.lineTo(sx + zoom, sy + zoom + 0.5);
+        }
+        // Left edge
+        if (px === 0 || !sel.mask[py * canvasWidth + px - 1]) {
+          path.moveTo(sx + 0.5, sy);
+          path.lineTo(sx + 0.5, sy + zoom);
+        }
+        // Right edge
+        if (px === sel.x + sel.w - 1 || !sel.mask[py * canvasWidth + px + 1]) {
+          path.moveTo(sx + zoom + 0.5, sy);
+          path.lineTo(sx + zoom + 0.5, sy + zoom);
+        }
+      }
+    }
+    ctx.lineDashOffset = -animOffset;
+    ctx.strokeStyle = 'white';
+    ctx.stroke(path);
+    ctx.lineDashOffset = -animOffset + 4;
+    ctx.strokeStyle = 'black';
+    ctx.stroke(path);
+  } else {
+    // Simple rectangle marching ants (marquee select)
+    const sx = panX + sel.x * zoom;
+    const sy = panY + sel.y * zoom;
+    const sw = sel.w * zoom;
+    const sh = sel.h * zoom;
+    ctx.lineDashOffset = -animOffset;
+    ctx.strokeStyle = 'white';
+    ctx.strokeRect(sx + 0.5, sy + 0.5, sw, sh);
+    ctx.lineDashOffset = -animOffset + 4;
+    ctx.strokeStyle = 'black';
+    ctx.strokeRect(sx + 0.5, sy + 0.5, sw, sh);
+  }
+
   ctx.restore();
 }
 
