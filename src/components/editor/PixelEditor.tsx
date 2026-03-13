@@ -2097,6 +2097,25 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     if (!selection) return;
     history.push(getSnapshot());
     if (selection.floatingData) {
+      // Discard the floating data (delete it)
+      setSelection(null);
+    } else if (selection.mask) {
+      // Pixel-accurate delete using mask
+      const layer = getActiveLayer();
+      const { data } = layer;
+      for (let dy = 0; dy < selection.h; dy++) {
+        for (let dx = 0; dx < selection.w; dx++) {
+          const sx = selection.x + dx;
+          const sy = selection.y + dy;
+          if (sx >= 0 && sx < canvasWidth && sy >= 0 && sy < canvasHeight && selection.mask[sy * canvasWidth + sx]) {
+            const idx = (sy * canvasWidth + sx) * 4;
+            data.data[idx] = 0;
+            data.data[idx + 1] = 0;
+            data.data[idx + 2] = 0;
+            data.data[idx + 3] = 0;
+          }
+        }
+      }
       setSelection(null);
     } else {
       clearRegion(getActiveLayer().data, selection.x, selection.y, selection.w, selection.h);
@@ -2104,7 +2123,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     }
     bumpLayers();
     triggerRender();
-  }, [selection, history, getSnapshot, getActiveLayer, bumpLayers, triggerRender]);
+  }, [selection, history, getSnapshot, getActiveLayer, canvasWidth, canvasHeight, bumpLayers, triggerRender]);
 
   // ─── Tool Switching Helper ────────────────────────────────────────
 
@@ -2942,7 +2961,22 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               {/* Primary row: drag handle, visibility, name, expand toggle */}
               <div
                 onClick={() => {
-                  if (activeLayerIndex !== idx && selection) commitFloating();
+                  if (activeLayerIndex !== idx) {
+                    if (selection?.floatingData) {
+                      // Commit floating data back to current layer but keep selection outline
+                      const layer = getActiveLayer();
+                      const fd = selection.floatingData;
+                      if (fd.width !== selection.w || fd.height !== selection.h) {
+                        const scaled = scaleImageData(fd, Math.max(1, selection.w), Math.max(1, selection.h));
+                        pasteRegion(layer.data, scaled, selection.x, selection.y);
+                      } else {
+                        pasteRegion(layer.data, fd, selection.x, selection.y);
+                      }
+                      setSelection(prev => prev ? { ...prev, floatingData: undefined } : null);
+                      bumpLayers();
+                      triggerRender();
+                    }
+                  }
                   setActiveLayerIndex(idx);
                 }}
                 className={`flex items-center gap-1 px-1 py-1 text-xs cursor-pointer ${
