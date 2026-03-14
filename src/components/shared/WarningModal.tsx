@@ -22,8 +22,8 @@ export const WarningModal: React.FC<WarningModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-      <div className="dungeon-panel p-6 rounded-pixel-lg text-center max-w-sm mx-4 border-2 border-rust-600 bg-gradient-to-b from-stone-800 to-stone-900">
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-overlay-fade-in">
+      <div className="dungeon-panel p-6 rounded-pixel-lg text-center max-w-sm mx-4 border-2 border-rust-600 bg-gradient-to-b from-stone-800 to-stone-900 animate-panel-scale-in">
         {/* Warning icon */}
         <div className="text-4xl mb-3">
           <span className="text-rust-400">&#9888;</span>

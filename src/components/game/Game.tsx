@@ -1537,13 +1537,13 @@ export const Game: React.FC = () => {
             {/* Concede Confirmation Popup */}
             {showConcedeConfirm && (
               <div
-                className="fixed inset-0 flex items-center justify-center z-50"
+                className="fixed inset-0 flex items-center justify-center z-50 animate-overlay-fade-in"
                 style={{
                   backgroundColor: themeAssets.concedeModalOverlayBg || 'rgba(0, 0, 0, 0.7)',
                 }}
               >
                 <div
-                  className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${
+                  className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 animate-panel-scale-in ${
                     themeAssets.concedeModalPanelBg ? '' : 'bg-gradient-to-b from-blood-800 to-blood-900 border-2 border-blood-500'
                   }`}
                   style={{
