@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 
 interface WarningModalProps {
   isOpen: boolean;
@@ -19,11 +19,21 @@ export const WarningModal: React.FC<WarningModalProps> = ({
   message,
   buttonText = 'Got it',
 }) => {
+  const [dismissing, setDismissing] = useState(false);
+
+  const handleDismiss = useCallback(() => {
+    setDismissing(true);
+    setTimeout(() => {
+      setDismissing(false);
+      onClose();
+    }, 250);
+  }, [onClose]);
+
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 animate-overlay-fade-in">
-      <div className="dungeon-panel p-6 rounded-pixel-lg text-center max-w-sm mx-4 border-2 border-rust-600 bg-gradient-to-b from-stone-800 to-stone-900 animate-panel-scale-in">
+    <div className={`fixed inset-0 bg-black/70 flex items-center justify-center z-50 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}>
+      <div className={`dungeon-panel p-6 rounded-pixel-lg text-center max-w-sm mx-4 border-2 border-rust-600 bg-gradient-to-b from-stone-800 to-stone-900 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
         {/* Warning icon */}
         <div className="text-4xl mb-3">
           <span className="text-rust-400">&#9888;</span>
@@ -41,7 +51,8 @@ export const WarningModal: React.FC<WarningModalProps> = ({
 
         {/* Button */}
         <button
-          onClick={onClose}
+          onClick={handleDismiss}
+          disabled={dismissing}
           className="dungeon-btn-primary px-6 py-2 font-medium"
           autoFocus
         >

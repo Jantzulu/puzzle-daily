@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
 import type { Puzzle } from '../../types/game';
 import type { TrackedRun, BugAssetType } from '../../types/bugReport';
 import { submitBugReport } from '../../services/bugReportService';
@@ -22,6 +22,15 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   const [assetId, setAssetId] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+
+  const handleDismiss = useCallback(() => {
+    setDismissing(true);
+    setTimeout(() => {
+      setDismissing(false);
+      onClose();
+    }, 250);
+  }, [onClose]);
 
   // Keep selectedRunId in sync with trackedRuns — default to most recent
   useEffect(() => {
@@ -138,7 +147,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
 
     if (success) {
       toast.success('Bug report submitted — thank you!');
-      onClose();
+      handleDismiss();
     } else {
       toast.error('Failed to submit bug report. Please try again.');
     }
@@ -156,11 +165,11 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   };
 
   return (
-    <div className="fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 animate-overlay-fade-in">
-      <div className="dungeon-panel p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 animate-panel-scale-in">
+    <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}>
+      <div className={`dungeon-panel p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
         <div className="flex items-center justify-between">
           <h3 className="font-medieval text-copper-400 text-lg">Report a Bug</h3>
-          <button onClick={onClose} className="text-stone-500 hover:text-stone-300 text-xl leading-none">&times;</button>
+          <button onClick={handleDismiss} disabled={dismissing} className="text-stone-500 hover:text-stone-300 text-xl leading-none">&times;</button>
         </div>
 
         <p className="text-xs text-stone-400">
@@ -245,7 +254,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
 
         {/* Actions */}
         <div className="flex gap-3 justify-end pt-1">
-          <button onClick={onClose} className="dungeon-btn px-4 py-2 text-sm font-bold">
+          <button onClick={handleDismiss} disabled={dismissing} className="dungeon-btn px-4 py-2 text-sm font-bold">
             Cancel
           </button>
           <button

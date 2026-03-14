@@ -75,6 +75,7 @@ export const Game: React.FC = () => {
 
   // Concede confirmation state
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
+  const [dismissingConcede, setDismissingConcede] = useState(false);
 
   // Analytics: attempt timing and duplicate guard
   const attemptStartRef = useRef<number>(0);
@@ -1537,13 +1538,13 @@ export const Game: React.FC = () => {
             {/* Concede Confirmation Popup */}
             {showConcedeConfirm && (
               <div
-                className="fixed inset-0 flex items-center justify-center z-50 animate-overlay-fade-in"
+                className={`fixed inset-0 flex items-center justify-center z-50 ${dismissingConcede ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                 style={{
                   backgroundColor: themeAssets.concedeModalOverlayBg || 'rgba(0, 0, 0, 0.7)',
                 }}
               >
                 <div
-                  className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 animate-panel-scale-in ${
+                  className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${dismissingConcede ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
                     themeAssets.concedeModalPanelBg ? '' : 'bg-gradient-to-b from-blood-800 to-blood-900 border-2 border-blood-500'
                   }`}
                   style={{
@@ -1571,7 +1572,8 @@ export const Game: React.FC = () => {
                   </p>
                   <div className="mt-4 flex gap-3 justify-center">
                     <button
-                      onClick={() => setShowConcedeConfirm(false)}
+                      onClick={() => { setDismissingConcede(true); setTimeout(() => { setDismissingConcede(false); setShowConcedeConfirm(false); }, 250); }}
+                      disabled={dismissingConcede}
                       className={`px-4 py-2 ${themeAssets.concedeModalCancelBg ? 'rounded-pixel' : 'dungeon-btn'}`}
                       style={{
                         ...(themeAssets.concedeModalCancelBg && { backgroundColor: themeAssets.concedeModalCancelBg }),
@@ -1582,7 +1584,8 @@ export const Game: React.FC = () => {
                       Cancel
                     </button>
                     <button
-                      onClick={handleConcede}
+                      onClick={() => { setDismissingConcede(true); setTimeout(() => { setDismissingConcede(false); handleConcede(); }, 250); }}
+                      disabled={dismissingConcede}
                       className={`px-4 py-2 ${themeAssets.concedeModalConfirmBg ? 'rounded-pixel' : 'dungeon-btn-danger'}`}
                       style={{
                         ...(themeAssets.concedeModalConfirmBg && { backgroundColor: themeAssets.concedeModalConfirmBg }),
