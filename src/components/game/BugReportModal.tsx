@@ -4,8 +4,9 @@ import type { TrackedRun, BugAssetType } from '../../types/bugReport';
 import { submitBugReport } from '../../services/bugReportService';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { loadTileType, loadCollectible } from '../../utils/assetStorage';
+import { loadTileType, loadCollectible, getStatusEffectAssets } from '../../utils/assetStorage';
 import { toast } from '../shared/Toast';
+import { MiniGridPreview } from './MiniGridPreview';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -19,7 +20,7 @@ interface BugReportModalProps {
 export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose, puzzle, trackedRuns }) => {
   const [selectedRunId, setSelectedRunId] = useState<string>('');
   const [assetType, setAssetType] = useState<BugAssetType | 'other' | ''>('');
-  const [assetId, setAssetId] = useState('');
+  const [assetIds, setAssetIds] = useState<string[]>([]);
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [dismissing, setDismissing] = useState(false);
@@ -59,6 +60,11 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     }
     if (puzzle.collectibles.length > 0) {
       types.push({ type: 'item', label: 'Item' });
+    }
+    // Check for enchantments (status effects used in this puzzle)
+    const allEffects = getStatusEffectAssets();
+    if (allEffects.length > 0) {
+      types.push({ type: 'enchantment', label: 'Enchantment' });
     }
     types.push({ type: 'other', label: 'Other / Not sure' });
     return types;
@@ -115,6 +121,12 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
             return { id: c.collectibleId, name: item?.name || c.collectibleId };
           });
       }
+      case 'enchantment': {
+        return getStatusEffectAssets().map(e => ({
+          id: e.id,
+          name: e.name,
+        }));
+      }
       default:
         return [];
     }
@@ -122,14 +134,24 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
 
   const selectedRun = trackedRuns.find(r => r.id === selectedRunId);
 
+  const toggleAssetId = (id: string) => {
+    setAssetIds(prev =>
+      prev.includes(id)
+        ? prev.filter(a => a !== id)
+        : [...prev, id]
+    );
+  };
+
   const handleSubmit = async () => {
     if (!selectedRun || !description.trim()) return;
 
     setSubmitting(true);
 
-    const assetName = assetType && assetType !== 'other'
-      ? specificAssets.find(a => a.id === assetId)?.name
-      : undefined;
+    // Join selected asset names/ids with commas for storage
+    const selectedNames = assetIds
+      .map(id => specificAssets.find(a => a.id === id)?.name)
+      .filter(Boolean)
+      .join(', ');
 
     const success = await submitBugReport({
       puzzleId: puzzle.id,
@@ -138,8 +160,8 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       outcome: selectedRun.outcome,
       turnsUsed: selectedRun.turnsUsed,
       assetType: assetType && assetType !== 'other' ? assetType : undefined,
-      assetId: assetId || undefined,
-      assetName: assetName || undefined,
+      assetId: assetIds.length > 0 ? assetIds.join(',') : undefined,
+      assetName: selectedNames || undefined,
       description: description.trim(),
     });
 
@@ -166,7 +188,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
 
   return (
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}>
-      <div className={`dungeon-panel p-5 max-w-md w-full max-h-[90vh] overflow-y-auto space-y-4 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
+      <div className={`dungeon-panel p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
         <div className="flex items-center justify-between">
           <h3 className="font-medieval text-copper-400 text-lg">Report a Bug</h3>
           <button onClick={handleDismiss} disabled={dismissing} className="text-stone-500 hover:text-stone-300 text-xl leading-none">&times;</button>
@@ -176,21 +198,33 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
           Help us fix issues! Select the run where you saw the bug and tell us what went wrong.
         </p>
 
-        {/* Run selector */}
+        {/* Run selector — visual cards */}
         {trackedRuns.length > 0 && (
           <div className="space-y-1">
             <label className="text-sm font-bold text-copper-400">Which run?</label>
-            <select
-              value={selectedRunId}
-              onChange={(e) => setSelectedRunId(e.target.value)}
-              className="dungeon-select w-full"
-            >
+            <div className="flex gap-2 overflow-x-auto pb-1 dungeon-scrollbar">
               {trackedRuns.map((run, i) => (
-                <option key={run.id} value={run.id}>
-                  Run #{i + 1} — {run.outcome} — {run.turnsUsed} turn{run.turnsUsed !== 1 ? 's' : ''} — {formatTimeAgo(run.timestamp)}
-                </option>
+                <button
+                  key={run.id}
+                  onClick={() => setSelectedRunId(run.id)}
+                  className={`flex-shrink-0 p-2 rounded-pixel border transition-colors ${
+                    selectedRunId === run.id
+                      ? 'border-copper-500 bg-copper-900/30'
+                      : 'border-stone-700/50 bg-stone-800/50 hover:border-stone-600'
+                  }`}
+                >
+                  <MiniGridPreview puzzle={puzzle} placements={run.placements} size={80} />
+                  <div className="mt-1 text-center">
+                    <div className="text-[10px] font-bold text-parchment-200">
+                      Run #{i + 1} {run.outcome === 'victory' ? '\uD83C\uDFC6' : '\uD83D\uDC80'}
+                    </div>
+                    <div className="text-[9px] text-stone-500">
+                      {run.turnsUsed}t &middot; {formatTimeAgo(run.timestamp)}
+                    </div>
+                  </div>
+                </button>
               ))}
-            </select>
+            </div>
           </div>
         )}
 
@@ -207,7 +241,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
             {availableAssetTypes.map(({ type, label }) => (
               <button
                 key={type}
-                onClick={() => { setAssetType(type); setAssetId(''); }}
+                onClick={() => { setAssetType(type); setAssetIds([]); }}
                 className={`px-3 py-1.5 text-xs font-bold rounded-pixel border ${
                   assetType === type
                     ? 'bg-copper-600/30 border-copper-500 text-copper-300'
@@ -220,20 +254,30 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
           </div>
         </div>
 
-        {/* Specific asset selector */}
+        {/* Specific asset multi-select chips */}
         {assetType && assetType !== 'other' && specificAssets.length > 0 && (
           <div className="space-y-1">
-            <label className="text-sm font-bold text-copper-400">Which one?</label>
-            <select
-              value={assetId}
-              onChange={(e) => setAssetId(e.target.value)}
-              className="dungeon-select w-full"
-            >
-              <option value="">— Select —</option>
-              {specificAssets.map(asset => (
-                <option key={asset.id} value={asset.id}>{asset.name}</option>
-              ))}
-            </select>
+            <label className="text-sm font-bold text-copper-400">
+              Which one{specificAssets.length > 1 ? '(s)' : ''}?
+            </label>
+            <div className="flex flex-wrap gap-1.5">
+              {specificAssets.map(asset => {
+                const selected = assetIds.includes(asset.id);
+                return (
+                  <button
+                    key={asset.id}
+                    onClick={() => toggleAssetId(asset.id)}
+                    className={`px-2.5 py-1 text-xs rounded-pixel border transition-colors ${
+                      selected
+                        ? 'bg-copper-600/30 border-copper-500 text-copper-300'
+                        : 'bg-stone-800/50 border-stone-600/50 text-stone-400 hover:border-stone-500'
+                    }`}
+                  >
+                    {asset.name}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         )}
 

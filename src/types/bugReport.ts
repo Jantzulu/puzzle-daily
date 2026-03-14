@@ -1,7 +1,7 @@
 import type { PlacedCharacter } from './game';
 
 /** Asset category as seen by the player */
-export type BugAssetType = 'hero' | 'enemy' | 'tile' | 'item';
+export type BugAssetType = 'hero' | 'enemy' | 'tile' | 'item' | 'enchantment';
 
 /** A single completed run tracked in session memory */
 export interface TrackedRun {
