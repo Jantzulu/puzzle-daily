@@ -1,6 +1,7 @@
 import type { Puzzle } from '../types/game';
 import { safeLocalStorageSet } from './assetStorage';
 import { toast } from '../components/shared/Toast';
+import { logActivity } from '../services/activityLogService';
 
 const STORAGE_KEY = 'saved_puzzles';
 const PENDING_PUZZLE_DELETIONS_KEY = 'pending_puzzle_deletions';
@@ -130,6 +131,7 @@ export const savePuzzle = (puzzle: Puzzle): boolean => {
 
   // Update existing or add new
   const existingIndex = puzzles.findIndex(p => p.id === puzzle.id);
+  const isCreate = existingIndex < 0;
   if (existingIndex >= 0) {
     puzzles[existingIndex] = savedPuzzle;
   } else {
@@ -139,6 +141,7 @@ export const savePuzzle = (puzzle: Puzzle): boolean => {
   const success = safeLocalStorageSet(STORAGE_KEY, JSON.stringify(puzzles));
   if (success) {
     console.log(`[PuzzleStorage] Saved puzzle: ${puzzle.id} (${puzzle.name})`);
+    logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'puzzle', asset_id: puzzle.id, asset_name: puzzle.name });
   }
   return success;
 };
@@ -157,11 +160,14 @@ export const getSavedPuzzles = (): SavedPuzzle[] => {
 
 export const deletePuzzle = (puzzleId: string): void => {
   const puzzles = getSavedPuzzles();
+  const puzzle = puzzles.find(p => p.id === puzzleId);
   const filtered = puzzles.filter(p => p.id !== puzzleId);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingPuzzleDeletion(puzzleId);
+
+  logActivity({ action: 'delete', asset_type: 'puzzle', asset_id: puzzleId, asset_name: puzzle?.name });
 };
 
 export const loadPuzzle = (puzzleId: string): SavedPuzzle | null => {

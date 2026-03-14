@@ -1,5 +1,6 @@
 import type { Character, Enemy, TileBehaviorConfig, CadenceConfig, SoundAsset, GlobalSoundConfig, GlobalHapticConfig, CollectibleEffectConfig, CollectiblePickupPermissions } from '../types/game';
 import { toast } from '../components/shared/Toast';
+import { logActivity } from '../services/activityLogService';
 
 // ============ SAFE LOCALSTORAGE UTILITIES ============
 // Handles mobile browser restrictions (Private mode, quota limits, Safari quirks)
@@ -448,6 +449,7 @@ export interface CustomObject {
 export const saveCharacter = (character: CustomCharacter): boolean => {
   const characters = getCustomCharacters();
   const existingIndex = characters.findIndex(c => c.id === character.id);
+  const isCreate = existingIndex < 0;
 
   if (existingIndex >= 0) {
     characters[existingIndex] = { ...character, createdAt: new Date().toISOString() };
@@ -455,7 +457,9 @@ export const saveCharacter = (character: CustomCharacter): boolean => {
     characters.push({ ...character, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  return safeLocalStorageSet(CHARACTER_STORAGE_KEY, JSON.stringify(characters));
+  const success = safeLocalStorageSet(CHARACTER_STORAGE_KEY, JSON.stringify(characters));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'character', asset_id: character.id, asset_name: character.name });
+  return success;
 };
 
 export const getCustomCharacters = (): CustomCharacter[] => {
@@ -473,6 +477,7 @@ export const getCustomCharacters = (): CustomCharacter[] => {
 export const deleteCharacter = (characterId: string): void => {
   // Try to delete from custom characters
   const characters = getCustomCharacters();
+  const char = characters.find(c => c.id === characterId);
   const filtered = characters.filter(c => c.id !== characterId);
   localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(filtered));
 
@@ -481,6 +486,8 @@ export const deleteCharacter = (characterId: string): void => {
 
   // Also hide official asset if it's not in custom storage
   hideAsset(characterId);
+
+  logActivity({ action: 'delete', asset_type: 'character', asset_id: characterId, asset_name: char?.name });
 };
 
 export const loadCharacter = (characterId: string): CustomCharacter | null => {
@@ -493,6 +500,7 @@ export const loadCharacter = (characterId: string): CustomCharacter | null => {
 export const saveEnemy = (enemy: CustomEnemy): boolean => {
   const enemies = getCustomEnemies();
   const existingIndex = enemies.findIndex(e => e.id === enemy.id);
+  const isCreate = existingIndex < 0;
 
   if (existingIndex >= 0) {
     enemies[existingIndex] = { ...enemy, createdAt: new Date().toISOString() };
@@ -500,7 +508,9 @@ export const saveEnemy = (enemy: CustomEnemy): boolean => {
     enemies.push({ ...enemy, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  return safeLocalStorageSet(ENEMY_STORAGE_KEY, JSON.stringify(enemies));
+  const success = safeLocalStorageSet(ENEMY_STORAGE_KEY, JSON.stringify(enemies));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'enemy', asset_id: enemy.id, asset_name: enemy.name });
+  return success;
 };
 
 export const getCustomEnemies = (): CustomEnemy[] => {
@@ -518,6 +528,7 @@ export const getCustomEnemies = (): CustomEnemy[] => {
 export const deleteEnemy = (enemyId: string): void => {
   // Try to delete from custom enemies
   const enemies = getCustomEnemies();
+  const enemy = enemies.find(e => e.id === enemyId);
   const filtered = enemies.filter(e => e.id !== enemyId);
   localStorage.setItem(ENEMY_STORAGE_KEY, JSON.stringify(filtered));
 
@@ -526,6 +537,8 @@ export const deleteEnemy = (enemyId: string): void => {
 
   // Also hide official asset if it's not in custom storage
   hideAsset(enemyId);
+
+  logActivity({ action: 'delete', asset_type: 'enemy', asset_id: enemyId, asset_name: enemy?.name });
 };
 
 export const loadEnemy = (enemyId: string): CustomEnemy | null => {
@@ -538,6 +551,7 @@ export const loadEnemy = (enemyId: string): CustomEnemy | null => {
 export const saveTileType = (tile: CustomTileType): boolean => {
   const tiles = getCustomTileTypes();
   const existingIndex = tiles.findIndex(t => t.id === tile.id);
+  const isCreate = existingIndex < 0;
 
   if (existingIndex >= 0) {
     tiles[existingIndex] = { ...tile, createdAt: new Date().toISOString() };
@@ -545,7 +559,9 @@ export const saveTileType = (tile: CustomTileType): boolean => {
     tiles.push({ ...tile, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  return safeLocalStorageSet(TILE_STORAGE_KEY, JSON.stringify(tiles));
+  const success = safeLocalStorageSet(TILE_STORAGE_KEY, JSON.stringify(tiles));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'tile_type', asset_id: tile.id, asset_name: tile.name });
+  return success;
 };
 
 export const getCustomTileTypes = (): CustomTileType[] => {
@@ -562,11 +578,14 @@ export const getCustomTileTypes = (): CustomTileType[] => {
 
 export const deleteTileType = (tileId: string): void => {
   const tiles = getCustomTileTypes();
+  const tile = tiles.find(t => t.id === tileId);
   const filtered = tiles.filter(t => t.id !== tileId);
   localStorage.setItem(TILE_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(tileId, 'tile_type');
+
+  logActivity({ action: 'delete', asset_type: 'tile_type', asset_id: tileId, asset_name: tile?.name });
 };
 
 export const loadTileType = (tileId: string): CustomTileType | null => {
@@ -608,6 +627,7 @@ const COLLECTIBLE_ASSET_STORAGE_KEY = 'custom_collectible_assets';
 export const saveCollectible = (collectible: CustomCollectible): boolean => {
   const collectibles = getCustomCollectibles();
   const existingIndex = collectibles.findIndex(c => c.id === collectible.id);
+  const isCreate = existingIndex < 0;
 
   if (existingIndex >= 0) {
     collectibles[existingIndex] = { ...collectible, createdAt: new Date().toISOString() };
@@ -615,7 +635,9 @@ export const saveCollectible = (collectible: CustomCollectible): boolean => {
     collectibles.push({ ...collectible, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  return safeLocalStorageSet(COLLECTIBLE_ASSET_STORAGE_KEY, JSON.stringify(collectibles));
+  const success = safeLocalStorageSet(COLLECTIBLE_ASSET_STORAGE_KEY, JSON.stringify(collectibles));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'collectible', asset_id: collectible.id, asset_name: collectible.name });
+  return success;
 };
 
 export const getCustomCollectibles = (): CustomCollectible[] => {
@@ -632,11 +654,14 @@ export const getCustomCollectibles = (): CustomCollectible[] => {
 
 export const deleteCollectible = (collectibleId: string): void => {
   const collectibles = getCustomCollectibles();
+  const collectible = collectibles.find(c => c.id === collectibleId);
   const filtered = collectibles.filter(c => c.id !== collectibleId);
   localStorage.setItem(COLLECTIBLE_ASSET_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(collectibleId, 'collectible');
+
+  logActivity({ action: 'delete', asset_type: 'collectible', asset_id: collectibleId, asset_name: collectible?.name });
 };
 
 export const loadCollectible = (collectibleId: string): CustomCollectible | null => {
@@ -669,6 +694,7 @@ export const saveCustomAttack = (attack: CustomAttack): void => {
   const attacks = getCustomAttacks();
 
   const existingIndex = attacks.findIndex(a => a.id === attack.id);
+  const isCreate = existingIndex < 0;
   if (existingIndex >= 0) {
     attacks[existingIndex] = attack;
   } else {
@@ -676,6 +702,7 @@ export const saveCustomAttack = (attack: CustomAttack): void => {
   }
 
   localStorage.setItem(ATTACK_STORAGE_KEY, JSON.stringify(attacks));
+  logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'attack', asset_id: attack.id, asset_name: attack.name });
 };
 
 export const getCustomAttacks = (): CustomAttack[] => {
@@ -691,8 +718,11 @@ export const getCustomAttacks = (): CustomAttack[] => {
 
 export const deleteCustomAttack = (attackId: string): void => {
   const attacks = getCustomAttacks();
+  const attack = attacks.find(a => a.id === attackId);
   const filtered = attacks.filter(a => a.id !== attackId);
   localStorage.setItem(ATTACK_STORAGE_KEY, JSON.stringify(filtered));
+
+  logActivity({ action: 'delete', asset_type: 'attack', asset_id: attackId, asset_name: attack?.name });
 };
 
 export const loadCustomAttack = (attackId: string): CustomAttack | null => {
@@ -712,13 +742,16 @@ export const saveSpellAsset = (spell: SpellAsset): boolean => {
   const spells = getSpellAssets();
 
   const existingIndex = spells.findIndex(s => s.id === spell.id);
+  const isCreate = existingIndex < 0;
   if (existingIndex >= 0) {
     spells[existingIndex] = spell;
   } else {
     spells.push(spell);
   }
 
-  return safeLocalStorageSet(SPELL_STORAGE_KEY, JSON.stringify(spells));
+  const success = safeLocalStorageSet(SPELL_STORAGE_KEY, JSON.stringify(spells));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'spell', asset_id: spell.id, asset_name: spell.name });
+  return success;
 };
 
 export const getSpellAssets = (): SpellAsset[] => {
@@ -734,11 +767,14 @@ export const getSpellAssets = (): SpellAsset[] => {
 
 export const deleteSpellAsset = (spellId: string): void => {
   const spells = getSpellAssets();
+  const spell = spells.find(s => s.id === spellId);
   const filtered = spells.filter(s => s.id !== spellId);
   localStorage.setItem(SPELL_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(spellId, 'spell');
+
+  logActivity({ action: 'delete', asset_type: 'spell', asset_id: spellId, asset_name: spell?.name });
 };
 
 export const loadSpellAsset = (spellId: string): SpellAsset | null => {
@@ -970,13 +1006,16 @@ export const saveStatusEffectAsset = (effect: StatusEffectAsset): boolean => {
   const effects = getCustomStatusEffects();
 
   const existingIndex = effects.findIndex(e => e.id === effect.id);
+  const isCreate = existingIndex < 0;
   if (existingIndex >= 0) {
     effects[existingIndex] = effect;
   } else {
     effects.push(effect);
   }
 
-  return safeLocalStorageSet(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(effects));
+  const success = safeLocalStorageSet(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(effects));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'status_effect', asset_id: effect.id, asset_name: effect.name });
+  return success;
 };
 
 /**
@@ -1007,11 +1046,14 @@ export const deleteStatusEffectAsset = (effectId: string): void => {
   if (effectId.startsWith('builtin_')) return;
 
   const effects = getCustomStatusEffects();
+  const effect = effects.find(e => e.id === effectId);
   const filtered = effects.filter(e => e.id !== effectId);
   localStorage.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(effectId, 'status_effect');
+
+  logActivity({ action: 'delete', asset_type: 'status_effect', asset_id: effectId, asset_name: effect?.name });
 };
 
 export const loadStatusEffectAsset = (effectId: string): StatusEffectAsset | null => {
@@ -1091,13 +1133,16 @@ export const savePuzzleSkin = (skin: PuzzleSkin): boolean => {
   const skins = getPuzzleSkins();
 
   const existingIndex = skins.findIndex(s => s.id === skin.id);
+  const isCreate = existingIndex < 0;
   if (existingIndex >= 0) {
     skins[existingIndex] = skin;
   } else {
     skins.push(skin);
   }
 
-  return safeLocalStorageSet(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(skins));
+  const success = safeLocalStorageSet(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(skins));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'skin', asset_id: skin.id, asset_name: skin.name });
+  return success;
 };
 
 export const getPuzzleSkins = (): PuzzleSkin[] => {
@@ -1121,11 +1166,14 @@ export const deletePuzzleSkin = (skinId: string): void => {
   if (skinId.startsWith('builtin_')) return;
 
   const skins = getPuzzleSkins();
+  const skin = skins.find(s => s.id === skinId);
   const filtered = skins.filter(s => s.id !== skinId);
   localStorage.setItem(PUZZLE_SKINS_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(skinId, 'skin');
+
+  logActivity({ action: 'delete', asset_type: 'skin', asset_id: skinId, asset_name: skin?.name });
 };
 
 export const loadPuzzleSkin = (skinId: string): PuzzleSkin | null => {
@@ -1141,6 +1189,7 @@ export const loadPuzzleSkin = (skinId: string): PuzzleSkin | null => {
 export const saveObject = (object: CustomObject): boolean => {
   const objects = getCustomObjects();
   const existingIndex = objects.findIndex(o => o.id === object.id);
+  const isCreate = existingIndex < 0;
 
   if (existingIndex >= 0) {
     objects[existingIndex] = { ...object, createdAt: new Date().toISOString() };
@@ -1148,7 +1197,9 @@ export const saveObject = (object: CustomObject): boolean => {
     objects.push({ ...object, createdAt: new Date().toISOString(), isCustom: true });
   }
 
-  return safeLocalStorageSet(OBJECT_STORAGE_KEY, JSON.stringify(objects));
+  const success = safeLocalStorageSet(OBJECT_STORAGE_KEY, JSON.stringify(objects));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'object', asset_id: object.id, asset_name: object.name });
+  return success;
 };
 
 export const getCustomObjects = (): CustomObject[] => {
@@ -1165,11 +1216,14 @@ export const getCustomObjects = (): CustomObject[] => {
 
 export const deleteObject = (objectId: string): void => {
   const objects = getCustomObjects();
+  const obj = objects.find(o => o.id === objectId);
   const filtered = objects.filter(o => o.id !== objectId);
   localStorage.setItem(OBJECT_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(objectId, 'object');
+
+  logActivity({ action: 'delete', asset_type: 'object', asset_id: objectId, asset_name: obj?.name });
 };
 
 export const loadObject = (objectId: string): CustomObject | null => {
@@ -1192,13 +1246,16 @@ export const saveSoundAsset = (sound: SoundAsset): boolean => {
   const sounds = getSoundAssets();
 
   const existingIndex = sounds.findIndex(s => s.id === sound.id);
+  const isCreate = existingIndex < 0;
   if (existingIndex >= 0) {
     sounds[existingIndex] = sound;
   } else {
     sounds.push(sound);
   }
 
-  return safeLocalStorageSet(SOUND_STORAGE_KEY, JSON.stringify(sounds));
+  const success = safeLocalStorageSet(SOUND_STORAGE_KEY, JSON.stringify(sounds));
+  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'sound', asset_id: sound.id, asset_name: sound.name });
+  return success;
 };
 
 export const getSoundAssets = (): SoundAsset[] => {
@@ -1217,11 +1274,14 @@ export const deleteSoundAsset = (soundId: string): void => {
   if (soundId.startsWith('builtin_')) return;
 
   const sounds = getSoundAssets();
+  const sound = sounds.find(s => s.id === soundId);
   const filtered = sounds.filter(s => s.id !== soundId);
   localStorage.setItem(SOUND_STORAGE_KEY, JSON.stringify(filtered));
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(soundId, 'sound');
+
+  logActivity({ action: 'delete', asset_type: 'sound', asset_id: soundId, asset_name: sound?.name });
 };
 
 export const loadSoundAsset = (soundId: string): SoundAsset | null => {

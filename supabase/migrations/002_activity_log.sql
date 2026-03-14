@@ -23,3 +23,6 @@ CREATE POLICY "Authenticated users can read activity" ON activity_log
 
 CREATE POLICY "Authenticated users can insert activity" ON activity_log
   FOR INSERT TO authenticated WITH CHECK (true);
+
+CREATE POLICY "Authenticated users can delete old activity" ON activity_log
+  FOR DELETE TO authenticated USING (true);

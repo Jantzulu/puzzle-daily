@@ -32,10 +32,25 @@ export async function logActivity(entry: Omit<ActivityEntry, 'user_id'>): Promis
   }
 }
 
+// Auto-cleanup: prune entries older than 30 days (runs once per session)
+let cleanupDone = false;
+async function pruneOldActivity(): Promise<void> {
+  if (cleanupDone) return;
+  cleanupDone = true;
+  try {
+    const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    await supabase.from('activity_log').delete().lt('created_at', cutoff);
+  } catch (e) {
+    console.warn('[ActivityLog] Cleanup failed:', e);
+  }
+}
+
 /**
  * Fetch recent activity, joined with profiles for display names
  */
 export async function fetchRecentActivity(limit: number = 50): Promise<ActivityRecord[]> {
+  // Prune old entries lazily (once per session)
+  pruneOldActivity();
   const { data, error } = await supabase
     .from('activity_log')
     .select('*, profiles(display_name)')
