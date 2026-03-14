@@ -7,6 +7,7 @@ import { getEnemy } from '../../data/enemies';
 import { loadTileType, loadCollectible, getStatusEffectAssets } from '../../utils/assetStorage';
 import { toast } from '../shared/Toast';
 import { MiniGridPreview } from './MiniGridPreview';
+import { BugReportReplay } from '../editor/BugReportReplay';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -24,6 +25,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [dismissing, setDismissing] = useState(false);
+  const [replayingRunId, setReplayingRunId] = useState<string | null>(null);
 
   const handleDismiss = useCallback(() => {
     setDismissing(true);
@@ -37,7 +39,6 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   useEffect(() => {
     if (trackedRuns.length > 0) {
       const lastRun = trackedRuns[trackedRuns.length - 1];
-      // Only auto-select if nothing selected or current selection is invalid
       if (!selectedRunId || !trackedRuns.find(r => r.id === selectedRunId)) {
         setSelectedRunId(lastRun.id);
       }
@@ -51,7 +52,6 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     if (puzzle.enemies.length > 0) {
       types.push({ type: 'enemy', label: 'Enemy' });
     }
-    // Check for custom tiles
     const hasCustomTiles = puzzle.tiles.some(row =>
       row.some(tile => tile && tile.customTileTypeId)
     );
@@ -61,7 +61,6 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     if (puzzle.collectibles.length > 0) {
       types.push({ type: 'item', label: 'Item' });
     }
-    // Check for enchantments (status effects used in this puzzle)
     const allEffects = getStatusEffectAssets();
     if (allEffects.length > 0) {
       types.push({ type: 'enchantment', label: 'Enchantment' });
@@ -133,6 +132,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   }, [assetType, puzzle]);
 
   const selectedRun = trackedRuns.find(r => r.id === selectedRunId);
+  const replayingRun = replayingRunId ? trackedRuns.find(r => r.id === replayingRunId) : null;
 
   const toggleAssetId = (id: string) => {
     setAssetIds(prev =>
@@ -147,7 +147,6 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
 
     setSubmitting(true);
 
-    // Join selected asset names/ids with commas for storage
     const selectedNames = assetIds
       .map(id => specificAssets.find(a => a.id === id)?.name)
       .filter(Boolean)
@@ -186,6 +185,30 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     return `${hours}h ago`;
   };
 
+  // Replay mode — replace modal content with replay viewer
+  if (replayingRun) {
+    const runIndex = trackedRuns.findIndex(r => r.id === replayingRunId);
+    return (
+      <div className="fixed inset-0 bg-black/85 z-50 flex flex-col items-center justify-center p-4 animate-overlay-fade-in">
+        <div className="text-center mb-3">
+          <h3 className="font-medieval text-copper-400 text-lg">
+            Replaying Run #{runIndex + 1} {replayingRun.outcome === 'victory' ? '\uD83C\uDFC6' : '\uD83D\uDC80'}
+          </h3>
+          <p className="text-xs text-stone-500">
+            {replayingRun.turnsUsed} turn{replayingRun.turnsUsed !== 1 ? 's' : ''} &middot; {formatTimeAgo(replayingRun.timestamp)}
+          </p>
+        </div>
+        <div className="w-full max-w-[900px]">
+          <BugReportReplay
+            puzzle={puzzle}
+            placements={replayingRun.placements}
+            onExit={() => setReplayingRunId(null)}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}>
       <div className={`dungeon-panel p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
@@ -204,25 +227,35 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
             <label className="text-sm font-bold text-copper-400">Which run?</label>
             <div className="flex gap-2 overflow-x-auto pb-1 dungeon-scrollbar">
               {trackedRuns.map((run, i) => (
-                <button
+                <div
                   key={run.id}
-                  onClick={() => setSelectedRunId(run.id)}
-                  className={`flex-shrink-0 p-2 rounded-pixel border transition-colors ${
+                  className={`flex-shrink-0 rounded-pixel border transition-colors ${
                     selectedRunId === run.id
                       ? 'border-copper-500 bg-copper-900/30'
                       : 'border-stone-700/50 bg-stone-800/50 hover:border-stone-600'
                   }`}
                 >
-                  <MiniGridPreview puzzle={puzzle} placements={run.placements} size={80} />
-                  <div className="mt-1 text-center">
-                    <div className="text-[10px] font-bold text-parchment-200">
-                      Run #{i + 1} {run.outcome === 'victory' ? '\uD83C\uDFC6' : '\uD83D\uDC80'}
+                  <button
+                    onClick={() => setSelectedRunId(run.id)}
+                    className="p-2 w-full"
+                  >
+                    <MiniGridPreview puzzle={puzzle} placements={run.placements} outcome={run.outcome} size={80} />
+                    <div className="mt-1 text-center">
+                      <div className="text-[10px] font-bold text-parchment-200">
+                        Run #{i + 1} {run.outcome === 'victory' ? '\uD83C\uDFC6' : '\uD83D\uDC80'}
+                      </div>
+                      <div className="text-[9px] text-stone-500">
+                        {run.turnsUsed}t &middot; {formatTimeAgo(run.timestamp)}
+                      </div>
                     </div>
-                    <div className="text-[9px] text-stone-500">
-                      {run.turnsUsed}t &middot; {formatTimeAgo(run.timestamp)}
-                    </div>
-                  </div>
-                </button>
+                  </button>
+                  <button
+                    onClick={() => setReplayingRunId(run.id)}
+                    className="w-full text-[9px] text-arcane-400 hover:text-arcane-300 py-1 border-t border-stone-700/50 transition-colors"
+                  >
+                    Replay
+                  </button>
+                </div>
               ))}
             </div>
           </div>
