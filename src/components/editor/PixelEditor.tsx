@@ -2291,6 +2291,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     eyedropper: 'iconPixelEyedropper' as keyof ThemeAssets,
     select: 'iconPixelSelect' as keyof ThemeAssets,
     move: 'iconPixelMove' as keyof ThemeAssets,
+    transform: 'iconPixelTransform' as keyof ThemeAssets,
+    wand: 'iconPixelWand' as keyof ThemeAssets,
     rect: 'iconPixelRect' as keyof ThemeAssets,
     circle: 'iconPixelCircle' as keyof ThemeAssets,
     line: 'iconPixelLine' as keyof ThemeAssets,
