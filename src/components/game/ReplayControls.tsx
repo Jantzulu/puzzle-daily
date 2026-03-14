@@ -13,6 +13,7 @@ interface ReplayControlsProps {
   onSeek: (turn: number) => void;
   onSpeedChange: (speed: number) => void;
   onExit: () => void;
+  onReportBug?: () => void;
 }
 
 const SPEEDS = [0.5, 1, 2];
@@ -85,6 +86,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
   onSeek,
   onSpeedChange,
   onExit,
+  onReportBug,
 }) => {
   const atStart = currentTurn <= 0;
   const atEnd = currentTurn >= totalTurns;
@@ -102,13 +104,28 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
     <div className="dungeon-panel p-3 space-y-2">
       {/* Row 1: Exit button | "Replay" label (absolutely centered) | Speed buttons */}
       <div className="relative flex items-center justify-between">
-        <button
-          onClick={onExit}
-          className="dungeon-btn px-2 py-1 text-xs font-bold flex items-center gap-1 z-10"
-        >
-          <span>&times;</span>
-          <span>Exit</span>
-        </button>
+        <div className="flex items-center gap-1 z-10">
+          <button
+            onClick={onExit}
+            className="dungeon-btn px-2 py-1 text-xs font-bold flex items-center gap-1"
+          >
+            <span>&times;</span>
+            <span>Exit</span>
+          </button>
+          {onReportBug && (
+            <button
+              onClick={onReportBug}
+              className="dungeon-btn px-1.5 py-1 text-xs"
+              title="Report Bug"
+            >
+              <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M8 2l1.88 1.88M14.12 3.88L16 2M9 7.13v-1a3.003 3.003 0 116 0v1" />
+                <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 014-4h4a4 4 0 014 4v3c0 3.3-2.7 6-6 6z" />
+                <path d="M12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M6 17l-4 1M17.47 9c1.93-.2 3.53-1.9 3.53-4M18 13h4M18 17l4 1" />
+              </svg>
+            </button>
+          )}
+        </div>
         <span className="absolute inset-0 flex items-center justify-center text-sm text-stone-300 font-medieval pointer-events-none">Replay</span>
         <div className="flex items-center gap-1 z-10">
           {SPEEDS.map(s => (

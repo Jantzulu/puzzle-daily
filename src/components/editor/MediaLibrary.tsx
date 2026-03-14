@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useOptionalAuth } from '../../contexts/AuthContext';
-import { browseMedia, uploadMedia, deleteMedia, createFolder } from '../../utils/mediaStorage';
+import { browseMedia, uploadMedia, deleteMedia, createFolder, copyMedia, moveMedia, renameMedia } from '../../utils/mediaStorage';
 import type { MediaEntry } from '../../utils/mediaStorage';
 import { toast } from '../shared/Toast';
 
@@ -24,6 +24,9 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const dropRef = useRef<HTMLDivElement>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [clipboard, setClipboard] = useState<{ path: string; name: string; mode: 'copy' | 'cut' } | null>(null);
+  const [renaming, setRenaming] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
 
   const refresh = useCallback(async () => {
     setLoading(true);
@@ -91,6 +94,64 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
 
   const copyUrl = (url: string) => {
     navigator.clipboard.writeText(url).then(() => toast.success('URL copied'));
+  };
+
+  const handleCopyFile = (entry: MediaEntry) => {
+    setClipboard({ path: entry.path, name: entry.name, mode: 'copy' });
+    toast.info(`Copied "${entry.name}" to clipboard`);
+  };
+
+  const handleCutFile = (entry: MediaEntry) => {
+    setClipboard({ path: entry.path, name: entry.name, mode: 'cut' });
+    toast.info(`Cut "${entry.name}" to clipboard`);
+  };
+
+  const handlePaste = async () => {
+    if (!clipboard) return;
+    const destPath = currentPath ? `${currentPath}/${clipboard.name}` : clipboard.name;
+    if (destPath === clipboard.path) {
+      toast.warning('Source and destination are the same');
+      return;
+    }
+    let ok: boolean;
+    if (clipboard.mode === 'copy') {
+      ok = await copyMedia(clipboard.path, destPath);
+    } else {
+      ok = await moveMedia(clipboard.path, destPath);
+    }
+    if (ok) {
+      toast.success(clipboard.mode === 'copy' ? 'Pasted (copy)' : 'Moved');
+      setClipboard(null);
+      refresh();
+    } else {
+      toast.error(`${clipboard.mode === 'copy' ? 'Copy' : 'Move'} failed`);
+    }
+  };
+
+  const handleRename = async (path: string) => {
+    const newName = renameValue.trim();
+    if (!newName) { setRenaming(null); return; }
+    const ok = await renameMedia(path, newName);
+    if (ok) {
+      toast.success('Renamed');
+      setRenaming(null);
+      refresh();
+    } else {
+      toast.error('Rename failed');
+    }
+  };
+
+  const handleMoveToFolder = async (entry: MediaEntry) => {
+    const dest = window.prompt('Move to folder path:', currentPath);
+    if (dest === null) return;
+    const destPath = dest ? `${dest}/${entry.name}` : entry.name;
+    const ok = await moveMedia(entry.path, destPath);
+    if (ok) {
+      toast.success('Moved');
+      refresh();
+    } else {
+      toast.error('Move failed');
+    }
   };
 
   const navigateTo = (path: string) => {
@@ -187,6 +248,15 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
         >
           📁+
         </button>
+        {clipboard && (
+          <button
+            onClick={handlePaste}
+            className="px-2 py-1 bg-copper-700 hover:bg-copper-600 rounded text-xs text-parchment-100 whitespace-nowrap"
+            title={`Paste "${clipboard.name}" here (${clipboard.mode})`}
+          >
+            📥 Paste
+          </button>
+        )}
         <input
           type="text"
           value={search}
@@ -271,12 +341,26 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
                 )}
 
                 {/* Name row */}
-                <div className="px-1.5 py-1 text-[10px] text-stone-400 truncate" title={entry.name}>
-                  {entry.name}
-                  {!entry.isFolder && entry.size && entry.size > 0 && (
-                    <span className="ml-1 text-stone-500">{formatSize(entry.size)}</span>
-                  )}
-                </div>
+                {renaming === entry.path ? (
+                  <div className="px-1 py-0.5 flex gap-0.5">
+                    <input
+                      type="text"
+                      value={renameValue}
+                      onChange={(e) => setRenameValue(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleRename(entry.path); if (e.key === 'Escape') setRenaming(null); }}
+                      className="flex-1 min-w-0 px-1 py-0.5 bg-stone-700 rounded text-[10px] text-parchment-100 focus:outline-none focus:ring-1 focus:ring-copper-400"
+                      autoFocus
+                    />
+                    <button onClick={() => handleRename(entry.path)} className="text-[10px] text-copper-400 hover:text-copper-300">✓</button>
+                  </div>
+                ) : (
+                  <div className="px-1.5 py-1 text-[10px] text-stone-400 truncate" title={entry.name}>
+                    {entry.name}
+                    {!entry.isFolder && entry.size && entry.size > 0 && (
+                      <span className="ml-1 text-stone-500">{formatSize(entry.size)}</span>
+                    )}
+                  </div>
+                )}
 
                 {/* Action buttons (hover) - only for files */}
                 {!entry.isFolder && (
@@ -287,6 +371,34 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
                       title="Copy URL"
                     >
                       📋
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCopyFile(entry); }}
+                      className="w-6 h-6 bg-stone-900/80 hover:bg-arcane-700 rounded text-xs flex items-center justify-center"
+                      title="Copy file"
+                    >
+                      ⧉
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleCutFile(entry); }}
+                      className="w-6 h-6 bg-stone-900/80 hover:bg-amber-700 rounded text-xs flex items-center justify-center"
+                      title="Cut (move)"
+                    >
+                      ✂
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setRenaming(entry.path); setRenameValue(entry.name); }}
+                      className="w-6 h-6 bg-stone-900/80 hover:bg-arcane-700 rounded text-xs flex items-center justify-center"
+                      title="Rename"
+                    >
+                      ✎
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleMoveToFolder(entry); }}
+                      className="w-6 h-6 bg-stone-900/80 hover:bg-arcane-700 rounded text-xs flex items-center justify-center"
+                      title="Move to folder..."
+                    >
+                      ➜
                     </button>
                     <button
                       onClick={(e) => { e.stopPropagation(); setDeleteConfirm(entry.path); }}

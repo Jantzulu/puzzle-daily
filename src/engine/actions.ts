@@ -97,6 +97,7 @@ function normalizeActionType(type: string): ActionType {
     'TURN_LEFT': ActionType.TURN_LEFT,
     'TURN_RIGHT': ActionType.TURN_RIGHT,
     'TURN_AROUND': ActionType.TURN_AROUND,
+    'FACE_DIRECTION': ActionType.FACE_DIRECTION,
     'ATTACK_FORWARD': ActionType.ATTACK_FORWARD,
     'ATTACK_RANGE': ActionType.ATTACK_RANGE,
     'ATTACK_AOE': ActionType.ATTACK_AOE,
@@ -181,6 +182,12 @@ export function executeAction(
 
     case ActionType.TURN_AROUND:
       updatedCharacter.facing = turnAround(character.facing);
+      return updatedCharacter;
+
+    case ActionType.FACE_DIRECTION:
+      if (action.faceDirection !== undefined) {
+        updatedCharacter.facing = action.faceDirection;
+      }
       return updatedCharacter;
 
     case ActionType.ATTACK_FORWARD:

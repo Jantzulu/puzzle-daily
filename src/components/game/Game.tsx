@@ -78,6 +78,7 @@ export const Game: React.FC = () => {
   // Analytics: attempt timing and duplicate guard
   const attemptStartRef = useRef<number>(0);
   const submittedRef = useRef(false);
+  const runTrackedRef = useRef(false); // Prevent duplicate run tracking per attempt
 
   // Track defeat reason
   const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
@@ -332,6 +333,7 @@ export const Game: React.FC = () => {
       // Track outcome outside the state updater so side effects (haptics, sounds)
       // aren't suppressed by React StrictMode's double-invoke of updater functions.
       let outcome: 'running' | 'victory' | 'defeat' = 'running';
+      let outcomeTurns = 0;
 
       setGameState((prevState) => {
         // Deep copy all mutable state to ensure React StrictMode double-invoke works correctly.
@@ -355,6 +357,7 @@ export const Game: React.FC = () => {
         if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
           outcome = newState.gameStatus as 'victory' | 'defeat';
+          outcomeTurns = newState.currentTurn;
 
           if (newState.gameStatus === 'victory') {
             const score = calculateScore(newState, livesRemaining, currentPuzzle.lives ?? 3);
@@ -441,13 +444,14 @@ export const Game: React.FC = () => {
         }
       }
 
-      // Track run for bug reporting
-      if (outcome) {
+      // Track run for bug reporting (guard against duplicate tracking)
+      if (outcome && !runTrackedRef.current) {
+        runTrackedRef.current = true;
         setTrackedRuns(prev => [...prev, {
           id: crypto.randomUUID(),
           placements: JSON.parse(JSON.stringify(playStartCharacters)),
           outcome,
-          turnsUsed: gameState.currentTurn,
+          turnsUsed: outcomeTurns,
           timestamp: Date.now(),
         }]);
       }
@@ -630,14 +634,17 @@ export const Game: React.FC = () => {
         });
       }
 
-      // Track run for bug reporting
-      setTrackedRuns(prev => [...prev, {
-        id: crypto.randomUUID(),
-        placements: JSON.parse(JSON.stringify(playStartCharacters)),
-        outcome: 'victory',
-        turnsUsed: gameState.currentTurn,
-        timestamp: Date.now(),
-      }]);
+      // Track run for bug reporting (guard against duplicates)
+      if (!runTrackedRef.current) {
+        runTrackedRef.current = true;
+        setTrackedRuns(prev => [...prev, {
+          id: crypto.randomUUID(),
+          placements: JSON.parse(JSON.stringify(playStartCharacters)),
+          outcome: 'victory',
+          turnsUsed: gameState.currentTurn,
+          timestamp: Date.now(),
+        }]);
+      }
     }
   }, [gameState, livesRemaining, currentPuzzle.lives]);
 
@@ -653,6 +660,7 @@ export const Game: React.FC = () => {
     setIsSimulating(true);
     attemptStartRef.current = Date.now();
     submittedRef.current = false;
+    runTrackedRef.current = false;
     playGameSound('simulation_start');
     vibrate('playButton');
   };
@@ -683,6 +691,7 @@ export const Game: React.FC = () => {
     setIsSimulating(false);
     setSelectedCharacterId(null);
     setPuzzleScore(null);
+    runTrackedRef.current = false;
   };
 
   const handleWipe = () => {
@@ -760,14 +769,17 @@ export const Game: React.FC = () => {
       });
     }
 
-    // Track run for bug reporting
-    setTrackedRuns(prev => [...prev, {
-      id: crypto.randomUUID(),
-      placements: JSON.parse(JSON.stringify(playStartCharacters)),
-      outcome: 'defeat',
-      turnsUsed: gameState.currentTurn,
-      timestamp: Date.now(),
-    }]);
+    // Track run for bug reporting (guard against duplicates)
+    if (!runTrackedRef.current) {
+      runTrackedRef.current = true;
+      setTrackedRuns(prev => [...prev, {
+        id: crypto.randomUUID(),
+        placements: JSON.parse(JSON.stringify(playStartCharacters)),
+        outcome: 'defeat',
+        turnsUsed: gameState.currentTurn,
+        timestamp: Date.now(),
+      }]);
+    }
 
     const puzzleLives = currentPuzzle.lives ?? 3;
     const isUnlimitedLives = puzzleLives === 0;
@@ -1796,6 +1808,7 @@ export const Game: React.FC = () => {
                 onSeek={handleReplaySeek}
                 onSpeedChange={handleReplaySpeedChange}
                 onExit={handleExitReplay}
+                onReportBug={() => setShowBugReport(true)}
               />
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */

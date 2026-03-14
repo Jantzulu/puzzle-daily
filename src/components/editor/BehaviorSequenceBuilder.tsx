@@ -244,6 +244,24 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
         <TurnConfig action={action} onUpdate={onUpdate} />
       )}
 
+      {/* Face Direction config */}
+      {action.type === ActionType.FACE_DIRECTION && (
+        <div className="ml-8 space-y-2">
+          <div className="flex items-center gap-2">
+            <label className="text-xs text-stone-400">Direction:</label>
+            <select
+              value={action.faceDirection ?? Direction.NORTH}
+              onChange={(e) => onUpdate({ ...action, faceDirection: Number(e.target.value) as Direction })}
+              className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+            >
+              {Object.entries(Direction).filter(([k]) => isNaN(Number(k))).map(([name, val]) => (
+                <option key={val} value={val}>{name.charAt(0) + name.slice(1).toLowerCase()}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      )}
+
       {/* Spell config */}
       {action.type === ActionType.SPELL && (
         <SpellConfig

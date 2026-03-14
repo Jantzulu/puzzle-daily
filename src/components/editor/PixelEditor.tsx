@@ -2024,8 +2024,12 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
       const sheetBase64 = pixelDataToBase64(sheetData);
 
       const safeName = projectName.trim().replace(/[^a-zA-Z0-9_-]/g, '-').replace(/-+/g, '-').toLowerCase() || 'untitled';
+      const defaultFolder = `pixel-art/${safeName}`;
+      const folder = window.prompt('Export spritesheet to folder:', defaultFolder);
+      if (!folder) { setSaving(false); return; }
+      const cleanFolder = folder.replace(/\/+$/, '');
       const ts = Date.now();
-      const sheetPath = `pixel-art/${safeName}/${ts}-${safeName}-spritesheet.png`;
+      const sheetPath = `${cleanFolder}/${ts}-${safeName}-spritesheet.png`;
       const result = await uploadMediaDataUrlToPath(sheetBase64, sheetPath);
       if (result?.url) {
         // Copy SpriteSheetConfig metadata to clipboard

@@ -927,7 +927,7 @@ export const ThemeAssetsEditor: React.FC = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto px-4 md:px-8 py-4 md:py-6">
+    <div className="max-w-7xl mx-auto px-4 md:px-8 py-4 md:py-6">
       {/* Error message */}
       {error && (
         <div className="mb-4 p-3 bg-blood-900/50 border border-blood-600 rounded-pixel text-blood-200 text-sm">

@@ -134,6 +134,7 @@ export enum ActionType {
   TURN_LEFT = 'turn_left',
   TURN_RIGHT = 'turn_right',
   TURN_AROUND = 'turn_around',
+  FACE_DIRECTION = 'face_direction',
 
   // Combat (Legacy - deprecated)
   ATTACK_FORWARD = 'attack_forward',
@@ -181,6 +182,7 @@ export interface CharacterAction {
   tilesPerMove?: number; // How many tiles to move per tick (default: 1)
   onWallCollision?: WallCollisionBehavior; // What to do when hitting a wall (default: 'stop')
   turnDegrees?: 45 | 90 | 135; // Turn amount: 45 (one diagonal), 90 (cardinal), 135 (skip diagonal, useful for corners) (default: 90)
+  faceDirection?: Direction; // Target direction for FACE_DIRECTION action
 
   // Execution configuration (new system)
   executionMode?: ExecutionMode;  // Default: 'sequential'

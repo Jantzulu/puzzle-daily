@@ -228,6 +228,49 @@ export async function deleteMedia(path: string): Promise<boolean> {
 }
 
 /**
+ * Copy a file to a new path in the bucket.
+ */
+export async function copyMedia(fromPath: string, toPath: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.storage.from(BUCKET).copy(fromPath, toPath);
+    if (error) {
+      console.error('[MediaStorage] Copy failed:', error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[MediaStorage] Copy error:', e);
+    return false;
+  }
+}
+
+/**
+ * Move a file to a new path in the bucket.
+ */
+export async function moveMedia(fromPath: string, toPath: string): Promise<boolean> {
+  try {
+    const { error } = await supabase.storage.from(BUCKET).move(fromPath, toPath);
+    if (error) {
+      console.error('[MediaStorage] Move failed:', error);
+      return false;
+    }
+    return true;
+  } catch (e) {
+    console.error('[MediaStorage] Move error:', e);
+    return false;
+  }
+}
+
+/**
+ * Rename a file (moves it to the same folder with a new name).
+ */
+export async function renameMedia(path: string, newName: string): Promise<boolean> {
+  const folder = path.substring(0, path.lastIndexOf('/'));
+  const newPath = folder ? `${folder}/${newName}` : newName;
+  return moveMedia(path, newPath);
+}
+
+/**
  * Get the public URL for a storage path.
  */
 export function getPublicUrl(path: string): string {
