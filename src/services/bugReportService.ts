@@ -148,6 +148,37 @@ export async function fetchBugReports(
 }
 
 /**
+ * Remove a local bug report by ID.
+ */
+function removeLocalBugReport(id: string): boolean {
+  try {
+    const existing = JSON.parse(localStorage.getItem(LOCAL_BUG_REPORTS_KEY) || '[]');
+    const filtered = existing.filter((r: Record<string, unknown>) => r.id !== id);
+    if (filtered.length === existing.length) return false; // not found
+    localStorage.setItem(LOCAL_BUG_REPORTS_KEY, JSON.stringify(filtered));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Update a local bug report's status.
+ */
+function updateLocalBugReport(id: string, updates: Record<string, unknown>): boolean {
+  try {
+    const existing = JSON.parse(localStorage.getItem(LOCAL_BUG_REPORTS_KEY) || '[]');
+    const idx = existing.findIndex((r: Record<string, unknown>) => r.id === id);
+    if (idx < 0) return false;
+    existing[idx] = { ...existing[idx], ...updates };
+    localStorage.setItem(LOCAL_BUG_REPORTS_KEY, JSON.stringify(existing));
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
  * Update a bug report's status and optional dev notes.
  */
 export async function updateBugReportStatus(
@@ -155,6 +186,15 @@ export async function updateBugReportStatus(
   status: 'new' | 'reviewed' | 'resolved',
   devNotes?: string
 ): Promise<boolean> {
+  // Handle local reports
+  if (id.startsWith('local_')) {
+    return updateLocalBugReport(id, {
+      status,
+      dev_notes: devNotes,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
   try {
     const update: Record<string, unknown> = {
       status,
@@ -181,9 +221,14 @@ export async function updateBugReportStatus(
 }
 
 /**
- * Soft-delete a bug report.
+ * Soft-delete a bug report (or remove local report entirely).
  */
 export async function deleteBugReport(id: string): Promise<boolean> {
+  // Handle local reports — just remove from localStorage
+  if (id.startsWith('local_')) {
+    return removeLocalBugReport(id);
+  }
+
   try {
     const { error } = await supabase
       .from('bug_reports')

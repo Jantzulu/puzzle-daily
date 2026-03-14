@@ -449,7 +449,7 @@ export const Game: React.FC = () => {
       }
 
       // Track run for bug reporting (guard against duplicate tracking)
-      if (outcome && !runTrackedRef.current) {
+      if (outcome !== 'running' && !runTrackedRef.current) {
         runTrackedRef.current = true;
         setTrackedRuns(prev => [...prev, {
           id: crypto.randomUUID(),
