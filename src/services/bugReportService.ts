@@ -6,9 +6,32 @@ import type { BugReportSubmission, BugReport } from '../types/bugReport';
 // SUBMISSION (Fire-and-forget, player-side)
 // ============================================
 
+const LOCAL_BUG_REPORTS_KEY = 'local_bug_reports';
+
+/**
+ * Save a bug report to localStorage as fallback.
+ */
+function saveLocalBugReport(report: BugReportSubmission): void {
+  try {
+    const existing = JSON.parse(localStorage.getItem(LOCAL_BUG_REPORTS_KEY) || '[]');
+    existing.push({
+      ...report,
+      id: `local_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      player_id: getPlayerId(),
+      status: 'new',
+      created_at: new Date().toISOString(),
+    });
+    // Cap at 50 local reports
+    if (existing.length > 50) existing.splice(0, existing.length - 50);
+    localStorage.setItem(LOCAL_BUG_REPORTS_KEY, JSON.stringify(existing));
+  } catch {
+    // Storage full or unavailable
+  }
+}
+
 /**
  * Submit a bug report from a player.
- * Fire-and-forget style: returns true/false for toast feedback.
+ * Tries Supabase first, falls back to localStorage. Always returns true.
  */
 export async function submitBugReport(report: BugReportSubmission): Promise<boolean> {
   try {
@@ -30,14 +53,15 @@ export async function submitBugReport(report: BugReportSubmission): Promise<bool
     const { error } = await supabase.from('bug_reports').insert(row);
 
     if (error) {
-      console.warn('[BugReport] Failed to submit:', error);
-      return false;
+      console.warn('[BugReport] Cloud submit failed, saving locally:', error);
+      saveLocalBugReport(report);
     }
 
     return true;
   } catch (e) {
-    console.warn('[BugReport] Failed to submit:', e);
-    return false;
+    console.warn('[BugReport] Cloud submit failed, saving locally:', e);
+    saveLocalBugReport(report);
+    return true;
   }
 }
 
@@ -49,9 +73,41 @@ export async function submitBugReport(report: BugReportSubmission): Promise<bool
  * Fetch bug reports for the dev viewer.
  * Excludes soft-deleted reports.
  */
+/**
+ * Get locally stored bug reports.
+ */
+function getLocalBugReports(): BugReport[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_BUG_REPORTS_KEY);
+    if (!raw) return [];
+    return JSON.parse(raw).map((r: Record<string, unknown>) => ({
+      id: r.id || `local_${Date.now()}`,
+      player_id: r.player_id || '',
+      puzzle_id: r.puzzleId || r.puzzle_id || '',
+      puzzle_name: r.puzzleName || r.puzzle_name || null,
+      placements: r.placements || [],
+      outcome: r.outcome || 'defeat',
+      turns_used: r.turnsUsed ?? r.turns_used ?? 0,
+      asset_type: r.assetType || r.asset_type || null,
+      asset_id: r.assetId || r.asset_id || null,
+      asset_name: r.assetName || r.asset_name || null,
+      description: r.description || '',
+      status: (r.status as string) || 'new',
+      dev_notes: (r.dev_notes as string) || null,
+      created_at: (r.created_at as string) || new Date().toISOString(),
+      updated_at: (r.created_at as string) || new Date().toISOString(),
+      deleted_at: null,
+    }));
+  } catch {
+    return [];
+  }
+}
+
 export async function fetchBugReports(
   filters?: { status?: string; puzzleId?: string }
 ): Promise<BugReport[]> {
+  let cloudReports: BugReport[] = [];
+
   try {
     let query = supabase
       .from('bug_reports')
@@ -68,16 +124,27 @@ export async function fetchBugReports(
 
     const { data, error } = await query;
 
-    if (error) {
-      console.warn('[BugReport] Failed to fetch:', error);
-      return [];
+    if (!error && data) {
+      cloudReports = data as BugReport[];
+    } else if (error) {
+      console.warn('[BugReport] Failed to fetch from cloud:', error);
     }
-
-    return (data || []) as BugReport[];
   } catch (e) {
-    console.warn('[BugReport] Failed to fetch:', e);
-    return [];
+    console.warn('[BugReport] Failed to fetch from cloud:', e);
   }
+
+  // Merge with local reports
+  let localReports = getLocalBugReports();
+  if (filters?.status) {
+    localReports = localReports.filter(r => r.status === filters.status);
+  }
+  if (filters?.puzzleId) {
+    localReports = localReports.filter(r => r.puzzle_id === filters.puzzleId);
+  }
+
+  const merged = [...cloudReports, ...localReports];
+  merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  return merged;
 }
 
 /**

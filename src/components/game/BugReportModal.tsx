@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import type { Puzzle } from '../../types/game';
 import type { TrackedRun, BugAssetType } from '../../types/bugReport';
 import { submitBugReport } from '../../services/bugReportService';
@@ -17,14 +17,22 @@ interface BugReportModalProps {
 }
 
 export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose, puzzle, trackedRuns }) => {
-  const [selectedRunId, setSelectedRunId] = useState<string>(() => {
-    // Default to most recent run
-    return trackedRuns.length > 0 ? trackedRuns[trackedRuns.length - 1].id : '';
-  });
+  const [selectedRunId, setSelectedRunId] = useState<string>('');
   const [assetType, setAssetType] = useState<BugAssetType | 'other' | ''>('');
   const [assetId, setAssetId] = useState('');
   const [description, setDescription] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Keep selectedRunId in sync with trackedRuns — default to most recent
+  useEffect(() => {
+    if (trackedRuns.length > 0) {
+      const lastRun = trackedRuns[trackedRuns.length - 1];
+      // Only auto-select if nothing selected or current selection is invalid
+      if (!selectedRunId || !trackedRuns.find(r => r.id === selectedRunId)) {
+        setSelectedRunId(lastRun.id);
+      }
+    }
+  }, [trackedRuns, selectedRunId]);
 
   // Determine which asset types are present in this puzzle
   const availableAssetTypes = useMemo(() => {
@@ -142,7 +150,9 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     if (seconds < 60) return 'just now';
     const minutes = Math.floor(seconds / 60);
-    return `${minutes}m ago`;
+    if (minutes < 60) return `${minutes}m ago`;
+    const hours = Math.floor(minutes / 60);
+    return `${hours}h ago`;
   };
 
   return (
@@ -168,7 +178,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
             >
               {trackedRuns.map((run, i) => (
                 <option key={run.id} value={run.id}>
-                  Run #{i + 1} — {run.outcome} — {run.turnsUsed} turns — {formatTimeAgo(run.timestamp)}
+                  Run #{i + 1} — {run.outcome} — {run.turnsUsed} turn{run.turnsUsed !== 1 ? 's' : ''} — {formatTimeAgo(run.timestamp)}
                 </option>
               ))}
             </select>
