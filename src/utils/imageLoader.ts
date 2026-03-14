@@ -235,3 +235,41 @@ function processPreloadQueue(): void {
 export function getPreloadQueueSize(): number {
   return preloadQueue.length;
 }
+
+/**
+ * Eagerly preload all images in parallel and resolve when all are loaded (or failed).
+ * Unlike preloadImages(), this loads concurrently and returns a promise.
+ */
+export function preloadImagesEager(urls: string[]): Promise<void> {
+  const unique = urls.filter(u => u && !imageCache.has(u));
+  if (unique.length === 0) return Promise.resolve();
+
+  // Also remove from the lazy queue so we don't double-load
+  for (const url of unique) {
+    const idx = preloadQueue.indexOf(url);
+    if (idx >= 0) preloadQueue.splice(idx, 1);
+  }
+
+  return new Promise<void>((resolve) => {
+    let remaining = unique.length;
+    const done = () => { if (--remaining <= 0) resolve(); };
+
+    for (const src of unique) {
+      const img = loadImage(src);
+      if (!img || (img.complete && img.naturalWidth > 0)) {
+        done();
+      } else {
+        const origOnload = img.onload;
+        const origOnerror = img.onerror;
+        img.onload = (e) => {
+          if (typeof origOnload === 'function') origOnload.call(img, e);
+          done();
+        };
+        img.onerror = (e) => {
+          if (typeof origOnerror === 'function') (origOnerror as (e: Event | string) => void).call(img, e as Event);
+          done();
+        };
+      }
+    }
+  });
+}

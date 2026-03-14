@@ -19,7 +19,7 @@ import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
-import { preloadImages } from '../../utils/imageLoader';
+import { preloadImagesEager } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
 import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
@@ -53,6 +53,7 @@ export const Game: React.FC = () => {
   // Lives system
   const [livesRemaining, setLivesRemaining] = useState<number>(() => currentPuzzle.lives ?? 3);
   const [showGameOver, setShowGameOver] = useState(false);
+  const [spritesReady, setSpritesReady] = useState(false);
 
   // Scoring system
   const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
@@ -284,9 +285,12 @@ export const Game: React.FC = () => {
       }
     }
 
-    // Trigger background preloading
+    // Eagerly preload all images in parallel, then mark ready
+    setSpritesReady(false);
     if (urlsToPreload.length > 0) {
-      preloadImages(urlsToPreload);
+      preloadImagesEager(urlsToPreload).then(() => setSpritesReady(true));
+    } else {
+      setSpritesReady(true);
     }
   }, [currentPuzzle.id]);
 
@@ -1263,7 +1267,14 @@ export const Game: React.FC = () => {
 
             {/* Game board with overlay container for loss/victory panels */}
             <div className="relative w-full max-w-[900px] overflow-hidden">
-              <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
+              <div className={`transition-opacity duration-300 ${spritesReady ? 'opacity-100' : 'opacity-0'}`}>
+                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
+              </div>
+              {!spritesReady && (
+                <div className="absolute inset-0 flex items-center justify-center bg-stone-900/80">
+                  <div className="text-stone-400 text-sm animate-pulse">Loading sprites...</div>
+                </div>
+              )}
 
               {/* Defeat Overlay - fixed to viewport like concede modal */}
               {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
