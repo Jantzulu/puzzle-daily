@@ -1290,91 +1290,6 @@ export const Game: React.FC = () => {
                 </div>
               )}
 
-              {/* Defeat Overlay - fixed to viewport like concede modal */}
-              {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
-                <div
-                  className={`fixed inset-0 flex items-center justify-center z-50 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
-                  style={{
-                    backgroundColor: themeAssets.defeatPanelOverlayBg || 'rgba(0, 0, 0, 0.75)',
-                  }}
-                >
-                  <div
-                    className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
-                      themeAssets.defeatPanelBg ? '' : 'defeat-panel'
-                    }`}
-                    style={{
-                      ...(themeAssets.defeatPanelBg && { backgroundColor: themeAssets.defeatPanelBg }),
-                      ...(themeAssets.defeatPanelBorder && { borderColor: themeAssets.defeatPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                    }}
-                  >
-                    <div className="text-3xl mb-1 animate-icon-drop">
-                      {defeatReason === 'turns' ? '\u23F3' : '\uD83D\uDC80'}
-                    </div>
-                    <h2
-                      className={`text-xl md:text-2xl font-bold font-medieval ${
-                        themeAssets.defeatPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
-                      }`}
-                      style={{
-                        ...(themeAssets.defeatPanelTitleText && { color: themeAssets.defeatPanelTitleText }),
-                      }}
-                    >
-                      {defeatReason === 'turns' ? 'Out of Time!' : 'Defeat'}
-                    </h2>
-                    <p
-                      className={`mt-1 text-sm ${themeAssets.defeatPanelMessageText ? '' : 'text-blood-400'}`}
-                      style={{
-                        ...(themeAssets.defeatPanelMessageText && { color: themeAssets.defeatPanelMessageText }),
-                      }}
-                    >
-                      {defeatReason === 'turns'
-                        ? 'You ran out of turns before completing the objective.'
-                        : 'Your heroes have fallen in battle.'}
-                    </p>
-                    {(() => {
-                      const puzzleLives = currentPuzzle.lives ?? 3;
-                      const isUnlimited = puzzleLives === 0;
-                      if (isUnlimited) return null;
-                      const remaining = livesRemaining;
-                      return (
-                        <p className={`mt-1 text-xs ${themeAssets.defeatPanelMessageText ? '' : 'text-stone-400'}`}
-                          style={{ ...(themeAssets.defeatPanelMessageText && { color: themeAssets.defeatPanelMessageText }) }}
-                        >
-                          {remaining <= 0
-                            ? 'No lives remaining.'
-                            : `${remaining} ${remaining === 1 ? 'life' : 'lives'} remaining.`}
-                        </p>
-                      );
-                    })()}
-                    {playStartCharacters.length > 0 && (
-                      <div className="mt-3 flex flex-col items-center gap-2">
-                        <div className="flex gap-3">
-                          <button
-                            onClick={() => dismissOverlay(handleWatchReplay)}
-                            disabled={dismissingOverlay}
-                            className="dungeon-btn px-4 py-2 text-sm font-bold"
-                          >
-                            Watch Replay
-                          </button>
-                          <button
-                            onClick={() => dismissOverlay(handleAutoReset)}
-                            disabled={dismissingOverlay}
-                            className="dungeon-btn-primary px-4 py-2 text-sm font-bold"
-                          >
-                            Try Again
-                          </button>
-                        </div>
-                        {trackedRuns.length > 0 && (
-                          <button onClick={() => dismissOverlay(() => setShowBugReport(true))} disabled={dismissingOverlay} className="text-xs text-stone-500 hover:text-stone-300 underline">
-                            Report Bug {themeAssets.iconBugReport || '\uD83D\uDC1B'}
-                          </button>
-                        )}
-                      </div>
-                    )}
-
-                  </div>
-                </div>
-              )}
-
               {/* Game Over Overlay */}
               {showGameOver && !replayMode && (
                 <div
@@ -1467,6 +1382,53 @@ export const Game: React.FC = () => {
                 </div>
               )}
             </div>
+
+            {/* Life Lost Overlay — outside shaking container so transform doesn't break fixed positioning */}
+            {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
+              <div
+                className={`fixed inset-0 flex items-center justify-center z-50 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
+                style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
+              >
+                <div className={`p-6 rounded-pixel-lg text-center max-w-[90%] defeat-panel ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
+                  <div className="text-4xl mb-1 animate-icon-drop">
+                    {defeatReason === 'turns' ? '\u23F3' : '\uD83D\uDC80'}
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold font-medieval text-blood-200 text-shadow-glow-blood">
+                    {defeatReason === 'turns' ? 'Out of Turns!' : 'Defeated!'}
+                  </h2>
+                  <p className="mt-2 text-sm text-blood-300">
+                    {livesRemaining > 0
+                      ? `${livesRemaining} ${livesRemaining === 1 ? 'life' : 'lives'} remaining`
+                      : 'Unlimited lives'}
+                  </p>
+                  <div className="mt-4 flex flex-col items-center gap-2">
+                    <div className="flex gap-3">
+                      {playStartCharacters.length > 0 && (
+                        <button
+                          onClick={() => dismissOverlay(handleWatchReplay)}
+                          disabled={dismissingOverlay}
+                          className="dungeon-btn px-4 py-3 font-bold text-sm"
+                        >
+                          Watch Replay
+                        </button>
+                      )}
+                      <button
+                        onClick={() => dismissOverlay(handleAutoReset)}
+                        disabled={dismissingOverlay}
+                        className="dungeon-btn-danger px-6 py-3 font-bold text-lg"
+                      >
+                        Try Again
+                      </button>
+                    </div>
+                    {trackedRuns.length > 0 && (
+                      <button onClick={() => dismissOverlay(() => setShowBugReport(true))} disabled={dismissingOverlay} className="text-xs text-stone-500 hover:text-stone-300 underline">
+                        Report Bug {themeAssets.iconBugReport || '\uD83D\uDC1B'}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Victory Message - still below the game board */}
             {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && (
