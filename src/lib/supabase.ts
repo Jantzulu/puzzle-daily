@@ -72,3 +72,18 @@ export interface DbSpriteImage {
   image_type: 'idle' | 'moving' | 'attack' | 'death' | 'thumbnail' | 'border' | 'tile';
   created_at: string;
 }
+
+export interface DbNewsPost {
+  id: string;
+  title: string;
+  body: string;
+  summary: string | null;
+  banner_url: string | null;
+  category: string;
+  author: string;
+  status: 'draft' | 'published';
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+  deleted_at: string | null;
+}

@@ -5,6 +5,7 @@ import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
+import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
 import { LoginPage } from './components/auth/LoginPage';
@@ -19,6 +20,7 @@ const SettingsPage = lazy(() => import('./components/editor/SettingsPage').then(
 const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds').then(m => ({ default: m.TrainingGrounds })));
 const EditorsPage = lazy(() => import('./components/editor/EditorsPage').then(m => ({ default: m.EditorsPage })));
 const PuzzleResourcesPage = lazy(() => import('./components/editor/PuzzleResourcesPage').then(m => ({ default: m.PuzzleResourcesPage })));
+const TownCrierPage = lazy(() => import('./components/townCrier/TownCrierPage').then(m => ({ default: m.TownCrierPage })));
 
 // Page title mapping per route
 const PAGE_TITLES: Record<string, string> = {
@@ -27,7 +29,8 @@ const PAGE_TITLES: Record<string, string> = {
   '/compendium': 'Compendium',
   '/training': 'Training Sandbox',
   '/editors': 'Editors',
-  '/puzzle-resources': 'Puzzle Resources',
+  '/puzzle-resources': 'Admin Controls',
+  '/town-crier': 'Town Crier',
   '/assets': 'Assets',
   '/settings': 'Settings',
 };
@@ -183,9 +186,31 @@ function Navigation() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
   const [searchOpen, setSearchOpen] = useState(false);
+  const [hasUnreadNews, setHasUnreadNews] = useState(false);
 
   // Update page title on route change
   usePageTitle();
+
+  // Track Town Crier badge — mark read on visit, check for new posts on nav
+  useEffect(() => {
+    if (location.pathname === '/town-crier') {
+      localStorage.setItem('town_crier_last_visit', new Date().toISOString());
+      setHasUnreadNews(false);
+    }
+  }, [location.pathname]);
+
+  useEffect(() => {
+    let cancelled = false;
+    async function checkUnread() {
+      const latest = await getLatestPostTimestamp();
+      if (cancelled) return;
+      if (!latest) { setHasUnreadNews(false); return; }
+      const lastVisit = localStorage.getItem('town_crier_last_visit');
+      setHasUnreadNews(!lastVisit || new Date(latest) > new Date(lastVisit));
+    }
+    checkUnread();
+    return () => { cancelled = true; };
+  }, [location.pathname]);
 
   // Ctrl+K / Cmd+K to open search (only when logged in)
   useEffect(() => {
@@ -303,6 +328,10 @@ function Navigation() {
           <Link to="/" className={linkClass('/')}>
             <span className="mr-1">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
+          <Link to="/town-crier" className={linkClass('/town-crier')}>
+            <span className="mr-1">{'\uD83D\uDCE3'}</span> Town Crier
+            {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
+          </Link>
           <Link to="/compendium" className={linkClass('/compendium')}>
             <span className="mr-1">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
@@ -316,7 +345,7 @@ function Navigation() {
             <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
           </Link>
           <Link to="/puzzle-resources" className={linkClass('/puzzle-resources')}>
-            <span className="mr-1">{'\uD83D\uDCCA'}</span> Puzzle Resources
+            <span className="mr-1">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
           </Link>
           <Link to="/settings" className={linkClass('/settings')}>
             <span className="mr-1">⚙️</span> Settings
@@ -372,6 +401,14 @@ function Navigation() {
             <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
           <Link
+            to="/town-crier"
+            className={`block ${linkClass('/town-crier')}`}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <span className="mr-2">{'\uD83D\uDCE3'}</span> Town Crier
+            {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
+          </Link>
+          <Link
             to="/compendium"
             className={`block ${linkClass('/compendium')}`}
             onClick={() => setMobileMenuOpen(false)}
@@ -404,7 +441,7 @@ function Navigation() {
             className={`block ${linkClass('/puzzle-resources')}`}
             onClick={() => setMobileMenuOpen(false)}
           >
-            <span className="mr-2">{'\uD83D\uDCCA'}</span> Puzzle Resources
+            <span className="mr-2">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
           </Link>
           <Link
             to="/settings"
@@ -477,6 +514,7 @@ function App() {
                 <Route path="/compendium" element={<Compendium />} />
                 <Route path="/training" element={<TrainingGrounds />} />
                 <Route path="/editors" element={<ProtectedRoute><EditorsPage /></ProtectedRoute>} />
+                <Route path="/town-crier" element={<TownCrierPage />} />
                 <Route path="/puzzle-resources" element={<ProtectedRoute><PuzzleResourcesPage /></ProtectedRoute>} />
                 <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
