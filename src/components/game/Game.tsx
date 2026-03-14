@@ -1266,7 +1266,7 @@ export const Game: React.FC = () => {
             )}
 
             {/* Game board with overlay container for loss/victory panels */}
-            <div className="relative w-full max-w-[900px] overflow-hidden">
+            <div className={`relative w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div className={`transition-opacity duration-300 ${spritesReady ? 'opacity-100' : 'opacity-0'}`}>
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
               </div>
@@ -1279,13 +1279,13 @@ export const Game: React.FC = () => {
               {/* Defeat Overlay - fixed to viewport like concede modal */}
               {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
                 <div
-                  className="fixed inset-0 flex items-center justify-center z-50"
+                  className="fixed inset-0 flex items-center justify-center z-50 animate-overlay-fade-in"
                   style={{
                     backgroundColor: themeAssets.defeatPanelOverlayBg || 'rgba(0, 0, 0, 0.75)',
                   }}
                 >
                   <div
-                    className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${
+                    className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 animate-panel-scale-in ${
                       themeAssets.defeatPanelBg ? '' : 'defeat-panel'
                     }`}
                     style={{
@@ -1293,6 +1293,9 @@ export const Game: React.FC = () => {
                       ...(themeAssets.defeatPanelBorder && { borderColor: themeAssets.defeatPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
                     }}
                   >
+                    <div className="text-3xl mb-1 animate-icon-drop">
+                      {defeatReason === 'turns' ? '\u23F3' : '\uD83D\uDC80'}
+                    </div>
                     <h2
                       className={`text-xl md:text-2xl font-bold font-medieval ${
                         themeAssets.defeatPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
@@ -1359,13 +1362,13 @@ export const Game: React.FC = () => {
               {/* Game Over Overlay */}
               {showGameOver && !replayMode && (
                 <div
-                  className="absolute inset-0 flex items-center justify-center z-10"
+                  className="absolute inset-0 flex items-center justify-center z-10 animate-overlay-fade-in"
                   style={{
                     backgroundColor: themeAssets.gameOverPanelOverlayBg || 'rgba(0, 0, 0, 0.8)',
                   }}
                 >
                   <div
-                    className={`p-6 rounded-pixel-lg text-center max-w-[90%] ${
+                    className={`p-6 rounded-pixel-lg text-center max-w-[90%] animate-panel-scale-in ${
                       themeAssets.gameOverPanelBg ? '' : 'defeat-panel'
                     }`}
                     style={{
@@ -1373,6 +1376,7 @@ export const Game: React.FC = () => {
                       ...(themeAssets.gameOverPanelBorder && { borderColor: themeAssets.gameOverPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
                     }}
                   >
+                    <div className="text-4xl mb-1 animate-icon-drop">{'\u2620\uFE0F'}</div>
                     <h2
                       className={`text-2xl md:text-3xl font-bold font-medieval ${
                         themeAssets.gameOverPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
@@ -1448,9 +1452,9 @@ export const Game: React.FC = () => {
 
             {/* Victory Message - still below the game board */}
             {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && (
-              <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-2xl">
+              <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-2xl animate-panel-scale-in">
                 {/* Trophy and Rank */}
-                <div className="text-4xl mb-1">{getRankEmoji(puzzleScore.rank)}</div>
+                <div className="text-4xl mb-1 animate-icon-bounce animate-victory-glow">{getRankEmoji(puzzleScore.rank)}</div>
                 <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
                   {getRankName(puzzleScore.rank)}
                 </h2>

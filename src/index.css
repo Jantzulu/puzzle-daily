@@ -350,6 +350,26 @@ body {
       inset 0 0 20px rgba(193, 37, 37, 0.1);
   }
 
+  /* Overlay animations */
+  .animate-overlay-fade-in {
+    animation: overlay-fade-in 0.4s ease-out both;
+  }
+  .animate-panel-scale-in {
+    animation: panel-scale-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+  }
+  .animate-screen-shake {
+    animation: screen-shake 0.5s ease-out;
+  }
+  .animate-icon-drop {
+    animation: icon-drop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.3s both;
+  }
+  .animate-icon-bounce {
+    animation: icon-bounce 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) 0.2s both;
+  }
+  .animate-victory-glow {
+    animation: victory-glow 2s ease-in-out infinite;
+  }
+
   /* Mobile-friendly touch targets */
   @media (max-width: 768px) {
     .dungeon-btn {
@@ -1099,6 +1119,47 @@ html body.theme-font-active,
 @keyframes enchantment-pulse {
   0%, 100% { opacity: 0.4; transform: scale(0.95); }
   50% { opacity: 1; transform: scale(1.1); }
+}
+
+/* Overlay entrance animations */
+@keyframes overlay-fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes panel-scale-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+@keyframes screen-shake {
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-6px, -3px); }
+  20% { transform: translate(5px, 4px); }
+  30% { transform: translate(-4px, 2px); }
+  40% { transform: translate(3px, -4px); }
+  50% { transform: translate(-3px, 3px); }
+  60% { transform: translate(2px, -2px); }
+  70% { transform: translate(-2px, 1px); }
+  80% { transform: translate(1px, -1px); }
+  90% { transform: translate(-1px, 1px); }
+}
+
+@keyframes icon-drop {
+  from { opacity: 0; transform: translateY(-40px) scale(0.5); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes icon-bounce {
+  0% { opacity: 0; transform: scale(0); }
+  50% { transform: scale(1.3); }
+  70% { transform: scale(0.9); }
+  100% { opacity: 1; transform: scale(1); }
+}
+
+@keyframes victory-glow {
+  0%, 100% { filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.3)); }
+  50% { filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.7)); }
 }
 
 /* Drop cap — medieval illuminated first letter */
