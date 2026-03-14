@@ -369,6 +369,12 @@ body {
   .animate-victory-glow {
     animation: victory-glow 2s ease-in-out infinite;
   }
+  .animate-overlay-fade-out {
+    animation: overlay-fade-out 0.25s ease-in both;
+  }
+  .animate-panel-scale-out {
+    animation: panel-scale-out 0.25s ease-in both;
+  }
 
   /* Mobile-friendly touch targets */
   @media (max-width: 768px) {
@@ -1160,6 +1166,16 @@ html body.theme-font-active,
 @keyframes victory-glow {
   0%, 100% { filter: drop-shadow(0 0 8px rgba(234, 179, 8, 0.3)); }
   50% { filter: drop-shadow(0 0 20px rgba(234, 179, 8, 0.7)); }
+}
+
+@keyframes overlay-fade-out {
+  from { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes panel-scale-out {
+  from { opacity: 1; transform: scale(1); }
+  to { opacity: 0; transform: scale(0.8); }
 }
 
 /* Drop cap — medieval illuminated first letter */

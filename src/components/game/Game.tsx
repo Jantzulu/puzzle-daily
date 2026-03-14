@@ -84,6 +84,20 @@ export const Game: React.FC = () => {
   // Track defeat reason
   const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
 
+  // Overlay dismiss animation state
+  const [dismissingOverlay, setDismissingOverlay] = useState(false);
+  const dismissActionRef = useRef<(() => void) | null>(null);
+
+  const dismissOverlay = useCallback((action: () => void) => {
+    setDismissingOverlay(true);
+    dismissActionRef.current = action;
+    setTimeout(() => {
+      setDismissingOverlay(false);
+      dismissActionRef.current = null;
+      action();
+    }, 250); // Match animation duration
+  }, []);
+
   // Warning modal state
   const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({
     isOpen: false,
@@ -1279,13 +1293,13 @@ export const Game: React.FC = () => {
               {/* Defeat Overlay - fixed to viewport like concede modal */}
               {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
                 <div
-                  className="fixed inset-0 flex items-center justify-center z-50 animate-overlay-fade-in"
+                  className={`fixed inset-0 flex items-center justify-center z-50 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                   style={{
                     backgroundColor: themeAssets.defeatPanelOverlayBg || 'rgba(0, 0, 0, 0.75)',
                   }}
                 >
                   <div
-                    className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 animate-panel-scale-in ${
+                    className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
                       themeAssets.defeatPanelBg ? '' : 'defeat-panel'
                     }`}
                     style={{
@@ -1335,20 +1349,22 @@ export const Game: React.FC = () => {
                       <div className="mt-3 flex flex-col items-center gap-2">
                         <div className="flex gap-3">
                           <button
-                            onClick={handleWatchReplay}
+                            onClick={() => dismissOverlay(handleWatchReplay)}
+                            disabled={dismissingOverlay}
                             className="dungeon-btn px-4 py-2 text-sm font-bold"
                           >
                             Watch Replay
                           </button>
                           <button
-                            onClick={handleAutoReset}
+                            onClick={() => dismissOverlay(handleAutoReset)}
+                            disabled={dismissingOverlay}
                             className="dungeon-btn-primary px-4 py-2 text-sm font-bold"
                           >
                             Try Again
                           </button>
                         </div>
                         {trackedRuns.length > 0 && (
-                          <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
+                          <button onClick={() => dismissOverlay(() => setShowBugReport(true))} disabled={dismissingOverlay} className="text-xs text-stone-500 hover:text-stone-300 underline">
                             Report Bug {themeAssets.iconBugReport || '\uD83D\uDC1B'}
                           </button>
                         )}
@@ -1362,13 +1378,13 @@ export const Game: React.FC = () => {
               {/* Game Over Overlay */}
               {showGameOver && !replayMode && (
                 <div
-                  className="absolute inset-0 flex items-center justify-center z-10 animate-overlay-fade-in"
+                  className={`absolute inset-0 flex items-center justify-center z-10 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                   style={{
                     backgroundColor: themeAssets.gameOverPanelOverlayBg || 'rgba(0, 0, 0, 0.8)',
                   }}
                 >
                   <div
-                    className={`p-6 rounded-pixel-lg text-center max-w-[90%] animate-panel-scale-in ${
+                    className={`p-6 rounded-pixel-lg text-center max-w-[90%] ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
                       themeAssets.gameOverPanelBg ? '' : 'defeat-panel'
                     }`}
                     style={{
@@ -1399,14 +1415,16 @@ export const Game: React.FC = () => {
                       <div className="flex gap-3">
                         {playStartCharacters.length > 0 && (
                           <button
-                            onClick={handleWatchReplay}
+                            onClick={() => dismissOverlay(handleWatchReplay)}
+                            disabled={dismissingOverlay}
                             className="dungeon-btn px-4 py-3 font-bold text-sm"
                           >
                             Watch Replay
                           </button>
                         )}
                         <button
-                          onClick={handleRestartPuzzle}
+                          onClick={() => dismissOverlay(handleRestartPuzzle)}
+                          disabled={dismissingOverlay}
                           className={`px-6 py-3 font-bold text-lg ${
                             themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
                           }`}
@@ -1420,7 +1438,7 @@ export const Game: React.FC = () => {
                         </button>
                       </div>
                       {trackedRuns.length > 0 && (
-                        <button onClick={() => setShowBugReport(true)} className="text-xs text-stone-500 hover:text-stone-300 underline">
+                        <button onClick={() => dismissOverlay(() => setShowBugReport(true))} disabled={dismissingOverlay} className="text-xs text-stone-500 hover:text-stone-300 underline">
                           Report Bug {themeAssets.iconBugReport || '\uD83D\uDC1B'}
                         </button>
                       )}
