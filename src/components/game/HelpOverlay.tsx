@@ -151,7 +151,7 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
         }
       `}</style>
     </div>,
-    document.body
+    document.querySelector('.theme-root') || document.body
   );
 };
 
