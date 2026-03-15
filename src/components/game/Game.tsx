@@ -99,6 +99,9 @@ export const Game: React.FC = () => {
     }, 250); // Match animation duration
   }, []);
 
+  // Replay dismiss animation state
+  const [dismissingReplay, setDismissingReplay] = useState(false);
+
   // Warning modal state
   const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({
     isOpen: false,
@@ -904,31 +907,37 @@ export const Game: React.FC = () => {
     }
   }, [generateTurnHistory]);
 
-  // Exit replay mode - return to appropriate screen
+  // Exit replay mode - animate out then return to appropriate screen
   const handleExitReplay = useCallback(() => {
-    setReplayMode(false);
+    if (dismissingReplay) return;
+    setDismissingReplay(true);
     setReplayPlaying(false);
-    turnHistoryRef.current = [];
-    replayEventsRef.current = new Map();
 
-    if (livesRemaining <= 0) {
-      // Return to game over screen
-      const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
-      const resetState = initializeGameState(puzzleCopy);
-      resetState.gameStatus = 'defeat';
-      setGameState(resetState);
-      setShowGameOver(true);
-    } else if (puzzleScore) {
-      // Return to victory screen - re-derive the final state
-      const history = generateTurnHistory();
-      if (history.length > 0) {
-        setGameState(history[history.length - 1]);
+    setTimeout(() => {
+      setDismissingReplay(false);
+      setReplayMode(false);
+      turnHistoryRef.current = [];
+      replayEventsRef.current = new Map();
+
+      if (livesRemaining <= 0) {
+        // Return to game over screen
+        const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
+        const resetState = initializeGameState(puzzleCopy);
+        resetState.gameStatus = 'defeat';
+        setGameState(resetState);
+        setShowGameOver(true);
+      } else if (puzzleScore) {
+        // Return to victory screen - re-derive the final state
+        const history = generateTurnHistory();
+        if (history.length > 0) {
+          setGameState(history[history.length - 1]);
+        }
+      } else {
+        // Lives remaining, not victory - return to placement
+        handleAutoReset();
       }
-    } else {
-      // Lives remaining, not victory - return to placement
-      handleAutoReset();
-    }
-  }, [livesRemaining, puzzleScore, originalPuzzle, generateTurnHistory, handleAutoReset]);
+    }, 250);
+  }, [dismissingReplay, livesRemaining, puzzleScore, originalPuzzle, generateTurnHistory, handleAutoReset]);
 
   // Replay playback controls
   const handleReplayPlayPause = useCallback(() => {
@@ -1820,20 +1829,22 @@ export const Game: React.FC = () => {
 
             {/* Replay Controls - replace hero placement area during replay */}
             {replayMode ? (
-              <ReplayControls
-                currentTurn={replayTurnIndex}
-                totalTurns={turnHistoryRef.current.length - 1}
-                isPlaying={replayPlaying}
-                speed={replaySpeed}
-                events={replayEventsRef.current}
-                onPlayPause={handleReplayPlayPause}
-                onStepForward={handleReplayStepForward}
-                onStepBack={handleReplayStepBack}
-                onSeek={handleReplaySeek}
-                onSpeedChange={handleReplaySpeedChange}
-                onExit={handleExitReplay}
-                onReportBug={() => setShowBugReport(true)}
-              />
+              <div className={dismissingReplay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}>
+                <ReplayControls
+                  currentTurn={replayTurnIndex}
+                  totalTurns={turnHistoryRef.current.length - 1}
+                  isPlaying={replayPlaying}
+                  speed={replaySpeed}
+                  events={replayEventsRef.current}
+                  onPlayPause={handleReplayPlayPause}
+                  onStepForward={handleReplayStepForward}
+                  onStepBack={handleReplayStepBack}
+                  onSeek={handleReplaySeek}
+                  onSpeedChange={handleReplaySpeedChange}
+                  onExit={handleExitReplay}
+                  onReportBug={() => setShowBugReport(true)}
+                />
+              </div>
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
               <div className={`transition-opacity ${dimmedPanelClass}`}>
