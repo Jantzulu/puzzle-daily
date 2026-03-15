@@ -80,6 +80,7 @@ interface Selection {
   x: number; y: number; w: number; h: number;
   floatingData?: ImageData;
   mask?: Uint8Array;  // Full-canvas bitmask (1 = selected pixel) for pixel-accurate overlay
+  maskOriginX?: number; maskOriginY?: number;  // Original position when mask was created (for offset tracking during moves)
 }
 
 interface PixelEditorProps {
@@ -1249,7 +1250,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
             }
           }
         }
-        setSelection({ ...bounds, floatingData, mask });
+        setSelection({ ...bounds, floatingData, mask, maskOriginX: bounds.x, maskOriginY: bounds.y });
         bumpLayers();
         triggerRender();
       }
@@ -1424,13 +1425,14 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     // Selection/Move/Transform drag (move within selection)
     if ((tool === 'select' || tool === 'move' || tool === 'transform' || tool === 'wand') && selectionDragRef.current && selection) {
       const uc = getPixelCoordUnclamped(e);
-      if (uc) {
-        const dx = uc.x - selectionDragRef.current.startX;
-        const dy = uc.y - selectionDragRef.current.startY;
+      const dragState = selectionDragRef.current;
+      if (uc && dragState) {
+        const dx = uc.x - dragState.startX;
+        const dy = uc.y - dragState.startY;
         setSelection(prev => prev ? {
           ...prev,
-          x: selectionDragRef.current!.origX + dx,
-          y: selectionDragRef.current!.origY + dy,
+          x: dragState.origX + dx,
+          y: dragState.origY + dy,
         } : null);
         triggerRender();
       }
