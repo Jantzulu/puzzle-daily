@@ -2983,14 +2983,6 @@ function executePushSpell(
   const pushDistance = spell.pushDistance || 1;
   const pushDirectionMode = spell.pushDirection || 'away';
 
-    caster: caster.characterId,
-    casterPos: { x: caster.x, y: caster.y },
-    castDirection,
-    range,
-    pushDistance,
-    pushDirectionMode,
-  });
-
   // Get direction offset for finding targets
   const offset = getDirectionOffset(castDirection);
 
