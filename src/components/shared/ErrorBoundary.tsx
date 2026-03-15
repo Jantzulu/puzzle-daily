@@ -3,6 +3,7 @@ import React, { Component, type ReactNode } from 'react';
 interface ErrorBoundaryProps {
   children: ReactNode;
   fallback?: ReactNode;
+  autoReloadOnChunkError?: boolean;
 }
 
 interface ErrorBoundaryState {
@@ -26,6 +27,24 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
+
+    // Auto-reload on chunk load failures (stale deploys) if opted in
+    if (this.props.autoReloadOnChunkError && this.isChunkLoadError(error)) {
+      const reloadKey = 'chunk_error_reload';
+      // Prevent infinite reload loops — only auto-reload once per session
+      if (!sessionStorage.getItem(reloadKey)) {
+        sessionStorage.setItem(reloadKey, '1');
+        window.location.reload();
+      }
+    }
+  }
+
+  private isChunkLoadError(error: Error): boolean {
+    const msg = error.message.toLowerCase();
+    return msg.includes('failed to fetch dynamically imported module')
+      || msg.includes('loading chunk')
+      || msg.includes('loading css chunk')
+      || (error.name === 'ChunkLoadError');
   }
 
   handleReset = () => {
