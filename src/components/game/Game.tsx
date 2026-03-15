@@ -1181,7 +1181,7 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="w-full flex justify-center animate-slide-down-from-nav-wrapper sticky top-0 md:top-[60px] z-20">
+              <div className="w-full flex justify-center animate-slide-down-from-nav-wrapper sticky top-0 md:top-[104px] z-20">
               <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible animate-slide-down-from-nav" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
                 {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
                 {/* Bottom-left: L-bracket with triangle */}
