@@ -187,6 +187,20 @@ function Navigation() {
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [hasUnreadNews, setHasUnreadNews] = useState(false);
+  const navRef = useRef<HTMLElement>(null);
+
+  // Track navbar height as CSS variable for sticky quest panel positioning
+  useEffect(() => {
+    const nav = navRef.current;
+    if (!nav) return;
+    const updateHeight = () => {
+      document.documentElement.style.setProperty('--nav-height', `${nav.offsetHeight}px`);
+    };
+    updateHeight();
+    const observer = new ResizeObserver(updateHeight);
+    observer.observe(nav);
+    return () => observer.disconnect();
+  }, []);
 
   // Update page title on route change
   usePageTitle();
@@ -255,6 +269,7 @@ function Navigation() {
 
   return (
     <nav
+      ref={navRef}
       className="bg-stone-600 border-b-2 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon md:sticky md:top-0 z-50"
       style={navbarStyle}
     >
