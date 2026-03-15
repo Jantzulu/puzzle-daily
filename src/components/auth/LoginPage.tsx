@@ -71,7 +71,7 @@ export const LoginPage: React.FC = () => {
     <div className="min-h-screen theme-root flex items-center justify-center px-4">
       <div className="w-full max-w-sm">
         <h1 className="text-3xl font-bold font-medieval text-copper-400 text-center mb-6 text-shadow-dungeon">
-          {mode === 'signin' ? 'Enter the Forge' : 'Join the Adventure'}
+          {mode === 'signin' ? 'Welcome Back' : 'Join the Adventure'}
         </h1>
 
         {/* Mode toggle */}
