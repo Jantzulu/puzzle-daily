@@ -1293,6 +1293,176 @@ export const Game: React.FC = () => {
                     </div>
                   );
                 })()}
+
+                {/* Control Panel Row - Lives / Play Button / Max Turns */}
+                {!replayMode && (
+                  <div className="grid grid-cols-3 items-center mt-2 pt-1.5 border-t border-stone-700">
+                    {/* Left: Lives */}
+                    <div className="flex items-center justify-center gap-1">
+                      <span className="text-stone-400 text-xs">Lives:</span>
+                      <div className="flex items-center gap-0.5">
+                        {(() => {
+                          const puzzleLives = currentPuzzle.lives ?? 3;
+                          const isUnlimitedLives = puzzleLives === 0;
+
+                          if (isUnlimitedLives) {
+                            return <span className="text-base lg:text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
+                          }
+
+                          const hearts = [];
+                          for (let i = 0; i < puzzleLives; i++) {
+                            const isFilled = i < livesRemaining;
+                            const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
+
+                            if (customIcon) {
+                              hearts.push(
+                                <img
+                                  key={i}
+                                  src={customIcon}
+                                  alt={isFilled ? 'Life remaining' : 'Life lost'}
+                                  title={isFilled ? 'Life remaining' : 'Life lost'}
+                                  style={{
+                                    width: '14px',
+                                    height: '16px',
+                                    opacity: isFilled ? 1 : 0.4,
+                                    imageRendering: 'pixelated'
+                                  }}
+                                />
+                              );
+                            } else {
+                              hearts.push(
+                                <span
+                                  key={i}
+                                  className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+                                  title={isFilled ? 'Life remaining' : 'Life lost'}
+                                >
+                                  &#x2665;
+                                </span>
+                              );
+                            }
+                          }
+                          return hearts;
+                        })()}
+                      </div>
+                    </div>
+
+                    {/* Center: Play button OR Turn counter OR Test mode indicator */}
+                    <div className="flex justify-center">
+                      {testMode !== 'none' ? (
+                        <div className={`flex items-center gap-2 px-3 py-1 rounded-pixel border ${
+                          testMode === 'enemies'
+                            ? 'bg-blood-900/80 border-blood-600'
+                            : 'bg-arcane-900/80 border-arcane-600'
+                        }`}>
+                          <span className={`text-xs font-medium ${
+                            testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
+                          }`}>
+                            Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
+                          </span>
+                          <span className={`text-lg font-bold ${
+                            testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
+                          }`}>
+                            {testTurnsRemaining}
+                          </span>
+                        </div>
+                      ) : gameState.gameStatus === 'setup' ? (
+                        themeAssets.actionButtonPlayImage ? (
+                          <button
+                            onClick={handlePlay}
+                            className={`relative transition-all ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+                          >
+                            <img
+                              src={themeAssets.actionButtonPlayImage}
+                              alt="Play"
+                              className="h-6 lg:h-8 w-auto"
+                              style={{ imageRendering: 'pixelated' }}
+                            />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={handlePlay}
+                            className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all ${
+                              gameState.placedCharacters.length === 0
+                                ? 'opacity-50 cursor-not-allowed dungeon-btn'
+                                : `${themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'}`
+                            } ${
+                              themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
+                              themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
+                            }`}
+                            style={{
+                              ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
+                              ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                              ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
+                            }}
+                          >
+                            Play
+                          </button>
+                        )
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
+                          {(() => {
+                            const maxTurns = currentPuzzle.maxTurns;
+                            const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
+                            const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                            const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+
+                            return (
+                              <>
+                                <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
+                                  isVeryNearLimit
+                                    ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                                    : isNearLimit
+                                    ? 'text-rust-400'
+                                    : 'text-copper-400 text-shadow-glow-copper'
+                                }`}>
+                                  {gameState.currentTurn}
+                                </span>
+                                {maxTurns && (
+                                  <span className={`text-xs lg:text-sm ${
+                                    isNearLimit ? 'text-blood-400' : 'text-stone-500'
+                                  }`}>
+                                    / {maxTurns}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Right: Max Turns OR Concede button */}
+                    <div className="flex items-center justify-center">
+                      {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
+                        gameState.puzzle.maxTurns && (
+                          <div className="flex items-center gap-1">
+                            <span className="text-stone-400 text-xs">Max Turns:</span>
+                            <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                          </div>
+                        )
+                      ) : (
+                        <button
+                          onClick={() => setShowConcedeConfirm(true)}
+                          className={`text-xs px-2 py-1 ${
+                            themeAssets.actionButtonConcedeBg ? '' : 'dungeon-btn-danger'
+                          } ${
+                            themeAssets.actionButtonConcedeShape === 'rounded' ? 'rounded-lg' :
+                            themeAssets.actionButtonConcedeShape === 'pill' ? 'rounded-full' : ''
+                          }`}
+                          style={{
+                            ...(themeAssets.actionButtonConcedeBg && { backgroundColor: themeAssets.actionButtonConcedeBg }),
+                            ...(themeAssets.actionButtonConcedeBorder && { borderColor: themeAssets.actionButtonConcedeBorder, borderWidth: '1px', borderStyle: 'solid' }),
+                            ...(themeAssets.actionButtonConcedeText && { color: themeAssets.actionButtonConcedeText }),
+                          }}
+                          title="Give up this attempt and lose a life"
+                        >
+                          Concede
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                )}
               </div>
               </div>
             )}
@@ -1660,180 +1830,7 @@ export const Game: React.FC = () => {
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             */}
-            {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
-            {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <>
-                <div className="grid grid-cols-3 items-center mb-1">
-                  {/* Left: Lives - centered in left third */}
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="text-stone-400 text-xs">Lives:</span>
-                    <div className="flex items-center gap-0.5">
-                      {(() => {
-                        const puzzleLives = currentPuzzle.lives ?? 3;
-                        const isUnlimitedLives = puzzleLives === 0;
-
-                        if (isUnlimitedLives) {
-                          return <span className="text-base lg:text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
-                        }
-
-                        const hearts = [];
-                        for (let i = 0; i < puzzleLives; i++) {
-                          const isFilled = i < livesRemaining;
-                          const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
-
-                          if (customIcon) {
-                            // Use integer pixel sizes for crisp pixel art (14px width)
-                            hearts.push(
-                              <img
-                                key={i}
-                                src={customIcon}
-                                alt={isFilled ? 'Life remaining' : 'Life lost'}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                                style={{
-                                  width: '14px',
-                                  height: '16px',
-                                  opacity: isFilled ? 1 : 0.4,
-                                  imageRendering: 'pixelated'
-                                }}
-                              />
-                            );
-                          } else {
-                            hearts.push(
-                              <span
-                                key={i}
-                                className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                              >
-                                &#x2665;
-                              </span>
-                            );
-                          }
-                        }
-                        return hearts;
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
-                  <div className="flex justify-center">
-                    {testMode !== 'none' ? (
-                      // Test mode indicator
-                      <div className={`flex items-center gap-2 px-3 py-1 rounded-pixel border ${
-                        testMode === 'enemies'
-                          ? 'bg-blood-900/80 border-blood-600'
-                          : 'bg-arcane-900/80 border-arcane-600'
-                      }`}>
-                        <span className={`text-xs font-medium ${
-                          testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
-                        }`}>
-                          Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
-                        </span>
-                        <span className={`text-lg font-bold ${
-                          testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
-                        }`}>
-                          {testTurnsRemaining}
-                        </span>
-                      </div>
-                    ) : gameState.gameStatus === 'setup' ? (
-                      themeAssets.actionButtonPlayImage ? (
-                        <button
-                          onClick={handlePlay}
-                          className="relative transition-all hover:scale-105 active:scale-95"
-                        >
-                          <img
-                            src={themeAssets.actionButtonPlayImage}
-                            alt="Play"
-                            className="h-6 lg:h-8 w-auto"
-                            style={{ imageRendering: 'pixelated' }}
-                          />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handlePlay}
-                          className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all ${
-                            themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'
-                          } ${
-                            themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
-                            themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
-                          }`}
-                          style={{
-                            ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                            ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                            ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
-                          }}
-                        >
-                          {themeAssets.iconNavPlay || '\u2694'} Play
-                        </button>
-                      )
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
-                        {(() => {
-                          const maxTurns = currentPuzzle.maxTurns;
-                          const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
-                          const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
-                          const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
-
-                          return (
-                            <>
-                              <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
-                                isVeryNearLimit
-                                  ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
-                                  : isNearLimit
-                                  ? 'text-rust-400'
-                                  : 'text-copper-400 text-shadow-glow-copper'
-                              }`}>
-                                {gameState.currentTurn}
-                              </span>
-                              {maxTurns && (
-                                <span className={`text-xs lg:text-sm ${
-                                  isNearLimit ? 'text-blood-400' : 'text-stone-500'
-                                }`}>
-                                  / {maxTurns}
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right: Max Turns OR Concede button - centered in right third */}
-                  <div className="flex items-center justify-center">
-                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
-                      gameState.puzzle.maxTurns && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-stone-400 text-xs">Max Turns:</span>
-                          <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
-                        </div>
-                      )
-                    ) : (
-                      <button
-                        onClick={() => setShowConcedeConfirm(true)}
-                        className={`text-xs px-2 py-1 ${
-                          themeAssets.actionButtonConcedeBg ? '' : 'dungeon-btn-danger'
-                        } ${
-                          themeAssets.actionButtonConcedeShape === 'rounded' ? 'rounded-lg' :
-                          themeAssets.actionButtonConcedeShape === 'pill' ? 'rounded-full' : ''
-                        }`}
-                        style={{
-                          ...(themeAssets.actionButtonConcedeBg && { backgroundColor: themeAssets.actionButtonConcedeBg }),
-                          ...(themeAssets.actionButtonConcedeBorder && { borderColor: themeAssets.actionButtonConcedeBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                          ...(themeAssets.actionButtonConcedeText && { color: themeAssets.actionButtonConcedeText }),
-                        }}
-                        title="Give up this attempt and lose a life"
-                      >
-                        Concede
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                {/* Divider between control panel and heroes - solid line */}
-                <div className="mb-1 border-t border-copper-700/50" />
-              </>
-            )}
+            {/* Control panel moved into quest panel above */}
 
             {/* Replay Controls - replace hero placement area during replay */}
             {replayMode ? (
