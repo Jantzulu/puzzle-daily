@@ -4,10 +4,13 @@ import './index.css'
 import App from './App.tsx'
 import { AuthProvider } from './contexts/AuthContext'
 
-createRoot(document.getElementById('root')!).render(
+const root = document.getElementById('root')!;
+createRoot(root).render(
   <StrictMode>
     <AuthProvider>
       <App />
     </AuthProvider>
   </StrictMode>,
-)
+);
+// Reveal the app once React has rendered
+requestAnimationFrame(() => { root.style.opacity = '1'; });
