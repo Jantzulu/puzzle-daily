@@ -496,7 +496,7 @@ function App() {
       document.documentElement.style.setProperty('--scroll-percent', scrollPercent.toString());
 
       // Auto-hide navbar on mobile (scroll down = hide, scroll up = show)
-      if (scrollY > 50) {
+      if (scrollY > 20) {
         if (scrollY > lastScrollY.current) {
           setNavHidden(true);
         } else {
