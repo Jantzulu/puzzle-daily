@@ -101,6 +101,7 @@ export const Game: React.FC = () => {
 
   // Replay dismiss animation state
   const [dismissingReplay, setDismissingReplay] = useState(false);
+  const [justExitedReplay, setJustExitedReplay] = useState(false);
 
   // Warning modal state
   const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({
@@ -916,6 +917,7 @@ export const Game: React.FC = () => {
     setTimeout(() => {
       setDismissingReplay(false);
       setReplayMode(false);
+      setJustExitedReplay(true);
       turnHistoryRef.current = [];
       replayEventsRef.current = new Map();
 
@@ -936,6 +938,9 @@ export const Game: React.FC = () => {
         // Lives remaining, not victory - return to placement
         handleAutoReset();
       }
+
+      // Clear the slide-up animation flag after it plays
+      setTimeout(() => setJustExitedReplay(false), 350);
     }, 250);
   }, [dismissingReplay, livesRemaining, puzzleScore, originalPuzzle, generateTurnHistory, handleAutoReset]);
 
@@ -1847,7 +1852,7 @@ export const Game: React.FC = () => {
               </div>
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
-              <div className={`transition-opacity ${dimmedPanelClass}`}>
+              <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
