@@ -1299,7 +1299,7 @@ export const Game: React.FC = () => {
 
             {/* Game board with overlay container for loss/victory panels */}
             <div className={`relative w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
-              <div className={`transition-opacity duration-300 ${spritesReady ? 'opacity-100' : 'opacity-0'}`}>
+              <div className={`transition-opacity duration-500 ${spritesReady ? 'opacity-100' : 'opacity-0'}`}>
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
               </div>
               {!spritesReady && (
