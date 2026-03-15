@@ -1381,7 +1381,7 @@ export const Game: React.FC = () => {
                         ) : (
                           <button
                             onClick={handlePlay}
-                            className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all ${
+                            className={`min-w-[80px] lg:min-w-[100px] font-bold text-xs lg:text-sm transition-all flex items-center justify-center ${
                               gameState.placedCharacters.length === 0
                                 ? 'opacity-50 cursor-not-allowed dungeon-btn'
                                 : `${themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'}`
@@ -1390,6 +1390,9 @@ export const Game: React.FC = () => {
                               themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
                             }`}
                             style={{
+                              padding: '2px 12px',
+                              minHeight: 'unset',
+                              height: 'auto',
                               ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
                               ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
                               ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
