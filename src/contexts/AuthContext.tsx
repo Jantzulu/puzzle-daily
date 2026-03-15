@@ -2,12 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import type { User, Session } from '@supabase/supabase-js';
 import { supabase } from '../lib/supabase';
 import type { Profile } from '../lib/supabase';
+import { linkAnonymousCompletions } from '../services/statsService';
 
 interface AuthContextType {
   user: User | null;
   profile: Profile | null;
   session: Session | null;
   loading: boolean;
+  isCreator: boolean;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signUp: (email: string, password: string, displayName: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -63,6 +65,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setUser(s?.user ?? null);
       if (s?.user) {
         fetchProfile(s.user.id).then(setProfile);
+        // Link any anonymous completions to this account (fire-and-forget)
+        if (_event === 'SIGNED_IN') {
+          linkAnonymousCompletions();
+        }
       } else {
         setProfile(null);
       }
@@ -109,8 +115,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return { error: error?.message ?? null };
   }, [user, profile]);
 
+  const isCreator = profile?.role === 'creator';
+
   return (
-    <AuthContext.Provider value={{ user, profile, session, loading, signIn, signUp, signOut, updateProfile, changePassword }}>
+    <AuthContext.Provider value={{ user, profile, session, loading, isCreator, signIn, signUp, signOut, updateProfile, changePassword }}>
       {children}
     </AuthContext.Provider>
   );

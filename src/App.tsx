@@ -21,6 +21,7 @@ const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds
 const EditorsPage = lazy(() => import('./components/editor/EditorsPage').then(m => ({ default: m.EditorsPage })));
 const PuzzleResourcesPage = lazy(() => import('./components/editor/PuzzleResourcesPage').then(m => ({ default: m.PuzzleResourcesPage })));
 const TownCrierPage = lazy(() => import('./components/townCrier/TownCrierPage').then(m => ({ default: m.TownCrierPage })));
+const ProfilePage = lazy(() => import('./components/player/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 // Page title mapping per route
 const PAGE_TITLES: Record<string, string> = {
@@ -182,7 +183,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
 
 function Navigation() {
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, isCreator } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMenuDismissing, setMobileMenuDismissing] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
@@ -243,12 +244,12 @@ function Navigation() {
     return () => { cancelled = true; };
   }, [location.pathname]);
 
-  // Ctrl+K / Cmd+K to open search (only when logged in)
+  // Ctrl+K / Cmd+K to open search (only for creators)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        if (user) setSearchOpen(prev => !prev);
+        if (isCreator) setSearchOpen(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -370,24 +371,31 @@ function Navigation() {
           <Link to="/training" className={linkClass('/training')}>
             <span className="mr-1">{'\uD83C\uDFAF'}</span> Training
           </Link>
-          <Link to="/assets" className={linkClass('/assets')}>
-            <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
-          </Link>
-          <Link to="/editors" className={linkClass('/editors')}>
-            <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
-          </Link>
-          <Link to="/puzzle-resources" className={linkClass('/puzzle-resources')}>
-            <span className="mr-1">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
-          </Link>
-          <Link to="/settings" className={linkClass('/settings')}>
-            <span className="mr-1">⚙️</span> Settings
-          </Link>
+          {user && (
+            <Link to="/profile" className={linkClass('/profile')}>
+              <span className="mr-1">👤</span> Profile
+            </Link>
+          )}
+          {isCreator && <>
+            <Link to="/assets" className={linkClass('/assets')}>
+              <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
+            </Link>
+            <Link to="/editors" className={linkClass('/editors')}>
+              <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
+            </Link>
+            <Link to="/puzzle-resources" className={linkClass('/puzzle-resources')}>
+              <span className="mr-1">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
+            </Link>
+            <Link to="/settings" className={linkClass('/settings')}>
+              <span className="mr-1">⚙️</span> Settings
+            </Link>
+          </>}
         </div>
 
         <div className="flex-1" />
 
-        {/* Global search button (only when logged in) */}
-        {user && (
+        {/* Global search button (only for creators) */}
+        {isCreator && (
           <button
             onClick={() => setSearchOpen(true)}
             className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-stone-700/60 hover:bg-stone-600/80 border border-stone-600 text-stone-400 hover:text-parchment-200 transition-colors text-sm"
@@ -403,7 +411,7 @@ function Navigation() {
 
         <div className="hidden md:flex items-center gap-2">
           <SoundSettings />
-          <CloudSyncButton />
+          {isCreator && <CloudSyncButton />}
           <UserMenu />
         </div>
 
@@ -454,42 +462,53 @@ function Navigation() {
           >
             <span className="mr-2">{'\uD83C\uDFAF'}</span> Training
           </Link>
-          <Link
-            to="/assets"
-            className={`block ${linkClass('/assets')}`}
-            onClick={closeMobileMenu}
-          >
-            <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
-          </Link>
-          <Link
-            to="/editors"
-            className={`block ${linkClass('/editors')}`}
-            onClick={closeMobileMenu}
-          >
-            <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
-          </Link>
-          <Link
-            to="/puzzle-resources"
-            className={`block ${linkClass('/puzzle-resources')}`}
-            onClick={closeMobileMenu}
-          >
-            <span className="mr-2">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
-          </Link>
-          <Link
-            to="/settings"
-            className={`block ${linkClass('/settings')}`}
-            onClick={closeMobileMenu}
-          >
-            <span className="mr-2">⚙️</span> Settings
-          </Link>
+          {user && (
+            <Link
+              to="/profile"
+              className={`block ${linkClass('/profile')}`}
+              onClick={closeMobileMenu}
+            >
+              <span className="mr-2">👤</span> Profile
+            </Link>
+          )}
+          {isCreator && <>
+            <Link
+              to="/assets"
+              className={`block ${linkClass('/assets')}`}
+              onClick={closeMobileMenu}
+            >
+              <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
+            </Link>
+            <Link
+              to="/editors"
+              className={`block ${linkClass('/editors')}`}
+              onClick={closeMobileMenu}
+            >
+              <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
+            </Link>
+            <Link
+              to="/puzzle-resources"
+              className={`block ${linkClass('/puzzle-resources')}`}
+              onClick={closeMobileMenu}
+            >
+              <span className="mr-2">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
+            </Link>
+            <Link
+              to="/settings"
+              className={`block ${linkClass('/settings')}`}
+              onClick={closeMobileMenu}
+            >
+              <span className="mr-2">⚙️</span> Settings
+            </Link>
+          </>}
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
             <SoundSettings isMobile />
-            <CloudSyncButton />
+            {isCreator && <CloudSyncButton />}
             <UserMenu />
           </div>
         </div>
       )}
-      {user && <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />}
+      {isCreator && <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />}
     </nav>
   );
 }
@@ -557,11 +576,12 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/compendium" element={<Compendium />} />
                 <Route path="/training" element={<TrainingGrounds />} />
-                <Route path="/editors" element={<ProtectedRoute><EditorsPage /></ProtectedRoute>} />
+                <Route path="/editors" element={<ProtectedRoute requiredRole="creator"><EditorsPage /></ProtectedRoute>} />
                 <Route path="/town-crier" element={<TownCrierPage />} />
-                <Route path="/puzzle-resources" element={<ProtectedRoute><PuzzleResourcesPage /></ProtectedRoute>} />
-                <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
-                <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                <Route path="/puzzle-resources" element={<ProtectedRoute requiredRole="creator"><PuzzleResourcesPage /></ProtectedRoute>} />
+                <Route path="/assets" element={<ProtectedRoute requiredRole="creator"><AssetManager /></ProtectedRoute>} />
+                <Route path="/settings" element={<ProtectedRoute requiredRole="creator"><SettingsPage /></ProtectedRoute>} />
+                <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>

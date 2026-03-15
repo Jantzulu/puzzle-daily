@@ -41,6 +41,7 @@ export interface Profile {
   id: string;
   display_name: string;
   avatar_url: string | null;
+  role: 'player' | 'creator';
   preferences: Record<string, unknown>;
   created_at: string;
   updated_at: string;

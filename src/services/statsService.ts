@@ -321,3 +321,140 @@ export async function fetchOverviewStats(
     return null;
   }
 }
+
+// ============================================
+// ANONYMOUS-TO-AUTH LINKING
+// ============================================
+
+/**
+ * Link anonymous puzzle completions to the authenticated user.
+ * Calls a Supabase RPC function that updates completions where
+ * player_id matches and user_id is null.
+ */
+export async function linkAnonymousCompletions(): Promise<number> {
+  try {
+    const playerId = getPlayerId();
+    const { data, error } = await supabase.rpc('link_anonymous_completions', {
+      p_player_id: playerId,
+    });
+    if (error) {
+      console.warn('[Stats] Failed to link completions:', error.message);
+      return 0;
+    }
+    return (data as number) || 0;
+  } catch {
+    return 0;
+  }
+}
+
+// ============================================
+// PLAYER PROFILE STATS
+// ============================================
+
+export interface PlayerStats {
+  totalPuzzles: number;
+  victories: number;
+  defeats: number;
+  winRate: number;
+  goldCount: number;
+  silverCount: number;
+  bronzeCount: number;
+  currentStreak: number;
+  bestStreak: number;
+  avgScore: number;
+  avgTurns: number;
+  favoriteHeroes: { id: string; count: number }[];
+}
+
+/**
+ * Fetch aggregated stats for a player profile.
+ * Queries by both user_id and player_id to include pre-linking completions.
+ */
+export async function fetchPlayerStats(userId: string, playerId: string): Promise<PlayerStats | null> {
+  try {
+    const { data, error } = await supabase
+      .from('puzzle_completions')
+      .select('outcome, rank, total_points, turns_used, character_ids, puzzle_date')
+      .or(`user_id.eq.${userId},player_id.eq.${playerId}`)
+      .order('created_at', { ascending: true });
+
+    if (error || !data) return null;
+
+    const victories = data.filter(r => r.outcome === 'victory');
+    const defeats = data.filter(r => r.outcome === 'defeat');
+
+    const goldCount = victories.filter(r => r.rank === 'gold').length;
+    const silverCount = victories.filter(r => r.rank === 'silver').length;
+    const bronzeCount = victories.filter(r => r.rank === 'bronze').length;
+
+    // Streak calculation (consecutive days with a victory)
+    const victoryDates = [...new Set(
+      victories
+        .map(r => r.puzzle_date)
+        .filter(Boolean)
+        .sort()
+    )];
+
+    let currentStreak = 0;
+    let bestStreak = 0;
+    let streak = 0;
+
+    for (let i = 0; i < victoryDates.length; i++) {
+      if (i === 0) {
+        streak = 1;
+      } else {
+        const prev = new Date(victoryDates[i - 1]);
+        const curr = new Date(victoryDates[i]);
+        const diffDays = (curr.getTime() - prev.getTime()) / (1000 * 60 * 60 * 24);
+        streak = diffDays === 1 ? streak + 1 : 1;
+      }
+      bestStreak = Math.max(bestStreak, streak);
+    }
+
+    // Current streak: check if last victory is today or yesterday
+    if (victoryDates.length > 0) {
+      const lastDate = new Date(victoryDates[victoryDates.length - 1]);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      lastDate.setHours(0, 0, 0, 0);
+      const diffDays = (today.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24);
+      currentStreak = diffDays <= 1 ? streak : 0;
+    }
+
+    const totalPoints = victories.reduce((sum, r) => sum + (r.total_points || 0), 0);
+    const avgScore = victories.length > 0 ? Math.round(totalPoints / victories.length) : 0;
+
+    const totalTurns = data.reduce((sum, r) => sum + (r.turns_used || 0), 0);
+    const avgTurns = data.length > 0 ? Math.round((totalTurns / data.length) * 10) / 10 : 0;
+
+    // Favorite heroes
+    const heroCounts = new Map<string, number>();
+    for (const row of data) {
+      const ids: string[] = row.character_ids || [];
+      for (const id of ids) {
+        heroCounts.set(id, (heroCounts.get(id) || 0) + 1);
+      }
+    }
+    const favoriteHeroes = [...heroCounts.entries()]
+      .map(([id, count]) => ({ id, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    return {
+      totalPuzzles: data.length,
+      victories: victories.length,
+      defeats: defeats.length,
+      winRate: data.length > 0 ? Math.round((victories.length / data.length) * 100) : 0,
+      goldCount,
+      silverCount,
+      bronzeCount,
+      currentStreak,
+      bestStreak,
+      avgScore,
+      avgTurns,
+      favoriteHeroes,
+    };
+  } catch {
+    return null;
+  }
+}
