@@ -4,10 +4,11 @@ import type { TrackedRun, BugAssetType } from '../../types/bugReport';
 import { submitBugReport } from '../../services/bugReportService';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { loadTileType, loadCollectible, getStatusEffectAssets } from '../../utils/assetStorage';
+import { loadTileType, loadCollectible, loadSpellAsset } from '../../utils/assetStorage';
 import { toast } from '../shared/Toast';
 import { MiniGridPreview } from './MiniGridPreview';
 import { BugReportReplay } from '../editor/BugReportReplay';
+import type { StatusEffect } from '../../types/game';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -45,6 +46,42 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     }
   }, [trackedRuns, selectedRunId]);
 
+  // Collect all spell IDs used by heroes and enemies in this puzzle
+  const puzzleSpells = useMemo(() => {
+    const spellIds = new Set<string>();
+    // Hero spells
+    for (const charId of puzzle.availableCharacters) {
+      const char = getCharacter(charId);
+      if (char?.behavior) {
+        for (const action of char.behavior) {
+          if (action.spellId) spellIds.add(action.spellId);
+        }
+      }
+    }
+    // Enemy spells
+    for (const enemy of puzzle.enemies) {
+      const enemyData = getEnemy(enemy.enemyId);
+      if (enemyData?.behavior?.pattern) {
+        for (const action of enemyData.behavior.pattern) {
+          if (action.spellId) spellIds.add(action.spellId);
+        }
+      }
+    }
+    // Load all spells and collect status effects
+    const effectsInPuzzle: { id: StatusEffect; name: string }[] = [];
+    const seenEffects = new Set<string>();
+    for (const sid of spellIds) {
+      const spell = loadSpellAsset(sid);
+      if (spell?.statusEffect && !seenEffects.has(spell.statusEffect)) {
+        seenEffects.add(spell.statusEffect);
+        // Capitalize the effect name for display
+        const name = spell.statusEffect.charAt(0).toUpperCase() + spell.statusEffect.slice(1);
+        effectsInPuzzle.push({ id: spell.statusEffect as StatusEffect, name });
+      }
+    }
+    return { spellIds, effectsInPuzzle };
+  }, [puzzle]);
+
   // Determine which asset types are present in this puzzle
   const availableAssetTypes = useMemo(() => {
     const types: { type: BugAssetType | 'other'; label: string }[] = [];
@@ -61,13 +98,12 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     if (puzzle.collectibles.length > 0) {
       types.push({ type: 'item', label: 'Item' });
     }
-    const allEffects = getStatusEffectAssets();
-    if (allEffects.length > 0) {
+    if (puzzleSpells.effectsInPuzzle.length > 0) {
       types.push({ type: 'enchantment', label: 'Enchantment' });
     }
     types.push({ type: 'other', label: 'Other / Not sure' });
     return types;
-  }, [puzzle]);
+  }, [puzzle, puzzleSpells]);
 
   // Get specific assets for the selected type
   const specificAssets = useMemo(() => {
@@ -121,7 +157,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
           });
       }
       case 'enchantment': {
-        return getStatusEffectAssets().map(e => ({
+        return puzzleSpells.effectsInPuzzle.map(e => ({
           id: e.id,
           name: e.name,
         }));
@@ -239,19 +275,19 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
                     onClick={() => setSelectedRunId(run.id)}
                     className="p-2 w-full"
                   >
-                    <MiniGridPreview puzzle={puzzle} placements={run.placements} outcome={run.outcome} size={80} />
-                    <div className="mt-1 text-center">
-                      <div className="text-[10px] font-bold text-parchment-200">
-                        Run #{i + 1} {run.outcome === 'victory' ? '\uD83C\uDFC6' : '\uD83D\uDC80'}
+                    <MiniGridPreview puzzle={puzzle} placements={run.placements} outcome={run.outcome} size={100} />
+                    <div className="mt-1.5 text-center">
+                      <div className="text-xs font-bold text-parchment-200">
+                        Run #{i + 1} {run.outcome === 'victory' ? '🏆' : '💀'}
                       </div>
-                      <div className="text-[9px] text-stone-500">
-                        {run.turnsUsed}t &middot; {formatTimeAgo(run.timestamp)}
+                      <div className="text-[11px] text-stone-500">
+                        {run.turnsUsed} turn{run.turnsUsed !== 1 ? 's' : ''} · {formatTimeAgo(run.timestamp)}
                       </div>
                     </div>
                   </button>
                   <button
                     onClick={() => setReplayingRunId(run.id)}
-                    className="w-full text-[9px] text-arcane-400 hover:text-arcane-300 py-1 border-t border-stone-700/50 transition-colors"
+                    className="w-full text-xs text-arcane-400 hover:text-arcane-300 py-1.5 border-t border-stone-700/50 transition-colors font-bold"
                   >
                     Replay
                   </button>

@@ -135,10 +135,12 @@ export const NewsEditor: React.FC = () => {
     setSaving(false);
   };
 
+  const [showSidebar, setShowSidebar] = useState(!selectedId);
+
   return (
-    <div className="flex h-full">
-      {/* Post list sidebar */}
-      <div className="w-72 flex-shrink-0 border-r border-stone-700 flex flex-col">
+    <div className="flex flex-col md:flex-row h-full">
+      {/* Post list sidebar — collapsible on mobile */}
+      <div className={`${showSidebar ? 'flex' : 'hidden'} md:flex w-full md:w-72 flex-shrink-0 border-b md:border-b-0 md:border-r border-stone-700 flex-col max-h-[40vh] md:max-h-none`}>
         <div className="p-3 border-b border-stone-700 flex items-center justify-between">
           <h3 className="text-sm font-medium text-stone-300">Posts</h3>
           <button
@@ -160,7 +162,7 @@ export const NewsEditor: React.FC = () => {
             posts.map(post => (
               <button
                 key={post.id}
-                onClick={() => setSelectedId(post.id)}
+                onClick={() => { setSelectedId(post.id); setShowSidebar(false); }}
                 className={`w-full text-left p-3 border-b border-stone-800 transition-colors ${
                   selectedId === post.id
                     ? 'bg-stone-700/50'
@@ -183,8 +185,15 @@ export const NewsEditor: React.FC = () => {
       </div>
 
       {/* Editor panel */}
-      <div className="flex-1 overflow-y-auto dungeon-scrollbar p-4">
-        <div className="max-w-2xl mx-auto space-y-4">
+      <div className={`${!showSidebar ? 'flex' : 'hidden'} md:flex flex-1 flex-col overflow-y-auto dungeon-scrollbar p-4`}>
+        {/* Mobile back-to-list button */}
+        <button
+          onClick={() => setShowSidebar(true)}
+          className="md:hidden mb-3 text-xs text-arcane-400 hover:text-arcane-300 self-start flex items-center gap-1"
+        >
+          ← Back to posts
+        </button>
+        <div className="max-w-2xl mx-auto space-y-4 w-full">
           <h3 className="text-sm font-medium text-stone-300 mb-3">
             {selectedId ? 'Edit Post' : 'New Post'}
             {selectedPost && (

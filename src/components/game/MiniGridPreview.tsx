@@ -11,10 +11,27 @@ interface MiniGridPreviewProps {
   size?: number;
 }
 
-/** Get the best available image source from a sprite (idle > legacy fallback). */
-function getSpriteImageSrc(sprite?: { idleImageData?: string; idleImageUrl?: string; imageData?: string; imageUrl?: string }): string | undefined {
+/** Get the best available image source from a sprite (idle > directional > legacy fallback). */
+function getSpriteImageSrc(sprite?: Record<string, unknown>): string | undefined {
   if (!sprite) return undefined;
-  return sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
+  // Simple mode idle
+  const idle = (sprite.idleImageData || sprite.idleImageUrl) as string | undefined;
+  if (idle) return idle;
+  // Legacy
+  const legacy = (sprite.imageData || sprite.imageUrl) as string | undefined;
+  if (legacy) return legacy;
+  // Directional sprites — try to get any direction's idle image
+  const dirs = sprite.directionalSprites as Record<string, Record<string, unknown>> | undefined;
+  if (dirs) {
+    for (const dir of ['down', 'up', 'left', 'right']) {
+      const d = dirs[dir];
+      if (d) {
+        const src = (d.idleImageData || d.idleImageUrl) as string | undefined;
+        if (src) return src;
+      }
+    }
+  }
+  return undefined;
 }
 
 /**
