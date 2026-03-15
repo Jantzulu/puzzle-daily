@@ -43,7 +43,7 @@ function usePageTitle() {
   useEffect(() => {
     const updateTitle = () => {
       const theme = loadThemeAssets();
-      const siteName = theme.browserTabTitle || DEFAULT_SITE_NAME;
+      const siteName = theme.browserTabTitle || theme.siteTitle || DEFAULT_SITE_NAME;
       const pageTitle = PAGE_TITLES[location.pathname];
       document.title = pageTitle ? `${pageTitle} | ${siteName}` : siteName;
     };
