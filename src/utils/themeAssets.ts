@@ -39,6 +39,8 @@ export interface ThemeAssets {
   siteSubtitle?: string; // Secondary title shown next to main title
   siteSubtitleColor?: string; // Subtitle text color
   siteSubtitleSize?: string; // Subtitle font size (small, medium, large)
+  browserTabTitle?: string; // Browser tab title for the dev/creator app
+  playerBrowserTabTitle?: string; // Browser tab title for the player-facing app
   favicon?: string; // Favicon image URL or data URL for browser tab icon
 
   // Navigation labels (customizable button text)
@@ -241,6 +243,8 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   siteSubtitle: { label: 'Site Subtitle', description: 'Secondary title shown next to main title (e.g., "The Daily Dungeon Puzzle")', category: 'branding', inputType: 'text' },
   siteSubtitleColor: { label: 'Subtitle Color', description: 'Color for the subtitle text', category: 'branding', inputType: 'color' },
   siteSubtitleSize: { label: 'Subtitle Size', description: 'Font size for the subtitle (small, medium, large)', category: 'branding', inputType: 'select' },
+  browserTabTitle: { label: 'Dev App Tab Title', description: 'Browser tab name for the dev/creator app (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
+  playerBrowserTabTitle: { label: 'Player App Tab Title', description: 'Browser tab name for the player-facing app (default: "Puzzle Daily")', category: 'branding', inputType: 'text' },
   favicon: { label: 'Favicon', description: 'Browser tab icon. Upload a small square image (32x32 or 64x64 recommended).', category: 'branding', inputType: 'image' },
   navLabelPlay: { label: 'Play Button Label', description: 'Text for Play navigation button (default: "Play")', category: 'branding', inputType: 'text' },
   navLabelCompendium: { label: 'Compendium Button Label', description: 'Text for Compendium navigation button (default: "Compendium")', category: 'branding', inputType: 'text' },

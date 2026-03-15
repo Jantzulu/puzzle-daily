@@ -36,13 +36,19 @@ const PAGE_TITLES: Record<string, string> = {
   '/settings': 'Settings',
 };
 
-const SITE_NAME = 'Puzzle Daily';
+const DEFAULT_SITE_NAME = 'Puzzle Daily';
 
 function usePageTitle() {
   const location = useLocation();
   useEffect(() => {
-    const pageTitle = PAGE_TITLES[location.pathname];
-    document.title = pageTitle ? `${pageTitle} | ${SITE_NAME}` : SITE_NAME;
+    const updateTitle = () => {
+      const theme = loadThemeAssets();
+      const siteName = theme.browserTabTitle || DEFAULT_SITE_NAME;
+      const pageTitle = PAGE_TITLES[location.pathname];
+      document.title = pageTitle ? `${pageTitle} | ${siteName}` : siteName;
+    };
+    updateTitle();
+    return subscribeToThemeAssets(updateTitle);
   }, [location.pathname]);
 }
 

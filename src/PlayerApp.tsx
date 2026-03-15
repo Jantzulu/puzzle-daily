@@ -30,13 +30,19 @@ const PAGE_TITLES: Record<string, string> = {
   '/profile': 'Profile',
 };
 
-const SITE_NAME = 'Puzzle Daily';
+const DEFAULT_SITE_NAME = 'Puzzle Daily';
 
 function usePageTitle() {
   const location = useLocation();
   useEffect(() => {
-    const pageTitle = PAGE_TITLES[location.pathname];
-    document.title = pageTitle ? `${pageTitle} | ${SITE_NAME}` : SITE_NAME;
+    const updateTitle = () => {
+      const theme = loadThemeAssets();
+      const siteName = theme.playerBrowserTabTitle || DEFAULT_SITE_NAME;
+      const pageTitle = PAGE_TITLES[location.pathname];
+      document.title = pageTitle ? `${pageTitle} | ${siteName}` : siteName;
+    };
+    updateTitle();
+    return subscribeToThemeAssets(updateTitle);
   }, [location.pathname]);
 }
 
@@ -141,7 +147,7 @@ function PlayerNavigation() {
             <span className="text-xl">⚔️</span>
           )}
           <div className="hidden sm:block leading-tight">
-            <div className="font-medieval text-copper-400 text-sm font-bold">{themeAssets.siteTitle || SITE_NAME}</div>
+            <div className="font-medieval text-copper-400 text-sm font-bold">{themeAssets.siteTitle || DEFAULT_SITE_NAME}</div>
             {themeAssets.siteSubtitle && <div className="text-[10px] text-stone-500">{themeAssets.siteSubtitle}</div>}
           </div>
         </Link>
