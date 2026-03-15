@@ -255,7 +255,7 @@ function Navigation() {
 
   return (
     <nav
-      className="bg-stone-600 border-b-2 px-4 md:px-6 py-1.5 shadow-dungeon md:sticky md:top-0 z-50"
+      className="bg-stone-600 border-b-2 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon md:sticky md:top-0 z-50"
       style={navbarStyle}
     >
       <div className="flex items-center gap-3 md:gap-4">
@@ -278,7 +278,7 @@ function Navigation() {
                     alt={themeAssets.logoAlt || 'Logo'}
                     frameCount={logoFrameCount}
                     frameRate={logoFrameRate}
-                    className="h-10 md:h-12 flex-shrink-0"
+                    className="h-8 md:h-12 flex-shrink-0"
                   />
                 );
               } else {
@@ -286,7 +286,7 @@ function Navigation() {
                   <img
                     src={logoSrc}
                     alt={themeAssets.logoAlt || 'Logo'}
-                    className="h-10 md:h-12 w-auto object-contain flex-shrink-0"
+                    className="h-8 md:h-12 w-auto object-contain flex-shrink-0"
                   />
                 );
               }
