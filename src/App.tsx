@@ -180,7 +180,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   );
 }
 
-function Navigation({ navHidden }: { navHidden: boolean }) {
+function Navigation() {
   const location = useLocation();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -255,7 +255,7 @@ function Navigation({ navHidden }: { navHidden: boolean }) {
 
   return (
     <nav
-      className={`bg-stone-600 border-b-2 px-4 md:px-6 py-1.5 shadow-dungeon sticky top-0 z-50 transition-transform duration-300 ${navHidden ? '-translate-y-full md:translate-y-0' : 'translate-y-0'}`}
+      className="bg-stone-600 border-b-2 px-4 md:px-6 py-1.5 shadow-dungeon md:sticky md:top-0 z-50"
       style={navbarStyle}
     >
       <div className="flex items-center gap-3 md:gap-4">
@@ -463,7 +463,6 @@ function Navigation({ navHidden }: { navHidden: boolean }) {
 }
 
 function App() {
-  const [navHidden, setNavHidden] = useState(false);
   const lastScrollY = useRef(0);
 
   // Reveal the app after first paint (hides flash of unstyled content)
@@ -485,7 +484,7 @@ function App() {
     return unsubscribe;
   }, []);
 
-  // Track scroll position for metallic border shine + navbar auto-hide on mobile
+  // Track scroll position for metallic border shine
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
@@ -495,16 +494,6 @@ function App() {
       const scrollPercent = maxScroll > 0 ? scrollY / maxScroll : 0;
       document.documentElement.style.setProperty('--scroll-percent', scrollPercent.toString());
 
-      // Auto-hide navbar on mobile (scroll down = hide, scroll up = show)
-      if (scrollY > 20) {
-        if (scrollY > lastScrollY.current) {
-          setNavHidden(true);
-        } else {
-          setNavHidden(false);
-        }
-      } else {
-        setNavHidden(false);
-      }
       lastScrollY.current = scrollY;
     };
 
@@ -524,7 +513,7 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <div className="min-h-screen theme-root">
-          <Navigation navHidden={navHidden} />
+          <Navigation />
           <ErrorBoundary>
             <Suspense fallback={
               <div className="flex items-center justify-center p-12">
