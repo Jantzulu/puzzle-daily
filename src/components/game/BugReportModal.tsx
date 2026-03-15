@@ -4,11 +4,10 @@ import type { TrackedRun, BugAssetType } from '../../types/bugReport';
 import { submitBugReport } from '../../services/bugReportService';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { loadTileType, loadCollectible, loadSpellAsset } from '../../utils/assetStorage';
+import { loadTileType, loadCollectible, loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { toast } from '../shared/Toast';
 import { MiniGridPreview } from './MiniGridPreview';
 import { BugReportReplay } from '../editor/BugReportReplay';
-import type { StatusEffect } from '../../types/game';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -68,15 +67,16 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       }
     }
     // Load all spells and collect status effects
-    const effectsInPuzzle: { id: StatusEffect; name: string }[] = [];
+    const effectsInPuzzle: { id: string; name: string }[] = [];
     const seenEffects = new Set<string>();
     for (const sid of spellIds) {
       const spell = loadSpellAsset(sid);
-      if (spell?.statusEffect && !seenEffects.has(spell.statusEffect)) {
-        seenEffects.add(spell.statusEffect);
-        // Capitalize the effect name for display
-        const name = spell.statusEffect.charAt(0).toUpperCase() + spell.statusEffect.slice(1);
-        effectsInPuzzle.push({ id: spell.statusEffect as StatusEffect, name });
+      const effectId = spell?.appliesStatusEffect?.statusAssetId;
+      if (effectId && !seenEffects.has(effectId)) {
+        seenEffects.add(effectId);
+        const effectAsset = loadStatusEffectAsset(effectId);
+        const name = effectAsset?.name || effectId;
+        effectsInPuzzle.push({ id: effectId, name });
       }
     }
     return { spellIds, effectsInPuzzle };

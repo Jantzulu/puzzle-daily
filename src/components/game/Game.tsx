@@ -1408,6 +1408,120 @@ export const Game: React.FC = () => {
                   </div>
                 </div>
               )}
+
+              {/* Victory Overlay */}
+              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && (
+                <div className="absolute inset-0 flex items-center justify-center z-10 animate-overlay-fade-in" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
+                  <div className="victory-panel p-6 rounded-pixel-lg text-center max-w-[90%] max-h-[90%] overflow-y-auto animate-panel-scale-in">
+                    {/* Trophy and Rank */}
+                    <div className="text-4xl mb-1 animate-icon-bounce animate-victory-glow">{getRankEmoji(puzzleScore.rank)}</div>
+                    <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
+                      {getRankName(puzzleScore.rank)}
+                    </h2>
+
+                    {/* Stats for Gold trophy */}
+                    {puzzleScore.rank === 'gold' && (
+                      <p className="text-sm text-moss-300 mt-1">
+                        ({puzzleScore.stats.charactersUsed} hero{puzzleScore.stats.charactersUsed !== 1 ? 'es' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
+                      </p>
+                    )}
+
+                    {/* Total Score */}
+                    <div className="mt-3 text-2xl font-bold text-copper-300 text-shadow-glow-copper">
+                      {puzzleScore.totalPoints.toLocaleString()} pts
+                    </div>
+
+                    {/* Par Status */}
+                    <div className="mt-2 flex justify-center gap-4 text-xs">
+                      <span className={puzzleScore.parMet.characters ? 'text-moss-300' : 'text-stone-500'}>
+                        {puzzleScore.parMet.characters ? '✓' : '✗'} Hero Par ({currentPuzzle.parCharacters ?? '-'})
+                      </span>
+                      <span className={puzzleScore.parMet.turns ? 'text-moss-300' : 'text-stone-500'}>
+                        {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({currentPuzzle.parTurns ?? '-'})
+                      </span>
+                    </div>
+
+                    {/* Point Breakdown - Collapsible */}
+                    <details className="mt-3 text-left text-xs bg-moss-900/50 rounded-pixel p-2 border border-moss-700">
+                      <summary className="cursor-pointer text-moss-200 font-medium">Point Breakdown</summary>
+                      <div className="mt-2 space-y-1 text-moss-100">
+                        <div className="flex justify-between">
+                          <span>Base:</span>
+                          <span>+{puzzleScore.breakdown.basePoints}</span>
+                        </div>
+                        {puzzleScore.breakdown.characterBonus > 0 && (
+                          <div className="flex justify-between">
+                            <span>Hero Bonus:</span>
+                            <span>+{puzzleScore.breakdown.characterBonus}</span>
+                          </div>
+                        )}
+                        {puzzleScore.breakdown.turnBonus > 0 && (
+                          <div className="flex justify-between">
+                            <span>Turn Bonus:</span>
+                            <span>+{puzzleScore.breakdown.turnBonus}</span>
+                          </div>
+                        )}
+                        {puzzleScore.breakdown.livesBonus > 0 && (
+                          <div className="flex justify-between">
+                            <span>Lives Bonus:</span>
+                            <span>+{puzzleScore.breakdown.livesBonus}</span>
+                          </div>
+                        )}
+                        {puzzleScore.breakdown.sideQuestPoints > 0 && (
+                          <div className="flex justify-between">
+                            <span>Side Quest Bonus:</span>
+                            <span>+{puzzleScore.breakdown.sideQuestPoints}</span>
+                          </div>
+                        )}
+                      </div>
+                    </details>
+
+                    {/* Completed Side Quests */}
+                    {puzzleScore.completedSideQuests.length > 0 && (
+                      <div className="mt-2 text-xs text-arcane-300">
+                        Side Quests: {puzzleScore.completedSideQuests.map(qid => {
+                          const quest = currentPuzzle.sideQuests?.find(q => q.id === qid);
+                          return quest?.title || qid;
+                        }).join(', ')}
+                      </div>
+                    )}
+
+                    {/* Watch Replay + Report Bug */}
+                    {playStartCharacters.length > 0 && (
+                      <div className="mt-3 flex flex-col items-center gap-2">
+                        <button
+                          onClick={handleWatchReplay}
+                          className="dungeon-btn px-4 py-2 text-sm font-bold"
+                        >
+                          Watch Replay
+                        </button>
+                        {trackedRuns.length > 0 && (
+                          <button
+                            onClick={() => setShowBugReport(true)}
+                            className="dungeon-btn px-1.5 py-1 text-xs flex items-center justify-center"
+                            title="Report Bug"
+                          >
+                            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 2l1.88 1.88M14.12 3.88L16 2M9 7.13v-1a3.003 3.003 0 116 0v1" />
+                              <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 014-4h4a4 4 0 014 4v3c0 3.3-2.7 6-6 6z" />
+                              <path d="M12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M6 17l-4 1M17.47 9c1.93-.2 3.53-1.9 3.53-4M18 13h4M18 17l4 1" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Community Stats */}
+                    {currentPuzzle.date && (
+                      <CommunityStats
+                        puzzleId={currentPuzzle.id}
+                        playerScore={puzzleScore}
+                        playerOutcome="victory"
+                      />
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Life Lost Overlay — outside shaking container so transform doesn't break fixed positioning */}
@@ -1463,118 +1577,6 @@ export const Game: React.FC = () => {
                     )}
                   </div>
                 </div>
-              </div>
-            )}
-
-            {/* Victory Message - still below the game board */}
-            {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && (
-              <div className="victory-panel mt-4 p-4 rounded-pixel-lg text-center w-full max-w-2xl animate-panel-scale-in">
-                {/* Trophy and Rank */}
-                <div className="text-4xl mb-1 animate-icon-bounce animate-victory-glow">{getRankEmoji(puzzleScore.rank)}</div>
-                <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
-                  {getRankName(puzzleScore.rank)}
-                </h2>
-
-                {/* Stats for Gold trophy */}
-                {puzzleScore.rank === 'gold' && (
-                  <p className="text-sm text-moss-300 mt-1">
-                    ({puzzleScore.stats.charactersUsed} hero{puzzleScore.stats.charactersUsed !== 1 ? 'es' : ''}, {puzzleScore.stats.turnsUsed} turn{puzzleScore.stats.turnsUsed !== 1 ? 's' : ''})
-                  </p>
-                )}
-
-                {/* Total Score */}
-                <div className="mt-3 text-2xl font-bold text-copper-300 text-shadow-glow-copper">
-                  {puzzleScore.totalPoints.toLocaleString()} pts
-                </div>
-
-                {/* Par Status */}
-                <div className="mt-2 flex justify-center gap-4 text-xs">
-                  <span className={puzzleScore.parMet.characters ? 'text-moss-300' : 'text-stone-500'}>
-                    {puzzleScore.parMet.characters ? '✓' : '✗'} Hero Par ({currentPuzzle.parCharacters ?? '-'})
-                  </span>
-                  <span className={puzzleScore.parMet.turns ? 'text-moss-300' : 'text-stone-500'}>
-                    {puzzleScore.parMet.turns ? '✓' : '✗'} Turn Par ({currentPuzzle.parTurns ?? '-'})
-                  </span>
-                </div>
-
-                {/* Point Breakdown - Collapsible */}
-                <details className="mt-3 text-left text-xs bg-moss-900/50 rounded-pixel p-2 border border-moss-700">
-                  <summary className="cursor-pointer text-moss-200 font-medium">Point Breakdown</summary>
-                  <div className="mt-2 space-y-1 text-moss-100">
-                    <div className="flex justify-between">
-                      <span>Base:</span>
-                      <span>+{puzzleScore.breakdown.basePoints}</span>
-                    </div>
-                    {puzzleScore.breakdown.characterBonus > 0 && (
-                      <div className="flex justify-between">
-                        <span>Hero Bonus:</span>
-                        <span>+{puzzleScore.breakdown.characterBonus}</span>
-                      </div>
-                    )}
-                    {puzzleScore.breakdown.turnBonus > 0 && (
-                      <div className="flex justify-between">
-                        <span>Turn Bonus:</span>
-                        <span>+{puzzleScore.breakdown.turnBonus}</span>
-                      </div>
-                    )}
-                    {puzzleScore.breakdown.livesBonus > 0 && (
-                      <div className="flex justify-between">
-                        <span>Lives Bonus:</span>
-                        <span>+{puzzleScore.breakdown.livesBonus}</span>
-                      </div>
-                    )}
-                    {puzzleScore.breakdown.sideQuestPoints > 0 && (
-                      <div className="flex justify-between">
-                        <span>Side Quest Bonus:</span>
-                        <span>+{puzzleScore.breakdown.sideQuestPoints}</span>
-                      </div>
-                    )}
-                  </div>
-                </details>
-
-                {/* Completed Side Quests */}
-                {puzzleScore.completedSideQuests.length > 0 && (
-                  <div className="mt-2 text-xs text-arcane-300">
-                    Side Quests: {puzzleScore.completedSideQuests.map(qid => {
-                      const quest = currentPuzzle.sideQuests?.find(q => q.id === qid);
-                      return quest?.title || qid;
-                    }).join(', ')}
-                  </div>
-                )}
-
-                {/* Watch Replay + Report Bug */}
-                {playStartCharacters.length > 0 && (
-                  <div className="mt-3 flex flex-col items-center gap-2">
-                    <button
-                      onClick={handleWatchReplay}
-                      className="dungeon-btn px-4 py-2 text-sm font-bold"
-                    >
-                      Watch Replay
-                    </button>
-                    {trackedRuns.length > 0 && (
-                      <button
-                        onClick={() => setShowBugReport(true)}
-                        className="dungeon-btn px-1.5 py-1 text-xs flex items-center justify-center"
-                        title="Report Bug"
-                      >
-                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M8 2l1.88 1.88M14.12 3.88L16 2M9 7.13v-1a3.003 3.003 0 116 0v1" />
-                          <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 014-4h4a4 4 0 014 4v3c0 3.3-2.7 6-6 6z" />
-                          <path d="M12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M6 17l-4 1M17.47 9c1.93-.2 3.53-1.9 3.53-4M18 13h4M18 17l4 1" />
-                        </svg>
-                      </button>
-                    )}
-                  </div>
-                )}
-
-                {/* Community Stats */}
-                {currentPuzzle.date && (
-                  <CommunityStats
-                    puzzleId={currentPuzzle.id}
-                    playerScore={puzzleScore}
-                    playerOutcome="victory"
-                  />
-                )}
               </div>
             )}
 
