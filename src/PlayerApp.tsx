@@ -160,11 +160,6 @@ function PlayerNavigation() {
           <Link to="/training" className={linkClass('/training')}>
             <span className="mr-1">🎯</span> Training
           </Link>
-          {user && (
-            <Link to="/profile" className={linkClass('/profile')}>
-              <span className="mr-1">👤</span> Profile
-            </Link>
-          )}
         </div>
 
         <div className="flex-1" />
@@ -203,11 +198,6 @@ function PlayerNavigation() {
           <Link to="/training" className={`block ${linkClass('/training')}`} onClick={closeMobileMenu}>
             <span className="mr-2">🎯</span> Training
           </Link>
-          {user && (
-            <Link to="/profile" className={`block ${linkClass('/profile')}`} onClick={closeMobileMenu}>
-              <span className="mr-2">👤</span> Profile
-            </Link>
-          )}
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
             <SoundSettings isMobile />
             <UserMenu />

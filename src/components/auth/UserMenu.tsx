@@ -143,6 +143,14 @@ export const UserMenu: React.FC = () => {
             <div className="text-xs text-stone-400 truncate">{auth.user.email}</div>
           </div>
 
+          <Link
+            to="/profile"
+            onClick={() => setOpen(false)}
+            className="block w-full text-left px-3 py-2 text-sm text-stone-300 hover:bg-stone-700 hover:text-parchment-100 transition-colors"
+          >
+            View Profile
+          </Link>
+
           {showAvatarEdit ? (
             <div className="px-3 py-2 space-y-2 border-b border-stone-700">
               <div className="text-xs text-stone-400 mb-1">Pick an icon</div>

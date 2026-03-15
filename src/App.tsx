@@ -371,11 +371,6 @@ function Navigation() {
           <Link to="/training" className={linkClass('/training')}>
             <span className="mr-1">{'\uD83C\uDFAF'}</span> Training
           </Link>
-          {user && (
-            <Link to="/profile" className={linkClass('/profile')}>
-              <span className="mr-1">👤</span> Profile
-            </Link>
-          )}
           {isCreator && <>
             <Link to="/assets" className={linkClass('/assets')}>
               <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
@@ -462,15 +457,6 @@ function Navigation() {
           >
             <span className="mr-2">{'\uD83C\uDFAF'}</span> Training
           </Link>
-          {user && (
-            <Link
-              to="/profile"
-              className={`block ${linkClass('/profile')}`}
-              onClick={closeMobileMenu}
-            >
-              <span className="mr-2">👤</span> Profile
-            </Link>
-          )}
           {isCreator && <>
             <Link
               to="/assets"
