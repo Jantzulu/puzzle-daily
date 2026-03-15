@@ -12,5 +12,3 @@ createRoot(root).render(
     </AuthProvider>
   </StrictMode>,
 );
-// Reveal the app once React has rendered
-requestAnimationFrame(() => { root.style.opacity = '1'; });

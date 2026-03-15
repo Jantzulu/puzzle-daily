@@ -463,6 +463,16 @@ function Navigation() {
 }
 
 function App() {
+  // Reveal the app after first paint (hides flash of unstyled content)
+  useEffect(() => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const root = document.getElementById('root');
+        if (root) root.style.opacity = '1';
+      });
+    });
+  }, []);
+
   // Apply theme assets on mount and subscribe to changes
   useEffect(() => {
     applyThemeAssets();
