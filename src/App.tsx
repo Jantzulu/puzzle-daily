@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense } from 'react';
+import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
@@ -184,6 +184,7 @@ function Navigation() {
   const location = useLocation();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileMenuDismissing, setMobileMenuDismissing] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [hasUnreadNews, setHasUnreadNews] = useState(false);
@@ -201,6 +202,22 @@ function Navigation() {
     observer.observe(nav);
     return () => observer.disconnect();
   }, []);
+
+  const closeMobileMenu = useCallback(() => {
+    setMobileMenuDismissing(true);
+    setTimeout(() => {
+      setMobileMenuOpen(false);
+      setMobileMenuDismissing(false);
+    }, 200);
+  }, []);
+
+  const toggleMobileMenu = useCallback(() => {
+    if (mobileMenuOpen) {
+      closeMobileMenu();
+    } else {
+      setMobileMenuOpen(true);
+    }
+  }, [mobileMenuOpen, closeMobileMenu]);
 
   // Update page title on route change
   usePageTitle();
@@ -392,7 +409,7 @@ function Navigation() {
 
         {/* Mobile hamburger button */}
         <button
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          onClick={toggleMobileMenu}
           className="md:hidden p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -407,18 +424,18 @@ function Navigation() {
 
       {/* Mobile menu dropdown */}
       {mobileMenuOpen && (
-        <div className="md:hidden mt-3 pt-3 border-t-2 border-stone-700 space-y-2">
+        <div className={`md:hidden mt-3 pt-3 border-t-2 border-stone-700 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
           <Link
             to="/"
             className={`block ${linkClass('/')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
           <Link
             to="/town-crier"
             className={`block ${linkClass('/town-crier')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">{'\uD83D\uDCE3'}</span> Town Crier
             {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
@@ -426,42 +443,42 @@ function Navigation() {
           <Link
             to="/compendium"
             className={`block ${linkClass('/compendium')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
           <Link
             to="/training"
             className={`block ${linkClass('/training')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">{'\uD83C\uDFAF'}</span> Training
           </Link>
           <Link
             to="/assets"
             className={`block ${linkClass('/assets')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
           </Link>
           <Link
             to="/editors"
             className={`block ${linkClass('/editors')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
           </Link>
           <Link
             to="/puzzle-resources"
             className={`block ${linkClass('/puzzle-resources')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
           </Link>
           <Link
             to="/settings"
             className={`block ${linkClass('/settings')}`}
-            onClick={() => setMobileMenuOpen(false)}
+            onClick={closeMobileMenu}
           >
             <span className="mr-2">⚙️</span> Settings
           </Link>

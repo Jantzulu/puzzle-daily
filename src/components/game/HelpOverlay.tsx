@@ -1,4 +1,4 @@
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getHelpSection, type HelpSectionId } from '../../utils/assetStorage';
 import { sanitizeRichHtml } from '../../utils/sanitizeHtml';
@@ -17,6 +17,15 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
   const helpContent = getHelpSection(sectionId);
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
+  const [dismissing, setDismissing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setDismissing(true);
+    setTimeout(() => {
+      setDismissing(false);
+      onClose();
+    }, 250);
+  }, [onClose]);
 
   // Intercept clicks on internal links for client-side navigation
   const handleContentClick = useCallback((e: React.MouseEvent) => {
@@ -30,17 +39,17 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
     // Internal links start with /
     if (href.startsWith('/')) {
       e.preventDefault();
-      onClose();
+      handleClose();
       navigate(href);
     }
-  }, [navigate, onClose]);
+  }, [navigate, handleClose]);
 
   // Close on Escape key
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === 'Escape') {
-      onClose();
+      handleClose();
     }
-  }, [onClose]);
+  }, [handleClose]);
 
   useEffect(() => {
     if (isOpen) {
@@ -58,19 +67,20 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
-      onClick={onClose}
+      className={`fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+      onClick={handleClose}
     >
-      {/* Modal container - full screen on mobile, centered box on desktop */}
+      {/* Modal container - responsive on mobile, centered box on desktop */}
       <div
-        className="relative w-full max-w-lg max-h-[90vh] md:max-h-[80vh] bg-stone-800 rounded-lg shadow-xl overflow-hidden flex flex-col"
+        className={`relative w-full max-w-lg max-h-[90vh] md:max-h-[80vh] bg-stone-800 rounded-lg shadow-xl overflow-hidden flex flex-col ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}
         onClick={e => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between p-4 border-b border-stone-700">
-          <h2 className="text-xl font-bold text-parchment-100">{helpContent.title}</h2>
+        <div className="flex items-center justify-between p-3 md:p-4 border-b border-stone-700">
+          <h2 className="text-lg md:text-xl font-bold text-parchment-100">{helpContent.title}</h2>
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="p-2 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded-lg transition-colors"
             aria-label="Close help"
           >
@@ -83,15 +93,15 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
         {/* Content */}
         <div
           ref={contentRef}
-          className="flex-1 overflow-y-auto p-4 text-parchment-300 help-content"
+          className="flex-1 overflow-y-auto p-3 md:p-4 text-parchment-300 help-content text-sm md:text-base"
           onClick={handleContentClick}
           dangerouslySetInnerHTML={{ __html: sanitizeRichHtml(helpContent.content) }}
         />
 
         {/* Footer with close button for mobile */}
-        <div className="p-4 border-t border-stone-700 md:hidden">
+        <div className="p-3 md:p-4 border-t border-stone-700 md:hidden">
           <button
-            onClick={onClose}
+            onClick={handleClose}
             className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-parchment-100 font-medium rounded-lg transition-colors"
           >
             Got it

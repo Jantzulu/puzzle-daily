@@ -144,7 +144,7 @@ export const NewsEditor: React.FC = () => {
         <div className="p-3 border-b border-stone-700 flex items-center justify-between">
           <h3 className="text-sm font-medium text-stone-300">Posts</h3>
           <button
-            onClick={resetForm}
+            onClick={() => { resetForm(); setShowSidebar(false); }}
             className="px-2 py-1 text-xs bg-arcane-600 hover:bg-arcane-500 text-white rounded transition-colors"
           >
             + New

@@ -378,6 +378,12 @@ body {
   .animate-slide-up {
     animation: slide-up 0.35s ease-out both;
   }
+  .animate-menu-slide-down {
+    animation: menu-slide-down 0.2s ease-out both;
+  }
+  .animate-menu-slide-up {
+    animation: menu-slide-up 0.2s ease-in both;
+  }
   .animate-slide-down-from-nav-wrapper {
     overflow: hidden;
     animation: wrapper-reveal 0s 1.0s forwards;
@@ -397,6 +403,31 @@ body {
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @keyframes menu-slide-down {
+    from {
+      opacity: 0;
+      max-height: 0;
+      transform: translateY(-10px);
+    }
+    to {
+      opacity: 1;
+      max-height: 500px;
+      transform: translateY(0);
+    }
+  }
+  @keyframes menu-slide-up {
+    from {
+      opacity: 1;
+      max-height: 500px;
+      transform: translateY(0);
+    }
+    to {
+      opacity: 0;
+      max-height: 0;
+      transform: translateY(-10px);
     }
   }
 

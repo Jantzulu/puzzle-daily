@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { fetchCommunityStats, type CommunityComparison } from '../../services/statsService';
 import type { PuzzleScore, RankTier } from '../../types/game';
 import { getCharacter } from '../../data/characters';
@@ -67,6 +67,16 @@ export const CommunityStats: React.FC<CommunityStatsProps> = ({
 }) => {
   const [stats, setStats] = useState<CommunityComparison | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isOpen, setIsOpen] = useState(false);
+  const [dismissing, setDismissing] = useState(false);
+
+  const handleClose = useCallback(() => {
+    setDismissing(true);
+    setTimeout(() => {
+      setIsOpen(false);
+      setDismissing(false);
+    }, 250);
+  }, []);
 
   useEffect(() => {
     fetchCommunityStats(puzzleId).then(data => {
@@ -95,90 +105,119 @@ export const CommunityStats: React.FC<CommunityStatsProps> = ({
   const totalRanks = stats.rankDistribution.gold + stats.rankDistribution.silver + stats.rankDistribution.bronze;
 
   return (
-    <details className="mt-3 bg-stone-800/50 rounded-pixel p-3 border border-stone-700 text-left">
-      <summary className="text-copper-200 font-medieval text-sm cursor-pointer hover:text-copper-300 transition-colors">
-        You vs. The Community
-      </summary>
+    <>
+      <button
+        onClick={() => setIsOpen(true)}
+        className="mt-3 w-full bg-stone-800/50 rounded-pixel p-3 border border-stone-700 text-left text-copper-200 font-medieval text-sm cursor-pointer hover:text-copper-300 hover:border-stone-600 transition-colors"
+      >
+        You vs. The Community ▸
+      </button>
 
-      <div className="mt-3 space-y-4">
-        {/* Completion Rate */}
-        <div>
-          <div className="text-xs text-stone-300">
-            <span className="text-moss-300 font-bold">{stats.completionRate}%</span> of adventurers conquered this puzzle
-          </div>
-          <div className="text-[10px] text-stone-600 mt-0.5">
-            {stats.totalPlayers} total attempts
+      {isOpen && (
+        <div
+          className={`fixed inset-0 z-50 flex items-center justify-center p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
+          style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+          onClick={handleClose}
+        >
+          <div
+            className={`relative w-full max-w-md max-h-[80vh] bg-stone-800 rounded-pixel-lg shadow-xl overflow-y-auto p-5 border border-stone-600 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-bold font-medieval text-copper-200">You vs. The Community</h3>
+              <button
+                onClick={handleClose}
+                className="p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded transition-colors"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="space-y-4 text-left">
+              {/* Completion Rate */}
+              <div>
+                <div className="text-xs text-stone-300">
+                  <span className="text-moss-300 font-bold">{stats.completionRate}%</span> of adventurers conquered this puzzle
+                </div>
+                <div className="text-[10px] text-stone-600 mt-0.5">
+                  {stats.totalPlayers} total attempts
+                </div>
+              </div>
+
+              {/* Score Comparison (victory only) */}
+              {playerOutcome === 'victory' && (
+                <BarComparison
+                  label="Score"
+                  yours={stats.yourScore}
+                  avg={stats.avgScore}
+                  suffix=" pts"
+                  higherIsBetter={true}
+                />
+              )}
+
+              {/* Turns Comparison */}
+              <BarComparison
+                label="Turns Used"
+                yours={stats.yourTurns}
+                avg={stats.avgTurns}
+                higherIsBetter={false}
+              />
+
+              {/* Rank Distribution (victory only) */}
+              {playerOutcome === 'victory' && totalRanks > 0 && (
+                <div>
+                  <div className="text-xs text-stone-400 mb-1.5">Rank Distribution</div>
+                  <div className="space-y-1">
+                    {(['gold', 'silver', 'bronze'] as const).map(rank => {
+                      const count = stats.rankDistribution[rank];
+                      const pct = totalRanks > 0 ? Math.round((count / totalRanks) * 100) : 0;
+                      const isYours = stats.yourRank === rank;
+
+                      return (
+                        <div key={rank} className={`flex items-center gap-2 ${isYours ? 'bg-stone-700/50 -mx-1 px-1 rounded' : ''}`}>
+                          <span className="text-[10px] w-12 text-right" style={{
+                            color: rank === 'gold' ? '#EAB308' : rank === 'silver' ? '#9CA3AF' : '#B45309'
+                          }}>
+                            {rankLabels[rank]}{isYours ? ' ★' : ''}
+                          </span>
+                          <div className="flex-1 h-2.5 bg-stone-800 rounded-pixel overflow-hidden">
+                            <div className={`h-full rounded-pixel ${rankColors[rank]}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-[10px] text-stone-500 w-8 text-right">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Popular Heroes */}
+              {stats.heroPickRates.length > 0 && (
+                <div>
+                  <div className="text-xs text-stone-400 mb-1.5">Most Popular Heroes</div>
+                  <div className="flex flex-wrap gap-2">
+                    {stats.heroPickRates.map(hero => {
+                      const char = getCharacter(hero.characterId);
+                      const name = char?.name || hero.characterId;
+                      const pct = Math.round(hero.percentage * 100);
+
+                      return (
+                        <div key={hero.characterId} className="flex items-center gap-1.5 bg-stone-800/80 rounded-pixel px-2 py-1 border border-stone-700/50">
+                          <span className="text-xs text-copper-300 truncate max-w-[80px]">{name}</span>
+                          <span className="text-[10px] text-stone-500">{pct}%</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         </div>
-
-        {/* Score Comparison (victory only) */}
-        {playerOutcome === 'victory' && (
-          <BarComparison
-            label="Score"
-            yours={stats.yourScore}
-            avg={stats.avgScore}
-            suffix=" pts"
-            higherIsBetter={true}
-          />
-        )}
-
-        {/* Turns Comparison */}
-        <BarComparison
-          label="Turns Used"
-          yours={stats.yourTurns}
-          avg={stats.avgTurns}
-          higherIsBetter={false}
-        />
-
-        {/* Rank Distribution (victory only) */}
-        {playerOutcome === 'victory' && totalRanks > 0 && (
-          <div>
-            <div className="text-xs text-stone-400 mb-1.5">Rank Distribution</div>
-            <div className="space-y-1">
-              {(['gold', 'silver', 'bronze'] as const).map(rank => {
-                const count = stats.rankDistribution[rank];
-                const pct = totalRanks > 0 ? Math.round((count / totalRanks) * 100) : 0;
-                const isYours = stats.yourRank === rank;
-
-                return (
-                  <div key={rank} className={`flex items-center gap-2 ${isYours ? 'bg-stone-700/50 -mx-1 px-1 rounded' : ''}`}>
-                    <span className="text-[10px] w-12 text-right" style={{
-                      color: rank === 'gold' ? '#EAB308' : rank === 'silver' ? '#9CA3AF' : '#B45309'
-                    }}>
-                      {rankLabels[rank]}{isYours ? ' ★' : ''}
-                    </span>
-                    <div className="flex-1 h-2.5 bg-stone-800 rounded-pixel overflow-hidden">
-                      <div className={`h-full rounded-pixel ${rankColors[rank]}`} style={{ width: `${pct}%` }} />
-                    </div>
-                    <span className="text-[10px] text-stone-500 w-8 text-right">{pct}%</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-
-        {/* Popular Heroes */}
-        {stats.heroPickRates.length > 0 && (
-          <div>
-            <div className="text-xs text-stone-400 mb-1.5">Most Popular Heroes</div>
-            <div className="flex flex-wrap gap-2">
-              {stats.heroPickRates.map(hero => {
-                const char = getCharacter(hero.characterId);
-                const name = char?.name || hero.characterId;
-                const pct = Math.round(hero.percentage * 100);
-
-                return (
-                  <div key={hero.characterId} className="flex items-center gap-1.5 bg-stone-800/80 rounded-pixel px-2 py-1 border border-stone-700/50">
-                    <span className="text-xs text-copper-300 truncate max-w-[80px]">{name}</span>
-                    <span className="text-[10px] text-stone-500">{pct}%</span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
-      </div>
-    </details>
+      )}
+    </>
   );
 };
