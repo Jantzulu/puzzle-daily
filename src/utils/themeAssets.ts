@@ -424,29 +424,27 @@ export function loadThemeAssets(): ThemeAssets {
 let cloudFetchPromise: Promise<ThemeAssets | null> | null = null;
 
 export async function fetchThemeAssetsFromCloud(): Promise<ThemeAssets | null> {
-  // Skip if we already have local theme data
-  if (localStorage.getItem(STORAGE_KEY)) return loadThemeAssets();
-
   // Deduplicate concurrent calls
   if (cloudFetchPromise) return cloudFetchPromise;
 
   cloudFetchPromise = (async () => {
     try {
-      // Fetch from assets_live (publicly readable, no auth required)
+      // Always fetch from assets_live (publicly readable) to pick up updates
       const result = await supabase
         .from('assets_live')
         .select('data')
         .eq('id', 'theme_settings')
         .maybeSingle();
 
-      if (!result.data?.data) return null;
+      if (!result.data?.data) return localStorage.getItem(STORAGE_KEY) ? loadThemeAssets() : null;
 
       const assets = result.data.data as ThemeAssets;
       saveThemeAssets(assets);
       notifyThemeAssetsChanged();
       return assets;
     } catch {
-      return null;
+      // Fall back to cached localStorage data if fetch fails
+      return localStorage.getItem(STORAGE_KEY) ? loadThemeAssets() : null;
     }
   })();
 
