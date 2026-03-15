@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "build:player": "vite build --config vite.config.player.ts",
+    "build:player": "vite build --config vite.config.player.ts && mv dist-player/index.player.html dist-player/index.html",
     "build:check": "tsc -b && vite build",
     "dev:player": "vite --config vite.config.player.ts",
     "lint": "eslint .",
