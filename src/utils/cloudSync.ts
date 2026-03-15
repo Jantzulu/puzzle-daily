@@ -13,6 +13,7 @@ import {
   deletePuzzleFromCloud,
   deleteAssetFromCloud,
   syncFromCloud,
+  publishAsset,
 } from '../services/supabaseService';
 import { logActivity } from '../services/activityLogService';
 import {
@@ -282,11 +283,16 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
       if (!success) errors.push('Failed to upload help content');
     }
 
-    // Push theme settings
+    // Push theme settings (save to draft, then publish to live for public access)
     const themeAssets = loadThemeAssets();
     if (Object.keys(themeAssets).length > 0) {
       const success = await saveAssetToCloud('theme_settings', 'theme_settings', 'Theme Settings', themeAssets);
-      if (!success) errors.push('Failed to upload theme settings');
+      if (!success) {
+        errors.push('Failed to upload theme settings');
+      } else {
+        const published = await publishAsset('theme_settings');
+        if (!published) errors.push('Failed to publish theme settings to live');
+      }
     }
 
     // Push puzzles

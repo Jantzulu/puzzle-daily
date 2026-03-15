@@ -428,21 +428,12 @@ export async function fetchThemeAssetsFromCloud(): Promise<ThemeAssets | null> {
 
   cloudFetchPromise = (async () => {
     try {
-      // Try draft table first (where cloud sync saves theme settings)
-      let result = await supabase
-        .from('assets_draft')
+      // Fetch from assets_live (publicly readable, no auth required)
+      const result = await supabase
+        .from('assets_live')
         .select('data')
         .eq('id', 'theme_settings')
         .maybeSingle();
-
-      // Fall back to live table
-      if (!result.data?.data) {
-        result = await supabase
-          .from('assets_live')
-          .select('data')
-          .eq('id', 'theme_settings')
-          .maybeSingle();
-      }
 
       if (!result.data?.data) return null;
 
