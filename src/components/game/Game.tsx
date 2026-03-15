@@ -1759,6 +1759,7 @@ export const Game: React.FC = () => {
                             themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
                           }`}
                           style={{
+                            minHeight: 'unset',
                             ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
                             ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
                             ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
