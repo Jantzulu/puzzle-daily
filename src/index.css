@@ -379,7 +379,7 @@ body {
     animation: slide-up 0.35s ease-out both;
   }
   .animate-slide-down-from-nav {
-    animation: slide-down-from-nav 0.5s cubic-bezier(0.34, 1.56, 0.64, 1) 0.15s both;
+    animation: slide-down-from-nav 0.8s cubic-bezier(0.25, 0.1, 0.25, 1) 0.2s both;
   }
 
   @keyframes slide-up {
@@ -395,12 +395,10 @@ body {
 
   @keyframes slide-down-from-nav {
     from {
-      opacity: 0;
-      transform: translateY(-100%);
+      clip-path: inset(0 0 100% 0);
     }
     to {
-      opacity: 1;
-      transform: translateY(0);
+      clip-path: inset(0 0 0 0);
     }
   }
 
