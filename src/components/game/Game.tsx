@@ -1750,7 +1750,7 @@ export const Game: React.FC = () => {
                       ) : (
                         <button
                           onClick={handlePlay}
-                          className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all ${
+                          className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all flex items-center justify-center !py-0 ${
                             gameState.placedCharacters.length === 0
                               ? 'opacity-50 cursor-not-allowed dungeon-btn'
                               : `${themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'}`
