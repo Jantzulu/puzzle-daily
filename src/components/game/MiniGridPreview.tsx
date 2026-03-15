@@ -27,33 +27,31 @@ export const MiniGridPreview: React.FC<MiniGridPreviewProps> = ({
   const gridW = cellSize * cols;
   const gridH = cellSize * rows;
 
-  // Build entity lookup: { "x,y": { type, sprite } }
+  // Build entity lookup: { "x,y": { type, sprite? } }
   const entityMap = useMemo(() => {
-    const map = new Map<string, { type: 'hero' | 'enemy'; sprite: Parameters<typeof SpriteThumbnail>[0]['sprite'] }>();
+    const map = new Map<string, { type: 'hero' | 'enemy'; sprite?: Parameters<typeof SpriteThumbnail>[0]['sprite'] }>();
 
     // Enemies first (heroes render on top)
     for (const enemy of puzzle.enemies) {
       const enemyData = getEnemy(enemy.enemyId);
-      if (enemyData?.customSprite) {
-        map.set(`${enemy.x},${enemy.y}`, { type: 'enemy', sprite: enemyData.customSprite });
-      }
+      map.set(`${enemy.x},${enemy.y}`, { type: 'enemy', sprite: enemyData?.customSprite });
     }
 
     // Heroes
     for (const char of placements) {
       if (char.dead) continue;
       const charData = getCharacter(char.characterId);
-      if (charData?.customSprite) {
-        map.set(`${char.x},${char.y}`, { type: 'hero', sprite: charData.customSprite });
-      }
+      map.set(`${char.x},${char.y}`, { type: 'hero', sprite: charData?.customSprite });
     }
 
     return map;
   }, [puzzle, placements]);
 
+  const dotSize = Math.max(4, Math.round(cellSize * 0.5));
+
   return (
     <div
-      className={`rounded relative ${
+      className={`rounded relative mx-auto ${
         outcome === 'victory'
           ? 'ring-2 ring-green-500'
           : outcome === 'defeat'
@@ -75,7 +73,7 @@ export const MiniGridPreview: React.FC<MiniGridPreviewProps> = ({
           return (
             <div
               key={`${x},${y}`}
-              className="absolute"
+              className="absolute flex items-center justify-center"
               style={{
                 left: x * cellSize,
                 top: y * cellSize,
@@ -85,13 +83,23 @@ export const MiniGridPreview: React.FC<MiniGridPreviewProps> = ({
                 boxShadow: 'inset 0 0 0 0.5px #1c1917',
               }}
             >
-              {entity && (
+              {entity && entity.sprite ? (
                 <SpriteThumbnail
                   sprite={entity.sprite}
                   size={cellSize}
                   noBackground
                 />
-              )}
+              ) : entity ? (
+                /* Fallback colored dot for entities without sprites */
+                <div
+                  className="rounded-full"
+                  style={{
+                    width: dotSize,
+                    height: dotSize,
+                    backgroundColor: entity.type === 'hero' ? '#3b82f6' : '#ef4444',
+                  }}
+                />
+              ) : null}
             </div>
           );
         })
