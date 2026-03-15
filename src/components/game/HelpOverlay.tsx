@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { getHelpSection, type HelpSectionId } from '../../utils/assetStorage';
 import { sanitizeRichHtml } from '../../utils/sanitizeHtml';
@@ -65,7 +66,7 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
 
   if (!isOpen || !helpContent) return null;
 
-  return (
+  return createPortal(
     <div
       className={`fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
@@ -149,7 +150,8 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
           color: #93bbfd;
         }
       `}</style>
-    </div>
+    </div>,
+    document.body
   );
 };
 

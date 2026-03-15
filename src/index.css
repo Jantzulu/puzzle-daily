@@ -756,6 +756,9 @@ html body.theme-font-active,
   .animate-slide-in-right {
     animation: slide-in-right 0.25s ease-out;
   }
+  .quest-panel-sticky {
+    top: var(--nav-height, 0px);
+  }
 }
 
 @keyframes shimmer-sweep {
