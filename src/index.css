@@ -378,6 +378,13 @@ body {
   .animate-slide-up {
     animation: slide-up 0.35s ease-out both;
   }
+  .animate-slide-down-from-nav-wrapper {
+    overflow: hidden;
+    animation: wrapper-reveal 0s 1.0s forwards;
+  }
+  @keyframes wrapper-reveal {
+    to { overflow: visible; }
+  }
   .animate-slide-down-from-nav {
     animation: slide-down-from-nav 0.8s cubic-bezier(0.25, 0.1, 0.25, 1) 0.2s both;
   }
@@ -395,10 +402,10 @@ body {
 
   @keyframes slide-down-from-nav {
     from {
-      clip-path: inset(0 0 100% 0);
+      transform: translateY(-100%);
     }
     to {
-      clip-path: inset(0 0 0 0);
+      transform: translateY(0);
     }
   }
 
