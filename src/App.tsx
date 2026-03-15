@@ -180,7 +180,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   );
 }
 
-function Navigation() {
+function Navigation({ navHidden }: { navHidden: boolean }) {
   const location = useLocation();
   const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -255,7 +255,7 @@ function Navigation() {
 
   return (
     <nav
-      className="bg-stone-600 border-b-2 px-4 md:px-6 py-1.5 shadow-dungeon"
+      className={`bg-stone-600 border-b-2 px-4 md:px-6 py-1.5 shadow-dungeon sticky top-0 z-50 transition-transform duration-300 ${navHidden ? '-translate-y-full md:translate-y-0' : 'translate-y-0'}`}
       style={navbarStyle}
     >
       <div className="flex items-center gap-3 md:gap-4">
@@ -463,6 +463,9 @@ function Navigation() {
 }
 
 function App() {
+  const [navHidden, setNavHidden] = useState(false);
+  const lastScrollY = useRef(0);
+
   // Reveal the app after first paint (hides flash of unstyled content)
   useEffect(() => {
     requestAnimationFrame(() => {
@@ -482,28 +485,38 @@ function App() {
     return unsubscribe;
   }, []);
 
-  // Track scroll position for metallic border shine effect
+  // Track scroll position for metallic border shine + navbar auto-hide on mobile
   useEffect(() => {
-    const updateScrollPosition = () => {
-      // Normalize scroll to 0-1 range based on page height
+    const handleScroll = () => {
       const scrollY = window.scrollY;
+
+      // Metallic border shine effect
       const maxScroll = document.documentElement.scrollHeight - window.innerHeight;
       const scrollPercent = maxScroll > 0 ? scrollY / maxScroll : 0;
-
-      // Update CSS custom property
       document.documentElement.style.setProperty('--scroll-percent', scrollPercent.toString());
+
+      // Auto-hide navbar on mobile (scroll down = hide, scroll up = show)
+      if (scrollY > 50) {
+        if (scrollY > lastScrollY.current) {
+          setNavHidden(true);
+        } else {
+          setNavHidden(false);
+        }
+      } else {
+        setNavHidden(false);
+      }
+      lastScrollY.current = scrollY;
     };
 
     // Initial update
-    updateScrollPosition();
+    handleScroll();
 
-    // Listen to scroll events with passive flag for performance
-    window.addEventListener('scroll', updateScrollPosition, { passive: true });
-    window.addEventListener('resize', updateScrollPosition, { passive: true });
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    window.addEventListener('resize', handleScroll, { passive: true });
 
     return () => {
-      window.removeEventListener('scroll', updateScrollPosition);
-      window.removeEventListener('resize', updateScrollPosition);
+      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('resize', handleScroll);
     };
   }, []);
 
@@ -511,7 +524,7 @@ function App() {
     <ErrorBoundary>
       <BrowserRouter>
         <div className="min-h-screen theme-root">
-          <Navigation />
+          <Navigation navHidden={navHidden} />
           <ErrorBoundary>
             <Suspense fallback={
               <div className="flex items-center justify-center p-12">
