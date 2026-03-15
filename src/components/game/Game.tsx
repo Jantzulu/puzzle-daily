@@ -54,7 +54,7 @@ export const Game: React.FC = () => {
   const [livesRemaining, setLivesRemaining] = useState<number>(() => currentPuzzle.lives ?? 3);
   const [showGameOver, setShowGameOver] = useState(false);
   const [spritesReady, setSpritesReady] = useState(false);
-  const questPanelAnimatedRef = useRef(false); // Only animate quest panel on first render
+
 
   // Scoring system
   const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
@@ -1181,8 +1181,8 @@ export const Game: React.FC = () => {
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className={`w-full flex justify-center ${!questPanelAnimatedRef.current ? 'animate-slide-down-from-nav-wrapper' : 'overflow-visible'}`}>
-              <div className={`mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible ${!questPanelAnimatedRef.current ? 'animate-slide-down-from-nav' : ''}`} style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }} onAnimationEnd={() => { questPanelAnimatedRef.current = true; }}>
+              <div className="w-full flex justify-center animate-slide-down-from-nav-wrapper">
+              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible animate-slide-down-from-nav" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
                 {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
                 {/* Bottom-left: L-bracket with triangle */}
                 <svg className="absolute -bottom-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
