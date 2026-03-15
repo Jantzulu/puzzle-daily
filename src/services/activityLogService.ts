@@ -91,10 +91,10 @@ export async function logActivity(entry: Omit<ActivityEntry, 'user_id'>): Promis
 }
 
 // Auto-cleanup: prune entries older than 30 days (runs once per session)
-let cleanupDone = false;
+let cleanupPromise: Promise<void> | null = null;
 async function pruneOldActivity(): Promise<void> {
-  if (cleanupDone) return;
-  cleanupDone = true;
+  if (cleanupPromise) return cleanupPromise;
+  cleanupPromise = (async () => {
 
   // Prune local entries
   pruneLocalActivity();
@@ -106,6 +106,7 @@ async function pruneOldActivity(): Promise<void> {
   } catch (e) {
     // Cloud cleanup is optional
   }
+  })();
 }
 
 /**

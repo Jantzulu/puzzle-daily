@@ -561,7 +561,7 @@ function processIceBehavior(
     slideCount++;
 
     // Check if the new tile is NOT ice - stop sliding
-    const newTile = gameState.puzzle.tiles[nextY][nextX];
+    const newTile = gameState.puzzle.tiles[nextY]?.[nextX];
     if (newTile?.customTileTypeId) {
       const newTileType = loadTileType(newTile.customTileTypeId);
       if (newTileType) {
@@ -1204,7 +1204,7 @@ function attackInDirection(
     }
 
     // Stop if null tile or wall
-    const tile = gameState.puzzle.tiles[targetY][targetX];
+    const tile = gameState.puzzle.tiles[targetY]?.[targetX];
     if (!tile || tile.type === TileType.WALL) {
       break;
     }
@@ -1237,7 +1237,7 @@ function handleIfWall(
 
   // Check if there's a wall ahead, null tile, or out of bounds
   const tile = isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)
-    ? gameState.puzzle.tiles[checkY][checkX]
+    ? gameState.puzzle.tiles[checkY]?.[checkX]
     : null;
 
   // Check for wall-like character ahead
@@ -1651,7 +1651,6 @@ function executeSpellInDirection(
 
     case SpellTemplate.PUSH:
       // Push spell - push entities in a direction
-      console.log('[PUSH SPELL] Case matched, calling executePushSpell with direction:', direction);
       executePushSpell(character, spell, direction, gameState);
       break;
 
@@ -2984,7 +2983,6 @@ function executePushSpell(
   const pushDistance = spell.pushDistance || 1;
   const pushDirectionMode = spell.pushDirection || 'away';
 
-  console.log('[PUSH SPELL] Executing:', {
     caster: caster.characterId,
     casterPos: { x: caster.x, y: caster.y },
     castDirection,
@@ -2995,7 +2993,6 @@ function executePushSpell(
 
   // Get direction offset for finding targets
   const offset = getDirectionOffset(castDirection);
-  console.log('[PUSH SPELL] Direction offset:', offset);
 
   // Helper using shared wall-check logic
   const isTileWall = (tile: Tile | null | undefined): boolean =>
@@ -3005,26 +3002,21 @@ function executePushSpell(
   const entitiesToPush: Array<{ entity: PlacedCharacter | PlacedEnemy; x: number; y: number; isEnemy: boolean }> = [];
 
   // Log all entity positions for debugging
-  console.log('[PUSH SPELL] All enemies:', gameState.puzzle.enemies.map(e => ({ id: e.enemyId, x: e.x, y: e.y, dead: e.dead })));
-  console.log('[PUSH SPELL] All characters:', gameState.placedCharacters.map(c => ({ id: c.characterId, x: c.x, y: c.y, dead: c.dead })));
 
   // Check each tile in the spell direction up to range
   for (let i = 1; i <= range; i++) {
     const checkX = Math.floor(caster.x + offset.dx * i);
     const checkY = Math.floor(caster.y + offset.dy * i);
 
-    console.log(`[PUSH SPELL] Checking tile at (${checkX}, ${checkY}) - step ${i} of range ${range}`);
 
     // Check bounds
     if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
-      console.log('[PUSH SPELL] Out of bounds, stopping');
       break;
     }
 
     // Check for wall (including custom wall tiles)
     const tile = gameState.puzzle.tiles[checkY]?.[checkX];
     if (isTileWall(tile)) {
-      console.log('[PUSH SPELL] Hit wall, stopping');
       break;
     }
 
@@ -3033,15 +3025,12 @@ function executePushSpell(
       if (enemy.dead) continue;
       const enemyTileX = Math.floor(enemy.x);
       const enemyTileY = Math.floor(enemy.y);
-      console.log(`[PUSH SPELL] Comparing enemy ${enemy.enemyId} at tile (${enemyTileX}, ${enemyTileY}) vs check (${checkX}, ${checkY})`);
       if (enemyTileX === checkX && enemyTileY === checkY) {
         // Check if enemy is immune to push
         const enemyData = getEnemy(enemy.enemyId);
         if (enemyData?.immuneToPush) {
-          console.log('[PUSH SPELL] Enemy is immune to push, skipping');
           continue;
         }
-        console.log('[PUSH SPELL] Found enemy to push!');
         entitiesToPush.push({ entity: enemy, x: enemy.x, y: enemy.y, isEnemy: true });
       }
     }
@@ -3052,25 +3041,20 @@ function executePushSpell(
       if (char.characterId === caster.characterId) continue; // Don't push self
       const charTileX = Math.floor(char.x);
       const charTileY = Math.floor(char.y);
-      console.log(`[PUSH SPELL] Comparing character ${char.characterId} at tile (${charTileX}, ${charTileY}) vs check (${checkX}, ${checkY})`);
       if (charTileX === checkX && charTileY === checkY) {
         // Check if character is immune to push
         const charData = getCharacter(char.characterId);
         if (charData?.immuneToPush) {
-          console.log('[PUSH SPELL] Character is immune to push, skipping');
           continue;
         }
-        console.log('[PUSH SPELL] Found character to push!');
         entitiesToPush.push({ entity: char, x: char.x, y: char.y, isEnemy: false });
       }
     }
   }
 
-  console.log('[PUSH SPELL] Entities found to push:', entitiesToPush.length, entitiesToPush.map(e => ({ id: e.isEnemy ? (e.entity as PlacedEnemy).enemyId : (e.entity as PlacedCharacter).characterId, pos: { x: e.x, y: e.y } })));
 
   // No entities to push
   if (entitiesToPush.length === 0) {
-    console.log('[PUSH SPELL] No entities found in range - returning early');
     return;
   }
 
@@ -3152,13 +3136,11 @@ function executePushSpell(
       tilesActuallyPushed++;
     }
 
-    console.log('[PUSH SPELL] Push calculation:', { target: targetInfo.isEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId, originalPos: { x: targetInfo.x, y: targetInfo.y }, finalPos: { x: finalX, y: finalY }, tilesActuallyPushed });
 
     // Apply push (move entity to final position)
     if (tilesActuallyPushed > 0) {
       target.x = finalX;
       target.y = finalY;
-      console.log('[PUSH SPELL] Moved entity to:', { x: target.x, y: target.y });
 
       // Spawn visual effect on pushed entity
       if (spell.sprites.damageEffect) {

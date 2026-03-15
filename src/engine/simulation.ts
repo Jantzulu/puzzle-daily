@@ -1,4 +1,4 @@
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
@@ -699,19 +699,15 @@ function applyStatusEffectFromProjectile(
   sourceIsEnemy: boolean,
   currentTurn: number
 ): void {
-  console.log('[StatusEffect] applyStatusEffectFromProjectile called with spellAssetId:', spellAssetId);
 
   const spell = loadSpellAsset(spellAssetId);
   if (!spell?.appliesStatusEffect) {
-    console.log('[StatusEffect] Spell has no appliesStatusEffect:', spell?.name);
     return;
   }
 
   const effectConfig = spell.appliesStatusEffect;
-  console.log('[StatusEffect] Effect config:', effectConfig);
 
   if (!effectConfig.statusAssetId) {
-    console.log('[StatusEffect] No statusAssetId in config');
     return;
   }
 
@@ -721,7 +717,6 @@ function applyStatusEffectFromProjectile(
     return;
   }
 
-  console.log('[StatusEffect] Found effect asset:', effectAsset.name, 'type:', effectAsset.type);
 
   // Check apply chance
   const applyChance = effectConfig.applyChance ?? 1;
@@ -785,7 +780,6 @@ function applyStatusEffectFromProjectile(
   };
 
   target.statusEffects.push(newEffect);
-  console.log('[StatusEffect] Applied effect to target:', newEffect.type, 'target now has', target.statusEffects.length, 'effects');
 }
 
 /**
@@ -1558,21 +1552,21 @@ function checkDefeatConditions(gameState: GameState): boolean {
 /**
  * Initialize game state from puzzle
  */
-export function initializeGameState(puzzle: any): GameState {
+export function initializeGameState(puzzle: Puzzle): GameState {
   return {
     puzzle: {
       ...puzzle,
-      enemies: puzzle.enemies.map((e: any) => {
+      enemies: puzzle.enemies.map((e) => {
         // Look up the enemy definition to get the current max health
         const enemyData = getEnemy(e.enemyId);
-        const maxHealth = enemyData?.health || e.health || e.currentHealth || 1;
+        const maxHealth = enemyData?.health || e.currentHealth || 1;
         return {
           ...e,
           dead: false, // Always reset dead status
           currentHealth: maxHealth // Reset to full health from enemy definition
         };
       }),
-      collectibles: puzzle.collectibles.map((c: any) => ({ ...c, collected: false })),
+      collectibles: puzzle.collectibles.map((c) => ({ ...c, collected: false })),
     },
     placedCharacters: [],
     currentTurn: 0,
@@ -1589,7 +1583,7 @@ export function initializeGameState(puzzle: any): GameState {
 /**
  * Reset game state
  */
-export function resetGameState(gameState: GameState, originalPuzzle: any): GameState {
+export function resetGameState(gameState: GameState, originalPuzzle: Puzzle): GameState {
   return initializeGameState(originalPuzzle);
 }
 

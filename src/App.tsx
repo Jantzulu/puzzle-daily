@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
@@ -562,6 +562,7 @@ function App() {
                 <Route path="/puzzle-resources" element={<ProtectedRoute><PuzzleResourcesPage /></ProtectedRoute>} />
                 <Route path="/assets" element={<ProtectedRoute><AssetManager /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
+                <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>

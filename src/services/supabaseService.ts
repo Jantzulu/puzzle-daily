@@ -16,7 +16,6 @@ import type { CharacterWithSprite } from '../data/characters';
 // ============================================
 
 export async function fetchAllPuzzles(includeDeleted: boolean = false): Promise<DbPuzzle[]> {
-  console.log('[Supabase] Fetching all puzzles...');
   let query = supabase
     .from('puzzles_draft')
     .select('*')
@@ -34,7 +33,6 @@ export async function fetchAllPuzzles(includeDeleted: boolean = false): Promise<
     console.error('[Supabase] Error fetching puzzles:', error);
     return [];
   }
-  console.log('[Supabase] Fetched puzzles:', data?.length || 0);
   return data || [];
 }
 
@@ -63,7 +61,6 @@ export async function savePuzzleToCloud(puzzle: Puzzle, name?: string): Promise<
     ...(userId && { created_by: userId }),
   };
 
-  console.log('[Supabase] Saving puzzle:', dbPuzzle.id, dbPuzzle.name);
 
   const { error, data } = await supabase
     .from('puzzles_draft')
@@ -74,7 +71,6 @@ export async function savePuzzleToCloud(puzzle: Puzzle, name?: string): Promise<
     console.error('[Supabase] Error saving puzzle:', error);
     return false;
   }
-  console.log('[Supabase] Puzzle saved successfully:', data);
   logActivity({ action: 'update', asset_type: 'puzzle', asset_id: puzzle.id, asset_name: dbPuzzle.name });
   return true;
 }
