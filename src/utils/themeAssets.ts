@@ -413,6 +413,52 @@ export function loadThemeAssets(): ThemeAssets {
 }
 
 /**
+ * Fetch theme assets from Supabase cloud (assets_draft table).
+ * Used on first load when localStorage is empty (e.g. player build on different domain).
+ * Caches result in localStorage for subsequent loads.
+ */
+let cloudFetchPromise: Promise<ThemeAssets | null> | null = null;
+
+export async function fetchThemeAssetsFromCloud(): Promise<ThemeAssets | null> {
+  // Skip if we already have local theme data
+  if (localStorage.getItem(STORAGE_KEY)) return loadThemeAssets();
+
+  // Deduplicate concurrent calls
+  if (cloudFetchPromise) return cloudFetchPromise;
+
+  cloudFetchPromise = (async () => {
+    try {
+      // Try draft table first (where cloud sync saves theme settings)
+      let result = await supabase
+        .from('assets_draft')
+        .select('data')
+        .eq('id', 'theme_settings')
+        .maybeSingle();
+
+      // Fall back to live table
+      if (!result.data?.data) {
+        result = await supabase
+          .from('assets_live')
+          .select('data')
+          .eq('id', 'theme_settings')
+          .maybeSingle();
+      }
+
+      if (!result.data?.data) return null;
+
+      const assets = result.data.data as ThemeAssets;
+      saveThemeAssets(assets);
+      notifyThemeAssetsChanged();
+      return assets;
+    } catch {
+      return null;
+    }
+  })();
+
+  return cloudFetchPromise;
+}
+
+/**
  * Save theme assets to localStorage
  */
 export function saveThemeAssets(assets: ThemeAssets): { success: boolean; error?: string } {

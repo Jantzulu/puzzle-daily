@@ -4,7 +4,7 @@ import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
-import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
+import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
@@ -527,8 +527,10 @@ function App() {
   }, []);
 
   // Apply theme assets on mount and subscribe to changes
+  // If localStorage is empty (e.g. player build on different domain), fetch from cloud
   useEffect(() => {
     applyThemeAssets();
+    fetchThemeAssetsFromCloud();
     const unsubscribe = subscribeToThemeAssets(() => {
       applyThemeAssets();
     });

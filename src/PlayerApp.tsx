@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react
 import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
-import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
+import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { LoginPage } from './components/auth/LoginPage';
@@ -232,6 +232,7 @@ function PlayerApp() {
 
   useEffect(() => {
     applyThemeAssets();
+    fetchThemeAssetsFromCloud();
     const unsubscribe = subscribeToThemeAssets(() => applyThemeAssets());
     return unsubscribe;
   }, []);
