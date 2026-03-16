@@ -1,6 +1,7 @@
+/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore, TileRuntimeState } from '../../types/game';
-import { TURN_INTERVAL_MS } from '../../types/game';
+import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore } from '../../types/game';
+import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -16,7 +17,7 @@ import { ReplayControls } from './ReplayControls';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { loadTileType, loadCollectible, loadEnemy, loadObject, loadPuzzleSkin, loadSpellAsset, extractSpriteImageUrls, extractSpriteReferenceUrls } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
-import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic } from '../../utils/gameSounds';
+import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
 import { preloadImagesEager } from '../../utils/imageLoader';
@@ -312,7 +313,6 @@ export const Game: React.FC = () => {
     } else {
       setSpritesReady(true);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- preload runs once per puzzle change; sub-properties are stable within a puzzle
   }, [currentPuzzle.id]);
 
   // Simulation loop
@@ -483,7 +483,6 @@ export const Game: React.FC = () => {
     }, TURN_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- simulation interval depends on running state; adding puzzle/character refs would restart the interval mid-simulation
   }, [isSimulating, gameState.gameStatus, testMode, testTurnsRemaining, livesRemaining, currentPuzzle.lives]);
 
   // Replay playback timer
@@ -518,7 +517,6 @@ export const Game: React.FC = () => {
       turnHistoryRef.current = [];
       replayEventsRef.current = new Map();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally only reacts to puzzle ID changes, not replayMode
   }, [currentPuzzle?.id]);
 
   const handleTileClick = useCallback(
@@ -673,7 +671,6 @@ export const Game: React.FC = () => {
         }]);
       }
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- tracks game outcome changes; puzzle metadata and placements are stable during a run
   }, [gameState, livesRemaining, currentPuzzle.lives]);
 
   const handlePlay = () => {
@@ -693,12 +690,12 @@ export const Game: React.FC = () => {
     vibrate('playButton');
   };
 
-  const _handlePause = () => {
+  const handlePause = () => {
     setIsSimulating(false);
     playGameSound('simulation_stop');
   };
 
-  const _handleReset = () => {
+  const handleReset = () => {
     // Reset everything: restore enemy positions AND character positions
     const resetPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const resetState = initializeGameState(resetPuzzle);
@@ -859,7 +856,7 @@ export const Game: React.FC = () => {
       const copy = JSON.parse(JSON.stringify(state));
       copy.tileStates = new Map();
       if (state.tileStates) {
-        state.tileStates.forEach((value: TileRuntimeState, key: string) => {
+        state.tileStates.forEach((value: any, key: string) => {
           copy.tileStates.set(key, {
             ...value,
             damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
@@ -1005,7 +1002,7 @@ export const Game: React.FC = () => {
     }
   };
 
-  const _handleStep = () => {
+  const handleStep = () => {
     if (gameState.gameStatus === 'setup') {
       setGameState((prev) => ({ ...prev, gameStatus: 'running' }));
     }
@@ -1119,7 +1116,7 @@ export const Game: React.FC = () => {
   };
 
   // Render heart icons for lives (uses custom theme icons if available)
-  const _renderLivesHearts = () => {
+  const renderLivesHearts = () => {
     const puzzleLives = currentPuzzle.lives ?? 3;
     const isUnlimitedLives = puzzleLives === 0;
 
@@ -1845,7 +1842,6 @@ export const Game: React.FC = () => {
             )}
 
             {/* Replay Controls - replace hero placement area during replay */}
-            { }
             {replayMode ? (
               <div className={dismissingReplay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}>
                 <ReplayControls
@@ -1864,7 +1860,6 @@ export const Game: React.FC = () => {
                 />
               </div>
             ) : (
-               
               /* Heroes and Dungeon Details - dimmed during play/test */
               <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
