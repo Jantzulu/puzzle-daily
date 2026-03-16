@@ -327,9 +327,30 @@ function PlayerNavigation() {
 }
 
 function NotFoundPage() {
+  const themeAssets = loadThemeAssets();
+  const iconSrc = themeAssets.notFoundIcon;
+  const frameCount = Number(themeAssets.notFoundIconFrameCount) || 1;
+  const frameRate = Number(themeAssets.notFoundIconFrameRate) || 10;
+
   return (
     <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
-      <div className="text-6xl mb-4">🏚️</div>
+      <div className="mb-4">
+        {iconSrc ? (
+          frameCount > 1 ? (
+            <AnimatedLogo
+              src={iconSrc}
+              alt="Page not found"
+              frameCount={frameCount}
+              frameRate={frameRate}
+              className="h-24 md:h-32"
+            />
+          ) : (
+            <img src={iconSrc} alt="Page not found" className="h-24 md:h-32 w-auto mx-auto" style={{ imageRendering: 'pixelated' }} />
+          )
+        ) : (
+          <span className="text-6xl">🏚️</span>
+        )}
+      </div>
       <h1 className="text-3xl md:text-4xl font-medieval font-bold text-copper-400 text-shadow-dungeon mb-3">
         Page Not Found
       </h1>
