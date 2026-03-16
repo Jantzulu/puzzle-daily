@@ -172,8 +172,14 @@ function PlayerNavigation() {
   }, [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
-  const linkClass = (path: string) => `
-    px-3 md:px-4 py-2 transition-all duration-200 font-medium text-sm md:text-base
+  // Desktop: buttonless plain text links
+  const desktopLinkClass = (path: string) =>
+    `nav-link px-2.5 py-1.5 rounded transition-all text-sm font-semibold whitespace-nowrap ${
+      isActive(path) ? 'nav-link-active text-copper-300 shadow-glow-copper' : 'text-stone-400 hover:text-parchment-200'
+    }`;
+  // Mobile: button-styled links matching dev app
+  const mobileLinkClass = (path: string) => `
+    px-3 py-2 transition-all duration-200 font-medium text-sm
     nav-link-btn ${isActive(path) ? 'nav-link-active shadow-inner-dark' : ''}
   `;
 
@@ -213,9 +219,9 @@ function PlayerNavigation() {
       }`}
       style={navbarStyle}
     >
-      <div className="max-w-7xl mx-auto px-3 py-1.5 flex items-center justify-center relative">
+      <div className="flex items-center gap-3 md:gap-4 md:justify-center relative">
         <div className="flex items-center gap-2 md:gap-4">
-        <Link to="/" className="flex items-center gap-2 shrink-0">
+        <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline shrink-0">
           {logoSrc ? (
             logoFrameCount > 1 ? (
               <AnimatedLogo
@@ -232,9 +238,9 @@ function PlayerNavigation() {
             <span className="text-xl">⚔️</span>
           )}
           <div className="flex flex-col leading-tight">
-            <span className="text-base md:text-lg font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap">
+            <h1 className="text-base xs:text-lg md:text-xl font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap">
               {themeAssets.siteTitle || DEFAULT_SITE_NAME}
-            </span>
+            </h1>
             {themeAssets.siteSubtitle && (
               <span
                 className="font-medieval text-shadow-dungeon"
@@ -259,17 +265,17 @@ function PlayerNavigation() {
         </Link>
 
         <div className="hidden md:flex items-center gap-2 ml-4">
-          <Link to="/" className={linkClass('/')}>
+          <Link to="/" className={desktopLinkClass('/')}>
             <span className="mr-1">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
-          <Link to="/town-crier" className={linkClass('/town-crier')}>
+          <Link to="/town-crier" className={desktopLinkClass('/town-crier')}>
             <span className="mr-1">📣</span> Town Crier
             {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
           </Link>
-          <Link to="/compendium" className={linkClass('/compendium')}>
+          <Link to="/compendium" className={desktopLinkClass('/compendium')}>
             <span className="mr-1">{themeAssets.iconNavCompendium || '📖'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
-          <Link to="/training" className={linkClass('/training')}>
+          <Link to="/training" className={desktopLinkClass('/training')}>
             <span className="mr-1">🎯</span> Training
           </Link>
         </div>
@@ -297,17 +303,17 @@ function PlayerNavigation() {
 
       {mobileMenuOpen && (
         <div className={`md:hidden mt-3 pt-3 border-t-2 border-stone-700 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
-          <Link to="/" className={`block ${linkClass('/')}`} onClick={closeMobileMenu}>
+          <Link to="/" className={`block ${mobileLinkClass('/')}`} onClick={closeMobileMenu}>
             <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
-          <Link to="/town-crier" className={`block ${linkClass('/town-crier')}`} onClick={closeMobileMenu}>
+          <Link to="/town-crier" className={`block ${mobileLinkClass('/town-crier')}`} onClick={closeMobileMenu}>
             <span className="mr-2">📣</span> Town Crier
             {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
           </Link>
-          <Link to="/compendium" className={`block ${linkClass('/compendium')}`} onClick={closeMobileMenu}>
+          <Link to="/compendium" className={`block ${mobileLinkClass('/compendium')}`} onClick={closeMobileMenu}>
             <span className="mr-2">{themeAssets.iconNavCompendium || '📖'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
-          <Link to="/training" className={`block ${linkClass('/training')}`} onClick={closeMobileMenu}>
+          <Link to="/training" className={`block ${mobileLinkClass('/training')}`} onClick={closeMobileMenu}>
             <span className="mr-2">🎯</span> Training
           </Link>
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
