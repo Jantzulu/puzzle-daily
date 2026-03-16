@@ -820,7 +820,6 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                           >
                             <div
                               style={
-                                // eslint-disable-next-line react-hooks/refs -- reading touch state ref during render for smooth pinch-zoom transition
                                 isMobile ? {
                                 transition: touchStateRef.current?.isPinching ? 'none' : 'transform 0.2s ease-out',
                                 transform: `scale(${touchZoom}) translate(${touchPan.x / touchZoom}px, ${touchPan.y / touchZoom}px)`,

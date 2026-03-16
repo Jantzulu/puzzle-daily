@@ -49,8 +49,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     if (trackedRuns.length > 0) {
       const lastRun = trackedRuns[trackedRuns.length - 1];
       if (!selectedRunId || !trackedRuns.find(r => r.id === selectedRunId)) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing derived state when tracked runs change; no cascading risk
-        setSelectedRunId(lastRun.id);
+        setSelectedRunId(lastRun.id); // eslint-disable-line react-hooks/set-state-in-effect -- syncing with external tracked runs
       }
     }
   }, [trackedRuns, selectedRunId]);
@@ -175,7 +174,6 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       default:
         return [];
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- puzzle is the full object; sub-properties are accessed within
   }, [assetType, puzzle, puzzleSpells.effectsInPuzzle]);
 
   const selectedRun = trackedRuns.find(r => r.id === selectedRunId);
