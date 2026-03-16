@@ -172,10 +172,10 @@ function PlayerNavigation() {
   }, [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
-  const linkClass = (path: string) =>
-    `nav-link px-2.5 py-1.5 rounded transition-all text-sm font-semibold whitespace-nowrap ${
-      isActive(path) ? 'nav-link-active text-copper-300 shadow-glow-copper' : 'text-stone-400 hover:text-parchment-200'
-    }`;
+  const linkClass = (path: string) => `
+    px-3 md:px-4 py-2 transition-all duration-200 font-medium text-sm md:text-base
+    nav-link-btn ${isActive(path) ? 'nav-link-active shadow-inner-dark' : ''}
+  `;
 
   const scrolledPast = useRef(false);
   const [, forceUpdate] = useState(0);
@@ -208,12 +208,13 @@ function PlayerNavigation() {
   return (
     <nav
       ref={navRef}
-      className={`bg-stone-600 border-b-2 shadow-dungeon md:sticky md:top-0 z-50 transition-shadow duration-300 ${
+      className={`bg-stone-600 border-b-2 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon md:sticky md:top-0 z-50 transition-shadow duration-300 ${
         scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
       }`}
       style={navbarStyle}
     >
-      <div className="max-w-7xl mx-auto px-3 py-1.5 flex items-center gap-2">
+      <div className="max-w-7xl mx-auto px-3 py-1.5 flex items-center justify-center relative">
+        <div className="flex items-center gap-2 md:gap-4">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           {logoSrc ? (
             logoFrameCount > 1 ? (
@@ -230,9 +231,30 @@ function PlayerNavigation() {
           ) : (
             <span className="text-xl">⚔️</span>
           )}
-          <div className="hidden sm:block leading-tight">
-            <div className="font-medieval text-copper-400 text-sm font-bold">{themeAssets.siteTitle || DEFAULT_SITE_NAME}</div>
-            {themeAssets.siteSubtitle && <div className="text-[10px] text-stone-500">{themeAssets.siteSubtitle}</div>}
+          <div className="flex flex-col leading-tight">
+            <span className="text-base md:text-lg font-medieval font-bold text-copper-400 text-shadow-dungeon tracking-wide whitespace-nowrap">
+              {themeAssets.siteTitle || DEFAULT_SITE_NAME}
+            </span>
+            {themeAssets.siteSubtitle && (
+              <span
+                className="font-medieval text-shadow-dungeon"
+                style={{
+                  color: themeAssets.siteSubtitleColor || 'rgba(212, 165, 116, 0.8)',
+                  fontSize: (() => {
+                    const sizeMap: Record<string, string> = {
+                      'x-small': '0.65rem',
+                      'small': '0.75rem',
+                      'medium': '0.85rem',
+                      'large': '0.95rem',
+                      'x-large': '1.05rem',
+                    };
+                    return sizeMap[themeAssets.siteSubtitleSize || 'small'] || sizeMap['small'];
+                  })()
+                }}
+              >
+                {themeAssets.siteSubtitle}
+              </span>
+            )}
           </div>
         </Link>
 
@@ -251,17 +273,18 @@ function PlayerNavigation() {
             <span className="mr-1">🎯</span> Training
           </Link>
         </div>
+        </div>
 
-        <div className="flex-1" />
-
-        <div className="hidden md:flex items-center gap-2">
+        {/* Right-side controls - absolutely positioned on desktop to keep center group truly centered */}
+        <div className="hidden md:flex items-center gap-2 absolute right-3">
           <SoundSettings />
           <UserMenu />
         </div>
 
+        {/* Mobile hamburger */}
         <button
           onClick={() => mobileMenuOpen ? closeMobileMenu() : setMobileMenuOpen(true)}
-          className="md:hidden text-parchment-200 p-1.5"
+          className="md:hidden p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center absolute right-3"
           aria-label="Menu"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -273,8 +296,7 @@ function PlayerNavigation() {
       </div>
 
       {mobileMenuOpen && (
-        <div className={`md:hidden px-3 pb-3 space-y-1 ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}
-          style={navbarStyle}>
+        <div className={`md:hidden mt-3 pt-3 border-t-2 border-stone-700 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
           <Link to="/" className={`block ${linkClass('/')}`} onClick={closeMobileMenu}>
             <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
