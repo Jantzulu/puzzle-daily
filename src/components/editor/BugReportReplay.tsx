@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { GameState, Puzzle, PlacedCharacter } from '../../types/game';
+import type { GameState, Puzzle, PlacedCharacter, TileRuntimeState } from '../../types/game';
 import { TURN_INTERVAL_MS } from '../../types/game';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
 import { getCharacter } from '../../data/characters';
@@ -49,7 +49,7 @@ export const BugReportReplay: React.FC<BugReportReplayProps> = ({ puzzle, placem
       const copy = JSON.parse(JSON.stringify(state));
       copy.tileStates = new Map();
       if (state.tileStates) {
-        state.tileStates.forEach((value: any, key: string) => {
+        state.tileStates.forEach((value: TileRuntimeState, key: string) => {
           copy.tileStates.set(key, {
             ...value,
             damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined,
@@ -83,7 +83,9 @@ export const BugReportReplay: React.FC<BugReportReplayProps> = ({ puzzle, placem
       }
     }
 
+    // eslint-disable-next-line react-hooks/refs -- refs are written during useMemo to keep cached data in sync with computed history
     turnHistoryRef.current = hist;
+    // eslint-disable-next-line react-hooks/refs -- refs are written during useMemo to keep cached data in sync with computed history
     eventsRef.current = events;
     return hist;
   }, [puzzle, placements]);
@@ -142,6 +144,7 @@ export const BugReportReplay: React.FC<BugReportReplayProps> = ({ puzzle, placem
         totalTurns={history.length - 1}
         isPlaying={isPlaying}
         speed={speed}
+        // eslint-disable-next-line react-hooks/refs -- eventsRef mirrors useMemo-computed data; safe to read during render
         events={eventsRef.current}
         onPlayPause={handlePlayPause}
         onStepForward={handleStepForward}

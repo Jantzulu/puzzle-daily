@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchCommunityStats, type CommunityComparison } from '../../services/statsService';
-import type { PuzzleScore, RankTier } from '../../types/game';
+import type { PuzzleScore } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 
 interface CommunityStatsProps {

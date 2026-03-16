@@ -43,8 +43,6 @@ export const HelpContentEditor: React.FC = () => {
   const [editing, setEditing] = useState<HelpContent | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  const selectedSection = sections.find(s => s.id === selectedId);
-
   const handleSelect = (id: HelpSectionId) => {
     if (hasUnsavedChanges && !confirm('You have unsaved changes. Discard them?')) {
       return;

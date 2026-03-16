@@ -36,6 +36,7 @@ export const TownCrierPage: React.FC = () => {
     setLoading(false);
   }, []);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- loading async data on mount
   useEffect(() => {
     loadPosts();
   }, [loadPosts]);

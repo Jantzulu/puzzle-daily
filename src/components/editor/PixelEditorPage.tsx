@@ -31,9 +31,6 @@ export const PixelEditorPage: React.FC = () => {
   // Force remount of PixelEditor when switching tabs
   const [editorKey, setEditorKey] = useState(0);
 
-  // Track the last active tab to serialize state on switch
-  const lastActiveTabIdRef = useRef(activeTabId);
-
   // Serialize current editor state into the tab before switching
   const serializeCurrentTab = useCallback(() => {
     if (editorRef.current) {
@@ -101,6 +98,7 @@ export const PixelEditorPage: React.FC = () => {
     setSearchParams({});
   }, [setSearchParams, updateActiveTab]);
 
+   
   const handleApply = useCallback((_base64: string, _projectUrl?: string) => {
     // Save handled inside PixelEditor — toast shown there
   }, []);
@@ -128,7 +126,9 @@ export const PixelEditorPage: React.FC = () => {
   // Persist on unmount (React Router navigation) and beforeunload (page close/refresh)
   // Use a ref so the cleanup always has the latest persistTabs
   const persistTabsRef = useRef(persistTabs);
-  persistTabsRef.current = persistTabs;
+  useEffect(() => {
+    persistTabsRef.current = persistTabs;
+  }, [persistTabs]);
   const editorRefForPersist = editorRef;
 
   useEffect(() => {
@@ -141,9 +141,10 @@ export const PixelEditorPage: React.FC = () => {
       }
     };
     window.addEventListener('beforeunload', handlePersist);
+    const editorRefCurrent = editorRefForPersist.current;
     return () => {
       window.removeEventListener('beforeunload', handlePersist);
-      if (editorRefForPersist.current) {
+      if (editorRefCurrent) {
         // Editor ref still available — serialize directly (ideal path)
         handlePersist();
       } else {

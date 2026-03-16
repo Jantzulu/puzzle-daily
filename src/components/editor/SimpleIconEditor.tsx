@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useId } from 'react';
 import { toast } from '../shared/Toast';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import type { SpriteReference } from '../../types/game';
@@ -65,7 +65,7 @@ function drawShape(
       ctx.lineTo(centerX - radius, centerY);
       ctx.closePath();
       break;
-    case 'star':
+    case 'star': {
       const outerRadius = radius;
       const innerRadius = radius * 0.5;
       const points = 5;
@@ -79,6 +79,7 @@ function drawShape(
       }
       ctx.closePath();
       break;
+    }
     case 'hexagon':
       for (let i = 0; i < 6; i++) {
         const angle = (Math.PI * i) / 3 - Math.PI / 6;
@@ -101,6 +102,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const fallbackId = useId();
 
   // URL input state
   const [showImageUrl, setShowImageUrl] = useState(false);
@@ -159,12 +161,13 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
   }, [currentShape, currentColor, currentSecondaryColor, currentImage, currentScale]);
 
   // Update sprite data helper
+   
   const updateSpriteData = (updates: Partial<CustomSprite>) => {
     const newSpriteData: CustomSprite = {
       // Start with existing sprite data
       ...spriteData,
       // Ensure required fields have defaults
-      id: spriteData?.id || `icon_${Date.now()}`,
+      id: spriteData?.id || `icon_${fallbackId}`,
       name: spriteData?.name || 'Status Icon',
       type: 'simple',
       createdAt: spriteData?.createdAt || new Date().toISOString(),

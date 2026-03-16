@@ -6,7 +6,7 @@ import { loadSoundAsset, getGlobalSoundConfig } from './assetStorage';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { loadSpellAsset } from './assetStorage';
-import type { SoundTrigger, GlobalSoundConfig } from '../types/game';
+import type { SoundTrigger } from '../types/game';
 
 // Cache for resolved sound data (base64 audio or URL)
 const soundCache = new Map<string, string | null>();

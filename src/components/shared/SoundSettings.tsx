@@ -2,12 +2,43 @@ import React, { useState, useEffect, useRef } from 'react';
 import { soundManager } from '../../utils/soundManager';
 import type { SoundSettings as SoundSettingsType } from '../../types/game';
 
+const VolumeSlider: React.FC<{
+  label: string;
+  value: number;
+  onChange: (value: number) => void;
+  disabled?: boolean;
+}> = ({ label, value, onChange, disabled }) => (
+  <div className="space-y-1">
+    <div className="flex justify-between items-center">
+      <span className="text-sm text-parchment-300">{label}</span>
+      <span className="text-xs text-stone-500">{Math.round(value * 100)}%</span>
+    </div>
+    <input
+      type="range"
+      min="0"
+      max="1"
+      step="0.01"
+      value={value}
+      onChange={(e) => onChange(parseFloat(e.target.value))}
+      disabled={disabled}
+      className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
+        disabled ? 'bg-stone-700 opacity-50' : 'bg-stone-700'
+      }`}
+      style={{
+        background: disabled
+          ? '#374151'
+          : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${value * 100}%, #374151 ${value * 100}%, #374151 100%)`,
+      }}
+    />
+  </div>
+);
+
 interface SoundSettingsProps {
   onClose?: () => void;
   isMobile?: boolean;
 }
 
-export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose, isMobile = false }) => {
+export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose, isMobile = false }) => {
   const [settings, setSettings] = useState<SoundSettingsType>(soundManager.getSettings());
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -52,37 +83,6 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose, isMobile 
     soundManager.setEnabled(!settings.enabled);
     setSettings(soundManager.getSettings());
   };
-
-  const VolumeSlider: React.FC<{
-    label: string;
-    value: number;
-    onChange: (value: number) => void;
-    disabled?: boolean;
-  }> = ({ label, value, onChange, disabled }) => (
-    <div className="space-y-1">
-      <div className="flex justify-between items-center">
-        <span className="text-sm text-parchment-300">{label}</span>
-        <span className="text-xs text-stone-500">{Math.round(value * 100)}%</span>
-      </div>
-      <input
-        type="range"
-        min="0"
-        max="1"
-        step="0.01"
-        value={value}
-        onChange={(e) => onChange(parseFloat(e.target.value))}
-        disabled={disabled}
-        className={`w-full h-2 rounded-lg appearance-none cursor-pointer ${
-          disabled ? 'bg-stone-700 opacity-50' : 'bg-stone-700'
-        }`}
-        style={{
-          background: disabled
-            ? '#374151'
-            : `linear-gradient(to right, #3b82f6 0%, #3b82f6 ${value * 100}%, #374151 ${value * 100}%, #374151 100%)`,
-        }}
-      />
-    </div>
-  );
 
   return (
     <div className="relative" ref={dropdownRef}>

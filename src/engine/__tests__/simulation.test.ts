@@ -8,7 +8,6 @@ import {
   clearAllRegistries,
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
-  registerTestCollectible as regCollectible,
   createEmptyGrid,
   createTestPuzzle,
   createTestCharacterDef,

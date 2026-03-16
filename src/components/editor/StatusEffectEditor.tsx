@@ -673,12 +673,12 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               sprite={overlaySprite || {
                 type: 'inline',
                 spriteData: {
-                  id: `overlay_${Date.now()}`,
+                  id: 'overlay_default',
                   name: 'Overlay',
                   type: 'simple',
                   shape: 'circle',
                   primaryColor: '#22d3ee',
-                  createdAt: new Date().toISOString(),
+                  createdAt: '',
                 },
               }}
               onChange={(sprite) => setOverlaySprite(sprite)}

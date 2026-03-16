@@ -11,7 +11,7 @@ interface AttackEditorProps {
 
 export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCancel }) => {
   const [editedAttack, setEditedAttack] = useState<CustomAttack>({ ...attack });
-  const [saveToLibrary, setSaveToLibrary] = useState(true);
+  const [saveToLibrary] = useState(true);
 
   const handleSave = () => {
     // Save to library if requested
@@ -44,7 +44,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
             <label className="block text-sm font-medium mb-1">Attack Pattern</label>
             <select
               value={editedAttack.pattern}
-              onChange={(e) => setEditedAttack({ ...editedAttack, pattern: e.target.value as any })}
+              onChange={(e) => setEditedAttack({ ...editedAttack, pattern: e.target.value as AttackPattern })}
               className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
             >
               <option value={AttackPattern.PROJECTILE}>Projectile (straight line)</option>
@@ -141,7 +141,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
               <label className="block text-sm font-medium mb-1">Target Location</label>
               <select
                 value={editedAttack.aoeTargeting || 'caster'}
-                onChange={(e) => setEditedAttack({ ...editedAttack, aoeTargeting: e.target.value as any })}
+                onChange={(e) => setEditedAttack({ ...editedAttack, aoeTargeting: e.target.value as 'caster' | 'target_tile' })}
                 className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               >
                 <option value="caster">Centered on Caster</option>

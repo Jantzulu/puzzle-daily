@@ -38,7 +38,7 @@ function removeToast(id: number) {
   notifyListeners();
 }
 
-// Public API — call from anywhere
+// eslint-disable-next-line react-refresh/only-export-components
 export const toast = {
   success: (message: string, duration = 3000) => addToast(message, 'success', duration),
   error: (message: string, duration = 5000) => addToast(message, 'error', duration),

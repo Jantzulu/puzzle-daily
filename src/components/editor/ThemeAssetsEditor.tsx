@@ -751,6 +751,7 @@ export const ThemeAssetsEditor: React.FC = () => {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading initial theme data from localStorage on mount
     setAssets(loadThemeAssets());
   }, []);
 
@@ -820,7 +821,7 @@ export const ThemeAssetsEditor: React.FC = () => {
 
   // Get assets for current category
   const categoryAssets = Object.entries(THEME_ASSET_CONFIG)
-    .filter(([_, config]) => config.category === activeCategory)
+    .filter(([, config]) => config.category === activeCategory)
     .map(([key]) => key as ThemeAssetKey);
 
   const categoryLabels: Record<AssetCategory, string> = {

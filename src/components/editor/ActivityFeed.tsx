@@ -93,6 +93,7 @@ export const ActivityFeed: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- loading initial data from external API on mount
     loadActivity();
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadActivity, 30000);

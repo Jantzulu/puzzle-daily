@@ -8,7 +8,6 @@ import {
   getCustomEnemies,
   getAllCollectibles,
   getSpellAssets,
-  getSoundAssets,
   getPuzzleSkins,
 } from './assetStorage';
 import type { CharacterAction } from '../types/game';

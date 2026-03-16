@@ -25,8 +25,10 @@ export const SettingsPage: React.FC = () => {
   useEffect(() => {
     const tab = searchParams.get('tab') as SettingsTab;
     if (tab && VALID_TABS.includes(tab) && tab !== activeTab) {
+       
       setActiveTab(tab);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeTab intentionally omitted to prevent loops
   }, [searchParams]);
 
   return (

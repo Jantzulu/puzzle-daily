@@ -229,6 +229,7 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
 };
 
 // Hook to get assets filtered by folder
+// eslint-disable-next-line react-refresh/only-export-components -- hook co-located with related component
 export function useFilteredAssets<T extends { folderId?: string }>(
   assets: T[],
   selectedFolderId: string | null
@@ -264,6 +265,7 @@ export const InlineFolderPicker: React.FC<InlineFolderPickerProps> = ({
   // Refresh folders when opening
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- loading folders from localStorage when dropdown opens
       setFolders(getFolders(category));
     }
   }, [isOpen, category]);

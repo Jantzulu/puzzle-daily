@@ -17,7 +17,6 @@ import {
 } from '../services/supabaseService';
 import { logActivity } from '../services/activityLogService';
 import {
-  getLocallyChangedIds,
   detectConflicts,
   markPushCompleted,
   markPullCompleted,
@@ -33,7 +32,6 @@ import type {
   CustomObject,
   CustomCharacter,
   CustomEnemy,
-  CustomSprite,
 } from './assetStorage';
 import type { PuzzleSkin, SpellAsset, StatusEffectAsset } from '../types/game';
 import {
@@ -432,7 +430,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             errors.push(`Storage full - failed to save tile type: ${asset.name}`);
           }
         }
-      } catch (e) {
+      } catch {
         errors.push(`Failed to import tile type: ${asset.name}`);
       }
     }
@@ -451,7 +449,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             errors.push(`Storage full - failed to save enemy: ${asset.name}`);
           }
         }
-      } catch (e) {
+      } catch {
         errors.push(`Failed to import enemy: ${asset.name}`);
       }
     }
@@ -470,7 +468,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             errors.push(`Storage full - failed to save character: ${asset.name}`);
           }
         }
-      } catch (e) {
+      } catch {
         errors.push(`Failed to import character: ${asset.name}`);
       }
     }
@@ -489,7 +487,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             errors.push(`Storage full - failed to save object: ${asset.name}`);
           }
         }
-      } catch (e) {
+      } catch {
         errors.push(`Failed to import object: ${asset.name}`);
       }
     }
@@ -510,7 +508,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             }
           }
         }
-      } catch (e) {
+      } catch {
         errors.push(`Failed to import skin: ${asset.name}`);
       }
     }
@@ -529,7 +527,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
             errors.push(`Storage full - failed to save spell: ${asset.name}`);
           }
         }
-      } catch (e) {
+      } catch {
         errors.push(`Failed to import spell: ${asset.name}`);
       }
     }
@@ -551,7 +549,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               }
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import status effect: ${asset.name}`);
         }
       }
@@ -572,7 +570,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               errors.push(`Storage full - failed to save folder: ${asset.name}`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import folder: ${asset.name}`);
         }
       }
@@ -593,7 +591,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               errors.push(`Storage full - failed to save collectible type: ${asset.name}`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import collectible type: ${asset.name}`);
         }
       }
@@ -614,7 +612,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               errors.push(`Storage full - failed to save collectible: ${asset.name}`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import collectible: ${asset.name}`);
         }
       }
@@ -633,7 +631,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               console.log(`[CloudSync] Imported ${hiddenData.hiddenIds.length} hidden assets`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import hidden assets`);
         }
       }
@@ -656,7 +654,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               }
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import sound: ${asset.name}`);
         }
       }
@@ -675,7 +673,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               console.log(`[CloudSync] Imported global sound config`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import global sound config`);
         }
       }
@@ -694,7 +692,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               console.log(`[CloudSync] Imported global haptic config`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import global haptic config`);
         }
       }
@@ -716,7 +714,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               console.log(`[CloudSync] Imported ${helpData.sections.length} help sections`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import help content`);
         }
       }
@@ -736,7 +734,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               console.log(`[CloudSync] Imported theme settings`);
             }
           }
-        } catch (e) {
+        } catch {
           errors.push(`Failed to import theme settings`);
         }
       }
@@ -759,7 +757,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
           saveLocalPuzzle(puzzle);
           console.log(`[CloudSync] Successfully saved puzzle to local storage: ${puzzle.id}`);
         }
-      } catch (e) {
+      } catch {
         console.error(`[CloudSync] Failed to import puzzle ${dbPuzzle.name}:`, e);
         errors.push(`Failed to import puzzle: ${dbPuzzle.name}`);
       }
@@ -798,7 +796,7 @@ export async function syncAssetToCloud(
   data: unknown
 ): Promise<boolean> {
   try {
-    return await saveAssetToCloud(id, type, name, data as any);
+    return await saveAssetToCloud(id, type, name, data as Record<string, unknown>);
   } catch (error) {
     console.error(`Failed to sync ${type} to cloud:`, error);
     return false;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
-import type { GameState, PlacedCharacter, Puzzle } from '../../types/game';
+import type { GameState, PlacedCharacter, Puzzle, TileRuntimeState } from '../../types/game';
 import { TURN_INTERVAL_MS } from '../../types/game';
 import { getAllPuzzles } from '../../data/puzzles';
 import { getAllCharacters, getCharacter } from '../../data/characters';
@@ -19,7 +19,7 @@ function deepCopyState(state: GameState): GameState {
   const copy = JSON.parse(JSON.stringify(state));
   copy.tileStates = new Map();
   if (state.tileStates) {
-    state.tileStates.forEach((value: any, key: string) => {
+    state.tileStates.forEach((value: TileRuntimeState, key: string) => {
       copy.tileStates.set(key, {
         ...value,
         damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined,
@@ -283,6 +283,7 @@ export const TrainingGrounds: React.FC = () => {
     }, TURN_INTERVAL_MS);
 
     return () => clearInterval(interval);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- simulation interval depends on running state only; including gameState would restart interval every turn
   }, [isSimulating, gameState?.gameStatus]);
 
   // ============================================================
@@ -336,6 +337,7 @@ export const TrainingGrounds: React.FC = () => {
     turnHistoryRef.current = [];
     replayEventsRef.current = new Map();
     handleReset();
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleReset depends on same values (originalPuzzle, playStartCharacters); adding it would cause circular dependency
   }, [originalPuzzle, playStartCharacters]);
 
   const handleReplayPlayPause = useCallback(() => setReplayPlaying(p => !p), []);

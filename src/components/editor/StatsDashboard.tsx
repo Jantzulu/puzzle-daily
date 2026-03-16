@@ -346,6 +346,7 @@ export const StatsDashboard: React.FC = () => {
   }, [timeRange]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetching overview stats from external API on view change
     if (view === 'overview') loadOverview();
   }, [view, loadOverview]);
 

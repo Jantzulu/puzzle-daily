@@ -128,7 +128,7 @@ export function compositeLayers(
 
     for (let p = 0; p < total; p++) {
       const i = p * 4;
-      let sa = src[i + 3] * layerOpacity / 255;
+      const sa = src[i + 3] * layerOpacity / 255;
       if (sa === 0) continue;
 
       const sr = src[i], sg = src[i + 1], sb = src[i + 2];
@@ -646,7 +646,7 @@ export function floodFill(
   const visited = new Uint8Array(width * height);
 
   while (stack.length > 0) {
-    let [x, y] = stack.pop()!;
+    const [x, y] = stack.pop()!;
 
     if (visited[y * width + x]) continue;
 
@@ -717,7 +717,7 @@ export function magicWandSelect(
   let minX = startX, maxX = startX, minY = startY, maxY = startY;
 
   while (stack.length > 0) {
-    let [x, y] = stack.pop()!;
+    const [x, y] = stack.pop()!;
 
     if (visited[y * width + x]) continue;
 
@@ -836,7 +836,6 @@ export function renderPixelCanvas(
   const endPy = Math.min(height, Math.ceil((displayHeight - panY) / zoom));
 
   // Draw checkerboard background for transparent areas
-  const checkSize = Math.max(2, Math.floor(zoom / 2));
   for (let py = startPy; py < endPy; py++) {
     for (let px = startPx; px < endPx; px++) {
       const screenX = panX + px * zoom;

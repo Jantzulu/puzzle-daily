@@ -28,7 +28,7 @@ export const Controls: React.FC<ControlsProps> = ({
   onTestEnemies,
   onTestCharacters,
   testMode = 'none',
-  testTurnsRemaining = 0,
+  testTurnsRemaining: _testTurnsRemaining = 0,
   showPlayControls = false,
   hideDevControls = false,
 }) => {

@@ -11,6 +11,15 @@ import { BugReportReplay } from '../editor/BugReportReplay';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
+function formatTimeAgo(timestamp: number): string {
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return 'just now';
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
 interface BugReportModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -40,6 +49,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
     if (trackedRuns.length > 0) {
       const lastRun = trackedRuns[trackedRuns.length - 1];
       if (!selectedRunId || !trackedRuns.find(r => r.id === selectedRunId)) {
+        // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing derived state when tracked runs change; no cascading risk
         setSelectedRunId(lastRun.id);
       }
     }
@@ -165,7 +175,8 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       default:
         return [];
     }
-  }, [assetType, puzzle]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- puzzle is the full object; sub-properties are accessed within
+  }, [assetType, puzzle, puzzleSpells.effectsInPuzzle]);
 
   const selectedRun = trackedRuns.find(r => r.id === selectedRunId);
   const replayingRun = replayingRunId ? trackedRuns.find(r => r.id === replayingRunId) : null;
@@ -211,15 +222,6 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   };
 
   if (!isOpen) return null;
-
-  const formatTimeAgo = (timestamp: number) => {
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    if (seconds < 60) return 'just now';
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
-  };
 
   // Replay mode — replace modal content with replay viewer
   if (replayingRun) {

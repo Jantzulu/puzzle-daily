@@ -1,5 +1,5 @@
 import type { Puzzle } from '../types/game';
-import { loadTileType, loadCollectible, loadObject, loadSpellAsset, loadEnemy } from './assetStorage';
+import { loadTileType, loadCollectible, loadObject, loadSpellAsset } from './assetStorage';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { supabase } from '../lib/supabase';

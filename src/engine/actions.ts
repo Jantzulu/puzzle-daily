@@ -16,6 +16,7 @@ import type {
   TileRuntimeState,
   StatusEffectInstance,
   CadenceConfig,
+  SpriteReference,
 } from '../types/game';
 import {
   ActionType,
@@ -29,7 +30,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo } from './utils';
 import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
-import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
+import type { CollectibleEffectConfig } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus } from './simulation';
 import { wakeFromSleep } from './simulation';
 
@@ -194,10 +195,11 @@ export function executeAction(
       attackInDirection(updatedCharacter, character.facing, gameState, 1);
       return updatedCharacter;
 
-    case ActionType.ATTACK_RANGE:
+    case ActionType.ATTACK_RANGE: {
       const range = action.params?.range || 1;
       attackInDirection(updatedCharacter, character.facing, gameState, range);
       return updatedCharacter;
+    }
 
     case ActionType.WAIT:
       // Do nothing
@@ -276,10 +278,11 @@ export function isTileActiveOnTurn(cadence: CadenceConfig, turn: number): boolea
       return posInCycle < onTurns;
     }
 
-    case 'custom':
+    case 'custom': {
       if (!cadence.customPattern?.length) return true;
       const patternIndex = (adjustedTurn + startOffset) % cadence.customPattern.length;
       return cadence.customPattern[patternIndex];
+    }
 
     default:
       return true;
@@ -800,7 +803,7 @@ function moveCharacter(
     return updatedChar;
   }
 
-  let currentDirection = direction;
+  const currentDirection = direction;
 
   for (let i = 0; i < tilesPerMove; i++) {
     const { dx, dy } = getDirectionOffset(currentDirection);
@@ -880,7 +883,7 @@ function moveCharacter(
         // Check if the other character is trying to move into OUR current tile (swap attempt)
         // This would cause them to pass through each other, which we want to prevent
         const ourCurrentKey = `${Math.floor(updatedChar.x)},${Math.floor(updatedChar.y)}`;
-        const otherCharData = getCharacter(otherCharacter.characterId);
+        const _otherCharData = getCharacter(otherCharacter.characterId);
 
         // Calculate where the other character would move to based on their facing
         const otherOffset = getDirectionOffset(otherCharacter.facing);
@@ -1263,7 +1266,7 @@ function handleIfWall(
   // Check if EITHER entity can overlap (ghost mode - bidirectional)
   const movingEntityData = getCharacter(character.characterId) || getEnemy(character.characterId);
   const canOverlapCharacter = movingEntityData?.canOverlapEntities || blockingCharData?.canOverlapEntities;
-  const canOverlapEnemy = movingEntityData?.canOverlapEntities || blockingEnemyData?.canOverlapEntities;
+  const _canOverlapEnemy = movingEntityData?.canOverlapEntities || blockingEnemyData?.canOverlapEntities;
 
   // Check for blocking corpse data
   const blockingCorpseData = blockingDeadEnemy ? getEnemy(blockingDeadEnemy.enemyId) : null;
@@ -1368,7 +1371,7 @@ function relativeToAbsolute(facing: Direction, relative: RelativeDirection): Dir
   // Calculate absolute angle
   const currentAngle = directionAngles[facing];
   const offset = relativeOffsets[relative];
-  let absoluteAngle = (currentAngle + offset) % 360;
+  const absoluteAngle = (currentAngle + offset) % 360;
 
   // Convert back to Direction enum
   const angleToDirection: Record<number, Direction> = {
@@ -1605,7 +1608,7 @@ function executeSpellInDirection(
 
   // Map spell template to attack pattern
   switch (spell.templateType) {
-    case SpellTemplate.MELEE:
+    case SpellTemplate.MELEE: {
       attackData.pattern = AttackPattern.MELEE;
       // Temporarily set character facing for melee direction
       const originalFacing = character.facing;
@@ -1614,17 +1617,19 @@ function executeSpellInDirection(
       executeMeleeAttack(character, attackData, gameState, spell.meleeRange || 1, spell);
       character.facing = originalFacing;
       break;
+    }
 
-    case SpellTemplate.MELEE_CONE:
+    case SpellTemplate.MELEE_CONE: {
       attackData.pattern = AttackPattern.MELEE;
       const origFacingCone = character.facing;
       character.facing = direction;
       executeConeAttack(character, attackData, gameState, spell.meleeRange || 1, spell.coneAngle || 90, spell);
       character.facing = origFacingCone;
       break;
+    }
 
     case SpellTemplate.RANGE_LINEAR:
-    case SpellTemplate.MAGIC_LINEAR:
+    case SpellTemplate.MAGIC_LINEAR: {
       attackData.pattern = AttackPattern.PROJECTILE;
       // Temporarily set character facing for projectile direction
       const origFacing = character.facing;
@@ -1632,6 +1637,7 @@ function executeSpellInDirection(
       spawnProjectile(character, attackData, gameState, spell, homingTarget);
       character.facing = origFacing;
       break;
+    }
 
     case SpellTemplate.AOE:
       attackData.pattern = AttackPattern.AOE_CIRCLE;
@@ -1772,7 +1778,7 @@ function executeMeleeAttack(
   let attackSprite = spell?.sprites.meleeAttack;
 
   // Helper to check if a sprite is properly configured
-  const hasValidSprite = (sprite: any) => {
+  const hasValidSprite = (sprite: SpriteReference | undefined) => {
     if (!sprite?.spriteData) return false;
     const data = sprite.spriteData;
     return data.shape || data.idleImageData || data.spriteSheet;
@@ -1913,12 +1919,12 @@ function executeConeAttack(
   spell?: SpellAsset
 ): void {
   const damage = attackData.damage ?? 1;
-  const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
+  const _skipCasterTile = spell?.skipSpriteOnCasterTile || false;
   const isEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
 
   // Get attack sprite (same logic as executeMeleeAttack)
   let attackSprite = spell?.sprites.meleeAttack;
-  const hasValidSprite = (sprite: any) => {
+  const hasValidSprite = (sprite: SpriteReference | undefined) => {
     if (!sprite?.spriteData) return false;
     const data = sprite.spriteData;
     return data.shape || data.idleImageData || data.spriteSheet;
@@ -2218,7 +2224,7 @@ function executeHeal(
 function spawnParticle(
   x: number,
   y: number,
-  sprite: any,
+  sprite: SpriteReference,
   duration: number,
   gameState: GameState,
   direction?: Direction
@@ -2258,7 +2264,7 @@ function applySpellToSelf(
 
   // Apply healing to self
   if (spell.healing && spell.healing > 0) {
-    const maxHealth = character.health + character.damageTaken;
+    const _maxHealth = character.health + character.damageTaken;
     character.damageTaken = Math.max(0, character.damageTaken - spell.healing);
 
     // Spawn healing visual effect
@@ -2296,7 +2302,7 @@ function applySpellToSelf(
     applyStatusEffectFromSpell(
       character,
       spell,
-      character.characterId || (character as any).enemyId,
+      character.characterId || ('enemyId' in character ? (character as PlacedEnemy).enemyId : undefined),
       isEnemy,
       gameState.currentTurn
     );
@@ -2364,7 +2370,7 @@ function applyStatusEffectFromSpell(
         existingEffect.duration = duration;
         return;
 
-      case 'stack':
+      case 'stack': {
         // Increase stack count up to max
         const maxStacks = effectAsset.maxStacks ?? 5;
         existingEffect.currentStacks = Math.min(
@@ -2373,6 +2379,7 @@ function applyStatusEffectFromSpell(
         );
         existingEffect.duration = duration;
         return;
+      }
 
       case 'highest':
         // Keep the stronger effect
@@ -2660,12 +2667,13 @@ function applyCollectibleEffect(
       // Win condition checker will scan for uncollected win_key collectibles
       break;
 
-    case 'heal':
+    case 'heal': {
       const maxHealth = isEnemy
         ? getEnemy((entity as PlacedEnemy).enemyId)?.health ?? entity.currentHealth
         : getCharacter((entity as PlacedCharacter).characterId)?.health ?? entity.currentHealth;
       entity.currentHealth = Math.min(entity.currentHealth + (effect.amount ?? 0), maxHealth);
       break;
+    }
 
     case 'damage':
       // Use centralized damage to respect shields (no source for trigger damage)
@@ -2708,7 +2716,7 @@ function applyStatusEffectFromCollectible(
       case 'refresh':
         existingEffect.duration = duration;
         return;
-      case 'stack':
+      case 'stack': {
         const maxStacks = effectAsset.maxStacks ?? 5;
         existingEffect.currentStacks = Math.min(
           (existingEffect.currentStacks ?? 1) + 1,
@@ -2716,6 +2724,7 @@ function applyStatusEffectFromCollectible(
         );
         existingEffect.duration = duration;
         return;
+      }
       case 'highest':
         if (value !== undefined && value > (existingEffect.value ?? 0)) {
           existingEffect.value = value;
@@ -2800,7 +2809,7 @@ function findNearestEnemies(
   maxTargets: number = 1,
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
-): Array<{ enemy: any; direction: Direction; distance: number }> {
+): Array<{ enemy: PlacedEnemy; direction: Direction; distance: number }> {
   // Check if the caster is an enemy (enemies can see other stealthed enemies)
   const casterIsEnemy = 'enemyId' in character;
 
@@ -2928,7 +2937,7 @@ function findNearestDeadAllies(
   if (casterIsEnemy) {
     // Enemy caster targets dead enemies
     const deadEnemies = gameState.puzzle.enemies.filter(e => e.dead && e.enemyId !== caster.characterId);
-    deadAllies = deadEnemies.map(e => ({ entity: e as any, isEnemy: true }));
+    deadAllies = deadEnemies.map(e => ({ entity: e as PlacedCharacter | PlacedEnemy, isEnemy: true }));
   } else {
     // Character caster targets dead characters
     const deadChars = gameState.placedCharacters.filter(c => c.dead && c.characterId !== caster.characterId);
@@ -3223,7 +3232,7 @@ export function checkTriggerCondition(
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
 
-    case 'enemy_in_range':
+    case 'enemy_in_range': {
       // Check if any enemy is within specified range
       const enemyRange = eventRange || 3; // Default to 3 if not specified
       return gameState.puzzle.enemies.some(enemy => {
@@ -3231,6 +3240,7 @@ export function checkTriggerCondition(
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= enemyRange;
       });
+    }
 
     case 'contact_with_enemy':
       // Check if character is on the same tile as an enemy
@@ -3248,7 +3258,7 @@ export function checkTriggerCondition(
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
 
-    case 'character_in_range':
+    case 'character_in_range': {
       // Check if any character is within specified range
       // Used by enemies to detect characters at a distance
       const charRange = eventRange || 3; // Default to 3 if not specified
@@ -3257,6 +3267,7 @@ export function checkTriggerCondition(
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= charRange;
       });
+    }
 
     case 'contact_with_character':
       // Check if entity is on the same tile as a character
@@ -3279,11 +3290,12 @@ export function checkTriggerCondition(
       return isTileBlockingMovement(gameState.puzzle.tiles[checkY]?.[checkX], gameState);
     }
 
-    case 'health_below_50':
+    case 'health_below_50': {
       // Check if character health is below 50%
       const charData = getCharacter(character.characterId);
       if (!charData) return false;
       return character.currentHealth < charData.health * 0.5;
+    }
 
     case 'on_death':
       // Death trigger is handled specially via executeDeathTriggers()
@@ -3311,14 +3323,14 @@ export function evaluateTriggers(
 
   // Get the behavior array from character or enemy
   let behaviorActions: CharacterAction[] | undefined;
-  let entityType: 'character' | 'enemy' = 'character';
+  let _entityType: 'character' | 'enemy' = 'character';
 
   if (charData?.behavior) {
     behaviorActions = charData.behavior;
-    entityType = 'character';
+    _entityType = 'character';
   } else if (enemyData?.behavior?.pattern) {
     behaviorActions = enemyData.behavior.pattern;
-    entityType = 'enemy';
+    _entityType = 'enemy';
   }
 
   if (!behaviorActions) {

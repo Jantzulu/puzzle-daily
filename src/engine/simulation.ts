@@ -1,8 +1,8 @@
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, StatusEffectInstance, SpellTemplate, PlacedCollectible, CharacterAction, Puzzle, CustomAttack, SpriteReference, ParticleEffect } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, applyDamageToEntityNoDeflect } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
 import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
 
@@ -210,45 +210,15 @@ function computeTilePathWithWallLookahead(
 }
 
 /**
- * Mark an entity as dead, executing death triggers BEFORE setting the dead flag
- * This ensures on_death spell triggers fire while the entity is still "alive"
- */
-function markEntityAsDead(
-  entity: PlacedCharacter | PlacedEnemy,
-  gameState: GameState
-): void {
-  // Execute death triggers BEFORE marking as dead
-  // Create a compatible PlacedCharacter-like object for the trigger system
-  const entityForTriggers: PlacedCharacter = {
-    characterId: (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId,
-    x: entity.x,
-    y: entity.y,
-    facing: entity.facing || 'right',
-    currentHealth: entity.currentHealth,
-    actionIndex: (entity as PlacedCharacter).actionIndex || 0,
-    active: (entity as PlacedCharacter).active ?? (entity as PlacedEnemy).active ?? true,
-    dead: false, // Still alive for trigger execution
-    parallelTrackers: entity.parallelTrackers,
-    statusEffects: entity.statusEffects,
-    spellCooldowns: entity.spellCooldowns,
-  };
-
-  executeDeathTriggers(entityForTriggers, gameState);
-
-  // Now mark as dead
-  entity.dead = true;
-}
-
-/**
  * Initialize parallel action trackers for a character
  */
-function initializeParallelTrackers(character: PlacedCharacter, charData: any): void {
+function initializeParallelTrackers(character: PlacedCharacter, charData: { behavior: CharacterAction[] }): void {
   if (!character.parallelTrackers) {
     character.parallelTrackers = [];
   }
 
   // Find all parallel actions in behavior
-  charData.behavior.forEach((action: any, index: number) => {
+  charData.behavior.forEach((action: CharacterAction, index: number) => {
     if (action.executionMode === 'parallel') {
       // Check if tracker already exists for this index
       const existingTracker = character.parallelTrackers!.find(t => t.actionIndex === index);
@@ -374,15 +344,16 @@ function processEntityStatusEffects(
     switch (effect.type) {
       case StatusEffectType.POISON:
       case StatusEffectType.BURN:
-      case StatusEffectType.BLEED:
+      case StatusEffectType.BLEED: {
         // Damage over time - use centralized damage to respect shields
         const damage = effect.value ?? effectAsset?.defaultValue ?? 1;
         const stacks = effect.currentStacks ?? 1;
         // DOT effects have no source, so use NoDeflect version
         applyDamageToEntityNoDeflect(updatedEntity, damage * stacks, gameState);
         break;
+      }
 
-      case StatusEffectType.REGEN:
+      case StatusEffectType.REGEN: {
         // Healing over time
         const heal = effect.value ?? effectAsset?.defaultValue ?? 1;
         const maxHealth = getEntityMaxHealth(updatedEntity);
@@ -391,6 +362,7 @@ function processEntityStatusEffects(
           maxHealth
         );
         break;
+      }
 
       // Action-preventing effects are checked in canEntityAct()
       // Duration handling is done at the end of processing
@@ -743,7 +715,7 @@ function applyStatusEffectFromProjectile(
         existingEffect.duration = duration;
         return;
 
-      case 'stack':
+      case 'stack': {
         const maxStacks = effectAsset.maxStacks ?? 5;
         existingEffect.currentStacks = Math.min(
           (existingEffect.currentStacks ?? 1) + 1,
@@ -751,6 +723,7 @@ function applyStatusEffectFromProjectile(
         );
         existingEffect.duration = duration;
         return;
+      }
 
       case 'highest':
         if (value !== undefined && value > (existingEffect.value ?? 0)) {
@@ -1026,13 +999,10 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Find the next sequential action (skip forward-looking parallel actions)
     let currentAction = charData.behavior[newCharacter.actionIndex];
-    let skippedAnyActions = false;
-
     // Skip forward-looking parallel actions until we find a sequential one
     while (currentAction && currentAction.executionMode === 'parallel') {
       newCharacter.actionIndex++;
       currentAction = charData.behavior[newCharacter.actionIndex];
-      skippedAnyActions = true;
     }
 
     if (!currentAction) {
@@ -1195,13 +1165,10 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Get current action (skip forward-looking parallel actions)
     let currentAction = pattern[newEnemy.actionIndex!];
-    let skippedAnyActions = false;
-
     // Skip forward-looking parallel actions
     while (currentAction && currentAction.executionMode === 'parallel') {
       newEnemy.actionIndex = (newEnemy.actionIndex || 0) + 1;
       currentAction = pattern[newEnemy.actionIndex!];
-      skippedAnyActions = true;
     }
 
     if (!currentAction) {
@@ -1442,12 +1409,13 @@ function checkGameConditions(gameState: GameState): void {
 export function checkVictoryConditions(gameState: GameState): boolean {
   for (const condition of gameState.puzzle.winConditions) {
     switch (condition.type) {
-      case 'defeat_all_enemies':
+      case 'defeat_all_enemies': {
         const allEnemiesDead = gameState.puzzle.enemies.every((e) => e.dead);
         if (!allEnemiesDead) return false;
         break;
+      }
 
-      case 'defeat_boss':
+      case 'defeat_boss': {
         // All boss enemies must be defeated
         const bossEnemies = gameState.puzzle.enemies.filter(placedEnemy => {
           const enemyData = loadEnemy(placedEnemy.enemyId);
@@ -1459,13 +1427,15 @@ export function checkVictoryConditions(gameState: GameState): boolean {
           if (!allBossesDead) return false;
         }
         break;
+      }
 
-      case 'collect_all':
+      case 'collect_all': {
         const allCollected = gameState.puzzle.collectibles.every((c) => c.collected);
         if (!allCollected) return false;
         break;
+      }
 
-      case 'reach_goal':
+      case 'reach_goal': {
         // Check if any character is on a goal tile
         const hasReachedGoal = gameState.placedCharacters.some((char) => {
           if (char.dead) return false;
@@ -1474,8 +1444,9 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         });
         if (!hasReachedGoal) return false;
         break;
+      }
 
-      case 'survive_turns':
+      case 'survive_turns': {
         // Must survive for at least X turns - check at turn end
         const surviveTurns = condition.params?.turns ?? 10;
         if (gameState.currentTurn < surviveTurns) return false;
@@ -1483,29 +1454,33 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         const hasAliveCharacter = gameState.placedCharacters.some((c) => !c.dead);
         if (!hasAliveCharacter) return false;
         break;
+      }
 
-      case 'win_in_turns':
+      case 'win_in_turns': {
         // Must complete within X turns (checked elsewhere as a constraint)
         // This condition passes if we're still within the turn limit
         const maxTurns = condition.params?.turns ?? 10;
         if (gameState.currentTurn > maxTurns) return false;
         break;
+      }
 
-      case 'max_characters':
+      case 'max_characters': {
         // Must use at most X characters (already enforced by placement, but verify)
         const maxChars = condition.params?.characterCount ?? 1;
         const usedChars = gameState.placedCharacters.length;
         if (usedChars > maxChars) return false;
         break;
+      }
 
-      case 'characters_alive':
+      case 'characters_alive': {
         // Must have at least X characters alive at the end
         const minAlive = condition.params?.characterCount ?? 1;
         const aliveCount = gameState.placedCharacters.filter((c) => !c.dead).length;
         if (aliveCount < minAlive) return false;
         break;
+      }
 
-      case 'collect_keys':
+      case 'collect_keys': {
         // Must collect all collectibles that have win_key effects
         // Load collectible data to check which ones are keys
         const keyCollectibles = gameState.puzzle.collectibles.filter(c => {
@@ -1518,6 +1493,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         const allKeysCollected = keyCollectibles.every(c => c.collected);
         if (!allKeysCollected) return false;
         break;
+      }
     }
   }
 
@@ -1531,18 +1507,20 @@ export function checkVictoryConditions(gameState: GameState): boolean {
 function checkDefeatConditions(gameState: GameState): boolean {
   for (const condition of gameState.puzzle.winConditions) {
     switch (condition.type) {
-      case 'win_in_turns':
+      case 'win_in_turns': {
         // Exceeded turn limit
         const maxTurns = condition.params?.turns ?? 10;
         if (gameState.currentTurn > maxTurns) return true;
         break;
+      }
 
-      case 'characters_alive':
+      case 'characters_alive': {
         // Can't possibly have enough characters alive anymore
         const minAlive = condition.params?.characterCount ?? 1;
         const aliveCount = gameState.placedCharacters.filter((c) => !c.dead).length;
         if (aliveCount < minAlive) return true;
         break;
+      }
     }
   }
 
@@ -1591,7 +1569,7 @@ export function resetGameState(gameState: GameState, originalPuzzle: Puzzle): Ga
 // PROJECTILE & PARTICLE UPDATES (Phase 2)
 // ==========================================
 
-import type { Projectile, ParticleEffect } from '../types/game';
+import type { ParticleEffect } from '../types/game';
 import { TileType } from '../types/game';
 
 /**
@@ -2355,7 +2333,7 @@ export function updateProjectiles(gameState: GameState): void {
 function triggerAOEExplosion(
   x: number,
   y: number,
-  attackData: any,
+  attackData: CustomAttack,
   sourceCharacterId: string | undefined,
   sourceEnemyId: string | undefined,
   gameState: GameState,
@@ -2531,7 +2509,6 @@ function updateProjectilesHeadless(gameState: GameState): void {
       );
       const startTile = Math.floor(currentDist) + 1; // Next tile to check (1-indexed from start)
       const endTile = Math.min(startTile + tilesPerTurn - 1, range);
-      let reachedEnd = false;
       let hitWall = false;
 
       for (let dist = startTile; dist <= endTile; dist++) {
@@ -2597,11 +2574,9 @@ function updateProjectilesHeadless(gameState: GameState): void {
             // Check for enemy hits
             // For projectiles spawned this turn, also check pre-move positions
             // This allows same-turn hits (projectile reaches tile before enemy moves away)
-            let hitEnemy: PlacedEnemy | undefined;
-
             // Check current (post-move) positions only — in the real game, projectiles
             // travel over time and won't hit enemies that have already moved away
-            hitEnemy = gameState.puzzle.enemies.find(
+            const hitEnemy = gameState.puzzle.enemies.find(
               e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                    !hitEntityIds.includes(e.enemyId)
             );
@@ -2651,11 +2626,9 @@ function updateProjectilesHeadless(gameState: GameState): void {
           } else {
             // Check for character hits
             // For projectiles spawned this turn, also check pre-move positions
-            let hitChar: PlacedCharacter | undefined;
-
             // Check current (post-move) positions only — in the real game, projectiles
             // travel over time and won't hit characters that have already moved away
-            hitChar = gameState.placedCharacters.find(
+            const hitChar = gameState.placedCharacters.find(
               c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
                    !hitEntityIds.includes(c.characterId)
             );
@@ -2687,10 +2660,6 @@ function updateProjectilesHeadless(gameState: GameState): void {
           }
         }
 
-        // Track how far we've traveled this turn
-        if (dist === endTile) {
-          reachedEnd = true;
-        }
       }
 
       // Update projectile position if it's still active
@@ -2751,7 +2720,7 @@ export function updateParticles(gameState: GameState): void {
 function spawnParticleEffect(
   x: number,
   y: number,
-  sprite: any,
+  sprite: SpriteReference,
   duration: number,
   gameState: GameState
 ): void {

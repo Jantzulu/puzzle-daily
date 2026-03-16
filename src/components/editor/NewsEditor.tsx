@@ -46,6 +46,7 @@ export const NewsEditor: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetching initial data from external API
     loadPosts();
   }, [loadPosts]);
 
@@ -54,6 +55,7 @@ export const NewsEditor: React.FC = () => {
   // Populate form when selecting a post
   useEffect(() => {
     if (selectedPost) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- populating form fields from selected post data
       setTitle(selectedPost.title);
       setBody(selectedPost.body);
       setSummary(selectedPost.summary || '');
