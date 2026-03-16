@@ -4,7 +4,7 @@ import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
-import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
+import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
@@ -111,7 +111,6 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const frameIndexRef = useRef(0);
-  // eslint-disable-next-line react-hooks/purity -- Date.now() in ref initializer is intentional; value is only used inside rAF loop
   const lastFrameTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -234,7 +233,6 @@ function Navigation() {
   useEffect(() => {
     if (location.pathname === '/town-crier') {
       localStorage.setItem('town_crier_last_visit', new Date().toISOString());
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing external state (localStorage) with React state on route change
       setHasUnreadNews(false);
     }
   }, [location.pathname]);
@@ -262,11 +260,10 @@ function Navigation() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [user, isCreator]);
+  }, [user]);
 
   // Load theme assets and subscribe to changes
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initializing state from external store on mount
     setThemeAssets(loadThemeAssets());
     const unsubscribe = subscribeToThemeAssets((assets) => {
       setThemeAssets(assets);

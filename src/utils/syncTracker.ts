@@ -30,9 +30,7 @@ function loadState(): SyncState {
   try {
     const raw = localStorage.getItem(SYNC_STATE_KEY);
     if (raw) return JSON.parse(raw);
-  } catch {
-    // intentionally empty
-  }
+  } catch {}
   return { lastPushTime: null, lastPullTime: null, localChanges: {}, cloudTimestamps: {} };
 }
 

@@ -8,7 +8,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import type { SerializedTab, PersistedTabsData } from '../types/pixelEditorDocument';
-import { writeTabsPersistence, readTabsPersistence } from '../utils/pixelEditorTabPersistence';
+import { writeTabsPersistence, readTabsPersistence, clearTabsPersistence } from '../utils/pixelEditorTabPersistence';
 import { serializeProject, type PixelEditorProjectV2 } from '../components/editor/pixelEditorUtils';
 
 let nextTabId = 1;

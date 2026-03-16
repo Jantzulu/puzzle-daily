@@ -2,7 +2,7 @@
  * Combat Log — diffs two GameState snapshots to produce human-readable turn events.
  * No modifications to simulation.ts needed; works by comparing before/after states.
  */
-import type { GameState } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, PlacedCollectible } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { loadCollectible } from '../utils/assetStorage';

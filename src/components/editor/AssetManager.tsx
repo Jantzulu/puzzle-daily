@@ -40,10 +40,8 @@ export const AssetManager: React.FC = () => {
   useEffect(() => {
     const tab = searchParams.get('tab') as AssetTab;
     if (tab && VALID_TABS.includes(tab) && tab !== activeTab) {
-       
       setActiveTab(tab);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeTab is intentionally omitted to prevent loops; we only react to URL changes
   }, [searchParams]);
 
   const handleClearCache = () => {

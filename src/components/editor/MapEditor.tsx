@@ -1,13 +1,14 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from '../shared/Toast';
-import { useSearchParams } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType, PuzzleScore } from '../../types/game';
+import { Link, useSearchParams } from 'react-router-dom';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, WinConditionParams, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType, PuzzleScore } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
-import { getAllCharacters, getCharacter } from '../../data/characters';
-import { getAllEnemies, getEnemy } from '../../data/enemies';
+import { getAllCharacters, getCharacter, type CharacterWithSprite } from '../../data/characters';
+import { getAllEnemies, getEnemy, type EnemyWithSprite } from '../../data/enemies';
 import { drawSprite } from './SpriteEditor';
 import { initializeGameState, executeTurn } from '../../engine/simulation';
-import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
+import { AnimatedGameBoard, ResponsiveGameBoard } from '../game/AnimatedGameBoard';
+import { Controls } from '../game/Controls';
 import { CharacterSelector } from '../game/CharacterSelector';
 import { EnemyDisplay } from '../game/EnemyDisplay';
 import { StatusEffectsDisplay } from '../game/StatusEffectsDisplay';
@@ -19,7 +20,7 @@ import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring'
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject, type SoundAsset } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject, type CustomCollectible, type SoundAsset } from '../../utils/assetStorage';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { preloadImages } from '../../utils/imageLoader';
 import { checkVictoryConditions } from '../../engine/simulation';
@@ -30,7 +31,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { TagInput, collectAllTags } from '../shared/TagInput';
 import { suggestTags } from '../../utils/puzzleTagSuggestions';
 import { getPuzzleDependencies, type AssetDependency } from '../../utils/publishDependencies';
-import { publishPuzzle, publishAsset, unpublishPuzzle, getPuzzleDraftStatus, submitPuzzleForReview, approvePuzzle, requestPuzzleChanges } from '../../services/supabaseService';
+import { publishPuzzle, publishAsset, unpublishPuzzle, isPuzzlePublished, getPuzzleDraftStatus, submitPuzzleForReview, approvePuzzle, requestPuzzleChanges } from '../../services/supabaseService';
 import { PublishDependencyModal } from './PublishDependencyModal';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
@@ -45,7 +46,7 @@ import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/comba
 import { WarningModal } from '../shared/WarningModal';
 import GeneratorDialog from './GeneratorDialog';
 import { vibrate } from '../../utils/haptics';
-
+import { useIsMobile } from '../../hooks/useMediaQuery';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -352,6 +353,7 @@ const createDefaultEditorState = (): EditorState => ({
 });
 
 export const MapEditor: React.FC = () => {
+  const isMobile = useIsMobile();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const editorContainerRef = useRef<HTMLDivElement>(null);
   const [editorMaxWidth, setEditorMaxWidth] = useState<number | undefined>(undefined);
@@ -941,31 +943,7 @@ export const MapEditor: React.FC = () => {
     if (urlsToPreload.length > 0) {
       preloadImages(urlsToPreload);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- preloading only needed when entering playtest mode or puzzle changes
   }, [state.mode, originalPlaytestPuzzle?.id]);
-
-  // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
-  const handleAutoResetPlaytest = useCallback(() => {
-    if (!originalPlaytestPuzzle) return;
-    const resetPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    const resetState = initializeGameState(resetPuzzle);
-    // Restore the placed characters from when Play was pressed, resetting their state
-    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
-      const charData = getCharacter(char.characterId);
-      return {
-        ...char,
-        actionIndex: 0,
-        currentHealth: charData ? charData.health : char.currentHealth,
-        dead: false,
-        active: true,
-      };
-    });
-    // Return to setup phase so player can adjust character placement
-    resetState.gameStatus = 'setup';
-    setGameState(resetState);
-    setIsSimulating(false);
-    setSelectedCharacterId(null);
-  }, [originalPlaytestPuzzle, playStartCharacters]);
 
   // Simulation loop (for playtest mode)
   useEffect(() => {
@@ -1004,7 +982,6 @@ export const MapEditor: React.FC = () => {
         setTestTurnsRemaining(prev => prev - 1);
       }
 
-       
       setGameState((prevState) => {
         if (!prevState) return prevState;
         // Deep copy to handle React StrictMode double-invoke
@@ -1070,7 +1047,6 @@ export const MapEditor: React.FC = () => {
     }, 800);
 
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- adding executeTurnWithLog/gameState/handleAutoResetPlaytest would cause infinite re-renders since setGameState is called inside
   }, [isSimulating, gameState?.gameStatus, testMode, testTurnsRemaining, livesRemaining, originalPlaytestPuzzle]);
 
   // Draw grid
@@ -1415,7 +1391,6 @@ export const MapEditor: React.FC = () => {
 
   // Keep a ref to getCurrentPuzzle so the auto-save timer always has the latest state
   const getCurrentPuzzleRef = useRef(getCurrentPuzzle);
-   
   getCurrentPuzzleRef.current = getCurrentPuzzle;
 
   const handleSave = () => {
@@ -1515,7 +1490,6 @@ export const MapEditor: React.FC = () => {
     if (puzzleId) {
       handleLoadFromLibrary(puzzleId);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only auto-load on initial mount from URL params
   }, []);
 
   const handleDeleteFromLibrary = (puzzleId: string) => {
@@ -1789,6 +1763,10 @@ export const MapEditor: React.FC = () => {
     setState(prev => {
       // Create new grid
       const newTiles = createEmptyGrid(validWidth, validHeight);
+
+      // Keep content in top-left corner (no offset)
+      const offsetX = 0;
+      const offsetY = 0;
 
       // Copy existing tiles to new grid (from top-left)
       for (let y = 0; y < Math.min(prev.gridHeight, validHeight); y++) {
@@ -2072,6 +2050,29 @@ export const MapEditor: React.FC = () => {
     }) : null);
     playGameSound('character_placed');
   };
+
+  // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
+  const handleAutoResetPlaytest = useCallback(() => {
+    if (!originalPlaytestPuzzle) return;
+    const resetPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
+    const resetState = initializeGameState(resetPuzzle);
+    // Restore the placed characters from when Play was pressed, resetting their state
+    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
+      const charData = getCharacter(char.characterId);
+      return {
+        ...char,
+        actionIndex: 0,
+        currentHealth: charData ? charData.health : char.currentHealth,
+        dead: false,
+        active: true,
+      };
+    });
+    // Return to setup phase so player can adjust character placement
+    resetState.gameStatus = 'setup';
+    setGameState(resetState);
+    setIsSimulating(false);
+    setSelectedCharacterId(null);
+  }, [originalPlaytestPuzzle, playStartCharacters]);
 
   // Restart puzzle from game over (reset lives and go to setup)
   const handleRestartPlaytest = () => {
@@ -5348,7 +5349,7 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
         ctx.fillText('🔥', centerX, centerY);
         break;
 
-      case 'teleport': {
+      case 'teleport':
         // Purple glow
         ctx.fillStyle = 'rgba(128, 0, 255, 0.25)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
@@ -5360,9 +5361,8 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
         ctx.textBaseline = 'middle';
         ctx.fillText(groupId, centerX, centerY);
         break;
-      }
 
-      case 'direction_change': {
+      case 'direction_change':
         // Arrow showing forced direction
         ctx.fillStyle = 'rgba(0, 200, 255, 0.25)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
@@ -5373,7 +5373,6 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
         ctx.textBaseline = 'middle';
         ctx.fillText(arrow, centerX, centerY);
         break;
-      }
 
       case 'ice':
         // Blue tint with diagonal lines
@@ -5460,7 +5459,7 @@ function drawCollectibleInEditor(
     const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
 
     // Calculate center position based on anchor point
-    const centerX = px + TILE_SIZE / 2;
+    let centerX = px + TILE_SIZE / 2;
     let centerY = py + TILE_SIZE / 2;
 
     if (collectibleData.anchorPoint === 'bottom_center') {
@@ -5525,7 +5524,7 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   const spriteSize = (objectData.customSprite?.size || 0.8) * TILE_SIZE;
 
   // Calculate center position based on anchor point
-  const centerX = px + TILE_SIZE / 2;
+  let centerX = px + TILE_SIZE / 2;
   let centerY = py + TILE_SIZE / 2;
 
   if (objectData.anchorPoint === 'bottom_center') {

@@ -48,8 +48,7 @@ function getMonthLabel(year: number, month: number): string {
 }
 
 export const SchedulingDashboard: React.FC = () => {
-   
-  const today = useMemo(() => new Date(), []);
+  const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());
   const [schedule, setSchedule] = useState<ScheduleEntry[]>([]);
@@ -75,10 +74,8 @@ export const SchedulingDashboard: React.FC = () => {
     setPublishedPuzzles(puzzles);
     setFullSchedule(full);
     setLoading(false);
-     
   }, [viewYear, viewMonth]);
 
-  // eslint-disable-next-line react-hooks/set-state-in-effect -- loading async data and updating multiple state slices on mount/dep change
   useEffect(() => { loadData(); }, [loadData]);
 
   // Build schedule map for quick lookup

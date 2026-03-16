@@ -16,8 +16,9 @@ import {
   createTestCollectible,
   createTestGameState,
 } from './helpers';
+import { Direction } from '../../types/game';
 import { diffTurn } from '../combatLog';
-import type { Projectile } from '../../types/game';
+import type { GameState } from '../../types/game';
 
 beforeEach(() => {
   clearAllRegistries();
@@ -136,7 +137,7 @@ describe('diffTurn', () => {
     });
     const after = createTestGameState({
       currentTurn: 1,
-      activeProjectiles: [{ id: 'proj-1', active: true } as Projectile],
+      activeProjectiles: [{ id: 'proj-1', active: true } as any],
     });
 
     const entries = diffTurn(before, after);

@@ -116,7 +116,7 @@ export type TileOrNull = Tile | null;
 export interface TileContent {
   type: 'enemy' | 'collectible' | 'player_character';
   id: string;
-  data?: Record<string, unknown>;
+  data?: any;
 }
 
 export enum ActionType {
@@ -178,7 +178,7 @@ export interface TriggerConfig {
 
 export interface CharacterAction {
   type: ActionType;
-  params?: Record<string, unknown>;
+  params?: any;
   tilesPerMove?: number; // How many tiles to move per tick (default: 1)
   onWallCollision?: WallCollisionBehavior; // What to do when hitting a wall (default: 'stop')
   turnDegrees?: 45 | 90 | 135; // Turn amount: 45 (one diagonal), 90 (cardinal), 135 (skip diagonal, useful for corners) (default: 90)
@@ -681,7 +681,7 @@ export interface StatusEffect {
 export interface SpriteReference {
   type: 'stored' | 'inline';
   spriteId?: string;           // ID from asset storage
-  spriteData?: Record<string, unknown>;  // Inline sprite data (CustomSprite)
+  spriteData?: any;            // Inline sprite data (CustomSprite)
 }
 
 /**
@@ -705,7 +705,6 @@ export interface CustomAttack {
   projectilePierces?: boolean;  // Continue through enemies (default: false)
 
   // AOE targeting (for AOE patterns)
-  aoeTargeting?: 'caster' | 'target_tile'; // Where the AOE is centered
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
   projectileBeforeAOE?: boolean; // True: Fire projectile that explodes into AOE
   aoeExcludeCenter?: boolean;    // True: Don't show/apply AOE effect on center tile

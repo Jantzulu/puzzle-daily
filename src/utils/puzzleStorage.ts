@@ -19,7 +19,7 @@ export const getPendingPuzzleDeletions = (): PendingPuzzleDeletion[] => {
   if (!stored) return [];
   try {
     return JSON.parse(stored);
-  } catch {
+  } catch (e) {
     return [];
   }
 };
@@ -56,7 +56,7 @@ export const getPuzzleFolders = (): string[] => {
   if (!stored) return [];
   try {
     return JSON.parse(stored);
-  } catch {
+  } catch (e) {
     return [];
   }
 };

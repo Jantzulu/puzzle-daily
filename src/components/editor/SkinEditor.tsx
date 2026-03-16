@@ -5,7 +5,7 @@ import { scaledNameClass } from '../../utils/textScale';
 import type { PuzzleSkin, CustomBorderSprites, TileSprites, GameState, Puzzle, BorderConfig, Tile, TileOrNull } from '../../types/game';
 import { TileType } from '../../types/game';
 import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
-import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, DEFAULT_DUNGEON_SKIN, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
@@ -271,7 +271,6 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
 
   useEffect(() => {
     if (initialSelectedId) handleSelectSkin(initialSelectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelectSkin is stable; only re-run when initialSelectedId changes
   }, [initialSelectedId]);
 
   const handleNewSkin = () => {
@@ -819,8 +818,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             onMouseLeave={!isMobile ? handlePreviewMouseLeave : undefined}
                           >
                             <div
-                              style={
-                                isMobile ? {
+                              style={isMobile ? {
                                 transition: touchStateRef.current?.isPinching ? 'none' : 'transform 0.2s ease-out',
                                 transform: `scale(${touchZoom}) translate(${touchPan.x / touchZoom}px, ${touchPan.y / touchZoom}px)`,
                                 transformOrigin: 'center center',

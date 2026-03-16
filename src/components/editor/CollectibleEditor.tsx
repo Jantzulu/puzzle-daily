@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
@@ -34,21 +34,10 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
   const [collectibles, setCollectibles] = useState<CustomCollectible[]>(() => getCustomCollectibles());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomCollectible | null>(null);
-  const [, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const bulk = useBulkSelect();
-
-  // Stable fallback sprite for when editing.customSprite is null
-  const fallbackSprite = useMemo(() => ({
-    id: 'sprite_' + Date.now(),
-    name: 'Collectible Sprite',
-    type: 'simple' as const,
-    shape: 'star' as const,
-    primaryColor: '#ffd700',
-    size: 0.6,
-    createdAt: new Date().toISOString(),
-  }), []);
 
   // Filter collectibles based on folder and search term
   const folderFilteredCollectibles = useFilteredAssets(collectibles, selectedFolderId);
@@ -71,9 +60,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
   };
 
   useEffect(() => {
-     
     if (initialSelectedId) handleSelect(initialSelectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelect is stable by identity; only re-run when initialSelectedId changes
   }, [initialSelectedId]);
 
   const handleNew = () => {
@@ -476,8 +463,16 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
             <div className="space-y-6">
               {/* Sprite */}
               <CollapsiblePanel title="Sprite">
-              <StaticSpriteEditor
-                  sprite={editing.customSprite || fallbackSprite}
+                <StaticSpriteEditor
+                  sprite={editing.customSprite || {
+                    id: 'sprite_' + Date.now(),
+                    name: 'Collectible Sprite',
+                    type: 'simple',
+                    shape: 'star',
+                    primaryColor: '#ffd700',
+                    size: 0.6,
+                    createdAt: new Date().toISOString(),
+                  }}
                   onChange={updateSprite}
                 />
               </CollapsiblePanel>

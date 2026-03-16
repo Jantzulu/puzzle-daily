@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle, PuzzleSkin } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
@@ -277,7 +276,7 @@ function drawSpellSpriteSheet(
 
     ctx.restore();
     return true;
-  } catch {
+  } catch (e) {
     ctx.restore();
     return false;
   }
@@ -370,7 +369,7 @@ function drawSpellSpriteSheetFromStartTime(
 
     ctx.restore();
     return true;
-  } catch {
+  } catch (e) {
     ctx.restore();
     return false;
   }
@@ -438,7 +437,7 @@ function drawActivationSprite(
     );
     ctx.restore();
     return true;
-  } catch {
+  } catch (e) {
     ctx.restore();
     return false;
   }
@@ -643,7 +642,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     const currentPuzzleId = gameState.puzzle.id;
     if (prevPuzzleIdRef.current !== null && prevPuzzleIdRef.current !== currentPuzzleId) {
       // Puzzle changed - trigger fade-in by incrementing key
-      setFadeKey(k => k + 1); // eslint-disable-line react-hooks/set-state-in-effect -- resetting animation state when puzzle changes
+      setFadeKey(k => k + 1);
       // Reset spawn animation tracking for new puzzle
       spawnedCharactersRef.current.clear();
       spawnedEnemiesRef.current.clear();
@@ -667,13 +666,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     });
 
     if (newEnemySpawns.size > 0) {
-      setEnemySpawnAnimations(prev => { // eslint-disable-line react-hooks/set-state-in-effect -- triggering spawn animations when new enemies appear
+      setEnemySpawnAnimations(prev => {
         const updated = new Map(prev);
         newEnemySpawns.forEach((state, index) => updated.set(index, state));
         return updated;
       });
     }
-  }, [gameState.puzzle.id, gameState.puzzle.enemies.length]); // eslint-disable-line react-hooks/exhaustive-deps -- enemies array identity changes each render; length is sufficient
+  }, [gameState.puzzle.id, gameState.puzzle.enemies.length]);
 
   // Force re-render when images finish loading
   const [, forceUpdate] = useState(0);
@@ -789,7 +788,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     // Update ref synchronously (prevents flash at new position during render)
     characterPositionsRef.current = newPositions;
-    setCharacterPositions(newPositions); // eslint-disable-line react-hooks/set-state-in-effect -- detecting character movement
+    setCharacterPositions(newPositions);
     if (newActivations.length > 0) {
       setTileActivations(prev => [...prev, ...newActivations]);
     }
@@ -814,7 +813,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
 
     prevCharactersRef.current = [...gameState.placedCharacters];
-  }, [gameState.placedCharacters]); // eslint-disable-line react-hooks/exhaustive-deps -- tiles dep omitted to prevent animation restart
+  }, [gameState.placedCharacters]);
 
   // Detect enemy movement
   useEffect(() => {
@@ -903,12 +902,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     // Update ref synchronously (prevents flash at new position during render)
     enemyPositionsRef.current = newPositions;
-    setEnemyPositions(newPositions); // eslint-disable-line react-hooks/set-state-in-effect
+    setEnemyPositions(newPositions);
     if (newActivations.length > 0) {
       setTileActivations(prev => [...prev, ...newActivations]);
     }
     prevEnemiesRef.current = [...gameState.puzzle.enemies];
-  }, [gameState.puzzle.enemies]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gameState.puzzle.enemies]);
 
   // Detect character deaths and trigger death animations
   useEffect(() => {
@@ -943,9 +942,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
 
     if (hasChanges) {
-      setCharacterDeathAnimations(newDeathAnimations); // eslint-disable-line react-hooks/set-state-in-effect
+      setCharacterDeathAnimations(newDeathAnimations);
     }
-  }, [gameState.placedCharacters]); // eslint-disable-line react-hooks/exhaustive-deps -- characterDeathAnimations excluded to prevent infinite loop
+  }, [gameState.placedCharacters]);
 
   // Detect enemy deaths and trigger death animations
   useEffect(() => {
@@ -980,9 +979,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
 
     if (hasChanges) {
-      setEnemyDeathAnimations(newDeathAnimations); // eslint-disable-line react-hooks/set-state-in-effect
+      setEnemyDeathAnimations(newDeathAnimations);
     }
-  }, [gameState.puzzle.enemies]); // eslint-disable-line react-hooks/exhaustive-deps -- enemyDeathAnimations excluded to prevent infinite loop
+  }, [gameState.puzzle.enemies]);
 
   // Animation loop
   useEffect(() => {
@@ -1355,7 +1354,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations, maxWidth, maxHeight]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations, maxWidth, maxHeight]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onTileClick) return;
@@ -1467,7 +1466,7 @@ function drawBorder(
   gridWidth: number,
   gridHeight: number,
   style: string,
-  config?: BorderConfig,
+  config?: any,
   tiles?: (import('../../types/game').TileOrNull)[][]
 ) {
   const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
@@ -2231,7 +2230,7 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
         }
         break;
 
-      case 'direction_change': {
+      case 'direction_change':
         // Arrow showing forced direction (dimmer when off)
         ctx.fillStyle = isOnState ? 'rgba(0, 200, 255, 0.3)' : 'rgba(80, 80, 80, 0.2)';
         ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
@@ -2242,7 +2241,6 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
         ctx.textBaseline = 'middle';
         ctx.fillText(arrow, centerX, centerY);
         break;
-      }
 
       case 'ice':
         // Blue tint with diagonal lines (dimmer when off)
@@ -3138,7 +3136,7 @@ function drawCollectible(
     const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
 
     // Calculate center position based on anchor point, with bobbing
-    const centerX = px + TILE_SIZE / 2;
+    let centerX = px + TILE_SIZE / 2;
     let centerY = py + TILE_SIZE / 2 + bobOffset;
 
     if (collectibleData.anchorPoint === 'bottom_center') {
@@ -3204,7 +3202,7 @@ function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: nu
   const spriteSize = (objectData.customSprite?.size || 0.8) * TILE_SIZE;
 
   // Calculate center position based on anchor point
-  const centerX = px + TILE_SIZE / 2;
+  let centerX = px + TILE_SIZE / 2;
   let centerY = py + TILE_SIZE / 2;
 
   if (objectData.anchorPoint === 'bottom_center') {
@@ -3276,7 +3274,7 @@ function drawShape(
           ctx.drawImage(img, Math.round(px - s / 2), Math.round(py - s / 2), s, s);
         }
       }
-    } catch {
+    } catch (e) {
       // Image not ready yet, will draw on next frame
     }
     ctx.restore();

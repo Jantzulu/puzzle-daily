@@ -85,7 +85,7 @@ export async function logActivity(entry: Omit<ActivityEntry, 'user_id'>): Promis
       ...entry,
       user_id: userId || null,
     });
-  } catch {
+  } catch (e) {
     // Cloud logging is optional — local log is the fallback
   }
 }
@@ -103,7 +103,7 @@ async function pruneOldActivity(): Promise<void> {
   try {
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     await supabase.from('activity_log').delete().lt('created_at', cutoff);
-  } catch {
+  } catch (e) {
     // Cloud cleanup is optional
   }
   })();
@@ -129,7 +129,7 @@ export async function fetchRecentActivity(limit: number = 50): Promise<ActivityR
       .limit(limit);
 
     if (!error && data) {
-      cloudEntries = data.map((row: Record<string, unknown>) => ({
+      cloudEntries = data.map((row: any) => ({
         id: row.id,
         user_id: row.user_id,
         action: row.action,
@@ -138,8 +138,8 @@ export async function fetchRecentActivity(limit: number = 50): Promise<ActivityR
         asset_name: row.asset_name,
         details: row.details,
         created_at: row.created_at,
-        display_name: (row.profiles as Record<string, unknown>)?.display_name || 'Unknown',
-      })) as ActivityRecord[];
+        display_name: row.profiles?.display_name || 'Unknown',
+      }));
     }
   } catch {
     // Cloud unavailable — local only
@@ -185,7 +185,7 @@ export async function fetchAssetActivity(assetId: string, limit: number = 20): P
       .limit(limit);
 
     if (!error && data) {
-      cloudEntries = data.map((row: Record<string, unknown>) => ({
+      cloudEntries = data.map((row: any) => ({
         id: row.id,
         user_id: row.user_id,
         action: row.action,
@@ -194,8 +194,8 @@ export async function fetchAssetActivity(assetId: string, limit: number = 20): P
         asset_name: row.asset_name,
         details: row.details,
         created_at: row.created_at,
-        display_name: (row.profiles as Record<string, unknown>)?.display_name || 'Unknown',
-      })) as ActivityRecord[];
+        display_name: row.profiles?.display_name || 'Unknown',
+      }));
     }
   } catch {
     // Cloud unavailable

@@ -2,9 +2,11 @@ import React, { useCallback, useEffect, useImperativeHandle, useMemo, useRef, us
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { usePixelEditorHistory, type PixelEditorHistorySnapshot } from '../../hooks/usePixelEditorHistory';
 import {
+  type RGBA,
   hexToRGBA,
   rgbaToHex,
   getPixel,
+  setPixel,
   floodFill,
   bresenhamLine,
   displayToPixel,
@@ -17,6 +19,7 @@ import {
   serializeProject,
   deserializeProject,
   compositeLayers,
+  cloneLayerStack,
   constrainShapeEnd,
   drawRect,
   drawEllipse,
@@ -39,10 +42,11 @@ import {
   type TransformHandle,
   magicWandSelect,
   type PixelEditorProject,
+  type PixelEditorLayer,
 } from './pixelEditorUtils';
 import { PixelEditorTimeline } from './PixelEditorTimeline';
 import { PixelEditorAnimationPreview } from './PixelEditorAnimationPreview';
-import { uploadMediaDataUrlToPath } from '../../utils/mediaStorage';
+import { uploadMediaDataUrl, uploadMediaDataUrlToPath } from '../../utils/mediaStorage';
 import { PixelEditorOpenModal } from './PixelEditorOpenModal';
 import { toast } from '../shared/Toast';
 import { writePixelAutoSave, readPixelAutoSave, clearPixelAutoSave, AUTOSAVE_INTERVAL_MS, type PixelAutoSaveData } from '../../utils/pixelEditorAutoSave';
@@ -1200,7 +1204,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           return;
         }
         history.push(getSnapshot());
-        const { mask, bounds } = result;
+        let { mask, bounds } = result;
 
         // Shift+click: merge with previous selection mask
         if (e.shiftKey && selection?.mask) {
@@ -1295,7 +1299,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     } else {
       startDrawing();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- complex drawing handler; listed deps cover key state; remaining are stable refs/functions
   }, [panX, panY, getPixelCoord, history, getSnapshot, applyToolWithLine, tool, selection, commitFloating, liftSelection]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -1474,7 +1477,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     if (!coord) return;
     applyToolWithLine(coord.x, coord.y);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- complex pointer move handler; listed deps are sufficient; remaining are stable refs
   }, [getPixelCoord, getPixelCoordUnclamped, applyToolWithLine, triggerRender, tool, selection, canvasWidth, canvasHeight]);
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -1555,7 +1557,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
     isDrawingRef.current = false;
     lastPixelRef.current = null;
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- pointer up handler; listed deps cover key state; history/snapshot accessed via refs
   }, [tool, shapeEnd, color, shapeFilled, getActiveLayer, bumpLayers, triggerRender]);
 
   // ─── Zoom ───────────────────────────────────────────────────────
@@ -1978,7 +1979,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     } finally {
       setSaving(false);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- onMetadataChange is a stable callback from parent
   }, [getComposite, buildCurrentProject, commitFloating, projectName, onApply, onProjectUrlChange]);
 
   const handleSave = useCallback(async () => {
@@ -2885,7 +2885,6 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
 
   // ─── Render: Canvas Size Controls ─────────────────────────────────
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- reserved for future toolbar layout
   const canvasSizeControls = (
     <div>
       <button

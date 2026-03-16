@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
-import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, CadencePattern } from '../../types/game';
-import type { CustomTileType } from '../../utils/assetStorage';
+import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig, CadenceConfig, CadencePattern } from '../../types/game';
+import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
@@ -463,6 +463,10 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     setTileTypes(getCustomTileTypes());
   };
 
+  useEffect(() => {
+    if (initialSelectedId) handleSelect(initialSelectedId);
+  }, [initialSelectedId]);
+
   const handleSelect = (id: string) => {
     const tileType = tileTypes.find(t => t.id === id);
     if (tileType) {
@@ -471,11 +475,6 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
       setIsCreating(false);
     }
   };
-
-  useEffect(() => {
-    if (initialSelectedId) handleSelect(initialSelectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelect is stable by identity; only re-run when initialSelectedId changes
-  }, [initialSelectedId]);
 
   const handleNew = () => {
     const newTileType: CustomTileType = {

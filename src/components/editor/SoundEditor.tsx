@@ -7,9 +7,11 @@ import {
   saveSoundAsset,
   getSoundAssets,
   deleteSoundAsset,
+  loadSoundAsset,
   saveGlobalSoundConfig,
   getGlobalSoundConfig,
   saveGlobalHapticConfig,
+  getFolders,
 } from '../../utils/assetStorage';
 import { HAPTIC_PATTERN_OPTIONS, vibratePreview, getEffectiveHapticConfig } from '../../utils/haptics';
 import { soundManager } from '../../utils/soundManager';
@@ -100,7 +102,6 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
 
   useEffect(() => {
     if (initialSelectedId) handleSelect(initialSelectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelect is stable by identity; only re-run when initialSelectedId changes
   }, [initialSelectedId]);
 
   const handleNew = () => {

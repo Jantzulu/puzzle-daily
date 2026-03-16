@@ -37,7 +37,7 @@ export const TownCrierPage: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    loadPosts(); // eslint-disable-line react-hooks/set-state-in-effect -- loading async data on mount
+    loadPosts();
   }, [loadPosts]);
 
   const filtered = activeCategory === 'all'

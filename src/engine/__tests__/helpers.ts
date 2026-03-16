@@ -13,11 +13,9 @@ import type {
   GameState,
   Tile,
   TileOrNull,
-  CustomAttack,
-  SpellAsset,
-  StatusEffectAsset,
+  WinCondition,
+  CharacterAction,
 } from '../../types/game';
-import type { CustomTileType, CustomCollectible } from '../../utils/assetStorage';
 import { Direction, TileType, ActionType } from '../../types/game';
 
 // ==========================================
@@ -26,11 +24,11 @@ import { Direction, TileType, ActionType } from '../../types/game';
 
 const characterRegistry = new Map<string, Character>();
 const enemyRegistry = new Map<string, Enemy>();
-const tileTypeRegistry = new Map<string, CustomTileType>();
-const collectibleRegistry = new Map<string, CustomCollectible>();
-const spellRegistry = new Map<string, SpellAsset>();
-const statusEffectRegistry = new Map<string, StatusEffectAsset>();
-const customAttackRegistry = new Map<string, CustomAttack>();
+const tileTypeRegistry = new Map<string, any>();
+const collectibleRegistry = new Map<string, any>();
+const spellRegistry = new Map<string, any>();
+const statusEffectRegistry = new Map<string, any>();
+const customAttackRegistry = new Map<string, any>();
 
 export function registerTestCharacter(char: Character) {
   characterRegistry.set(char.id, char);
@@ -40,23 +38,23 @@ export function registerTestEnemy(enemy: Enemy) {
   enemyRegistry.set(enemy.id, enemy);
 }
 
-export function registerTestTileType(id: string, tileDef: CustomTileType) {
+export function registerTestTileType(id: string, tileDef: any) {
   tileTypeRegistry.set(id, tileDef);
 }
 
-export function registerTestCollectible(id: string, def: CustomCollectible) {
+export function registerTestCollectible(id: string, def: any) {
   collectibleRegistry.set(id, def);
 }
 
-export function registerTestSpell(id: string, def: SpellAsset) {
+export function registerTestSpell(id: string, def: any) {
   spellRegistry.set(id, def);
 }
 
-export function registerTestStatusEffect(id: string, def: StatusEffectAsset) {
+export function registerTestStatusEffect(id: string, def: any) {
   statusEffectRegistry.set(id, def);
 }
 
-export function registerTestCustomAttack(id: string, def: CustomAttack) {
+export function registerTestCustomAttack(id: string, def: any) {
   customAttackRegistry.set(id, def);
 }
 

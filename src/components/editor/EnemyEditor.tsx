@@ -3,9 +3,9 @@ import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
-import type { CharacterAction, EnemyBehavior } from '../../types/game';
+import type { CharacterAction, EnemyBehavior, EntitySoundSet } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
+import { saveEnemy, getCustomEnemies, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -32,7 +32,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const [enemies, setEnemies] = useState<CustomEnemy[]>(refreshEnemies);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomEnemy | null>(null);
-  const [, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
   const [searchTerm, setSearchTerm] = useState('');
@@ -56,9 +56,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   };
 
   useEffect(() => {
-     
     if (initialSelectedId) handleSelect(initialSelectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelect is stable by identity; only re-run when initialSelectedId changes
   }, [initialSelectedId]);
 
   const handleNew = () => {

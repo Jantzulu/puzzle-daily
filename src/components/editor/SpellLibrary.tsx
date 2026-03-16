@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { SpellAsset } from '../../types/game';
-import { getSpellAssets, deleteSpellAsset, saveSpellAsset } from '../../utils/assetStorage';
+import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -22,7 +22,6 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- initializing state from external store on mount
     loadSpells();
   }, []);
 
@@ -35,7 +34,6 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
   useEffect(() => {
     if (initialSelectedId) {
       const spell = spells.find(s => s.id === initialSelectedId);
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- syncing selection state from prop on change
       if (spell) handleSelect(spell);
     }
   }, [initialSelectedId, spells]);

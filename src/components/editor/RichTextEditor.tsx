@@ -37,7 +37,6 @@ export const RichTextEditor: React.FC<RichTextEditorProps> = ({
   useEffect(() => {
     if (editorRef.current && !isInitialized) {
       editorRef.current.innerHTML = value || '';
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time initialization flag
       setIsInitialized(true);
     }
   }, [value, isInitialized]);

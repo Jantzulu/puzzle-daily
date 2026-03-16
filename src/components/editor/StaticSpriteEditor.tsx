@@ -937,7 +937,7 @@ function drawShape(
       ctx.stroke();
       break;
 
-    case 'star': {
+    case 'star':
       const spikes = 5;
       const outerRadius = size / 2;
       const innerRadius = size / 4;
@@ -957,7 +957,6 @@ function drawShape(
       ctx.fill();
       ctx.stroke();
       break;
-    }
 
     default:
       ctx.fillRect(centerX - size / 2, centerY - size / 2, size, size);

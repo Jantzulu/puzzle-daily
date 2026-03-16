@@ -52,7 +52,6 @@ export const PuzzleLibraryModal: React.FC<PuzzleLibraryModalProps> = ({
   // Load folders and cloud statuses when modal opens
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- resetting modal state when it opens
       setFolders(getPuzzleFolders());
       setSearchQuery('');
       setConfirmDelete(null);

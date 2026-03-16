@@ -72,9 +72,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
   };
 
   useEffect(() => {
-     
     if (initialSelectedId) handleSelect(initialSelectedId);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelect is stable by identity; only re-run when initialSelectedId changes
   }, [initialSelectedId]);
 
   const handleNew = () => {

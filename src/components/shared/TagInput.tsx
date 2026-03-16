@@ -169,7 +169,6 @@ export const TagInput: React.FC<TagInputProps> = ({
 /**
  * Collect all unique tags from an array of puzzles.
  */
-// eslint-disable-next-line react-refresh/only-export-components
 export function collectAllTags(puzzles: { tags?: string[] }[]): string[] {
   const tagSet = new Set<string>();
   for (const p of puzzles) {

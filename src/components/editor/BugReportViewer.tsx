@@ -34,7 +34,6 @@ export const BugReportViewer: React.FC = () => {
   }, [statusFilter]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- fetching initial data from external API
     loadReports();
   }, [loadReports]);
 

@@ -216,7 +216,6 @@ export const ImageUrlInput: React.FC<ImageUrlInputProps> = ({
  * Helper to resolve image source - returns URL or base64 data
  * Prefers base64 if both are set (for offline capability)
  */
-// eslint-disable-next-line react-refresh/only-export-components
 export function resolveImageSource(imageData?: string, imageUrl?: string): string | undefined {
   return imageData || imageUrl;
 }

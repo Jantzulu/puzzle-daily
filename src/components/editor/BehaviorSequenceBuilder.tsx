@@ -1,6 +1,6 @@
 import React, { useState, useCallback } from 'react';
 import { Direction, ActionType, TURN_INTERVAL_MS } from '../../types/game';
-import type { CharacterAction, ExecutionMode, TriggerConfig, TriggerMode, TriggerEvent, WallCollisionBehavior, RelativeDirection } from '../../types/game';
+import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
 import { loadSpellAsset } from '../../utils/assetStorage';
 import { DirectionCompass } from './DirectionCompass';
 
@@ -287,7 +287,7 @@ const MovementConfig: React.FC<{ action: CharacterAction; onUpdate: (a: Characte
         className="w-16 px-2 py-1 bg-stone-600 rounded text-sm" />
       <label className="text-xs text-stone-400">Wall:</label>
       <select value={action.onWallCollision || 'stop'}
-        onChange={(e) => onUpdate({ ...action, onWallCollision: e.target.value as WallCollisionBehavior })}
+        onChange={(e) => onUpdate({ ...action, onWallCollision: e.target.value as any })}
         className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
         <option value="stop">Stop</option>
         <option value="turn_left">Turn Left</option>
@@ -403,7 +403,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               <select value={action.trigger?.mode || 'interval'}
                 onChange={(e) => {
                   const newTrigger: TriggerConfig = {
-                    mode: e.target.value as TriggerMode,
+                    mode: e.target.value as any,
                     ...(e.target.value === 'interval' ? { intervalMs: 600 } : { event: defaultEvent })
                   };
                   onUpdate({ ...action, trigger: newTrigger });
@@ -428,7 +428,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               {action.trigger?.mode === 'on_event' && (
                 <>
                   <select value={action.trigger.event || defaultEvent}
-                    onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, event: e.target.value as TriggerEvent } })}
+                    onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, event: e.target.value as any } })}
                     className="w-full px-2 py-1 bg-stone-600 rounded text-xs">
                     {eventOptions.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>

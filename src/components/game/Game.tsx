@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore } from '../../types/game';
 import { Direction, TURN_INTERVAL_MS } from '../../types/game';

@@ -2,10 +2,10 @@
 // Uses brute-force search across all valid placement combinations
 
 import { initializeGameState, executeTurn } from './simulation';
-import { getCharacter } from '../data/characters';
+import { getCharacter, getAllCharacters } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { loadTileType, loadCollectible } from '../utils/assetStorage';
-import type { Puzzle, PlacedCharacter, Direction, TileType } from '../types/game';
+import type { Puzzle, PlacedCharacter, GameState, Direction, TileType } from '../types/game';
 
 export interface SolverResult {
   solvable: boolean;

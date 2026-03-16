@@ -8,7 +8,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
-import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
+import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets, type LogoVariant } from './utils/themeAssets';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { LoginPage } from './components/auth/LoginPage';
@@ -75,7 +75,6 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const frameIndexRef = useRef(0);
-  // eslint-disable-next-line react-hooks/purity -- Date.now() in ref initializer is intentional; value is only used inside rAF loop
   const lastFrameTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -128,7 +127,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
 
 function PlayerNavigation() {
   const location = useLocation();
-  useAuth();
+  const { user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileMenuDismissing, setMobileMenuDismissing] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
@@ -216,7 +215,6 @@ function PlayerNavigation() {
     <nav
       ref={navRef}
       className={`bg-stone-600 border-b-2 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon md:sticky md:top-0 z-50 transition-shadow duration-300 ${
-        // eslint-disable-next-line react-hooks/refs -- scrolledPast ref read during render; forceUpdate ensures re-render on scroll change
         scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
       }`}
       style={navbarStyle}

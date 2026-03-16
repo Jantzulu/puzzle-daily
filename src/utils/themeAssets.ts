@@ -15,7 +15,7 @@
 
 import { supabase } from '../lib/supabase';
 import { safeLocalStorageSet } from './assetStorage';
-import { loadImage, isImageReady } from './imageLoader';
+import { loadImage, isImageReady, subscribeToImageLoads } from './imageLoader';
 
 const STORAGE_KEY = 'theme_assets';
 const STORAGE_BUCKET = 'theme-assets';

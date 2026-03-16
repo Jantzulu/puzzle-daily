@@ -2,7 +2,7 @@
  * Tests for src/engine/scoring.ts — score calculation, rankings, side quests.
  * No external mocking needed; scoring operates on pure GameState data.
  */
-import { Direction } from '../../types/game';
+import { Direction, ActionType } from '../../types/game';
 import type { GameState, Puzzle, PlacedCharacter, SideQuest, PuzzleScore } from '../../types/game';
 import {
   calculateScore,
@@ -279,7 +279,7 @@ describe('checkSideQuests', () => {
       puzzle: makePuzzle({
         sideQuests: [{ id: 'sq1', type: 'no_damage_taken', title: 'Untouched', bonusPoints: 100 }],
       }),
-      placedCharacters: [makeChar({ currentHealth: 10, maxHealth: 10 } as Partial<PlacedCharacter>)],
+      placedCharacters: [makeChar({ currentHealth: 10, maxHealth: 10 } as any)],
     });
     expect(checkSideQuests(gs)).toContain('sq1');
   });
@@ -289,7 +289,7 @@ describe('checkSideQuests', () => {
       puzzle: makePuzzle({
         sideQuests: [{ id: 'sq1', type: 'no_damage_taken', title: 'Untouched', bonusPoints: 100 }],
       }),
-      placedCharacters: [makeChar({ currentHealth: 7, maxHealth: 10 } as Partial<PlacedCharacter>)],
+      placedCharacters: [makeChar({ currentHealth: 7, maxHealth: 10 } as any)],
     });
     expect(checkSideQuests(gs)).not.toContain('sq1');
   });

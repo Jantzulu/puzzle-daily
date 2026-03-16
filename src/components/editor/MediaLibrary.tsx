@@ -366,7 +366,7 @@ export const MediaLibraryInner: React.FC<MediaLibraryInnerProps> = ({ onSelect, 
                 {!entry.isFolder && (
                   <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
-                      onClick={(e) => { e.stopPropagation(); if (entry.url) copyUrl(entry.url); }}
+                      onClick={(e) => { e.stopPropagation(); entry.url && copyUrl(entry.url); }}
                       className="w-6 h-6 bg-stone-900/80 hover:bg-arcane-700 rounded text-xs flex items-center justify-center"
                       title="Copy URL"
                     >

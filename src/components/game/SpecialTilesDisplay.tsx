@@ -52,7 +52,7 @@ function getBehaviorDescription(behaviors: TileBehaviorConfig[]): string {
       case 'ice':
         descriptions.push('Slides until hitting obstacle');
         break;
-      case 'pressure_plate': {
+      case 'pressure_plate':
         const effects = behavior.pressurePlateEffects || [];
         if (effects.length > 0) {
           const effectTypes = effects.map(e => {
@@ -70,7 +70,6 @@ function getBehaviorDescription(behaviors: TileBehaviorConfig[]): string {
           descriptions.push('Pressure plate');
         }
         break;
-      }
     }
   }
 

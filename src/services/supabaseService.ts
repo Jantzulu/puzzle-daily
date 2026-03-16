@@ -62,7 +62,7 @@ export async function savePuzzleToCloud(puzzle: Puzzle, name?: string): Promise<
   };
 
 
-  const { error } = await supabase
+  const { error, data } = await supabase
     .from('puzzles_draft')
     .upsert(dbPuzzle, { onConflict: 'id' })
     .select();
@@ -519,7 +519,7 @@ export async function fetchSchedule(startDate: string, endDate: string): Promise
   return (data || []).map(row => ({
     date: row.scheduled_date,
     puzzleId: row.puzzle_id,
-    puzzleName: (row.puzzles_live as Record<string, unknown> | null)?.name as string || 'Unknown',
+    puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
     puzzleNumber: row.puzzle_number ?? undefined,
   }));
 }
@@ -542,7 +542,7 @@ export async function fetchFullScheduleWithNumbers(): Promise<ScheduleEntry[]> {
   return (data || []).map(row => ({
     date: row.scheduled_date,
     puzzleId: row.puzzle_id,
-    puzzleName: (row.puzzles_live as Record<string, unknown> | null)?.name as string || 'Unknown',
+    puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
     puzzleNumber: row.puzzle_number ?? undefined,
   }));
 }
