@@ -65,6 +65,66 @@ function getRandomLogo(themeAssets: ThemeAssets): { image: string; frameCount: n
   return cachedRandomLogo;
 }
 
+function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
+  src: string;
+  alt: string;
+  frameCount: number;
+  frameRate: number;
+  className?: string;
+}) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageRef = useRef<HTMLImageElement | null>(null);
+  const frameIndexRef = useRef(0);
+  const lastFrameTimeRef = useRef(Date.now());
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    imageRef.current = img;
+    let animationFrameId: number | null = null;
+    const frameDuration = 1000 / frameRate;
+
+    img.onload = () => {
+      const frameWidth = Math.floor(img.width / frameCount);
+      const frameHeight = img.height;
+      canvas.width = frameWidth;
+      canvas.height = frameHeight;
+      const displayHeight = 48;
+      const displayWidth = frameWidth * (displayHeight / frameHeight);
+      canvas.style.width = `${displayWidth}px`;
+      canvas.style.height = `${displayHeight}px`;
+
+      const animate = () => {
+        const now = Date.now();
+        if (now - lastFrameTimeRef.current >= frameDuration) {
+          frameIndexRef.current = (frameIndexRef.current + 1) % frameCount;
+          lastFrameTimeRef.current = now;
+        }
+        ctx.clearRect(0, 0, frameWidth, frameHeight);
+        ctx.drawImage(img, frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight, 0, 0, frameWidth, frameHeight);
+        animationFrameId = requestAnimationFrame(animate);
+      };
+      animate();
+    };
+    img.src = src;
+    return () => { if (animationFrameId !== null) cancelAnimationFrame(animationFrameId); };
+  }, [src, frameCount, frameRate]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      className={className}
+      style={{ imageRendering: 'pixelated', display: 'block' }}
+      aria-label={alt}
+    />
+  );
+}
+
 function PlayerNavigation() {
   const location = useLocation();
   const { user } = useAuth();
@@ -130,19 +190,43 @@ function PlayerNavigation() {
 
   const randomLogo = getRandomLogo(themeAssets);
   const logoSrc = randomLogo?.image || themeAssets.logo;
+  const logoFrameCount = randomLogo?.frameCount || Number(themeAssets.logoFrameCount) || 1;
+  const logoFrameRate = randomLogo?.frameRate || Number(themeAssets.logoFrameRate) || 10;
+
+  // Build navbar style (matching dev app logic)
+  const navbarStyle: Record<string, string> = {};
+  if (themeAssets.colorBgNavbar) {
+    navbarStyle.backgroundColor = themeAssets.colorBgNavbar;
+  }
+  if (themeAssets.bgNavbar) {
+    navbarStyle.backgroundImage = `url(${themeAssets.bgNavbar})`;
+    navbarStyle.backgroundSize = 'cover';
+    navbarStyle.backgroundPosition = 'center';
+  }
+  navbarStyle.borderColor = 'var(--theme-border-primary, #8c5c37)';
 
   return (
     <nav
       ref={navRef}
-      className={`w-full z-40 transition-shadow duration-300 md:sticky md:top-0 ${
+      className={`bg-stone-600 border-b-2 shadow-dungeon md:sticky md:top-0 z-50 transition-shadow duration-300 ${
         scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
       }`}
-      style={{ backgroundColor: themeAssets.navbarBg || '#1a1a1a' }}
+      style={navbarStyle}
     >
       <div className="max-w-7xl mx-auto px-3 py-1.5 flex items-center gap-2">
         <Link to="/" className="flex items-center gap-2 shrink-0">
           {logoSrc ? (
-            <img src={logoSrc} alt="Logo" className="h-8 w-auto" style={{ imageRendering: 'pixelated' }} />
+            logoFrameCount > 1 ? (
+              <AnimatedLogo
+                src={logoSrc}
+                alt={themeAssets.logoAlt || 'Logo'}
+                frameCount={logoFrameCount}
+                frameRate={logoFrameRate}
+                className="h-8 md:h-12 flex-shrink-0"
+              />
+            ) : (
+              <img src={logoSrc} alt={themeAssets.logoAlt || 'Logo'} className="h-8 w-auto" style={{ imageRendering: 'pixelated' }} />
+            )
           ) : (
             <span className="text-xl">⚔️</span>
           )}
@@ -190,7 +274,7 @@ function PlayerNavigation() {
 
       {mobileMenuOpen && (
         <div className={`md:hidden px-3 pb-3 space-y-1 ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}
-          style={{ backgroundColor: themeAssets.navbarBg || '#1a1a1a' }}>
+          style={navbarStyle}>
           <Link to="/" className={`block ${linkClass('/')}`} onClick={closeMobileMenu}>
             <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
           </Link>
