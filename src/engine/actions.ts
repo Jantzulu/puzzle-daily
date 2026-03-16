@@ -800,7 +800,7 @@ function moveCharacter(
     return updatedChar;
   }
 
-  let currentDirection = direction;
+  const currentDirection = direction;
 
   for (let i = 0; i < tilesPerMove; i++) {
     const { dx, dy } = getDirectionOffset(currentDirection);
@@ -1368,7 +1368,7 @@ function relativeToAbsolute(facing: Direction, relative: RelativeDirection): Dir
   // Calculate absolute angle
   const currentAngle = directionAngles[facing];
   const offset = relativeOffsets[relative];
-  let absoluteAngle = (currentAngle + offset) % 360;
+  const absoluteAngle = (currentAngle + offset) % 360;
 
   // Convert back to Direction enum
   const angleToDirection: Record<number, Direction> = {

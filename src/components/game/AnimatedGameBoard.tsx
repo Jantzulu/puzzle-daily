@@ -3136,7 +3136,7 @@ function drawCollectible(
     const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
 
     // Calculate center position based on anchor point, with bobbing
-    let centerX = px + TILE_SIZE / 2;
+    const centerX = px + TILE_SIZE / 2;
     let centerY = py + TILE_SIZE / 2 + bobOffset;
 
     if (collectibleData.anchorPoint === 'bottom_center') {
@@ -3202,7 +3202,7 @@ function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: nu
   const spriteSize = (objectData.customSprite?.size || 0.8) * TILE_SIZE;
 
   // Calculate center position based on anchor point
-  let centerX = px + TILE_SIZE / 2;
+  const centerX = px + TILE_SIZE / 2;
   let centerY = py + TILE_SIZE / 2;
 
   if (objectData.anchorPoint === 'bottom_center') {

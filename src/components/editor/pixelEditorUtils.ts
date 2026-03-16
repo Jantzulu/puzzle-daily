@@ -128,7 +128,7 @@ export function compositeLayers(
 
     for (let p = 0; p < total; p++) {
       const i = p * 4;
-      let sa = src[i + 3] * layerOpacity / 255;
+      const sa = src[i + 3] * layerOpacity / 255;
       if (sa === 0) continue;
 
       const sr = src[i], sg = src[i + 1], sb = src[i + 2];
