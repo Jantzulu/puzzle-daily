@@ -48,7 +48,7 @@ export const isLocalStorageAvailable = (): boolean => {
     const result = localStorage.getItem(testKey);
     localStorage.removeItem(testKey);
     return result === 'test';
-  } catch (e) {
+  } catch {
     return false;
   }
 };
@@ -75,7 +75,7 @@ export const getPendingAssetDeletions = (): PendingDeletion[] => {
   if (!stored) return [];
   try {
     return JSON.parse(stored);
-  } catch (e) {
+  } catch {
     return [];
   }
 };
@@ -105,7 +105,7 @@ export const getHiddenAssets = (): Set<string> => {
   if (!stored) return new Set();
   try {
     return new Set(JSON.parse(stored));
-  } catch (e) {
+  } catch {
     return new Set();
   }
 };
@@ -152,7 +152,7 @@ export const getFolders = (category?: AssetCategory): AssetFolder[] => {
       return folders.filter(f => f.category === category);
     }
     return folders;
-  } catch (e) {
+  } catch {
     return [];
   }
 };

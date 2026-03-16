@@ -1,4 +1,4 @@
-import type { Puzzle, TileType } from '../types/game';
+import type { Puzzle } from '../types/game';
 import { getEnemy } from '../data/enemies';
 import { loadTileType } from './assetStorage';
 

@@ -102,7 +102,7 @@ export function vibrate(triggerId: HapticTriggerId): void {
 
   try {
     firePattern(pattern);
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 /**
@@ -112,7 +112,7 @@ export function vibratePreview(pattern: HapticPattern): void {
   if (!isHapticsSupported()) return;
   try {
     firePattern(pattern);
-  } catch {}
+  } catch { /* ignore */ }
 }
 
 /** All available pattern names for UI dropdowns */

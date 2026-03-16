@@ -40,6 +40,7 @@ class SoundManager {
     if (this.audioContext) return;
 
     try {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       this.audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
 
       // Create gain nodes for volume control hierarchy

@@ -62,7 +62,7 @@ export async function savePuzzleToCloud(puzzle: Puzzle, name?: string): Promise<
   };
 
 
-  const { error, data } = await supabase
+  const { error, data: _data } = await supabase
     .from('puzzles_draft')
     .upsert(dbPuzzle, { onConflict: 'id' })
     .select();
