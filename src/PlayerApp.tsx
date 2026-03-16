@@ -4,7 +4,7 @@
  * Built via `npm run build:player` using vite.config.player.ts.
  */
 import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
-import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
@@ -326,6 +326,26 @@ function PlayerNavigation() {
   );
 }
 
+function NotFoundPage() {
+  return (
+    <div className="flex flex-col items-center justify-center min-h-[60vh] px-4 text-center">
+      <div className="text-6xl mb-4">🏚️</div>
+      <h1 className="text-3xl md:text-4xl font-medieval font-bold text-copper-400 text-shadow-dungeon mb-3">
+        Page Not Found
+      </h1>
+      <p className="text-stone-400 text-lg mb-6 max-w-md">
+        This dungeon corridor leads nowhere. The path you seek does not exist.
+      </p>
+      <Link
+        to="/"
+        className="nav-link-btn px-6 py-3 font-medieval font-semibold text-base"
+      >
+        Return to the Entrance
+      </Link>
+    </div>
+  );
+}
+
 function PlayerApp() {
   const lastScrollY = useRef(0);
 
@@ -380,7 +400,7 @@ function PlayerApp() {
                 <Route path="/training" element={<TrainingGrounds />} />
                 <Route path="/town-crier" element={<TownCrierPage />} />
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
-                <Route path="*" element={<Navigate to="/" replace />} />
+                <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
           </ErrorBoundary>
