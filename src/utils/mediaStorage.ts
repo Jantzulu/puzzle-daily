@@ -55,11 +55,14 @@ export async function browseMedia(path: string = ''): Promise<MediaEntry[]> {
         // It's a file
         const fullPath = path ? `${path}/${item.name}` : item.name;
         const { data: urlData } = supabase.storage.from(BUCKET).getPublicUrl(fullPath);
+        // Cache-bust with updated_at so media browser always shows latest version
+        const updatedAt = item.updated_at || item.created_at || '';
+        const bustParam = updatedAt ? `?v=${new Date(updatedAt).getTime()}` : '';
         entries.push({
           name: item.name,
           isFolder: false,
           path: fullPath,
-          url: urlData.publicUrl,
+          url: `${urlData.publicUrl}${bustParam}`,
           size: (item.metadata as Record<string, unknown>)?.size as number || 0,
           createdAt: item.created_at || '',
         });
