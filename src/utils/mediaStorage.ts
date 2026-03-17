@@ -156,7 +156,9 @@ export async function uploadMediaDataUrlToPath(
       .from(BUCKET)
       .getPublicUrl(fullPath);
 
-    return { url: urlData.publicUrl, path: fullPath };
+    // Cache-bust: append timestamp so browsers refetch the updated file
+    const bustUrl = `${urlData.publicUrl}?v=${Date.now()}`;
+    return { url: bustUrl, path: fullPath };
   } catch (e) {
     console.error('[MediaStorage] Upsert upload error:', e);
     return null;
