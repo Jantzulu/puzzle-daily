@@ -60,6 +60,32 @@ const TILE_SPRITE_SLOTS: { key: keyof TileSprites; label: string; description: s
   { key: 'goal', label: 'Goal Tile', description: 'Goal/exit tile (48x48)' },
 ];
 
+// Highlight region mapping: each border/tile slot key → { x, y, w, h } in canvas pixels
+// Canvas for 6x6 grid: 320×384 (grid=288×288, border top/bottom=48, sides=16)
+const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; h: number }> = {
+  // Border slots
+  wallFront:     { x: 16, y: 0,   w: 288, h: 48 },
+  wallBottomOuter: { x: 16, y: 336, w: 288, h: 48 },
+  wallSide:      { x: 0,  y: 48,  w: 16,  h: 288 },  // left side (right is mirrored)
+  wallTop:       { x: 16, y: 336, w: 288, h: 24 },    // interior bottom edge (thin)
+  cornerTopLeft:     { x: 0,   y: 0,   w: 16, h: 48 },
+  cornerTopRight:    { x: 304, y: 0,   w: 16, h: 48 },
+  cornerBottomLeft:  { x: 0,   y: 336, w: 16, h: 48 },
+  cornerBottomRight: { x: 304, y: 336, w: 16, h: 48 },
+  cornerBottomLeftThin:  { x: 0,   y: 336, w: 16, h: 24 },
+  cornerBottomRightThin: { x: 304, y: 336, w: 16, h: 24 },
+  innerCornerTopLeft:     { x: 16,  y: 48,  w: 16, h: 48 },
+  innerCornerTopRight:    { x: 288, y: 48,  w: 16, h: 48 },
+  innerCornerBottomLeft:  { x: 16,  y: 288, w: 16, h: 48 },
+  innerCornerBottomRight: { x: 288, y: 288, w: 16, h: 48 },
+  innerCornerBottomLeftThin:  { x: 16,  y: 312, w: 16, h: 24 },
+  innerCornerBottomRightThin: { x: 288, y: 312, w: 16, h: 24 },
+  // Tile slots — highlight a representative tile in the grid
+  empty: { x: 16 + 48, y: 48 + 48, w: 48, h: 48 },   // (1,1) floor tile
+  wall:  { x: 16,      y: 48,      w: 48, h: 48 },    // not used in current preview but included
+  goal:  { x: 16 + 144, y: 48 + 144, w: 48, h: 48 },  // (3,3) goal tile
+};
+
 /** Build a minimal GameState for the live skin preview */
 function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType[]): GameState {
   const width = 6;
@@ -126,6 +152,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [customTileTypes, setCustomTileTypes] = useState<CustomTileType[]>(() => getCustomTileTypes());
   const [showPreview, setShowPreview] = useState(true);
+  const [highlightedSlot, setHighlightedSlot] = useState<string | null>(null);
   // Desktop magnifier state
   const [magnifierOn, setMagnifierOn] = useState(false);
   const [magnifierZoom, setMagnifierZoom] = useState(3);
@@ -837,12 +864,45 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 transformOrigin: magnifierOrigin || 'center center',
                               }}
                             >
-                              <AnimatedGameBoard
-                                gameState={previewGameState}
-                                skinOverride={editingSkin!}
-                                maxWidth={280}
-                                maxHeight={280}
-                              />
+                              <div className="relative">
+                                <AnimatedGameBoard
+                                  gameState={previewGameState}
+                                  skinOverride={editingSkin!}
+                                  maxWidth={280}
+                                  maxHeight={280}
+                                />
+                                {/* Highlight overlay for selected border/tile slot */}
+                                {highlightedSlot && SLOT_HIGHLIGHT_REGIONS[highlightedSlot] && (() => {
+                                  const r = SLOT_HIGHLIGHT_REGIONS[highlightedSlot];
+                                  // Canvas is 320×384, preview scales to fit 280×280
+                                  const canvasW = 320, canvasH = 384;
+                                  const scale = Math.min(280 / canvasW, 280 / canvasH);
+                                  const renderedW = canvasW * scale;
+                                  const renderedH = canvasH * scale;
+                                  // Canvas is centered in 280×280
+                                  const offsetX = (280 - renderedW) / 2;
+                                  const offsetY = (280 - renderedH) / 2;
+                                  // For wallSide, highlight both left and right sides
+                                  const regions = highlightedSlot === 'wallSide'
+                                    ? [r, { x: 304, y: 48, w: 16, h: 288 }]
+                                    : [r];
+                                  return regions.map((region, i) => (
+                                    <div
+                                      key={i}
+                                      className="absolute pointer-events-none animate-pulse"
+                                      style={{
+                                        left: offsetX + region.x * scale,
+                                        top: offsetY + region.y * scale,
+                                        width: region.w * scale,
+                                        height: region.h * scale,
+                                        border: '2px solid #f59e0b',
+                                        backgroundColor: 'rgba(245, 158, 11, 0.25)',
+                                        borderRadius: 2,
+                                      }}
+                                    />
+                                  ));
+                                })()}
+                              </div>
                             </div>
                           </div>
                         </>
@@ -924,7 +984,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                   </p>
                   <div className="grid grid-cols-3 gap-3">
                     {BORDER_SPRITE_SLOTS.map(({ key, label, description, size }) => (
-                      <div key={key} className="bg-stone-700 p-2 rounded">
+                      <div
+                        key={key}
+                        className={`bg-stone-700 p-2 rounded cursor-pointer transition-colors ${highlightedSlot === key ? 'ring-2 ring-amber-500 bg-stone-600' : 'hover:bg-stone-600'}`}
+                        onClick={() => setHighlightedSlot(highlightedSlot === key ? null : key)}
+                      >
                         <div className="text-xs font-bold mb-1">{label}</div>
                         <div className="text-xs text-stone-400 mb-1">{description}</div>
                         <div className="text-xs text-stone-500 mb-2">{size}</div>
@@ -1035,7 +1099,11 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                   </p>
                   <div className="grid grid-cols-3 gap-3">
                     {TILE_SPRITE_SLOTS.map(({ key, label, description }) => (
-                      <div key={key} className="bg-stone-700 p-2 rounded">
+                      <div
+                        key={key}
+                        className={`bg-stone-700 p-2 rounded cursor-pointer transition-colors ${highlightedSlot === key ? 'ring-2 ring-amber-500 bg-stone-600' : 'hover:bg-stone-600'}`}
+                        onClick={() => setHighlightedSlot(highlightedSlot === key ? null : key)}
+                      >
                         <div className="text-xs font-bold mb-1">{label}</div>
                         <div className="text-xs text-stone-400 mb-2">{description}</div>
 
