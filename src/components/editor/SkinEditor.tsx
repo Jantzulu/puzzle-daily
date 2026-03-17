@@ -71,15 +71,17 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
     customBorderSprites: hasBorderSprites ? skin.borderSprites : undefined,
   };
 
+  // All grid tiles are floor/empty — the outer border frame is drawn
+  // separately by drawCustomBorder using the skin's border sprites.
+  // This matches how real puzzles render: wall border outside, floor inside.
   const tiles: TileOrNull[][] = [];
   for (let y = 0; y < height; y++) {
     const row: TileOrNull[] = [];
     for (let x = 0; x < width; x++) {
-      const isEdge = x === 0 || x === width - 1 || y === 0 || y === height - 1;
       const isGoal = x === 3 && y === 3;
-      const tile: Tile = { x, y, type: isEdge ? TileType.WALL : isGoal ? TileType.GOAL : TileType.EMPTY, content: undefined };
+      const tile: Tile = { x, y, type: isGoal ? TileType.GOAL : TileType.EMPTY, content: undefined };
       // Show first custom tile type in one interior cell
-      if (!isEdge && !isGoal && customTileTypes.length > 0 && x === 1 && y === 1) {
+      if (!isGoal && customTileTypes.length > 0 && x === 1 && y === 1) {
         tile.customTileTypeId = customTileTypes[0].id;
       }
       row.push(tile);
