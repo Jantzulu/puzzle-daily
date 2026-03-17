@@ -1412,8 +1412,8 @@ export const Game: React.FC = () => {
 
               {/* Victory Overlay */}
               {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 animate-overlay-fade-in" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
-                  <div className="victory-panel p-6 rounded-pixel-lg text-center max-w-[90%] max-h-[90vh] overflow-y-auto animate-panel-scale-in">
+                <div className="fixed inset-0 flex items-center justify-center z-50 overflow-y-auto py-4 animate-overlay-fade-in" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
+                  <div className="victory-panel p-6 rounded-pixel-lg text-center w-[min(90%,24rem)] my-auto animate-panel-scale-in">
                     {/* Trophy and Rank */}
                     <div className="text-4xl mb-1 animate-icon-bounce animate-victory-glow">{getRankEmoji(puzzleScore.rank)}</div>
                     <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
