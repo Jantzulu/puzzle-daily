@@ -8,7 +8,7 @@ import { saveCollectible, getCustomCollectibles, deleteCollectible, getFolders, 
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { CollapsiblePanel } from './CollapsiblePanel';
@@ -238,8 +238,14 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
             }}
             onExport={() => {
               const items = collectibles.filter(c => bulk.selectedIds.has(c.id));
-              bulkExport(items, 'collectibles-export.json');
+              bulkExport(items, 'collectibles-export.json', 'collectible');
             }}
+            onImport={() => bulkImport({
+              assetType: 'collectible',
+              saveFn: saveCollectible,
+              existingIds: new Set(collectibles.map(c => c.id)),
+              onComplete: () => { refreshCollectibles(); bulk.clear(); },
+            })}
           />
 
           <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">

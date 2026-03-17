@@ -7,7 +7,7 @@ import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../ut
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
@@ -240,8 +240,14 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
             }}
             onExport={() => {
               const items = objects.filter(o => bulk.selectedIds.has(o.id));
-              bulkExport(items, 'objects-export.json');
+              bulkExport(items, 'objects-export.json', 'object');
             }}
+            onImport={() => bulkImport({
+              assetType: 'object',
+              saveFn: saveObject,
+              existingIds: new Set(objects.map(o => o.id)),
+              onComplete: () => { refreshObjects(); bulk.clear(); },
+            })}
           />
 
           <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">

@@ -6,7 +6,7 @@ import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Directi
 import type { CustomTileType } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -723,8 +723,14 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
               }}
               onExport={() => {
                 const items = tileTypes.filter(t => bulk.selectedIds.has(t.id));
-                bulkExport(items, 'tiles-export.json');
+                bulkExport(items, 'tiles-export.json', 'tile');
               }}
+              onImport={() => bulkImport({
+                assetType: 'tile',
+                saveFn: saveTileType,
+                existingIds: new Set(tileTypes.map(t => t.id)),
+                onComplete: () => { refreshTileTypes(); bulk.clear(); },
+              })}
             />
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">

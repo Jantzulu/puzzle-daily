@@ -9,7 +9,7 @@ import { StatusEffectEditor } from './StatusEffectEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { SpriteThumbnail } from './SpriteThumbnail';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 
 // Get display color for status effect type
 function getEffectTypeColor(type: StatusEffectType): string {
@@ -182,8 +182,14 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
             }}
             onExport={() => {
               const items = effects.filter(e => bulk.selectedIds.has(e.id));
-              bulkExport(items, 'status-effects-export.json');
+              bulkExport(items, 'status-effects-export.json', 'status_effect');
             }}
+            onImport={() => bulkImport({
+              assetType: 'status_effect',
+              saveFn: saveStatusEffectAsset,
+              existingIds: new Set(effects.map(e => e.id)),
+              onComplete: () => { loadEffects(); bulk.clear(); },
+            })}
           />
 
           <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">

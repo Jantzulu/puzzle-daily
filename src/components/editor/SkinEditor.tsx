@@ -8,7 +8,7 @@ import { AnimatedGameBoard } from '../game/AnimatedGameBoard';
 import { getAllPuzzleSkins, savePuzzleSkin, deletePuzzleSkin, getFolders, getCustomTileTypes } from '../../utils/assetStorage';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -587,8 +587,14 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
               }}
               onExport={() => {
                 const items = skins.filter(s => bulk.selectedIds.has(s.id));
-                bulkExport(items, 'skins-export.json');
+                bulkExport(items, 'skins-export.json', 'skin');
               }}
+              onImport={() => bulkImport({
+                assetType: 'skin',
+                saveFn: savePuzzleSkin,
+                existingIds: new Set(skins.map(s => s.id)),
+                onComplete: () => { refreshSkins(); bulk.clear(); },
+              })}
             />
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">

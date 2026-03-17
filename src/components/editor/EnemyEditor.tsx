@@ -11,7 +11,7 @@ import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -207,8 +207,14 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               }}
               onExport={() => {
                 const items = enemies.filter(e => bulk.selectedIds.has(e.id));
-                bulkExport(items, 'enemies-export.json');
+                bulkExport(items, 'enemies-export.json', 'enemy');
               }}
+              onImport={() => bulkImport({
+                assetType: 'enemy',
+                saveFn: saveEnemy,
+                existingIds: new Set(enemies.map(e => e.id)),
+                onComplete: () => { setEnemies(refreshEnemies()); bulk.clear(); },
+              })}
             />
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">

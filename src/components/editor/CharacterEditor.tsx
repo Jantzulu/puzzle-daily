@@ -12,7 +12,7 @@ import { SpriteThumbnail } from './SpriteThumbnail';
 import { AttackEditor } from './AttackEditor';
 import { SpellPicker } from './SpellPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
 import { BehaviorSequenceBuilder } from './BehaviorSequenceBuilder';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -233,8 +233,14 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
               }}
               onExport={() => {
                 const items = characters.filter(c => bulk.selectedIds.has(c.id));
-                bulkExport(items, 'characters-export.json');
+                bulkExport(items, 'characters-export.json', 'character');
               }}
+              onImport={() => bulkImport({
+                assetType: 'character',
+                saveFn: saveCharacter,
+                existingIds: new Set(characters.map(c => c.id)),
+                onComplete: () => { refreshCharacters(); bulk.clear(); },
+              })}
             />
 
             <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden dungeon-scrollbar">

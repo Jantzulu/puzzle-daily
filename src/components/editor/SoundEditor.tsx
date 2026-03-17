@@ -14,7 +14,7 @@ import {
 import { HAPTIC_PATTERN_OPTIONS, vibratePreview, getEffectiveHapticConfig } from '../../utils/haptics';
 import { soundManager } from '../../utils/soundManager';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 
 // Sound trigger categories for global config
 const GLOBAL_SOUND_TRIGGERS = [
@@ -351,8 +351,14 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               }}
               onExport={() => {
                 const items = sounds.filter(s => bulk.selectedIds.has(s.id));
-                bulkExport(items, 'sounds-export.json');
+                bulkExport(items, 'sounds-export.json', 'sound');
               }}
+              onImport={() => bulkImport({
+                assetType: 'sound',
+                saveFn: saveSoundAsset,
+                existingIds: new Set(sounds.map(s => s.id)),
+                onComplete: () => { refreshSounds(); bulk.clear(); },
+              })}
             />
 
             {/* Sound List */}

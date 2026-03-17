@@ -6,7 +6,7 @@ import { getSpellAssets, deleteSpellAsset, saveSpellAsset } from '../../utils/as
 import { SpellAssetBuilder } from './SpellAssetBuilder';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
-import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
+import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 
 export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const [spells, setSpells] = useState<SpellAsset[]>([]);
@@ -155,8 +155,14 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
             }}
             onExport={() => {
               const items = spells.filter(s => bulk.selectedIds.has(s.id));
-              bulkExport(items, 'spells-export.json');
+              bulkExport(items, 'spells-export.json', 'spell');
             }}
+            onImport={() => bulkImport({
+              assetType: 'spell',
+              saveFn: saveSpellAsset,
+              existingIds: new Set(spells.map(s => s.id)),
+              onComplete: () => { loadSpells(); bulk.clear(); },
+            })}
           />
 
           <div className="space-y-2 max-h-[calc(100vh-350px)] overflow-y-auto overflow-x-hidden">

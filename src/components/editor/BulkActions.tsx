@@ -45,10 +45,21 @@ interface BulkActionBarProps {
   onDelete: () => void;
   onMoveToFolder?: () => void;
   onExport: () => void;
+  onImport?: () => void;
 }
 
-export function BulkActionBar({ count, totalCount, onSelectAll, onClear, onDelete, onMoveToFolder, onExport }: BulkActionBarProps) {
-  if (count === 0) return null;
+export function BulkActionBar({ count, totalCount, onSelectAll, onClear, onDelete, onMoveToFolder, onExport, onImport }: BulkActionBarProps) {
+  // When nothing selected, show only the Import button if available
+  if (count === 0) {
+    if (!onImport) return null;
+    return (
+      <div className="flex justify-end">
+        <button onClick={onImport} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
+          Import
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className="bg-blue-900/60 border border-blue-600 rounded px-3 py-2 flex flex-wrap items-center gap-2 text-sm">
@@ -67,6 +78,11 @@ export function BulkActionBar({ count, totalCount, onSelectAll, onClear, onDelet
       <button onClick={onExport} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
         Export
       </button>
+      {onImport && (
+        <button onClick={onImport} className="px-2 py-1 bg-stone-700 hover:bg-stone-600 rounded text-xs">
+          Import
+        </button>
+      )}
       <button onClick={onDelete} className="px-2 py-1 bg-blood-700 hover:bg-blood-600 rounded text-xs">
         Delete
       </button>
@@ -154,14 +170,21 @@ export function bulkMoveToFolder(
   toast.success(`Moved ${moved} item${moved > 1 ? 's' : ''} to "${options[index].name}"`);
 }
 
-/** Bulk export as JSON download */
+/** Bulk export as JSON download (wrapped with metadata) */
 // eslint-disable-next-line react-refresh/only-export-components
 export function bulkExport(
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   items: any[],
   filename: string,
+  assetType?: string,
 ) {
-  const json = JSON.stringify(items, null, 2);
+  const wrapper = {
+    format: 'puzzle-game-assets-v1',
+    assetType: assetType || filename.replace('-export.json', ''),
+    exportedAt: new Date().toISOString(),
+    assets: items,
+  };
+  const json = JSON.stringify(wrapper, null, 2);
   const blob = new Blob([json], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -170,4 +193,80 @@ export function bulkExport(
   a.click();
   URL.revokeObjectURL(url);
   toast.success(`Exported ${items.length} item${items.length > 1 ? 's' : ''}`);
+}
+
+/** Bulk import from JSON file */
+// eslint-disable-next-line react-refresh/only-export-components
+export function bulkImport(opts: {
+  assetType: string;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  saveFn: (asset: any) => boolean | void;
+  existingIds: Set<string>;
+  onComplete: () => void;
+}) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = async () => {
+    const file = input.files?.[0];
+    if (!file) return;
+
+    try {
+      const text = await file.text();
+      const parsed = JSON.parse(text);
+
+      // Accept both wrapped format and raw arrays
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let assets: any[];
+      if (Array.isArray(parsed)) {
+        assets = parsed;
+      } else if (parsed?.format === 'puzzle-game-assets-v1' && Array.isArray(parsed.assets)) {
+        // Validate asset type matches
+        if (parsed.assetType && parsed.assetType !== opts.assetType) {
+          toast.warning(`Type mismatch: file contains "${parsed.assetType}" but you're in the ${opts.assetType} editor`);
+          return;
+        }
+        assets = parsed.assets;
+      } else {
+        toast.warning('Invalid format: expected a JSON array or wrapped export file');
+        return;
+      }
+
+      if (assets.length === 0) {
+        toast.warning('File contains no assets');
+        return;
+      }
+
+      // Validate each item has at least id and name
+      const valid = assets.filter(a => a && typeof a.id === 'string' && typeof a.name === 'string');
+      if (valid.length === 0) {
+        toast.warning('No valid assets found (each needs id and name)');
+        return;
+      }
+
+      let imported = 0;
+      for (const asset of valid) {
+        const copy = { ...asset };
+        if (opts.existingIds.has(copy.id)) {
+          // Generate new ID and mark as imported
+          copy.id = `${opts.assetType}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+          if (!copy.name.endsWith(' (imported)')) {
+            copy.name = `${copy.name} (imported)`;
+          }
+        }
+        copy.createdAt = new Date().toISOString();
+        opts.saveFn(copy);
+        imported++;
+      }
+
+      const skipped = assets.length - valid.length;
+      let msg = `Imported ${imported} ${opts.assetType}${imported !== 1 ? 's' : ''}`;
+      if (skipped > 0) msg += ` (${skipped} skipped — missing id/name)`;
+      toast.success(msg);
+      opts.onComplete();
+    } catch {
+      toast.warning('Failed to read file — is it valid JSON?');
+    }
+  };
+  input.click();
 }
