@@ -99,6 +99,9 @@ export const PixelEditorPage: React.FC = () => {
     });
     setEditorKey(k => k + 1);
     setSearchParams({});
+    // Clear cache again after React unmount effects run (the old editor
+    // re-caches its state during cleanup, overwriting our clear above)
+    setTimeout(() => clearCachedPixelEditorState(), 0);
   }, [setSearchParams, updateActiveTab]);
 
   const handleApply = useCallback((_base64: string, _projectUrl?: string) => {

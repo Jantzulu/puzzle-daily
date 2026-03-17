@@ -62,8 +62,8 @@ const TILE_SPRITE_SLOTS: { key: keyof TileSprites; label: string; description: s
 
 /** Build a minimal GameState for the live skin preview */
 function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType[]): GameState {
-  const width = 4;
-  const height = 4;
+  const width = 6;
+  const height = 6;
 
   const hasBorderSprites = Object.keys(skin.borderSprites).length > 0;
   const borderConfig: BorderConfig | undefined = {
@@ -76,7 +76,7 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
     const row: TileOrNull[] = [];
     for (let x = 0; x < width; x++) {
       const isEdge = x === 0 || x === width - 1 || y === 0 || y === height - 1;
-      const isGoal = x === 2 && y === 2;
+      const isGoal = x === 3 && y === 3;
       const tile: Tile = { x, y, type: isEdge ? TileType.WALL : isGoal ? TileType.GOAL : TileType.EMPTY, content: undefined };
       // Show first custom tile type in one interior cell
       if (!isEdge && !isGoal && customTileTypes.length > 0 && x === 1 && y === 1) {
