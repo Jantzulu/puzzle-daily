@@ -1,4 +1,5 @@
 import { supabase } from '../lib/supabase';
+import { invalidateImageCache } from './imageLoader';
 
 const BUCKET = 'theme-assets';
 
@@ -143,7 +144,7 @@ export async function uploadMediaDataUrlToPath(
     const { error } = await supabase.storage
       .from(BUCKET)
       .upload(fullPath, file, {
-        cacheControl: '3600',
+        cacheControl: '0, no-cache, no-store, must-revalidate',
         upsert: true,
       });
 
@@ -156,7 +157,10 @@ export async function uploadMediaDataUrlToPath(
       .from(BUCKET)
       .getPublicUrl(fullPath);
 
-    // Cache-bust: append timestamp so browsers refetch the updated file
+    // Invalidate in-app image cache so re-saved sprites are refetched
+    invalidateImageCache(urlData.publicUrl);
+
+    // Append cache-buster so CDN/browser serves the fresh version
     const bustUrl = `${urlData.publicUrl}?v=${Date.now()}`;
     return { url: bustUrl, path: fullPath };
   } catch (e) {

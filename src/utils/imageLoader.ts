@@ -155,6 +155,19 @@ export function clearImageCache(): void {
   failedImages.clear();
 }
 
+/**
+ * Invalidate a specific URL from the image cache.
+ * Also invalidates the CORS-suffixed variant.
+ * Call this after re-uploading a file so the next loadImage() fetches fresh.
+ */
+export function invalidateImageCache(url: string): void {
+  imageCache.delete(url);
+  // Also clear the CORS variant that loadImage appends
+  const separator = url.includes('?') ? '&' : '?';
+  imageCache.delete(`${url}${separator}_cors=1`);
+  failedImages.delete(url);
+}
+
 // ==========================================
 // BACKGROUND PRELOADING
 // ==========================================
