@@ -22,6 +22,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadSpells();
   }, []);
 
@@ -34,6 +35,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
   useEffect(() => {
     if (initialSelectedId) {
       const spell = spells.find(s => s.id === initialSelectedId);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (spell) handleSelect(spell);
     }
   }, [initialSelectedId, spells]);

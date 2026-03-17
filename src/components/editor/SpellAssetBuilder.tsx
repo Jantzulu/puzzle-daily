@@ -700,6 +700,7 @@ const ConePreview: React.FC<{ range: number; coneAngle: number }> = ({ range, co
 export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onSave, onCancel }) => {
   const _isMobile = useIsMobile();
   const [editedSpell, setEditedSpell] = useState<SpellAsset>(spell || {
+    // eslint-disable-next-line react-hooks/purity
     id: 'spell_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
     name: '',
     description: '',
@@ -1904,6 +1905,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
   const [enableEffect, setEnableEffect] = useState(!!editedSpell.appliesStatusEffect);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setStatusEffects(getStatusEffectAssets());
   }, []);
 

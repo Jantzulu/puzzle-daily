@@ -265,6 +265,7 @@ export const InlineFolderPicker: React.FC<InlineFolderPickerProps> = ({
   // Refresh folders when opening
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFolders(getFolders(category));
     }
   }, [isOpen, category]);

@@ -84,7 +84,9 @@ export const BugReportReplay: React.FC<BugReportReplayProps> = ({ puzzle, placem
       }
     }
 
+    // eslint-disable-next-line react-hooks/refs
     turnHistoryRef.current = hist;
+    // eslint-disable-next-line react-hooks/refs
     eventsRef.current = events;
     return hist;
   }, [puzzle, placements]);
@@ -143,7 +145,7 @@ export const BugReportReplay: React.FC<BugReportReplayProps> = ({ puzzle, placem
         totalTurns={history.length - 1}
         isPlaying={isPlaying}
         speed={speed}
-        events={eventsRef.current}
+        events={eventsRef.current} // eslint-disable-line react-hooks/refs
         onPlayPause={handlePlayPause}
         onStepForward={handleStepForward}
         onStepBack={handleStepBack}

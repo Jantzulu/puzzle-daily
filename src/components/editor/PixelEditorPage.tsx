@@ -128,11 +128,9 @@ export const PixelEditorPage: React.FC = () => {
   // Persist on unmount (React Router navigation) and beforeunload (page close/refresh)
   // Use a ref so the cleanup always has the latest persistTabs
   const persistTabsRef = useRef(persistTabs);
-  // eslint-disable-next-line react-hooks/immutability -- intentional ref sync pattern to keep cleanup closure up-to-date
   persistTabsRef.current = persistTabs;
   const editorRefForPersist = editorRef;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: editorRefForPersist.current accessed in cleanup to persist state on unmount
   useEffect(() => {
     const handlePersist = () => {
       if (editorRefForPersist.current) {
@@ -145,6 +143,7 @@ export const PixelEditorPage: React.FC = () => {
     window.addEventListener('beforeunload', handlePersist);
     return () => {
       window.removeEventListener('beforeunload', handlePersist);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: editorRefForPersist.current accessed in cleanup to persist state on unmount
       if (editorRefForPersist.current) {
         // Editor ref still available — serialize directly (ideal path)
         handlePersist();

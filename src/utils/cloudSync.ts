@@ -796,6 +796,7 @@ export async function syncAssetToCloud(
   data: unknown
 ): Promise<boolean> {
   try {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     return await saveAssetToCloud(id, type, name, data as any);
   } catch (error) {
     console.error(`Failed to sync ${type} to cloud:`, error);

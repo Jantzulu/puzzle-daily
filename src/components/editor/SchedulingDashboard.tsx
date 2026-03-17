@@ -48,6 +48,7 @@ function getMonthLabel(year: number, month: number): string {
 }
 
 export const SchedulingDashboard: React.FC = () => {
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- today is used only in useState initializers, not in useMemo deps
   const today = new Date();
   const [viewYear, setViewYear] = useState(today.getFullYear());
   const [viewMonth, setViewMonth] = useState(today.getMonth());

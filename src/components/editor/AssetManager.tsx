@@ -42,6 +42,7 @@ export const AssetManager: React.FC = () => {
     if (tab && VALID_TABS.includes(tab) && tab !== activeTab) {
       setActiveTab(tab);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- activeTab intentionally omitted to avoid infinite loop
   }, [searchParams]);
 
   const handleClearCache = () => {

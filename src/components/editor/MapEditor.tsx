@@ -942,10 +942,10 @@ export const MapEditor: React.FC = () => {
     if (urlsToPreload.length > 0) {
       preloadImages(urlsToPreload);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally omits originalPlaytestPuzzle to only re-run on mode change
   }, [state.mode, originalPlaytestPuzzle?.id]);
 
   // Simulation loop (for playtest mode)
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- executeTurnWithLog/gameState/handleAutoResetPlaytest captured via closure; deps are intentionally minimal
   useEffect(() => {
     if (!isSimulating || !gameState || gameState.gameStatus !== 'running') {
       return;
@@ -1035,7 +1035,6 @@ export const MapEditor: React.FC = () => {
                 // Life lost - play sound and auto-reset after delay (3 seconds)
                 playGameSound('life_lost');
                 setTimeout(() => {
-                  // eslint-disable-next-line react-hooks/immutability -- handleAutoResetPlaytest is declared later but stable at runtime
                   handleAutoResetPlaytest();
                 }, 3000);
               }
@@ -1048,6 +1047,7 @@ export const MapEditor: React.FC = () => {
     }, 800);
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- executeTurnWithLog/gameState/handleAutoResetPlaytest captured via closure; deps are intentionally minimal
   }, [isSimulating, gameState?.gameStatus, testMode, testTurnsRemaining, livesRemaining, originalPlaytestPuzzle]);
 
   // Draw grid
@@ -1392,7 +1392,6 @@ export const MapEditor: React.FC = () => {
 
   // Keep a ref to getCurrentPuzzle so the auto-save timer always has the latest state
   const getCurrentPuzzleRef = useRef(getCurrentPuzzle);
-  // eslint-disable-next-line react-hooks/immutability -- intentional ref sync pattern to avoid stale closure in auto-save timer
   getCurrentPuzzleRef.current = getCurrentPuzzle;
 
   const handleSave = () => {
@@ -1487,12 +1486,12 @@ export const MapEditor: React.FC = () => {
 
   // Auto-load puzzle from URL search params (global search navigation)
   const [editorSearchParams] = useSearchParams();
-  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once on mount to load puzzle from URL
   useEffect(() => {
     const puzzleId = editorSearchParams.get('id');
     if (puzzleId) {
       handleLoadFromLibrary(puzzleId);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- intentionally runs once on mount to load puzzle from URL
   }, []);
 
   const handleDeleteFromLibrary = (puzzleId: string) => {

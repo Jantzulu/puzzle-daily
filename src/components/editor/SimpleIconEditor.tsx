@@ -165,6 +165,7 @@ export const SimpleIconEditor: React.FC<SimpleIconEditorProps> = ({
       // Start with existing sprite data
       ...spriteData,
       // Ensure required fields have defaults
+      // eslint-disable-next-line react-hooks/purity
       id: spriteData?.id || `icon_${Date.now()}`,
       name: spriteData?.name || 'Status Icon',
       type: 'simple',

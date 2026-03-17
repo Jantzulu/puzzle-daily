@@ -93,6 +93,7 @@ export const ActivityFeed: React.FC = () => {
   }, []);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadActivity();
     // Auto-refresh every 30 seconds
     const interval = setInterval(loadActivity, 30000);

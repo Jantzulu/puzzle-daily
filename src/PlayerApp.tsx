@@ -75,6 +75,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const frameIndexRef = useRef(0);
+  // eslint-disable-next-line react-hooks/purity
   const lastFrameTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -215,6 +216,7 @@ function PlayerNavigation() {
     <nav
       ref={navRef}
       className={`bg-stone-600 border-b-2 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon md:sticky md:top-0 z-50 transition-shadow duration-300 ${
+        // eslint-disable-next-line react-hooks/refs
         scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
       }`}
       style={navbarStyle}

@@ -85,7 +85,7 @@ export async function logActivity(entry: Omit<ActivityEntry, 'user_id'>): Promis
       ...entry,
       user_id: userId || null,
     });
-  } catch (e) {
+  } catch {
     // Cloud logging is optional — local log is the fallback
   }
 }
@@ -103,7 +103,7 @@ async function pruneOldActivity(): Promise<void> {
   try {
     const cutoff = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
     await supabase.from('activity_log').delete().lt('created_at', cutoff);
-  } catch (e) {
+  } catch {
     // Cloud cleanup is optional
   }
   })();

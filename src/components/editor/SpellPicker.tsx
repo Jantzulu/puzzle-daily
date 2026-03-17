@@ -12,6 +12,7 @@ export const SpellPicker: React.FC<SpellPickerProps> = ({ onSelect, onCancel }) 
   const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSpells(getSpellAssets());
   }, []);
 

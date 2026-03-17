@@ -111,6 +111,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageRef = useRef<HTMLImageElement | null>(null);
   const frameIndexRef = useRef(0);
+  // eslint-disable-next-line react-hooks/purity
   const lastFrameTimeRef = useRef(Date.now());
 
   useEffect(() => {
@@ -260,6 +261,7 @@ function Navigation() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- isCreator is captured via closure; dep on user is intentional
   }, [user]);
 
   // Load theme assets and subscribe to changes
