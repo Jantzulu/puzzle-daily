@@ -378,6 +378,9 @@ body {
   .animate-slide-up {
     animation: slide-up 0.35s ease-out both;
   }
+  .animate-scale-pop {
+    animation: scale-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+  }
   .animate-menu-slide-down {
     animation: menu-slide-down 0.2s ease-out both;
   }
@@ -403,6 +406,17 @@ body {
     to {
       opacity: 1;
       transform: translateY(0);
+    }
+  }
+
+  @keyframes scale-pop {
+    from {
+      opacity: 0;
+      transform: scale(0.9);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
     }
   }
 

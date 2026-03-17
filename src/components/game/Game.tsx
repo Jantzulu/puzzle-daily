@@ -1705,7 +1705,7 @@ export const Game: React.FC = () => {
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
-                <div className="grid grid-cols-3 items-center mb-1">
+                <div className={`grid grid-cols-3 items-center mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
                   {/* Left: Lives - centered in left third */}
                   <div className="flex items-center justify-center gap-1">
                     <span className="text-stone-400 text-xs">Lives:</span>
