@@ -229,6 +229,7 @@ export const FolderDropdown: React.FC<FolderDropdownProps> = ({
 };
 
 // Hook to get assets filtered by folder
+// eslint-disable-next-line react-refresh/only-export-components
 export function useFilteredAssets<T extends { folderId?: string }>(
   assets: T[],
   selectedFolderId: string | null

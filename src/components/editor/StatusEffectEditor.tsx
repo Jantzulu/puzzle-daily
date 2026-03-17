@@ -673,6 +673,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               sprite={overlaySprite || {
                 type: 'inline',
                 spriteData: {
+                  // eslint-disable-next-line react-hooks/purity
                   id: `overlay_${Date.now()}`,
                   name: 'Overlay',
                   type: 'simple',

@@ -34,7 +34,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
   const [collectibles, setCollectibles] = useState<CustomCollectible[]>(() => getCustomCollectibles());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomCollectible | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [_isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const bulk = useBulkSelect();
@@ -61,6 +61,7 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
 
   useEffect(() => {
     if (initialSelectedId) handleSelect(initialSelectedId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelect is stable; only run on mount with initialSelectedId
   }, [initialSelectedId]);
 
   const handleNew = () => {

@@ -129,16 +129,16 @@ export async function fetchRecentActivity(limit: number = 50): Promise<ActivityR
       .limit(limit);
 
     if (!error && data) {
-      cloudEntries = data.map((row: any) => ({
-        id: row.id,
-        user_id: row.user_id,
-        action: row.action,
-        asset_type: row.asset_type,
-        asset_id: row.asset_id,
-        asset_name: row.asset_name,
-        details: row.details,
-        created_at: row.created_at,
-        display_name: row.profiles?.display_name || 'Unknown',
+      cloudEntries = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        user_id: row.user_id as string | undefined,
+        action: row.action as ActivityRecord['action'],
+        asset_type: row.asset_type as string | undefined,
+        asset_id: row.asset_id as string | undefined,
+        asset_name: row.asset_name as string | undefined,
+        details: row.details as Record<string, unknown> | undefined,
+        created_at: row.created_at as string,
+        display_name: (row.profiles as Record<string, unknown> | null)?.display_name as string | undefined || 'Unknown',
       }));
     }
   } catch {
@@ -185,16 +185,16 @@ export async function fetchAssetActivity(assetId: string, limit: number = 20): P
       .limit(limit);
 
     if (!error && data) {
-      cloudEntries = data.map((row: any) => ({
-        id: row.id,
-        user_id: row.user_id,
-        action: row.action,
-        asset_type: row.asset_type,
-        asset_id: row.asset_id,
-        asset_name: row.asset_name,
-        details: row.details,
-        created_at: row.created_at,
-        display_name: row.profiles?.display_name || 'Unknown',
+      cloudEntries = data.map((row: Record<string, unknown>) => ({
+        id: row.id as string,
+        user_id: row.user_id as string | undefined,
+        action: row.action as ActivityRecord['action'],
+        asset_type: row.asset_type as string | undefined,
+        asset_id: row.asset_id as string | undefined,
+        asset_name: row.asset_name as string | undefined,
+        details: row.details as Record<string, unknown> | undefined,
+        created_at: row.created_at as string,
+        display_name: (row.profiles as Record<string, unknown> | null)?.display_name as string | undefined || 'Unknown',
       }));
     }
   } catch {

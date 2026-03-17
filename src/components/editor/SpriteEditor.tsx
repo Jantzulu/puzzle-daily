@@ -24,6 +24,7 @@ let pendingSpriteNotification = false;
 /**
  * Subscribe to sprite image load events. Returns unsubscribe function.
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function subscribeToSpriteImageLoads(callback: () => void): () => void {
   spriteLoadCallbacks.add(callback);
   return () => spriteLoadCallbacks.delete(callback);
@@ -165,7 +166,7 @@ function drawSpriteSheet(
 
   try {
     ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
-  } catch (e) {
+  } catch {
     // Image not ready
   }
 }
@@ -242,7 +243,7 @@ function drawSpriteSheetFromStartTime(
 
   try {
     ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
-  } catch (e) {
+  } catch {
     // Image not ready
   }
 }
@@ -480,6 +481,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         },
       });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -870,7 +872,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { imageData, idleImageData, idleImageUrl, imageUrl, ...rest } = currentConfig;
+        const { imageData: _imageData, idleImageData: _idleImageData, idleImageUrl: _idleImageUrl, imageUrl: _imageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -880,7 +882,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { imageData, idleImageData, idleImageUrl, imageUrl, ...rest } = sprite;
+      const { imageData: _imageData, idleImageData: _idleImageData, idleImageUrl: _idleImageUrl, imageUrl: _imageUrl, ...rest } = sprite;
       onChange({ ...rest, type: 'simple' });
     }
   };
@@ -921,7 +923,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { movingImageData, movingImageUrl, ...rest } = currentConfig;
+        const { movingImageData: _movingImageData, movingImageUrl: _movingImageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -931,7 +933,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { movingImageData, movingImageUrl, ...rest } = sprite;
+      const { movingImageData: _movingImageData, movingImageUrl: _movingImageUrl, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
@@ -1240,6 +1242,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     reader.readAsDataURL(file);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleIdleSpriteSheetConfigChange = (field: string, value: any) => {
     if (spriteMode === 'directional') {
       const dirSprites = sprite.directionalSprites || {};
@@ -1271,6 +1274,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     }
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleMovingSpriteSheetConfigChange = (field: string, value: any) => {
     if (spriteMode === 'directional') {
       const dirSprites = sprite.directionalSprites || {};
@@ -1307,7 +1311,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { idleSpriteSheet, ...rest } = currentConfig;
+        const { idleSpriteSheet: _idleSpriteSheet, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -1317,7 +1321,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { idleSpriteSheet, ...rest } = sprite;
+      const { idleSpriteSheet: _idleSpriteSheet, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
@@ -1327,7 +1331,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { movingSpriteSheet, ...rest } = currentConfig;
+        const { movingSpriteSheet: _movingSpriteSheet, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -1337,7 +1341,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { movingSpriteSheet, ...rest } = sprite;
+      const { movingSpriteSheet: _movingSpriteSheet, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
@@ -1436,6 +1440,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     reader.readAsDataURL(file);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleDeathSpriteSheetConfigChange = (field: string, value: any) => {
     if (spriteMode === 'directional') {
       const dirSprites = sprite.directionalSprites || {};
@@ -1473,7 +1478,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { deathSpriteSheet, ...rest } = currentConfig;
+        const { deathSpriteSheet: _deathSpriteSheet, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -1483,7 +1488,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { deathSpriteSheet, ...rest } = sprite;
+      const { deathSpriteSheet: _deathSpriteSheet, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
@@ -1493,7 +1498,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { deathImageData, deathImageUrl, ...rest } = currentConfig;
+        const { deathImageData: _deathImageData, deathImageUrl: _deathImageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -1503,7 +1508,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { deathImageData, deathImageUrl, ...rest } = sprite;
+      const { deathImageData: _deathImageData, deathImageUrl: _deathImageUrl, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
@@ -1594,6 +1599,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     reader.readAsDataURL(file);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleCastingSpriteSheetConfigChange = (field: string, value: any) => {
     if (spriteMode === 'directional') {
       const dirSprites = sprite.directionalSprites || {};
@@ -1631,7 +1637,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { castingSpriteSheet, ...rest } = currentConfig;
+        const { castingSpriteSheet: _castingSpriteSheet, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -1641,7 +1647,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { castingSpriteSheet, ...rest } = sprite;
+      const { castingSpriteSheet: _castingSpriteSheet, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
@@ -1651,7 +1657,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       const dirSprites = sprite.directionalSprites || {};
       const currentConfig = dirSprites[selectedDirection];
       if (currentConfig) {
-        const { castingImageData, castingImageUrl, ...rest } = currentConfig;
+        const { castingImageData: _castingImageData, castingImageUrl: _castingImageUrl, ...rest } = currentConfig;
         onChange({
           ...sprite,
           directionalSprites: {
@@ -1661,7 +1667,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         });
       }
     } else {
-      const { castingImageData, castingImageUrl, ...rest } = sprite;
+      const { castingImageData: _castingImageData, castingImageUrl: _castingImageUrl, ...rest } = sprite;
       onChange({ ...rest });
     }
   };
@@ -1723,6 +1729,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     reader.readAsDataURL(file);
   };
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const handleSpawnSpriteSheetConfigChange = (field: string, value: any) => {
     if (sprite.spawnSpriteSheet) {
       onChange({
@@ -1736,12 +1743,12 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   };
 
   const clearSpawnSpriteSheet = () => {
-    const { spawnSpriteSheet, ...rest } = sprite;
+    const { spawnSpriteSheet: _spawnSpriteSheet, ...rest } = sprite;
     onChange({ ...rest });
   };
 
   const clearSpawnImage = () => {
-    const { spawnImageData, spawnImageUrl, spawnAnchorX, spawnAnchorY, spawnOffsetX, spawnOffsetY, spawnScale, ...rest } = sprite;
+    const { spawnImageData: _spawnImageData, spawnImageUrl: _spawnImageUrl, spawnAnchorX: _spawnAnchorX, spawnAnchorY: _spawnAnchorY, spawnOffsetX: _spawnOffsetX, spawnOffsetY: _spawnOffsetY, spawnScale: _spawnScale, ...rest } = sprite;
     onChange({ ...rest });
   };
 
@@ -1905,6 +1912,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       {/* Note: Always using directional mode now. The 'Default/Static' direction serves as the universal fallback. */}
 
       {/* LEGACY SIMPLE MODE - condition will never be true, kept for reference during migration */}
+      {/* eslint-disable-next-line no-constant-binary-expression */}
       {false && (
         <>
           {/* Simple Sprite Sheet Upload */}
@@ -3973,14 +3981,14 @@ function drawSpriteConfig(
   // Priority: moving > casting > idle
   // Check for sprite sheet first (highest priority for animation)
   let spriteSheet = isMoving ? config.movingSpriteSheet : null;
-  let activeState: 'moving' | 'casting' | 'idle' = isMoving ? 'moving' : 'idle';
+  let _activeState: 'moving' | 'casting' | 'idle' = isMoving ? 'moving' : 'idle';
   if (!spriteSheet && isCasting && !isMoving) {
     spriteSheet = config.castingSpriteSheet;
-    activeState = 'casting';
+    _activeState = 'casting';
   }
   if (!spriteSheet) {
     spriteSheet = config.idleSpriteSheet;
-    activeState = spriteSheet ? (isMoving ? 'moving' : isCasting ? 'casting' : 'idle') : activeState;
+    _activeState = spriteSheet ? (isMoving ? 'moving' : isCasting ? 'casting' : 'idle') : _activeState;
   }
   if (spriteSheet) {
     // Anchor from spritesheet itself
@@ -4041,7 +4049,7 @@ function drawSpriteConfig(
       }
 
       ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);
-    } catch (e) {
+    } catch {
       // Image not ready yet, will draw on next frame
     }
     return;
@@ -4102,6 +4110,7 @@ function drawSpriteConfig(
 }
 
 // Shared sprite drawing function (can be used by game renderer too)
+// eslint-disable-next-line react-refresh/only-export-components
 export function drawSprite(
   ctx: CanvasRenderingContext2D,
   sprite: CustomSprite,
@@ -4195,7 +4204,7 @@ export function drawSprite(
       }
 
       ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);
-    } catch (e) {
+    } catch {
       // Image not ready yet, will draw on next frame
     }
     return;
@@ -4302,6 +4311,7 @@ function drawStar(
  * @param startTime - When the death occurred (for proper frame calculation)
  *                    For sprite sheets, this ensures animation plays from start and stops on final frame
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function drawDeathSprite(
   ctx: CanvasRenderingContext2D,
   sprite: CustomSprite,
@@ -4376,6 +4386,7 @@ export function drawDeathSprite(
 /**
  * Check if a sprite has any death animation configured
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function hasDeathAnimation(sprite: CustomSprite): boolean {
   // Check simple mode
   if (sprite.deathSpriteSheet || sprite.deathImageData) {
@@ -4401,6 +4412,7 @@ export function hasDeathAnimation(sprite: CustomSprite): boolean {
  * @param startTime - When the spawn started (for proper frame calculation)
  *                    For sprite sheets, this ensures animation plays from start and stops on final frame
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function drawSpawnSprite(
   ctx: CanvasRenderingContext2D,
   sprite: CustomSprite,
@@ -4462,6 +4474,7 @@ export function drawSpawnSprite(
 /**
  * Check if a sprite has any spawn animation configured
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function hasSpawnAnimation(sprite: CustomSprite): boolean {
   // Only check simple mode - spawn animations are NOT directional
   return !!(sprite.spawnSpriteSheet || sprite.spawnImageData || sprite.spawnImageUrl);
@@ -4471,6 +4484,7 @@ export function hasSpawnAnimation(sprite: CustomSprite): boolean {
  * Check if spawn animation is still playing (hasn't finished)
  * Returns true if animation is still active, false if complete
  */
+// eslint-disable-next-line react-refresh/only-export-components
 export function isSpawnAnimationPlaying(sprite: CustomSprite, startTime: number): boolean {
   const now = Date.now();
   const elapsed = now - startTime;
@@ -4517,7 +4531,7 @@ function drawImage(
     }
 
     ctx.drawImage(img, centerX - drawWidth * anchorX + offsetX, centerY - drawHeight * anchorY + offsetY, drawWidth, drawHeight);
-  } catch (e) {
+  } catch {
     // Image not ready
   }
 }

@@ -13,8 +13,6 @@ import type {
   GameState,
   Tile,
   TileOrNull,
-  WinCondition,
-  CharacterAction,
 } from '../../types/game';
 import { Direction, TileType, ActionType } from '../../types/game';
 
@@ -24,10 +22,15 @@ import { Direction, TileType, ActionType } from '../../types/game';
 
 const characterRegistry = new Map<string, Character>();
 const enemyRegistry = new Map<string, Enemy>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const tileTypeRegistry = new Map<string, any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const collectibleRegistry = new Map<string, any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const spellRegistry = new Map<string, any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const statusEffectRegistry = new Map<string, any>();
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 const customAttackRegistry = new Map<string, any>();
 
 export function registerTestCharacter(char: Character) {
@@ -38,22 +41,27 @@ export function registerTestEnemy(enemy: Enemy) {
   enemyRegistry.set(enemy.id, enemy);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerTestTileType(id: string, tileDef: any) {
   tileTypeRegistry.set(id, tileDef);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerTestCollectible(id: string, def: any) {
   collectibleRegistry.set(id, def);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerTestSpell(id: string, def: any) {
   spellRegistry.set(id, def);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerTestStatusEffect(id: string, def: any) {
   statusEffectRegistry.set(id, def);
 }
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export function registerTestCustomAttack(id: string, def: any) {
   customAttackRegistry.set(id, def);
 }

@@ -3,7 +3,6 @@ import {
   pushAllToCloud,
   pullFromCloud,
   getLastSyncTime,
-  isSyncInProgress,
   subscribeSyncStatus,
   type SyncStatus,
 } from '../../utils/cloudSync';

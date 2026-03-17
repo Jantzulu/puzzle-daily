@@ -4,6 +4,7 @@ import { ActionType } from '../../types/game';
 import { loadSpellAsset } from '../../utils/assetStorage';
 
 // Helper to format action sequence for display
+// eslint-disable-next-line react-refresh/only-export-components
 export const formatActionSequence = (behavior: CharacterAction[] | undefined): string[] => {
   if (!behavior || behavior.length === 0) return ['No actions defined'];
   return behavior.map((action, i) => {
@@ -62,6 +63,7 @@ export const formatActionSequence = (behavior: CharacterAction[] | undefined): s
 };
 
 // Helper to generate a natural language summary of behavior
+// eslint-disable-next-line react-refresh/only-export-components
 export const summarizeBehavior = (behavior: CharacterAction[] | undefined): string => {
   if (!behavior || behavior.length === 0) return 'No behavior defined';
 
@@ -156,6 +158,7 @@ export const summarizeBehavior = (behavior: CharacterAction[] | undefined): stri
 };
 
 // Helper to get all spells from character/enemy behavior
+// eslint-disable-next-line react-refresh/only-export-components
 export const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
   if (!behavior) return [];
   const spells: SpellAsset[] = [];

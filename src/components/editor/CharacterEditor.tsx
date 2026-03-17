@@ -3,9 +3,9 @@ import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import { Direction, ActionType } from '../../types/game';
-import type { CharacterAction, CustomAttack, EntitySoundSet } from '../../types/game';
+import type { CharacterAction, CustomAttack } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
-import { saveCharacter, getCustomCharacters, deleteCharacter, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
+import { saveCharacter, deleteCharacter, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
 import { getAllCharacters } from '../../data/characters';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -24,6 +24,7 @@ import { useIsMobile } from '../../hooks/useMediaQuery';
 export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const isMobile = useIsMobile();
   // Helper to ensure all characters have a default customSprite
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const ensureCustomSprite = (char: any): CustomCharacter => {
     return {
       ...char,
@@ -47,7 +48,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
   });
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomCharacter | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
+  const [_isCreating, setIsCreating] = useState(false);
   const [editingAttack, setEditingAttack] = useState<{ attack: CustomAttack; actionIndex: number } | null>(null);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
@@ -78,6 +79,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
 
   useEffect(() => {
     if (initialSelectedId) handleSelect(initialSelectedId);
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- handleSelect is stable; only run on mount with initialSelectedId
   }, [initialSelectedId]);
 
   const handleNew = () => {

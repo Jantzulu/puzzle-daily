@@ -133,31 +133,34 @@ export async function fetchCommunityStats(puzzleId: string): Promise<CommunityCo
 
     if (error || !data || data.length === 0) return null;
 
-    const victories = data.filter((r: any) => r.outcome === 'victory');
-    const completionRate = data.length > 0 ? victories.length / data.length : 0;
+    type CommunityRow = { outcome: string; rank: string | null; total_points: number | null; turns_used: number | null; characters_used: number | null; character_ids: string[] | null };
+    const rows = data as CommunityRow[];
+
+    const victories = rows.filter(r => r.outcome === 'victory');
+    const completionRate = rows.length > 0 ? victories.length / rows.length : 0;
 
     // Average score (victories only)
     const avgScore = victories.length > 0
-      ? victories.reduce((sum: number, r: any) => sum + (r.total_points || 0), 0) / victories.length
+      ? victories.reduce((sum: number, r) => sum + (r.total_points || 0), 0) / victories.length
       : 0;
 
     // Average turns (all attempts)
-    const avgTurns = data.length > 0
-      ? data.reduce((sum: number, r: any) => sum + (r.turns_used || 0), 0) / data.length
+    const avgTurns = rows.length > 0
+      ? rows.reduce((sum: number, r) => sum + (r.turns_used || 0), 0) / rows.length
       : 0;
 
     // Rank distribution (victories only)
     const rankDist = { gold: 0, silver: 0, bronze: 0 };
     for (const r of victories) {
-      if ((r as any).rank === 'gold') rankDist.gold++;
-      else if ((r as any).rank === 'silver') rankDist.silver++;
-      else if ((r as any).rank === 'bronze') rankDist.bronze++;
+      if (r.rank === 'gold') rankDist.gold++;
+      else if (r.rank === 'silver') rankDist.silver++;
+      else if (r.rank === 'bronze') rankDist.bronze++;
     }
 
     // Hero pick rates (all attempts)
     const heroCounts: Record<string, number> = {};
-    for (const r of data) {
-      for (const cid of ((r as any).character_ids || [])) {
+    for (const r of rows) {
+      for (const cid of (r.character_ids || [])) {
         heroCounts[cid] = (heroCounts[cid] || 0) + 1;
       }
     }
@@ -165,7 +168,7 @@ export async function fetchCommunityStats(puzzleId: string): Promise<CommunityCo
       .map(([characterId, count]) => ({
         characterId,
         count,
-        percentage: data.length > 0 ? count / data.length : 0,
+        percentage: rows.length > 0 ? count / rows.length : 0,
       }))
       .sort((a, b) => b.count - a.count);
 
@@ -176,7 +179,7 @@ export async function fetchCommunityStats(puzzleId: string): Promise<CommunityCo
       avgTurns: Math.round(avgTurns * 10) / 10,
       yourRank: 'bronze',
       completionRate: Math.round(completionRate * 100),
-      totalPlayers: data.length,
+      totalPlayers: rows.length,
       rankDistribution: rankDist,
       heroPickRates: heroPickRates.slice(0, 5),
     };
@@ -210,19 +213,22 @@ export async function fetchPuzzleStats(puzzleId: string): Promise<PuzzleStats | 
       };
     }
 
-    const victories = data.filter((r: any) => r.outcome === 'victory');
-    const defeats = data.filter((r: any) => r.outcome === 'defeat');
+    type PuzzleStatsRow = { outcome: string; rank: string | null; total_points: number | null; turns_used: number; characters_used: number; character_ids: string[] | null; defeat_reason: string | null; defeat_turn: number | null };
+    const rows = data as PuzzleStatsRow[];
+
+    const victories = rows.filter(r => r.outcome === 'victory');
+    const defeats = rows.filter(r => r.outcome === 'defeat');
 
     const rankDist = { gold: 0, silver: 0, bronze: 0 };
     for (const r of victories) {
-      if ((r as any).rank === 'gold') rankDist.gold++;
-      else if ((r as any).rank === 'silver') rankDist.silver++;
-      else if ((r as any).rank === 'bronze') rankDist.bronze++;
+      if (r.rank === 'gold') rankDist.gold++;
+      else if (r.rank === 'silver') rankDist.silver++;
+      else if (r.rank === 'bronze') rankDist.bronze++;
     }
 
     const heroCounts: Record<string, number> = {};
-    for (const r of data) {
-      for (const cid of ((r as any).character_ids || [])) {
+    for (const r of rows) {
+      for (const cid of (r.character_ids || [])) {
         heroCounts[cid] = (heroCounts[cid] || 0) + 1;
       }
     }
@@ -231,30 +237,30 @@ export async function fetchPuzzleStats(puzzleId: string): Promise<PuzzleStats | 
     let defeatTurnSum = 0;
     let defeatTurnCount = 0;
     for (const r of defeats) {
-      if ((r as any).defeat_reason) {
-        defeatReasonCounts[(r as any).defeat_reason] = (defeatReasonCounts[(r as any).defeat_reason] || 0) + 1;
+      if (r.defeat_reason) {
+        defeatReasonCounts[r.defeat_reason] = (defeatReasonCounts[r.defeat_reason] || 0) + 1;
       }
-      if ((r as any).defeat_turn) {
-        defeatTurnSum += (r as any).defeat_turn;
+      if (r.defeat_turn) {
+        defeatTurnSum += r.defeat_turn;
         defeatTurnCount++;
       }
     }
 
     return {
-      totalAttempts: data.length,
+      totalAttempts: rows.length,
       totalVictories: victories.length,
       totalDefeats: defeats.length,
-      completionRate: victories.length / data.length,
+      completionRate: victories.length / rows.length,
       avgScore: victories.length > 0
-        ? Math.round(victories.reduce((s: number, r: any) => s + (r.total_points || 0), 0) / victories.length)
+        ? Math.round(victories.reduce((s: number, r) => s + (r.total_points || 0), 0) / victories.length)
         : 0,
-      avgTurns: Math.round(data.reduce((s: number, r: any) => s + r.turns_used, 0) / data.length * 10) / 10,
-      avgCharactersUsed: Math.round(data.reduce((s: number, r: any) => s + r.characters_used, 0) / data.length * 10) / 10,
+      avgTurns: Math.round(rows.reduce((s: number, r) => s + r.turns_used, 0) / rows.length * 10) / 10,
+      avgCharactersUsed: Math.round(rows.reduce((s: number, r) => s + r.characters_used, 0) / rows.length * 10) / 10,
       rankDistribution: rankDist,
       heroPickRates: Object.entries(heroCounts)
         .map(([characterId, count]) => ({
           characterId, count,
-          percentage: count / data.length,
+          percentage: count / rows.length,
         }))
         .sort((a, b) => b.count - a.count),
       commonDefeatReasons: Object.entries(defeatReasonCounts)
@@ -289,24 +295,27 @@ export async function fetchOverviewStats(
     const { data, error } = await query;
     if (error || !data) return null;
 
-    const uniquePlayers = new Set(data.map((r: any) => r.player_id)).size;
-    const victories = data.filter((r: any) => r.outcome === 'victory');
+    type OverviewRow = { puzzle_id: string; puzzle_date: string | null; outcome: string; player_id: string };
+    const rows = data as OverviewRow[];
+
+    const uniquePlayers = new Set(rows.map(r => r.player_id)).size;
+    const victories = rows.filter(r => r.outcome === 'victory');
 
     // Per-puzzle breakdown
     const puzzleMap: Record<string, { plays: number; victories: number; date: string | null }> = {};
-    for (const r of data) {
-      const pid = (r as any).puzzle_id;
+    for (const r of rows) {
+      const pid = r.puzzle_id;
       if (!puzzleMap[pid]) {
-        puzzleMap[pid] = { plays: 0, victories: 0, date: (r as any).puzzle_date };
+        puzzleMap[pid] = { plays: 0, victories: 0, date: r.puzzle_date };
       }
       puzzleMap[pid].plays++;
-      if ((r as any).outcome === 'victory') puzzleMap[pid].victories++;
+      if (r.outcome === 'victory') puzzleMap[pid].victories++;
     }
 
     return {
-      totalPlays: data.length,
+      totalPlays: rows.length,
       uniquePlayers,
-      overallCompletionRate: data.length > 0 ? victories.length / data.length : 0,
+      overallCompletionRate: rows.length > 0 ? victories.length / rows.length : 0,
       puzzlePlays: Object.entries(puzzleMap)
         .map(([puzzleId, stats]) => ({
           puzzleId,

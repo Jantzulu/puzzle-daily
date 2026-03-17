@@ -16,7 +16,6 @@ import {
   createTestCollectible,
   createTestGameState,
 } from './helpers';
-import { Direction } from '../../types/game';
 import { diffTurn } from '../combatLog';
 import type { GameState } from '../../types/game';
 
@@ -137,6 +136,7 @@ describe('diffTurn', () => {
     });
     const after = createTestGameState({
       currentTurn: 1,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       activeProjectiles: [{ id: 'proj-1', active: true } as any],
     });
 

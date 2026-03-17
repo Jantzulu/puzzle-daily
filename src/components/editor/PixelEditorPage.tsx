@@ -32,7 +32,7 @@ export const PixelEditorPage: React.FC = () => {
   const [editorKey, setEditorKey] = useState(0);
 
   // Track the last active tab to serialize state on switch
-  const lastActiveTabIdRef = useRef(activeTabId);
+  const _lastActiveTabIdRef = useRef(activeTabId);
 
   // Serialize current editor state into the tab before switching
   const serializeCurrentTab = useCallback(() => {
@@ -128,9 +128,11 @@ export const PixelEditorPage: React.FC = () => {
   // Persist on unmount (React Router navigation) and beforeunload (page close/refresh)
   // Use a ref so the cleanup always has the latest persistTabs
   const persistTabsRef = useRef(persistTabs);
+  // eslint-disable-next-line react-hooks/immutability -- intentional ref sync pattern to keep cleanup closure up-to-date
   persistTabsRef.current = persistTabs;
   const editorRefForPersist = editorRef;
 
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- intentional: editorRefForPersist.current accessed in cleanup to persist state on unmount
   useEffect(() => {
     const handlePersist = () => {
       if (editorRefForPersist.current) {

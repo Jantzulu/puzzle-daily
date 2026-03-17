@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import type { SpellAsset, Direction } from '../../types/game';
+import type { SpellAsset } from '../../types/game';
 import { getSpellAssets } from '../../utils/assetStorage';
 
 interface SpellPickerProps {

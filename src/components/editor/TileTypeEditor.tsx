@@ -2,8 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
-import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, ActivationSpriteConfig, CadenceConfig, CadencePattern } from '../../types/game';
-import type { CustomTileType, CustomSprite } from '../../utils/assetStorage';
+import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, CadencePattern } from '../../types/game';
+import type { CustomTileType } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport } from './BulkActions';
@@ -465,6 +465,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
 
   useEffect(() => {
     if (initialSelectedId) handleSelect(initialSelectedId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialSelectedId]);
 
   const handleSelect = (id: string) => {

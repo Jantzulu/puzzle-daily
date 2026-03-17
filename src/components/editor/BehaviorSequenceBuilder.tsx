@@ -287,6 +287,7 @@ const MovementConfig: React.FC<{ action: CharacterAction; onUpdate: (a: Characte
         className="w-16 px-2 py-1 bg-stone-600 rounded text-sm" />
       <label className="text-xs text-stone-400">Wall:</label>
       <select value={action.onWallCollision || 'stop'}
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         onChange={(e) => onUpdate({ ...action, onWallCollision: e.target.value as any })}
         className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs">
         <option value="stop">Stop</option>
@@ -403,6 +404,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               <select value={action.trigger?.mode || 'interval'}
                 onChange={(e) => {
                   const newTrigger: TriggerConfig = {
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     mode: e.target.value as any,
                     ...(e.target.value === 'interval' ? { intervalMs: 600 } : { event: defaultEvent })
                   };
@@ -428,6 +430,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               {action.trigger?.mode === 'on_event' && (
                 <>
                   <select value={action.trigger.event || defaultEvent}
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
                     onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, event: e.target.value as any } })}
                     className="w-full px-2 py-1 bg-stone-600 rounded text-xs">
                     {eventOptions.map(opt => (

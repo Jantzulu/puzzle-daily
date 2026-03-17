@@ -519,6 +519,7 @@ export async function fetchSchedule(startDate: string, endDate: string): Promise
   return (data || []).map(row => ({
     date: row.scheduled_date,
     puzzleId: row.puzzle_id,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
     puzzleNumber: row.puzzle_number ?? undefined,
   }));
@@ -542,6 +543,7 @@ export async function fetchFullScheduleWithNumbers(): Promise<ScheduleEntry[]> {
   return (data || []).map(row => ({
     date: row.scheduled_date,
     puzzleId: row.puzzle_id,
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     puzzleName: (row.puzzles_live as any)?.name || 'Unknown',
     puzzleNumber: row.puzzle_number ?? undefined,
   }));

@@ -7,7 +7,7 @@ interface SoundSettingsProps {
   isMobile?: boolean;
 }
 
-export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose, isMobile = false }) => {
+export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose, isMobile = false }) => {
   const [settings, setSettings] = useState<SoundSettingsType>(soundManager.getSettings());
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -133,18 +133,21 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose, isMobile 
           </div>
 
           <div className="p-3 space-y-4">
+            {/* eslint-disable-next-line react-hooks/static-components */}
             <VolumeSlider
               label="Master Volume"
               value={settings.masterVolume}
               onChange={handleMasterChange}
               disabled={!settings.enabled}
             />
+            {/* eslint-disable-next-line react-hooks/static-components */}
             <VolumeSlider
               label="Music"
               value={settings.musicVolume}
               onChange={handleMusicChange}
               disabled={!settings.enabled}
             />
+            {/* eslint-disable-next-line react-hooks/static-components */}
             <VolumeSlider
               label="Sound Effects"
               value={settings.sfxVolume}

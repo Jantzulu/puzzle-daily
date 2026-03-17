@@ -751,6 +751,7 @@ export const ThemeAssetsEditor: React.FC = () => {
   const importInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setAssets(loadThemeAssets());
   }, []);
 

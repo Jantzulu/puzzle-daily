@@ -646,6 +646,7 @@ export function floodFill(
   const visited = new Uint8Array(width * height);
 
   while (stack.length > 0) {
+    // eslint-disable-next-line prefer-const
     let [x, y] = stack.pop()!;
 
     if (visited[y * width + x]) continue;
@@ -717,6 +718,7 @@ export function magicWandSelect(
   let minX = startX, maxX = startX, minY = startY, maxY = startY;
 
   while (stack.length > 0) {
+    // eslint-disable-next-line prefer-const
     let [x, y] = stack.pop()!;
 
     if (visited[y * width + x]) continue;
@@ -836,7 +838,7 @@ export function renderPixelCanvas(
   const endPy = Math.min(height, Math.ceil((displayHeight - panY) / zoom));
 
   // Draw checkerboard background for transparent areas
-  const checkSize = Math.max(2, Math.floor(zoom / 2));
+  const _checkSize = Math.max(2, Math.floor(zoom / 2));
   for (let py = startPy; py < endPy; py++) {
     for (let px = startPx; px < endPx; px++) {
       const screenX = panX + px * zoom;

@@ -11,7 +11,7 @@ interface AttackEditorProps {
 
 export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCancel }) => {
   const [editedAttack, setEditedAttack] = useState<CustomAttack>({ ...attack });
-  const [saveToLibrary, setSaveToLibrary] = useState(true);
+  const [saveToLibrary, _setSaveToLibrary] = useState(true);
 
   const handleSave = () => {
     // Save to library if requested
@@ -44,6 +44,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
             <label className="block text-sm font-medium mb-1">Attack Pattern</label>
             <select
               value={editedAttack.pattern}
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               onChange={(e) => setEditedAttack({ ...editedAttack, pattern: e.target.value as any })}
               className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
             >
@@ -141,6 +142,7 @@ export const AttackEditor: React.FC<AttackEditorProps> = ({ attack, onSave, onCa
               <label className="block text-sm font-medium mb-1">Target Location</label>
               <select
                 value={editedAttack.aoeTargeting || 'caster'}
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 onChange={(e) => setEditedAttack({ ...editedAttack, aoeTargeting: e.target.value as any })}
                 className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
               >

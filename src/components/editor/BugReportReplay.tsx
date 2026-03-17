@@ -49,6 +49,7 @@ export const BugReportReplay: React.FC<BugReportReplayProps> = ({ puzzle, placem
       const copy = JSON.parse(JSON.stringify(state));
       copy.tileStates = new Map();
       if (state.tileStates) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         state.tileStates.forEach((value: any, key: string) => {
           copy.tileStates.set(key, {
             ...value,

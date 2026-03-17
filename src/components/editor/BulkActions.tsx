@@ -5,10 +5,11 @@
 import { useState, useCallback } from 'react';
 import { toast } from '../shared/Toast';
 import { getFolders, type AssetCategory } from '../../utils/assetStorage';
-import { findAssetUsages, formatUsageWarning, type AssetType } from '../../utils/assetDependencies';
+import { findAssetUsages, type AssetType } from '../../utils/assetDependencies';
 
 // ============ useBulkSelect hook ============
 
+// eslint-disable-next-line react-refresh/only-export-components
 export function useBulkSelect() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
@@ -79,6 +80,7 @@ export function BulkActionBar({ count, totalCount, onSelectAll, onClear, onDelet
 // ============ Bulk action helpers ============
 
 /** Bulk delete with dependency warnings. Returns IDs that were actually deleted. */
+// eslint-disable-next-line react-refresh/only-export-components
 export function bulkDelete(
   ids: string[],
   assetType: AssetType,
@@ -112,10 +114,13 @@ export function bulkDelete(
 }
 
 /** Bulk move to folder */
+// eslint-disable-next-line react-refresh/only-export-components
 export function bulkMoveToFolder(
   ids: string[],
   folderCategory: AssetCategory | string,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   getAsset: (id: string) => any,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   saveAsset: (asset: any) => void,
 ) {
   const folders = getFolders(folderCategory as AssetCategory);
@@ -150,7 +155,9 @@ export function bulkMoveToFolder(
 }
 
 /** Bulk export as JSON download */
+// eslint-disable-next-line react-refresh/only-export-components
 export function bulkExport(
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   items: any[],
   filename: string,
 ) {

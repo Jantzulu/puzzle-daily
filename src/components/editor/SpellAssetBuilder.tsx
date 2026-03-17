@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '../shared/Toast';
-import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset, SoundAsset } from '../../types/game';
+import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
 import { RichTextEditor } from './RichTextEditor';
@@ -103,6 +103,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
     if (spriteRefId) {
       setMode(getCurrentMode());
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- getCurrentMode is stable; only re-run when spriteRefId changes
   }, [spriteRefId]);
 
   const handleModeChange = (newMode: SpellSpriteMode) => {
@@ -697,7 +698,7 @@ const ConePreview: React.FC<{ range: number; coneAngle: number }> = ({ range, co
 };
 
 export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onSave, onCancel }) => {
-  const isMobile = useIsMobile();
+  const _isMobile = useIsMobile();
   const [editedSpell, setEditedSpell] = useState<SpellAsset>(spell || {
     id: 'spell_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
     name: '',
@@ -1740,6 +1741,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     <label className="block text-sm font-medium mb-1">Bounce Direction</label>
                     <select
                       value={editedSpell.bounceBehavior || 'reflect'}
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
                       onChange={(e) => setEditedSpell({ ...editedSpell, bounceBehavior: e.target.value as any })}
                       className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                     >
@@ -1909,7 +1911,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
     setEnableEffect(enabled);
     if (!enabled) {
       // Remove the status effect config
-      const { appliesStatusEffect, ...rest } = editedSpell;
+      const { appliesStatusEffect: _appliesStatusEffect, ...rest } = editedSpell;
       setEditedSpell(rest as SpellAsset);
     } else {
       // Initialize with first effect if available

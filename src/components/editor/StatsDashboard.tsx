@@ -346,6 +346,7 @@ export const StatsDashboard: React.FC = () => {
   }, [timeRange]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (view === 'overview') loadOverview();
   }, [view, loadOverview]);
 

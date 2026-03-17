@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { SpellAsset } from '../../types/game';
-import { getSpellAssets, deleteSpellAsset, saveSpellAsset, getFolders } from '../../utils/assetStorage';
+import { getSpellAssets, deleteSpellAsset, saveSpellAsset } from '../../utils/assetStorage';
 import { SpellAssetBuilder } from './SpellAssetBuilder';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';

@@ -4,7 +4,7 @@ import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependenci
 import { scaledNameClass } from '../../utils/textScale';
 import type { StatusEffectAsset } from '../../types/game';
 import { StatusEffectType } from '../../types/game';
-import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, getFolders, type CustomSprite } from '../../utils/assetStorage';
+import { getStatusEffectAssets, deleteStatusEffectAsset, saveStatusEffectAsset, type CustomSprite } from '../../utils/assetStorage';
 import { StatusEffectEditor } from './StatusEffectEditor';
 import { AssetEditorLayout } from './AssetEditorLayout';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -43,6 +43,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
   };
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadEffects();
   }, []);
 
@@ -55,6 +56,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
   useEffect(() => {
     if (initialSelectedId) {
       const effect = effects.find(e => e.id === initialSelectedId);
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       if (effect) handleSelect(effect);
     }
   }, [initialSelectedId, effects]);

@@ -65,7 +65,7 @@ function drawShape(
       ctx.lineTo(centerX - radius, centerY);
       ctx.closePath();
       break;
-    case 'star':
+    case 'star': {
       const outerRadius = radius;
       const innerRadius = radius * 0.5;
       const points = 5;
@@ -79,6 +79,7 @@ function drawShape(
       }
       ctx.closePath();
       break;
+    }
     case 'hexagon':
       for (let i = 0; i < 6; i++) {
         const angle = (Math.PI * i) / 3 - Math.PI / 6;
