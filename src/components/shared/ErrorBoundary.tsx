@@ -1,4 +1,5 @@
 import React, { Component, type ReactNode } from 'react';
+import { captureError } from '../../lib/sentry';
 
 interface ErrorBoundaryProps {
   children: ReactNode;
@@ -27,6 +28,7 @@ export class ErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundarySt
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
     console.error('ErrorBoundary caught:', error, errorInfo);
+    captureError(error, { componentStack: errorInfo.componentStack ?? undefined });
 
     // Auto-reload on chunk load failures (stale deploys) if opted in
     if (this.props.autoReloadOnChunkError && this.isChunkLoadError(error)) {

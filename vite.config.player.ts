@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
+    sourcemap: 'hidden',
     outDir: 'dist-player',
     rollupOptions: {
       input: 'index.player.html',
