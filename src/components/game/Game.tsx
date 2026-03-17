@@ -87,6 +87,9 @@ export const Game: React.FC = () => {
   // Track defeat reason
   const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
 
+  // Victory dismiss state — when true, shows collapsed banner instead of full overlay
+  const [victoryDismissed, setVictoryDismissed] = useState(false);
+
   // Overlay dismiss animation state
   const [dismissingOverlay, setDismissingOverlay] = useState(false);
   const dismissActionRef = useRef<(() => void) | null>(null);
@@ -769,6 +772,7 @@ export const Game: React.FC = () => {
     setPlayStartCharacters([]);
     setPuzzleScore(null);
     setDefeatReason(null);
+    setVictoryDismissed(false);
   };
 
   // Concede current attempt - lose a life and show defeat panel with buttons
@@ -1411,9 +1415,28 @@ export const Game: React.FC = () => {
               )}
 
               {/* Victory Overlay */}
-              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && (
-                <div className="fixed inset-0 flex items-center justify-center z-50 overflow-y-auto py-4 animate-overlay-fade-in" style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}>
-                  <div className="victory-panel p-6 rounded-pixel-lg text-center w-[min(90%,24rem)] my-auto animate-panel-scale-in">
+              {/* Victory Full Overlay — dismissible */}
+              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && !victoryDismissed && (
+                <div
+                  className={`fixed inset-0 flex items-center justify-center z-50 overflow-y-auto py-4 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
+                  style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
+                  onClick={() => dismissOverlay(() => setVictoryDismissed(true))}
+                >
+                  <div
+                    className={`victory-panel p-6 rounded-pixel-lg text-center w-[min(90%,24rem)] my-auto relative ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}
+                    onClick={e => e.stopPropagation()}
+                  >
+                    {/* Close button */}
+                    <button
+                      onClick={() => dismissOverlay(() => setVictoryDismissed(true))}
+                      disabled={dismissingOverlay}
+                      className="absolute top-2 right-2 p-1 text-moss-400 hover:text-parchment-100 hover:bg-moss-700 rounded transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+
                     {/* Trophy and Rank */}
                     <div className="text-4xl mb-1 animate-icon-bounce animate-victory-glow">{getRankEmoji(puzzleScore.rank)}</div>
                     <h2 className="text-xl md:text-2xl font-bold font-medieval text-moss-200 text-shadow-dungeon">
@@ -1491,14 +1514,16 @@ export const Game: React.FC = () => {
                     {playStartCharacters.length > 0 && (
                       <div className="mt-3 flex flex-col items-center gap-2">
                         <button
-                          onClick={handleWatchReplay}
+                          onClick={() => dismissOverlay(() => { setVictoryDismissed(true); handleWatchReplay(); })}
+                          disabled={dismissingOverlay}
                           className="dungeon-btn px-4 py-2 text-sm font-bold"
                         >
                           Watch Replay
                         </button>
                         {trackedRuns.length > 0 && (
                           <button
-                            onClick={() => setShowBugReport(true)}
+                            onClick={() => dismissOverlay(() => { setVictoryDismissed(true); setShowBugReport(true); })}
+                            disabled={dismissingOverlay}
                             className="dungeon-btn px-1.5 py-1 text-xs flex items-center justify-center"
                             title="Report Bug"
                           >
@@ -1521,6 +1546,20 @@ export const Game: React.FC = () => {
                       />
                     )}
                   </div>
+                </div>
+              )}
+
+              {/* Victory Collapsed Banner — persists after dismissing the full overlay */}
+              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && victoryDismissed && (
+                <div className="absolute inset-x-0 top-2 flex justify-center z-10 pointer-events-none">
+                  <button
+                    onClick={() => setVictoryDismissed(false)}
+                    className="pointer-events-auto victory-panel px-4 py-2 rounded-pixel-lg flex items-center gap-2 text-sm cursor-pointer hover:brightness-110 transition-all shadow-lg"
+                  >
+                    <span className="text-lg">{getRankEmoji(puzzleScore.rank)}</span>
+                    <span className="font-medieval font-bold text-moss-200">{getRankName(puzzleScore.rank)}</span>
+                    <span className="text-copper-300 font-bold">{puzzleScore.totalPoints.toLocaleString()} pts</span>
+                  </button>
                 </div>
               )}
             </div>
