@@ -301,6 +301,10 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   }, [isMobile, touchZoom, touchPan]);
   const bulk = useBulkSelect();
 
+  // Custom tile painting on preview
+  const [previewTileOverrides, setPreviewTileOverrides] = useState<Record<string, string>>({});
+  const [paintTileTypeId, setPaintTileTypeId] = useState<string | null>(null);
+
   // Live preview game state — rebuilds when editing skin or custom tile types change
   const previewGameState = useMemo(
     () => editingSkin ? buildPreviewGameState(editingSkin, customTileTypes, previewTileOverrides) : null,
@@ -310,9 +314,6 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
   // URL input states - track which slot is showing URL input and the current input value
   const [showUrlInput, setShowUrlInput] = useState<string | null>(null);
   const [urlInputValue, setUrlInputValue] = useState('');
-  // Custom tile painting on preview
-  const [previewTileOverrides, setPreviewTileOverrides] = useState<Record<string, string>>({});
-  const [paintTileTypeId, setPaintTileTypeId] = useState<string | null>(null);
 
   // Refresh custom tile types when component mounts or skin changes
   useEffect(() => {
