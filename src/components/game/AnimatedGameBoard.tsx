@@ -630,6 +630,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
   // Track spawn animations - keyed by entity ID (characterId + position or enemy index)
   const [characterSpawnAnimations, setCharacterSpawnAnimations] = useState<Map<string, SpawnAnimationState>>(new Map());
+  const characterSpawnAnimationsRef = useRef<Map<string, SpawnAnimationState>>(new Map());
   const [enemySpawnAnimations, setEnemySpawnAnimations] = useState<Map<number, SpawnAnimationState>>(new Map());
   // Track entities that have completed spawn animation (don't re-trigger on re-render)
   const spawnedCharactersRef = useRef<Set<string>>(new Set());
@@ -818,6 +819,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     });
 
     if (newCharSpawns.size > 0) {
+      // Update ref synchronously to prevent first-frame flash
+      newCharSpawns.forEach((state, key) => characterSpawnAnimationsRef.current.set(key, state));
       setCharacterSpawnAnimations(prev => {
         const updated = new Map(prev);
         newCharSpawns.forEach((state, key) => updated.set(key, state));
@@ -1294,9 +1297,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             }
           } else {
             // Apply drop-in offset for newly placed characters during setup
+            // Use ref for synchronous access to prevent first-frame flash
+            const spawnAnimSync = characterSpawnAnimationsRef.current.get(spawnKey) || spawnAnim;
             let dropOffsetY = 0;
-            if (spawnAnim && !gameStarted) {
-              const dropElapsed = now - spawnAnim.startTime;
+            if (spawnAnimSync && !gameStarted) {
+              const dropElapsed = now - spawnAnimSync.startTime;
               if (dropElapsed < DROP_PLACE_DURATION) {
                 const dropProgress = dropElapsed / DROP_PLACE_DURATION;
                 // Ease out: start offset, settle to 0
