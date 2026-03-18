@@ -61,6 +61,8 @@ const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const SPAWN_ANIMATION_DURATION = 500; // ms for spawn animation (plays once when entity first appears)
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
 const TELEPORT_APPEAR_DURATION = 100; // Small delay after walking to teleport tile before appearing at destination
+const DROP_PLACE_DURATION = 250; // ms for hero drop-in effect when placed during setup
+const DROP_PLACE_OFFSET = 0.4; // tiles above final position (subtle)
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -1281,7 +1283,18 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               }
             }
           } else {
-            drawCharacter(ctx, character, character.x, character.y, false, undefined, gameStarted, deathAnim, now, spawnAnim);
+            // Apply drop-in offset for newly placed characters during setup
+            let dropOffsetY = 0;
+            if (spawnAnim && !gameStarted) {
+              const dropElapsed = now - spawnAnim.startTime;
+              if (dropElapsed < DROP_PLACE_DURATION) {
+                const dropProgress = dropElapsed / DROP_PLACE_DURATION;
+                // Ease out: start offset, settle to 0
+                const eased = 1 - Math.pow(1 - dropProgress, 3);
+                dropOffsetY = -DROP_PLACE_OFFSET * (1 - eased);
+              }
+            }
+            drawCharacter(ctx, character, character.x, character.y + dropOffsetY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
           }
         }
       });
