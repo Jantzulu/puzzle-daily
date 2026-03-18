@@ -641,6 +641,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const [enemySpawnAnimations, setEnemySpawnAnimations] = useState<Map<number, SpawnAnimationState>>(new Map());
   // Track lift-off animations for unplaced characters
   const [liftOffAnimations, setLiftOffAnimations] = useState<LiftOffAnimation[]>([]);
+  const prevGameStatusRef = useRef(gameState.gameStatus);
   // Track entities that have completed spawn animation (don't re-trigger on re-render)
   const spawnedCharactersRef = useRef<Set<string>>(new Set());
   const spawnedEnemiesRef = useRef<Set<number>>(new Set());
@@ -816,8 +817,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     const newLiftOffs: LiftOffAnimation[] = [];
     spawnedCharactersRef.current.forEach((key) => {
       if (!currentSpawnKeys.has(key)) {
-        // Character was removed — trigger lift-off if in setup
-        if (gameState.gameStatus === 'setup') {
+        // Character was removed — trigger lift-off only if user manually unplaced
+        // (both current and previous status must be 'setup' to avoid reset transitions)
+        if (gameState.gameStatus === 'setup' && prevGameStatusRef.current === 'setup') {
           const [charId, pos] = key.split(':');
           const [px, py] = pos.split(',').map(Number);
           newLiftOffs.push({ startTime: now, x: px, y: py, characterId: charId });
@@ -851,7 +853,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
 
     prevCharactersRef.current = [...gameState.placedCharacters];
-  }, [gameState.placedCharacters]);
+    prevGameStatusRef.current = gameState.gameStatus;
+  }, [gameState.placedCharacters, gameState.gameStatus]);
 
   // Detect enemy movement
   useEffect(() => {
