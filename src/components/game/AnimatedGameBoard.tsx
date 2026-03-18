@@ -610,6 +610,13 @@ interface SpawnAnimationState {
   y: number;
 }
 
+interface LiftOffAnimation {
+  startTime: number;
+  x: number;
+  y: number;
+  characterId: string;
+}
+
 export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -632,6 +639,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const [characterSpawnAnimations, setCharacterSpawnAnimations] = useState<Map<string, SpawnAnimationState>>(new Map());
   const characterSpawnAnimationsRef = useRef<Map<string, SpawnAnimationState>>(new Map());
   const [enemySpawnAnimations, setEnemySpawnAnimations] = useState<Map<number, SpawnAnimationState>>(new Map());
+  // Track lift-off animations for unplaced characters
+  const [liftOffAnimations, setLiftOffAnimations] = useState<LiftOffAnimation[]>([]);
   // Track entities that have completed spawn animation (don't re-trigger on re-render)
   const spawnedCharactersRef = useRef<Set<string>>(new Set());
   const spawnedEnemiesRef = useRef<Set<number>>(new Set());
@@ -651,7 +660,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       spawnedCharactersRef.current.clear();
       spawnedEnemiesRef.current.clear();
       setCharacterSpawnAnimations(new Map());
+      characterSpawnAnimationsRef.current = new Map();
       setEnemySpawnAnimations(new Map());
+      setLiftOffAnimations([]);
     }
     prevPuzzleIdRef.current = currentPuzzleId;
   }, [gameState.puzzle.id]);
@@ -798,14 +809,25 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
 
     // Clean up spawn keys for characters that were removed (unplaced)
+    // and trigger lift-off animations
     const currentSpawnKeys = new Set(
       gameState.placedCharacters.map((char) => `${char.characterId}:${char.x},${char.y}`)
     );
+    const newLiftOffs: LiftOffAnimation[] = [];
     spawnedCharactersRef.current.forEach((key) => {
       if (!currentSpawnKeys.has(key)) {
+        // Character was removed — trigger lift-off if in setup
+        if (!gameStarted) {
+          const [charId, pos] = key.split(':');
+          const [px, py] = pos.split(',').map(Number);
+          newLiftOffs.push({ startTime: now, x: px, y: py, characterId: charId });
+        }
         spawnedCharactersRef.current.delete(key);
       }
     });
+    if (newLiftOffs.length > 0) {
+      setLiftOffAnimations(prev => [...prev, ...newLiftOffs]);
+    }
 
     // Detect newly placed characters and trigger spawn animations
     const newCharSpawns = new Map<string, SpawnAnimationState>();
@@ -1313,6 +1335,36 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         }
       });
+
+      // Draw lift-off animations for unplaced characters
+      const activeLiftOffs: LiftOffAnimation[] = [];
+      liftOffAnimations.forEach(anim => {
+        const elapsed = now - anim.startTime;
+        if (elapsed < DROP_PLACE_DURATION) {
+          activeLiftOffs.push(anim);
+          const progress = elapsed / DROP_PLACE_DURATION;
+          const eased = Math.pow(progress, 2); // ease in — accelerate upward
+          const offsetY = -DROP_PLACE_OFFSET * eased;
+          const opacity = 1 - eased;
+
+          const charData = getCharacter(anim.characterId) as CustomCharacter | undefined;
+          if (charData && 'customSprite' in charData && charData.customSprite) {
+            ctx.save();
+            ctx.globalAlpha = opacity;
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowBlur = 4;
+            ctx.shadowOffsetX = 2;
+            ctx.shadowOffsetY = 2;
+            const px = anim.x * TILE_SIZE;
+            const py = (anim.y + offsetY) * TILE_SIZE;
+            drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, undefined, false, now, false);
+            ctx.restore();
+          }
+        }
+      });
+      if (activeLiftOffs.length !== liftOffAnimations.length) {
+        setLiftOffAnimations(activeLiftOffs);
+      }
 
       // Draw tile activation effects (e.g., teleport activation sprites) ABOVE entities
       // Filter out expired activations and draw active ones
