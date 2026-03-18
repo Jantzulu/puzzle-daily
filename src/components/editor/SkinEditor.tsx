@@ -102,7 +102,7 @@ const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; 
 };
 
 /** Build a minimal GameState for the live skin preview */
-function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType[]): GameState {
+function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType[], tileOverrides?: Record<string, string>): GameState {
   const width = 6;
   const height = 6;
 
@@ -140,7 +140,11 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
       } else {
         const type = cell === 'W' ? TileType.WALL : cell === 'G' ? TileType.GOAL : TileType.EMPTY;
         const tile: Tile = { x, y, type, content: undefined };
-        if (cell === 'C' && customTileTypes.length > 0) {
+        // Apply custom tile overrides from paint mode
+        const overrideId = tileOverrides?.[`${x},${y}`];
+        if (overrideId) {
+          tile.customTileTypeId = overrideId;
+        } else if (cell === 'C' && customTileTypes.length > 0) {
           tile.customTileTypeId = customTileTypes[0].id;
         }
         row.push(tile);
@@ -299,13 +303,16 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
 
   // Live preview game state — rebuilds when editing skin or custom tile types change
   const previewGameState = useMemo(
-    () => editingSkin ? buildPreviewGameState(editingSkin, customTileTypes) : null,
-    [editingSkin, customTileTypes]
+    () => editingSkin ? buildPreviewGameState(editingSkin, customTileTypes, previewTileOverrides) : null,
+    [editingSkin, customTileTypes, previewTileOverrides]
   );
 
   // URL input states - track which slot is showing URL input and the current input value
   const [showUrlInput, setShowUrlInput] = useState<string | null>(null);
   const [urlInputValue, setUrlInputValue] = useState('');
+  // Custom tile painting on preview
+  const [previewTileOverrides, setPreviewTileOverrides] = useState<Record<string, string>>({});
+  const [paintTileTypeId, setPaintTileTypeId] = useState<string | null>(null);
 
   // Refresh custom tile types when component mounts or skin changes
   useEffect(() => {
@@ -898,12 +905,27 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 transformOrigin: magnifierOrigin || 'center center',
                               }}
                             >
-                              <div className="relative inline-block">
+                              <div className="relative inline-block" style={{ cursor: paintTileTypeId ? 'crosshair' : undefined }}>
                                 <AnimatedGameBoard
                                   gameState={previewGameState}
                                   skinOverride={editingSkin!}
                                   maxWidth={280}
                                   maxHeight={280}
+                                  onTileClick={paintTileTypeId ? (x, y) => {
+                                    // Only paint on floor tiles (not walls, voids)
+                                    const tile = previewGameState.puzzle.tiles[y]?.[x];
+                                    if (tile === null) return; // void
+                                    const key = `${x},${y}`;
+                                    setPreviewTileOverrides(prev => {
+                                      // Toggle: if already this tile type, remove it
+                                      if (prev[key] === paintTileTypeId) {
+                                        const next = { ...prev };
+                                        delete next[key];
+                                        return next;
+                                      }
+                                      return { ...prev, [key]: paintTileTypeId };
+                                    });
+                                  } : undefined}
                                 />
                                 {/* Highlight overlay for selected border/tile slot */}
                                 {highlightedSlot && SLOT_HIGHLIGHT_REGIONS[highlightedSlot] && (() => {
@@ -1236,6 +1258,33 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                     If no sprite is set, the tile type's default sprite will be used.
                     Tile types with cadence enabled show separate slots for on/off states.
                   </p>
+                  {/* Paint mode indicator + reset */}
+                  {(paintTileTypeId || Object.keys(previewTileOverrides).length > 0) && (
+                    <div className="flex items-center gap-2 mb-2 text-xs">
+                      {paintTileTypeId && (
+                        <span className="text-amber-400">
+                          Painting: {customTileTypes.find(t => t.id === paintTileTypeId)?.name} — click tiles on preview
+                        </span>
+                      )}
+                      <div className="flex-1" />
+                      {Object.keys(previewTileOverrides).length > 0 && (
+                        <button
+                          onClick={() => { setPreviewTileOverrides({}); setPaintTileTypeId(null); }}
+                          className="px-2 py-0.5 bg-stone-600 hover:bg-stone-500 rounded text-stone-300"
+                        >
+                          Reset Preview
+                        </button>
+                      )}
+                      {paintTileTypeId && (
+                        <button
+                          onClick={() => setPaintTileTypeId(null)}
+                          className="px-2 py-0.5 bg-stone-600 hover:bg-stone-500 rounded text-stone-300"
+                        >
+                          Stop Painting
+                        </button>
+                      )}
+                    </div>
+                  )}
                   {customTileTypes.length === 0 ? (
                     <div className="text-sm text-stone-500 text-center py-4">
                       No custom tile types created yet. Create custom tile types in the Tiles tab.
@@ -1361,12 +1410,24 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                         };
 
                         return (
-                          <div key={tileType.id} className="bg-stone-700 p-2 rounded">
+                          <div key={tileType.id} className={`bg-stone-700 p-2 rounded ${paintTileTypeId === tileType.id ? 'ring-2 ring-amber-500' : ''}`}>
                             <div className="text-xs font-bold mb-1 flex items-center gap-1">
                               {tileType.name}
                               {hasCadence && (
                                 <span className="text-yellow-400 text-[10px]" title="Has on/off cadence">⟳</span>
                               )}
+                              <div className="flex-1" />
+                              <button
+                                onClick={() => setPaintTileTypeId(paintTileTypeId === tileType.id ? null : tileType.id)}
+                                className={`px-1.5 py-0.5 rounded text-[10px] ${
+                                  paintTileTypeId === tileType.id
+                                    ? 'bg-amber-600 text-white'
+                                    : 'bg-stone-600 hover:bg-stone-500 text-stone-300'
+                                }`}
+                                title="Click then click tiles on the preview to paint this tile type"
+                              >
+                                {paintTileTypeId === tileType.id ? 'Painting...' : 'Paint'}
+                              </button>
                             </div>
                             <div className="text-xs text-stone-400 mb-2 truncate" title={tileType.description}>
                               {tileType.description || `${tileType.baseType} tile`}
