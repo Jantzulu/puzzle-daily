@@ -3243,8 +3243,16 @@ function drawCollectible(
       centerY = py + TILE_SIZE / 2 - spriteSize / 2 + bobOffset;
     }
 
-    // Draw the sprite (pixel-perfect in physical pixel space)
+    // Draw the sprite (pixel-perfect in physical pixel space) with shadow
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+    ctx.shadowBlur = 2;
+    ctx.shadowOffsetX = 1;
+    ctx.shadowOffsetY = 1;
     drawSpritePixelPerfect(ctx, collectibleData.customSprite, centerX, centerY, TILE_SIZE);
+    ctx.shadowColor = 'transparent';
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
     return;
   }
 
