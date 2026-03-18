@@ -817,7 +817,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     spawnedCharactersRef.current.forEach((key) => {
       if (!currentSpawnKeys.has(key)) {
         // Character was removed — trigger lift-off if in setup
-        if (!gameStarted) {
+        if (gameState.gameStatus === 'setup') {
           const [charId, pos] = key.split(':');
           const [px, py] = pos.split(',').map(Number);
           newLiftOffs.push({ startTime: now, x: px, y: py, characterId: charId });
