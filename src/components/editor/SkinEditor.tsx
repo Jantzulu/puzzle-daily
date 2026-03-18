@@ -108,18 +108,18 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
   // inner corners, wallTop edges, thin corners, etc.
   // W=wall, G=goal, .=floor, null=void, C=custom tile
   // Row 0: .  .  .  .  .  .
-  // Row 1: .  W  .  W  .  null
+  // Row 1: .  W  .  W  .  .
   // Row 2: .  .  .  .  .  null
-  // Row 3: null .  .  G  null null
-  // Row 4: .  .  .  .  .  .
-  // Row 5: .  C  .  .  .  .
+  // Row 3: null null .  .  .  null
+  // Row 4: null null .  .  .  .
+  // Row 5: .  .  .  .  .  .
   const layout: (string | null)[][] = [
     ['.', '.', '.', '.', '.', '.'],
-    ['.', 'W', '.', 'W', '.', null],
+    ['.', 'W', '.', 'W', '.', '.'],
     ['.', '.', '.', '.', '.', null],
-    [null, '.', '.', 'G', null, null],
+    [null, null, '.', '.', '.', null],
+    [null, null, '.', '.', '.', '.'],
     ['.', '.', '.', '.', '.', '.'],
-    ['.', 'C', '.', '.', '.', '.'],
   ];
 
   const tiles: TileOrNull[][] = [];
