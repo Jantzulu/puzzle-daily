@@ -1350,9 +1350,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const progress = elapsed / DROP_PLACE_DURATION;
           const eased = Math.pow(progress, 2); // ease in — accelerate upward
           const offsetY = -DROP_PLACE_OFFSET * eased;
-          // Fade out faster than movement so opacity hits 0 before animation ends
-          const fadeProgress = Math.min(1, progress * 1.5);
-          const opacity = Math.max(0, 1 - fadeProgress * fadeProgress);
+          // Fade starts immediately and aggressively — ease-out curve
+          // so most of the fade happens in the first half
+          const opacity = Math.max(0, 1 - Math.pow(progress, 0.5));
 
           const charData = getCharacter(anim.characterId) as CustomCharacter | undefined;
           if (charData && 'customSprite' in charData && charData.customSprite) {
