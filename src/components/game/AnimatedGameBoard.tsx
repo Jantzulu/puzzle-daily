@@ -1366,10 +1366,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             const offscreen = new OffscreenCanvas(physTile, physTile);
             const offCtx = offscreen.getContext('2d')!;
             offCtx.imageSmoothingEnabled = false;
-            offCtx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-            offCtx.shadowBlur = 6;
-            offCtx.shadowOffsetX = 1.5;
-            offCtx.shadowOffsetY = 1.5;
+            offCtx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+            offCtx.shadowBlur = 2;
+            offCtx.shadowOffsetX = 1;
+            offCtx.shadowOffsetY = 1;
             drawSprite(offCtx, charData.customSprite, physTile / 2, physTile / 2, physTile - 8, undefined, false, now, false);
             // Draw offscreen result with opacity onto main canvas
             const physPoint = transform.transformPoint(new DOMPoint(px + TILE_SIZE / 2, py + TILE_SIZE / 2));
@@ -2455,10 +2455,10 @@ function drawEnemy(
   if (hasCustomSprite && enemyData.customSprite) {
     if (!enemy.dead) {
       // Living enemy
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-      ctx.shadowBlur = 6;
-      ctx.shadowOffsetX = 1.5;
-      ctx.shadowOffsetY = 1.5;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
 
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
@@ -3055,10 +3055,10 @@ function drawCharacter(
       // Living character
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-        ctx.shadowBlur = 6;
-        ctx.shadowOffsetX = 1.5;
-        ctx.shadowOffsetY = 1.5;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
 
         drawSpawnSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
 
@@ -3068,10 +3068,10 @@ function drawCharacter(
         ctx.shadowOffsetY = 0;
       } else {
         // Normal sprite (idle/moving/casting)
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-        ctx.shadowBlur = 6;
-        ctx.shadowOffsetX = 1.5;
-        ctx.shadowOffsetY = 1.5;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
 
         drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
 
@@ -3107,10 +3107,10 @@ function drawCharacter(
   } else {
     // Default rendering (no custom sprite)
     if (!character.dead) {
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.25)';
-      ctx.shadowBlur = 6;
-      ctx.shadowOffsetX = 1.5;
-      ctx.shadowOffsetY = 1.5;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+      ctx.shadowBlur = 2;
+      ctx.shadowOffsetX = 1;
+      ctx.shadowOffsetY = 1;
 
       ctx.fillStyle = COLORS.character;
       const size = TILE_SIZE * 0.6;
