@@ -1356,22 +1356,28 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
           const charData = getCharacter(anim.characterId) as CustomCharacter | undefined;
           if (charData && 'customSprite' in charData && charData.customSprite) {
-            // Set alpha and shadow before drawing — globalAlpha must persist
-            // through drawSpritePixelPerfect's internal save/setTransform/restore
-            const prevAlpha = ctx.globalAlpha;
-            ctx.globalAlpha = opacity;
-            ctx.shadowColor = `rgba(0, 0, 0, ${0.3 * opacity})`;
-            ctx.shadowBlur = 4;
-            ctx.shadowOffsetX = 2;
-            ctx.shadowOffsetY = 2;
             const px = anim.x * TILE_SIZE;
             const py = (anim.y + offsetY) * TILE_SIZE;
-            drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, undefined, false, now, false);
-            ctx.globalAlpha = prevAlpha;
-            ctx.shadowColor = 'transparent';
-            ctx.shadowBlur = 0;
-            ctx.shadowOffsetX = 0;
-            ctx.shadowOffsetY = 0;
+            // Draw sprite to offscreen canvas then composite with alpha
+            // (iOS Safari doesn't reliably apply globalAlpha through transform resets)
+            const transform = ctx.getTransform();
+            const scale = transform.a;
+            const physTile = Math.round(TILE_SIZE * scale) + 8; // padding for shadow
+            const offscreen = new OffscreenCanvas(physTile, physTile);
+            const offCtx = offscreen.getContext('2d')!;
+            offCtx.imageSmoothingEnabled = false;
+            offCtx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            offCtx.shadowBlur = 4;
+            offCtx.shadowOffsetX = 2;
+            offCtx.shadowOffsetY = 2;
+            drawSprite(offCtx, charData.customSprite, physTile / 2, physTile / 2, physTile - 8, undefined, false, now, false);
+            // Draw offscreen result with opacity onto main canvas
+            const physPoint = transform.transformPoint(new DOMPoint(px + TILE_SIZE / 2, py + TILE_SIZE / 2));
+            ctx.save();
+            ctx.setTransform(1, 0, 0, 1, 0, 0);
+            ctx.globalAlpha = opacity;
+            ctx.drawImage(offscreen, Math.round(physPoint.x - physTile / 2), Math.round(physPoint.y - physTile / 2));
+            ctx.restore();
           }
         }
       });
