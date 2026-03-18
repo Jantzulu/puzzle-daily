@@ -64,61 +64,41 @@ const TILE_SPRITE_SLOTS: { key: keyof TileSprites; label: string; description: s
 // Canvas for 6x6 grid: 320×384 (grid=288×288, border top/bottom=48, sides=16)
 // Grid origin: x=16 (SIDE_BORDER_SIZE), y=48 (BORDER_SIZE)
 // Each tile: 48×48. Tile (col,row) → pixel (16+col*48, 48+row*48)
-// Grid coordinate helpers for highlight mapping
-// Border: left=16px, top=48px, each tile=48px, right wall=16px, bottom wall=48px
-// Tile (col, row) → pixel: x = 16 + col*48, y = 48 + row*48
-// Layout:
-//   Row 0: .  .  .  .  .  .
-//   Row 1: .  W  .  W  .  .
-//   Row 2: .  .  .  .  .  void
-//   Row 3: void void .  .  .  void
-//   Row 4: void void .  .  .  .
-//   Row 5: .  .  .  .  .  .
-const T = 48; // tile size
-const BL = 16; // border left width
-const BT = 48; // border top height
-const tx = (col: number) => BL + col * T;
-const ty = (row: number) => BT + row * T;
-const GRID_W = 6 * T; // 288
-const GRID_H = 6 * T; // 288
-
+// Highlight regions computed from AnimatedGameBoard's actual drawing logic.
+// Canvas pixel coordinates: border left=16, top=48, tile=48px, side=16px.
+// Layout voids: (5,2), (0,3), (1,3), (5,3), (0,4), (1,4)
+// Corner positions derived from computeSmartBorder + drawImage offsets.
 const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; h: number }[]> = {
   // Outer border slots
-  wallFront:       [{ x: BL, y: 0, w: GRID_W, h: BT }],
-  wallBottomOuter: [{ x: BL, y: BT + GRID_H, w: GRID_W, h: BT }],
-  wallSide:        [{ x: 0, y: BT, w: BL, h: GRID_H }, { x: BL + GRID_W, y: BT, w: BL, h: GRID_H }],
-  // wallTop: inner horizontal wall segments above voids
-  // Above void (5,2): between row 1-2 at col 5
-  // Above void (0,3)/(1,3): between row 2-3 at cols 0-1
+  wallFront:       [{ x: 16, y: 0, w: 288, h: 48 }],
+  wallBottomOuter: [{ x: 16, y: 336, w: 288, h: 48 }],
+  wallSide:        [{ x: 0, y: 48, w: 16, h: 288 }, { x: 304, y: 48, w: 16, h: 288 }],
+  // wallTop: inner horizontal wall above voids (top edge of tiles below voids)
+  // tile(4,2) top edge → above void(5,2); tiles(0,2)&(1,2) bottom → above voids(0,3)&(1,3)
   wallTop: [
-    { x: tx(5), y: ty(2), w: T, h: T / 2 },
-    { x: tx(0), y: ty(3), w: T * 2, h: T / 2 },
+    { x: 256, y: 144, w: 48, h: 24 },   // above void column on right
+    { x: 16,  y: 192, w: 96, h: 24 },   // above void block on left
   ],
-  // Outer corners
-  cornerTopLeft:     [{ x: 0, y: 0, w: BL, h: BT }],
-  cornerTopRight:    [{ x: BL + GRID_W, y: 0, w: BL, h: BT }],
-  cornerBottomLeft:  [{ x: 0, y: BT + GRID_H, w: BL, h: BT }],
-  cornerBottomRight: [{ x: BL + GRID_W, y: BT + GRID_H, w: BL, h: BT }],
-  // Thin outer corners — where void meets outer wall
-  // Void (5,2) meets right wall → thin corner at right edge of row 2
-  cornerBottomLeftThin:  [{ x: tx(0), y: ty(3), w: BL, h: T / 2 }],
-  cornerBottomRightThin: [{ x: tx(5), y: ty(2), w: BL, h: T / 2 }],
-  // Inner corners — where floor meets void diagonally
-  // Void block top-right: (5,2)/(5,3) — floor at (4,1) diagonal
-  innerCornerTopRight:    [{ x: tx(5), y: ty(2), w: BL, h: T }],
-  // Void block bottom-right: (5,3) — floor at (5,4) below, (4,3) left
-  innerCornerBottomRight: [{ x: tx(5), y: ty(3), w: BL, h: T }],
-  // Void block top-left: (0,3)/(1,3) — floor at (2,2) diagonal
-  innerCornerTopLeft:     [{ x: tx(2), y: ty(3), w: BL, h: T }],
-  // Void block bottom-left: (0,4)/(1,4) — floor at (2,4)/(2,5) diagonal
-  innerCornerBottomLeft:  [{ x: tx(2), y: ty(4), w: BL, h: T }],
-  // Thin inner corners
-  innerCornerBottomLeftThin:  [{ x: tx(2), y: ty(4) + T / 2, w: BL, h: T / 2 }],
-  innerCornerBottomRightThin: [{ x: tx(5), y: ty(3) + T / 2, w: BL, h: T / 2 }],
+  // Outer corners (full-size, on perimeter)
+  cornerTopLeft:     [{ x: 0,   y: 0,   w: 16, h: 48 }],   // convex-tl at tile(0,0)
+  cornerTopRight:    [{ x: 304, y: 0,   w: 16, h: 48 }],   // convex-tr at tile(5,0)
+  cornerBottomLeft:  [{ x: 0,   y: 336, w: 16, h: 48 }],   // convex-bl at tile(0,5) isOB
+  cornerBottomRight: [{ x: 304, y: 336, w: 16, h: 48 }],   // convex-br at tile(5,5) isOB
+  // Thin outer corners (convex, non-outer-bottom, at void edges)
+  cornerBottomLeftThin:  [{ x: 0,   y: 192, w: 16, h: 16 }],  // convex-bl at tile(0,2)
+  cornerBottomRightThin: [{ x: 304, y: 144, w: 16, h: 16 }],  // convex-br at tile(5,1)
+  // Inner corners (concave — where floor meets void diagonally)
+  innerCornerTopLeft:     [{ x: 96,  y: 240, w: 16, h: 48 }],  // concave-tl at tile(2,5)
+  innerCornerTopRight:    [{ x: 256, y: 192, w: 16, h: 48 }],  // concave-tr at tile(4,4) — note: 48h because !isOB maps to BORDER_SIZE in concave-tr
+  innerCornerBottomLeft:  [{ x: 96,  y: 192, w: 16, h: 16 }],  // concave-bl at tile(2,2) !isOB → thin
+  innerCornerBottomRight: [{ x: 256, y: 144, w: 16, h: 16 }],  // concave-br at tile(4,1) !isOB → thin
+  // Thin inner corners (same position, used when !isOuterBottom)
+  innerCornerBottomLeftThin:  [{ x: 96,  y: 192, w: 16, h: 16 }],  // concave-bl thin at tile(2,2)
+  innerCornerBottomRightThin: [{ x: 256, y: 144, w: 16, h: 16 }],  // concave-br thin at tile(4,1)
   // Tile slots — highlight a representative tile
-  empty: [{ x: tx(0), y: ty(0), w: T, h: T }],   // (0,0) floor tile
-  wall:  [{ x: tx(1), y: ty(1), w: T, h: T }],    // (1,1) wall tile
-  goal:  [{ x: tx(3), y: ty(1), w: T, h: T }],    // (3,1) wall tile (goal in layout)
+  empty: [{ x: 16,  y: 48,  w: 48, h: 48 }],   // tile(0,0) floor
+  wall:  [{ x: 64,  y: 96,  w: 48, h: 48 }],    // tile(1,1) wall
+  goal:  [{ x: 160, y: 96,  w: 48, h: 48 }],     // tile(3,1) wall (goal)
 };
 
 /** Build a minimal GameState for the live skin preview */
