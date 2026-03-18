@@ -82,7 +82,7 @@ const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; 
   innerCornerBottomRightThin: { x: 288, y: 312, w: 16, h: 24 },
   // Tile slots — highlight a representative tile in the grid
   empty: { x: 16 + 48, y: 48 + 48, w: 48, h: 48 },   // (1,1) floor tile
-  wall:  { x: 16,      y: 48,      w: 48, h: 48 },    // not used in current preview but included
+  wall:  { x: 16 + 192, y: 48 + 48,  w: 48, h: 48 },   // (4,1) wall tile
   goal:  { x: 16 + 144, y: 48 + 144, w: 48, h: 48 },  // (3,3) goal tile
 };
 
@@ -97,17 +97,18 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
     customBorderSprites: hasBorderSprites ? skin.borderSprites : undefined,
   };
 
-  // All grid tiles are floor/empty — the outer border frame is drawn
-  // separately by drawCustomBorder using the skin's border sprites.
-  // This matches how real puzzles render: wall border outside, floor inside.
+  // Mostly floor tiles — the outer border frame is drawn separately by
+  // drawCustomBorder. Include one wall tile and one goal tile so all
+  // tile types are represented in the preview.
   const tiles: TileOrNull[][] = [];
   for (let y = 0; y < height; y++) {
     const row: TileOrNull[] = [];
     for (let x = 0; x < width; x++) {
       const isGoal = x === 3 && y === 3;
-      const tile: Tile = { x, y, type: isGoal ? TileType.GOAL : TileType.EMPTY, content: undefined };
+      const isWall = x === 4 && y === 1; // one wall tile for preview
+      const tile: Tile = { x, y, type: isWall ? TileType.WALL : isGoal ? TileType.GOAL : TileType.EMPTY, content: undefined };
       // Show first custom tile type in one interior cell
-      if (!isGoal && customTileTypes.length > 0 && x === 1 && y === 1) {
+      if (!isGoal && !isWall && customTileTypes.length > 0 && x === 1 && y === 1) {
         tile.customTileTypeId = customTileTypes[0].id;
       }
       row.push(tile);
@@ -864,7 +865,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 transformOrigin: magnifierOrigin || 'center center',
                               }}
                             >
-                              <div className="relative">
+                              <div className="relative inline-block">
                                 <AnimatedGameBoard
                                   gameState={previewGameState}
                                   skinOverride={editingSkin!}
@@ -873,16 +874,10 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 />
                                 {/* Highlight overlay for selected border/tile slot */}
                                 {highlightedSlot && SLOT_HIGHLIGHT_REGIONS[highlightedSlot] && (() => {
-                                  const r = SLOT_HIGHLIGHT_REGIONS[highlightedSlot];
-                                  // Canvas is 320×384, preview scales to fit 280×280
+                                  // Canvas logical size: 6*48 + 16*2 = 320 wide, 6*48 + 48*2 = 384 tall
                                   const canvasW = 320, canvasH = 384;
-                                  const scale = Math.min(280 / canvasW, 280 / canvasH);
-                                  const renderedW = canvasW * scale;
-                                  const renderedH = canvasH * scale;
-                                  // Canvas is centered in 280×280
-                                  const offsetX = (280 - renderedW) / 2;
-                                  const offsetY = (280 - renderedH) / 2;
                                   // For wallSide, highlight both left and right sides
+                                  const r = SLOT_HIGHLIGHT_REGIONS[highlightedSlot];
                                   const regions = highlightedSlot === 'wallSide'
                                     ? [r, { x: 304, y: 48, w: 16, h: 288 }]
                                     : [r];
@@ -891,10 +886,10 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       key={i}
                                       className="absolute pointer-events-none animate-pulse"
                                       style={{
-                                        left: offsetX + region.x * scale,
-                                        top: offsetY + region.y * scale,
-                                        width: region.w * scale,
-                                        height: region.h * scale,
+                                        left: `${(region.x / canvasW) * 100}%`,
+                                        top: `${(region.y / canvasH) * 100}%`,
+                                        width: `${(region.w / canvasW) * 100}%`,
+                                        height: `${(region.h / canvasH) * 100}%`,
                                         border: '2px solid #f59e0b',
                                         backgroundColor: 'rgba(245, 158, 11, 0.25)',
                                         borderRadius: 2,
