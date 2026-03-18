@@ -2464,23 +2464,27 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               <div className="text-xs text-stone-500 mb-0.5">Custom</div>
               <div className="grid grid-cols-8 gap-0.5">
                 {customColors.map((c, i) => (
-                  <button
-                    key={`${c}-${i}`}
-                    onClick={() => setColor(c)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      if (e.shiftKey) {
-                        setCustomColors(prev => prev.filter((_, j) => j !== i));
-                      } else {
+                  <div key={`${c}-${i}`} className="relative group">
+                    <button
+                      onClick={() => setColor(c)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
                         setSecondaryColor(c);
-                      }
-                    }}
-                    className={`w-6 h-6 rounded-sm border ${
-                      color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
-                    }`}
-                    style={{ backgroundColor: c }}
-                    title={`${c} (right-click: secondary, Shift+right-click: remove)`}
-                  />
+                      }}
+                      className={`w-6 h-6 rounded-sm border ${
+                        color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
+                      }`}
+                      style={{ backgroundColor: c }}
+                      title={`${c} (right-click: secondary)`}
+                    />
+                    <button
+                      onClick={() => setCustomColors(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-blood-700 hover:bg-blood-600 rounded-full text-[8px] leading-none text-white hidden group-hover:flex items-center justify-center"
+                      title="Remove color"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
@@ -2857,23 +2861,27 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
               <div className="text-xs text-stone-500 mb-0.5">Custom</div>
               <div className="grid grid-cols-8 gap-0.5">
                 {customColors.map((c, i) => (
-                  <button
-                    key={`${c}-${i}`}
-                    onClick={() => setColor(c)}
-                    onContextMenu={(e) => {
-                      e.preventDefault();
-                      if (e.shiftKey) {
-                        setCustomColors(prev => prev.filter((_, j) => j !== i));
-                      } else {
+                  <div key={`${c}-${i}`} className="relative group">
+                    <button
+                      onClick={() => setColor(c)}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
                         setSecondaryColor(c);
-                      }
-                    }}
-                    className={`w-6 h-6 rounded-sm border ${
-                      color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
-                    }`}
-                    style={{ backgroundColor: c }}
-                    title={`${c} (right-click: secondary, Shift+right-click: remove)`}
-                  />
+                      }}
+                      className={`w-6 h-6 rounded-sm border ${
+                        color === c ? 'border-white border-2' : secondaryColor === c ? 'border-arcane-400 border-2' : 'border-stone-600'
+                      }`}
+                      style={{ backgroundColor: c }}
+                      title={`${c} (right-click: secondary)`}
+                    />
+                    <button
+                      onClick={() => setCustomColors(prev => prev.filter((_, j) => j !== i))}
+                      className="absolute -top-1 -right-1 w-3 h-3 bg-blood-700 hover:bg-blood-600 rounded-full text-[8px] leading-none text-white hidden group-hover:flex items-center justify-center"
+                      title="Remove color"
+                    >
+                      ×
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>
