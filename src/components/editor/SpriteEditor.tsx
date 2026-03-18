@@ -3,7 +3,7 @@ import { toast } from '../shared/Toast';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
-import { subscribeToImageLoads } from '../../utils/imageLoader';
+import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Preview type for character/enemy sprites (entities)
@@ -48,11 +48,10 @@ function notifySpriteImageLoaded() {
  * Load a sprite image with caching and load notification.
  */
 function loadSpriteImage(src: string): HTMLImageElement {
+  // Check local sprite cache first
   let img = globalImageCache.get(src);
   if (img) {
-    // Image exists in cache - check if it's still loading
     if (!img.complete && !loadingSpriteImages.has(src)) {
-      // Image in cache but not complete and no handler - re-attach handler
       loadingSpriteImages.add(src);
       img.onload = () => {
         loadingSpriteImages.delete(src);
@@ -65,7 +64,23 @@ function loadSpriteImage(src: string): HTMLImageElement {
     return img;
   }
 
-  // Create new image
+  // Try the shared imageLoader cache (used by preloader)
+  const sharedImg = loadImage(src);
+  if (sharedImg) {
+    globalImageCache.set(src, sharedImg);
+    if (!sharedImg.complete) {
+      loadingSpriteImages.add(src);
+      const origOnload = sharedImg.onload;
+      sharedImg.onload = (e) => {
+        loadingSpriteImages.delete(src);
+        notifySpriteImageLoaded();
+        if (typeof origOnload === 'function') origOnload.call(sharedImg, e);
+      };
+    }
+    return sharedImg;
+  }
+
+  // Create new image (fallback — should rarely happen)
   img = new Image();
   globalImageCache.set(src, img);
   loadingSpriteImages.add(src);
