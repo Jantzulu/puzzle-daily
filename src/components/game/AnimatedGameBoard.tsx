@@ -796,6 +796,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       setTileActivations(prev => [...prev, ...newActivations]);
     }
 
+    // Clean up spawn keys for characters that were removed (unplaced)
+    const currentSpawnKeys = new Set(
+      gameState.placedCharacters.map((char) => `${char.characterId}:${char.x},${char.y}`)
+    );
+    spawnedCharactersRef.current.forEach((key) => {
+      if (!currentSpawnKeys.has(key)) {
+        spawnedCharactersRef.current.delete(key);
+      }
+    });
+
     // Detect newly placed characters and trigger spawn animations
     const newCharSpawns = new Map<string, SpawnAnimationState>();
     gameState.placedCharacters.forEach((char) => {
