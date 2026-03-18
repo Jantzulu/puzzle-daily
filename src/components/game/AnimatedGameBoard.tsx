@@ -98,12 +98,14 @@ function drawSpritePixelPerfect(...args: DrawSpriteArgs) {
   const [ctx, sprite, centerX, centerY, tileSize, direction, isMoving, now, isCasting] = args;
   const transform = ctx.getTransform();
   const scale = transform.a; // horizontal scale
+  const currentAlpha = ctx.globalAlpha; // Preserve alpha across setTransform
 
   // Transform logical coords to physical pixel space using the full matrix
   const physPoint = transform.transformPoint(new DOMPoint(centerX, centerY));
 
   ctx.save();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.globalAlpha = currentAlpha; // Re-apply alpha after transform reset
   ctx.imageSmoothingEnabled = false;
 
   // Scale shadow to physical pixel space
@@ -1354,16 +1356,22 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
           const charData = getCharacter(anim.characterId) as CustomCharacter | undefined;
           if (charData && 'customSprite' in charData && charData.customSprite) {
-            ctx.save();
+            // Set alpha and shadow before drawing — globalAlpha must persist
+            // through drawSpritePixelPerfect's internal save/setTransform/restore
+            const prevAlpha = ctx.globalAlpha;
             ctx.globalAlpha = opacity;
-            ctx.shadowColor = 'rgba(0, 0, 0, 0.3)';
+            ctx.shadowColor = `rgba(0, 0, 0, ${0.3 * opacity})`;
             ctx.shadowBlur = 4;
             ctx.shadowOffsetX = 2;
             ctx.shadowOffsetY = 2;
             const px = anim.x * TILE_SIZE;
             const py = (anim.y + offsetY) * TILE_SIZE;
             drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, undefined, false, now, false);
-            ctx.restore();
+            ctx.globalAlpha = prevAlpha;
+            ctx.shadowColor = 'transparent';
+            ctx.shadowBlur = 0;
+            ctx.shadowOffsetX = 0;
+            ctx.shadowOffsetY = 0;
           }
         }
       });
