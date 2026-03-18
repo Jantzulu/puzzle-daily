@@ -62,28 +62,35 @@ const TILE_SPRITE_SLOTS: { key: keyof TileSprites; label: string; description: s
 
 // Highlight region mapping: each border/tile slot key → { x, y, w, h } in canvas pixels
 // Canvas for 6x6 grid: 320×384 (grid=288×288, border top/bottom=48, sides=16)
-const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; h: number }> = {
-  // Border slots
-  wallFront:     { x: 16, y: 0,   w: 288, h: 48 },
-  wallBottomOuter: { x: 16, y: 336, w: 288, h: 48 },
-  wallSide:      { x: 0,  y: 48,  w: 16,  h: 288 },  // left side (right is mirrored)
-  wallTop:       { x: 16, y: 336, w: 288, h: 24 },    // interior bottom edge (thin)
-  cornerTopLeft:     { x: 0,   y: 0,   w: 16, h: 48 },
-  cornerTopRight:    { x: 304, y: 0,   w: 16, h: 48 },
-  cornerBottomLeft:  { x: 0,   y: 336, w: 16, h: 48 },
-  cornerBottomRight: { x: 304, y: 336, w: 16, h: 48 },
-  cornerBottomLeftThin:  { x: 0,   y: 336, w: 16, h: 24 },
-  cornerBottomRightThin: { x: 304, y: 336, w: 16, h: 24 },
-  innerCornerTopLeft:     { x: 16,  y: 48,  w: 16, h: 48 },
-  innerCornerTopRight:    { x: 288, y: 48,  w: 16, h: 48 },
-  innerCornerBottomLeft:  { x: 16,  y: 288, w: 16, h: 48 },
-  innerCornerBottomRight: { x: 288, y: 288, w: 16, h: 48 },
-  innerCornerBottomLeftThin:  { x: 16,  y: 312, w: 16, h: 24 },
-  innerCornerBottomRightThin: { x: 288, y: 312, w: 16, h: 24 },
-  // Tile slots — highlight a representative tile in the grid
-  empty: { x: 16 + 48, y: 48 + 48, w: 48, h: 48 },   // (1,1) floor tile
-  wall:  { x: 16 + 192, y: 48 + 48,  w: 48, h: 48 },   // (4,1) wall tile
-  goal:  { x: 16 + 144, y: 48 + 144, w: 48, h: 48 },  // (3,3) goal tile
+// Grid origin: x=16 (SIDE_BORDER_SIZE), y=48 (BORDER_SIZE)
+// Each tile: 48×48. Tile (col,row) → pixel (16+col*48, 48+row*48)
+const SLOT_HIGHLIGHT_REGIONS: Record<string, { x: number; y: number; w: number; h: number }[]> = {
+  // Outer border slots
+  wallFront:       [{ x: 16, y: 0,   w: 288, h: 48 }],
+  wallBottomOuter: [{ x: 16, y: 336, w: 288, h: 48 }],
+  wallSide:        [{ x: 0,  y: 48,  w: 16,  h: 288 }, { x: 304, y: 48, w: 16, h: 288 }],
+  // wallTop: interior edges above void — bottom edge of row 2 at col 5, bottom of row 0 at col 5
+  wallTop:         [{ x: 16 + 240, y: 48 + 48, w: 48, h: 24 }],
+  // Outer corners
+  cornerTopLeft:     [{ x: 0,   y: 0,   w: 16, h: 48 }],
+  cornerTopRight:    [{ x: 304, y: 0,   w: 16, h: 48 }],
+  cornerBottomLeft:  [{ x: 0,   y: 336, w: 16, h: 48 }],
+  cornerBottomRight: [{ x: 304, y: 336, w: 16, h: 48 }],
+  // Thin outer corners — void at (0,3) creates these on left side
+  cornerBottomLeftThin:  [{ x: 16, y: 48 + 144, w: 16, h: 24 }],
+  cornerBottomRightThin: [{ x: 16 + 240, y: 48 + 96, w: 16, h: 24 }],
+  // Inner corners — where floor meets void diagonally
+  innerCornerTopLeft:     [{ x: 16 + 48,  y: 48 + 192, w: 16, h: 48 }],
+  innerCornerTopRight:    [{ x: 16 + 192, y: 48 + 96,  w: 16, h: 48 }],
+  innerCornerBottomLeft:  [{ x: 16 + 48,  y: 48 + 96,  w: 16, h: 48 }],
+  innerCornerBottomRight: [{ x: 16 + 192, y: 48 + 48,  w: 16, h: 48 }],
+  // Thin inner corners
+  innerCornerBottomLeftThin:  [{ x: 16 + 48, y: 48 + 120, w: 16, h: 24 }],
+  innerCornerBottomRightThin: [{ x: 16 + 192, y: 48 + 72, w: 16, h: 24 }],
+  // Tile slots — highlight a representative tile
+  empty: [{ x: 16,       y: 48,       w: 48, h: 48 }],   // (0,0) floor tile
+  wall:  [{ x: 16 + 48,  y: 48 + 48,  w: 48, h: 48 }],   // (1,1) wall tile
+  goal:  [{ x: 16 + 144, y: 48 + 144, w: 48, h: 48 }],   // (3,3) goal tile
 };
 
 /** Build a minimal GameState for the live skin preview */
@@ -97,21 +104,39 @@ function buildPreviewGameState(skin: PuzzleSkin, customTileTypes: CustomTileType
     customBorderSprites: hasBorderSprites ? skin.borderSprites : undefined,
   };
 
-  // Mostly floor tiles — the outer border frame is drawn separately by
-  // drawCustomBorder. Include one wall tile and one goal tile so all
-  // tile types are represented in the preview.
+  // Layout with void spaces to showcase all border segment types:
+  // inner corners, wallTop edges, thin corners, etc.
+  // W=wall, G=goal, .=floor, null=void, C=custom tile
+  // Row 0: .  .  .  .  .  .
+  // Row 1: .  W  .  W  .  null
+  // Row 2: .  .  .  .  .  null
+  // Row 3: null .  .  G  null null
+  // Row 4: .  .  .  .  .  .
+  // Row 5: .  C  .  .  .  .
+  const layout: (string | null)[][] = [
+    ['.', '.', '.', '.', '.', '.'],
+    ['.', 'W', '.', 'W', '.', null],
+    ['.', '.', '.', '.', '.', null],
+    [null, '.', '.', 'G', null, null],
+    ['.', '.', '.', '.', '.', '.'],
+    ['.', 'C', '.', '.', '.', '.'],
+  ];
+
   const tiles: TileOrNull[][] = [];
   for (let y = 0; y < height; y++) {
     const row: TileOrNull[] = [];
     for (let x = 0; x < width; x++) {
-      const isGoal = x === 3 && y === 3;
-      const isWall = x === 4 && y === 1; // one wall tile for preview
-      const tile: Tile = { x, y, type: isWall ? TileType.WALL : isGoal ? TileType.GOAL : TileType.EMPTY, content: undefined };
-      // Show first custom tile type in one interior cell
-      if (!isGoal && !isWall && customTileTypes.length > 0 && x === 1 && y === 1) {
-        tile.customTileTypeId = customTileTypes[0].id;
+      const cell = layout[y][x];
+      if (cell === null) {
+        row.push(null); // void tile
+      } else {
+        const type = cell === 'W' ? TileType.WALL : cell === 'G' ? TileType.GOAL : TileType.EMPTY;
+        const tile: Tile = { x, y, type, content: undefined };
+        if (cell === 'C' && customTileTypes.length > 0) {
+          tile.customTileTypeId = customTileTypes[0].id;
+        }
+        row.push(tile);
       }
-      row.push(tile);
     }
     tiles.push(row);
   }
@@ -874,13 +899,8 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 />
                                 {/* Highlight overlay for selected border/tile slot */}
                                 {highlightedSlot && SLOT_HIGHLIGHT_REGIONS[highlightedSlot] && (() => {
-                                  // Canvas logical size: 6*48 + 16*2 = 320 wide, 6*48 + 48*2 = 384 tall
                                   const canvasW = 320, canvasH = 384;
-                                  // For wallSide, highlight both left and right sides
-                                  const r = SLOT_HIGHLIGHT_REGIONS[highlightedSlot];
-                                  const regions = highlightedSlot === 'wallSide'
-                                    ? [r, { x: 304, y: 48, w: 16, h: 288 }]
-                                    : [r];
+                                  const regions = SLOT_HIGHLIGHT_REGIONS[highlightedSlot];
                                   return regions.map((region, i) => (
                                     <div
                                       key={i}
