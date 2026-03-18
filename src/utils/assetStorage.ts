@@ -1478,6 +1478,7 @@ export function extractSpriteImageUrls(sprite: CustomSprite | undefined): string
   addIfExists(sprite.deathImageData, sprite.deathImageUrl, sprite.deathSpriteSheet);
   addIfExists(sprite.castingImageData, sprite.castingImageUrl, sprite.castingSpriteSheet);
   addIfExists(sprite.triggeredImageData, sprite.triggeredImageUrl, sprite.triggeredSpriteSheet);
+  addIfExists(sprite.spawnImageData, sprite.spawnImageUrl, sprite.spawnSpriteSheet);
 
   // Directional sprites
   if (sprite.directionalSprites) {
