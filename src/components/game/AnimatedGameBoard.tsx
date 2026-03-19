@@ -2529,9 +2529,10 @@ function drawEnemy(
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
     drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop);
 
-    // Draw direction indicator next to health bar if enemy has movement actions
-    if (enemyData && enemyHasMovementActions(enemyData.behavior)) {
-      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss);
+    // Draw direction indicator next to health bar — green if moving, grey for facing only
+    if (enemyData) {
+      const enemyHasMovement = enemyHasMovementActions(enemyData.behavior);
+      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss, enemyHasMovement);
     }
 
     // Draw status effect icons above health bar
@@ -3147,9 +3148,10 @@ function drawCharacter(
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
     drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop);
 
-    // Draw direction indicator next to health bar if character has movement actions
-    if (charData && hasMovementActions(charData.behavior || [])) {
-      drawDirectionIndicator(ctx, px, py, facing, false);
+    // Draw direction indicator next to health bar — green if moving, grey for facing only
+    if (charData) {
+      const charHasMovement = hasMovementActions(charData.behavior || []);
+      drawDirectionIndicator(ctx, px, py, facing, false, charHasMovement);
     }
 
     // Draw status effect icons above health bar
@@ -3157,13 +3159,14 @@ function drawCharacter(
   }
 }
 
-// Draw direction indicator next to health bar (small arrow showing movement direction)
+// Draw direction indicator next to health bar (small arrow showing movement/facing direction)
 function drawDirectionIndicator(
   ctx: CanvasRenderingContext2D,
   px: number,
   py: number,
   direction: Direction,
-  isBoss: boolean = false
+  isBoss: boolean = false,
+  isMoving: boolean = true
 ) {
   const arrowSize = 3; // Small arrow
   const barWidth = 30;
@@ -3199,7 +3202,8 @@ function drawDirectionIndicator(
   ctx.rotate(rotationAngles[direction] || 0);
 
   // Draw a simple arrow pointing right (will be rotated)
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+  // Green for moving entities, grey for facing-only entities
+  ctx.fillStyle = isMoving ? 'rgba(100, 220, 100, 0.9)' : 'rgba(180, 180, 180, 0.7)';
   ctx.beginPath();
   // Arrow shape: triangle pointing right
   const baseHalfWidth = arrowSize / 2 + 0.5; // Make base 1px wider
