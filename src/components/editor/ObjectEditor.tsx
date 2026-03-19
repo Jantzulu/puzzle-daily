@@ -45,7 +45,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
   const [objects, setObjects] = useState<CustomObject[]>(() => getCustomObjects());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomObject | null>(null);
-  const [_isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
