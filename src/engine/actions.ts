@@ -1712,7 +1712,20 @@ function spawnProjectile(
 
   // Pre-compute tile path for deterministic collision detection
   // For non-homing projectiles, this path is fixed at creation time
-  const tilePath = homingTarget ? undefined : computeTilePath(character.x, character.y, targetX, targetY);
+  // Stop path before walls so projectiles never visually enter wall tiles
+  let tilePath: Array<{ x: number; y: number }> | undefined;
+  if (!homingTarget) {
+    const rawPath = computeTilePath(character.x, character.y, targetX, targetY);
+    const validPath: Array<{ x: number; y: number }> = [];
+    for (const tile of rawPath) {
+      const tileIsWall = !isInBounds(tile.x, tile.y, gameState.puzzle.width, gameState.puzzle.height) ||
+          gameState.puzzle.tiles[tile.y]?.[tile.x]?.type === TileType.WALL ||
+          gameState.puzzle.tiles[tile.y]?.[tile.x] === null;
+      if (tileIsWall) break;
+      validPath.push(tile);
+    }
+    tilePath = validPath.length > 0 ? validPath : [{ x: Math.floor(character.x), y: Math.floor(character.y) }];
+  }
 
   // Create projectile
   const projectile: Projectile = {
