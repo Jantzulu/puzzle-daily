@@ -1709,24 +1709,11 @@ export function updateProjectiles(gameState: GameState): void {
         const currentTile = proj.tilePath[newTileIndex];
         const nextTile = proj.tilePath[Math.min(newTileIndex + 1, proj.tilePath.length - 1)];
 
-        // Check if next tile is a wall - if so, limit interpolation to not enter it
-        const nextTileIsWall = !isInBounds(nextTile.x, nextTile.y, gameState.puzzle.width, gameState.puzzle.height) ||
-            gameState.puzzle.tiles[nextTile.y]?.[nextTile.x]?.type === TileType.WALL ||
-            gameState.puzzle.tiles[nextTile.y]?.[nextTile.x] === null;
-
         // Progress within current tile (0-1)
         const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
 
-        if (nextTileIsWall) {
-          // Interpolate only up to the edge of the current tile (50% toward wall)
-          // This prevents visual clipping while still showing movement toward the wall
-          const clampedProgress = Math.min(tileProgress, 0.4);
-          newX = currentTile.x + (nextTile.x - currentTile.x) * clampedProgress;
-          newY = currentTile.y + (nextTile.y - currentTile.y) * clampedProgress;
-        } else {
-          newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
-          newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
-        }
+        newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
+        newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
       }
 
       // Update tile index and entry time if we moved to a new tile
