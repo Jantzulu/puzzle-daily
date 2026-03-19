@@ -1716,6 +1716,11 @@ export function updateProjectiles(gameState: GameState): void {
           continue;
         } else {
           // Bounce animation complete - clear it and let normal tile movement take over
+          // Skip first tile in path since bounce already covered it
+          if (proj.tilePath && proj.tilePath.length > 1) {
+            proj.currentTileIndex = 1;
+            proj.tileEntryTime = now;
+          }
           proj.bounceAnim = undefined;
         }
       }
