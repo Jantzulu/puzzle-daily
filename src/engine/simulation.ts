@@ -1996,8 +1996,8 @@ export function updateProjectiles(gameState: GameState): void {
         // Spawn bounce VFX at wall contact point
         const vfxX = bounceX + (hitWallTile.x - bounceX) * 0.45;
         const vfxY = bounceY + (hitWallTile.y - bounceY) * 0.45;
-        gameState.particles = gameState.particles || [];
-        gameState.particles.push({
+        gameState.activeParticles = gameState.activeParticles || [];
+        gameState.activeParticles.push({
           id: `bounce_vfx_${proj.id}_${proj.bounceCount}`,
           sprite: proj.attackData.bounceEffectSprite || { type: 'inline', spriteData: { shape: 'circle', primaryColor: '#ffffff' } },
           x: vfxX,
