@@ -1821,6 +1821,26 @@ export function updateProjectiles(gameState: GameState): void {
       }
     }
 
+    // For tile-based projectiles that reached end of path, check if the next tile
+    // in their direction is a wall (tilePath excludes walls, so hitWallTile would be null)
+    if (!hitWallTile && reachedTarget && proj.tilePath && proj.tilePath.length > 0) {
+      const dirX = proj.targetX - proj.startX;
+      const dirY = proj.targetY - proj.startY;
+      const dirLen = Math.sqrt(dirX * dirX + dirY * dirY);
+      if (dirLen > 0) {
+        const ndx = Math.round(dirX / dirLen);
+        const ndy = Math.round(dirY / dirLen);
+        const checkX = Math.round(newX) + ndx;
+        const checkY = Math.round(newY) + ndy;
+        const nextIsWall = !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height) ||
+            gameState.puzzle.tiles[checkY]?.[checkX]?.type === TileType.WALL ||
+            gameState.puzzle.tiles[checkY]?.[checkX] === null;
+        if (nextIsWall) {
+          hitWallTile = { x: checkX, y: checkY };
+        }
+      }
+    }
+
     if (hitWallTile) {
       // Find the last valid tile before the wall (for bounce positioning)
       let lastValidTile: { x: number; y: number } | null = null;
