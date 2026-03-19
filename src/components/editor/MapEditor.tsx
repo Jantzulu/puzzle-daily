@@ -1974,13 +1974,6 @@ export const MapEditor: React.FC = () => {
     setGameState((prev) => prev ? ({ ...prev, gameStatus: 'running' }) : null);
     setIsSimulating(true);
     playGameSound('simulation_start');
-
-    // Scroll so the board is near the top of the viewport
-    setTimeout(() => {
-      if (playtestBoardRef.current) {
-        playtestBoardRef.current.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-    }, 50);
   };
 
   const handlePause = () => {
