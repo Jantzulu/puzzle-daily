@@ -1381,6 +1381,22 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </div>
             )}
 
+            {/* Backstab (Critical Strike from Behind) - only for melee/cone/linear damage spells */}
+            {(templateIsMeleeOrCone || templateNeedsRange) && editedSpell.healing === undefined && (
+              <div>
+                <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={editedSpell.backstabEnabled || false}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, backstabEnabled: e.target.checked })}
+                    className="w-4 h-4"
+                  />
+                  <span className="text-sm">Backstab (2× from behind)</span>
+                </label>
+                <p className="text-xs text-stone-400 ml-6">Deals double damage when striking an enemy from behind their facing direction</p>
+              </div>
+            )}
+
             {/* Cooldown */}
             <div>
               <label className="block text-sm font-medium mb-1">Cooldown (turns)</label>
@@ -1892,6 +1908,21 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 accentColor="red"
                 showDirectionalPreview={false}
                 helpText="Visual effect shown only when target actually takes damage"
+              />
+            )}
+
+            {/* Critical Hit Effect Visual - only show when backstab is enabled */}
+            {editedSpell.backstabEnabled && (
+              <SpellSpriteEditor
+                label="Critical Hit Effect (backstab)"
+                spriteRef={editedSpell.sprites?.criticalHitEffect}
+                onChange={(sprite) => setEditedSpell({
+                  ...editedSpell,
+                  sprites: { ...editedSpell.sprites, criticalHitEffect: sprite }
+                })}
+                accentColor="yellow"
+                showDirectionalPreview={false}
+                helpText="Visual effect shown on backstab critical hits. Falls back to normal damage effect if not set."
               />
             )}
           </div>

@@ -28,7 +28,7 @@ import {
 } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo } from './utils';
+import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind } from './utils';
 import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus } from './simulation';
@@ -1601,6 +1601,8 @@ function executeSpellInDirection(
     healingEffectSprite: spell.sprites.healingEffect,
     castEffectSprite: spell.sprites.castEffect,
     bounceEffectSprite: spell.sprites.bounceEffect,
+    criticalHitEffectSprite: spell.sprites.criticalHitEffect,
+    backstabEnabled: spell.backstabEnabled,
     effectDuration: 300,
     pattern: AttackPattern.PROJECTILE, // Default, will be set below
   };
@@ -1825,15 +1827,17 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        applyDamageToEntity(targetChar, damage, gameState, character);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, targetChar.facing);
+        applyDamageToEntity(targetChar, isCrit ? damage * 2 : damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
           applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
         }
 
-        if (attackData.hitEffectSprite) {
-          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
+        if (hitSprite) {
+          spawnParticle(character.x, character.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     } else {
@@ -1843,15 +1847,17 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        applyDamageToEntity(enemy, damage, gameState, character);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing);
+        applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !enemy.dead) {
           applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
         }
 
-        if (attackData.hitEffectSprite) {
-          spawnParticle(character.x, character.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
+        if (hitSprite) {
+          spawnParticle(character.x, character.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     }
@@ -1880,15 +1886,17 @@ function executeMeleeAttack(
       );
 
       if (targetChar) {
-        applyDamageToEntity(targetChar, damage, gameState, character);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, targetChar.facing);
+        applyDamageToEntity(targetChar, isCrit ? damage * 2 : damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !targetChar.dead) {
           applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
         }
 
-        if (attackData.hitEffectSprite) {
-          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
+        if (hitSprite) {
+          spawnParticle(targetX, targetY, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     } else {
@@ -1898,15 +1906,17 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        applyDamageToEntity(enemy, damage, gameState, character);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing);
+        applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
 
         // Apply status effect if spell has one configured
         if (spell && !enemy.dead) {
           applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
         }
 
-        if (attackData.hitEffectSprite) {
-          spawnParticle(targetX, targetY, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
+        if (hitSprite) {
+          spawnParticle(targetX, targetY, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     }
@@ -2001,12 +2011,14 @@ function executeConeAttack(
         c => c.x === target.x && c.y === target.y && !c.dead
       );
       if (targetChar) {
-        applyDamageToEntity(targetChar, damage, gameState, character);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, targetChar.facing);
+        applyDamageToEntity(targetChar, isCrit ? damage * 2 : damage, gameState, character);
         if (spell && !targetChar.dead) {
           applyStatusEffectFromSpell(targetChar, spell, character.characterId, true, gameState.currentTurn);
         }
-        if (attackData.hitEffectSprite) {
-          spawnParticle(target.x, target.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
+        if (hitSprite) {
+          spawnParticle(target.x, target.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     } else {
@@ -2015,12 +2027,14 @@ function executeConeAttack(
         e => e.x === target.x && e.y === target.y && !e.dead
       );
       if (enemy) {
-        applyDamageToEntity(enemy, damage, gameState, character);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing);
+        applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
         if (spell && !enemy.dead) {
           applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
         }
-        if (attackData.hitEffectSprite) {
-          spawnParticle(target.x, target.y, attackData.hitEffectSprite, attackData.effectDuration || 300, gameState, character.facing);
+        const hitSprite = isCrit && attackData.criticalHitEffectSprite ? attackData.criticalHitEffectSprite : attackData.hitEffectSprite;
+        if (hitSprite) {
+          spawnParticle(target.x, target.y, hitSprite, attackData.effectDuration || 300, gameState, character.facing);
         }
       }
     }

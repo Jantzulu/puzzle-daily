@@ -5,7 +5,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
-import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo } from './utils';
+import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo, isAttackFromBehind } from './utils';
 
 /**
  * Check if an entity has the deflect status effect
@@ -2140,7 +2140,9 @@ export function updateProjectiles(gameState: GameState): void {
               );
             } else {
               // Apply single-target damage (with deflect check)
-              const damage = proj.attackData.damage ?? 1;
+              const baseDamage = proj.attackData.damage ?? 1;
+              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing);
+              const damage = isCrit ? baseDamage * 2 : baseDamage;
               const wasDeflected = applyProjectileDamageWithDeflect(
                 hitEnemy,
                 damage,
@@ -2170,12 +2172,14 @@ export function updateProjectiles(gameState: GameState): void {
                 );
               }
 
-              // Spawn hit effect
-              if (proj.attackData.hitEffectSprite) {
+              // Spawn hit effect — use critical hit sprite if backstab
+              const hitSprite = isCrit && proj.attackData.criticalHitEffectSprite
+                ? proj.attackData.criticalHitEffectSprite : proj.attackData.hitEffectSprite;
+              if (hitSprite) {
                 spawnParticleEffect(
                   hitEnemy.x,
                   hitEnemy.y,
-                  proj.attackData.hitEffectSprite,
+                  hitSprite,
                   proj.attackData.effectDuration || 300,
                   gameState
                 );
@@ -2288,7 +2292,9 @@ export function updateProjectiles(gameState: GameState): void {
               );
             } else {
               // Apply single-target damage (with deflect check)
-              const damage = proj.attackData.damage ?? 1;
+              const baseDamage = proj.attackData.damage ?? 1;
+              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitCharacter.facing);
+              const damage = isCrit ? baseDamage * 2 : baseDamage;
               const wasDeflected = applyProjectileDamageWithDeflect(
                 hitCharacter,
                 damage,
@@ -2318,12 +2324,14 @@ export function updateProjectiles(gameState: GameState): void {
                 );
               }
 
-              // Spawn hit effect
-              if (proj.attackData.hitEffectSprite) {
+              // Spawn hit effect — use critical hit sprite if backstab
+              const hitSprite = isCrit && proj.attackData.criticalHitEffectSprite
+                ? proj.attackData.criticalHitEffectSprite : proj.attackData.hitEffectSprite;
+              if (hitSprite) {
                 spawnParticleEffect(
                   hitCharacter.x,
                   hitCharacter.y,
-                  proj.attackData.hitEffectSprite,
+                  hitSprite,
                   proj.attackData.effectDuration || 300,
                   gameState
                 );
@@ -2459,11 +2467,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
               triggerAOEExplosion(enemy.x, enemy.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             } else {
-              const damage = proj.attackData.damage ?? 0;
+              const baseDmg = proj.attackData.damage ?? 0;
+              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, enemy.facing);
+              const damage = isCrit ? baseDmg * 2 : baseDmg;
               const wasDeflected = applyProjectileDamageWithDeflect(
                 enemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
               if (!wasDeflected) {
-                // Use centralized damage for shields
                 applyDamageToEntityNoDeflect(enemy, damage, gameState);
                 if (enemy.dead) {
                   handleEntityDeathDrop(enemy, true, gameState);
@@ -2481,11 +2490,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
               triggerAOEExplosion(char.x, char.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             } else {
-              const damage = proj.attackData.damage ?? 0;
+              const baseDmg = proj.attackData.damage ?? 0;
+              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, char.facing);
+              const damage = isCrit ? baseDmg * 2 : baseDmg;
               const wasDeflected = applyProjectileDamageWithDeflect(
                 char, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
               if (!wasDeflected) {
-                // Use centralized damage for shields
                 applyDamageToEntityNoDeflect(char, damage, gameState);
                 if (char.dead) {
                   handleEntityDeathDrop(char, false, gameState);
@@ -2637,11 +2647,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
               } else {
-                const damage = proj.attackData.damage ?? 0;
+                const baseDmg = proj.attackData.damage ?? 0;
+                const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing);
+                const damage = isCrit ? baseDmg * 2 : baseDmg;
                 const wasDeflected = applyProjectileDamageWithDeflect(
                   hitEnemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
                 if (!wasDeflected) {
-                  // Use centralized damage for shields
                   applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
                   if (hitEnemy.dead) {
                     handleEntityDeathDrop(hitEnemy, true, gameState);
@@ -2691,11 +2702,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 triggerAOEExplosion(hitChar.x, hitChar.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
               } else {
-                const damage = proj.attackData.damage ?? 0;
+                const baseDmg = proj.attackData.damage ?? 0;
+                const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitChar.facing);
+                const damage = isCrit ? baseDmg * 2 : baseDmg;
                 const wasDeflected = applyProjectileDamageWithDeflect(
                   hitChar, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
                 if (!wasDeflected) {
-                  // Use centralized damage for shields
                   applyDamageToEntityNoDeflect(hitChar, damage, gameState);
                   if (hitChar.dead) {
                     handleEntityDeathDrop(hitChar, false, gameState);

@@ -722,6 +722,8 @@ export interface CustomAttack {
   healingEffectSprite?: SpriteReference; // Particle on healing
   castEffectSprite?: SpriteReference;  // Effect on caster
   bounceEffectSprite?: SpriteReference; // Effect at wall contact on bounce
+  criticalHitEffectSprite?: SpriteReference; // Effect on backstab/critical hit
+  backstabEnabled?: boolean;          // Whether this attack does double damage from behind
 
   // Animation timing
   effectDuration?: number;      // MS to show effects (default: 300)
@@ -919,6 +921,7 @@ export interface SpellAsset {
     castEffect?: SpriteReference;      // On caster when spell fires
     persistentArea?: SpriteReference;  // Visual for persistent ground effects (looping animation)
     bounceEffect?: SpriteReference;   // At wall contact point when projectile bounces
+    criticalHitEffect?: SpriteReference; // On backstab/critical hit (falls back to damageEffect if not set)
   };
 
   // Status Effect Configuration (optional)
@@ -941,6 +944,9 @@ export interface SpellAsset {
   // Push-specific settings (for PUSH template)
   pushDistance?: number;          // How many tiles to push target (default: 1)
   pushDirection?: 'away' | 'toward' | 'spell_direction'; // Direction to push: away from caster, toward caster, or same as spell direction (default: away)
+
+  // Backstab (critical strike from behind)
+  backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target
 
   // Sound configuration
   castSound?: string;             // Sound asset ID to play when spell is cast
