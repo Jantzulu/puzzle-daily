@@ -111,9 +111,9 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose,
       {isOpen && (
         <div className={`${
           isMobile
-            ? 'fixed left-1/2 -translate-x-1/2 top-auto mt-2'
+            ? 'fixed left-1/2 -translate-x-1/2 bottom-4'
             : 'absolute right-0 top-full mt-2'
-        } w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-50`}>
+        } w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-[60]`}>
           <div className="p-3 border-b border-stone-700">
             <div className="flex items-center justify-between">
               <span className="text-parchment-100 font-medium">Sound Settings</span>

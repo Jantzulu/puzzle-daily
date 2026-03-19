@@ -1304,7 +1304,10 @@ export const Game: React.FC = () => {
 
             {/* Game board with overlay container for loss/victory panels */}
             <div className={`relative w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
-              <div className={`transition-all duration-700 ease-out ${spritesReady ? 'opacity-100 scale-100' : 'opacity-0 scale-[0.85] pointer-events-none'}`}>
+              <div
+                className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
+              >
                 <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} />
               </div>
               {!spritesReady && (
