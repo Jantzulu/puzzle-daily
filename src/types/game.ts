@@ -721,6 +721,7 @@ export interface CustomAttack {
   hitEffectSprite?: SpriteReference;   // Particle on damage impact
   healingEffectSprite?: SpriteReference; // Particle on healing
   castEffectSprite?: SpriteReference;  // Effect on caster
+  bounceEffectSprite?: SpriteReference; // Effect at wall contact on bounce
 
   // Animation timing
   effectDuration?: number;      // MS to show effects (default: 300)
@@ -780,17 +781,6 @@ export interface Projectile {
   // Time when we entered the current tile (for smooth animation)
   tileEntryTime?: number;
 
-  // Bounce animation - smooth arc through wall contact point
-  bounceAnim?: {
-    wallContactX: number;    // Wall edge contact point
-    wallContactY: number;
-    fromX: number;           // Pre-bounce position (last valid tile)
-    fromY: number;
-    toX: number;             // First tile in new direction
-    toY: number;
-    startTime: number;       // When bounce animation started
-    duration: number;        // How long the bounce animation lasts (ms)
-  };
 }
 
 /**
@@ -928,6 +918,7 @@ export interface SpellAsset {
     healingEffect?: SpriteReference;   // On successful heal (falls back to damageEffect if not set)
     castEffect?: SpriteReference;      // On caster when spell fires
     persistentArea?: SpriteReference;  // Visual for persistent ground effects (looping animation)
+    bounceEffect?: SpriteReference;   // At wall contact point when projectile bounces
   };
 
   // Status Effect Configuration (optional)

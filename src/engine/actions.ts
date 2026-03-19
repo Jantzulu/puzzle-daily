@@ -1600,6 +1600,7 @@ function executeSpellInDirection(
     hitEffectSprite: spell.sprites.damageEffect,
     healingEffectSprite: spell.sprites.healingEffect,
     castEffectSprite: spell.sprites.castEffect,
+    bounceEffectSprite: spell.sprites.bounceEffect,
     effectDuration: 300,
     pattern: AttackPattern.PROJECTILE, // Default, will be set below
   };

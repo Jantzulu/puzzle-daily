@@ -1784,6 +1784,18 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     />
                     <p className="text-xs text-stone-400 mt-1">Maximum number of wall bounces before projectile stops</p>
                   </div>
+                  {/* Bounce Effect Sprite */}
+                  <SpellSpriteEditor
+                    label="Bounce Effect (on wall contact)"
+                    spriteRef={editedSpell.sprites?.bounceEffect}
+                    onChange={(sprite) => setEditedSpell({
+                      ...editedSpell,
+                      sprites: { ...editedSpell.sprites, bounceEffect: sprite }
+                    })}
+                    accentColor="yellow"
+                    showDirectionalPreview={false}
+                    helpText="Visual effect shown at the wall when projectile bounces. Default: white flash"
+                  />
                 </>
               )}
             </div>
