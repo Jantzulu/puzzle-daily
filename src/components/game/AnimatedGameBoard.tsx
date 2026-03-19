@@ -3203,7 +3203,7 @@ function drawDirectionIndicator(
 
   // Draw a simple arrow pointing right (will be rotated)
   // Green for moving entities, grey for facing-only entities
-  ctx.fillStyle = isMoving ? 'rgba(100, 220, 100, 0.9)' : 'rgba(180, 180, 180, 0.7)';
+  ctx.fillStyle = isMoving ? 'rgba(255, 200, 50, 0.95)' : 'rgba(180, 180, 180, 0.7)';
   ctx.beginPath();
   // Arrow shape: triangle pointing right
   const baseHalfWidth = arrowSize / 2 + 0.5; // Make base 1px wider
