@@ -2009,6 +2009,9 @@ export function updateProjectiles(gameState: GameState): void {
 
         // Update direction for sprite rendering
         proj.direction = getDirectionFromVector(newDirX, newDirY);
+
+        // Skip remaining checks — projectile is now on a new path
+        continue;
       } else {
         // Hit wall - deactivate projectile (no bounce or max bounces reached)
         proj.active = false;
