@@ -1685,6 +1685,41 @@ export function updateProjectiles(gameState: GameState): void {
       // TILE-BASED MOVEMENT: Use pre-computed tile path for deterministic collision
       // This ensures diagonal projectiles always hit the correct tiles
 
+      // Handle bounce animation - smooth arc through wall contact point
+      if (proj.bounceAnim) {
+        const ba = proj.bounceAnim;
+        const elapsed = now - ba.startTime;
+        const progress = Math.min(elapsed / ba.duration, 1);
+
+        if (progress < 1) {
+          // Quadratic bezier: from → wallContact → to
+          const t = progress;
+          const oneMinusT = 1 - t;
+          // Ease: decelerate into wall, accelerate out
+          const eased = t < 0.5
+            ? 2 * t * t          // ease-in for first half (approaching wall)
+            : 1 - 2 * (1 - t) * (1 - t); // ease-out for second half (leaving wall)
+
+          const et = eased;
+          const oneMinusEt = 1 - et;
+          // Quadratic bezier interpolation: B(t) = (1-t)²·P0 + 2(1-t)t·P1 + t²·P2
+          newX = oneMinusEt * oneMinusEt * ba.fromX + 2 * oneMinusEt * et * ba.wallContactX + et * et * ba.toX;
+          newY = oneMinusEt * oneMinusEt * ba.fromY + 2 * oneMinusEt * et * ba.wallContactY + et * et * ba.toY;
+
+          // Update direction mid-bounce: face wall in first half, face new direction in second half
+          if (t > 0.5) {
+            proj.direction = calculateDirectionTo(ba.wallContactX, ba.wallContactY, ba.toX, ba.toY);
+          }
+          // Skip normal tile movement during bounce
+          proj.x = newX;
+          proj.y = newY;
+          continue;
+        } else {
+          // Bounce animation complete - clear it and let normal tile movement take over
+          proj.bounceAnim = undefined;
+        }
+      }
+
       const tileEntryTime = proj.tileEntryTime ?? proj.startTime;
       const timeSinceTileEntry = (now - tileEntryTime) / 1000; // seconds
       // Convert tiles/turn to tiles/second for animation (1 turn = 0.8 seconds)
@@ -1972,19 +2007,44 @@ export function updateProjectiles(gameState: GameState): void {
         }
 
         const remainingRange = proj.attackData.range ?? 5;
+
+        // Calculate wall contact point (halfway between last valid tile and wall tile)
+        const wallContactX = bounceX + (hitWallTile.x - bounceX) * 0.45;
+        const wallContactY = bounceY + (hitWallTile.y - bounceY) * 0.45;
+
+        // First tile in the new direction
+        const firstNewTileX = bounceX + newDirX;
+        const firstNewTileY = bounceY + newDirY;
+
+        // Calculate bounce animation duration based on projectile speed
+        const speedTPS = (proj.speed || 4) / 0.8;
+        const bounceDuration = (1 / speedTPS) * 1000 * 1.2; // slightly longer than one tile transit
+
+        // Set up bounce animation before resetting path
+        proj.bounceAnim = {
+          wallContactX,
+          wallContactY,
+          fromX: bounceX,
+          fromY: bounceY,
+          toX: firstNewTileX,
+          toY: firstNewTileY,
+          startTime: now,
+          duration: bounceDuration,
+        };
+
         proj.x = bounceX;
         proj.y = bounceY;
         proj.startX = bounceX;
         proj.startY = bounceY;
         proj.targetX = bounceX + newDirX * remainingRange;
         proj.targetY = bounceY + newDirY * remainingRange;
-        proj.startTime = now; // Reset timing for smooth continuation
+        proj.startTime = now + bounceDuration; // Delay normal movement until bounce finishes
 
         // Recompute tile path for the new bounced trajectory with wall lookahead
         // This ensures the path stops BEFORE any wall, preventing visual clipping
         proj.tilePath = computeTilePathWithWallLookahead(bounceX, bounceY, proj.targetX, proj.targetY, gameState);
         proj.currentTileIndex = 0;
-        proj.tileEntryTime = now;
+        proj.tileEntryTime = now + bounceDuration; // Normal tile movement starts after bounce
 
         // Update direction for sprite rendering
         proj.direction = getDirectionFromVector(newDirX, newDirY);

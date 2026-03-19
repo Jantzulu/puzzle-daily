@@ -779,6 +779,18 @@ export interface Projectile {
   currentTileIndex?: number;
   // Time when we entered the current tile (for smooth animation)
   tileEntryTime?: number;
+
+  // Bounce animation - smooth arc through wall contact point
+  bounceAnim?: {
+    wallContactX: number;    // Wall edge contact point
+    wallContactY: number;
+    fromX: number;           // Pre-bounce position (last valid tile)
+    fromY: number;
+    toX: number;             // First tile in new direction
+    toY: number;
+    startTime: number;       // When bounce animation started
+    duration: number;        // How long the bounce animation lasts (ms)
+  };
 }
 
 /**
