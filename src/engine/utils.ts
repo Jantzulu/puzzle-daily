@@ -158,14 +158,16 @@ export function turnAround(direction: Direction): Direction {
 
 /**
  * Check if an attack direction is "from behind" a target's facing direction.
- * Behind = the opposite direction ± 1 step (45°) on the 8-direction compass.
- * e.g. if target faces NORTH, attacks from SOUTH, SOUTHWEST, SOUTHEAST count as behind.
+ * An attacker hitting from behind means they are facing the SAME general direction
+ * as the target (i.e. striking the target's back).
+ * e.g. if target faces NORTH, an attacker also facing NORTH (approaching from the south) is a backstab.
+ * Allows ± 1 step (45°) tolerance, so 3 of 8 directions count as behind.
  */
 export function isAttackFromBehind(attackDirection: Direction, targetFacing: Direction): boolean {
-  const behind = turnAround(targetFacing);
-  if (attackDirection === behind) return true;
-  if (attackDirection === turnLeft(behind, 45)) return true;
-  if (attackDirection === turnRight(behind, 45)) return true;
+  // Backstab = attacker facing same direction as target (± 45°)
+  if (attackDirection === targetFacing) return true;
+  if (attackDirection === turnLeft(targetFacing, 45)) return true;
+  if (attackDirection === turnRight(targetFacing, 45)) return true;
   return false;
 }
 
