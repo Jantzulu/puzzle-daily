@@ -86,7 +86,9 @@ export interface TileBehaviorConfig {
   activationSprite?: ActivationSpriteConfig;  // Sprite shown on tile when activated (e.g., teleport effect)
 
   // Direction change behavior
-  newFacing?: Direction;
+  newFacing?: Direction;                // For 'fixed' mode — set to this exact compass direction
+  directionChangeMode?: 'fixed' | 'clockwise' | 'counter_clockwise'; // How to change direction (default: 'fixed')
+  directionChangeAngle?: 45 | 90 | 135 | 180; // Degrees to rotate (for clockwise/counter_clockwise, default: 90)
 
   // Ice behavior (inherits movement direction, slides until wall)
   // No extra params needed

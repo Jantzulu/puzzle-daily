@@ -365,11 +365,24 @@ function runBehaviors(
       case 'teleport':
         updatedChar = processTeleportBehavior(updatedChar, tile, behavior, gameState);
         break;
-      case 'direction_change':
-        if (behavior.newFacing) {
-          updatedChar.facing = behavior.newFacing;
+      case 'direction_change': {
+        const mode = behavior.directionChangeMode || 'fixed';
+        const angle = behavior.directionChangeAngle || 90;
+        switch (mode) {
+          case 'fixed':
+            if (behavior.newFacing) {
+              updatedChar.facing = behavior.newFacing;
+            }
+            break;
+          case 'clockwise':
+            updatedChar.facing = turnRight(updatedChar.facing, angle);
+            break;
+          case 'counter_clockwise':
+            updatedChar.facing = turnLeft(updatedChar.facing, angle);
+            break;
         }
         break;
+      }
       case 'ice':
         updatedChar = processIceBehavior(updatedChar, movementDirection, gameState);
         break;

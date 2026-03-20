@@ -276,17 +276,57 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
 
       {/* Direction change behavior config */}
       {behavior.type === 'direction_change' && (
-        <div>
-          <label className="text-sm text-stone-300">Force Direction</label>
-          <select
-            value={behavior.newFacing || 'south'}
-            onChange={e => onChange({ ...behavior, newFacing: e.target.value as Direction })}
-            className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
-          >
-            {DIRECTION_OPTIONS.map(dir => (
-              <option key={dir.value} value={dir.value}>{dir.label}</option>
-            ))}
-          </select>
+        <div className="space-y-2">
+          <div>
+            <label className="text-sm text-stone-300">Redirect Mode</label>
+            <select
+              value={behavior.directionChangeMode || 'fixed'}
+              onChange={e => {
+                const mode = e.target.value;
+                const updates: any = { ...behavior, directionChangeMode: mode };
+                if (mode === 'fixed' && !behavior.newFacing) {
+                  updates.newFacing = 'south';
+                }
+                onChange(updates);
+              }}
+              className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
+            >
+              <option value="fixed">Set to Fixed Direction</option>
+              <option value="clockwise">Rotate Clockwise (Relative to Facing)</option>
+              <option value="counter_clockwise">Rotate Counter-Clockwise (Relative to Facing)</option>
+            </select>
+          </div>
+
+          {(!behavior.directionChangeMode || behavior.directionChangeMode === 'fixed') && (
+            <div>
+              <label className="text-sm text-stone-300">Direction</label>
+              <select
+                value={behavior.newFacing || 'south'}
+                onChange={e => onChange({ ...behavior, newFacing: e.target.value as Direction })}
+                className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
+              >
+                {DIRECTION_OPTIONS.map(dir => (
+                  <option key={dir.value} value={dir.value}>{dir.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {(behavior.directionChangeMode === 'clockwise' || behavior.directionChangeMode === 'counter_clockwise') && (
+            <div>
+              <label className="text-sm text-stone-300">Rotation Angle</label>
+              <select
+                value={behavior.directionChangeAngle ?? 90}
+                onChange={e => onChange({ ...behavior, directionChangeAngle: parseInt(e.target.value) as any })}
+                className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
+              >
+                <option value={45}>45° (one step)</option>
+                <option value={90}>90° (quarter turn)</option>
+                <option value={135}>135° (three steps)</option>
+                <option value={180}>180° (reverse)</option>
+              </select>
+            </div>
+          )}
         </div>
       )}
 
