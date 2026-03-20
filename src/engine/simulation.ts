@@ -2825,7 +2825,6 @@ function applyRedirect(
 ): Direction {
   const mode = attackData.redirectMode || 'clockwise';
   const angle = attackData.redirectAngle || 90;
-  const oldFacing = entity.facing;
 
   switch (mode) {
     case 'clockwise':
@@ -2843,12 +2842,9 @@ function applyRedirect(
       entity.facing = projectileDirection;
       break;
     case 'fixed':
-      if (attackData.redirectFixedDirection) {
-        entity.facing = attackData.redirectFixedDirection;
-      }
+      entity.facing = attackData.redirectFixedDirection || Direction.NORTH;
       break;
   }
-  console.log(`[Redirect] ${mode} ${angle}° — facing changed from ${oldFacing} to ${entity.facing} (proj dir: ${projectileDirection})`);
   return entity.facing;
 }
 

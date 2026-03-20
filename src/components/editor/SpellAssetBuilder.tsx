@@ -1322,7 +1322,15 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <label className="block text-sm font-medium mb-1">Redirect Mode</label>
                   <select
                     value={editedSpell.redirectMode ?? 'clockwise'}
-                    onChange={(e) => setEditedSpell({ ...editedSpell, redirectMode: e.target.value as any })}
+                    onChange={(e) => {
+                      const mode = e.target.value;
+                      const updates: any = { ...editedSpell, redirectMode: mode };
+                      // Set default fixed direction when switching to fixed mode
+                      if (mode === 'fixed' && !editedSpell.redirectFixedDirection) {
+                        updates.redirectFixedDirection = 'north';
+                      }
+                      setEditedSpell(updates);
+                    }}
                     className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                   >
                     <option value="clockwise">Rotate Clockwise (Relative to Target's Facing Direction)</option>
