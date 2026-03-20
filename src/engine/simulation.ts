@@ -101,10 +101,22 @@ function reflectProjectile(
   // For homing projectiles: retarget back to the caster
   if (proj.isHoming) {
     let casterEntity: { x: number; y: number } | undefined;
+    let casterIndex: number | undefined;
     if (proj.sourceCharacterId) {
       casterEntity = gameState.placedCharacters.find(c => c.characterId === proj.sourceCharacterId && !c.dead);
     } else if (proj.sourceEnemyId) {
-      casterEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && !e.dead);
+      // Use sourceEnemyIndex to find the exact enemy instance (duplicate enemies share IDs)
+      if (proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
+        const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
+        if (!enemy.dead) {
+          casterEntity = enemy;
+          casterIndex = proj.sourceEnemyIndex;
+        }
+      }
+      // Fallback to ID-based lookup if index didn't work
+      if (!casterEntity) {
+        casterEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && !e.dead);
+      }
     }
     if (casterEntity) {
       proj.targetX = casterEntity.x;
@@ -115,6 +127,8 @@ function reflectProjectile(
         proj.targetEntityId = proj.sourceCharacterId;
       } else if (proj.sourceEnemyId) {
         proj.targetEntityId = proj.sourceEnemyId;
+        // Store the specific enemy index so homing tracks the right instance
+        proj.sourceEnemyIndex = casterIndex ?? proj.sourceEnemyIndex;
       }
     } else {
       // Caster is dead — disable homing, just fly straight
@@ -1759,8 +1773,12 @@ export function updateProjectiles(gameState: GameState): void {
       let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
 
       if (proj.targetIsEnemy) {
-        // Find enemy by ID
-        targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId);
+        // Use sourceEnemyIndex for reflected projectiles targeting duplicate enemies
+        if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
+          targetEntity = gameState.puzzle.enemies[proj.sourceEnemyIndex];
+        } else {
+          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId);
+        }
       } else {
         // Find character by ID
         targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId);
@@ -2269,6 +2287,7 @@ export function updateProjectiles(gameState: GameState): void {
             // Check for Reflect — bounce projectile back instead of applying effects
             if (hasReflect(hitEnemy) && !proj.reflected) {
               if (reflectProjectile(proj, hitEnemy, gameState, now)) {
+                entityHitAndStopped = true; // Prevent fall-through to other targeting blocks
                 break; // Projectile reversed — stop checking this direction
               }
             }
@@ -2435,6 +2454,7 @@ export function updateProjectiles(gameState: GameState): void {
             // Check for Reflect — bounce projectile back instead of applying effects
             if (hasReflect(hitCharacter) && !proj.reflected) {
               if (reflectProjectile(proj, hitCharacter, gameState, now)) {
+                entityHitAndStopped = true; // Prevent fall-through to other targeting blocks
                 break; // Projectile reversed — stop checking this direction
               }
             }
@@ -2616,7 +2636,14 @@ function updateProjectilesHeadless(gameState: GameState): void {
     if (proj.isHoming && proj.targetEntityId) {
       let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
       if (proj.targetIsEnemy) {
-        targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead);
+        // Use sourceEnemyIndex for reflected projectiles targeting duplicate enemies
+        if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
+          const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
+          if (!enemy.dead) targetEntity = enemy;
+        }
+        if (!targetEntity) {
+          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead);
+        }
       } else {
         targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead);
       }

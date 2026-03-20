@@ -775,6 +775,7 @@ export interface Projectile {
   // Metadata
   sourceCharacterId?: string;   // Who fired this
   sourceEnemyId?: string;       // If fired by enemy
+  sourceEnemyIndex?: number;    // Array index of source enemy (for duplicate ID handling in reflect)
   spellAssetId?: string;        // For status effect application on hit
 
   // Homing behavior - projectile tracks a moving target

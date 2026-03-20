@@ -1745,6 +1745,10 @@ function spawnProjectile(
 
   // Determine if source is an enemy or character
   const isEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+  // Store enemy array index for reflect targeting (duplicate enemies share the same ID)
+  const sourceEnemyIndex = isEnemy
+    ? gameState.puzzle.enemies.findIndex(e => e.enemyId === character.characterId && e.x === character.x && e.y === character.y)
+    : undefined;
 
   // Pre-compute tile path for deterministic collision detection
   // For non-homing projectiles, this path is fixed at creation time
@@ -1783,6 +1787,7 @@ function spawnProjectile(
     targetIsEnemy: homingTarget?.targetIsEnemy,
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
+    sourceEnemyIndex: sourceEnemyIndex !== undefined && sourceEnemyIndex >= 0 ? sourceEnemyIndex : undefined,
     spellAssetId: spell?.id,
     // Bounce settings from spell
     bounceOffWalls: spell?.bounceOffWalls,
