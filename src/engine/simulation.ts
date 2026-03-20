@@ -28,6 +28,16 @@ function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
+ * Check if an entity is steadfast (immune to direction changes)
+ */
+function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(
+    e => e.type === StatusEffectType.STEADFAST || e.type === 'steadfast'
+  );
+}
+
+/**
  * Apply damage with deflect checking for projectiles.
  * Uses centralized damage function to respect shields.
  * Returns true if damage was deflected (and applied to source instead) OR if target is invulnerable
@@ -2140,7 +2150,7 @@ export function updateProjectiles(gameState: GameState): void {
               );
             } else if (proj.attackData.isRedirect) {
               // Redirect projectile — change target's direction instead of damage
-              applyRedirect(hitEnemy, proj.attackData, proj.direction);
+              if (!isSteadfast(hitEnemy)) applyRedirect(hitEnemy, proj.attackData, proj.direction);
               const hitSprite1 = proj.attackData.hitEffectSprite;
               if (hitSprite1) {
                 spawnParticleEffect(hitEnemy.x, hitEnemy.y, hitSprite1, proj.attackData.effectDuration || 300, gameState);
@@ -2298,7 +2308,7 @@ export function updateProjectiles(gameState: GameState): void {
                 proj.spellAssetId
               );
             } else if (proj.attackData.isRedirect) {
-              applyRedirect(hitCharacter, proj.attackData, proj.direction);
+              if (!isSteadfast(hitCharacter)) applyRedirect(hitCharacter, proj.attackData, proj.direction);
               const hitSprite2 = proj.attackData.hitEffectSprite;
               if (hitSprite2) {
                 spawnParticleEffect(hitCharacter.x, hitCharacter.y, hitSprite2, proj.attackData.effectDuration || 300, gameState);
@@ -2480,7 +2490,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               triggerAOEExplosion(enemy.x, enemy.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             } else if (proj.attackData.isRedirect) {
-              applyRedirect(enemy, proj.attackData, proj.direction);
+              if (!isSteadfast(enemy)) applyRedirect(enemy, proj.attackData, proj.direction);
               const hs3 = proj.attackData.hitEffectSprite;
               if (hs3) spawnParticleEffect(enemy.x, enemy.y, hs3, proj.attackData.effectDuration || 300, gameState);
             } else {
@@ -2507,7 +2517,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               triggerAOEExplosion(char.x, char.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             } else if (proj.attackData.isRedirect) {
-              applyRedirect(char, proj.attackData, proj.direction);
+              if (!isSteadfast(char)) applyRedirect(char, proj.attackData, proj.direction);
               const hs4 = proj.attackData.hitEffectSprite;
               if (hs4) spawnParticleEffect(char.x, char.y, hs4, proj.attackData.effectDuration || 300, gameState);
             } else {
@@ -2668,7 +2678,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
               } else if (proj.attackData.isRedirect) {
-                applyRedirect(hitEnemy, proj.attackData, proj.direction);
+                if (!isSteadfast(hitEnemy)) applyRedirect(hitEnemy, proj.attackData, proj.direction);
                 const hs5 = proj.attackData.hitEffectSprite;
                 if (hs5) spawnParticleEffect(hitEnemy.x, hitEnemy.y, hs5, proj.attackData.effectDuration || 300, gameState);
               } else {
@@ -2727,7 +2737,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 triggerAOEExplosion(hitChar.x, hitChar.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
               } else if (proj.attackData.isRedirect) {
-                applyRedirect(hitChar, proj.attackData, proj.direction);
+                if (!isSteadfast(hitChar)) applyRedirect(hitChar, proj.attackData, proj.direction);
                 const hs6 = proj.attackData.hitEffectSprite;
                 if (hs6) spawnParticleEffect(hitChar.x, hitChar.y, hs6, proj.attackData.effectDuration || 300, gameState);
               } else {

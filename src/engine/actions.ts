@@ -366,6 +366,7 @@ function runBehaviors(
         updatedChar = processTeleportBehavior(updatedChar, tile, behavior, gameState);
         break;
       case 'direction_change': {
+        if (isSteadfast(updatedChar)) break; // Steadfast prevents direction changes
         const mode = behavior.directionChangeMode || 'fixed';
         const angle = behavior.directionChangeAngle || 90;
         switch (mode) {
@@ -2471,6 +2472,16 @@ function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
+ * Check if an entity is steadfast (immune to direction changes)
+ */
+function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(
+    e => e.type === StatusEffectType.STEADFAST || e.type === 'steadfast'
+  );
+}
+
+/**
  * Helper to apply damage and handle sleep wake-up and shield absorption.
  * This is the centralized damage function - ALL damage should go through here
  * to ensure shields, invulnerability, and deflect are properly checked.
@@ -2727,6 +2738,7 @@ function applyCollectibleEffect(
       break;
 
     case 'redirect': {
+      if (isSteadfast(entity)) break; // Steadfast prevents direction changes
       const mode = effect.redirectMode || 'clockwise';
       const angle = effect.redirectAngle || 90;
       switch (mode) {

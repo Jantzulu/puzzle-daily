@@ -650,6 +650,7 @@ export enum StatusEffectType {
   STEALTH = 'stealth',    // Reduced opacity, can't be auto-targeted by opposing team
   DEFLECT = 'deflect',    // Reflects spell damage back to caster
   INVULNERABLE = 'invulnerable', // Immune to all damage from enemies
+  STEADFAST = 'steadfast', // Immune to direction changes (redirect spells, items, tiles)
 }
 
 /**
