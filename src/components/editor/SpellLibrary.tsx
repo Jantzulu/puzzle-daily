@@ -270,6 +270,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
       }
       detailPanel={
         <SpellAssetBuilder
+          key={editingSpell?.id || 'new'}
           spell={editingSpell || undefined}
           onSave={handleSave}
           onCancel={handleCancel}

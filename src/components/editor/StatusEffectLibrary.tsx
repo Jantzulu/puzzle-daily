@@ -287,6 +287,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
       detailPanel={
         <>
           <StatusEffectEditor
+            key={editingEffect?.id || 'new'}
             effect={editingEffect || undefined}
             onSave={handleSave}
             onCancel={handleCancel}
