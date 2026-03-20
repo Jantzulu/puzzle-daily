@@ -545,6 +545,7 @@ export interface PlacedCharacter {
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
+  spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions for redirect spells (set during setup)
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
@@ -958,6 +959,7 @@ export interface SpellAsset {
   redirectMode?: 'clockwise' | 'counter_clockwise' | 'face_projectile' | 'face_away' | 'fixed'; // How to change the target's direction
   redirectAngle?: 45 | 90 | 135 | 180; // Degrees to rotate (for clockwise/counter_clockwise modes, default: 90)
   redirectFixedDirection?: Direction;  // For 'fixed' mode — set target to this exact compass direction
+  redirectAcceptsUserInput?: boolean;  // If true, player picks the redirect direction during setup
 
   // Backstab (critical strike from behind)
   backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target

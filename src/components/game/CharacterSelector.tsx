@@ -1,6 +1,7 @@
 import React from 'react';
 import { getCharacter } from '../../data/characters';
-import type { CharacterAction } from '../../types/game';
+import type { CharacterAction, PlacedCharacter, Direction } from '../../types/game';
+import { loadSpellAsset } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
@@ -28,6 +29,8 @@ interface CharacterSelectorProps {
   themeAssets?: ThemeAssets;
   disabled?: boolean;
   noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
+  placedCharacters?: PlacedCharacter[]; // For redirect spell direction overrides
+  onSpellDirectionOverride?: (characterId: string, spellId: string, direction: Direction) => void;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -41,6 +44,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   themeAssets = {},
   disabled = false,
   noPanel = false,
+  placedCharacters = [],
+  onSpellDirectionOverride,
 }) => {
   // If maxPlaceable not specified, default to number of available characters
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
@@ -210,6 +215,57 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   ))}
                 </ul>
               )}
+
+              {/* Redirect spell direction picker (for placed heroes with user-input redirect spells) */}
+              {isPlaced && onSpellDirectionOverride && (() => {
+                const placedChar = placedCharacters.find(pc => pc.characterId === charId);
+                if (!placedChar) return null;
+                // Find redirect spells that accept user input
+                const redirectSpells = character.behavior
+                  .filter(a => a.type === 'spell' && a.spellId)
+                  .map(a => loadSpellAsset(a.spellId!))
+                  .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput);
+                if (redirectSpells.length === 0) return null;
+                const DIRECTIONS: { value: Direction; label: string }[] = [
+                  { value: 'north' as Direction, label: 'N' },
+                  { value: 'northeast' as Direction, label: 'NE' },
+                  { value: 'east' as Direction, label: 'E' },
+                  { value: 'southeast' as Direction, label: 'SE' },
+                  { value: 'south' as Direction, label: 'S' },
+                  { value: 'southwest' as Direction, label: 'SW' },
+                  { value: 'west' as Direction, label: 'W' },
+                  { value: 'northwest' as Direction, label: 'NW' },
+                ];
+                return redirectSpells.map(spell => {
+                  if (!spell) return null;
+                  const currentDir = placedChar.spellDirectionOverrides?.[spell.id] || 'north';
+                  return (
+                    <div key={spell.id} className="mt-1.5 w-full" onClick={e => e.stopPropagation()}>
+                      <div className="text-[10px] text-purple-300 font-medium text-center mb-1">
+                        🔄 {spell.name}
+                      </div>
+                      <div className="flex flex-wrap gap-1 justify-center">
+                        {DIRECTIONS.map(d => (
+                          <button
+                            key={d.value}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSpellDirectionOverride(charId, spell.id, d.value);
+                            }}
+                            className={`w-6 h-6 text-[9px] font-bold rounded transition-colors ${
+                              currentDir === d.value
+                                ? 'bg-purple-600 text-white border border-purple-400'
+                                : 'bg-stone-700 text-stone-400 border border-stone-600 hover:bg-stone-600'
+                            }`}
+                          >
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           );
         })}

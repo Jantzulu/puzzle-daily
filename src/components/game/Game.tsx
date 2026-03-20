@@ -1917,6 +1917,17 @@ export const Game: React.FC = () => {
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                     noPanel
+                    placedCharacters={gameState.placedCharacters}
+                    onSpellDirectionOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, spellId: string, direction: Direction) => {
+                      setGameState(prev => ({
+                        ...prev,
+                        placedCharacters: prev.placedCharacters.map(pc =>
+                          pc.characterId === characterId
+                            ? { ...pc, spellDirectionOverrides: { ...pc.spellDirectionOverrides, [spellId]: direction } }
+                            : pc
+                        ),
+                      }));
+                    } : undefined}
                   />
                 )}
 

@@ -1388,6 +1388,22 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     </p>
                   </div>
                 )}
+
+                <div className="pt-2 border-t border-stone-700">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      checked={editedSpell.redirectAcceptsUserInput || false}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectAcceptsUserInput: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span className="text-sm">Player chooses direction during setup</span>
+                  </label>
+                  <p className="text-xs text-stone-400 mt-1 ml-6">
+                    When enabled, the player picks the redirect direction via a compass when placing the hero.
+                    This overrides the mode settings above.
+                  </p>
+                </div>
               </>
             )}
 
