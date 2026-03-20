@@ -834,8 +834,7 @@ export interface GameStateExtended extends GameState {
 export enum SpellTemplate {
   MELEE = 'melee',              // Adjacent tile attack
   MELEE_CONE = 'melee_cone',    // Cone/arc attack in facing direction
-  RANGE_LINEAR = 'range_linear', // Projectile in straight line
-  MAGIC_LINEAR = 'magic_linear', // Magic projectile (different visuals)
+  LINEAR = 'magic_linear',      // Projectile in straight line (kept 'magic_linear' value for backward compat)
   AOE = 'aoe',                   // Area of effect
   RESURRECT = 'resurrect',       // Bring dead ally back to life
   PUSH = 'push',                 // Push target entity in a direction

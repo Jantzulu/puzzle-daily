@@ -735,6 +735,7 @@ export const loadCustomAttack = (attackId: string): CustomAttack | null => {
 // ==========================================
 
 import type { SpellAsset } from '../types/game';
+import { SpellTemplate } from '../types/game';
 
 const SPELL_STORAGE_KEY = 'spell_assets';
 
@@ -758,7 +759,14 @@ export const getSpellAssets = (): SpellAsset[] => {
   try {
     const stored = localStorage.getItem(SPELL_STORAGE_KEY);
     if (!stored) return [];
-    return JSON.parse(stored);
+    const spells = JSON.parse(stored) as SpellAsset[];
+    // Migrate: range_linear was merged into magic_linear (now "Linear Projectile")
+    for (const s of spells) {
+      if ((s.templateType as string) === 'range_linear') {
+        s.templateType = 'magic_linear' as SpellTemplate;
+      }
+    }
+    return spells;
   } catch (e) {
     console.error('Failed to load spell assets:', e);
     return [];

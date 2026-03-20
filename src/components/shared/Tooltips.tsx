@@ -181,7 +181,7 @@ export const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsse
           id: attack.id,
           name: attack.name,
           description: `${attack.pattern} attack`,
-          templateType: attack.pattern === 'projectile' ? 'range_linear' : 'melee',
+          templateType: attack.pattern === 'projectile' ? 'magic_linear' : 'melee',
           damage: attack.damage,
           range: attack.range,
           thumbnailIcon: '',

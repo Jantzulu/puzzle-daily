@@ -1627,8 +1627,7 @@ function executeSpellInDirection(
       character.facing = origFacingCone;
       break;
 
-    case SpellTemplate.RANGE_LINEAR:
-    case SpellTemplate.MAGIC_LINEAR:
+    case SpellTemplate.LINEAR:
       attackData.pattern = AttackPattern.PROJECTILE;
       // Temporarily set character facing for projectile direction
       const origFacing = character.facing;

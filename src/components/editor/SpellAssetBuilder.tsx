@@ -810,7 +810,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
     onSave(editedSpell);
   };
 
-  const templateNeedsRange = editedSpell.templateType === 'range_linear' || editedSpell.templateType === 'magic_linear';
+  const templateNeedsRange = editedSpell.templateType === 'magic_linear';
   const templateNeedsRadius = editedSpell.templateType === 'aoe';
   const templateNeedsProjectileSettings = templateNeedsRange;
   const templateIsMelee = editedSpell.templateType === 'melee';
@@ -1048,18 +1048,6 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                 </button>
 
                 <button
-                  onClick={() => setEditedSpell({ ...editedSpell, templateType: 'range_linear' as SpellTemplate })}
-                  className={`p-3 rounded border-2 transition-colors ${
-                    editedSpell.templateType === 'range_linear'
-                      ? 'border-blue-500 bg-blue-900'
-                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
-                  }`}
-                >
-                  <div className="font-semibold">Range Linear</div>
-                  <div className="text-xs text-stone-400">Physical projectile</div>
-                </button>
-
-                <button
                   onClick={() => setEditedSpell({ ...editedSpell, templateType: 'magic_linear' as SpellTemplate })}
                   className={`p-3 rounded border-2 transition-colors ${
                     editedSpell.templateType === 'magic_linear'
@@ -1067,8 +1055,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       : 'border-stone-600 bg-stone-700 hover:border-stone-500'
                   }`}
                 >
-                  <div className="font-semibold">Magic Linear</div>
-                  <div className="text-xs text-stone-400">Magic projectile</div>
+                  <div className="font-semibold">Linear Projectile</div>
+                  <div className="text-xs text-stone-400">Projectile in a straight line</div>
                 </button>
 
                 <button

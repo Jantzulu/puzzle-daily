@@ -464,7 +464,7 @@ export function canEntityCastSpell(
     }
 
     // Check ranged/AOE prevention (Silenced)
-    if ((spellTemplate === 'range_linear' || spellTemplate === 'magic_linear' || spellTemplate === 'aoe') &&
+    if ((spellTemplate === 'magic_linear' || spellTemplate === 'aoe') &&
         (effectAsset?.preventsRanged || effect.type === StatusEffectType.SILENCED)) {
       return { allowed: false, reason: 'Silenced' };
     }
