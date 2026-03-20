@@ -652,6 +652,7 @@ export enum StatusEffectType {
   DEFLECT = 'deflect',    // Reflects spell damage back to caster
   INVULNERABLE = 'invulnerable', // Immune to all damage from enemies
   STEADFAST = 'steadfast', // Immune to direction changes (redirect spells, items, tiles)
+  REFLECT = 'reflect',     // Reflects projectiles back at caster's team
 }
 
 /**
@@ -793,6 +794,11 @@ export interface Projectile {
   // Time when we entered the current tile (for smooth animation)
   tileEntryTime?: number;
 
+  // Reflect status — projectile was bounced back by Reflect status effect
+  reflected?: boolean;        // True if this projectile has been reflected
+  teamSwapped?: boolean;      // True = targeting is flipped (hero proj hits heroes, enemy proj hits enemies)
+  reflectTintColor?: string;            // Tint color applied to reflected projectile
+  reflectOverrideSprite?: SpriteReference; // Replacement sprite for reflected projectile
 }
 
 /**
@@ -1021,6 +1027,10 @@ export interface StatusEffectAsset {
   // Overlay sprite - renders on top of entity at reduced opacity (for shields, deflect, etc.)
   overlaySprite?: SpriteReference;  // Sprite to overlay on entity (supports spritesheets)
   overlayOpacity?: number;          // Opacity of overlay (0-1, default 0.5)
+
+  // Reflect configuration — visual treatment for reflected projectiles
+  reflectTintColor?: string;             // Color to tint reflected projectiles (e.g. '#ff0000')
+  reflectOverrideSprite?: SpriteReference; // Optional sprite to replace reflected projectile appearance
 
   // Metadata
   createdAt: string;

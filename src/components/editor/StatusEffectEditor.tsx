@@ -54,6 +54,9 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [overlaySprite, setOverlaySprite] = useState<SpriteReference | undefined>(effect?.overlaySprite);
   const [overlayOpacity, setOverlayOpacity] = useState(effect?.overlayOpacity ?? 0.5);
   const [editingOverlay, setEditingOverlay] = useState(false);
+  const [reflectTintColor, setReflectTintColor] = useState(effect?.reflectTintColor || '#ff0000');
+  const [reflectOverrideSprite, setReflectOverrideSprite] = useState<SpriteReference | undefined>(effect?.reflectOverrideSprite);
+  const [editingReflectSprite, setEditingReflectSprite] = useState(false);
 
   const isBuiltIn = effect?.isBuiltIn ?? false;
 
@@ -83,6 +86,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       stealthOpacity: type === StatusEffectType.STEALTH ? stealthOpacity : undefined,
       overlaySprite: overlaySprite,
       overlayOpacity: overlaySprite ? overlayOpacity : undefined,
+      reflectTintColor: type === StatusEffectType.REFLECT ? reflectTintColor : undefined,
+      reflectOverrideSprite: type === StatusEffectType.REFLECT ? reflectOverrideSprite : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       isBuiltIn: false, // Never save as built-in when editing
       folderId: effect?.folderId,
@@ -226,6 +231,15 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         setPreventsMovement(false);
         setPreventsAllActions(false);
         break;
+      case StatusEffectType.REFLECT:
+        setDefaultValue(0);
+        setProcessAtTurnStart(true);
+        setRemovedOnDamage(false);
+        setPreventsMelee(false);
+        setPreventsRanged(false);
+        setPreventsMovement(false);
+        setPreventsAllActions(false);
+        break;
     }
   };
 
@@ -248,6 +262,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       case StatusEffectType.DEFLECT: return '#a855f7'; // Purple for deflect
       case StatusEffectType.INVULNERABLE: return '#fcd34d'; // Gold for invulnerable
       case StatusEffectType.STEADFAST: return '#78716c'; // Stone for steadfast
+      case StatusEffectType.REFLECT: return '#06b6d4'; // Cyan for reflect
       default: return '#ffffff';
     }
   };
@@ -432,6 +447,72 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               <p className="text-xs text-stone-400 mt-1">
                 Entity sprite opacity when stealthed. Cannot be auto-targeted by opposing team.
               </p>
+            </div>
+          )}
+
+          {/* Reflect Configuration - only for Reflect type */}
+          {type === StatusEffectType.REFLECT && (
+            <div className="space-y-3 p-3 rounded-lg bg-cyan-900/20 border border-cyan-800">
+              <h4 className="text-sm font-medium text-cyan-300">Reflected Projectile Appearance</h4>
+              <p className="text-xs text-stone-400">
+                Configure how projectiles look after being reflected by this effect.
+              </p>
+
+              {/* Tint Color */}
+              <div>
+                <label className="block text-xs font-medium mb-1">Tint Color</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={reflectTintColor}
+                    onChange={(e) => setReflectTintColor(e.target.value)}
+                    disabled={isBuiltIn}
+                    className="w-10 h-7 rounded cursor-pointer border border-stone-600"
+                  />
+                  <span className="text-xs text-stone-400 font-mono">{reflectTintColor}</span>
+                  <span className="text-xs text-stone-500">
+                    {reflectOverrideSprite ? '(overridden by sprite below)' : 'Applied as overlay on original projectile'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Override Sprite */}
+              <div>
+                <label className="block text-xs font-medium mb-1">Override Sprite (optional)</label>
+                <p className="text-xs text-stone-400 mb-2">
+                  Replace the reflected projectile's sprite entirely. If not set, tint color is used instead.
+                </p>
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-cyan-500"
+                    onClick={() => !isBuiltIn && setEditingReflectSprite(true)}
+                  >
+                    {reflectOverrideSprite?.spriteData ? (
+                      <SpriteThumbnail sprite={reflectOverrideSprite.spriteData} size={40} />
+                    ) : (
+                      <span className="text-[9px] text-stone-500 text-center">None</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {!isBuiltIn && (
+                      <button
+                        onClick={() => setEditingReflectSprite(true)}
+                        className="px-2 py-1 bg-cyan-700 rounded text-xs hover:bg-cyan-600"
+                      >
+                        {reflectOverrideSprite ? 'Edit' : 'Add Sprite'}
+                      </button>
+                    )}
+                    {reflectOverrideSprite && !isBuiltIn && (
+                      <button
+                        onClick={() => setReflectOverrideSprite(undefined)}
+                        className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -662,6 +743,41 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               <button
                 onClick={() => setEditingIcon(false)}
                 className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reflect Override Sprite Editor Modal */}
+      {editingReflectSprite && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-stone-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
+            <h3 className="text-lg font-bold mb-4">Reflected Projectile Sprite</h3>
+            <p className="text-sm text-stone-400 mb-4">
+              This sprite replaces the original projectile sprite when reflected. Supports static images and animated spritesheets.
+            </p>
+            <SimpleIconEditor
+              sprite={reflectOverrideSprite || {
+                type: 'inline',
+                spriteData: {
+                  id: `reflect_sprite_${Date.now()}`,
+                  name: 'Reflect Sprite',
+                  type: 'simple',
+                  shape: 'circle',
+                  primaryColor: '#06b6d4',
+                  createdAt: new Date().toISOString(),
+                },
+              }}
+              onChange={(sprite) => setReflectOverrideSprite(sprite)}
+              size={96}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setEditingReflectSprite(false)}
+                className="px-4 py-2 bg-cyan-600 rounded hover:bg-cyan-700"
               >
                 Done
               </button>

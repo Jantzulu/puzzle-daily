@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations, prefer-const */
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle, Projectile, SpriteReference } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
@@ -35,6 +35,131 @@ function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
   return entity.statusEffects.some(
     e => e.type === StatusEffectType.STEADFAST || e.type === 'steadfast'
   );
+}
+
+/**
+ * Check if an entity has the reflect status effect
+ */
+function hasReflect(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(
+    e => e.type === StatusEffectType.REFLECT || e.type === 'reflect'
+  );
+}
+
+/**
+ * Get the reflect status effect's visual config from an entity's active reflect effect.
+ * Returns the tint color and override sprite from the StatusEffectAsset.
+ */
+function getReflectVisuals(entity: PlacedCharacter | PlacedEnemy): { tintColor?: string; overrideSprite?: SpriteReference } {
+  if (!entity.statusEffects) return {};
+  const reflectEffect = entity.statusEffects.find(
+    e => e.type === StatusEffectType.REFLECT || e.type === 'reflect'
+  );
+  if (!reflectEffect) return {};
+  const asset = loadStatusEffectAsset(reflectEffect.statusAssetId);
+  if (!asset) return {};
+  return {
+    tintColor: asset.reflectTintColor,
+    overrideSprite: asset.reflectOverrideSprite,
+  };
+}
+
+/**
+ * Reflect a projectile off an entity with the Reflect status effect.
+ * Reverses direction, swaps team targeting, disables bouncing, and applies visual treatment.
+ * Returns true if the projectile was reflected.
+ */
+function reflectProjectile(
+  proj: Projectile,
+  reflector: PlacedCharacter | PlacedEnemy,
+  gameState: GameState,
+  now: number
+): boolean {
+  // Can't reflect an already-reflected projectile (prevents ping-pong)
+  if (proj.reflected) return false;
+  // Only reflect damage/redirect projectiles, not healing
+  if (proj.attackData.healing !== undefined) return false;
+
+  const visuals = getReflectVisuals(reflector);
+
+  // Mark as reflected
+  proj.reflected = true;
+  proj.teamSwapped = !proj.teamSwapped; // Flip targeting
+  proj.reflectTintColor = visuals.tintColor || '#ff0000';
+  proj.reflectOverrideSprite = visuals.overrideSprite;
+
+  // Disable all bouncing — reflected projectiles travel in a straight line
+  proj.bounceOffWalls = false;
+  proj.maxBounces = 0;
+  proj.bounceCount = 0;
+
+  // Reverse direction 180°
+  proj.direction = turnAround(proj.direction);
+  const offset = getDirectionOffset(proj.direction);
+
+  // For homing projectiles: retarget back to the caster
+  if (proj.isHoming) {
+    let casterEntity: { x: number; y: number } | undefined;
+    if (proj.sourceCharacterId) {
+      casterEntity = gameState.placedCharacters.find(c => c.characterId === proj.sourceCharacterId && !c.dead);
+    } else if (proj.sourceEnemyId) {
+      casterEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.sourceEnemyId && !e.dead);
+    }
+    if (casterEntity) {
+      proj.targetX = casterEntity.x;
+      proj.targetY = casterEntity.y;
+      // Swap homing target type
+      proj.targetIsEnemy = !proj.targetIsEnemy;
+      if (proj.sourceCharacterId) {
+        proj.targetEntityId = proj.sourceCharacterId;
+      } else if (proj.sourceEnemyId) {
+        proj.targetEntityId = proj.sourceEnemyId;
+      }
+    } else {
+      // Caster is dead — disable homing, just fly straight
+      proj.isHoming = false;
+    }
+  }
+
+  // Recompute position and path from reflector's position
+  const startX = Math.floor(reflector.x);
+  const startY = Math.floor(reflector.y);
+  const range = proj.attackData.range ?? 5;
+
+  proj.x = startX;
+  proj.y = startY;
+  proj.startX = startX;
+  proj.startY = startY;
+  if (!proj.isHoming) {
+    proj.targetX = startX + offset.dx * range;
+    proj.targetY = startY + offset.dy * range;
+  }
+  proj.startTime = now;
+
+  // Recompute tile path
+  if (proj.tilePath) {
+    proj.tilePath = computeTilePathWithWallLookahead(startX, startY, proj.targetX, proj.targetY, gameState);
+    proj.currentTileIndex = 0;
+    proj.tileEntryTime = now;
+  }
+
+  // Clear piercing tracking so reflected projectile can hit new targets
+  proj.hitEntityIds = [(reflector as any).characterId || (reflector as any).enemyId];
+
+  // Spawn reflect VFX
+  gameState.activeParticles = gameState.activeParticles || [];
+  gameState.activeParticles.push({
+    id: `reflect_vfx_${proj.id}_${Date.now()}`,
+    sprite: visuals.overrideSprite || { type: 'inline', spriteData: { shape: 'circle', primaryColor: visuals.tintColor || '#06b6d4' } },
+    x: reflector.x,
+    y: reflector.y,
+    startTime: now,
+    duration: 300,
+    scale: 0.8,
+  });
+
+  return true;
 }
 
 /**
@@ -2041,9 +2166,17 @@ export function updateProjectiles(gameState: GameState): void {
     // The interpolated position can be on a different tile than the logical path (especially for diagonals)
     const tilesToCheck = [...newTiles];
 
-    // If fired by a character
+    // Determine effective targeting: teamSwapped flips which entities to hit
+    const effectivelyCharacterFired = proj.teamSwapped
+      ? !!proj.sourceEnemyId   // Reflected enemy proj now targets enemies (enters char-fired branch)
+      : !!proj.sourceCharacterId;
+    const effectivelyEnemyFired = proj.teamSwapped
+      ? !!proj.sourceCharacterId // Reflected char proj now targets chars (enters enemy-fired branch)
+      : !!proj.sourceEnemyId;
+
+    // If effectively targeting enemies (character-fired or reflected enemy-fired)
     let entityHitAndStopped = false;
-    if (proj.sourceCharacterId && !entityHitAndStopped) {
+    if (effectivelyCharacterFired && !entityHitAndStopped) {
       if (isHealingProjectile) {
         // Healing projectile - check for ally character hits along entire path
         for (const checkTile of tilesToCheck) {
@@ -2133,6 +2266,13 @@ export function updateProjectiles(gameState: GameState): void {
           );
 
           if (hitEnemy) {
+            // Check for Reflect — bounce projectile back instead of applying effects
+            if (hasReflect(hitEnemy) && !proj.reflected) {
+              if (reflectProjectile(proj, hitEnemy, gameState, now)) {
+                break; // Projectile reversed — stop checking this direction
+              }
+            }
+
             // Track that we hit this entity (for piercing projectiles)
             if (!proj.hitEntityIds) proj.hitEntityIds = [];
             proj.hitEntityIds.push(hitEnemy.enemyId);
@@ -2217,8 +2357,8 @@ export function updateProjectiles(gameState: GameState): void {
 
     if (entityHitAndStopped) continue;
 
-    // If fired by an enemy
-    if (proj.sourceEnemyId && !entityHitAndStopped) {
+    // If effectively targeting characters (enemy-fired or reflected character-fired)
+    if (effectivelyEnemyFired && !entityHitAndStopped) {
       if (isHealingProjectile) {
         // Healing projectile - check for ally enemy hits along entire path
         for (const checkTile of tilesToCheck) {
@@ -2292,6 +2432,13 @@ export function updateProjectiles(gameState: GameState): void {
           );
 
           if (hitCharacter) {
+            // Check for Reflect — bounce projectile back instead of applying effects
+            if (hasReflect(hitCharacter) && !proj.reflected) {
+              if (reflectProjectile(proj, hitCharacter, gameState, now)) {
+                break; // Projectile reversed — stop checking this direction
+              }
+            }
+
             // Track that we hit this entity (for piercing projectiles)
             if (!proj.hitEntityIds) proj.hitEntityIds = [];
             proj.hitEntityIds.push(hitCharacter.characterId);
@@ -2486,6 +2633,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
           if (proj.sourceCharacterId && proj.targetIsEnemy) {
             // Character's homing projectile hitting enemy
             const enemy = targetEntity as PlacedEnemy;
+            // Check for Reflect
+            if (hasReflect(enemy) && !proj.reflected) {
+              reflectProjectile(proj, enemy, gameState, Date.now());
+              continue;
+            }
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
               triggerAOEExplosion(enemy.x, enemy.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
@@ -2513,6 +2665,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
           } else if (proj.sourceEnemyId && !proj.targetIsEnemy) {
             // Enemy's homing projectile hitting character
             const char = targetEntity as PlacedCharacter;
+            // Check for Reflect
+            if (hasReflect(char) && !proj.reflected) {
+              reflectProjectile(proj, char, gameState, Date.now());
+              continue;
+            }
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
               triggerAOEExplosion(char.x, char.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
@@ -2630,8 +2787,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
         }
 
         // Check for entity hits at this tile
-        if (proj.sourceCharacterId) {
-          // Character fired
+        // teamSwapped flips targeting (reflected projectiles hit the caster's team)
+        const hEffCharFired = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
+        const hEffEnemyFired = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
+        if (hEffCharFired) {
+          // Effectively targeting enemies
           if (isHealingProjectile) {
             const hitAlly = gameState.placedCharacters.find(
               c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
@@ -2673,6 +2833,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
             );
 
             if (hitEnemy) {
+              // Check for Reflect
+              if (hasReflect(hitEnemy) && !proj.reflected) {
+                reflectProjectile(proj, hitEnemy, gameState, Date.now());
+                break;
+              }
               hitEntityIds.push(hitEnemy.enemyId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
@@ -2702,8 +2867,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (!canPierce) shouldRemove = true;
             }
           }
-        } else if (proj.sourceEnemyId) {
-          // Enemy fired
+        } else if (hEffEnemyFired) {
+          // Effectively targeting characters
           if (isHealingProjectile) {
             const hitAllyEnemy = gameState.puzzle.enemies.find(
               e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
@@ -2732,6 +2897,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
             );
 
             if (hitChar) {
+              // Check for Reflect
+              if (hasReflect(hitChar) && !proj.reflected) {
+                reflectProjectile(proj, hitChar, gameState, Date.now());
+                break;
+              }
               hitEntityIds.push(hitChar.characterId);
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitChar.x, hitChar.y, proj.attackData,
