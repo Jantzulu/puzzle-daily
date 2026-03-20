@@ -810,7 +810,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
     onSave(editedSpell);
   };
 
-  const templateNeedsRange = editedSpell.templateType === 'magic_linear';
+  const templateNeedsRange = editedSpell.templateType === 'magic_linear' || editedSpell.templateType === 'redirect';
   const templateNeedsRadius = editedSpell.templateType === 'aoe';
   const templateNeedsProjectileSettings = templateNeedsRange;
   const templateIsMelee = editedSpell.templateType === 'melee';
@@ -818,6 +818,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateIsMeleeOrCone = templateIsMelee || templateIsCone;
   const templateIsResurrect = editedSpell.templateType === 'resurrect';
   const templateIsPush = editedSpell.templateType === 'push';
+  const templateIsRedirect = editedSpell.templateType === 'redirect';
 
   return (
     <div className="space-y-6">
@@ -1094,6 +1095,18 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <div className="font-semibold">Push</div>
                   <div className="text-xs text-stone-400">Push target away</div>
                 </button>
+
+                <button
+                  onClick={() => setEditedSpell({ ...editedSpell, templateType: 'redirect' as SpellTemplate })}
+                  className={`p-3 rounded border-2 transition-colors ${
+                    editedSpell.templateType === 'redirect'
+                      ? 'border-purple-500 bg-purple-900'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
+                  }`}
+                >
+                  <div className="font-semibold">Redirect</div>
+                  <div className="text-xs text-stone-400">Change target's direction</div>
+                </button>
               </div>
             </div>
           </div>
@@ -1300,8 +1313,75 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </>
             )}
 
-            {/* Damage vs Healing Toggle - hidden for resurrect and push */}
-            {!templateIsResurrect && !templateIsPush && (
+            {/* Redirect Settings */}
+            {templateIsRedirect && (
+              <>
+                <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Redirect Settings</h3>
+
+                <div>
+                  <label className="block text-sm font-medium mb-1">Redirect Mode</label>
+                  <select
+                    value={editedSpell.redirectMode ?? 'clockwise'}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, redirectMode: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  >
+                    <option value="clockwise">Rotate Clockwise</option>
+                    <option value="counter_clockwise">Rotate Counter-Clockwise</option>
+                    <option value="face_projectile">Face Toward Projectile</option>
+                    <option value="face_away">Face Away From Projectile</option>
+                    <option value="fixed">Set to Fixed Direction</option>
+                  </select>
+                  <p className="text-xs text-stone-400 mt-1">
+                    How the target's direction will change on hit
+                  </p>
+                </div>
+
+                {(editedSpell.redirectMode === 'clockwise' || editedSpell.redirectMode === 'counter_clockwise' || !editedSpell.redirectMode) && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Rotation Angle</label>
+                    <select
+                      value={editedSpell.redirectAngle ?? 90}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectAngle: parseInt(e.target.value) as any })}
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                    >
+                      <option value={45}>45° (one step)</option>
+                      <option value={90}>90° (quarter turn)</option>
+                      <option value={135}>135° (three steps)</option>
+                      <option value={180}>180° (reverse)</option>
+                    </select>
+                    <p className="text-xs text-stone-400 mt-1">
+                      How far to rotate the target's direction
+                    </p>
+                  </div>
+                )}
+
+                {editedSpell.redirectMode === 'fixed' && (
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Fixed Direction</label>
+                    <select
+                      value={editedSpell.redirectFixedDirection ?? 'north'}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectFixedDirection: e.target.value as any })}
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                    >
+                      <option value="north">North</option>
+                      <option value="northeast">Northeast</option>
+                      <option value="east">East</option>
+                      <option value="southeast">Southeast</option>
+                      <option value="south">South</option>
+                      <option value="southwest">Southwest</option>
+                      <option value="west">West</option>
+                      <option value="northwest">Northwest</option>
+                    </select>
+                    <p className="text-xs text-stone-400 mt-1">
+                      The exact direction the target will face after being hit
+                    </p>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Damage vs Healing Toggle - hidden for resurrect, push, and redirect */}
+            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && (
               <div>
                 <label className="block text-sm font-medium mb-2">Effect Type</label>
                 <div className="flex gap-2 mb-3">
@@ -1339,8 +1419,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               </div>
             )}
 
-            {/* Damage or Healing Amount - hidden for resurrect and push */}
-            {!templateIsResurrect && !templateIsPush && (
+            {/* Damage or Healing Amount - hidden for resurrect, push, and redirect */}
+            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && (
               <div>
                 <label className="block text-sm font-medium mb-1">
                   {editedSpell.healing !== undefined ? 'Healing Amount' : 'Damage Amount *'}
@@ -1370,7 +1450,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
 
             {/* Backstab (Critical Strike from Behind) - only for melee/cone/linear damage spells */}
-            {(templateIsMeleeOrCone || templateNeedsRange) && editedSpell.healing === undefined && (
+            {(templateIsMeleeOrCone || templateNeedsRange) && !templateIsRedirect && editedSpell.healing === undefined && (
               <div>
                 <label className="flex items-center gap-2">
                   <input

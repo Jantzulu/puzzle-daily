@@ -725,6 +725,12 @@ export interface CustomAttack {
   criticalHitEffectSprite?: SpriteReference; // Effect on backstab/critical hit
   backstabEnabled?: boolean;          // Whether this attack does double damage from behind
 
+  // Redirect (for REDIRECT spell template)
+  isRedirect?: boolean;               // If true, projectile changes target's direction instead of dealing damage
+  redirectMode?: 'clockwise' | 'counter_clockwise' | 'face_projectile' | 'face_away' | 'fixed'; // How to change direction
+  redirectAngle?: 45 | 90 | 135 | 180; // Degrees to rotate (for clockwise/counter_clockwise)
+  redirectFixedDirection?: Direction;  // For 'fixed' mode — set target to this exact compass direction
+
   // Animation timing
   effectDuration?: number;      // MS to show effects (default: 300)
 
@@ -838,6 +844,7 @@ export enum SpellTemplate {
   AOE = 'aoe',                   // Area of effect
   RESURRECT = 'resurrect',       // Bring dead ally back to life
   PUSH = 'push',                 // Push target entity in a direction
+  REDIRECT = 'redirect',         // Projectile that changes target's facing direction
 }
 
 /**
@@ -943,6 +950,11 @@ export interface SpellAsset {
   // Push-specific settings (for PUSH template)
   pushDistance?: number;          // How many tiles to push target (default: 1)
   pushDirection?: 'away' | 'toward' | 'spell_direction'; // Direction to push: away from caster, toward caster, or same as spell direction (default: away)
+
+  // Redirect-specific settings (for REDIRECT template)
+  redirectMode?: 'clockwise' | 'counter_clockwise' | 'face_projectile' | 'face_away' | 'fixed'; // How to change the target's direction
+  redirectAngle?: 45 | 90 | 135 | 180; // Degrees to rotate (for clockwise/counter_clockwise modes, default: 90)
+  redirectFixedDirection?: Direction;  // For 'fixed' mode — set target to this exact compass direction
 
   // Backstab (critical strike from behind)
   backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target

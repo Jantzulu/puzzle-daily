@@ -1652,6 +1652,19 @@ function executeSpellInDirection(
       }
       break;
 
+    case SpellTemplate.REDIRECT:
+      // Redirect spell - projectile that changes target's facing direction
+      attackData.pattern = AttackPattern.PROJECTILE;
+      attackData.isRedirect = true;
+      attackData.redirectMode = spell.redirectMode || 'clockwise';
+      attackData.redirectAngle = spell.redirectAngle || 90;
+      attackData.redirectFixedDirection = spell.redirectFixedDirection;
+      const origFacingRedirect = character.facing;
+      character.facing = direction;
+      spawnProjectile(character, attackData, gameState, spell, homingTarget);
+      character.facing = origFacingRedirect;
+      break;
+
     case SpellTemplate.PUSH:
       // Push spell - push entities in a direction
       executePushSpell(character, spell, direction, gameState);

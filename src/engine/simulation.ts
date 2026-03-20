@@ -5,7 +5,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
-import { turnLeft, turnRight, getDirectionOffset, calculateDirectionTo, isAttackFromBehind } from './utils';
+import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind } from './utils';
 
 /**
  * Check if an entity has the deflect status effect
@@ -464,7 +464,7 @@ export function canEntityCastSpell(
     }
 
     // Check ranged/AOE prevention (Silenced)
-    if ((spellTemplate === 'magic_linear' || spellTemplate === 'aoe') &&
+    if ((spellTemplate === 'magic_linear' || spellTemplate === 'redirect' || spellTemplate === 'aoe') &&
         (effectAsset?.preventsRanged || effect.type === StatusEffectType.SILENCED)) {
       return { allowed: false, reason: 'Silenced' };
     }
@@ -2138,6 +2138,13 @@ export function updateProjectiles(gameState: GameState): void {
                 gameState,
                 proj.spellAssetId
               );
+            } else if (proj.attackData.isRedirect) {
+              // Redirect projectile — change target's direction instead of damage
+              applyRedirect(hitEnemy, proj.attackData, proj.direction);
+              const hitSprite1 = proj.attackData.hitEffectSprite;
+              if (hitSprite1) {
+                spawnParticleEffect(hitEnemy.x, hitEnemy.y, hitSprite1, proj.attackData.effectDuration || 300, gameState);
+              }
             } else {
               // Apply single-target damage (with deflect check)
               const baseDamage = proj.attackData.damage ?? 1;
@@ -2290,6 +2297,12 @@ export function updateProjectiles(gameState: GameState): void {
                 gameState,
                 proj.spellAssetId
               );
+            } else if (proj.attackData.isRedirect) {
+              applyRedirect(hitCharacter, proj.attackData, proj.direction);
+              const hitSprite2 = proj.attackData.hitEffectSprite;
+              if (hitSprite2) {
+                spawnParticleEffect(hitCharacter.x, hitCharacter.y, hitSprite2, proj.attackData.effectDuration || 300, gameState);
+              }
             } else {
               // Apply single-target damage (with deflect check)
               const baseDamage = proj.attackData.damage ?? 1;
@@ -2466,6 +2479,10 @@ function updateProjectilesHeadless(gameState: GameState): void {
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
               triggerAOEExplosion(enemy.x, enemy.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+            } else if (proj.attackData.isRedirect) {
+              applyRedirect(enemy, proj.attackData, proj.direction);
+              const hs3 = proj.attackData.hitEffectSprite;
+              if (hs3) spawnParticleEffect(enemy.x, enemy.y, hs3, proj.attackData.effectDuration || 300, gameState);
             } else {
               const baseDmg = proj.attackData.damage ?? 0;
               const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, enemy.facing);
@@ -2489,6 +2506,10 @@ function updateProjectilesHeadless(gameState: GameState): void {
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
               triggerAOEExplosion(char.x, char.y, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+            } else if (proj.attackData.isRedirect) {
+              applyRedirect(char, proj.attackData, proj.direction);
+              const hs4 = proj.attackData.hitEffectSprite;
+              if (hs4) spawnParticleEffect(char.x, char.y, hs4, proj.attackData.effectDuration || 300, gameState);
             } else {
               const baseDmg = proj.attackData.damage ?? 0;
               const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, char.facing);
@@ -2646,6 +2667,10 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitEnemy.x, hitEnemy.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+              } else if (proj.attackData.isRedirect) {
+                applyRedirect(hitEnemy, proj.attackData, proj.direction);
+                const hs5 = proj.attackData.hitEffectSprite;
+                if (hs5) spawnParticleEffect(hitEnemy.x, hitEnemy.y, hs5, proj.attackData.effectDuration || 300, gameState);
               } else {
                 const baseDmg = proj.attackData.damage ?? 0;
                 const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing);
@@ -2701,6 +2726,10 @@ function updateProjectilesHeadless(gameState: GameState): void {
               if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
                 triggerAOEExplosion(hitChar.x, hitChar.y, proj.attackData,
                   proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+              } else if (proj.attackData.isRedirect) {
+                applyRedirect(hitChar, proj.attackData, proj.direction);
+                const hs6 = proj.attackData.hitEffectSprite;
+                if (hs6) spawnParticleEffect(hitChar.x, hitChar.y, hs6, proj.attackData.effectDuration || 300, gameState);
               } else {
                 const baseDmg = proj.attackData.damage ?? 0;
                 const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitChar.facing);
@@ -2785,6 +2814,42 @@ export function updateParticles(gameState: GameState): void {
 /**
  * Helper to spawn particle effects
  */
+/**
+ * Apply redirect effect to an entity — changes its facing direction
+ * Returns the new direction for logging/effects
+ */
+function applyRedirect(
+  entity: { facing: Direction },
+  attackData: { redirectMode?: string; redirectAngle?: number; redirectFixedDirection?: Direction },
+  projectileDirection: Direction
+): Direction {
+  const mode = attackData.redirectMode || 'clockwise';
+  const angle = attackData.redirectAngle || 90;
+
+  switch (mode) {
+    case 'clockwise':
+      entity.facing = turnRight(entity.facing, angle);
+      break;
+    case 'counter_clockwise':
+      entity.facing = turnLeft(entity.facing, angle);
+      break;
+    case 'face_projectile':
+      // Face the direction the projectile is coming from
+      entity.facing = turnAround(projectileDirection);
+      break;
+    case 'face_away':
+      // Face the same direction as the projectile (pushed away)
+      entity.facing = projectileDirection;
+      break;
+    case 'fixed':
+      if (attackData.redirectFixedDirection) {
+        entity.facing = attackData.redirectFixedDirection;
+      }
+      break;
+  }
+  return entity.facing;
+}
+
 function spawnParticleEffect(
   x: number,
   y: number,
