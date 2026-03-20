@@ -393,6 +393,36 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                 </div>
               </CollapsiblePanel>
 
+              {/* Effects */}
+              <CollapsiblePanel title="Effects">
+                <div className="flex justify-end mb-4">
+                  <button
+                    onClick={addEffect}
+                    className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
+                  >
+                    + Add Effect
+                  </button>
+                </div>
+                <p className="text-xs text-stone-400 mb-3">
+                  Effects are applied when the collectible is picked up. You can add multiple effects.
+                </p>
+                <div className="space-y-3">
+                  {editing.effects.map((effect, index) => (
+                    <CollectibleEffectEditor
+                      key={index}
+                      effect={effect}
+                      onChange={(e) => updateEffect(index, e)}
+                      onRemove={() => removeEffect(index)}
+                    />
+                  ))}
+                  {editing.effects.length === 0 && (
+                    <p className="text-stone-500 text-sm italic">
+                      No effects. This collectible will be purely decorative.
+                    </p>
+                  )}
+                </div>
+              </CollapsiblePanel>
+
               {/* Pickup Behavior */}
               <CollapsiblePanel title="Pickup Behavior" className="space-y-3">
                 <div>
@@ -485,35 +515,6 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                 />
               </CollapsiblePanel>
 
-              {/* Effects */}
-              <CollapsiblePanel title="Effects">
-                <div className="flex justify-end mb-4">
-                  <button
-                    onClick={addEffect}
-                    className="px-3 py-1 text-sm bg-arcane-700 rounded hover:bg-arcane-600"
-                  >
-                    + Add Effect
-                  </button>
-                </div>
-                <p className="text-xs text-stone-400 mb-3">
-                  Effects are applied when the collectible is picked up. You can add multiple effects.
-                </p>
-                <div className="space-y-3">
-                  {editing.effects.map((effect, index) => (
-                    <CollectibleEffectEditor
-                      key={index}
-                      effect={effect}
-                      onChange={(e) => updateEffect(index, e)}
-                      onRemove={() => removeEffect(index)}
-                    />
-                  ))}
-                  {editing.effects.length === 0 && (
-                    <p className="text-stone-500 text-sm italic">
-                      No effects. This collectible will be purely decorative.
-                    </p>
-                  )}
-                </div>
-              </CollapsiblePanel>
             </div>
           </div>
         </>
