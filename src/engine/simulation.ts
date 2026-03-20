@@ -48,6 +48,45 @@ function hasReflect(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
+ * Check if a projectile's approach direction falls within the reflect effect's allowed zones.
+ * Zones are relative to the entity's facing: front, back, left, right (each ± 45°).
+ */
+function canReflectDirection(entity: PlacedCharacter | PlacedEnemy, projectileDirection: Direction): boolean {
+  if (!entity.statusEffects) return false;
+  const reflectEffect = entity.statusEffects.find(
+    e => e.type === StatusEffectType.REFLECT || e.type === 'reflect'
+  );
+  if (!reflectEffect) return false;
+  const asset = loadStatusEffectAsset(reflectEffect.statusAssetId);
+  if (!asset) return true; // No asset = reflect all
+  const dirs = asset.reflectDirections;
+  if (!dirs || dirs.length === 0 || dirs.length === 4) return true; // All directions or not configured
+
+  const entityFacing = entity.facing || Direction.NORTH;
+  // Approach direction = where the projectile is coming FROM (opposite of travel direction)
+  const approachDir = turnAround(projectileDirection);
+
+  // Check each allowed zone
+  for (const zone of dirs) {
+    let zoneCenter: Direction;
+    switch (zone) {
+      case 'front': zoneCenter = entityFacing; break;
+      case 'back': zoneCenter = turnAround(entityFacing); break;
+      case 'left': zoneCenter = turnLeft(entityFacing, 90); break;
+      case 'right': zoneCenter = turnRight(entityFacing, 90); break;
+      default: continue;
+    }
+    // Match if approach direction is within ± 45° of zone center
+    if (approachDir === zoneCenter ||
+        approachDir === turnLeft(zoneCenter, 45) ||
+        approachDir === turnRight(zoneCenter, 45)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
  * Get the reflect status effect's visual config from an entity's active reflect effect.
  * Returns the tint color and override sprite from the StatusEffectAsset.
  */
@@ -2285,7 +2324,7 @@ export function updateProjectiles(gameState: GameState): void {
 
           if (hitEnemy) {
             // Check for Reflect — bounce projectile back instead of applying effects
-            if (hasReflect(hitEnemy) && !proj.reflected) {
+            if (hasReflect(hitEnemy) && !proj.reflected && canReflectDirection(hitEnemy, proj.direction)) {
               if (reflectProjectile(proj, hitEnemy, gameState, now)) {
                 entityHitAndStopped = true; // Prevent fall-through to other targeting blocks
                 break; // Projectile reversed — stop checking this direction
@@ -2452,7 +2491,7 @@ export function updateProjectiles(gameState: GameState): void {
 
           if (hitCharacter) {
             // Check for Reflect — bounce projectile back instead of applying effects
-            if (hasReflect(hitCharacter) && !proj.reflected) {
+            if (hasReflect(hitCharacter) && !proj.reflected && canReflectDirection(hitCharacter, proj.direction)) {
               if (reflectProjectile(proj, hitCharacter, gameState, now)) {
                 entityHitAndStopped = true; // Prevent fall-through to other targeting blocks
                 break; // Projectile reversed — stop checking this direction
@@ -2661,7 +2700,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
             // Character's homing projectile hitting enemy
             const enemy = targetEntity as PlacedEnemy;
             // Check for Reflect
-            if (hasReflect(enemy) && !proj.reflected) {
+            if (hasReflect(enemy) && !proj.reflected && canReflectDirection(enemy, proj.direction)) {
               reflectProjectile(proj, enemy, gameState, Date.now());
               continue;
             }
@@ -2693,7 +2732,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
             // Enemy's homing projectile hitting character
             const char = targetEntity as PlacedCharacter;
             // Check for Reflect
-            if (hasReflect(char) && !proj.reflected) {
+            if (hasReflect(char) && !proj.reflected && canReflectDirection(char, proj.direction)) {
               reflectProjectile(proj, char, gameState, Date.now());
               continue;
             }
@@ -2861,7 +2900,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
             if (hitEnemy) {
               // Check for Reflect
-              if (hasReflect(hitEnemy) && !proj.reflected) {
+              if (hasReflect(hitEnemy) && !proj.reflected && canReflectDirection(hitEnemy, proj.direction)) {
                 reflectProjectile(proj, hitEnemy, gameState, Date.now());
                 break;
               }
@@ -2925,7 +2964,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
             if (hitChar) {
               // Check for Reflect
-              if (hasReflect(hitChar) && !proj.reflected) {
+              if (hasReflect(hitChar) && !proj.reflected && canReflectDirection(hitChar, proj.direction)) {
                 reflectProjectile(proj, hitChar, gameState, Date.now());
                 break;
               }

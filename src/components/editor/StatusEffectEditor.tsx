@@ -57,6 +57,10 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [reflectTintColor, setReflectTintColor] = useState(effect?.reflectTintColor || '#ff0000');
   const [reflectOverrideSprite, setReflectOverrideSprite] = useState<SpriteReference | undefined>(effect?.reflectOverrideSprite);
   const [editingReflectSprite, setEditingReflectSprite] = useState(false);
+  const [reflectDirections, setReflectDirections] = useState<('front' | 'back' | 'left' | 'right')[]>(
+    effect?.reflectDirections || ['front', 'back', 'left', 'right']
+  );
+  const reflectAllDirections = reflectDirections.length === 4;
 
   const isBuiltIn = effect?.isBuiltIn ?? false;
 
@@ -88,6 +92,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       overlayOpacity: overlaySprite ? overlayOpacity : undefined,
       reflectTintColor: type === StatusEffectType.REFLECT ? reflectTintColor : undefined,
       reflectOverrideSprite: type === StatusEffectType.REFLECT ? reflectOverrideSprite : undefined,
+      reflectDirections: type === StatusEffectType.REFLECT && !reflectAllDirections ? reflectDirections : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       isBuiltIn: false, // Never save as built-in when editing
       folderId: effect?.folderId,
@@ -453,7 +458,56 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
           {/* Reflect Configuration - only for Reflect type */}
           {type === StatusEffectType.REFLECT && (
             <div className="space-y-3 p-3 rounded-lg bg-cyan-900/20 border border-cyan-800">
-              <h4 className="text-sm font-medium text-cyan-300">Reflected Projectile Appearance</h4>
+              <h4 className="text-sm font-medium text-cyan-300">Reflect Behavior</h4>
+
+              {/* Direction Filter */}
+              <div>
+                <label className="block text-xs font-medium mb-2">Reflect Directions</label>
+                <div className="space-y-1">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={reflectAllDirections}
+                      onChange={(e) => {
+                        setReflectDirections(e.target.checked ? ['front', 'back', 'left', 'right'] : []);
+                      }}
+                      disabled={isBuiltIn}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium">Reflect All Directions</span>
+                  </label>
+                  {!reflectAllDirections && (
+                    <div className="ml-6 grid grid-cols-2 gap-1">
+                      {(['front', 'back', 'left', 'right'] as const).map(dir => (
+                        <label key={dir} className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={reflectDirections.includes(dir)}
+                            onChange={(e) => {
+                              setReflectDirections(prev =>
+                                e.target.checked ? [...prev, dir] : prev.filter(d => d !== dir)
+                              );
+                            }}
+                            disabled={isBuiltIn}
+                            className="rounded"
+                          />
+                          <span className="text-xs capitalize">{dir}</span>
+                        </label>
+                      ))}
+                    </div>
+                  )}
+                  <p className="text-xs text-stone-500">
+                    {reflectAllDirections
+                      ? 'Reflects projectiles from any direction.'
+                      : reflectDirections.length === 0
+                      ? 'No directions selected — will not reflect anything.'
+                      : `Reflects projectiles from: ${reflectDirections.join(', ')} (relative to entity's facing direction).`
+                    }
+                  </p>
+                </div>
+              </div>
+
+              <h4 className="text-sm font-medium text-cyan-300 pt-2 border-t border-cyan-800/50">Reflected Projectile Appearance</h4>
               <p className="text-xs text-stone-400">
                 Configure how projectiles look after being reflected by this effect.
               </p>
