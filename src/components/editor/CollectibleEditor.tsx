@@ -21,6 +21,7 @@ const EFFECT_TYPES: { value: CollectibleEffectType; label: string; icon: string 
   { value: 'win_key', label: 'Win Key', icon: '🔑' },
   { value: 'heal', label: 'Heal', icon: '💚' },
   { value: 'damage', label: 'Damage (Trap)', icon: '💀' },
+  { value: 'redirect', label: 'Redirect', icon: '🔄' },
 ];
 
 // Get effect icon
@@ -669,6 +670,70 @@ const CollectibleEffectEditor: React.FC<{
             </p>
           )}
         </div>
+      )}
+
+      {effect.type === 'redirect' && (
+        <>
+          <div>
+            <label className="block text-xs text-stone-400 mb-1">Redirect Mode</label>
+            <select
+              value={effect.redirectMode ?? 'clockwise'}
+              onChange={(e) => {
+                const mode = e.target.value as 'clockwise' | 'counter_clockwise' | 'fixed';
+                const updates: CollectibleEffectConfig = { ...effect, redirectMode: mode };
+                if (mode === 'fixed' && !effect.redirectFixedDirection) {
+                  updates.redirectFixedDirection = 'north' as any;
+                }
+                onChange(updates);
+              }}
+              className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
+            >
+              <option value="clockwise">Rotate Clockwise (Relative to Facing)</option>
+              <option value="counter_clockwise">Rotate Counter-Clockwise (Relative to Facing)</option>
+              <option value="fixed">Set to Fixed Direction</option>
+            </select>
+          </div>
+
+          {(effect.redirectMode === 'clockwise' || effect.redirectMode === 'counter_clockwise' || !effect.redirectMode) && (
+            <div>
+              <label className="block text-xs text-stone-400 mb-1">Rotation Angle</label>
+              <select
+                value={effect.redirectAngle ?? 90}
+                onChange={(e) => onChange({ ...effect, redirectAngle: parseInt(e.target.value) as any })}
+                className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
+              >
+                <option value={45}>45° (one step)</option>
+                <option value={90}>90° (quarter turn)</option>
+                <option value={135}>135° (three steps)</option>
+                <option value={180}>180° (reverse)</option>
+              </select>
+            </div>
+          )}
+
+          {effect.redirectMode === 'fixed' && (
+            <div>
+              <label className="block text-xs text-stone-400 mb-1">Fixed Direction</label>
+              <select
+                value={(effect.redirectFixedDirection as string) ?? 'north'}
+                onChange={(e) => onChange({ ...effect, redirectFixedDirection: e.target.value as any })}
+                className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
+              >
+                <option value="north">North</option>
+                <option value="northeast">Northeast</option>
+                <option value="east">East</option>
+                <option value="southeast">Southeast</option>
+                <option value="south">South</option>
+                <option value="southwest">Southwest</option>
+                <option value="west">West</option>
+                <option value="northwest">Northwest</option>
+              </select>
+            </div>
+          )}
+
+          <p className="text-xs text-stone-500 mt-1">
+            Changes the picking entity's facing direction on pickup.
+          </p>
+        </>
       )}
     </div>
   );

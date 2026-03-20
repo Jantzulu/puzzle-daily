@@ -2712,6 +2712,23 @@ function applyCollectibleEffect(
       // Use centralized damage to respect shields (no source for trigger damage)
       applyDamageToEntityNoDeflect(entity, effect.amount ?? 0, gameState);
       break;
+
+    case 'redirect': {
+      const mode = effect.redirectMode || 'clockwise';
+      const angle = effect.redirectAngle || 90;
+      switch (mode) {
+        case 'clockwise':
+          entity.facing = turnRight(entity.facing, angle);
+          break;
+        case 'counter_clockwise':
+          entity.facing = turnLeft(entity.facing, angle);
+          break;
+        case 'fixed':
+          entity.facing = effect.redirectFixedDirection || Direction.NORTH;
+          break;
+      }
+      break;
+    }
   }
 }
 

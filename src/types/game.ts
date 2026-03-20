@@ -1157,7 +1157,8 @@ export type CollectibleEffectType =
   | 'status_effect'   // Apply a status effect to collector (powerups!)
   | 'win_key'         // Required for 'collect_keys' win condition
   | 'heal'            // Restore health to collector
-  | 'damage';         // Harm the collector (trap collectibles)
+  | 'damage'          // Harm the collector (trap collectibles)
+  | 'redirect';       // Change the collector's facing direction
 
 /**
  * Configuration for a single collectible effect
@@ -1178,6 +1179,11 @@ export interface CollectibleEffectConfig {
 
   // For 'heal' and 'damage' types
   amount?: number;               // HP to heal or damage to deal
+
+  // For 'redirect' type
+  redirectMode?: 'clockwise' | 'counter_clockwise' | 'fixed'; // How to change direction
+  redirectAngle?: 45 | 90 | 135 | 180; // Degrees to rotate (for clockwise/counter_clockwise)
+  redirectFixedDirection?: Direction;  // For 'fixed' mode — set to this exact compass direction
 }
 
 /**
