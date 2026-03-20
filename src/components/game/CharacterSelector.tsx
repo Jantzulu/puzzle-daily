@@ -275,9 +275,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   // Interactive: compass grid picker
                   return (
                     <div key={spell.id} className="mt-1 w-full" onClick={e => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-0.5 mb-0.5">
-                        <span className="text-[9px] text-purple-300 font-medium">{spell.name}</span>
-                        <HelpButton sectionId="redirect_spell" className="!p-0" />
+                      <div className="relative w-full mb-0.5">
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2">
+                          <HelpButton sectionId="redirect_spell" className="!p-0" />
+                        </div>
+                        <div className="text-center">
+                          <span className="text-[9px] text-purple-300 font-medium">{spell.name}</span>
+                        </div>
                       </div>
                       <div className="grid grid-cols-3 gap-px mx-auto" style={{ width: '54px' }}>
                         {[
