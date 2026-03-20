@@ -376,7 +376,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
       {spell ? (
         <div className="flex items-center gap-2 dungeon-panel p-2 rounded">
           <button
-            onClick={() => navigate(`/assets?tab=spells&id=${spell.id}`)}
+            onClick={() => navigate(`/assets?tab=spells&id=${spell.id}&t=${Date.now()}`)}
             className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left"
             title="Edit this spell"
           >
