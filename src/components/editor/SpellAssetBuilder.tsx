@@ -974,7 +974,10 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               {/* Cloud Media + URL Input Toggle */}
               <div className="flex items-center gap-2 mt-2">
                 <MediaBrowseButton
-                  onSelect={(url) => setThumbnailUrlInput(url)}
+                  onSelect={(url) => {
+                    setEditedSpell({ ...editedSpell, thumbnailIcon: url });
+                    setThumbnailUrlInput(url);
+                  }}
                   label="☁️ Browse Media"
                   className="px-2 py-1 text-xs"
                 />
