@@ -382,6 +382,7 @@ export const MapEditor: React.FC = () => {
   const [originalPlaytestPuzzle, setOriginalPlaytestPuzzle] = useState<Puzzle | null>(null);
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  const [pendingSpellDirectionOverrides, setPendingSpellDirectionOverrides] = useState<Record<string, Record<string, Direction>>>({});
   const [livesRemaining, setLivesRemaining] = useState<number>(3);
   const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
   const [playStartCharacters, setPlayStartCharacters] = useState<PlacedCharacter[]>([]);
@@ -1950,6 +1951,7 @@ export const MapEditor: React.FC = () => {
     const charData = getCharacter(selectedCharacterId);
     if (!charData) return;
 
+    const pendingOverrides = pendingSpellDirectionOverrides[selectedCharacterId];
     const newCharacter: PlacedCharacter = {
       characterId: selectedCharacterId,
       x,
@@ -1959,6 +1961,7 @@ export const MapEditor: React.FC = () => {
       actionIndex: 0,
       active: true,
       dead: false,
+      ...(pendingOverrides && { spellDirectionOverrides: pendingOverrides }),
     };
 
     setGameState((prev) => prev ? ({
@@ -2970,6 +2973,26 @@ export const MapEditor: React.FC = () => {
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                     noPanel
+                    placedCharacters={gameState.placedCharacters}
+                    pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}
+                    onSpellDirectionOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, spellId: string, direction: Direction) => {
+                      const isPlaced = gameState.placedCharacters.some(pc => pc.characterId === characterId);
+                      if (isPlaced) {
+                        setGameState(prev => prev ? ({
+                          ...prev,
+                          placedCharacters: prev.placedCharacters.map(pc =>
+                            pc.characterId === characterId
+                              ? { ...pc, spellDirectionOverrides: { ...pc.spellDirectionOverrides, [spellId]: direction } }
+                              : pc
+                          ),
+                        }) : prev);
+                      } else {
+                        setPendingSpellDirectionOverrides(prev => ({
+                          ...prev,
+                          [characterId]: { ...prev[characterId], [spellId]: direction },
+                        }));
+                      }
+                    } : undefined}
                   />
                 )}
 

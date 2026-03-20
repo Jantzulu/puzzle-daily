@@ -35,6 +35,10 @@ const SECTION_INFO: Record<HelpSectionId, { icon: string; description: string }>
     icon: '🔲',
     description: 'Help for the "Special Tiles" information box',
   },
+  redirect_spell: {
+    icon: '🔄',
+    description: 'Help for the redirect spell compass on hero cards',
+  },
 };
 
 export const HelpContentEditor: React.FC = () => {

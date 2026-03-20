@@ -1343,7 +1343,8 @@ export type HelpSectionId =
   | 'status_effects'
   | 'special_tiles'
   | 'characters'
-  | 'game_general';
+  | 'game_general'
+  | 'redirect_spell';
 
 // Help content for a single section
 export interface HelpContent {
@@ -1395,6 +1396,12 @@ const defaultHelpContent: HelpContentStorage = {
       id: 'special_tiles',
       title: 'Special Tiles',
       content: '<p>Some tiles have special properties that affect gameplay.</p><ul><li>Tiles may damage, heal, or teleport entities</li><li>Some tiles block movement or prevent placement</li><li>Hover over tiles to see their effects</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'redirect_spell',
+      title: 'Redirect Spell',
+      content: '<p>This hero has a <strong>Redirect</strong> spell whose direction you choose.</p><ul><li>Use the compass to pick which direction the spell will redirect targets</li><li>You can change the direction before or after placing the hero</li><li>The chosen direction is shown on the hero card during the simulation</li></ul>',
       updatedAt: new Date().toISOString(),
     },
   ],

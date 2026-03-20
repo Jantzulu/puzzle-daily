@@ -50,6 +50,8 @@ export const Game: React.FC = () => {
 
   const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
   const [isSimulating, setIsSimulating] = useState(false);
+  // Pre-placement direction overrides: charId -> spellId -> direction
+  const [pendingSpellDirectionOverrides, setPendingSpellDirectionOverrides] = useState<Record<string, Record<string, Direction>>>({});
 
   // Lives system
   const [livesRemaining, setLivesRemaining] = useState<number>(() => currentPuzzle.lives ?? 3);
@@ -607,7 +609,8 @@ export const Game: React.FC = () => {
       const charData = getCharacter(selectedCharacterId);
       if (!charData) return;
 
-      // Place character with default facing direction
+      // Place character with default facing direction, merging any pending direction overrides
+      const pendingOverrides = pendingSpellDirectionOverrides[selectedCharacterId];
       const newCharacter: PlacedCharacter = {
         characterId: selectedCharacterId,
         x,
@@ -617,6 +620,7 @@ export const Game: React.FC = () => {
         actionIndex: 0,
         active: true,
         dead: false,
+        ...(pendingOverrides && { spellDirectionOverrides: pendingOverrides }),
       };
 
       setGameState((prev) => ({
@@ -1918,15 +1922,24 @@ export const Game: React.FC = () => {
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                     noPanel
                     placedCharacters={gameState.placedCharacters}
+                    pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}
                     onSpellDirectionOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, spellId: string, direction: Direction) => {
-                      setGameState(prev => ({
-                        ...prev,
-                        placedCharacters: prev.placedCharacters.map(pc =>
-                          pc.characterId === characterId
-                            ? { ...pc, spellDirectionOverrides: { ...pc.spellDirectionOverrides, [spellId]: direction } }
-                            : pc
-                        ),
-                      }));
+                      const isPlaced = gameState.placedCharacters.some(pc => pc.characterId === characterId);
+                      if (isPlaced) {
+                        setGameState(prev => ({
+                          ...prev,
+                          placedCharacters: prev.placedCharacters.map(pc =>
+                            pc.characterId === characterId
+                              ? { ...pc, spellDirectionOverrides: { ...pc.spellDirectionOverrides, [spellId]: direction } }
+                              : pc
+                          ),
+                        }));
+                      } else {
+                        setPendingSpellDirectionOverrides(prev => ({
+                          ...prev,
+                          [characterId]: { ...prev[characterId], [spellId]: direction },
+                        }));
+                      }
                     } : undefined}
                   />
                 )}
