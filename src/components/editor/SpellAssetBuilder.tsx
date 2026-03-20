@@ -1325,8 +1325,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     onChange={(e) => setEditedSpell({ ...editedSpell, redirectMode: e.target.value as any })}
                     className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                   >
-                    <option value="clockwise">Rotate Clockwise</option>
-                    <option value="counter_clockwise">Rotate Counter-Clockwise</option>
+                    <option value="clockwise">Rotate Clockwise (Relative to Target's Facing Direction)</option>
+                    <option value="counter_clockwise">Rotate Counter-Clockwise (Relative to Target's Facing Direction)</option>
                     <option value="face_projectile">Face Toward Projectile</option>
                     <option value="face_away">Face Away From Projectile</option>
                     <option value="fixed">Set to Fixed Direction</option>
