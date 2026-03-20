@@ -806,6 +806,7 @@ export const MapEditor: React.FC = () => {
   }, []);
 
   // Auto-save: periodic timer (every 30s while in edit mode)
+  // Also flushes auto-save on unmount (covers HMR re-mounts during dev)
   useEffect(() => {
     if (state.mode !== 'edit') return;
 
@@ -814,7 +815,11 @@ export const MapEditor: React.FC = () => {
       writeAutoSave(puzzle);
     }, AUTOSAVE_INTERVAL_MS);
 
-    return () => clearInterval(timer);
+    return () => {
+      clearInterval(timer);
+      // Flush auto-save on unmount so HMR doesn't lose recent edits
+      writeAutoSave(getCurrentPuzzleRef.current());
+    };
   }, [state.mode]);
 
   // Warn before leaving and flush auto-save on tab close
