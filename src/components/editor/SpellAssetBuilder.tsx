@@ -1213,7 +1213,9 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
           {/* Combat Stats */}
           <div className="space-y-4">
-            <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Combat Stats</h3>
+            {!templateIsRedirect && (
+              <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Combat Stats</h3>
+            )}
 
             {/* Resurrect-specific options */}
             {templateIsResurrect && (
@@ -1321,8 +1323,25 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
               <>
                 <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Redirect Settings</h3>
 
+                {/* Player chooses direction - prominent at top */}
+                <div className={`p-3 rounded-lg border ${editedSpell.redirectAcceptsUserInput ? 'bg-purple-900/30 border-purple-600' : 'bg-stone-800 border-stone-700'}`}>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={editedSpell.redirectAcceptsUserInput || false}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectAcceptsUserInput: e.target.checked })}
+                      className="rounded"
+                    />
+                    <span className="text-sm font-medium">🎯 Player chooses direction during setup</span>
+                  </label>
+                  <p className="text-xs text-stone-400 mt-1 ml-6">
+                    The player picks the redirect direction via a compass when placing the hero.
+                    {editedSpell.redirectAcceptsUserInput && ' The settings below serve as defaults for enemies/AI.'}
+                  </p>
+                </div>
+
                 <div>
-                  <label className="block text-sm font-medium mb-1">Redirect Mode</label>
+                  <label className="block text-sm font-medium mb-1">Redirect Mode {editedSpell.redirectAcceptsUserInput ? <span className="text-xs text-stone-500">(default for AI)</span> : ''}</label>
                   <select
                     value={editedSpell.redirectMode ?? 'clockwise'}
                     onChange={(e) => {
@@ -1389,21 +1408,6 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   </div>
                 )}
 
-                <div className="pt-2 border-t border-stone-700">
-                  <label className="flex items-center gap-2">
-                    <input
-                      type="checkbox"
-                      checked={editedSpell.redirectAcceptsUserInput || false}
-                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectAcceptsUserInput: e.target.checked })}
-                      className="rounded"
-                    />
-                    <span className="text-sm">Player chooses direction during setup</span>
-                  </label>
-                  <p className="text-xs text-stone-400 mt-1 ml-6">
-                    When enabled, the player picks the redirect direction via a compass when placing the hero.
-                    This overrides the mode settings above.
-                  </p>
-                </div>
               </>
             )}
 

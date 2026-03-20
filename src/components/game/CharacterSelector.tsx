@@ -141,7 +141,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             <div
               key={charId}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
-              className={`rounded-pixel-md px-1 py-1 transition-all flex flex-col items-center border-2 min-w-[80px] ${
+              className={`rounded-pixel-md px-1 py-1 transition-all flex flex-col items-center border-2 min-w-[72px] max-w-[100px] ${
                 disabled
                   ? 'bg-stone-800/80 border-stone-600 cursor-default'
                   : isPlaced
@@ -226,33 +226,35 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   .map(a => loadSpellAsset(a.spellId!))
                   .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput);
                 if (redirectSpells.length === 0) return null;
-                const DIRECTIONS: { value: Direction; label: string }[] = [
-                  { value: 'north' as Direction, label: 'N' },
-                  { value: 'northeast' as Direction, label: 'NE' },
-                  { value: 'east' as Direction, label: 'E' },
-                  { value: 'southeast' as Direction, label: 'SE' },
-                  { value: 'south' as Direction, label: 'S' },
-                  { value: 'southwest' as Direction, label: 'SW' },
-                  { value: 'west' as Direction, label: 'W' },
-                  { value: 'northwest' as Direction, label: 'NW' },
+                // Compass grid layout: 3x3 with arrows
+                const COMPASS_GRID: (({ value: Direction; label: string } | null))[] = [
+                  { value: 'northwest' as Direction, label: '↖' },
+                  { value: 'north' as Direction, label: '↑' },
+                  { value: 'northeast' as Direction, label: '↗' },
+                  { value: 'west' as Direction, label: '←' },
+                  null, // center empty
+                  { value: 'east' as Direction, label: '→' },
+                  { value: 'southwest' as Direction, label: '↙' },
+                  { value: 'south' as Direction, label: '↓' },
+                  { value: 'southeast' as Direction, label: '↘' },
                 ];
                 return redirectSpells.map(spell => {
                   if (!spell) return null;
                   const currentDir = placedChar.spellDirectionOverrides?.[spell.id] || 'north';
                   return (
-                    <div key={spell.id} className="mt-1.5 w-full" onClick={e => e.stopPropagation()}>
-                      <div className="text-[10px] text-purple-300 font-medium text-center mb-1">
+                    <div key={spell.id} className="mt-1 w-full" onClick={e => e.stopPropagation()}>
+                      <div className="text-[9px] text-purple-300 font-medium text-center mb-0.5">
                         🔄 {spell.name}
                       </div>
-                      <div className="flex flex-wrap gap-1 justify-center">
-                        {DIRECTIONS.map(d => (
+                      <div className="grid grid-cols-3 gap-px mx-auto" style={{ width: '54px' }}>
+                        {COMPASS_GRID.map((d, i) => d ? (
                           <button
                             key={d.value}
                             onClick={(e) => {
                               e.stopPropagation();
                               onSpellDirectionOverride(charId, spell.id, d.value);
                             }}
-                            className={`w-6 h-6 text-[9px] font-bold rounded transition-colors ${
+                            className={`w-[17px] h-[17px] text-[10px] font-bold rounded-sm transition-colors flex items-center justify-center ${
                               currentDir === d.value
                                 ? 'bg-purple-600 text-white border border-purple-400'
                                 : 'bg-stone-700 text-stone-400 border border-stone-600 hover:bg-stone-600'
@@ -260,6 +262,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                           >
                             {d.label}
                           </button>
+                        ) : (
+                          <div key={i} className="w-[17px] h-[17px]" />
                         ))}
                       </div>
                     </div>

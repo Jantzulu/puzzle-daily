@@ -173,7 +173,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
           return (
             <div
               key={enemy.enemyId}
-              className="px-1 py-1 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center"
+              className="px-1 py-1 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center max-w-[100px]"
             >
               {/* Sprite */}
               <div className="relative flex-shrink-0">
