@@ -216,8 +216,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </ul>
               )}
 
-              {/* Redirect spell direction picker (for placed heroes with user-input redirect spells) */}
-              {isPlaced && onSpellDirectionOverride && (() => {
+              {/* Redirect spell direction display/picker */}
+              {isPlaced && (() => {
                 const placedChar = placedCharacters.find(pc => pc.characterId === charId);
                 if (!placedChar) return null;
                 // Find redirect spells that accept user input
@@ -226,21 +226,38 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   .map(a => loadSpellAsset(a.spellId!))
                   .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput);
                 if (redirectSpells.length === 0) return null;
-                // Compass grid layout: 3x3 with arrows
-                const COMPASS_GRID: (({ value: Direction; label: string } | null))[] = [
-                  { value: 'northwest' as Direction, label: '↖' },
-                  { value: 'north' as Direction, label: '↑' },
-                  { value: 'northeast' as Direction, label: '↗' },
-                  { value: 'west' as Direction, label: '←' },
-                  null, // center empty
-                  { value: 'east' as Direction, label: '→' },
-                  { value: 'southwest' as Direction, label: '↙' },
-                  { value: 'south' as Direction, label: '↓' },
-                  { value: 'southeast' as Direction, label: '↘' },
-                ];
+
+                const DIR_ARROWS: Record<string, string> = {
+                  north: '↑', northeast: '↗', east: '→', southeast: '↘',
+                  south: '↓', southwest: '↙', west: '←', northwest: '↖',
+                };
+
                 return redirectSpells.map(spell => {
                   if (!spell) return null;
                   const currentDir = placedChar.spellDirectionOverrides?.[spell.id] || 'north';
+
+                  // Read-only: just show the selected direction
+                  if (!onSpellDirectionOverride) {
+                    return (
+                      <div key={spell.id} className="mt-1 w-full text-center">
+                        <span className="text-[9px] text-purple-300">🔄</span>
+                        <span className="text-sm font-bold text-purple-300 ml-0.5">{DIR_ARROWS[currentDir] || '↑'}</span>
+                      </div>
+                    );
+                  }
+
+                  // Interactive: compass grid picker
+                  const COMPASS_GRID: (({ value: Direction; label: string } | null))[] = [
+                    { value: 'northwest' as Direction, label: '↖' },
+                    { value: 'north' as Direction, label: '↑' },
+                    { value: 'northeast' as Direction, label: '↗' },
+                    { value: 'west' as Direction, label: '←' },
+                    null,
+                    { value: 'east' as Direction, label: '→' },
+                    { value: 'southwest' as Direction, label: '↙' },
+                    { value: 'south' as Direction, label: '↓' },
+                    { value: 'southeast' as Direction, label: '↘' },
+                  ];
                   return (
                     <div key={spell.id} className="mt-1 w-full" onClick={e => e.stopPropagation()}>
                       <div className="text-[9px] text-purple-300 font-medium text-center mb-0.5">
