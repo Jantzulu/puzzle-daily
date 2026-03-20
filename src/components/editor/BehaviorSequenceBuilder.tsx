@@ -1,4 +1,5 @@
 import React, { useState, useCallback } from 'react';
+import { useNavigate } from 'react-router';
 import { Direction, ActionType, TURN_INTERVAL_MS } from '../../types/game';
 import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
 import { loadSpellAsset } from '../../utils/assetStorage';
@@ -340,6 +341,7 @@ interface SpellConfigProps {
 }
 
 const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpdate, onSelectSpell }) => {
+  const navigate = useNavigate();
   const turnEquivalent = (ms: number) => Math.round((ms / TURN_INTERVAL_MS) * 10) / 10;
 
   // Event options differ by context
@@ -373,12 +375,18 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
       {/* Spell picker */}
       {spell ? (
         <div className="flex items-center gap-2 dungeon-panel p-2 rounded">
-          {spell.thumbnailIcon && <img src={spell.thumbnailIcon} alt={spell.name} className="w-8 h-8 object-contain" />}
-          <div className="flex-1">
-            <div className="text-sm font-semibold">{spell.name}</div>
-            <div className="text-xs text-stone-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
-          </div>
-          <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-arcane-700 rounded hover:bg-arcane-600">Change</button>
+          <button
+            onClick={() => navigate(`/assets?tab=spells&id=${spell.id}`)}
+            className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left"
+            title="Edit this spell"
+          >
+            {spell.thumbnailIcon && <img src={spell.thumbnailIcon} alt={spell.name} className="w-8 h-8 object-contain" />}
+            <div className="min-w-0">
+              <div className="text-sm font-semibold text-arcane-300 underline decoration-arcane-600">{spell.name}</div>
+              <div className="text-xs text-stone-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
+            </div>
+          </button>
+          <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-arcane-700 rounded hover:bg-arcane-600 flex-shrink-0">Change</button>
         </div>
       ) : (
         <button onClick={onSelectSpell} className="px-3 py-1 bg-moss-700 rounded text-xs hover:bg-moss-600">Select Spell</button>

@@ -243,6 +243,25 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                     {spell.range && <span>Range: {spell.range}</span>}
                     {spell.radius && <span>Radius: {spell.radius}</span>}
                   </div>
+                  {/* Entity usage */}
+                  {(() => {
+                    const usages = findAssetUsages('spell', spell.id);
+                    if (usages.length === 0) return null;
+                    return (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {usages.map((u, i) => (
+                          <span
+                            key={i}
+                            className={`text-[10px] px-1.5 py-0.5 rounded ${
+                              u.type === 'character' ? 'bg-arcane-900/60 text-arcane-300' : 'bg-blood-900/60 text-blood-300'
+                            }`}
+                          >
+                            {u.type === 'character' ? '🛡' : '💀'} {u.name}
+                          </span>
+                        ))}
+                      </div>
+                    );
+                  })()}
                 </div>
               ))
             )}
