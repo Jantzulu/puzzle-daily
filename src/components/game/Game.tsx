@@ -5,7 +5,7 @@ import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { initializeGameState, executeTurn, checkVictoryConditions } from '../../engine/simulation';
+import { initializeGameState, executeTurn, checkVictoryConditions, updateProjectiles } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
@@ -380,6 +380,11 @@ export const Game: React.FC = () => {
             });
           });
         }
+
+        // Force projectiles to catch up before advancing the turn.
+        // This ensures all projectile collisions are resolved BEFORE entities move,
+        // eliminating the race between requestAnimationFrame and setInterval timers.
+        updateProjectiles(stateCopy);
 
         const newState = executeTurn(stateCopy);
 
