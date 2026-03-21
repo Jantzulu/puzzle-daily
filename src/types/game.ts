@@ -809,10 +809,10 @@ export interface Projectile {
   hitVfxX?: number;                 // World position for hit VFX
   hitVfxY?: number;
 
-  // Pending damage — stored at turn boundary, applied when visual reaches resolvedHitTileIndex
+  // Pending damage — applied when visual reaches resolvedHitTileIndex (not at turn boundary)
   pendingDamage?: {
     entityId: string;
-    entityIndex?: number;
+    entityIndex?: number;       // Array index for duplicate enemies
     isEnemy: boolean;
     damage: number;
     isRedirect?: boolean;
