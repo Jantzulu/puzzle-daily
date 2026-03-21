@@ -2078,6 +2078,11 @@ function resolveProjectilesTurn(gameState: GameState): void {
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active) continue;
 
+    // Skip already-reflected projectiles — their full path and collisions
+    // were resolved when the reflect happened. Let the visual system
+    // animate through the existing combined path and apply pendingDamage.
+    if (proj.reflected) continue;
+
     // Only clear previous turn's resolution metadata if visual already consumed it
     // (resolvedHitTileIndex is cleared by the visual system when it reaches that tile)
     if (proj.resolvedHitTileIndex === undefined) {
@@ -2234,25 +2239,20 @@ function resolveProjectilesTurn(gameState: GameState): void {
       turnTiles.push({ x: checkX, y: checkY });
       const currentPathIndex = turnTiles.length - 1;
 
-      // Check bounds
-      if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
-        proj.deactivateOnArrival = true;
-        proj.resolvedHitTileIndex = currentPathIndex;
-        break;
-      }
+      // Check bounds and walls — stop at the last valid tile before the obstacle
+      const outOfBounds = !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height);
+      const tile = outOfBounds ? null : gameState.puzzle.tiles[checkY]?.[checkX];
+      const isWallOrVoid = outOfBounds || !tile || tile.type === TileTypeEnum.WALL;
 
-      // Check wall
-      const tile = gameState.puzzle.tiles[checkY]?.[checkX];
-      if (!tile || tile.type === TileTypeEnum.WALL) {
-        if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+      if (isWallOrVoid) {
+        if (!outOfBounds && proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
           triggerAOEExplosion(checkX, checkY, proj.attackData,
             proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
         }
         hitWall = true;
         proj.deactivateOnArrival = true;
-        // Set hit at previous tile (last valid position)
+        // Set hit at previous tile (last valid position) and remove the wall/void tile
         proj.resolvedHitTileIndex = Math.max(0, currentPathIndex - 1);
-        // Remove the wall tile from the visual path
         turnTiles.pop();
         break;
       }
