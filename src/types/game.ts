@@ -722,6 +722,7 @@ export interface CustomAttack {
 
   // Visuals
   projectileSprite?: SpriteReference;  // Visual for projectile
+  projectileScale?: number;            // Scale multiplier for projectile visual (0.1-3.0, default 1.0)
   aoeEffectSprite?: SpriteReference;   // Visual for AOE tiles when spell cast
   hitEffectSprite?: SpriteReference;   // Particle on damage impact
   healingEffectSprite?: SpriteReference; // Particle on healing
@@ -800,6 +801,27 @@ export interface Projectile {
   teamSwapped?: boolean;      // True = targeting is flipped (hero proj hits heroes, enemy proj hits enemies)
   reflectTintColor?: string;            // Tint color applied to reflected projectile
   reflectOverrideSprite?: SpriteReference; // Replacement sprite for reflected projectile
+  reflectAtTileIndex?: number; // Tile index in combined path where reflect happens — tint only applies after this
+
+  // Turn-based resolution metadata (deterministic collision)
+  resolvedHitTileIndex?: number;    // Tile index in tilePath where hit was resolved (undefined = no hit this turn)
+  deactivateOnArrival?: boolean;    // Deactivate when visual reaches hit tile or end of path
+  hitVfxSprite?: SpriteReference;   // VFX to spawn when visual reaches hit tile
+  hitVfxX?: number;                 // World position for hit VFX
+  hitVfxY?: number;
+
+  // Pending damage — applied when visual reaches resolvedHitTileIndex (not at turn boundary)
+  pendingDamage?: {
+    entityId: string;
+    entityIndex?: number;       // Array index for duplicate enemies
+    isEnemy: boolean;
+    damage: number;
+    isRedirect?: boolean;
+    redirectData?: CustomAttack;
+    spellAssetId?: string;
+    sourceId?: string;
+    sourceIsEnemy?: boolean;
+  };
 }
 
 /**
