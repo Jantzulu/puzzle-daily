@@ -200,6 +200,13 @@ function reflectProjectile(
   // Clear piercing tracking so reflected projectile can hit new targets
   proj.hitEntityIds = [(reflector as any).characterId || (reflector as any).enemyId];
 
+  // Debug: log reflected projectile's new path and nearby targets
+  const reflectedDir = proj.direction;
+  const pathTiles = proj.tilePath ? proj.tilePath.map((t: {x:number,y:number}) => `(${t.x},${t.y})`).join('→') : 'no tilePath';
+  const nearbyEnemies = gameState.puzzle.enemies.filter(e => !e.dead).map(e => `${e.enemyId}@(${Math.floor(e.x)},${Math.floor(e.y)})`);
+  const nearbyChars = gameState.placedCharacters.filter(c => !c.dead).map(c => `${c.characterId}@(${Math.floor(c.x)},${Math.floor(c.y)})`);
+  console.log(`[Reflect FIRED] Proj ${proj.id.slice(-6)} reflected at (${startX},${startY}) dir=${reflectedDir} teamSwapped=${proj.teamSwapped} path=[${pathTiles}] enemies=[${nearbyEnemies}] chars=[${nearbyChars}] hitEntityIds=[${proj.hitEntityIds}]`);
+
   // Spawn reflect VFX
   gameState.activeParticles = gameState.activeParticles || [];
   gameState.activeParticles.push({
@@ -211,58 +218,6 @@ function reflectProjectile(
     duration: 300,
     scale: 0.8,
   });
-
-  // Immediate close-range hit check: if any valid target is on the first 2 tiles of
-  // the reflected path, apply damage instantly (prevents timing misses at close range)
-  if (proj.tilePath && proj.tilePath.length > 1) {
-    const closeTiles = proj.tilePath.slice(0, 3); // Check reflector tile + next 2
-    const isHealingProj = proj.attackData.healing !== undefined;
-    if (!isHealingProj) {
-      // Determine which team to target after reflection
-      const targetsEnemies = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
-      const targetsChars = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
-
-      for (const tile of closeTiles) {
-        if (targetsEnemies) {
-          const nearEnemy = gameState.puzzle.enemies.find(
-            e => !e.dead && Math.floor(e.x) === tile.x && Math.floor(e.y) === tile.y &&
-                 !(proj.hitEntityIds?.includes(e.enemyId))
-          );
-          if (nearEnemy) {
-            const baseDmg = proj.attackData.damage ?? 1;
-            const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, nearEnemy.facing);
-            const dmg = isCrit ? baseDmg * 2 : baseDmg;
-            applyDamageToEntityNoDeflect(nearEnemy, dmg, gameState);
-            if (nearEnemy.dead) handleEntityDeathDrop(nearEnemy, true, gameState);
-            if (!proj.hitEntityIds) proj.hitEntityIds = [];
-            proj.hitEntityIds.push(nearEnemy.enemyId);
-            if (!proj.attackData.projectilePierces) {
-              proj.active = false;
-              break;
-            }
-          }
-        }
-        if (targetsChars) {
-          const nearChar = gameState.placedCharacters.find(
-            c => !c.dead && Math.floor(c.x) === tile.x && Math.floor(c.y) === tile.y &&
-                 !(proj.hitEntityIds?.includes(c.characterId))
-          );
-          if (nearChar) {
-            const baseDmg = proj.attackData.damage ?? 1;
-            const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, nearChar.facing);
-            const dmg = isCrit ? baseDmg * 2 : baseDmg;
-            applyDamageToEntityNoDeflect(nearChar, dmg, gameState);
-            if (!proj.hitEntityIds) proj.hitEntityIds = [];
-            proj.hitEntityIds.push(nearChar.characterId);
-            if (!proj.attackData.projectilePierces) {
-              proj.active = false;
-              break;
-            }
-          }
-        }
-      }
-    }
-  }
 
   return true;
 }
@@ -2374,6 +2329,14 @@ export function updateProjectiles(gameState: GameState): void {
                  !(proj.hitEntityIds?.includes(e.enemyId))
           );
 
+          // Debug reflected projectile collision checks
+          if (proj.reflected) {
+            const allEnemiesOnTile = gameState.puzzle.enemies.filter(e => !e.dead && Math.floor(e.x) === tileX && Math.floor(e.y) === tileY);
+            if (allEnemiesOnTile.length > 0 || hitEnemy) {
+              console.log(`[Reflect HIT CHECK] Proj ${proj.id.slice(-6)} tile (${tileX},${tileY}): found=${hitEnemy ? hitEnemy.enemyId : 'NONE'} allOnTile=${allEnemiesOnTile.map(e => e.enemyId + (proj.hitEntityIds?.includes(e.enemyId) ? '(SKIPPED-hitIds)' : '')).join(',')} hitEntityIds=[${proj.hitEntityIds}]`);
+            }
+          }
+
           if (hitEnemy) {
             // Check for Reflect — bounce projectile back instead of applying effects
             if (hasReflect(hitEnemy) && !proj.reflected && canReflectDirection(hitEnemy, proj.direction)) {
@@ -2639,6 +2602,9 @@ export function updateProjectiles(gameState: GameState): void {
 
     // For non-homing projectiles that reached max range, deactivate after collision check
     // This ensures projectiles can hit enemies on their final tile before disappearing
+    if (shouldDeactivateAtEnd && proj.reflected) {
+      console.log(`[Reflect END] Proj ${proj.id.slice(-6)} deactivating at (${Math.floor(proj.x)},${Math.floor(proj.y)}) hitAnything=${entityHitAndStopped}`);
+    }
     if (shouldDeactivateAtEnd && !entityHitAndStopped) {
       // Trigger AOE at final position if configured
       if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
