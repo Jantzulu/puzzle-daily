@@ -1239,7 +1239,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
+                const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1256,7 +1256,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
+                const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1297,7 +1297,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
+                const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1314,7 +1314,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
+                const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -2529,10 +2529,10 @@ function drawEnemy(
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
     drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop);
 
-    // Draw direction indicator next to health bar — green if moving, grey for facing only
+    // Draw direction indicator next to health bar — gold if moving, grey for facing only
     if (enemyData) {
       const enemyHasMovement = enemyHasMovementActions(enemyData.behavior);
-      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss, enemyHasMovement);
+      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss, enemyHasMovement, isMoving);
     }
 
     // Draw status effect icons above health bar
@@ -3144,10 +3144,10 @@ function drawCharacter(
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
     drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop);
 
-    // Draw direction indicator next to health bar — green if moving, grey for facing only
+    // Draw direction indicator next to health bar — gold if moving, grey for facing only
     if (charData) {
       const charHasMovement = hasMovementActions(charData.behavior || []);
-      drawDirectionIndicator(ctx, px, py, facing, false, charHasMovement);
+      drawDirectionIndicator(ctx, px, py, facing, false, charHasMovement, isMoving);
     }
 
     // Draw status effect icons above health bar
@@ -3156,13 +3156,15 @@ function drawCharacter(
 }
 
 // Draw direction indicator next to health bar (small arrow showing movement/facing direction)
+// isAnimatingMove = entity is currently in a movement animation (position actually changed)
 function drawDirectionIndicator(
   ctx: CanvasRenderingContext2D,
   px: number,
   py: number,
   direction: Direction,
   isBoss: boolean = false,
-  isMoving: boolean = true
+  hasMovement: boolean = true,
+  isAnimatingMove: boolean = false
 ) {
   const arrowSize = 3; // Small arrow
   const barWidth = 30;
@@ -3178,6 +3180,19 @@ function drawDirectionIndicator(
   // Position arrow to the right of health bar, vertically centered with it
   const indicatorX = barEndX + 3; // 3px gap from health bar
   const indicatorY = py + 2 + barHeight / 2; // Centered with health bar (py + 2 is where bar starts)
+
+  // Draw glow behind arrow when entity is actively moving
+  if (isAnimatingMove) {
+    ctx.save();
+    ctx.translate(indicatorX, indicatorY);
+    ctx.shadowColor = 'rgba(255, 200, 50, 0.9)';
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = 'rgba(255, 200, 50, 0.5)';
+    ctx.beginPath();
+    ctx.arc(0, 0, arrowSize + 1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
 
   // Draw arrow rotated based on direction
   ctx.save();
@@ -3198,8 +3213,10 @@ function drawDirectionIndicator(
   ctx.rotate(rotationAngles[direction] || 0);
 
   // Draw a simple arrow pointing right (will be rotated)
-  // Green for moving entities, grey for facing-only entities
-  ctx.fillStyle = isMoving ? 'rgba(255, 200, 50, 0.95)' : 'rgba(180, 180, 180, 0.7)';
+  // Gold for moving entities, grey for facing-only, bright gold when actively animating
+  ctx.fillStyle = isAnimatingMove
+    ? 'rgba(255, 220, 80, 1.0)'
+    : hasMovement ? 'rgba(255, 200, 50, 0.95)' : 'rgba(180, 180, 180, 0.7)';
   ctx.beginPath();
   // Arrow shape: triangle pointing right
   const baseHalfWidth = arrowSize / 2 + 0.5; // Make base 1px wider
