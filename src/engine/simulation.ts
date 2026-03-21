@@ -2530,7 +2530,9 @@ function resolveProjectilesTurn(gameState: GameState): void {
       // The last approach tile and first reflected tile share the reflector's position
       proj.reflectAtTileIndex = turnTiles.length - 1; // Tint applies only after this index
       proj.tilePath = [...turnTiles, ...reflectedTiles];
-      proj.currentTileIndex = 0;
+      // Start visual at the reflect point — approach tiles were already animated last turn
+      // This ensures the reflected animation completes within one turn interval
+      proj.currentTileIndex = Math.max(0, turnTiles.length - 1);
       proj.tileEntryTime = now;
 
       // Update proj position for next turn
