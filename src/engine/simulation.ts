@@ -2478,12 +2478,6 @@ export function updateProjectiles(gameState: GameState): void {
         }
       } else {
         // Damage projectile - check for character hits along entire path
-        if (tilesToCheck.length > 0 && !proj.reflected) {
-          const reflectChars = gameState.placedCharacters.filter(c => !c.dead && hasReflect(c));
-          if (reflectChars.length > 0) {
-            console.log(`[Reflect Debug] Proj ${proj.id.slice(-6)} checking ${tilesToCheck.length} tiles: [${tilesToCheck.map(t => `(${t.x},${t.y})`).join(',')}], reflect chars at: [${reflectChars.map(c => `${c.characterId}@(${Math.floor(c.x)},${Math.floor(c.y)})`).join(',')}]`);
-          }
-        }
         for (const checkTile of tilesToCheck) {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
@@ -2497,12 +2491,7 @@ export function updateProjectiles(gameState: GameState): void {
 
           if (hitCharacter) {
             // Check for Reflect — bounce projectile back instead of applying effects
-            const charHasReflect = hasReflect(hitCharacter);
-            if (charHasReflect) {
-              const dirOk = canReflectDirection(hitCharacter, proj.direction);
-              console.log(`[Reflect Debug] Hit ${hitCharacter.characterId} at (${tileX},${tileY}), hasReflect=${charHasReflect}, dirOk=${dirOk}, reflected=${proj.reflected}, projDir=${proj.direction}, charFacing=${hitCharacter.facing}`);
-            }
-            if (charHasReflect && !proj.reflected && canReflectDirection(hitCharacter, proj.direction)) {
+            if (hasReflect(hitCharacter) && !proj.reflected && canReflectDirection(hitCharacter, proj.direction)) {
               if (reflectProjectile(proj, hitCharacter, gameState, now)) {
                 entityHitAndStopped = true; // Prevent fall-through to other targeting blocks
                 break; // Projectile reversed — stop checking this direction
