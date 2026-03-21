@@ -2315,6 +2315,27 @@ export function updateProjectiles(gameState: GameState): void {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
 
+          // Debug: log reflected projectile near-misses with enemies
+          if (proj.reflected) {
+            const nearEnemies = gameState.puzzle.enemies.filter(e => {
+              if (e.dead) return false;
+              const ex = Math.floor(e.x);
+              const ey = Math.floor(e.y);
+              const dist = Math.abs(ex - tileX) + Math.abs(ey - tileY);
+              return dist <= 1;
+            });
+            for (const ne of nearEnemies) {
+              const ex = Math.floor(ne.x);
+              const ey = Math.floor(ne.y);
+              const dist = Math.abs(ex - tileX) + Math.abs(ey - tileY);
+              if (dist === 0) {
+                console.log(`[REFLECT→HIT] Proj ${proj.id.slice(-6)} tile=(${tileX},${tileY}) enemy@(${ex},${ey}) dir=${proj.direction} path=[${proj.tilePath?.map(t => `(${t.x},${t.y})`).join('→')}]`);
+              } else {
+                console.log(`[REFLECT→MISS] Proj ${proj.id.slice(-6)} tile=(${tileX},${tileY}) enemy@(${ex},${ey}) dist=${dist} dir=${proj.direction} path=[${proj.tilePath?.map(t => `(${t.x},${t.y})`).join('→')}]`);
+              }
+            }
+          }
+
           // Find enemy at current position on this tile
           const hitEnemy = gameState.puzzle.enemies.find(
             e => !e.dead &&
