@@ -114,17 +114,11 @@ const ALL_DIRECTIONS: Direction[] = [
 function getRedirectSpellIds(charId: string): string[] {
   const charData = getCharacter(charId);
   if (!charData) return [];
-  const spellActions = charData.behavior.filter(a => a.type === 'spell' && a.spellId);
-  const spellAssets = spellActions.map(a => loadSpellAsset(a.spellId!));
-  const redirectSpells = spellAssets.filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput);
-  const ids = redirectSpells.map(s => s!.id);
-  if (spellActions.length > 0) {
-    console.log(`[SOLVER] Character ${charId}: ${spellActions.length} spell actions, ${spellAssets.filter(Boolean).length} loaded, ${redirectSpells.length} redirect w/ user input`, {
-      spellTypes: spellAssets.map(s => s ? `${s.name}(${s.templateType}, userInput=${s.redirectAcceptsUserInput})` : 'null'),
-      redirectIds: ids,
-    });
-  }
-  return ids;
+  return charData.behavior
+    .filter(a => a.type === 'spell' && a.spellId)
+    .map(a => loadSpellAsset(a.spellId!))
+    .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput)
+    .map(s => s!.id);
 }
 
 /**
@@ -385,22 +379,10 @@ export function solvePuzzle(
           options.progressCallback({ tested: totalTested, found: bestSolution !== null });
         }
 
-        // Log first few placements with redirect overrides
-        if (totalTested <= 3) {
-          const withOverrides = placements.filter(p => p.spellDirectionOverrides && Object.keys(p.spellDirectionOverrides).length > 0);
-          if (withOverrides.length > 0) {
-            console.log(`[SOLVER] Testing placement #${totalTested} with redirect overrides:`, withOverrides.map(p => `${p.characterId}@(${p.x},${p.y}) dirs=${JSON.stringify(p.spellDirectionOverrides)}`));
-          }
-        }
-
         const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
 
         if (result === 'victory') {
           // Found a solution!
-          const withOverrides = placements.filter(p => p.spellDirectionOverrides && Object.keys(p.spellDirectionOverrides).length > 0);
-          if (withOverrides.length > 0) {
-            console.log(`[SOLVER] Victory with redirect overrides!`, withOverrides.map(p => `${p.characterId} dirs=${JSON.stringify(p.spellDirectionOverrides)}`));
-          }
 
           if (foundMinChars === null) {
             // First solution found - this is the minimum character count
@@ -469,7 +451,7 @@ export async function solvePuzzleAsync(
   const startTime = performance.now();
   const maxTurns = options.maxSimulationTurns ?? 200;
   const maxCombinations = options.maxCombinations ?? 100000;
-  const findFastest = options.findFastest ?? false; // Default to false for async (faster)
+  const findFastest = options.findFastest ?? true; // Default to true to find optimal solution
   const yieldEvery = options.yieldEvery ?? 50;
 
   // Find valid placement tiles
@@ -530,20 +512,9 @@ export async function solvePuzzleAsync(
           };
         }
 
-        // Debug: log first few placements with overrides
-        if (totalTested <= 3) {
-          const ov = placements.filter(p => p.spellDirectionOverrides && Object.keys(p.spellDirectionOverrides).length > 0);
-          if (ov.length > 0) {
-            console.log(`[SOLVER ASYNC] Placement #${totalTested}:`, ov.map(p => `${p.characterId}@(${p.x},${p.y}) dirs=${JSON.stringify(p.spellDirectionOverrides)}`));
-          } else {
-            console.log(`[SOLVER ASYNC] Placement #${totalTested}: no redirect overrides`, placements.map(p => `${p.characterId}@(${p.x},${p.y})`));
-          }
-        }
-
         const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
 
         if (result === 'victory') {
-          console.log(`[SOLVER ASYNC] Victory on placement #${totalTested}!`, placements.map(p => `${p.characterId}@(${p.x},${p.y}) dirs=${JSON.stringify(p.spellDirectionOverrides || {})}`));
           if (foundMinChars === null) {
             foundMinChars = numChars;
           }
@@ -581,7 +552,6 @@ export async function solvePuzzleAsync(
     }
   }
 
-  console.log(`[SOLVER ASYNC] No solution found after ${totalTested} combinations`);
   return {
     solvable: false,
     minCharactersNeeded: null,
