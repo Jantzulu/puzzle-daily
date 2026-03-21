@@ -114,11 +114,17 @@ const ALL_DIRECTIONS: Direction[] = [
 function getRedirectSpellIds(charId: string): string[] {
   const charData = getCharacter(charId);
   if (!charData) return [];
-  return charData.behavior
-    .filter(a => a.type === 'spell' && a.spellId)
-    .map(a => loadSpellAsset(a.spellId!))
-    .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput)
-    .map(s => s!.id);
+  const spellActions = charData.behavior.filter(a => a.type === 'spell' && a.spellId);
+  const spellAssets = spellActions.map(a => loadSpellAsset(a.spellId!));
+  const redirectSpells = spellAssets.filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput);
+  const ids = redirectSpells.map(s => s!.id);
+  if (spellActions.length > 0) {
+    console.log(`[SOLVER] Character ${charId}: ${spellActions.length} spell actions, ${spellAssets.filter(Boolean).length} loaded, ${redirectSpells.length} redirect w/ user input`, {
+      spellTypes: spellAssets.map(s => s ? `${s.name}(${s.templateType}, userInput=${s.redirectAcceptsUserInput})` : 'null'),
+      redirectIds: ids,
+    });
+  }
+  return ids;
 }
 
 /**
@@ -379,10 +385,22 @@ export function solvePuzzle(
           options.progressCallback({ tested: totalTested, found: bestSolution !== null });
         }
 
+        // Log first few placements with redirect overrides
+        if (totalTested <= 3) {
+          const withOverrides = placements.filter(p => p.spellDirectionOverrides && Object.keys(p.spellDirectionOverrides).length > 0);
+          if (withOverrides.length > 0) {
+            console.log(`[SOLVER] Testing placement #${totalTested} with redirect overrides:`, withOverrides.map(p => `${p.characterId}@(${p.x},${p.y}) dirs=${JSON.stringify(p.spellDirectionOverrides)}`));
+          }
+        }
+
         const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
 
         if (result === 'victory') {
           // Found a solution!
+          const withOverrides = placements.filter(p => p.spellDirectionOverrides && Object.keys(p.spellDirectionOverrides).length > 0);
+          if (withOverrides.length > 0) {
+            console.log(`[SOLVER] Victory with redirect overrides!`, withOverrides.map(p => `${p.characterId} dirs=${JSON.stringify(p.spellDirectionOverrides)}`));
+          }
 
           if (foundMinChars === null) {
             // First solution found - this is the minimum character count
