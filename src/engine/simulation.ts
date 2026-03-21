@@ -2046,37 +2046,6 @@ function resolveProjectilesTurn(gameState: GameState): void {
     proj.hitVfxX = undefined;
     proj.hitVfxY = undefined;
 
-    // Process deferred reflect from previous turn
-    if (proj.pendingReflectEntityId) {
-      let reflector: PlacedCharacter | PlacedEnemy | undefined;
-      if (proj.pendingReflectIsEnemy) {
-        if (proj.pendingReflectEnemyIndex !== undefined) {
-          const e = gameState.puzzle.enemies[proj.pendingReflectEnemyIndex];
-          if (e && !e.dead) reflector = e;
-        }
-        if (!reflector) {
-          reflector = gameState.puzzle.enemies.find(e => e.enemyId === proj.pendingReflectEntityId && !e.dead);
-        }
-      } else {
-        reflector = gameState.placedCharacters.find(c => c.characterId === proj.pendingReflectEntityId && !c.dead);
-      }
-      // Clear pending reflect
-      proj.pendingReflectEntityId = undefined;
-      proj.pendingReflectIsEnemy = undefined;
-      proj.pendingReflectEnemyIndex = undefined;
-
-      if (reflector) {
-        reflectProjectile(proj, reflector, gameState, now);
-        // Don't process further this turn — let the reflected path be set up for visual
-        // The reflected projectile will be resolved on the NEXT turn
-        continue;
-      } else {
-        // Reflector died — deactivate projectile
-        proj.active = false;
-        continue;
-      }
-    }
-
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
     const tilesPerTurn = proj.speed || 4;
@@ -2109,10 +2078,7 @@ function resolveProjectilesTurn(gameState: GameState): void {
           if (proj.sourceCharacterId && proj.targetIsEnemy) {
             const enemy = targetEntity as PlacedEnemy;
             if (hasReflect(enemy) && !proj.reflected && canReflectDirection(enemy, proj.direction)) {
-              proj.pendingReflectEntityId = enemy.enemyId;
-              proj.pendingReflectIsEnemy = true;
-              proj.pendingReflectEnemyIndex = gameState.puzzle.enemies.indexOf(enemy);
-              proj.deactivateOnArrival = true; // Homing: deactivate at target, reflect next turn
+              reflectProjectile(proj, enemy, gameState, now);
               continue;
             }
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -2136,9 +2102,7 @@ function resolveProjectilesTurn(gameState: GameState): void {
           } else if (proj.sourceEnemyId && !proj.targetIsEnemy) {
             const char = targetEntity as PlacedCharacter;
             if (hasReflect(char) && !proj.reflected && canReflectDirection(char, proj.direction)) {
-              proj.pendingReflectEntityId = char.characterId;
-              proj.pendingReflectIsEnemy = false;
-              proj.deactivateOnArrival = true; // Homing: deactivate at target, reflect next turn
+              reflectProjectile(proj, char, gameState, now);
               continue;
             }
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -2290,12 +2254,7 @@ function resolveProjectilesTurn(gameState: GameState): void {
           );
           if (hitEnemy) {
             if (hasReflect(hitEnemy) && !proj.reflected && canReflectDirection(hitEnemy, proj.direction)) {
-              // Defer reflect to next turn — let visual show the approach first
-              proj.pendingReflectEntityId = hitEnemy.enemyId;
-              proj.pendingReflectIsEnemy = true;
-              proj.pendingReflectEnemyIndex = gameState.puzzle.enemies.indexOf(hitEnemy);
-              proj.deactivateOnArrival = false; // Don't deactivate — will reflect next turn
-              proj.resolvedHitTileIndex = currentPathIndex;
+              reflectProjectile(proj, hitEnemy, gameState, now);
               wasReflectedThisTurn = true;
               break;
             }
@@ -2360,11 +2319,7 @@ function resolveProjectilesTurn(gameState: GameState): void {
           );
           if (hitChar) {
             if (hasReflect(hitChar) && !proj.reflected && canReflectDirection(hitChar, proj.direction)) {
-              // Defer reflect to next turn — let visual show the approach first
-              proj.pendingReflectEntityId = hitChar.characterId;
-              proj.pendingReflectIsEnemy = false;
-              proj.deactivateOnArrival = false;
-              proj.resolvedHitTileIndex = currentPathIndex;
+              reflectProjectile(proj, hitChar, gameState, now);
               wasReflectedThisTurn = true;
               break;
             }
@@ -2407,7 +2362,7 @@ function resolveProjectilesTurn(gameState: GameState): void {
     }
 
     // If not hit and not wall, check if reached max range
-    if (!hitSomething && !hitWall) {
+    if (!hitSomething && !hitWall && !wasReflectedThisTurn) {
       const newDist = Math.min(endTile, range);
       if (newDist >= range) {
         if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -2421,9 +2376,117 @@ function resolveProjectilesTurn(gameState: GameState): void {
       }
     }
 
-    // Set up the visual tile path for animation
-    // Skip if projectile was reflected — reflectProjectile() already set up the correct path
-    if (!wasReflectedThisTurn) {
+    // Handle reflected projectile: build combined approach + reflected path
+    if (wasReflectedThisTurn) {
+      // turnTiles has the approach path (up to and including the reflect tile)
+      // reflectProjectile already reversed direction, updated startX/Y, targetX/Y
+      // Now compute how far the reflected projectile travels with remaining tiles this turn
+      const tilesUsedApproaching = turnTiles.length - 1; // tiles traveled to reach reflector
+      const remainingTilesThisTurn = Math.max(0, tilesPerTurn - tilesUsedApproaching);
+
+      const reflectedOffset = getDirectionOffset(proj.direction); // new reversed direction
+      const reflectedRange = proj.attackData.range || 10;
+      const reflectedTiles: Array<{ x: number; y: number }> = [];
+
+      // Resolve reflected path collision for remaining tiles
+      let reflectedHitSomething = false;
+      for (let rDist = 1; rDist <= Math.min(remainingTilesThisTurn, reflectedRange); rDist++) {
+        const rCheckX = Math.floor(proj.startX + reflectedOffset.dx * rDist);
+        const rCheckY = Math.floor(proj.startY + reflectedOffset.dy * rDist);
+
+        // Check bounds/wall
+        if (!isInBounds(rCheckX, rCheckY, gameState.puzzle.width, gameState.puzzle.height)) break;
+        const rTile = gameState.puzzle.tiles[rCheckY]?.[rCheckX];
+        if (!rTile || rTile.type === TileTypeEnum.WALL) break;
+
+        reflectedTiles.push({ x: rCheckX, y: rCheckY });
+
+        // Check for entity hits (reflected projectile targets opposite team)
+        const rEffCharFired = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
+        const rEffEnemyFired = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
+
+        if (rEffCharFired && !isHealingProjectile) {
+          const rHitEnemy = gameState.puzzle.enemies.find(
+            e => !e.dead && Math.floor(e.x) === rCheckX && Math.floor(e.y) === rCheckY &&
+                 !(proj.hitEntityIds?.includes(e.enemyId))
+          );
+          if (rHitEnemy) {
+            proj.hitEntityIds?.push(rHitEnemy.enemyId);
+            if (proj.attackData.isRedirect) {
+              if (!isSteadfast(rHitEnemy)) applyRedirect(rHitEnemy, proj.attackData, proj.direction);
+            } else {
+              const baseDmg = proj.attackData.damage ?? 0;
+              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy.facing);
+              const damage = isCrit ? baseDmg * 2 : baseDmg;
+              applyDamageToEntityNoDeflect(rHitEnemy, damage, gameState);
+              if (rHitEnemy.dead) handleEntityDeathDrop(rHitEnemy, true, gameState);
+              if (proj.spellAssetId && !rHitEnemy.dead) {
+                applyStatusEffectFromProjectile(rHitEnemy, proj.spellAssetId, proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+              }
+            }
+            const hitSprite = proj.attackData.hitEffectSprite;
+            if (hitSprite) { proj.hitVfxSprite = hitSprite; proj.hitVfxX = rHitEnemy.x; proj.hitVfxY = rHitEnemy.y; }
+            reflectedHitSomething = true;
+            if (!canPierce) {
+              proj.deactivateOnArrival = true;
+              proj.resolvedHitTileIndex = turnTiles.length + reflectedTiles.length - 1;
+              break;
+            }
+          }
+        } else if (rEffEnemyFired && !isHealingProjectile) {
+          const rHitChar = gameState.placedCharacters.find(
+            c => !c.dead && Math.floor(c.x) === rCheckX && Math.floor(c.y) === rCheckY &&
+                 !(proj.hitEntityIds?.includes(c.characterId))
+          );
+          if (rHitChar) {
+            proj.hitEntityIds?.push(rHitChar.characterId);
+            if (proj.attackData.isRedirect) {
+              if (!isSteadfast(rHitChar)) applyRedirect(rHitChar, proj.attackData, proj.direction);
+            } else {
+              const baseDmg = proj.attackData.damage ?? 0;
+              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar.facing);
+              const damage = isCrit ? baseDmg * 2 : baseDmg;
+              applyDamageToEntityNoDeflect(rHitChar, damage, gameState);
+              if (rHitChar.dead) handleEntityDeathDrop(rHitChar, false, gameState);
+              if (proj.spellAssetId && !rHitChar.dead) {
+                applyStatusEffectFromProjectile(rHitChar, proj.spellAssetId, proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
+              }
+            }
+            const hitSprite = proj.attackData.hitEffectSprite;
+            if (hitSprite) { proj.hitVfxSprite = hitSprite; proj.hitVfxX = rHitChar.x; proj.hitVfxY = rHitChar.y; }
+            reflectedHitSomething = true;
+            if (!canPierce) {
+              proj.deactivateOnArrival = true;
+              proj.resolvedHitTileIndex = turnTiles.length + reflectedTiles.length - 1;
+              break;
+            }
+          }
+        }
+      }
+
+      // If reflected projectile reached max range without hitting, deactivate
+      if (!reflectedHitSomething && remainingTilesThisTurn >= reflectedRange) {
+        proj.deactivateOnArrival = true;
+      }
+
+      // Build combined path: approach tiles + reflected tiles
+      // The last approach tile and first reflected tile share the reflector's position
+      proj.tilePath = [...turnTiles, ...reflectedTiles];
+      proj.currentTileIndex = 0;
+      proj.tileEntryTime = now;
+
+      // Update proj position for next turn
+      if (reflectedTiles.length > 0) {
+        const lastReflectedTile = reflectedTiles[reflectedTiles.length - 1];
+        proj.x = lastReflectedTile.x;
+        proj.y = lastReflectedTile.y;
+      } else {
+        // Reflected projectile didn't travel — stays at reflector position
+        proj.x = proj.startX;
+        proj.y = proj.startY;
+      }
+    } else {
+      // Normal (non-reflected) path setup
       proj.tilePath = turnTiles;
       proj.currentTileIndex = 0;
       proj.tileEntryTime = now;
