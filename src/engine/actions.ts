@@ -1473,10 +1473,6 @@ function executeSpell(
   }
   let homingTargets: HomingTarget[] | undefined;
 
-  // Track actual target positions for non-homing aim-at projectiles
-  // This ensures tile paths go through the target's actual position, not just along the snapped compass direction
-  let aimAtPositions: Array<{ x: number; y: number }> | undefined;
-
   // Check for auto-targeting (enemies targeting characters OR characters targeting enemies)
   if (action.autoTargetNearestCharacter) {
     // Used by enemies to target characters
@@ -1487,10 +1483,6 @@ function executeSpell(
 
     if (nearestCharacters.length > 0) {
       castDirections = nearestCharacters.map(target => target.direction);
-      // Store actual target positions for non-homing aim-at
-      if (!action.homing) {
-        aimAtPositions = nearestCharacters.map(target => ({ x: target.character.x, y: target.character.y }));
-      }
       // Store target info for homing
       if (action.homing) {
         homingTargets = nearestCharacters.map(target => ({
@@ -1511,10 +1503,6 @@ function executeSpell(
 
     if (nearestEnemies.length > 0) {
       castDirections = nearestEnemies.map(target => target.direction);
-      // Store actual target positions for non-homing aim-at
-      if (!action.homing) {
-        aimAtPositions = nearestEnemies.map(target => ({ x: target.enemy.x, y: target.enemy.y }));
-      }
       // Store target info for homing
       if (action.homing) {
         homingTargets = nearestEnemies.map(target => ({
@@ -1581,8 +1569,7 @@ function executeSpell(
   for (let i = 0; i < castDirections.length; i++) {
     const direction = castDirections[i];
     const homingTarget = homingTargets?.[i];
-    const aimAt = aimAtPositions?.[i];
-    executeSpellInDirection(character, spell, direction, gameState, homingTarget, aimAt);
+    executeSpellInDirection(character, spell, direction, gameState, homingTarget);
   }
 
   // Set cooldown if spell has one
@@ -1604,8 +1591,7 @@ function executeSpellInDirection(
   spell: SpellAsset,
   direction: Direction,
   gameState: GameState,
-  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean },
-  aimAtPosition?: { x: number; y: number }
+  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean }
 ): void {
   // Convert SpellAsset to CustomAttack format for execution
   const attackData: CustomAttack = {
@@ -1660,7 +1646,7 @@ function executeSpellInDirection(
       // Temporarily set character facing for projectile direction
       const origFacing = character.facing;
       character.facing = direction;
-      spawnProjectile(character, attackData, gameState, spell, homingTarget, aimAtPosition);
+      spawnProjectile(character, attackData, gameState, spell, homingTarget);
       character.facing = origFacing;
       break;
 
@@ -1672,7 +1658,7 @@ function executeSpellInDirection(
         // Temporarily set character facing for projectile direction
         const origFacing2 = character.facing;
         character.facing = direction;
-        spawnProjectile(character, attackData, gameState, spell, homingTarget, aimAtPosition);
+        spawnProjectile(character, attackData, gameState, spell, homingTarget);
         character.facing = origFacing2;
       } else {
         // Instant AOE attack
@@ -1696,7 +1682,7 @@ function executeSpellInDirection(
       }
       const origFacingRedirect = character.facing;
       character.facing = direction;
-      spawnProjectile(character, attackData, gameState, spell, homingTarget, aimAtPosition);
+      spawnProjectile(character, attackData, gameState, spell, homingTarget);
       character.facing = origFacingRedirect;
       break;
     }
@@ -1719,8 +1705,7 @@ function spawnProjectile(
   attackData: CustomAttack,
   gameState: GameState,
   spell?: SpellAsset,
-  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean },
-  aimAtPosition?: { x: number; y: number } // For non-homing aim-at: actual target position
+  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean }
 ): void {
   if (!gameState.activeProjectiles) {
     gameState.activeProjectiles = [];
@@ -1751,24 +1736,8 @@ function spawnProjectile(
       targetX = character.x + dx * range;
       targetY = character.y + dy * range;
     }
-  } else if (aimAtPosition) {
-    // Non-homing aim-at: extend path THROUGH the target's position to max range
-    // This ensures the tile path crosses the target's tile with correct Bresenham stepping
-    const dx = aimAtPosition.x - character.x;
-    const dy = aimAtPosition.y - character.y;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    if (dist > 0) {
-      // Extend in the same direction to max range
-      const scale = range / dist;
-      targetX = character.x + dx * scale;
-      targetY = character.y + dy * scale;
-    } else {
-      const { dx: odx, dy: ody } = getDirectionOffset(character.facing);
-      targetX = character.x + odx * range;
-      targetY = character.y + ody * range;
-    }
   } else {
-    // Non-homing: use max range in facing direction
+    // Non-homing: use snapped compass direction × range for clean straight-line paths
     const { dx, dy } = getDirectionOffset(character.facing);
     targetX = character.x + dx * range;
     targetY = character.y + dy * range;
