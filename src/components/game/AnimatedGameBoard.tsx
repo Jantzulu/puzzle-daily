@@ -1239,7 +1239,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = 1 - Math.pow(1 - moveProgress, 2); // Ease-out: leave old tile quickly, arrive smoothly
+                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1256,7 +1256,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = 1 - Math.pow(1 - moveProgress, 2); // Ease-out: leave old tile quickly, arrive smoothly
+                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1297,7 +1297,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = 1 - Math.pow(1 - moveProgress, 2); // Ease-out: leave old tile quickly, arrive smoothly
+                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
@@ -1314,7 +1314,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = 1 - Math.pow(1 - moveProgress, 2); // Ease-out: leave old tile quickly, arrive smoothly
+                const eased = 1 - Math.pow(1 - moveProgress, 4); // Quartic ease-out: depart old tile very quickly
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
