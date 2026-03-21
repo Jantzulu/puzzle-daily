@@ -2046,6 +2046,37 @@ function resolveProjectilesTurn(gameState: GameState): void {
     proj.hitVfxX = undefined;
     proj.hitVfxY = undefined;
 
+    // Process deferred reflect from previous turn
+    if (proj.pendingReflectEntityId) {
+      let reflector: PlacedCharacter | PlacedEnemy | undefined;
+      if (proj.pendingReflectIsEnemy) {
+        if (proj.pendingReflectEnemyIndex !== undefined) {
+          const e = gameState.puzzle.enemies[proj.pendingReflectEnemyIndex];
+          if (e && !e.dead) reflector = e;
+        }
+        if (!reflector) {
+          reflector = gameState.puzzle.enemies.find(e => e.enemyId === proj.pendingReflectEntityId && !e.dead);
+        }
+      } else {
+        reflector = gameState.placedCharacters.find(c => c.characterId === proj.pendingReflectEntityId && !c.dead);
+      }
+      // Clear pending reflect
+      proj.pendingReflectEntityId = undefined;
+      proj.pendingReflectIsEnemy = undefined;
+      proj.pendingReflectEnemyIndex = undefined;
+
+      if (reflector) {
+        reflectProjectile(proj, reflector, gameState, now);
+        // Don't process further this turn — let the reflected path be set up for visual
+        // The reflected projectile will be resolved on the NEXT turn
+        continue;
+      } else {
+        // Reflector died — deactivate projectile
+        proj.active = false;
+        continue;
+      }
+    }
+
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
     const tilesPerTurn = proj.speed || 4;
@@ -2078,7 +2109,10 @@ function resolveProjectilesTurn(gameState: GameState): void {
           if (proj.sourceCharacterId && proj.targetIsEnemy) {
             const enemy = targetEntity as PlacedEnemy;
             if (hasReflect(enemy) && !proj.reflected && canReflectDirection(enemy, proj.direction)) {
-              reflectProjectile(proj, enemy, gameState, now);
+              proj.pendingReflectEntityId = enemy.enemyId;
+              proj.pendingReflectIsEnemy = true;
+              proj.pendingReflectEnemyIndex = gameState.puzzle.enemies.indexOf(enemy);
+              proj.deactivateOnArrival = true; // Homing: deactivate at target, reflect next turn
               continue;
             }
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -2102,7 +2136,9 @@ function resolveProjectilesTurn(gameState: GameState): void {
           } else if (proj.sourceEnemyId && !proj.targetIsEnemy) {
             const char = targetEntity as PlacedCharacter;
             if (hasReflect(char) && !proj.reflected && canReflectDirection(char, proj.direction)) {
-              reflectProjectile(proj, char, gameState, now);
+              proj.pendingReflectEntityId = char.characterId;
+              proj.pendingReflectIsEnemy = false;
+              proj.deactivateOnArrival = true; // Homing: deactivate at target, reflect next turn
               continue;
             }
             if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
@@ -2254,7 +2290,12 @@ function resolveProjectilesTurn(gameState: GameState): void {
           );
           if (hitEnemy) {
             if (hasReflect(hitEnemy) && !proj.reflected && canReflectDirection(hitEnemy, proj.direction)) {
-              reflectProjectile(proj, hitEnemy, gameState, now);
+              // Defer reflect to next turn — let visual show the approach first
+              proj.pendingReflectEntityId = hitEnemy.enemyId;
+              proj.pendingReflectIsEnemy = true;
+              proj.pendingReflectEnemyIndex = gameState.puzzle.enemies.indexOf(hitEnemy);
+              proj.deactivateOnArrival = false; // Don't deactivate — will reflect next turn
+              proj.resolvedHitTileIndex = currentPathIndex;
               wasReflectedThisTurn = true;
               break;
             }
@@ -2319,7 +2360,11 @@ function resolveProjectilesTurn(gameState: GameState): void {
           );
           if (hitChar) {
             if (hasReflect(hitChar) && !proj.reflected && canReflectDirection(hitChar, proj.direction)) {
-              reflectProjectile(proj, hitChar, gameState, now);
+              // Defer reflect to next turn — let visual show the approach first
+              proj.pendingReflectEntityId = hitChar.characterId;
+              proj.pendingReflectIsEnemy = false;
+              proj.deactivateOnArrival = false;
+              proj.resolvedHitTileIndex = currentPathIndex;
               wasReflectedThisTurn = true;
               break;
             }

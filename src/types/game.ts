@@ -808,6 +808,11 @@ export interface Projectile {
   hitVfxSprite?: SpriteReference;   // VFX to spawn when visual reaches hit tile
   hitVfxX?: number;                 // World position for hit VFX
   hitVfxY?: number;
+
+  // Deferred reflect — reflect happens on the next turn after the visual shows the approach
+  pendingReflectEntityId?: string;  // Entity ID of the reflector
+  pendingReflectIsEnemy?: boolean;  // Whether the reflector is an enemy
+  pendingReflectEnemyIndex?: number; // Array index for duplicate enemy handling
 }
 
 /**
