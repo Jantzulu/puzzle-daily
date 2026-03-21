@@ -1957,6 +1957,45 @@ export function updateProjectiles(gameState: GameState): void {
 
     // Check if visual has reached a pre-resolved hit point
     if (proj.resolvedHitTileIndex !== undefined && currentTileIdx >= proj.resolvedHitTileIndex) {
+      // Apply pending damage when visual reaches the hit tile
+      if (proj.pendingDamage) {
+        const pd = proj.pendingDamage;
+        if (pd.isEnemy) {
+          // Find the exact enemy instance
+          let targetEnemy: PlacedEnemy | undefined;
+          if (pd.entityIndex !== undefined && gameState.puzzle.enemies[pd.entityIndex]) {
+            targetEnemy = gameState.puzzle.enemies[pd.entityIndex];
+          }
+          if (!targetEnemy) {
+            targetEnemy = gameState.puzzle.enemies.find(e => e.enemyId === pd.entityId && !e.dead);
+          }
+          if (targetEnemy && !targetEnemy.dead) {
+            if (pd.isRedirect && pd.redirectData) {
+              if (!isSteadfast(targetEnemy)) applyRedirect(targetEnemy, pd.redirectData, proj.direction);
+            } else {
+              applyDamageToEntityNoDeflect(targetEnemy, pd.damage, gameState);
+              if (targetEnemy.dead) handleEntityDeathDrop(targetEnemy, true, gameState);
+              if (pd.spellAssetId && !targetEnemy.dead) {
+                applyStatusEffectFromProjectile(targetEnemy, pd.spellAssetId, pd.sourceId || 'unknown', false, gameState.currentTurn);
+              }
+            }
+          }
+        } else {
+          const targetChar = gameState.placedCharacters.find(c => c.characterId === pd.entityId && !c.dead);
+          if (targetChar) {
+            if (pd.isRedirect && pd.redirectData) {
+              if (!isSteadfast(targetChar)) applyRedirect(targetChar, pd.redirectData, proj.direction);
+            } else {
+              applyDamageToEntityNoDeflect(targetChar, pd.damage, gameState);
+              if (targetChar.dead) handleEntityDeathDrop(targetChar, false, gameState);
+              if (pd.spellAssetId && !targetChar.dead) {
+                applyStatusEffectFromProjectile(targetChar, pd.spellAssetId, pd.sourceId || 'unknown', !!pd.sourceIsEnemy, gameState.currentTurn);
+              }
+            }
+          }
+        }
+        proj.pendingDamage = undefined;
+      }
       // Spawn hit VFX at the resolved position
       if (proj.hitVfxSprite && proj.hitVfxX !== undefined && proj.hitVfxY !== undefined) {
         spawnParticleEffect(proj.hitVfxX, proj.hitVfxY, proj.hitVfxSprite,
@@ -2039,12 +2078,14 @@ function resolveProjectilesTurn(gameState: GameState): void {
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active) continue;
 
-    // Clear previous turn's resolution metadata
-    proj.resolvedHitTileIndex = undefined;
-    proj.deactivateOnArrival = undefined;
-    proj.hitVfxSprite = undefined;
-    proj.hitVfxX = undefined;
-    proj.hitVfxY = undefined;
+    // Only clear previous turn's resolution metadata if visual already consumed it
+    // (resolvedHitTileIndex is cleared by the visual system when it reaches that tile)
+    if (proj.resolvedHitTileIndex === undefined) {
+      proj.deactivateOnArrival = undefined;
+      proj.hitVfxSprite = undefined;
+      proj.hitVfxX = undefined;
+      proj.hitVfxY = undefined;
+    }
 
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
@@ -2412,18 +2453,21 @@ function resolveProjectilesTurn(gameState: GameState): void {
           );
           if (rHitEnemy) {
             proj.hitEntityIds?.push(rHitEnemy.enemyId);
-            if (proj.attackData.isRedirect) {
-              if (!isSteadfast(rHitEnemy)) applyRedirect(rHitEnemy, proj.attackData, proj.direction);
-            } else {
-              const baseDmg = proj.attackData.damage ?? 0;
-              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy.facing);
-              const damage = isCrit ? baseDmg * 2 : baseDmg;
-              applyDamageToEntityNoDeflect(rHitEnemy, damage, gameState);
-              if (rHitEnemy.dead) handleEntityDeathDrop(rHitEnemy, true, gameState);
-              if (proj.spellAssetId && !rHitEnemy.dead) {
-                applyStatusEffectFromProjectile(rHitEnemy, proj.spellAssetId, proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
-              }
-            }
+            const baseDmg = proj.attackData.damage ?? 0;
+            const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy.facing);
+            const damage = isCrit ? baseDmg * 2 : baseDmg;
+            // Store pending damage — applied when visual reaches this tile
+            proj.pendingDamage = {
+              entityId: rHitEnemy.enemyId,
+              entityIndex: gameState.puzzle.enemies.indexOf(rHitEnemy),
+              isEnemy: true,
+              damage,
+              isRedirect: proj.attackData.isRedirect,
+              redirectData: proj.attackData.isRedirect ? proj.attackData : undefined,
+              spellAssetId: proj.spellAssetId,
+              sourceId: proj.sourceCharacterId || 'unknown',
+              sourceIsEnemy: false,
+            };
             const hitSprite = proj.attackData.hitEffectSprite;
             if (hitSprite) { proj.hitVfxSprite = hitSprite; proj.hitVfxX = rHitEnemy.x; proj.hitVfxY = rHitEnemy.y; }
             reflectedHitSomething = true;
@@ -2440,18 +2484,20 @@ function resolveProjectilesTurn(gameState: GameState): void {
           );
           if (rHitChar) {
             proj.hitEntityIds?.push(rHitChar.characterId);
-            if (proj.attackData.isRedirect) {
-              if (!isSteadfast(rHitChar)) applyRedirect(rHitChar, proj.attackData, proj.direction);
-            } else {
-              const baseDmg = proj.attackData.damage ?? 0;
-              const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar.facing);
-              const damage = isCrit ? baseDmg * 2 : baseDmg;
-              applyDamageToEntityNoDeflect(rHitChar, damage, gameState);
-              if (rHitChar.dead) handleEntityDeathDrop(rHitChar, false, gameState);
-              if (proj.spellAssetId && !rHitChar.dead) {
-                applyStatusEffectFromProjectile(rHitChar, proj.spellAssetId, proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
-              }
-            }
+            const baseDmg = proj.attackData.damage ?? 0;
+            const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar.facing);
+            const damage = isCrit ? baseDmg * 2 : baseDmg;
+            // Store pending damage — applied when visual reaches this tile
+            proj.pendingDamage = {
+              entityId: rHitChar.characterId,
+              isEnemy: false,
+              damage,
+              isRedirect: proj.attackData.isRedirect,
+              redirectData: proj.attackData.isRedirect ? proj.attackData : undefined,
+              spellAssetId: proj.spellAssetId,
+              sourceId: proj.sourceEnemyId || 'unknown',
+              sourceIsEnemy: true,
+            };
             const hitSprite = proj.attackData.hitEffectSprite;
             if (hitSprite) { proj.hitVfxSprite = hitSprite; proj.hitVfxX = rHitChar.x; proj.hitVfxY = rHitChar.y; }
             reflectedHitSomething = true;
