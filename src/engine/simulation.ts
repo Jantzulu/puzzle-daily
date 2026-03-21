@@ -2483,6 +2483,21 @@ export function updateProjectiles(gameState: GameState): void {
           const tileX = checkTile.x;
           const tileY = checkTile.y;
 
+          // Debug: log near-misses with reflect heroes
+          if (!proj.reflected) {
+            const reflectHeroes = gameState.placedCharacters.filter(c => !c.dead && hasReflect(c));
+            for (const rh of reflectHeroes) {
+              const hx = Math.floor(rh.x);
+              const hy = Math.floor(rh.y);
+              const dist = Math.abs(hx - tileX) + Math.abs(hy - tileY);
+              if (dist <= 1 && dist > 0) {
+                console.log(`[NEAR MISS] Proj ${proj.id.slice(-6)} tile=(${tileX},${tileY}) hero@(${hx},${hy}) dist=${dist} dir=${proj.direction} path=[${proj.tilePath?.map(t => `(${t.x},${t.y})`).join('→')}]`);
+              } else if (dist === 0) {
+                console.log(`[DIRECT HIT] Proj ${proj.id.slice(-6)} tile=(${tileX},${tileY}) hero@(${hx},${hy}) → will reflect`);
+              }
+            }
+          }
+
           const hitCharacter = gameState.placedCharacters.find(
             c => !c.dead &&
                  Math.floor(c.x) === tileX &&
