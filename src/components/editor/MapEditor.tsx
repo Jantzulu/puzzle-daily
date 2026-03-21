@@ -2044,6 +2044,7 @@ export const MapEditor: React.FC = () => {
         actionIndex: 0,
         active: true,
         dead: false,
+        ...(placement.spellDirectionOverrides ? { spellDirectionOverrides: placement.spellDirectionOverrides } : {}),
       });
     }
 
@@ -2749,9 +2750,18 @@ export const MapEditor: React.FC = () => {
                         <div className="text-xs text-stone-300 space-y-0.5">
                           {validationResult.solutionFound.placements.map((p, i) => {
                             const charData = getCharacter(p.characterId);
+                            const overrides = p.spellDirectionOverrides;
                             return (
                               <div key={i}>
                                 {charData?.name || p.characterId} @ ({p.x}, {p.y}) facing {p.facing}
+                                {overrides && Object.keys(overrides).length > 0 && (
+                                  <span className="text-purple-300 ml-1">
+                                    {Object.entries(overrides).map(([spellId, dir]) => {
+                                      const spell = loadSpellAsset(spellId);
+                                      return `[${spell?.name || 'redirect'} → ${dir}]`;
+                                    }).join(' ')}
+                                  </span>
+                                )}
                               </div>
                             );
                           })}
