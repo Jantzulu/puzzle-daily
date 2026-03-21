@@ -2051,6 +2051,7 @@ function resolveProjectilesTurn(gameState: GameState): void {
     const tilesPerTurn = proj.speed || 4;
 
     let hitSomething = false;
+    let wasReflectedThisTurn = false;
 
     // === HOMING PROJECTILES ===
     if (proj.isHoming && proj.targetEntityId) {
@@ -2254,8 +2255,8 @@ function resolveProjectilesTurn(gameState: GameState): void {
           if (hitEnemy) {
             if (hasReflect(hitEnemy) && !proj.reflected && canReflectDirection(hitEnemy, proj.direction)) {
               reflectProjectile(proj, hitEnemy, gameState, now);
-              // Reflect rebuilds tilePath — don't overwrite it below
-              continue;
+              wasReflectedThisTurn = true;
+              break;
             }
             hitEntityIds.push(hitEnemy.enemyId);
             // Store VFX info for animation
@@ -2319,7 +2320,8 @@ function resolveProjectilesTurn(gameState: GameState): void {
           if (hitChar) {
             if (hasReflect(hitChar) && !proj.reflected && canReflectDirection(hitChar, proj.direction)) {
               reflectProjectile(proj, hitChar, gameState, now);
-              continue;
+              wasReflectedThisTurn = true;
+              break;
             }
             hitEntityIds.push(hitChar.characterId);
             const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitChar.facing);
@@ -2375,9 +2377,12 @@ function resolveProjectilesTurn(gameState: GameState): void {
     }
 
     // Set up the visual tile path for animation
-    proj.tilePath = turnTiles;
-    proj.currentTileIndex = 0;
-    proj.tileEntryTime = now;
+    // Skip if projectile was reflected — reflectProjectile() already set up the correct path
+    if (!wasReflectedThisTurn) {
+      proj.tilePath = turnTiles;
+      proj.currentTileIndex = 0;
+      proj.tileEntryTime = now;
+    }
   }
 }
 
