@@ -4998,6 +4998,14 @@ export const MapEditor: React.FC = () => {
                               )}
                               <span className="text-parchment-100">{charData?.name || p.characterId}</span>
                               <span className="text-stone-500">at ({p.x + 1}, {p.y + 1}) facing {p.facing}</span>
+                              {p.spellDirectionOverrides && Object.keys(p.spellDirectionOverrides).length > 0 && (
+                                <span className="text-purple-300 text-xs">
+                                  {Object.entries(p.spellDirectionOverrides).map(([spellId, dir]) => {
+                                    const spell = loadSpellAsset(spellId);
+                                    return `[${spell?.name || 'redirect'} → ${dir}]`;
+                                  }).join(' ')}
+                                </span>
+                              )}
                             </div>
                           );
                         })}
