@@ -809,6 +809,18 @@ export interface Projectile {
   hitVfxX?: number;                 // World position for hit VFX
   hitVfxY?: number;
 
+  // Pending damage — stored at turn boundary, applied when visual reaches resolvedHitTileIndex
+  pendingDamage?: {
+    entityId: string;
+    entityIndex?: number;
+    isEnemy: boolean;
+    damage: number;
+    isRedirect?: boolean;
+    redirectData?: CustomAttack;
+    spellAssetId?: string;
+    sourceId?: string;
+    sourceIsEnemy?: boolean;
+  };
 }
 
 /**
