@@ -530,9 +530,20 @@ export async function solvePuzzleAsync(
           };
         }
 
+        // Debug: log first few placements with overrides
+        if (totalTested <= 3) {
+          const ov = placements.filter(p => p.spellDirectionOverrides && Object.keys(p.spellDirectionOverrides).length > 0);
+          if (ov.length > 0) {
+            console.log(`[SOLVER ASYNC] Placement #${totalTested}:`, ov.map(p => `${p.characterId}@(${p.x},${p.y}) dirs=${JSON.stringify(p.spellDirectionOverrides)}`));
+          } else {
+            console.log(`[SOLVER ASYNC] Placement #${totalTested}: no redirect overrides`, placements.map(p => `${p.characterId}@(${p.x},${p.y})`));
+          }
+        }
+
         const { result, turns } = simulatePuzzle(puzzle, placements, maxTurns);
 
         if (result === 'victory') {
+          console.log(`[SOLVER ASYNC] Victory on placement #${totalTested}!`, placements.map(p => `${p.characterId}@(${p.x},${p.y}) dirs=${JSON.stringify(p.spellDirectionOverrides || {})}`));
           if (foundMinChars === null) {
             foundMinChars = numChars;
           }
@@ -570,6 +581,7 @@ export async function solvePuzzleAsync(
     }
   }
 
+  console.log(`[SOLVER ASYNC] No solution found after ${totalTested} combinations`);
   return {
     solvable: false,
     minCharactersNeeded: null,
