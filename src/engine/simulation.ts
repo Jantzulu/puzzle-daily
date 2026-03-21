@@ -1912,11 +1912,22 @@ export function updateProjectiles(gameState: GameState): void {
         proj.tileEntryTime = now - ((timeSinceTileEntry % tileTransitTime) * 1000);
       }
 
-      // Update direction for sprite rotation
-      const dx = proj.targetX - proj.startX;
-      const dy = proj.targetY - proj.startY;
-      if (dx !== 0 || dy !== 0) {
-        proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+      // Update direction for sprite rotation based on current tile path segment
+      // This ensures direction naturally flips at reflect points in combined paths
+      if (proj.tilePath && proj.tilePath.length > 1) {
+        const curIdx = proj.currentTileIndex ?? 0;
+        const nextIdx = Math.min(curIdx + 1, proj.tilePath.length - 1);
+        const curTile = proj.tilePath[curIdx];
+        const nxtTile = proj.tilePath[nextIdx];
+        if (curTile && nxtTile && (curTile.x !== nxtTile.x || curTile.y !== nxtTile.y)) {
+          proj.direction = calculateDirectionTo(curTile.x, curTile.y, nxtTile.x, nxtTile.y);
+        }
+      } else {
+        const dx = proj.targetX - proj.startX;
+        const dy = proj.targetY - proj.startY;
+        if (dx !== 0 || dy !== 0) {
+          proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+        }
       }
     } else {
       // LEGACY: Non-homing projectiles without tilePath (shouldn't happen for new projectiles)
