@@ -2421,17 +2421,14 @@ function resolveProjectilesTurn(gameState: GameState): void {
     if (wasReflectedThisTurn) {
       // turnTiles has the approach path (up to and including the reflect tile)
       // reflectProjectile already reversed direction, updated startX/Y, targetX/Y
-      // Now compute how far the reflected projectile travels with remaining tiles this turn
-      const tilesUsedApproaching = turnTiles.length - 1; // tiles traveled to reach reflector
-      const remainingTilesThisTurn = Math.max(0, tilesPerTurn - tilesUsedApproaching);
-
+      // Reflected projectile gets its full range (like wall bounces)
       const reflectedOffset = getDirectionOffset(proj.direction); // new reversed direction
       const reflectedRange = proj.attackData.range || 10;
       const reflectedTiles: Array<{ x: number; y: number }> = [];
 
-      // Resolve reflected path collision for remaining tiles
+      // Resolve reflected path collision for full range
       let reflectedHitSomething = false;
-      for (let rDist = 1; rDist <= Math.min(remainingTilesThisTurn, reflectedRange); rDist++) {
+      for (let rDist = 1; rDist <= reflectedRange; rDist++) {
         const rCheckX = Math.floor(proj.startX + reflectedOffset.dx * rDist);
         const rCheckY = Math.floor(proj.startY + reflectedOffset.dy * rDist);
 
@@ -2534,9 +2531,18 @@ function resolveProjectilesTurn(gameState: GameState): void {
       }
     } else {
       // Normal (non-reflected) path setup
-      proj.tilePath = turnTiles;
-      proj.currentTileIndex = 0;
-      proj.tileEntryTime = now;
+      if (turnTiles.length > 0) {
+        proj.tilePath = turnTiles;
+        proj.currentTileIndex = 0;
+        proj.tileEntryTime = now;
+        // Update proj position deterministically (not frame-dependent)
+        const lastTile = turnTiles[turnTiles.length - 1];
+        proj.x = lastTile.x;
+        proj.y = lastTile.y;
+      } else if (proj.deactivateOnArrival) {
+        // No tiles to travel and should deactivate — remove immediately
+        proj.active = false;
+      }
     }
   }
 }
