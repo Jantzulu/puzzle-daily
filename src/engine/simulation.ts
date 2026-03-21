@@ -2517,6 +2517,7 @@ function resolveProjectilesTurn(gameState: GameState): void {
 
       // Build combined path: approach tiles + reflected tiles
       // The last approach tile and first reflected tile share the reflector's position
+      proj.reflectAtTileIndex = turnTiles.length - 1; // Tint applies only after this index
       proj.tilePath = [...turnTiles, ...reflectedTiles];
       proj.currentTileIndex = 0;
       proj.tileEntryTime = now;

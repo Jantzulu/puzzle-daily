@@ -3497,8 +3497,12 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   // Projectile scale (default 1.0)
   const scale = projectile.attackData.projectileScale ?? 1.0;
 
+  // Determine if visual has passed the reflect point (for tint/sprite swap)
+  const pastReflectPoint = projectile.reflected &&
+    (projectile.reflectAtTileIndex === undefined || (projectile.currentTileIndex ?? 0) >= projectile.reflectAtTileIndex);
+
   // If reflected with an override sprite, use that instead of the original
-  if (projectile.reflected && projectile.reflectOverrideSprite?.spriteData) {
+  if (pastReflectPoint && projectile.reflectOverrideSprite?.spriteData) {
     const overrideData = projectile.reflectOverrideSprite.spriteData;
     if (overrideData.spriteSheet) {
       drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, Math.round(24 * scale), imageCache, now, rotationConfig);
@@ -3532,7 +3536,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
         rotationConfig
       );
       // Apply tint overlay for reflected projectiles (over sprite sheet)
-      if (projectile.reflected && projectile.reflectTintColor) {
+      if (pastReflectPoint && projectile.reflectTintColor) {
         ctx.save();
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = projectile.reflectTintColor;
@@ -3545,7 +3549,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
 
     // Fall back to static image or shape
     const shape = spriteData.shape || 'circle';
-    const color = projectile.reflected && projectile.reflectTintColor
+    const color = pastReflectPoint && projectile.reflectTintColor
       ? projectile.reflectTintColor  // Use tint color as primary color for reflected projectiles
       : spriteData.primaryColor || '#ff6600';
     const imageData = spriteData.idleImageData;

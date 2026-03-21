@@ -801,6 +801,7 @@ export interface Projectile {
   teamSwapped?: boolean;      // True = targeting is flipped (hero proj hits heroes, enemy proj hits enemies)
   reflectTintColor?: string;            // Tint color applied to reflected projectile
   reflectOverrideSprite?: SpriteReference; // Replacement sprite for reflected projectile
+  reflectAtTileIndex?: number; // Tile index in combined path where reflect happens — tint only applies after this
 
   // Turn-based resolution metadata (deterministic collision)
   resolvedHitTileIndex?: number;    // Tile index in tilePath where hit was resolved (undefined = no hit this turn)
