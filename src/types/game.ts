@@ -722,6 +722,7 @@ export interface CustomAttack {
 
   // Visuals
   projectileSprite?: SpriteReference;  // Visual for projectile
+  projectileScale?: number;            // Scale multiplier for projectile visual (0.1-3.0, default 1.0)
   aoeEffectSprite?: SpriteReference;   // Visual for AOE tiles when spell cast
   hitEffectSprite?: SpriteReference;   // Particle on damage impact
   healingEffectSprite?: SpriteReference; // Particle on healing

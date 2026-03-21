@@ -2532,7 +2532,7 @@ function drawEnemy(
     // Draw direction indicator next to health bar — gold if moving, grey for facing only
     if (enemyData) {
       const enemyHasMovement = enemyHasMovementActions(enemyData.behavior);
-      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss, enemyHasMovement, isMoving);
+      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss, enemyHasMovement);
     }
 
     // Draw status effect icons above health bar
@@ -3147,7 +3147,7 @@ function drawCharacter(
     // Draw direction indicator next to health bar — gold if moving, grey for facing only
     if (charData) {
       const charHasMovement = hasMovementActions(charData.behavior || []);
-      drawDirectionIndicator(ctx, px, py, facing, false, charHasMovement, isMoving);
+      drawDirectionIndicator(ctx, px, py, facing, false, charHasMovement);
     }
 
     // Draw status effect icons above health bar
@@ -3156,15 +3156,13 @@ function drawCharacter(
 }
 
 // Draw direction indicator next to health bar (small arrow showing movement/facing direction)
-// isAnimatingMove = entity is currently in a movement animation (position actually changed)
 function drawDirectionIndicator(
   ctx: CanvasRenderingContext2D,
   px: number,
   py: number,
   direction: Direction,
   isBoss: boolean = false,
-  hasMovement: boolean = true,
-  isAnimatingMove: boolean = false
+  hasMovement: boolean = true
 ) {
   const arrowSize = 3; // Small arrow
   const barWidth = 30;
@@ -3180,19 +3178,6 @@ function drawDirectionIndicator(
   // Position arrow to the right of health bar, vertically centered with it
   const indicatorX = barEndX + 3; // 3px gap from health bar
   const indicatorY = py + 2 + barHeight / 2; // Centered with health bar (py + 2 is where bar starts)
-
-  // Draw glow behind arrow when entity is actively moving
-  if (isAnimatingMove) {
-    ctx.save();
-    ctx.translate(indicatorX, indicatorY);
-    ctx.shadowColor = 'rgba(255, 200, 50, 0.9)';
-    ctx.shadowBlur = 6;
-    ctx.fillStyle = 'rgba(255, 200, 50, 0.5)';
-    ctx.beginPath();
-    ctx.arc(0, 0, arrowSize + 1, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
 
   // Draw arrow rotated based on direction
   ctx.save();
@@ -3212,11 +3197,8 @@ function drawDirectionIndicator(
 
   ctx.rotate(rotationAngles[direction] || 0);
 
-  // Draw a simple arrow pointing right (will be rotated)
-  // Gold for moving entities, grey for facing-only, bright gold when actively animating
-  ctx.fillStyle = isAnimatingMove
-    ? 'rgba(255, 220, 80, 1.0)'
-    : hasMovement ? 'rgba(255, 200, 50, 0.95)' : 'rgba(180, 180, 180, 0.7)';
+  // Gold for moving entities, grey for facing-only
+  ctx.fillStyle = hasMovement ? 'rgba(255, 200, 50, 0.95)' : 'rgba(180, 180, 180, 0.7)';
   ctx.beginPath();
   // Arrow shape: triangle pointing right
   const baseHalfWidth = arrowSize / 2 + 0.5; // Make base 1px wider
@@ -3512,18 +3494,26 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   // Calculate rotation and mirroring based on direction
   const rotationConfig = getRotationForDirection(projectile.direction);
 
+  // Projectile scale (default 1.0)
+  const scale = projectile.attackData.projectileScale ?? 1.0;
+
   // If reflected with an override sprite, use that instead of the original
   if (projectile.reflected && projectile.reflectOverrideSprite?.spriteData) {
     const overrideData = projectile.reflectOverrideSprite.spriteData;
     if (overrideData.spriteSheet) {
-      drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, 24, imageCache, now, rotationConfig);
+      drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, Math.round(24 * scale), imageCache, now, rotationConfig);
     } else {
       const shape = overrideData.shape || 'circle';
       const color = overrideData.primaryColor || '#ff6600';
-      drawShape(ctx, px, py, shape, color, 8, overrideData.idleImageData, imageCache, rotationConfig);
+      drawShape(ctx, px, py, shape, color, Math.round(8 * scale), overrideData.idleImageData, imageCache, rotationConfig);
     }
     return;
   }
+  const baseShapeSize = 8;
+  const baseSpriteSize = 24;
+  const shapeSize = Math.round(baseShapeSize * scale);
+  const spriteSize = Math.round(baseSpriteSize * scale);
+  const halfSprite = spriteSize / 2;
 
   // Check if projectile has custom sprite
   if (projectile.attackData.projectileSprite?.spriteData) {
@@ -3531,7 +3521,6 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
 
     // Check for sprite sheet first (highest priority)
     if (spriteData.spriteSheet) {
-      const spriteSize = 24; // Size for projectile sprite sheets
       drawSpellSpriteSheet(
         ctx,
         spriteData.spriteSheet,
@@ -3548,7 +3537,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = projectile.reflectTintColor;
         ctx.globalAlpha = 0.4;
-        ctx.fillRect(px - 12, py - 12, 24, 24);
+        ctx.fillRect(px - halfSprite, py - halfSprite, spriteSize, spriteSize);
         ctx.restore();
       }
       return;
@@ -3561,7 +3550,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       : spriteData.primaryColor || '#ff6600';
     const imageData = spriteData.idleImageData;
 
-    drawShape(ctx, px, py, shape, color, 8, imageData, imageCache, rotationConfig);
+    drawShape(ctx, px, py, shape, color, shapeSize, imageData, imageCache, rotationConfig);
 
     // Apply tint overlay for reflected projectiles with images
     if (projectile.reflected && projectile.reflectTintColor && imageData) {
@@ -3570,7 +3559,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       ctx.fillStyle = projectile.reflectTintColor;
       ctx.globalAlpha = 0.4;
       ctx.beginPath();
-      ctx.arc(px, py, 8, 0, Math.PI * 2);
+      ctx.arc(px, py, shapeSize, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -3581,12 +3570,12 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       // Outer glow with tint
       ctx.fillStyle = projectile.reflectTintColor + '4D'; // 30% opacity
       ctx.beginPath();
-      ctx.arc(px, py, 8, 0, Math.PI * 2);
+      ctx.arc(px, py, shapeSize, 0, Math.PI * 2);
       ctx.fill();
       // Inner core with tint
       ctx.fillStyle = projectile.reflectTintColor;
       ctx.beginPath();
-      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.arc(px, py, shapeSize / 2, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     } else {

@@ -8,6 +8,7 @@ import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
 import { createVersionSnapshot } from '../../services/versionService';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { SpriteThumbnail } from './SpriteThumbnail';
 
 interface SpellAssetBuilderProps {
   spell?: SpellAsset; // If editing existing spell
@@ -1922,17 +1923,63 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
 
             {/* Projectile Visual (for linear spells) */}
             {templateNeedsProjectileSettings && (
-              <SpellSpriteEditor
-                label="Projectile Appearance"
-                spriteRef={editedSpell.sprites?.projectile}
-                onChange={(sprite) => setEditedSpell({
-                  ...editedSpell,
-                  sprites: { ...editedSpell.sprites, projectile: sprite }
-                })}
-                accentColor="blue"
-                showDirectionalPreview={true}
-                helpText="Configure how the projectile looks as it travels"
-              />
+              <>
+                <SpellSpriteEditor
+                  label="Projectile Appearance"
+                  spriteRef={editedSpell.sprites?.projectile}
+                  onChange={(sprite) => setEditedSpell({
+                    ...editedSpell,
+                    sprites: { ...editedSpell.sprites, projectile: sprite }
+                  })}
+                  accentColor="blue"
+                  showDirectionalPreview={true}
+                  helpText="Configure how the projectile looks as it travels"
+                />
+
+                {/* Projectile Scale */}
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Projectile Scale: {(editedSpell.projectileScale ?? 1).toFixed(1)}x
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min="0.2"
+                      max="3.0"
+                      step="0.1"
+                      value={editedSpell.projectileScale ?? 1}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, projectileScale: parseFloat(e.target.value) })}
+                      className="flex-1"
+                    />
+                    {/* Tile-relative preview */}
+                    <div className="relative flex-shrink-0" style={{ width: 48, height: 48 }}>
+                      {/* Tile background */}
+                      <div className="absolute inset-0 bg-stone-700 border border-stone-500 rounded" />
+                      {/* Projectile preview centered in tile */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        {editedSpell.sprites?.projectile?.spriteData ? (
+                          <SpriteThumbnail
+                            sprite={editedSpell.sprites.projectile.spriteData}
+                            size={Math.round(24 * (editedSpell.projectileScale ?? 1))}
+                            noBackground
+                          />
+                        ) : (
+                          <div
+                            className="rounded-full bg-orange-500"
+                            style={{
+                              width: Math.round(16 * (editedSpell.projectileScale ?? 1)),
+                              height: Math.round(16 * (editedSpell.projectileScale ?? 1)),
+                            }}
+                          />
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-xs text-stone-400 mt-1">
+                    Size of the projectile relative to a tile. Smaller values reduce visual overlap with adjacent tiles.
+                  </p>
+                </div>
+              </>
             )}
 
             {/* Attack Appearance (for melee/cone spells) - uses meleeAttack sprite field */}
