@@ -2496,8 +2496,16 @@ function resolveProjectilesTurn(gameState: GameState): void {
         proj.deactivateOnArrival = true;
       }
 
-      // reflectProjectile already set tilePath, currentTileIndex, tileEntryTime
-      // Don't overwrite — the reflected path IS the visual path
+      // Combine approach path (turnTiles) + reflected path for seamless visual
+      // Last approach tile and first reflected tile share the reflector's position — skip duplicate
+      const reflectedOnly = (proj.tilePath || []).slice(1); // skip first tile (same as last approach tile)
+      proj.tilePath = [...turnTiles, ...reflectedOnly];
+      proj.currentTileIndex = 0;
+      proj.tileEntryTime = now;
+      // Adjust resolvedHitTileIndex to account for approach tiles prepended
+      if (proj.resolvedHitTileIndex !== undefined) {
+        proj.resolvedHitTileIndex += turnTiles.length - 1;
+      }
       // Update proj position for next turn
       if (reflectedPath.length > 1) {
         const travelEnd = Math.min(reflectedTilesPerTurn, reflectedPath.length - 1);
