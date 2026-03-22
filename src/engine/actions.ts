@@ -1787,6 +1787,9 @@ function spawnProjectile(
     // Homing behavior
     isHoming: !!homingTarget,
     homingPathStyle: attackData.homingPathStyle || 'straight',
+    homingVisualStartX: character.x,
+    homingVisualStartY: character.y,
+    homingVisualStartTime: Date.now(),
     targetEntityId: homingTarget?.targetEntityId,
     targetIsEnemy: homingTarget?.targetIsEnemy,
     sourceCharacterId: isEnemy ? undefined : character.characterId,

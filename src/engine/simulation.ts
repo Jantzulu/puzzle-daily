@@ -2231,29 +2231,10 @@ function resolveProjectiles(gameState: GameState): void {
           const newX = proj.x + dx * moveRatio;
           const newY = proj.y + dy * moveRatio;
 
-          // For straight-line: use visual start (preserves full flight path)
-          const visualStartX = proj.homingVisualStartX ?? proj.x;
-          const visualStartY = proj.homingVisualStartY ?? proj.y;
-          if (proj.homingPathStyle === 'straight') {
-            // Store original start for continuous straight-line interpolation
-            if (proj.homingVisualStartX === undefined) {
-              proj.homingVisualStartX = proj.x;
-              proj.homingVisualStartY = proj.y;
-            }
-            // Build path from visual start to current logical end
-            const turnTiles = getTilesAlongLine(visualStartX, visualStartY, newX, newY);
-            proj.tilePath = turnTiles;
-          } else {
-            const turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
-            proj.tilePath = turnTiles;
-          }
+          const turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
+          proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
-          proj.tileEntryTime = proj.homingPathStyle === 'straight'
-            ? (proj.homingVisualStartTime ?? Date.now()) // Keep original start time for straight
-            : Date.now();
-          if (proj.homingVisualStartTime === undefined) {
-            proj.homingVisualStartTime = Date.now();
-          }
+          proj.tileEntryTime = Date.now();
           proj.x = newX;
           proj.y = newY;
           proj.targetX = targetEntity.x;
