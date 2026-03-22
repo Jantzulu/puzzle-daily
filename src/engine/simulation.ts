@@ -2069,6 +2069,7 @@ export function updateProjectiles(gameState: GameState): void {
     const currentTileIdx = proj.currentTileIndex ?? 0;
     const straightLineReached = proj.homingPathStyle === 'straight' && reachedTarget;
     if (proj.hitResult && (currentTileIdx >= proj.hitResult.hitTileIndex || straightLineReached)) {
+      console.log(`[VISUAL CONSUME] id=${proj.id.slice(-6)} currentTileIdx=${currentTileIdx} hitTileIdx=${proj.hitResult.hitTileIndex} tilePathLen=${proj.tilePath?.length} elapsed=${((Date.now() - (proj.tileEntryTime ?? 0))/1000).toFixed(2)}s`);
       // Spawn hit VFX
       if (proj.hitResult.vfxSprite && proj.hitResult.vfxX !== undefined && proj.hitResult.vfxY !== undefined) {
         spawnParticleEffect(proj.hitResult.vfxX, proj.hitResult.vfxY, proj.hitResult.vfxSprite,
