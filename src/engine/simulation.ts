@@ -1817,8 +1817,27 @@ export function updateProjectiles(gameState: GameState): void {
     let newY: number;
     let reachedTarget = false;
 
-    if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
-      // Homing projectiles without tilePath: move towards current target from current position
+    if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
+      // STRAIGHT-LINE HOMING: smooth interpolation from original start to target
+      const startX = proj.homingVisualStartX;
+      const startY = proj.homingVisualStartY ?? proj.y;
+      const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
+      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+      const totalDist = Math.sqrt(Math.pow(proj.targetX - startX, 2) + Math.pow(proj.targetY - startY, 2));
+      const totalTime = Math.max(0.1, totalDist / speedTilesPerSecond);
+      const progress = Math.min(elapsed / totalTime, 1);
+      newX = startX + (proj.targetX - startX) * progress;
+      newY = startY + (proj.targetY - startY) * progress;
+      if (progress >= 1) reachedTarget = true;
+
+      // Update direction for sprite rotation
+      const sdx = proj.targetX - startX;
+      const sdy = proj.targetY - startY;
+      if (sdx !== 0 || sdy !== 0) {
+        proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
+      }
+    } else if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
+      // Grid homing projectiles without tilePath: move towards current target from current position
       const dx = proj.targetX - proj.x;
       const dy = proj.targetY - proj.y;
       const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
@@ -1930,7 +1949,8 @@ export function updateProjectiles(gameState: GameState): void {
 
     // Consume pre-resolved hit results from resolveProjectiles
     const currentTileIdx = proj.currentTileIndex ?? 0;
-    if (proj.hitResult && currentTileIdx >= proj.hitResult.hitTileIndex) {
+    const straightLineReached = proj.homingPathStyle === 'straight' && reachedTarget;
+    if (proj.hitResult && (currentTileIdx >= proj.hitResult.hitTileIndex || straightLineReached)) {
       // Spawn hit VFX
       if (proj.hitResult.vfxSprite && proj.hitResult.vfxX !== undefined && proj.hitResult.vfxY !== undefined) {
         spawnParticleEffect(proj.hitResult.vfxX, proj.hitResult.vfxY, proj.hitResult.vfxSprite,
