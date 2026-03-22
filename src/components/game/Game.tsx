@@ -384,7 +384,11 @@ export const Game: React.FC = () => {
         const newState = executeTurn(stateCopy);
 
         // Stop simulation if game ended (only in normal mode)
-        if (testMode === 'none' && newState.gameStatus !== 'running') {
+        // Check if there are pending projectile deaths that need to visually resolve first
+        const hasPendingDeaths = newState.activeProjectiles?.some(
+          (p: any) => p.active && p.hitResult?.deferredDeathEntityId
+        );
+        if (testMode === 'none' && newState.gameStatus !== 'running' && !hasPendingDeaths) {
           setIsSimulating(false);
           outcome = newState.gameStatus as 'victory' | 'defeat';
           outcomeTurns = newState.currentTurn;
@@ -857,9 +861,9 @@ export const Game: React.FC = () => {
     });
     initialState.gameStatus = 'running';
     // Headless mode resolves projectiles instantly so each snapshot is complete
-    // Use non-headless mode so resolveProjectiles keeps projectiles alive
-    // in the snapshots for AnimatedGameBoard to animate during playback
-    initialState.headlessMode = false;
+    // Use headless mode for fast, deterministic replay generation
+    // Projectiles are resolved instantly (no visual animation in replay)
+    initialState.headlessMode = true;
 
     // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys
     const deepCopyState = (state: GameState): GameState => {
@@ -888,31 +892,6 @@ export const Game: React.FC = () => {
 
       const stateCopy = deepCopyState(current);
       current = executeTurn(stateCopy);
-
-      // Process pending projectile deaths — updateProjectiles doesn't run during
-      // replay generation, so we manually finalize deferred deaths here
-      if (current.activeProjectiles) {
-        for (const proj of current.activeProjectiles) {
-          if (proj.hitResult?.deferredDeathEntityId) {
-            const id = proj.hitResult.deferredDeathEntityId;
-            if (proj.hitResult.deferredDeathIsEnemy) {
-              const enemy = proj.hitResult.deferredDeathIndex !== undefined
-                ? current.puzzle.enemies[proj.hitResult.deferredDeathIndex]
-                : current.puzzle.enemies.find((e: any) => e.enemyId === id);
-              if (enemy && !enemy.dead) {
-                enemy.dead = true;
-                enemy.pendingProjectileDeath = false;
-              }
-            } else {
-              const char = current.placedCharacters.find((c: any) => c.characterId === id);
-              if (char && !char.dead) {
-                char.dead = true;
-                char.pendingProjectileDeath = false;
-              }
-            }
-          }
-        }
-      }
 
       history.push(deepCopyState(current));
     }
