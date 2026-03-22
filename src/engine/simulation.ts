@@ -1800,12 +1800,6 @@ export function updateProjectiles(gameState: GameState): void {
   const now = Date.now();
   const projectilesToRemove: string[] = [];
 
-  // Debug: log active projectile count and state (remove after debugging)
-  const activeProjs = gameState.activeProjectiles.filter(p => p.active);
-  if (activeProjs.length > 0 && Date.now() % 500 < 20) {
-    console.log(`[PROJ DEBUG] ${activeProjs.length} active:`, activeProjs.map(p => `pos=(${p.x.toFixed(1)},${p.y.toFixed(1)}) path=${p.tilePath ? JSON.stringify(p.tilePath) : 'NONE'} tileIdx=${p.currentTileIndex} homing=${p.isHoming}`).join(' | '));
-  }
-
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active) {
       projectilesToRemove.push(proj.id);
@@ -1993,11 +1987,6 @@ function triggerAOEExplosion(
  */
 function resolveProjectiles(gameState: GameState): void {
   if (!gameState.activeProjectiles) return;
-  // Debug
-  const activeCount = gameState.activeProjectiles.filter(p => p.active).length;
-  if (activeCount > 0) {
-    console.log(`[RESOLVE DEBUG] Processing ${activeCount} active projectiles`);
-  }
 
   const projectilesToRemove: string[] = [];
 
@@ -2007,11 +1996,9 @@ function resolveProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Skip projectiles that already have a hitResult or whose visual animation
-    // from the previous turn hasn't completed yet
+    // Skip projectiles that already have a hitResult — they've been resolved
+    // and are just waiting for the visual system to consume the result
     if (proj.hitResult) continue;
-    if (proj.tilePath && proj.tilePath.length > 1 &&
-        (proj.currentTileIndex ?? 0) < proj.tilePath.length - 1) continue;
 
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
@@ -2214,15 +2201,18 @@ function resolveProjectiles(gameState: GameState): void {
         const checkX = Math.floor(proj.startX + dx * dist);
         const checkY = Math.floor(proj.startY + dy * dist);
 
-        // Check bounds
+        // Check bounds — include the edge tile in visual path so projectile reaches it
         if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
+          // Don't add out-of-bounds tile to visual path
           shouldRemove = true;
           break;
         }
 
-        // Check wall
+        // Check wall — include wall-adjacent tile so projectile visually reaches the wall
         const tile = gameState.puzzle.tiles[checkY]?.[checkX];
         if (!tile || tile.type === TileTypeEnum.WALL) {
+          // Add the wall tile to visual path so projectile reaches it before deactivating
+          turnTiles.push({ x: checkX, y: checkY });
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(checkX, checkY, proj.attackData,
               proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);

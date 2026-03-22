@@ -1148,12 +1148,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
       // Draw projectiles (Phase 2 - between tiles and entities)
       if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
-        const activeForDraw = gameState.activeProjectiles.filter(p => p.active);
-        if (activeForDraw.length > 0 && Date.now() % 500 < 20) {
-          console.log(`[DRAW DEBUG] Drawing ${activeForDraw.length} projectiles:`, activeForDraw.map(p =>
-            `(${p.x.toFixed(1)},${p.y.toFixed(1)}) px=(${(p.x * 32 + 16).toFixed(0)},${(p.y * 32 + 16).toFixed(0)})`
-          ).join(' | '));
-        }
         gameState.activeProjectiles.forEach(projectile => {
           drawProjectile(ctx, projectile, imageCache.current, now);
         });
