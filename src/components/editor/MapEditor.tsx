@@ -1004,6 +1004,13 @@ export const MapEditor: React.FC = () => {
         }
         const newState = executeTurnWithLog(stateCopy);
 
+        // If there are pending projectile deaths, defer the game-over state
+        const hasPendingDeaths = newState.activeProjectiles?.some(
+          (p: any) => p.active && p.hitResult?.deferredDeathEntityId
+        );
+        if (hasPendingDeaths && newState.gameStatus !== 'running') {
+          newState.gameStatus = 'running';
+        }
         // Stop simulation if game ended (only in normal mode)
         if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
