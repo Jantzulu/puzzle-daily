@@ -1802,15 +1802,8 @@ export function updateProjectiles(gameState: GameState): void {
 
   // Debug: log active projectile count and state (remove after debugging)
   const activeProjs = gameState.activeProjectiles.filter(p => p.active);
-  if (activeProjs.length > 0) {
-    console.log(`[PROJ DEBUG] ${activeProjs.length} active projectiles:`, activeProjs.map(p => ({
-      id: p.id.slice(-6),
-      pos: `(${p.x.toFixed(1)},${p.y.toFixed(1)})`,
-      tilePath: p.tilePath ? p.tilePath.length + ' tiles' : 'NONE',
-      tileIdx: p.currentTileIndex,
-      hitResult: p.hitResult ? 'yes' : 'no',
-      active: p.active,
-    })));
+  if (activeProjs.length > 0 && Date.now() % 500 < 20) {
+    console.log(`[PROJ DEBUG] ${activeProjs.length} active:`, activeProjs.map(p => `pos=(${p.x.toFixed(1)},${p.y.toFixed(1)}) path=${p.tilePath ? JSON.stringify(p.tilePath) : 'NONE'} tileIdx=${p.currentTileIndex} homing=${p.isHoming}`).join(' | '));
   }
 
   for (const proj of gameState.activeProjectiles) {
