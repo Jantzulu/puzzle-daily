@@ -2423,6 +2423,8 @@ function resolveProjectiles(gameState: GameState): void {
       let reflectAtDist: number | undefined;
 
       const turnTiles: Array<{ x: number; y: number }> = [];
+      // Offset for hitTileIndex — accounts for tiles already in the cumulative path
+      const tilePathOffset = (proj.tilePath && proj.tilePath.length > 0) ? proj.tilePath.length - 1 : 0;
       // Start with current position so visual begins from where the projectile is
       const currentLogicalDist = proj.logicalTileIndex ?? 0;
       turnTiles.push({
@@ -2500,7 +2502,7 @@ function resolveProjectiles(gameState: GameState): void {
                 // Store hit result for visual
                 const vfxSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
                 proj.hitResult = {
-                  hitTileIndex: turnTiles.length - 1,
+                  hitTileIndex: tilePathOffset + turnTiles.length - 1,
                   deactivate: true,
                   vfxSprite,
                   vfxX: hitAlly.x,
@@ -2685,7 +2687,7 @@ function resolveProjectiles(gameState: GameState): void {
               if (!canPierce) {
                 shouldRemove = true;
                 proj.hitResult = {
-                  hitTileIndex: turnTiles.length - 1,
+                  hitTileIndex: tilePathOffset + turnTiles.length - 1,
                   deactivate: true,
                   vfxSprite,
                   vfxX: hitEnemy.x,
@@ -2714,7 +2716,7 @@ function resolveProjectiles(gameState: GameState): void {
               if (!canPierce) {
                 shouldRemove = true;
                 proj.hitResult = {
-                  hitTileIndex: turnTiles.length - 1,
+                  hitTileIndex: tilePathOffset + turnTiles.length - 1,
                   deactivate: true,
                   vfxSprite: proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite,
                   vfxX: hitAllyEnemy.x,
@@ -2893,7 +2895,7 @@ function resolveProjectiles(gameState: GameState): void {
               if (!canPierce) {
                 shouldRemove = true;
                 proj.hitResult = {
-                  hitTileIndex: turnTiles.length - 1,
+                  hitTileIndex: tilePathOffset + turnTiles.length - 1,
                   deactivate: true,
                   vfxSprite,
                   vfxX: hitChar.x,
@@ -2941,10 +2943,20 @@ function resolveProjectiles(gameState: GameState): void {
 
       // Set tilePath for visual interpolation
       if (turnTiles.length > 0) {
-        proj.tilePath = turnTiles;
-        proj.currentTileIndex = 0;
-        proj.tileEntryTime = Date.now();
-        // Update position to last tile
+        if (proj.tilePath && proj.tilePath.length > 0 && proj.tileEntryTime) {
+          // Append new tiles to existing path (skip first tile — it's where we already are)
+          const newTiles = turnTiles.slice(1);
+          if (newTiles.length > 0) {
+            proj.tilePath = [...proj.tilePath, ...newTiles];
+          }
+          // Don't reset currentTileIndex or tileEntryTime — continue from where we are
+        } else {
+          // First turn — set the full path
+          proj.tilePath = turnTiles;
+          proj.currentTileIndex = 0;
+          proj.tileEntryTime = Date.now();
+        }
+        // Update logical position to last tile
         proj.x = turnTiles[turnTiles.length - 1].x;
         proj.y = turnTiles[turnTiles.length - 1].y;
       }
