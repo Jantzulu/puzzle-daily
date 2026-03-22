@@ -1217,6 +1217,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const anim = enemyPositionsRef.current.get(index);
           const deathAnim = enemyDeathAnimations.get(index);
           const spawnAnim = enemySpawnAnimations.get(index);
+          const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true);
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1242,10 +1243,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
               } else {
                 // Phase 2: Appear at destination with normal sprite
-                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
               }
             } else {
               // Normal movement animation (or ice slide)
@@ -1259,13 +1260,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
               } else {
-                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
               }
             }
           } else {
-            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now, spawnAnim);
+            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
           }
         } else {
           const character = entity as PlacedCharacter;
@@ -1275,6 +1276,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // Get spawn animation - keyed by characterId + position
           const spawnKey = `${character.characterId}:${character.x},${character.y}`;
           const spawnAnim = characterSpawnAnimations.get(spawnKey);
+          const charGlow = getHomingTargetGlow(gameState, character.characterId, false);
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1300,10 +1302,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow);
               } else {
                 // Phase 2: Appear at destination with normal sprite
-                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow);
               }
             } else {
               // Normal movement animation (or ice slide)
@@ -1317,9 +1319,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim);
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow);
               } else {
-                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow);
               }
             }
           } else {
@@ -1336,7 +1338,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 dropOffsetY = -DROP_PLACE_OFFSET * (1 - eased);
               }
             }
-            drawCharacter(ctx, character, character.x, character.y + dropOffsetY, false, undefined, gameStarted, deathAnim, now, spawnAnim);
+            drawCharacter(ctx, character, character.x, character.y + dropOffsetY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow);
           }
         }
       });
@@ -2422,7 +2424,8 @@ function drawEnemy(
   gameStarted: boolean = true,
   deathAnimState?: DeathAnimationState,
   now: number = Date.now(),
-  spawnAnimState?: SpawnAnimationState
+  spawnAnimState?: SpawnAnimationState,
+  homingGlowColor?: string
 ) {
   const x = renderX !== undefined ? renderX : enemy.x;
   const y = renderY !== undefined ? renderY : enemy.y;
@@ -2527,7 +2530,7 @@ function drawEnemy(
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
-    drawHealthBar(ctx, px, py, enemy.visualHealth ?? enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop);
+    drawHealthBar(ctx, px, py, enemy.visualHealth ?? enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (enemyData) {
@@ -3046,7 +3049,8 @@ function drawCharacter(
   gameStarted: boolean = true,
   deathAnimState?: DeathAnimationState,
   now: number = Date.now(),
-  spawnAnimState?: SpawnAnimationState
+  spawnAnimState?: SpawnAnimationState,
+  homingGlowColor?: string
 ) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
@@ -3169,7 +3173,7 @@ function drawCharacter(
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
-    drawHealthBar(ctx, px, py, character.visualHealth ?? character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop);
+    drawHealthBar(ctx, px, py, character.visualHealth ?? character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (charData) {
