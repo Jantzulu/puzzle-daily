@@ -2181,6 +2181,12 @@ function resolveProjectiles(gameState: GameState): void {
       let reflectAtDist: number | undefined;
 
       const turnTiles: Array<{ x: number; y: number }> = [];
+      // Start with current position so visual begins from where the projectile is
+      const currentLogicalDist = proj.logicalTileIndex ?? 0;
+      turnTiles.push({
+        x: Math.floor(proj.startX + dx * currentLogicalDist),
+        y: Math.floor(proj.startY + dy * currentLogicalDist)
+      });
 
       for (let dist = startTile; dist <= endTile; dist++) {
         if (hitSomething && !canPierce) {
