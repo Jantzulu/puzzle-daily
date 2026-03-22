@@ -2527,7 +2527,7 @@ function drawEnemy(
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
-    drawHealthBar(ctx, px, py, enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop);
+    drawHealthBar(ctx, px, py, enemy.visualHealth ?? enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (enemyData) {
@@ -3142,7 +3142,7 @@ function drawCharacter(
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
-    drawHealthBar(ctx, px, py, character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop);
+    drawHealthBar(ctx, px, py, character.visualHealth ?? character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (charData) {

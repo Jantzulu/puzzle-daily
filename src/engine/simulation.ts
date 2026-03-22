@@ -1924,22 +1924,29 @@ export function updateProjectiles(gameState: GameState): void {
           proj.attackData.effectDuration || 300, gameState);
       }
       // Trigger deferred death — now set entity.dead = true so AnimatedGameBoard plays death animation
+      // Also clear visualHealth so health bar shows actual HP now that projectile arrived
       if (proj.hitResult.deferredDeathEntityId) {
         if (proj.hitResult.deferredDeathIsEnemy) {
           const enemy = proj.hitResult.deferredDeathIndex !== undefined
             ? gameState.puzzle.enemies[proj.hitResult.deferredDeathIndex]
             : gameState.puzzle.enemies.find(e => e.enemyId === proj.hitResult!.deferredDeathEntityId);
-          if (enemy && enemy.pendingProjectileDeath) {
-            enemy.dead = true;
-            enemy.pendingProjectileDeath = false;
-            handleEntityDeathDrop(enemy, true, gameState);
+          if (enemy) {
+            enemy.visualHealth = undefined;
+            if (enemy.pendingProjectileDeath) {
+              enemy.dead = true;
+              enemy.pendingProjectileDeath = false;
+              handleEntityDeathDrop(enemy, true, gameState);
+            }
           }
         } else {
           const char = gameState.placedCharacters.find(c => c.characterId === proj.hitResult!.deferredDeathEntityId);
-          if (char && char.pendingProjectileDeath) {
-            char.dead = true;
-            char.pendingProjectileDeath = false;
-            handleEntityDeathDrop(char, false, gameState);
+          if (char) {
+            char.visualHealth = undefined;
+            if (char.pendingProjectileDeath) {
+              char.dead = true;
+              char.pendingProjectileDeath = false;
+              handleEntityDeathDrop(char, false, gameState);
+            }
           }
         }
       }
@@ -2080,15 +2087,16 @@ function resolveProjectiles(gameState: GameState): void {
               const wasDeflected = applyProjectileDamageWithDeflect(
                 enemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
               if (!wasDeflected) {
+                enemy.visualHealth = enemy.currentHealth;
                 applyDamageToEntityNoDeflect(enemy, damage, gameState);
                 if (enemy.dead) {
                   // Defer death visual — undo dead flag, set pendingProjectileDeath
                   enemy.dead = false;
                   enemy.pendingProjectileDeath = true;
-                  deferredDeathEntityId = enemy.enemyId;
-                  deferredDeathIsEnemy = true;
-                  deferredDeathIndex = gameState.puzzle.enemies.indexOf(enemy);
                 }
+                deferredDeathEntityId = enemy.enemyId;
+                deferredDeathIsEnemy = true;
+                deferredDeathIndex = gameState.puzzle.enemies.indexOf(enemy);
               }
               if (proj.spellAssetId && !enemy.dead && !enemy.pendingProjectileDeath) {
                 applyStatusEffectFromProjectile(enemy, proj.spellAssetId,
@@ -2116,14 +2124,15 @@ function resolveProjectiles(gameState: GameState): void {
               const wasDeflected = applyProjectileDamageWithDeflect(
                 char, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
               if (!wasDeflected) {
+                char.visualHealth = char.currentHealth;
                 applyDamageToEntityNoDeflect(char, damage, gameState);
                 if (char.dead) {
                   // Defer death visual — undo dead flag, set pendingProjectileDeath
                   char.dead = false;
                   char.pendingProjectileDeath = true;
-                  deferredDeathEntityId = char.characterId;
-                  deferredDeathIsEnemy = false;
                 }
+                deferredDeathEntityId = char.characterId;
+                deferredDeathIsEnemy = false;
               }
               if (proj.spellAssetId && !char.dead && !char.pendingProjectileDeath) {
                 applyStatusEffectFromProjectile(char, proj.spellAssetId,
@@ -2343,6 +2352,7 @@ function resolveProjectiles(gameState: GameState): void {
                         const baseDmg = proj.attackData.damage ?? 0;
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        rHitEnemy.visualHealth = rHitEnemy.currentHealth;
                         applyDamageToEntityNoDeflect(rHitEnemy, dmg, gameState);
                         if (rHitEnemy.dead) {
                           // Defer death visual
@@ -2360,9 +2370,9 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitEnemy.x, vfxY: rHitEnemy.y,
-                        deferredDeathEntityId: rHitEnemy.pendingProjectileDeath ? rHitEnemy.enemyId : undefined,
-                        deferredDeathIsEnemy: rHitEnemy.pendingProjectileDeath ? true : undefined,
-                        deferredDeathIndex: rHitEnemy.pendingProjectileDeath ? gameState.puzzle.enemies.indexOf(rHitEnemy) : undefined,
+                        deferredDeathEntityId: rHitEnemy.enemyId,
+                        deferredDeathIsEnemy: true,
+                        deferredDeathIndex: gameState.puzzle.enemies.indexOf(rHitEnemy),
                       };
                       reflectedHit = true;
                       if (!canPierce) break;
@@ -2380,6 +2390,7 @@ function resolveProjectiles(gameState: GameState): void {
                         const baseDmg = proj.attackData.damage ?? 0;
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        rHitChar.visualHealth = rHitChar.currentHealth;
                         applyDamageToEntityNoDeflect(rHitChar, dmg, gameState);
                         if (rHitChar.dead) {
                           // Defer death visual
@@ -2397,8 +2408,8 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitChar.x, vfxY: rHitChar.y,
-                        deferredDeathEntityId: rHitChar.pendingProjectileDeath ? rHitChar.characterId : undefined,
-                        deferredDeathIsEnemy: rHitChar.pendingProjectileDeath ? false : undefined,
+                        deferredDeathEntityId: rHitChar.characterId,
+                        deferredDeathIsEnemy: false,
                       };
                       reflectedHit = true;
                       if (!canPierce) break;
@@ -2448,15 +2459,16 @@ function resolveProjectiles(gameState: GameState): void {
                 const wasDeflected = applyProjectileDamageWithDeflect(
                   hitEnemy, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
                 if (!wasDeflected) {
+                  hitEnemy.visualHealth = hitEnemy.currentHealth;
                   applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
                   if (hitEnemy.dead) {
                     // Defer death visual — undo dead flag, set pendingProjectileDeath
                     hitEnemy.dead = false;
                     hitEnemy.pendingProjectileDeath = true;
-                    deferredDeathEntityId = hitEnemy.enemyId;
-                    deferredDeathIsEnemy = true;
-                    deferredDeathIndex = gameState.puzzle.enemies.indexOf(hitEnemy);
                   }
+                  deferredDeathEntityId = hitEnemy.enemyId;
+                  deferredDeathIsEnemy = true;
+                  deferredDeathIndex = gameState.puzzle.enemies.indexOf(hitEnemy);
                 }
                 if (proj.spellAssetId && !hitEnemy.dead && !hitEnemy.pendingProjectileDeath) {
                   applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
@@ -2550,6 +2562,7 @@ function resolveProjectiles(gameState: GameState): void {
                         const baseDmg = proj.attackData.damage ?? 0;
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy2.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        rHitEnemy2.visualHealth = rHitEnemy2.currentHealth;
                         applyDamageToEntityNoDeflect(rHitEnemy2, dmg, gameState);
                         if (rHitEnemy2.dead) {
                           // Defer death visual
@@ -2569,9 +2582,9 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitEnemy2.x, vfxY: rHitEnemy2.y,
-                        deferredDeathEntityId: rHitEnemy2.pendingProjectileDeath ? rHitEnemy2.enemyId : undefined,
-                        deferredDeathIsEnemy: rHitEnemy2.pendingProjectileDeath ? true : undefined,
-                        deferredDeathIndex: rHitEnemy2.pendingProjectileDeath ? gameState.puzzle.enemies.indexOf(rHitEnemy2) : undefined,
+                        deferredDeathEntityId: rHitEnemy2.enemyId,
+                        deferredDeathIsEnemy: true,
+                        deferredDeathIndex: gameState.puzzle.enemies.indexOf(rHitEnemy2),
                       };
                       reflectedHit2 = true;
                       if (!canPierce) break;
@@ -2587,6 +2600,7 @@ function resolveProjectiles(gameState: GameState): void {
                         const baseDmg = proj.attackData.damage ?? 0;
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar2.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        rHitChar2.visualHealth = rHitChar2.currentHealth;
                         applyDamageToEntityNoDeflect(rHitChar2, dmg, gameState);
                         if (rHitChar2.dead) {
                           // Defer death visual
@@ -2606,8 +2620,8 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitChar2.x, vfxY: rHitChar2.y,
-                        deferredDeathEntityId: rHitChar2.pendingProjectileDeath ? rHitChar2.characterId : undefined,
-                        deferredDeathIsEnemy: rHitChar2.pendingProjectileDeath ? false : undefined,
+                        deferredDeathEntityId: rHitChar2.characterId,
+                        deferredDeathIsEnemy: false,
                       };
                       reflectedHit2 = true;
                       if (!canPierce) break;
@@ -2654,14 +2668,15 @@ function resolveProjectiles(gameState: GameState): void {
                 const wasDeflected = applyProjectileDamageWithDeflect(
                   hitChar, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
                 if (!wasDeflected) {
+                  hitChar.visualHealth = hitChar.currentHealth;
                   applyDamageToEntityNoDeflect(hitChar, damage, gameState);
                   if (hitChar.dead) {
                     // Defer death visual — undo dead flag, set pendingProjectileDeath
                     hitChar.dead = false;
                     hitChar.pendingProjectileDeath = true;
-                    deferredDeathEntityId = hitChar.characterId;
-                    deferredDeathIsEnemy = false;
                   }
+                  deferredDeathEntityId = hitChar.characterId;
+                  deferredDeathIsEnemy = false;
                 }
                 if (proj.spellAssetId && !hitChar.dead && !hitChar.pendingProjectileDeath) {
                   applyStatusEffectFromProjectile(hitChar, proj.spellAssetId,

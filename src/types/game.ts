@@ -300,6 +300,7 @@ export interface PlacedEnemy {
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
+  visualHealth?: number; // Visual HP for health bar — syncs with projectile arrival, not turn boundary
 }
 
 export interface PlacedObject {
@@ -548,6 +549,7 @@ export interface PlacedCharacter {
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions for redirect spells (set during setup)
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
+  visualHealth?: number; // Visual HP for health bar — syncs with projectile arrival, not turn boundary
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
