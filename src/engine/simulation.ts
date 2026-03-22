@@ -1856,7 +1856,17 @@ export function updateProjectiles(gameState: GameState): void {
         proj.tilePath.length - 1
       );
 
-      if (newTileIndex >= proj.tilePath.length - 1) {
+      if (proj.homingPathStyle === 'straight' && proj.tilePath.length >= 2) {
+        // STRAIGHT-LINE: smooth interpolation from first to last tile (ignores grid)
+        const totalTiles = proj.tilePath.length - 1;
+        const totalTransitTime = totalTiles * tileTransitTime;
+        const progress = Math.min(timeSinceTileEntry / totalTransitTime, 1);
+        const firstTile = proj.tilePath[0];
+        const lastTile = proj.tilePath[proj.tilePath.length - 1];
+        newX = firstTile.x + (lastTile.x - firstTile.x) * progress;
+        newY = firstTile.y + (lastTile.y - firstTile.y) * progress;
+        if (progress >= 1) reachedTarget = true;
+      } else if (newTileIndex >= proj.tilePath.length - 1) {
         reachedTarget = true;
         const finalTile = proj.tilePath[proj.tilePath.length - 1];
         newX = finalTile.x;

@@ -210,6 +210,7 @@ export interface CharacterAction {
   autoTargetRange?: number;         // Maximum range for auto-targeting (0 = unlimited, overrides spell range)
   maxTargets?: number;              // Maximum number of targets to attack/heal (for multi-target spells)
   homing?: boolean;                 // If true with auto-targeting, projectile tracks target and guarantees hit
+  homingPathStyle?: 'grid' | 'straight'; // Visual path: 'grid' follows tiles, 'straight' flies direct (default: 'straight')
 
   // Self-targeting configuration
   targetSelf?: boolean;             // Also target self in addition to other targets
@@ -713,6 +714,7 @@ export interface CustomAttack {
   // Projectile behavior (for PROJECTILE pattern)
   projectileSpeed?: number;     // Tiles per turn (default: 4)
   projectilePierces?: boolean;  // Continue through enemies (default: false)
+  homingPathStyle?: 'grid' | 'straight'; // Visual: 'grid' follows tiles, 'straight' flies direct (default: straight)
 
   // AOE targeting (for AOE patterns)
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
@@ -787,6 +789,7 @@ export interface Projectile {
 
   // Homing behavior - projectile tracks a moving target
   isHoming?: boolean;           // If true, projectile chases target entity
+  homingPathStyle?: 'grid' | 'straight'; // Visual: 'grid' follows tiles, 'straight' flies direct
   targetEntityId?: string;      // ID of entity being tracked
   targetIsEnemy?: boolean;      // true = target is enemy, false = target is character
 

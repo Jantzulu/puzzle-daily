@@ -1569,7 +1569,7 @@ function executeSpell(
   for (let i = 0; i < castDirections.length; i++) {
     const direction = castDirections[i];
     const homingTarget = homingTargets?.[i];
-    executeSpellInDirection(character, spell, direction, gameState, homingTarget);
+    executeSpellInDirection(character, spell, direction, gameState, homingTarget, action.homingPathStyle);
   }
 
   // Set cooldown if spell has one
@@ -1591,7 +1591,8 @@ function executeSpellInDirection(
   spell: SpellAsset,
   direction: Direction,
   gameState: GameState,
-  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean }
+  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean },
+  homingPathStyle?: 'grid' | 'straight'
 ): void {
   // Convert SpellAsset to CustomAttack format for execution
   const attackData: CustomAttack = {
@@ -1619,6 +1620,7 @@ function executeSpellInDirection(
     backstabEnabled: spell.backstabEnabled,
     effectDuration: 300,
     projectileScale: spell.projectileScale,
+    homingPathStyle: homingPathStyle || 'straight',
     pattern: AttackPattern.PROJECTILE, // Default, will be set below
   };
 
@@ -1784,6 +1786,7 @@ function spawnProjectile(
     startTime: Date.now(),
     // Homing behavior
     isHoming: !!homingTarget,
+    homingPathStyle: attackData.homingPathStyle || 'straight',
     targetEntityId: homingTarget?.targetEntityId,
     targetIsEnemy: homingTarget?.targetIsEnemy,
     sourceCharacterId: isEnemy ? undefined : character.characterId,

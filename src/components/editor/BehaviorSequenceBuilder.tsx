@@ -541,6 +541,21 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               </label>
             )}
 
+            {/* Homing path style */}
+            {action.homing && (
+              <label className="flex items-center gap-2 text-xs ml-8">
+                <span className="text-stone-400">Path:</span>
+                <select
+                  value={action.homingPathStyle || 'straight'}
+                  onChange={(e) => onUpdate({ ...action, homingPathStyle: e.target.value as 'grid' | 'straight' })}
+                  className="bg-stone-700 text-parchment-100 text-xs px-1 py-0.5 rounded"
+                >
+                  <option value="straight">Straight Line</option>
+                  <option value="grid">Grid-Based</option>
+                </select>
+              </label>
+            )}
+
             {/* Max targets — available for all auto-targeting modes */}
             {hasAutoTarget && (
               <>
