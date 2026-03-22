@@ -888,6 +888,32 @@ export const Game: React.FC = () => {
 
       const stateCopy = deepCopyState(current);
       current = executeTurn(stateCopy);
+
+      // Process pending projectile deaths — updateProjectiles doesn't run during
+      // replay generation, so we manually finalize deferred deaths here
+      if (current.activeProjectiles) {
+        for (const proj of current.activeProjectiles) {
+          if (proj.hitResult?.deferredDeathEntityId) {
+            const id = proj.hitResult.deferredDeathEntityId;
+            if (proj.hitResult.deferredDeathIsEnemy) {
+              const enemy = proj.hitResult.deferredDeathIndex !== undefined
+                ? current.puzzle.enemies[proj.hitResult.deferredDeathIndex]
+                : current.puzzle.enemies.find((e: any) => e.enemyId === id);
+              if (enemy && !enemy.dead) {
+                enemy.dead = true;
+                enemy.pendingProjectileDeath = false;
+              }
+            } else {
+              const char = current.placedCharacters.find((c: any) => c.characterId === id);
+              if (char && !char.dead) {
+                char.dead = true;
+                char.pendingProjectileDeath = false;
+              }
+            }
+          }
+        }
+      }
+
       history.push(deepCopyState(current));
     }
 
