@@ -2189,6 +2189,7 @@ function resolveProjectiles(gameState: GameState): void {
 
     let hitSomething = false;
     let shouldRemove = false;
+    let logicalEndTile = 0; // Track the logical end tile for hitResult positioning
 
     // === HOMING PROJECTILES ===
     if (proj.isHoming && proj.targetEntityId) {
@@ -2418,6 +2419,7 @@ function resolveProjectiles(gameState: GameState): void {
       // Use logicalTileIndex for deterministic positioning
       const startTile = (proj.logicalTileIndex ?? 0) + 1;
       const endTile = Math.min(startTile + tilesPerTurn - 1, range);
+      logicalEndTile = endTile;
       let hitWall = false;
       let reflectedThisTurn = false;
       let reflectAtDist: number | undefined;
@@ -2952,7 +2954,7 @@ function resolveProjectiles(gameState: GameState): void {
       // If no hitResult, create one that just deactivates at end of path.
       if (!proj.hitResult) {
         proj.hitResult = {
-          hitTileIndex: Math.min(endTile, (proj.tilePath?.length ?? 1) - 1),
+          hitTileIndex: Math.min(logicalEndTile, (proj.tilePath?.length ?? 1) - 1),
           deactivate: true,
         };
       }
