@@ -1817,8 +1817,8 @@ export function updateProjectiles(gameState: GameState): void {
     let newY: number;
     let reachedTarget = false;
 
-    if (proj.isHoming) {
-      // Homing projectiles: move towards current target from current position
+    if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
+      // Homing projectiles without tilePath: move towards current target from current position
       const dx = proj.targetX - proj.x;
       const dy = proj.targetY - proj.y;
       const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
