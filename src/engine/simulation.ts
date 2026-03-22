@@ -2007,6 +2007,10 @@ function resolveProjectiles(gameState: GameState): void {
       continue;
     }
 
+    // Skip projectiles that already have a hitResult — they've been resolved
+    // and are just waiting for the visual system to animate and consume the result
+    if (proj.hitResult) continue;
+
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
     const tilesPerTurn = proj.speed || 4;
