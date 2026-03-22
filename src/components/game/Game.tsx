@@ -510,7 +510,18 @@ export const Game: React.FC = () => {
           setReplayPlaying(false);
           return prev;
         }
-        setGameState(history[next]);
+        // Reset tileEntryTime on projectiles so animation starts fresh for this step
+        const snapshot = history[next];
+        const now = Date.now();
+        if (snapshot.activeProjectiles) {
+          for (const proj of snapshot.activeProjectiles) {
+            if (proj.tilePath && proj.tilePath.length > 0) {
+              proj.tileEntryTime = now;
+              proj.currentTileIndex = 0;
+            }
+          }
+        }
+        setGameState(snapshot);
         return next;
       });
     }, intervalMs);
@@ -861,9 +872,8 @@ export const Game: React.FC = () => {
     });
     initialState.gameStatus = 'running';
     // Headless mode resolves projectiles instantly so each snapshot is complete
-    // Use headless mode for fast, deterministic replay generation
-    // Projectiles are resolved instantly (no visual animation in replay)
-    initialState.headlessMode = true;
+    // Use non-headless mode so projectiles are kept in snapshots for visual replay
+    initialState.headlessMode = false;
 
     // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys
     const deepCopyState = (state: GameState): GameState => {
@@ -892,6 +902,31 @@ export const Game: React.FC = () => {
 
       const stateCopy = deepCopyState(current);
       current = executeTurn(stateCopy);
+
+      // Finalize pending projectile deaths — updateProjectiles doesn't run during
+      // replay generation, so we manually resolve deferred deaths for defeat/victory detection
+      if (current.activeProjectiles) {
+        for (const proj of current.activeProjectiles) {
+          if (proj.hitResult?.deferredDeathEntityId) {
+            const id = proj.hitResult.deferredDeathEntityId;
+            if (proj.hitResult.deferredDeathIsEnemy) {
+              const enemy = proj.hitResult.deferredDeathIndex !== undefined
+                ? current.puzzle.enemies[proj.hitResult.deferredDeathIndex]
+                : current.puzzle.enemies.find((e: any) => e.enemyId === id);
+              if (enemy && !enemy.dead) {
+                enemy.dead = true;
+                enemy.pendingProjectileDeath = false;
+              }
+            } else {
+              const char = current.placedCharacters.find((c: any) => c.characterId === id);
+              if (char && !char.dead) {
+                char.dead = true;
+                char.pendingProjectileDeath = false;
+              }
+            }
+          }
+        }
+      }
 
       history.push(deepCopyState(current));
     }
@@ -966,11 +1001,25 @@ export const Game: React.FC = () => {
     setReplayPlaying(prev => !prev);
   }, []);
 
+  // Helper: reset projectile animation timing for replay snapshots
+  const resetProjectileTiming = (snapshot: GameState) => {
+    const now = Date.now();
+    if (snapshot.activeProjectiles) {
+      for (const proj of snapshot.activeProjectiles) {
+        if (proj.tilePath && proj.tilePath.length > 0) {
+          proj.tileEntryTime = now;
+          proj.currentTileIndex = 0;
+        }
+      }
+    }
+  };
+
   const handleReplayStepForward = useCallback(() => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
     setReplayTurnIndex(prev => {
       const next = Math.min(prev + 1, history.length - 1);
+      resetProjectileTiming(history[next]);
       setGameState(history[next]);
       return next;
     });
@@ -981,6 +1030,7 @@ export const Game: React.FC = () => {
     const history = turnHistoryRef.current;
     setReplayTurnIndex(prev => {
       const next = Math.max(prev - 1, 0);
+      resetProjectileTiming(history[next]);
       setGameState(history[next]);
       return next;
     });
@@ -990,6 +1040,7 @@ export const Game: React.FC = () => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
     const clamped = Math.max(0, Math.min(turn, history.length - 1));
+    resetProjectileTiming(history[clamped]);
     setGameState(history[clamped]);
     setReplayTurnIndex(clamped);
   }, []);
