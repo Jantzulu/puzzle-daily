@@ -3436,24 +3436,9 @@ export function evaluateTriggers(
       );
 
       if (triggered) {
-        // For proximity-based triggers, automatically enable targeting toward the trigger source
-        // This ensures spells fire at the adjacent/nearby entity that triggered the event
-        let actionToExecute = action;
-        const event = action.trigger.event;
-
-        if (event === 'character_adjacent' || event === 'character_in_range' || event === 'contact_with_character') {
-          // Enemy triggered by character proximity - auto-target nearest character
-          if (!action.autoTargetNearestCharacter && !action.autoTargetNearestEnemy) {
-            actionToExecute = { ...action, autoTargetNearestCharacter: true };
-          }
-        } else if (event === 'enemy_adjacent' || event === 'enemy_in_range' || event === 'contact_with_enemy') {
-          // Character triggered by enemy proximity - auto-target nearest enemy
-          if (!action.autoTargetNearestEnemy && !action.autoTargetNearestCharacter) {
-            actionToExecute = { ...action, autoTargetNearestEnemy: true };
-          }
-        }
-
-        const updatedCharacter = executeAction(character, actionToExecute, gameState);
+        // Trigger determines WHEN the action fires, not WHERE it aims
+        // Direction is controlled by the action's own targeting settings
+        const updatedCharacter = executeAction(character, action, gameState);
         Object.assign(character, updatedCharacter);
       }
     }
