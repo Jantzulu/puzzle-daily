@@ -790,6 +790,9 @@ export interface Projectile {
   // Homing behavior - projectile tracks a moving target
   isHoming?: boolean;           // If true, projectile chases target entity
   homingPathStyle?: 'grid' | 'straight'; // Visual: 'grid' follows tiles, 'straight' flies direct
+  homingVisualStartX?: number;  // Original start X for straight-line visual continuity
+  homingVisualStartY?: number;  // Original start Y for straight-line visual continuity
+  homingVisualStartTime?: number; // Original start time for straight-line timing
   targetEntityId?: string;      // ID of entity being tracked
   targetIsEnemy?: boolean;      // true = target is enemy, false = target is character
 

@@ -1858,11 +1858,14 @@ export function updateProjectiles(gameState: GameState): void {
 
       if (proj.homingPathStyle === 'straight' && proj.tilePath.length >= 2) {
         // STRAIGHT-LINE: smooth interpolation from first to last tile (ignores grid)
-        const totalTiles = proj.tilePath.length - 1;
-        const totalTransitTime = totalTiles * tileTransitTime;
-        const progress = Math.min(timeSinceTileEntry / totalTransitTime, 1);
         const firstTile = proj.tilePath[0];
         const lastTile = proj.tilePath[proj.tilePath.length - 1];
+        // Use actual distance for timing, not tile count (avoids rapid short bursts)
+        const actualDistance = Math.max(1, Math.sqrt(
+          Math.pow(lastTile.x - firstTile.x, 2) + Math.pow(lastTile.y - firstTile.y, 2)
+        ));
+        const totalTransitTime = actualDistance * tileTransitTime;
+        const progress = Math.min(timeSinceTileEntry / totalTransitTime, 1);
         newX = firstTile.x + (lastTile.x - firstTile.x) * progress;
         newY = firstTile.y + (lastTile.y - firstTile.y) * progress;
         if (progress >= 1) reachedTarget = true;
@@ -2181,11 +2184,15 @@ function resolveProjectiles(gameState: GameState): void {
             vfxSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
           }
 
-          // Build tile path for visual: intermediate tiles from current position to hit position
-          const turnTiles = getTilesAlongLine(proj.x, proj.y, hitX, hitY);
+          // Build tile path for visual: from visual start (or current) to hit position
+          const vStartX = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartX ?? proj.x) : proj.x;
+          const vStartY = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartY ?? proj.y) : proj.y;
+          const turnTiles = getTilesAlongLine(vStartX, vStartY, hitX, hitY);
           proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
-          proj.tileEntryTime = Date.now();
+          proj.tileEntryTime = proj.homingPathStyle === 'straight'
+            ? (proj.homingVisualStartTime ?? Date.now())
+            : Date.now();
           proj.hitResult = {
             hitTileIndex: turnTiles.length - 1,
             deactivate: true,
@@ -2204,10 +2211,29 @@ function resolveProjectiles(gameState: GameState): void {
           const newX = proj.x + dx * moveRatio;
           const newY = proj.y + dy * moveRatio;
 
-          const turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
-          proj.tilePath = turnTiles;
+          // For straight-line: use visual start (preserves full flight path)
+          const visualStartX = proj.homingVisualStartX ?? proj.x;
+          const visualStartY = proj.homingVisualStartY ?? proj.y;
+          if (proj.homingPathStyle === 'straight') {
+            // Store original start for continuous straight-line interpolation
+            if (proj.homingVisualStartX === undefined) {
+              proj.homingVisualStartX = proj.x;
+              proj.homingVisualStartY = proj.y;
+            }
+            // Build path from visual start to current logical end
+            const turnTiles = getTilesAlongLine(visualStartX, visualStartY, newX, newY);
+            proj.tilePath = turnTiles;
+          } else {
+            const turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
+            proj.tilePath = turnTiles;
+          }
           proj.currentTileIndex = 0;
-          proj.tileEntryTime = Date.now();
+          proj.tileEntryTime = proj.homingPathStyle === 'straight'
+            ? (proj.homingVisualStartTime ?? Date.now()) // Keep original start time for straight
+            : Date.now();
+          if (proj.homingVisualStartTime === undefined) {
+            proj.homingVisualStartTime = Date.now();
+          }
           proj.x = newX;
           proj.y = newY;
           proj.targetX = targetEntity.x;
