@@ -1627,8 +1627,8 @@ function checkGameConditions(gameState: GameState): void {
     return;
   }
 
-  // Check if all characters are dead
-  const allCharactersDead = gameState.placedCharacters.every((c) => c.dead);
+  // Check if all characters are dead (including pending projectile deaths)
+  const allCharactersDead = gameState.placedCharacters.every((c) => c.dead || c.pendingProjectileDeath);
   if (allCharactersDead && gameState.placedCharacters.length > 0) {
     gameState.gameStatus = 'defeat';
   }
