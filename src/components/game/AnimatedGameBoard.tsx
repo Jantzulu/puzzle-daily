@@ -3495,6 +3495,9 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   // Calculate rotation and mirroring based on direction
   const rotationConfig = getRotationForDirection(projectile.direction);
 
+  // Get projectile scale factor
+  const scale = projectile.attackData.projectileScale ?? 1;
+
   // Check if the visual has passed the reflect point (tint only applies after reflect)
   const pastReflectPoint = projectile.reflected &&
     (projectile.reflectAtTileIndex === undefined || (projectile.currentTileIndex ?? 0) >= projectile.reflectAtTileIndex);
@@ -3503,11 +3506,11 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   if (pastReflectPoint && projectile.reflectOverrideSprite?.spriteData) {
     const overrideData = projectile.reflectOverrideSprite.spriteData;
     if (overrideData.spriteSheet) {
-      drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, 24, imageCache, now, rotationConfig);
+      drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, Math.round(24 * scale), imageCache, now, rotationConfig);
     } else {
       const shape = overrideData.shape || 'circle';
       const color = overrideData.primaryColor || '#ff6600';
-      drawShape(ctx, px, py, shape, color, 8, overrideData.idleImageData, imageCache, rotationConfig);
+      drawShape(ctx, px, py, shape, color, Math.round(8 * scale), overrideData.idleImageData, imageCache, rotationConfig);
     }
     return;
   }
@@ -3518,7 +3521,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
 
     // Check for sprite sheet first (highest priority)
     if (spriteData.spriteSheet) {
-      const spriteSize = 24; // Size for projectile sprite sheets
+      const spriteSize = Math.round(24 * scale); // Size for projectile sprite sheets
       drawSpellSpriteSheet(
         ctx,
         spriteData.spriteSheet,
@@ -3531,11 +3534,13 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       );
       // Apply tint overlay for reflected projectiles (over sprite sheet)
       if (pastReflectPoint && projectile.reflectTintColor) {
+        const tintHalf = Math.round(12 * scale);
+        const tintSize = Math.round(24 * scale);
         ctx.save();
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = projectile.reflectTintColor;
         ctx.globalAlpha = 0.4;
-        ctx.fillRect(px - 12, py - 12, 24, 24);
+        ctx.fillRect(px - tintHalf, py - tintHalf, tintSize, tintSize);
         ctx.restore();
       }
       return;
@@ -3548,7 +3553,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       : spriteData.primaryColor || '#ff6600';
     const imageData = spriteData.idleImageData;
 
-    drawShape(ctx, px, py, shape, color, 8, imageData, imageCache, rotationConfig);
+    drawShape(ctx, px, py, shape, color, Math.round(8 * scale), imageData, imageCache, rotationConfig);
 
     // Apply tint overlay for reflected projectiles with images
     if (pastReflectPoint && projectile.reflectTintColor && imageData) {
@@ -3557,7 +3562,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       ctx.fillStyle = projectile.reflectTintColor;
       ctx.globalAlpha = 0.4;
       ctx.beginPath();
-      ctx.arc(px, py, 8, 0, Math.PI * 2);
+      ctx.arc(px, py, Math.round(8 * scale), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -3568,12 +3573,12 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       // Outer glow with tint
       ctx.fillStyle = projectile.reflectTintColor + '4D'; // 30% opacity
       ctx.beginPath();
-      ctx.arc(px, py, 8, 0, Math.PI * 2);
+      ctx.arc(px, py, Math.round(8 * scale), 0, Math.PI * 2);
       ctx.fill();
       // Inner core with tint
       ctx.fillStyle = projectile.reflectTintColor;
       ctx.beginPath();
-      ctx.arc(px, py, 4, 0, Math.PI * 2);
+      ctx.arc(px, py, Math.round(4 * scale), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     } else {

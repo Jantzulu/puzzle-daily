@@ -148,7 +148,7 @@ function isSideQuestCompleted(
 
     case 'no_deaths':
       // No characters died during the puzzle
-      return gameState.placedCharacters.every(c => !c.dead);
+      return gameState.placedCharacters.every(c => !c.dead && !c.pendingProjectileDeath);
 
     case 'custom':
       // Custom quests cannot be auto-checked

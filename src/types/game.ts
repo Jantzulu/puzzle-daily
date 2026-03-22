@@ -299,6 +299,7 @@ export interface PlacedEnemy {
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
+  pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
 }
 
 export interface PlacedObject {
@@ -546,6 +547,7 @@ export interface PlacedCharacter {
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions for redirect spells (set during setup)
+  pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
@@ -738,6 +740,9 @@ export interface CustomAttack {
 
   // Animation timing
   effectDuration?: number;      // MS to show effects (default: 300)
+
+  // Projectile scale
+  projectileScale?: number;     // Visual size multiplier for projectile sprites (default: 1.0)
 
   // Special Effects
   statusEffect?: StatusEffect;  // Apply status on hit
@@ -991,6 +996,9 @@ export interface SpellAsset {
 
   // Backstab (critical strike from behind)
   backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target
+
+  // Projectile scale
+  projectileScale?: number;       // Visual size multiplier for projectile sprites (default: 1.0)
 
   // Sound configuration
   castSound?: string;             // Sound asset ID to play when spell is cast

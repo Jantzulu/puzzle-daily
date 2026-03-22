@@ -1159,7 +1159,7 @@ export function executeTurn(gameState: GameState): GameState {
   // Pre-compute which tiles are being vacated by characters this turn (for train-like movement)
   gameState.tilesBeingVacated = new Set<string>();
   for (const character of gameState.placedCharacters) {
-    if (character.dead || !character.active) continue;
+    if (character.dead || character.pendingProjectileDeath || !character.active) continue;
     const charData = getCharacter(character.characterId);
     if (!charData) continue;
 
@@ -1198,7 +1198,7 @@ export function executeTurn(gameState: GameState): GameState {
     newCharacter.teleportFromY = undefined;
     newCharacter.iceSlideDistance = undefined;
 
-    if (!newCharacter.active || newCharacter.dead) {
+    if (!newCharacter.active || newCharacter.dead || newCharacter.pendingProjectileDeath) {
       newCharacters.push(newCharacter);
       continue;
     }
@@ -1354,6 +1354,12 @@ export function executeTurn(gameState: GameState): GameState {
     newEnemy.iceSlideDistance = undefined;
 
     if (newEnemy.dead) {
+      newEnemies.push(newEnemy);
+      continue;
+    }
+
+    // Skip enemies awaiting deferred projectile death — don't let them act
+    if (newEnemy.pendingProjectileDeath) {
       newEnemies.push(newEnemy);
       continue;
     }
@@ -1636,7 +1642,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
   for (const condition of gameState.puzzle.winConditions) {
     switch (condition.type) {
       case 'defeat_all_enemies':
-        const allEnemiesDead = gameState.puzzle.enemies.every((e) => e.dead);
+        const allEnemiesDead = gameState.puzzle.enemies.every((e) => e.dead || e.pendingProjectileDeath);
         if (!allEnemiesDead) return false;
         break;
 
@@ -1648,7 +1654,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         });
         // If there are no bosses, this condition is vacuously true
         if (bossEnemies.length > 0) {
-          const allBossesDead = bossEnemies.every(e => e.dead);
+          const allBossesDead = bossEnemies.every(e => e.dead || e.pendingProjectileDeath);
           if (!allBossesDead) return false;
         }
         break;
@@ -1661,7 +1667,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
       case 'reach_goal':
         // Check if any character is on a goal tile
         const hasReachedGoal = gameState.placedCharacters.some((char) => {
-          if (char.dead) return false;
+          if (char.dead || char.pendingProjectileDeath) return false;
           const tile = gameState.puzzle.tiles[char.y]?.[char.x];
           return tile?.type === TileType.GOAL;
         });
@@ -1673,7 +1679,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         const surviveTurns = condition.params?.turns ?? 10;
         if (gameState.currentTurn < surviveTurns) return false;
         // Also need at least one character alive
-        const hasAliveCharacter = gameState.placedCharacters.some((c) => !c.dead);
+        const hasAliveCharacter = gameState.placedCharacters.some((c) => !c.dead && !c.pendingProjectileDeath);
         if (!hasAliveCharacter) return false;
         break;
 
@@ -1694,7 +1700,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
       case 'characters_alive':
         // Must have at least X characters alive at the end
         const minAlive = condition.params?.characterCount ?? 1;
-        const aliveCount = gameState.placedCharacters.filter((c) => !c.dead).length;
+        const aliveCount = gameState.placedCharacters.filter((c) => !c.dead && !c.pendingProjectileDeath).length;
         if (aliveCount < minAlive) return false;
         break;
 
@@ -1732,9 +1738,9 @@ function checkDefeatConditions(gameState: GameState): boolean {
 
       case 'characters_alive':
         // Can't possibly have enough characters alive anymore
-        const minAlive = condition.params?.characterCount ?? 1;
-        const aliveCount = gameState.placedCharacters.filter((c) => !c.dead).length;
-        if (aliveCount < minAlive) return true;
+        const minAliveDefeat = condition.params?.characterCount ?? 1;
+        const aliveCountDefeat = gameState.placedCharacters.filter((c) => !c.dead && !c.pendingProjectileDeath).length;
+        if (aliveCountDefeat < minAliveDefeat) return true;
         break;
     }
   }
@@ -1917,10 +1923,25 @@ export function updateProjectiles(gameState: GameState): void {
         spawnParticleEffect(proj.hitResult.vfxX, proj.hitResult.vfxY, proj.hitResult.vfxSprite,
           proj.attackData.effectDuration || 300, gameState);
       }
-      // Trigger deferred death animation
+      // Trigger deferred death — now set entity.dead = true so AnimatedGameBoard plays death animation
       if (proj.hitResult.deferredDeathEntityId) {
-        // The entity is already logically dead from resolveProjectiles
-        // AnimatedGameBoard handles death visual based on dead flag
+        if (proj.hitResult.deferredDeathIsEnemy) {
+          const enemy = proj.hitResult.deferredDeathIndex !== undefined
+            ? gameState.puzzle.enemies[proj.hitResult.deferredDeathIndex]
+            : gameState.puzzle.enemies.find(e => e.enemyId === proj.hitResult!.deferredDeathEntityId);
+          if (enemy && enemy.pendingProjectileDeath) {
+            enemy.dead = true;
+            enemy.pendingProjectileDeath = false;
+            handleEntityDeathDrop(enemy, true, gameState);
+          }
+        } else {
+          const char = gameState.placedCharacters.find(c => c.characterId === proj.hitResult!.deferredDeathEntityId);
+          if (char && char.pendingProjectileDeath) {
+            char.dead = true;
+            char.pendingProjectileDeath = false;
+            handleEntityDeathDrop(char, false, gameState);
+          }
+        }
       }
       if (proj.hitResult.deactivate) {
         proj.active = false;
@@ -2013,17 +2034,17 @@ function resolveProjectiles(gameState: GameState): void {
 
     // === HOMING PROJECTILES ===
     if (proj.isHoming && proj.targetEntityId) {
-      let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
+      let targetEntity: { x: number; y: number; dead?: boolean; pendingProjectileDeath?: boolean } | undefined;
       if (proj.targetIsEnemy) {
         if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
           const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
-          if (!enemy.dead) targetEntity = enemy;
+          if (!enemy.dead && !enemy.pendingProjectileDeath) targetEntity = enemy;
         }
         if (!targetEntity) {
-          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead);
+          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead && !e.pendingProjectileDeath);
         }
       } else {
-        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead);
+        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead && !c.pendingProjectileDeath);
       }
 
       if (targetEntity) {
@@ -2061,13 +2082,15 @@ function resolveProjectiles(gameState: GameState): void {
               if (!wasDeflected) {
                 applyDamageToEntityNoDeflect(enemy, damage, gameState);
                 if (enemy.dead) {
-                  handleEntityDeathDrop(enemy, true, gameState);
+                  // Defer death visual — undo dead flag, set pendingProjectileDeath
+                  enemy.dead = false;
+                  enemy.pendingProjectileDeath = true;
                   deferredDeathEntityId = enemy.enemyId;
                   deferredDeathIsEnemy = true;
                   deferredDeathIndex = gameState.puzzle.enemies.indexOf(enemy);
                 }
               }
-              if (proj.spellAssetId && !enemy.dead) {
+              if (proj.spellAssetId && !enemy.dead && !enemy.pendingProjectileDeath) {
                 applyStatusEffectFromProjectile(enemy, proj.spellAssetId,
                   proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
               }
@@ -2095,12 +2118,14 @@ function resolveProjectiles(gameState: GameState): void {
               if (!wasDeflected) {
                 applyDamageToEntityNoDeflect(char, damage, gameState);
                 if (char.dead) {
-                  handleEntityDeathDrop(char, false, gameState);
+                  // Defer death visual — undo dead flag, set pendingProjectileDeath
+                  char.dead = false;
+                  char.pendingProjectileDeath = true;
                   deferredDeathEntityId = char.characterId;
                   deferredDeathIsEnemy = false;
                 }
               }
-              if (proj.spellAssetId && !char.dead) {
+              if (proj.spellAssetId && !char.dead && !char.pendingProjectileDeath) {
                 applyStatusEffectFromProjectile(char, proj.spellAssetId,
                   proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
               }
@@ -2272,7 +2297,7 @@ function resolveProjectiles(gameState: GameState): void {
             }
           } else {
             const hitEnemy = gameState.puzzle.enemies.find(
-              e => !e.dead && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
+              e => !e.dead && !e.pendingProjectileDeath && Math.floor(e.x) === checkX && Math.floor(e.y) === checkY &&
                    !hitEntityIds.includes(e.enemyId)
             );
             if (hitEnemy) {
@@ -2307,7 +2332,7 @@ function resolveProjectiles(gameState: GameState): void {
                   // Check for entity hits along reflected path
                   if (rEffCharFired && !isHealingProjectile) {
                     const rHitEnemy = gameState.puzzle.enemies.find(
-                      e => !e.dead && Math.floor(e.x) === rx && Math.floor(e.y) === ry &&
+                      e => !e.dead && !e.pendingProjectileDeath && Math.floor(e.x) === rx && Math.floor(e.y) === ry &&
                            !(proj.hitEntityIds?.includes(e.enemyId))
                     );
                     if (rHitEnemy) {
@@ -2319,8 +2344,12 @@ function resolveProjectiles(gameState: GameState): void {
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
                         applyDamageToEntityNoDeflect(rHitEnemy, dmg, gameState);
-                        if (rHitEnemy.dead) handleEntityDeathDrop(rHitEnemy, true, gameState);
-                        if (proj.spellAssetId && !rHitEnemy.dead) {
+                        if (rHitEnemy.dead) {
+                          // Defer death visual
+                          rHitEnemy.dead = false;
+                          rHitEnemy.pendingProjectileDeath = true;
+                        }
+                        if (proj.spellAssetId && !rHitEnemy.dead && !rHitEnemy.pendingProjectileDeath) {
                           applyStatusEffectFromProjectile(rHitEnemy, proj.spellAssetId,
                             proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
                         }
@@ -2331,16 +2360,16 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitEnemy.x, vfxY: rHitEnemy.y,
-                        deferredDeathEntityId: rHitEnemy.dead ? rHitEnemy.enemyId : undefined,
-                        deferredDeathIsEnemy: rHitEnemy.dead ? true : undefined,
-                        deferredDeathIndex: rHitEnemy.dead ? gameState.puzzle.enemies.indexOf(rHitEnemy) : undefined,
+                        deferredDeathEntityId: rHitEnemy.pendingProjectileDeath ? rHitEnemy.enemyId : undefined,
+                        deferredDeathIsEnemy: rHitEnemy.pendingProjectileDeath ? true : undefined,
+                        deferredDeathIndex: rHitEnemy.pendingProjectileDeath ? gameState.puzzle.enemies.indexOf(rHitEnemy) : undefined,
                       };
                       reflectedHit = true;
                       if (!canPierce) break;
                     }
                   } else if (rEffEnemyFired && !isHealingProjectile) {
                     const rHitChar = gameState.placedCharacters.find(
-                      c => !c.dead && Math.floor(c.x) === rx && Math.floor(c.y) === ry &&
+                      c => !c.dead && !c.pendingProjectileDeath && Math.floor(c.x) === rx && Math.floor(c.y) === ry &&
                            !(proj.hitEntityIds?.includes(c.characterId))
                     );
                     if (rHitChar) {
@@ -2352,8 +2381,12 @@ function resolveProjectiles(gameState: GameState): void {
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
                         applyDamageToEntityNoDeflect(rHitChar, dmg, gameState);
-                        if (rHitChar.dead) handleEntityDeathDrop(rHitChar, false, gameState);
-                        if (proj.spellAssetId && !rHitChar.dead) {
+                        if (rHitChar.dead) {
+                          // Defer death visual
+                          rHitChar.dead = false;
+                          rHitChar.pendingProjectileDeath = true;
+                        }
+                        if (proj.spellAssetId && !rHitChar.dead && !rHitChar.pendingProjectileDeath) {
                           applyStatusEffectFromProjectile(rHitChar, proj.spellAssetId,
                             proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
                         }
@@ -2364,8 +2397,8 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitChar.x, vfxY: rHitChar.y,
-                        deferredDeathEntityId: rHitChar.dead ? rHitChar.characterId : undefined,
-                        deferredDeathIsEnemy: rHitChar.dead ? false : undefined,
+                        deferredDeathEntityId: rHitChar.pendingProjectileDeath ? rHitChar.characterId : undefined,
+                        deferredDeathIsEnemy: rHitChar.pendingProjectileDeath ? false : undefined,
                       };
                       reflectedHit = true;
                       if (!canPierce) break;
@@ -2417,13 +2450,15 @@ function resolveProjectiles(gameState: GameState): void {
                 if (!wasDeflected) {
                   applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
                   if (hitEnemy.dead) {
-                    handleEntityDeathDrop(hitEnemy, true, gameState);
+                    // Defer death visual — undo dead flag, set pendingProjectileDeath
+                    hitEnemy.dead = false;
+                    hitEnemy.pendingProjectileDeath = true;
                     deferredDeathEntityId = hitEnemy.enemyId;
                     deferredDeathIsEnemy = true;
                     deferredDeathIndex = gameState.puzzle.enemies.indexOf(hitEnemy);
                   }
                 }
-                if (proj.spellAssetId && !hitEnemy.dead) {
+                if (proj.spellAssetId && !hitEnemy.dead && !hitEnemy.pendingProjectileDeath) {
                   applyStatusEffectFromProjectile(hitEnemy, proj.spellAssetId,
                     proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
                 }
@@ -2473,7 +2508,7 @@ function resolveProjectiles(gameState: GameState): void {
             }
           } else {
             const hitChar = gameState.placedCharacters.find(
-              c => !c.dead && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
+              c => !c.dead && !c.pendingProjectileDeath && Math.floor(c.x) === checkX && Math.floor(c.y) === checkY &&
                    !hitEntityIds.includes(c.characterId)
             );
             if (hitChar) {
@@ -2506,7 +2541,7 @@ function resolveProjectiles(gameState: GameState): void {
                   // Check for entity hits along reflected path
                   if (rEffCharFired2 && !isHealingProjectile) {
                     const rHitEnemy2 = gameState.puzzle.enemies.find(
-                      e => !e.dead && Math.floor(e.x) === rx && Math.floor(e.y) === ry &&
+                      e => !e.dead && !e.pendingProjectileDeath && Math.floor(e.x) === rx && Math.floor(e.y) === ry &&
                            !(proj.hitEntityIds?.includes(e.enemyId))
                     );
                     if (rHitEnemy2) {
@@ -2516,8 +2551,12 @@ function resolveProjectiles(gameState: GameState): void {
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy2.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
                         applyDamageToEntityNoDeflect(rHitEnemy2, dmg, gameState);
-                        if (rHitEnemy2.dead) handleEntityDeathDrop(rHitEnemy2, true, gameState);
-                        if (proj.spellAssetId && !rHitEnemy2.dead) {
+                        if (rHitEnemy2.dead) {
+                          // Defer death visual
+                          rHitEnemy2.dead = false;
+                          rHitEnemy2.pendingProjectileDeath = true;
+                        }
+                        if (proj.spellAssetId && !rHitEnemy2.dead && !rHitEnemy2.pendingProjectileDeath) {
                           applyStatusEffectFromProjectile(rHitEnemy2, proj.spellAssetId,
                             proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
                         }
@@ -2530,16 +2569,16 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitEnemy2.x, vfxY: rHitEnemy2.y,
-                        deferredDeathEntityId: rHitEnemy2.dead ? rHitEnemy2.enemyId : undefined,
-                        deferredDeathIsEnemy: rHitEnemy2.dead ? true : undefined,
-                        deferredDeathIndex: rHitEnemy2.dead ? gameState.puzzle.enemies.indexOf(rHitEnemy2) : undefined,
+                        deferredDeathEntityId: rHitEnemy2.pendingProjectileDeath ? rHitEnemy2.enemyId : undefined,
+                        deferredDeathIsEnemy: rHitEnemy2.pendingProjectileDeath ? true : undefined,
+                        deferredDeathIndex: rHitEnemy2.pendingProjectileDeath ? gameState.puzzle.enemies.indexOf(rHitEnemy2) : undefined,
                       };
                       reflectedHit2 = true;
                       if (!canPierce) break;
                     }
                   } else if (rEffEnemyFired2 && !isHealingProjectile) {
                     const rHitChar2 = gameState.placedCharacters.find(
-                      c => !c.dead && Math.floor(c.x) === rx && Math.floor(c.y) === ry &&
+                      c => !c.dead && !c.pendingProjectileDeath && Math.floor(c.x) === rx && Math.floor(c.y) === ry &&
                            !(proj.hitEntityIds?.includes(c.characterId))
                     );
                     if (rHitChar2) {
@@ -2549,8 +2588,12 @@ function resolveProjectiles(gameState: GameState): void {
                         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar2.facing);
                         const dmg = isCrit ? baseDmg * 2 : baseDmg;
                         applyDamageToEntityNoDeflect(rHitChar2, dmg, gameState);
-                        if (rHitChar2.dead) handleEntityDeathDrop(rHitChar2, false, gameState);
-                        if (proj.spellAssetId && !rHitChar2.dead) {
+                        if (rHitChar2.dead) {
+                          // Defer death visual
+                          rHitChar2.dead = false;
+                          rHitChar2.pendingProjectileDeath = true;
+                        }
+                        if (proj.spellAssetId && !rHitChar2.dead && !rHitChar2.pendingProjectileDeath) {
                           applyStatusEffectFromProjectile(rHitChar2, proj.spellAssetId,
                             proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
                         }
@@ -2563,8 +2606,8 @@ function resolveProjectiles(gameState: GameState): void {
                         deactivate: true,
                         vfxSprite: proj.attackData.hitEffectSprite,
                         vfxX: rHitChar2.x, vfxY: rHitChar2.y,
-                        deferredDeathEntityId: rHitChar2.dead ? rHitChar2.characterId : undefined,
-                        deferredDeathIsEnemy: rHitChar2.dead ? false : undefined,
+                        deferredDeathEntityId: rHitChar2.pendingProjectileDeath ? rHitChar2.characterId : undefined,
+                        deferredDeathIsEnemy: rHitChar2.pendingProjectileDeath ? false : undefined,
                       };
                       reflectedHit2 = true;
                       if (!canPierce) break;
@@ -2613,12 +2656,14 @@ function resolveProjectiles(gameState: GameState): void {
                 if (!wasDeflected) {
                   applyDamageToEntityNoDeflect(hitChar, damage, gameState);
                   if (hitChar.dead) {
-                    handleEntityDeathDrop(hitChar, false, gameState);
+                    // Defer death visual — undo dead flag, set pendingProjectileDeath
+                    hitChar.dead = false;
+                    hitChar.pendingProjectileDeath = true;
                     deferredDeathEntityId = hitChar.characterId;
                     deferredDeathIsEnemy = false;
                   }
                 }
-                if (proj.spellAssetId && !hitChar.dead) {
+                if (proj.spellAssetId && !hitChar.dead && !hitChar.pendingProjectileDeath) {
                   applyStatusEffectFromProjectile(hitChar, proj.spellAssetId,
                     proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
                 }

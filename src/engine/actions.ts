@@ -1618,6 +1618,7 @@ function executeSpellInDirection(
     criticalHitEffectSprite: spell.sprites.criticalHitEffect,
     backstabEnabled: spell.backstabEnabled,
     effectDuration: 300,
+    projectileScale: spell.projectileScale,
     pattern: AttackPattern.PROJECTILE, // Default, will be set below
   };
 
