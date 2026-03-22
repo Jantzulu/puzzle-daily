@@ -857,7 +857,9 @@ export const Game: React.FC = () => {
     });
     initialState.gameStatus = 'running';
     // Headless mode resolves projectiles instantly so each snapshot is complete
-    initialState.headlessMode = true;
+    // Use non-headless mode so resolveProjectiles keeps projectiles alive
+    // in the snapshots for AnimatedGameBoard to animate during playback
+    initialState.headlessMode = false;
 
     // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys
     const deepCopyState = (state: GameState): GameState => {
