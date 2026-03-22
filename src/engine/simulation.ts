@@ -2953,8 +2953,10 @@ function resolveProjectiles(gameState: GameState): void {
       // Always let the visual system handle deactivation.
       // If no hitResult, create one that just deactivates at end of path.
       if (!proj.hitResult) {
+        const hitIdx = Math.min(logicalEndTile, (proj.tilePath?.length ?? 1) - 1);
+        console.log(`[PROJ REMOVE] id=${proj.id.slice(-6)} logicalEndTile=${logicalEndTile} tilePathLen=${proj.tilePath?.length} hitIdx=${hitIdx} isHoming=${proj.isHoming}`);
         proj.hitResult = {
-          hitTileIndex: Math.min(logicalEndTile, (proj.tilePath?.length ?? 1) - 1),
+          hitTileIndex: hitIdx,
           deactivate: true,
         };
       }
