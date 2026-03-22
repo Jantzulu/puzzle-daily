@@ -3495,8 +3495,12 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   // Calculate rotation and mirroring based on direction
   const rotationConfig = getRotationForDirection(projectile.direction);
 
+  // Check if the visual has passed the reflect point (tint only applies after reflect)
+  const pastReflectPoint = projectile.reflected &&
+    (projectile.reflectAtTileIndex === undefined || (projectile.currentTileIndex ?? 0) >= projectile.reflectAtTileIndex);
+
   // If reflected with an override sprite, use that instead of the original
-  if (projectile.reflected && projectile.reflectOverrideSprite?.spriteData) {
+  if (pastReflectPoint && projectile.reflectOverrideSprite?.spriteData) {
     const overrideData = projectile.reflectOverrideSprite.spriteData;
     if (overrideData.spriteSheet) {
       drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, 24, imageCache, now, rotationConfig);
@@ -3526,7 +3530,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
         rotationConfig
       );
       // Apply tint overlay for reflected projectiles (over sprite sheet)
-      if (projectile.reflected && projectile.reflectTintColor) {
+      if (pastReflectPoint && projectile.reflectTintColor) {
         ctx.save();
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = projectile.reflectTintColor;
@@ -3539,7 +3543,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
 
     // Fall back to static image or shape
     const shape = spriteData.shape || 'circle';
-    const color = projectile.reflected && projectile.reflectTintColor
+    const color = pastReflectPoint && projectile.reflectTintColor
       ? projectile.reflectTintColor  // Use tint color as primary color for reflected projectiles
       : spriteData.primaryColor || '#ff6600';
     const imageData = spriteData.idleImageData;
@@ -3547,7 +3551,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
     drawShape(ctx, px, py, shape, color, 8, imageData, imageCache, rotationConfig);
 
     // Apply tint overlay for reflected projectiles with images
-    if (projectile.reflected && projectile.reflectTintColor && imageData) {
+    if (pastReflectPoint && projectile.reflectTintColor && imageData) {
       ctx.save();
       ctx.globalCompositeOperation = 'source-atop';
       ctx.fillStyle = projectile.reflectTintColor;
@@ -3559,7 +3563,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
     }
   } else {
     // Default projectile rendering — use tint color if reflected
-    if (projectile.reflected && projectile.reflectTintColor) {
+    if (pastReflectPoint && projectile.reflectTintColor) {
       ctx.save();
       // Outer glow with tint
       ctx.fillStyle = projectile.reflectTintColor + '4D'; // 30% opacity

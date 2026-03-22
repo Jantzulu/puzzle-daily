@@ -2000,6 +2000,10 @@ function resolveProjectiles(gameState: GameState): void {
     // and are just waiting for the visual system to consume the result
     if (proj.hitResult) continue;
 
+    // Skip reflected projectiles — their full path and collisions were resolved
+    // at reflect time. Re-processing would reset the visual and cause duplication.
+    if (proj.reflected) continue;
+
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
     const tilesPerTurn = proj.speed || 4;
