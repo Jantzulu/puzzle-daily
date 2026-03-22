@@ -2527,9 +2527,7 @@ function drawEnemy(
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
-    // Check if this enemy is targeted by a homing projectile
-    const enemyHomingGlow = getHomingTargetGlow(gameState, enemy.enemyId, true);
-    drawHealthBar(ctx, px, py, enemy.visualHealth ?? enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop, enemyHomingGlow);
+    drawHealthBar(ctx, px, py, enemy.visualHealth ?? enemy.currentHealth, maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (enemyData) {
@@ -3171,8 +3169,7 @@ function drawCharacter(
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
-    const charHomingGlow = getHomingTargetGlow(gameState, character.characterId, false);
-    drawHealthBar(ctx, px, py, character.visualHealth ?? character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop, charHomingGlow);
+    drawHealthBar(ctx, px, py, character.visualHealth ?? character.currentHealth, maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (charData) {
