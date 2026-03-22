@@ -1802,7 +1802,7 @@ export function updateProjectiles(gameState: GameState): void {
 
   // Debug: log active projectile count and state (remove after debugging)
   const activeProjs = gameState.activeProjectiles.filter(p => p.active);
-  if (activeProjs.length > 0 && Date.now() % 1000 < 20) {
+  if (activeProjs.length > 0) {
     console.log(`[PROJ DEBUG] ${activeProjs.length} active projectiles:`, activeProjs.map(p => ({
       id: p.id.slice(-6),
       pos: `(${p.x.toFixed(1)},${p.y.toFixed(1)})`,
@@ -2000,6 +2000,11 @@ function triggerAOEExplosion(
  */
 function resolveProjectiles(gameState: GameState): void {
   if (!gameState.activeProjectiles) return;
+  // Debug
+  const activeCount = gameState.activeProjectiles.filter(p => p.active).length;
+  if (activeCount > 0) {
+    console.log(`[RESOLVE DEBUG] Processing ${activeCount} active projectiles`);
+  }
 
   const projectilesToRemove: string[] = [];
 
