@@ -1569,7 +1569,7 @@ function executeSpell(
   for (let i = 0; i < castDirections.length; i++) {
     const direction = castDirections[i];
     const homingTarget = homingTargets?.[i];
-    executeSpellInDirection(character, spell, direction, gameState, homingTarget, action.homingPathStyle, action.homingIgnoreWalls);
+    executeSpellInDirection(character, spell, direction, gameState, homingTarget, action.homingPathStyle, action.homingIgnoreWalls, action.homingHitAlongPath);
   }
 
   // Set cooldown if spell has one
@@ -1593,7 +1593,8 @@ function executeSpellInDirection(
   gameState: GameState,
   homingTarget?: { targetEntityId: string; targetIsEnemy: boolean },
   homingPathStyle?: 'grid' | 'straight',
-  homingIgnoreWalls?: boolean
+  homingIgnoreWalls?: boolean,
+  homingHitAlongPath?: boolean
 ): void {
   // Convert SpellAsset to CustomAttack format for execution
   const attackData: CustomAttack = {
@@ -1623,6 +1624,7 @@ function executeSpellInDirection(
     projectileScale: spell.projectileScale,
     homingPathStyle: homingPathStyle || 'straight',
     homingIgnoreWalls: homingIgnoreWalls ?? true,
+    homingHitAlongPath: homingHitAlongPath || false,
     pattern: AttackPattern.PROJECTILE, // Default, will be set below
   };
 
@@ -1790,6 +1792,7 @@ function spawnProjectile(
     isHoming: !!homingTarget,
     homingPathStyle: attackData.homingPathStyle || 'straight',
     homingIgnoreWalls: attackData.homingIgnoreWalls ?? true,
+    homingHitAlongPath: attackData.homingHitAlongPath || false,
     homingVisualStartX: character.x,
     homingVisualStartY: character.y,
     homingVisualStartTime: Date.now(),

@@ -547,11 +547,12 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                 <span className="text-stone-400">Path:</span>
                 <select
                   value={action.homingPathStyle || 'straight'}
-                  onChange={(e) => onUpdate({ ...action, homingPathStyle: e.target.value as 'grid' | 'straight' })}
+                  onChange={(e) => onUpdate({ ...action, homingPathStyle: e.target.value as 'grid' | 'straight' | 'pathfinding' })}
                   className="bg-stone-700 text-parchment-100 text-xs px-1 py-0.5 rounded"
                 >
                   <option value="straight">Straight Line</option>
                   <option value="grid">Grid-Based</option>
+                  <option value="pathfinding">Pathfinding (around walls)</option>
                 </select>
               </label>
             )}
@@ -563,6 +564,16 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                   onChange={(e) => onUpdate({ ...action, homingIgnoreWalls: e.target.checked })}
                   className="w-3 h-3" />
                 <span className="text-stone-400">Ignore Walls</span>
+              </label>
+            )}
+
+            {/* Hit along path — grid homing only */}
+            {action.homing && (action.homingPathStyle === 'grid' || action.homingPathStyle === 'pathfinding') && (
+              <label className="flex items-center gap-2 text-xs ml-8">
+                <input type="checkbox" checked={action.homingHitAlongPath || false}
+                  onChange={(e) => onUpdate({ ...action, homingHitAlongPath: e.target.checked })}
+                  className="w-3 h-3" />
+                <span className="text-stone-400">Hit Entities Along Path</span>
               </label>
             )}
 

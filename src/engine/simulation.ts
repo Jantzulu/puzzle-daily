@@ -8,6 +8,124 @@ import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, load
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind } from './utils';
 
 /**
+ * BFS pathfinding: find shortest path from start to target avoiding walls.
+ * Returns array of tile positions, or empty array if no path exists.
+ */
+function findPathBFS(
+  startX: number, startY: number,
+  targetX: number, targetY: number,
+  gameState: GameState
+): Array<{x: number; y: number}> {
+  const sx = Math.floor(startX), sy = Math.floor(startY);
+  const tx = Math.floor(targetX), ty = Math.floor(targetY);
+  if (sx === tx && sy === ty) return [{x: sx, y: sy}];
+
+  const width = gameState.puzzle.width;
+  const height = gameState.puzzle.height;
+  const visited = new Set<string>();
+  const queue: Array<{x: number; y: number; path: Array<{x: number; y: number}>}> = [];
+
+  visited.add(`${sx},${sy}`);
+  queue.push({x: sx, y: sy, path: [{x: sx, y: sy}]});
+
+  // 8-directional movement
+  const dirs = [
+    {dx: 0, dy: -1}, {dx: 1, dy: -1}, {dx: 1, dy: 0}, {dx: 1, dy: 1},
+    {dx: 0, dy: 1}, {dx: -1, dy: 1}, {dx: -1, dy: 0}, {dx: -1, dy: -1},
+  ];
+
+  while (queue.length > 0) {
+    const current = queue.shift()!;
+
+    for (const dir of dirs) {
+      const nx = current.x + dir.dx;
+      const ny = current.y + dir.dy;
+      const key = `${nx},${ny}`;
+
+      if (visited.has(key)) continue;
+      if (!isInBounds(nx, ny, width, height)) continue;
+
+      const tile = gameState.puzzle.tiles[ny]?.[nx];
+      const isWall = !tile || tile.type === TileTypeEnum.WALL;
+
+      // Allow target tile even if it's technically blocked
+      if (isWall && !(nx === tx && ny === ty)) continue;
+
+      visited.add(key);
+      const newPath = [...current.path, {x: nx, y: ny}];
+
+      if (nx === tx && ny === ty) return newPath;
+
+      queue.push({x: nx, y: ny, path: newPath});
+    }
+  }
+
+  // No path found — fall back to direct line
+  return getTilesAlongLine(startX, startY, targetX, targetY);
+}
+
+/**
+ * For grid homing with hit-along-path: check each tile for non-target entities and apply damage
+ */
+function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: number}>, gameState: GameState): void {
+  if (!proj.hitEntityIds) proj.hitEntityIds = [];
+  const isHealingProjectile = proj.attackData.healing !== undefined;
+  if (isHealingProjectile) return; // Don't damage along path for healing spells
+
+  const effectivelyCharFired = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
+  const effectivelyEnemyFired = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
+
+  for (const tile of tiles) {
+    // Skip the starting tile
+    if (tile.x === Math.floor(proj.x) && tile.y === Math.floor(proj.y)) continue;
+
+    if (effectivelyCharFired) {
+      // Check for enemy hits
+      const hitEnemy = gameState.puzzle.enemies.find(
+        e => !e.dead && !e.pendingProjectileDeath &&
+             Math.floor(e.x) === tile.x && Math.floor(e.y) === tile.y &&
+             !proj.hitEntityIds!.includes(e.enemyId) &&
+             e.enemyId !== proj.targetEntityId // Don't hit designated target along path
+      );
+      if (hitEnemy) {
+        proj.hitEntityIds!.push(hitEnemy.enemyId);
+        const baseDmg = proj.attackData.damage ?? 0;
+        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing);
+        const damage = isCrit ? baseDmg * 2 : baseDmg;
+        hitEnemy.visualHealth = hitEnemy.currentHealth;
+        applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
+        if (hitEnemy.dead) {
+          hitEnemy.dead = false;
+          hitEnemy.pendingProjectileDeath = true;
+        }
+        if (!proj.attackData.projectilePierces) break;
+      }
+    } else if (effectivelyEnemyFired) {
+      // Check for character hits
+      const hitChar = gameState.placedCharacters.find(
+        c => !c.dead && !c.pendingProjectileDeath &&
+             Math.floor(c.x) === tile.x && Math.floor(c.y) === tile.y &&
+             !proj.hitEntityIds!.includes(c.characterId) &&
+             c.characterId !== proj.targetEntityId
+      );
+      if (hitChar) {
+        proj.hitEntityIds!.push(hitChar.characterId);
+        const baseDmg = proj.attackData.damage ?? 0;
+        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitChar.facing);
+        const damage = isCrit ? baseDmg * 2 : baseDmg;
+        hitChar.visualHealth = hitChar.currentHealth;
+        applyDamageToEntityNoDeflect(hitChar, damage, gameState);
+        if (hitChar.dead) {
+          hitChar.dead = false;
+          hitChar.pendingProjectileDeath = true;
+        }
+        if (!proj.attackData.projectilePierces) break;
+      }
+    }
+  }
+}
+
+/**
  * Check if an entity has the deflect status effect
  */
 function hasDeflect(entity: PlacedCharacter | PlacedEnemy): boolean {
@@ -2232,7 +2350,9 @@ function resolveProjectiles(gameState: GameState): void {
           // Build tile path for visual: from visual start (or current) to hit position
           const vStartX = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartX ?? proj.x) : proj.x;
           const vStartY = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartY ?? proj.y) : proj.y;
-          const turnTiles = getTilesAlongLine(vStartX, vStartY, hitX, hitY);
+          const turnTiles = proj.homingPathStyle === 'pathfinding'
+            ? findPathBFS(vStartX, vStartY, hitX, hitY, gameState)
+            : getTilesAlongLine(vStartX, vStartY, hitX, hitY);
           proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
           proj.tileEntryTime = proj.homingPathStyle === 'straight'
@@ -2252,11 +2372,29 @@ function resolveProjectiles(gameState: GameState): void {
           proj.y = turnTiles[turnTiles.length - 1].y;
         } else {
           // Move toward target but don't reach it yet
-          const moveRatio = tilesPerTurn / distance;
-          const newX = proj.x + dx * moveRatio;
-          const newY = proj.y + dy * moveRatio;
+          let turnTiles: Array<{x: number; y: number}>;
+          let newX: number;
+          let newY: number;
 
-          const turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
+          if (proj.homingPathStyle === 'pathfinding') {
+            // Pathfinding: compute full BFS path, take first tilesPerTurn tiles
+            const fullPath = findPathBFS(proj.x, proj.y, targetEntity.x, targetEntity.y, gameState);
+            turnTiles = fullPath.slice(0, tilesPerTurn + 1); // +1 includes start tile
+            const lastTile = turnTiles[turnTiles.length - 1];
+            newX = lastTile.x;
+            newY = lastTile.y;
+          } else {
+            const moveRatio = tilesPerTurn / distance;
+            newX = proj.x + dx * moveRatio;
+            newY = proj.y + dy * moveRatio;
+            turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
+          }
+
+          // Hit-along-path: check for entities on each tile (grid homing only)
+          if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
+            checkHomingPathForHits(proj, turnTiles, gameState);
+          }
+
           proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
