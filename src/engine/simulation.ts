@@ -2284,18 +2284,93 @@ function resolveProjectiles(gameState: GameState): void {
                 reflectProjectile(proj, hitEnemy, gameState, Date.now());
                 reflectedThisTurn = true;
 
-                // Continue advancing in reflected direction for remaining range
+                // Continue advancing in reflected direction for full range
                 const reflectedDx = getDirectionOffset(proj.direction).dx;
                 const reflectedDy = getDirectionOffset(proj.direction).dy;
                 const reflectedRange = proj.attackData.range ?? 5;
                 const reflectedTiles: Array<{ x: number; y: number }> = [];
+                const rEffCharFired = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
+                const rEffEnemyFired = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
+                let reflectedHit = false;
+
                 for (let rDist = 1; rDist <= reflectedRange; rDist++) {
                   const rx = Math.floor(proj.startX + reflectedDx * rDist);
                   const ry = Math.floor(proj.startY + reflectedDy * rDist);
                   if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) break;
                   const rTile = gameState.puzzle.tiles[ry]?.[rx];
-                  if (!rTile || rTile.type === TileTypeEnum.WALL) break;
+                  if (!rTile || rTile.type === TileTypeEnum.WALL) {
+                    reflectedTiles.push({ x: rx, y: ry }); // Include wall tile visually
+                    break;
+                  }
                   reflectedTiles.push({ x: rx, y: ry });
+
+                  // Check for entity hits along reflected path
+                  if (rEffCharFired && !isHealingProjectile) {
+                    const rHitEnemy = gameState.puzzle.enemies.find(
+                      e => !e.dead && Math.floor(e.x) === rx && Math.floor(e.y) === ry &&
+                           !(proj.hitEntityIds?.includes(e.enemyId))
+                    );
+                    if (rHitEnemy) {
+                      proj.hitEntityIds?.push(rHitEnemy.enemyId);
+                      if (proj.attackData.isRedirect) {
+                        if (!isSteadfast(rHitEnemy)) applyRedirect(rHitEnemy, proj.attackData, proj.direction);
+                      } else {
+                        const baseDmg = proj.attackData.damage ?? 0;
+                        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy.facing);
+                        const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        applyDamageToEntityNoDeflect(rHitEnemy, dmg, gameState);
+                        if (rHitEnemy.dead) handleEntityDeathDrop(rHitEnemy, true, gameState);
+                        if (proj.spellAssetId && !rHitEnemy.dead) {
+                          applyStatusEffectFromProjectile(rHitEnemy, proj.spellAssetId,
+                            proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+                        }
+                      }
+                      const combinedSoFar = [...approachTiles, ...reflectedTiles];
+                      proj.hitResult = {
+                        hitTileIndex: combinedSoFar.length - 1,
+                        deactivate: true,
+                        vfxSprite: proj.attackData.hitEffectSprite,
+                        vfxX: rHitEnemy.x, vfxY: rHitEnemy.y,
+                        deferredDeathEntityId: rHitEnemy.dead ? rHitEnemy.enemyId : undefined,
+                        deferredDeathIsEnemy: rHitEnemy.dead ? true : undefined,
+                        deferredDeathIndex: rHitEnemy.dead ? gameState.puzzle.enemies.indexOf(rHitEnemy) : undefined,
+                      };
+                      reflectedHit = true;
+                      if (!canPierce) break;
+                    }
+                  } else if (rEffEnemyFired && !isHealingProjectile) {
+                    const rHitChar = gameState.placedCharacters.find(
+                      c => !c.dead && Math.floor(c.x) === rx && Math.floor(c.y) === ry &&
+                           !(proj.hitEntityIds?.includes(c.characterId))
+                    );
+                    if (rHitChar) {
+                      proj.hitEntityIds?.push(rHitChar.characterId);
+                      if (proj.attackData.isRedirect) {
+                        if (!isSteadfast(rHitChar)) applyRedirect(rHitChar, proj.attackData, proj.direction);
+                      } else {
+                        const baseDmg = proj.attackData.damage ?? 0;
+                        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar.facing);
+                        const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        applyDamageToEntityNoDeflect(rHitChar, dmg, gameState);
+                        if (rHitChar.dead) handleEntityDeathDrop(rHitChar, false, gameState);
+                        if (proj.spellAssetId && !rHitChar.dead) {
+                          applyStatusEffectFromProjectile(rHitChar, proj.spellAssetId,
+                            proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
+                        }
+                      }
+                      const combinedSoFar = [...approachTiles, ...reflectedTiles];
+                      proj.hitResult = {
+                        hitTileIndex: combinedSoFar.length - 1,
+                        deactivate: true,
+                        vfxSprite: proj.attackData.hitEffectSprite,
+                        vfxX: rHitChar.x, vfxY: rHitChar.y,
+                        deferredDeathEntityId: rHitChar.dead ? rHitChar.characterId : undefined,
+                        deferredDeathIsEnemy: rHitChar.dead ? false : undefined,
+                      };
+                      reflectedHit = true;
+                      if (!canPierce) break;
+                    }
+                  }
                 }
 
                 // Combine approach + reflected tiles
@@ -2304,7 +2379,15 @@ function resolveProjectiles(gameState: GameState): void {
                 proj.currentTileIndex = 0;
                 proj.tileEntryTime = Date.now();
                 proj.reflectAtTileIndex = approachTiles.length - 1;
-                proj.logicalTileIndex = 0; // Reset for reflected direction
+                proj.logicalTileIndex = 0;
+
+                // If no hit, set deactivate at end of reflected path
+                if (!reflectedHit) {
+                  proj.hitResult = {
+                    hitTileIndex: combinedPath.length - 1,
+                    deactivate: true,
+                  };
+                }
 
                 if (combinedPath.length > 0) {
                   proj.x = combinedPath[combinedPath.length - 1].x;
@@ -2401,29 +2484,111 @@ function resolveProjectiles(gameState: GameState): void {
                 reflectProjectile(proj, hitChar, gameState, Date.now());
                 reflectedThisTurn = true;
 
-                const reflectedDx = getDirectionOffset(proj.direction).dx;
-                const reflectedDy = getDirectionOffset(proj.direction).dy;
-                const reflectedRange = proj.attackData.range ?? 5;
-                const reflectedTiles: Array<{ x: number; y: number }> = [];
-                for (let rDist = 1; rDist <= reflectedRange; rDist++) {
-                  const rx = Math.floor(proj.startX + reflectedDx * rDist);
-                  const ry = Math.floor(proj.startY + reflectedDy * rDist);
+                const reflectedDx2 = getDirectionOffset(proj.direction).dx;
+                const reflectedDy2 = getDirectionOffset(proj.direction).dy;
+                const reflectedRange2 = proj.attackData.range ?? 5;
+                const reflectedTiles2: Array<{ x: number; y: number }> = [];
+                const rEffCharFired2 = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
+                const rEffEnemyFired2 = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
+                let reflectedHit2 = false;
+
+                for (let rDist = 1; rDist <= reflectedRange2; rDist++) {
+                  const rx = Math.floor(proj.startX + reflectedDx2 * rDist);
+                  const ry = Math.floor(proj.startY + reflectedDy2 * rDist);
                   if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) break;
                   const rTile = gameState.puzzle.tiles[ry]?.[rx];
-                  if (!rTile || rTile.type === TileTypeEnum.WALL) break;
-                  reflectedTiles.push({ x: rx, y: ry });
+                  if (!rTile || rTile.type === TileTypeEnum.WALL) {
+                    reflectedTiles2.push({ x: rx, y: ry });
+                    break;
+                  }
+                  reflectedTiles2.push({ x: rx, y: ry });
+
+                  // Check for entity hits along reflected path
+                  if (rEffCharFired2 && !isHealingProjectile) {
+                    const rHitEnemy2 = gameState.puzzle.enemies.find(
+                      e => !e.dead && Math.floor(e.x) === rx && Math.floor(e.y) === ry &&
+                           !(proj.hitEntityIds?.includes(e.enemyId))
+                    );
+                    if (rHitEnemy2) {
+                      proj.hitEntityIds?.push(rHitEnemy2.enemyId);
+                      if (!proj.attackData.isRedirect) {
+                        const baseDmg = proj.attackData.damage ?? 0;
+                        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitEnemy2.facing);
+                        const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        applyDamageToEntityNoDeflect(rHitEnemy2, dmg, gameState);
+                        if (rHitEnemy2.dead) handleEntityDeathDrop(rHitEnemy2, true, gameState);
+                        if (proj.spellAssetId && !rHitEnemy2.dead) {
+                          applyStatusEffectFromProjectile(rHitEnemy2, proj.spellAssetId,
+                            proj.sourceCharacterId || 'unknown', false, gameState.currentTurn);
+                        }
+                      } else {
+                        if (!isSteadfast(rHitEnemy2)) applyRedirect(rHitEnemy2, proj.attackData, proj.direction);
+                      }
+                      const combinedSoFar2 = [...approachTiles, ...reflectedTiles2];
+                      proj.hitResult = {
+                        hitTileIndex: combinedSoFar2.length - 1,
+                        deactivate: true,
+                        vfxSprite: proj.attackData.hitEffectSprite,
+                        vfxX: rHitEnemy2.x, vfxY: rHitEnemy2.y,
+                        deferredDeathEntityId: rHitEnemy2.dead ? rHitEnemy2.enemyId : undefined,
+                        deferredDeathIsEnemy: rHitEnemy2.dead ? true : undefined,
+                        deferredDeathIndex: rHitEnemy2.dead ? gameState.puzzle.enemies.indexOf(rHitEnemy2) : undefined,
+                      };
+                      reflectedHit2 = true;
+                      if (!canPierce) break;
+                    }
+                  } else if (rEffEnemyFired2 && !isHealingProjectile) {
+                    const rHitChar2 = gameState.placedCharacters.find(
+                      c => !c.dead && Math.floor(c.x) === rx && Math.floor(c.y) === ry &&
+                           !(proj.hitEntityIds?.includes(c.characterId))
+                    );
+                    if (rHitChar2) {
+                      proj.hitEntityIds?.push(rHitChar2.characterId);
+                      if (!proj.attackData.isRedirect) {
+                        const baseDmg = proj.attackData.damage ?? 0;
+                        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, rHitChar2.facing);
+                        const dmg = isCrit ? baseDmg * 2 : baseDmg;
+                        applyDamageToEntityNoDeflect(rHitChar2, dmg, gameState);
+                        if (rHitChar2.dead) handleEntityDeathDrop(rHitChar2, false, gameState);
+                        if (proj.spellAssetId && !rHitChar2.dead) {
+                          applyStatusEffectFromProjectile(rHitChar2, proj.spellAssetId,
+                            proj.sourceEnemyId || 'unknown', true, gameState.currentTurn);
+                        }
+                      } else {
+                        if (!isSteadfast(rHitChar2)) applyRedirect(rHitChar2, proj.attackData, proj.direction);
+                      }
+                      const combinedSoFar2 = [...approachTiles, ...reflectedTiles2];
+                      proj.hitResult = {
+                        hitTileIndex: combinedSoFar2.length - 1,
+                        deactivate: true,
+                        vfxSprite: proj.attackData.hitEffectSprite,
+                        vfxX: rHitChar2.x, vfxY: rHitChar2.y,
+                        deferredDeathEntityId: rHitChar2.dead ? rHitChar2.characterId : undefined,
+                        deferredDeathIsEnemy: rHitChar2.dead ? false : undefined,
+                      };
+                      reflectedHit2 = true;
+                      if (!canPierce) break;
+                    }
+                  }
                 }
 
-                const combinedPath = [...approachTiles, ...reflectedTiles];
-                proj.tilePath = combinedPath;
+                const combinedPath2 = [...approachTiles, ...reflectedTiles2];
+                proj.tilePath = combinedPath2;
                 proj.currentTileIndex = 0;
                 proj.tileEntryTime = Date.now();
                 proj.reflectAtTileIndex = approachTiles.length - 1;
                 proj.logicalTileIndex = 0;
 
-                if (combinedPath.length > 0) {
-                  proj.x = combinedPath[combinedPath.length - 1].x;
-                  proj.y = combinedPath[combinedPath.length - 1].y;
+                if (!reflectedHit2) {
+                  proj.hitResult = {
+                    hitTileIndex: combinedPath2.length - 1,
+                    deactivate: true,
+                  };
+                }
+
+                if (combinedPath2.length > 0) {
+                  proj.x = combinedPath2[combinedPath2.length - 1].x;
+                  proj.y = combinedPath2[combinedPath2.length - 1].y;
                 }
                 break;
               }
