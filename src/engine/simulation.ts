@@ -1800,6 +1800,19 @@ export function updateProjectiles(gameState: GameState): void {
   const now = Date.now();
   const projectilesToRemove: string[] = [];
 
+  // Debug: log active projectile count and state (remove after debugging)
+  const activeProjs = gameState.activeProjectiles.filter(p => p.active);
+  if (activeProjs.length > 0 && Date.now() % 1000 < 20) {
+    console.log(`[PROJ DEBUG] ${activeProjs.length} active projectiles:`, activeProjs.map(p => ({
+      id: p.id.slice(-6),
+      pos: `(${p.x.toFixed(1)},${p.y.toFixed(1)})`,
+      tilePath: p.tilePath ? p.tilePath.length + ' tiles' : 'NONE',
+      tileIdx: p.currentTileIndex,
+      hitResult: p.hitResult ? 'yes' : 'no',
+      active: p.active,
+    })));
+  }
+
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active) {
       projectilesToRemove.push(proj.id);
