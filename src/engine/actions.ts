@@ -1610,7 +1610,6 @@ function executeSpellInDirection(
     persistDamagePerTurn: spell.persistDamagePerTurn,
     persistVisualSprite: spell.sprites.persistentArea,
     projectileSprite: spell.sprites.projectile,
-    projectileScale: spell.projectileScale,
     aoeEffectSprite: spell.sprites.aoeEffect,
     hitEffectSprite: spell.sprites.damageEffect,
     healingEffectSprite: spell.sprites.healingEffect,
@@ -1800,6 +1799,9 @@ function spawnProjectile(
     tilePath,
     currentTileIndex: 0,
     tileEntryTime: Date.now(),
+    // Deterministic turn resolution metadata
+    spawnTurn: gameState.currentTurn,
+    logicalTileIndex: 0,
   };
 
   gameState.activeProjectiles.push(projectile);
