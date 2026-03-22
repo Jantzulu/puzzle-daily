@@ -2171,8 +2171,8 @@ function resolveProjectiles(gameState: GameState): void {
             vfxSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
           }
 
-          // Build tile path for visual: from current position to hit position
-          const turnTiles = [{ x: Math.floor(proj.x), y: Math.floor(proj.y) }, { x: Math.floor(hitX), y: Math.floor(hitY) }];
+          // Build tile path for visual: intermediate tiles from current position to hit position
+          const turnTiles = getTilesAlongLine(proj.x, proj.y, hitX, hitY);
           proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
@@ -2194,7 +2194,7 @@ function resolveProjectiles(gameState: GameState): void {
           const newX = proj.x + dx * moveRatio;
           const newY = proj.y + dy * moveRatio;
 
-          const turnTiles = [{ x: Math.floor(proj.x), y: Math.floor(proj.y) }, { x: Math.floor(newX), y: Math.floor(newY) }];
+          const turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
           proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
