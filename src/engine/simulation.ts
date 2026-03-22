@@ -2007,9 +2007,11 @@ function resolveProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Skip projectiles that already have a hitResult — they've been resolved
-    // and are just waiting for the visual system to animate and consume the result
+    // Skip projectiles that already have a hitResult or whose visual animation
+    // from the previous turn hasn't completed yet
     if (proj.hitResult) continue;
+    if (proj.tilePath && proj.tilePath.length > 1 &&
+        (proj.currentTileIndex ?? 0) < proj.tilePath.length - 1) continue;
 
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
@@ -2526,12 +2528,13 @@ function resolveProjectiles(gameState: GameState): void {
     }
 
     if (shouldRemove) {
-      // For non-headless, if there's a hitResult, keep the projectile alive for visual
-      // and let updateProjectiles deactivate it when the visual reaches the hit tile.
-      // If no hitResult, deactivate immediately.
+      // Always let the visual system handle deactivation.
+      // If no hitResult, create one that just deactivates at end of path.
       if (!proj.hitResult) {
-        proj.active = false;
-        projectilesToRemove.push(proj.id);
+        proj.hitResult = {
+          hitTileIndex: Math.max(0, (proj.tilePath?.length ?? 1) - 1),
+          deactivate: true,
+        };
       }
       // If hitResult exists, the visual system will deactivate when animation reaches hitTileIndex
     }
