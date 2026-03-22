@@ -2952,7 +2952,7 @@ function resolveProjectiles(gameState: GameState): void {
       // If no hitResult, create one that just deactivates at end of path.
       if (!proj.hitResult) {
         proj.hitResult = {
-          hitTileIndex: Math.max(0, (proj.tilePath?.length ?? 1) - 1),
+          hitTileIndex: Math.min(endTile, (proj.tilePath?.length ?? 1) - 1),
           deactivate: true,
         };
       }
