@@ -515,17 +515,19 @@ export const Game: React.FC = () => {
           setReplayPlaying(false);
           return prev;
         }
-        // Reset tileEntryTime on projectiles so animation starts fresh for this step
-        const snapshot = history[next];
-        const now = Date.now();
-        if (snapshot.activeProjectiles) {
-          for (const proj of snapshot.activeProjectiles) {
-            if (proj.tilePath && proj.tilePath.length > 0) {
-              proj.tileEntryTime = now;
-              proj.currentTileIndex = 0;
-            }
-          }
+        // Deep copy snapshot so playback mutations don't corrupt stored history
+        const snapshot = JSON.parse(JSON.stringify(history[next]));
+        // Restore Map/Set structures lost in JSON copy
+        snapshot.tileStates = new Map();
+        if (history[next].tileStates) {
+          history[next].tileStates.forEach((value: any, key: string) => {
+            snapshot.tileStates.set(key, {
+              ...value,
+              damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+            });
+          });
         }
+        resetProjectileTiming(snapshot);
         setGameState(snapshot);
         return next;
       });
@@ -1019,13 +1021,28 @@ export const Game: React.FC = () => {
     }
   };
 
+  // Helper: deep copy a replay snapshot for safe playback
+  const copySnapshotForPlayback = (snapshot: GameState, history: GameState[], index: number) => {
+    const copy = JSON.parse(JSON.stringify(snapshot));
+    copy.tileStates = new Map();
+    if (snapshot.tileStates) {
+      snapshot.tileStates.forEach((value: any, key: string) => {
+        copy.tileStates.set(key, {
+          ...value,
+          damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
+        });
+      });
+    }
+    resetProjectileTiming(copy);
+    return copy;
+  };
+
   const handleReplayStepForward = useCallback(() => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
     setReplayTurnIndex(prev => {
       const next = Math.min(prev + 1, history.length - 1);
-      resetProjectileTiming(history[next]);
-      setGameState(history[next]);
+      setGameState(copySnapshotForPlayback(history[next], history, next));
       return next;
     });
   }, []);
@@ -1035,8 +1052,7 @@ export const Game: React.FC = () => {
     const history = turnHistoryRef.current;
     setReplayTurnIndex(prev => {
       const next = Math.max(prev - 1, 0);
-      resetProjectileTiming(history[next]);
-      setGameState(history[next]);
+      setGameState(copySnapshotForPlayback(history[next], history, next));
       return next;
     });
   }, []);
@@ -1045,8 +1061,7 @@ export const Game: React.FC = () => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
     const clamped = Math.max(0, Math.min(turn, history.length - 1));
-    resetProjectileTiming(history[clamped]);
-    setGameState(history[clamped]);
+    setGameState(copySnapshotForPlayback(history[clamped], history, clamped));
     setReplayTurnIndex(clamped);
   }, []);
 
