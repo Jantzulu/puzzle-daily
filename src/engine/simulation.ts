@@ -2446,11 +2446,15 @@ function resolveProjectiles(gameState: GameState): void {
           break;
         }
 
-        // Check wall — include wall-adjacent tile so projectile visually reaches the wall
+        // Check wall/void
         const tile = gameState.puzzle.tiles[checkY]?.[checkX];
-        if (!tile || tile.type === TileTypeEnum.WALL) {
-          // Add the wall tile to visual path so projectile reaches it before deactivating
-          turnTiles.push({ x: checkX, y: checkY });
+        const isOutOfBounds = !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height);
+        if (!tile || tile.type === TileTypeEnum.WALL || isOutOfBounds) {
+          // Only include wall/boundary tiles in visual path (not void tiles)
+          // Void tiles render as empty space, so projectile should stop before them
+          if (tile?.type === TileTypeEnum.WALL || isOutOfBounds) {
+            turnTiles.push({ x: checkX, y: checkY });
+          }
           if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
             triggerAOEExplosion(checkX, checkY, proj.attackData,
               proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
