@@ -384,11 +384,16 @@ export const Game: React.FC = () => {
         const newState = executeTurn(stateCopy);
 
         // Stop simulation if game ended (only in normal mode)
-        // Check if there are pending projectile deaths that need to visually resolve first
+        // If there are pending projectile deaths, defer the game-over state
+        // so the visual can show the projectile hitting before the overlay appears
         const hasPendingDeaths = newState.activeProjectiles?.some(
           (p: any) => p.active && p.hitResult?.deferredDeathEntityId
         );
-        if (testMode === 'none' && newState.gameStatus !== 'running' && !hasPendingDeaths) {
+        if (hasPendingDeaths && newState.gameStatus !== 'running') {
+          // Revert to running — the next tick will finalize deaths and re-check
+          newState.gameStatus = 'running';
+        }
+        if (testMode === 'none' && newState.gameStatus !== 'running') {
           setIsSimulating(false);
           outcome = newState.gameStatus as 'victory' | 'defeat';
           outcomeTurns = newState.currentTurn;
