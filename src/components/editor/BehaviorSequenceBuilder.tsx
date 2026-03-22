@@ -556,6 +556,16 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               </label>
             )}
 
+            {/* Homing ignore walls */}
+            {action.homing && (
+              <label className="flex items-center gap-2 text-xs ml-8">
+                <input type="checkbox" checked={action.homingIgnoreWalls ?? true}
+                  onChange={(e) => onUpdate({ ...action, homingIgnoreWalls: e.target.checked })}
+                  className="w-3 h-3" />
+                <span className="text-stone-400">Ignore Walls</span>
+              </label>
+            )}
+
             {/* Max targets — available for all auto-targeting modes */}
             {hasAutoTarget && (
               <>

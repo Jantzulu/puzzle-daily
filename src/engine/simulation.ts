@@ -2092,6 +2092,31 @@ function resolveProjectiles(gameState: GameState): void {
         const dy = targetEntity.y - proj.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
+        // Wall check for homing projectiles that don't ignore walls
+        if (!proj.homingIgnoreWalls) {
+          const pathTiles = getTilesAlongLine(proj.x, proj.y, targetEntity.x, targetEntity.y);
+          let wallBlocked = false;
+          for (const tile of pathTiles) {
+            if (tile.x === Math.floor(proj.x) && tile.y === Math.floor(proj.y)) continue; // Skip start tile
+            const isWall = !isInBounds(tile.x, tile.y, gameState.puzzle.width, gameState.puzzle.height) ||
+              gameState.puzzle.tiles[tile.y]?.[tile.x]?.type === TileTypeEnum.WALL ||
+              gameState.puzzle.tiles[tile.y]?.[tile.x] === null;
+            if (isWall) {
+              // Hit wall — build visual path to wall, deactivate
+              const wallPath = getTilesAlongLine(proj.homingVisualStartX ?? proj.x, proj.homingVisualStartY ?? proj.y, tile.x, tile.y);
+              // Remove the wall tile itself, stop one before
+              if (wallPath.length > 1) wallPath.pop();
+              proj.tilePath = wallPath;
+              proj.currentTileIndex = 0;
+              proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
+              proj.hitResult = { hitTileIndex: wallPath.length - 1, deactivate: true };
+              wallBlocked = true;
+              break;
+            }
+          }
+          if (wallBlocked) continue;
+        }
+
         if (distance <= tilesPerTurn) {
           // Reached target — apply damage/effects (same as headless)
           const hitX = targetEntity.x;

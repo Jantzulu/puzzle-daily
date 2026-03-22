@@ -211,6 +211,7 @@ export interface CharacterAction {
   maxTargets?: number;              // Maximum number of targets to attack/heal (for multi-target spells)
   homing?: boolean;                 // If true with auto-targeting, projectile tracks target and guarantees hit
   homingPathStyle?: 'grid' | 'straight'; // Visual path: 'grid' follows tiles, 'straight' flies direct (default: 'straight')
+  homingIgnoreWalls?: boolean;          // If true, homing projectile passes through walls (default: true)
 
   // Self-targeting configuration
   targetSelf?: boolean;             // Also target self in addition to other targets
@@ -715,6 +716,7 @@ export interface CustomAttack {
   projectileSpeed?: number;     // Tiles per turn (default: 4)
   projectilePierces?: boolean;  // Continue through enemies (default: false)
   homingPathStyle?: 'grid' | 'straight'; // Visual: 'grid' follows tiles, 'straight' flies direct (default: straight)
+  homingIgnoreWalls?: boolean;          // If true, homing passes through walls (default: true)
 
   // AOE targeting (for AOE patterns)
   aoeCenteredOnCaster?: boolean; // True: AOE around self, False: AOE at target tile
@@ -790,6 +792,7 @@ export interface Projectile {
   // Homing behavior - projectile tracks a moving target
   isHoming?: boolean;           // If true, projectile chases target entity
   homingPathStyle?: 'grid' | 'straight'; // Visual: 'grid' follows tiles, 'straight' flies direct
+  homingIgnoreWalls?: boolean;  // If true, passes through walls (default: true)
   homingVisualStartX?: number;  // Original start X for straight-line visual continuity
   homingVisualStartY?: number;  // Original start Y for straight-line visual continuity
   homingVisualStartTime?: number; // Original start time for straight-line timing
