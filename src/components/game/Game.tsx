@@ -1009,7 +1009,7 @@ export const Game: React.FC = () => {
     setReplaySpeed(1);
 
     if (history.length > 0) {
-      setGameState(history[0]);
+      setGameState(copySnapshotForPlayback(history[0], history, 0));
     }
   }, [generateTurnHistory]);
 
@@ -1199,15 +1199,9 @@ export const Game: React.FC = () => {
     // Clear stale particles from headless generation (they have wrong startTimes)
     copy.activeParticles = [];
 
-    // Inject replay projectiles from the timeline
+    // Replace snapshot projectiles with replay-generated ones (correct positions and timing)
     const replayProjectiles = buildReplayProjectiles(index);
-    if (replayProjectiles.length > 0) {
-      copy.activeProjectiles = [
-        ...(copy.activeProjectiles || []),
-        ...replayProjectiles,
-      ];
-    }
-    resetProjectileTiming(copy);
+    copy.activeProjectiles = replayProjectiles; // Replace entirely — snapshot projectiles are stale
     return copy;
   };
 
