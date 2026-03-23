@@ -2,7 +2,7 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router';
 import { Direction, ActionType, TURN_INTERVAL_MS } from '../../types/game';
 import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection } from '../../types/game';
-import { loadSpellAsset } from '../../utils/assetStorage';
+import { loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { DirectionCompass } from './DirectionCompass';
 
 const ACTION_TYPES = Object.values(ActionType).filter(
@@ -420,23 +420,92 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
     <div className="ml-8 space-y-2">
       {/* Spell picker */}
       {spell ? (
-        <div className="flex items-center gap-2 dungeon-panel p-2 rounded">
-          <button
-            onClick={() => {
-              if (window.confirm('Navigate to spell editor? Any unsaved changes to this entity will be lost.')) {
-                navigate(`/assets?tab=spells&id=${spell.id}&t=${Date.now()}`);
-              }
-            }}
-            className="flex items-center gap-2 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left"
-            title="Edit this spell"
-          >
-            {spell.thumbnailIcon && <img src={spell.thumbnailIcon} alt={spell.name} className="w-8 h-8 object-contain" />}
-            <div className="min-w-0">
-              <div className="text-sm font-semibold text-arcane-300 underline decoration-arcane-600">{spell.name}</div>
+        <div className="dungeon-panel p-3 rounded">
+          {/* Header with icon, name, and actions */}
+          <div className="flex items-start gap-3 mb-2">
+            <button
+              onClick={() => {
+                if (window.confirm('Navigate to spell editor? Any unsaved changes to this entity will be lost.')) {
+                  navigate(`/assets?tab=spells&id=${spell.id}&t=${Date.now()}`);
+                }
+              }}
+              className="flex-shrink-0 hover:opacity-80 transition-opacity"
+              title="Edit this spell"
+            >
+              {spell.thumbnailIcon ? (
+                <img src={spell.thumbnailIcon} alt={spell.name} className="w-10 h-10 object-contain bg-stone-800 rounded border border-stone-600" />
+              ) : (
+                <div className="w-10 h-10 bg-stone-800 rounded border border-stone-600 flex items-center justify-center text-stone-500 text-[9px]">No Icon</div>
+              )}
+            </button>
+            <div className="flex-1 min-w-0">
+              <button
+                onClick={() => {
+                  if (window.confirm('Navigate to spell editor? Any unsaved changes to this entity will be lost.')) {
+                    navigate(`/assets?tab=spells&id=${spell.id}&t=${Date.now()}`);
+                  }
+                }}
+                className="hover:opacity-80 transition-opacity text-left"
+                title="Edit this spell"
+              >
+                <div className="text-sm font-semibold text-arcane-300 underline decoration-arcane-600">{spell.name}</div>
+              </button>
               <div className="text-xs text-stone-400 capitalize">{spell.templateType.replace('_', ' ')}</div>
             </div>
-          </button>
-          <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-arcane-700 rounded hover:bg-arcane-600 flex-shrink-0">Change</button>
+            <button onClick={onSelectSpell} className="px-2 py-1 text-xs bg-arcane-700 rounded hover:bg-arcane-600 flex-shrink-0">Change</button>
+          </div>
+
+          {/* Description */}
+          {spell.description && (
+            <p className="text-xs text-stone-400 mb-2 line-clamp-2">{spell.description}</p>
+          )}
+
+          {/* Stats grid */}
+          <div className="grid grid-cols-3 gap-1.5 text-xs">
+            {spell.damage !== undefined && spell.damage > 0 && (
+              <div className="bg-stone-800 rounded px-2 py-1">
+                <span className="text-stone-400">Dmg:</span>{' '}
+                <span className="text-parchment-100 font-semibold">{spell.damage}</span>
+              </div>
+            )}
+            {spell.healing !== undefined && spell.healing > 0 && (
+              <div className="bg-stone-800 rounded px-2 py-1">
+                <span className="text-stone-400">Heal:</span>{' '}
+                <span className="text-green-400 font-semibold">{spell.healing}</span>
+              </div>
+            )}
+            {spell.range !== undefined && spell.range > 0 && (
+              <div className="bg-stone-800 rounded px-2 py-1">
+                <span className="text-stone-400">Range:</span>{' '}
+                <span className="text-parchment-100 font-semibold">{spell.range}</span>
+              </div>
+            )}
+            {spell.radius !== undefined && spell.radius > 0 && (
+              <div className="bg-stone-800 rounded px-2 py-1">
+                <span className="text-stone-400">Radius:</span>{' '}
+                <span className="text-parchment-100 font-semibold">{spell.radius}</span>
+              </div>
+            )}
+            {spell.cooldown !== undefined && spell.cooldown > 0 && (
+              <div className="bg-stone-800 rounded px-2 py-1">
+                <span className="text-stone-400">CD:</span>{' '}
+                <span className="text-parchment-100 font-semibold">{spell.cooldown}t</span>
+              </div>
+            )}
+            {spell.backstabEnabled && (
+              <div className="bg-stone-800 rounded px-2 py-1">
+                <span className="text-amber-400 font-semibold">🗡 Backstab</span>
+              </div>
+            )}
+          </div>
+
+          {/* Status effect info */}
+          {spell.appliesStatusEffect && (
+            <div className="text-xs text-stone-400 mt-1.5">
+              <span className="font-semibold">Applies:</span>{' '}
+              <span className="text-purple-300">{(() => { const se = loadSpellAsset(spell.id); return se?.appliesStatusEffect?.statusAssetId ? (loadStatusEffectAsset(se.appliesStatusEffect.statusAssetId)?.name || 'Effect') : 'Effect'; })()}</span>
+            </div>
+          )}
         </div>
       ) : (
         <button onClick={onSelectSpell} className="px-3 py-1 bg-moss-700 rounded text-xs hover:bg-moss-600">Select Spell</button>
