@@ -242,6 +242,13 @@ export interface Character {
   sounds?: EntitySoundSet; // Character-specific sounds (death, damage, etc.)
   // Death drop configuration
   droppedCollectibleId?: string; // CustomCollectible ID to spawn on death
+
+  // Initial status effects — applied when the entity is placed/spawned
+  initialStatusEffects?: Array<{
+    statusAssetId: string;   // Reference to a StatusEffectAsset
+    durationOverride?: number; // Optional: override the default duration (0 or undefined = use default, -1 = permanent/infinite)
+    valueOverride?: number;    // Optional: override the default value (damage/heal per turn)
+  }>;
 }
 
 export interface Enemy {
@@ -274,6 +281,13 @@ export interface Enemy {
 
   // Death drop configuration
   droppedCollectibleId?: string; // CustomCollectible ID to spawn on death
+
+  // Initial status effects — applied when the entity is placed/spawned
+  initialStatusEffects?: Array<{
+    statusAssetId: string;   // Reference to a StatusEffectAsset
+    durationOverride?: number; // Optional: override the default duration (0 or undefined = use default, -1 = permanent/infinite)
+    valueOverride?: number;    // Optional: override the default value (damage/heal per turn)
+  }>;
 }
 
 export interface EnemyBehavior {

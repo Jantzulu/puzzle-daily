@@ -15,7 +15,7 @@ import { SpecialTilesDisplay } from './SpecialTilesDisplay';
 import { ItemsDisplay } from './ItemsDisplay';
 import { ReplayControls } from './ReplayControls';
 import { getSavedPuzzles, type SavedPuzzle } from '../../utils/puzzleStorage';
-import { loadTileType, loadCollectible, loadEnemy, loadObject, loadPuzzleSkin, loadSpellAsset, extractSpriteImageUrls, extractSpriteReferenceUrls } from '../../utils/assetStorage';
+import { loadTileType, loadCollectible, loadEnemy, loadObject, loadPuzzleSkin, loadSpellAsset, loadStatusEffectAsset, extractSpriteImageUrls, extractSpriteReferenceUrls } from '../../utils/assetStorage';
 import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
@@ -644,6 +644,26 @@ export const Game: React.FC = () => {
         dead: false,
         ...(pendingOverrides && { spellDirectionOverrides: pendingOverrides }),
       };
+
+      // Apply initial status effects
+      if (charData.initialStatusEffects && charData.initialStatusEffects.length > 0) {
+        newCharacter.statusEffects = charData.initialStatusEffects.map(ise => {
+          const effectAsset = loadStatusEffectAsset(ise.statusAssetId);
+          if (!effectAsset) return null;
+          return {
+            id: `initial_${ise.statusAssetId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+            type: effectAsset.type,
+            statusAssetId: ise.statusAssetId,
+            duration: ise.durationOverride === -1 ? 99999 : (ise.durationOverride ?? effectAsset.defaultDuration),
+            value: ise.valueOverride ?? effectAsset.defaultValue,
+            currentStacks: 1,
+            appliedOnTurn: 0,
+            sourceEntityId: 'initial',
+            sourceIsEnemy: false,
+            movementSkipCounter: 0,
+          };
+        }).filter(Boolean) as PlacedCharacter['statusEffects'];
+      }
 
       setGameState((prev) => ({
         ...prev,

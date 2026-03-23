@@ -1882,11 +1882,33 @@ export function initializeGameState(puzzle: Puzzle): GameState {
         // Look up the enemy definition to get the current max health
         const enemyData = getEnemy(e.enemyId);
         const maxHealth = enemyData?.health || e.currentHealth || 1;
-        return {
+        const placedEnemy = {
           ...e,
           dead: false, // Always reset dead status
           currentHealth: maxHealth // Reset to full health from enemy definition
         };
+
+        // Apply initial status effects from enemy definition
+        if (enemyData?.initialStatusEffects && enemyData.initialStatusEffects.length > 0) {
+          placedEnemy.statusEffects = enemyData.initialStatusEffects.map(ise => {
+            const effectAsset = loadStatusEffectAsset(ise.statusAssetId);
+            if (!effectAsset) return null;
+            return {
+              id: `initial_${ise.statusAssetId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+              type: effectAsset.type,
+              statusAssetId: ise.statusAssetId,
+              duration: ise.durationOverride === -1 ? 99999 : (ise.durationOverride ?? effectAsset.defaultDuration),
+              value: ise.valueOverride ?? effectAsset.defaultValue,
+              currentStacks: 1,
+              appliedOnTurn: 0,
+              sourceEntityId: 'initial',
+              sourceIsEnemy: true,
+              movementSkipCounter: 0,
+            };
+          }).filter(Boolean) as NonNullable<typeof placedEnemy.statusEffects>;
+        }
+
+        return placedEnemy;
       }),
       collectibles: puzzle.collectibles.map((c) => ({ ...c, collected: false })),
     },

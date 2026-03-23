@@ -5,7 +5,7 @@ import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
 import type { CharacterAction, EnemyBehavior } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles } from '../../utils/assetStorage';
+import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles, getStatusEffectAssets, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -574,6 +574,93 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                       <option value="">None</option>
                       {getAllCollectibles().map((coll) => (
                         <option key={coll.id} value={coll.id}>{coll.name}</option>
+                      ))}
+                    </select>
+                  </CollapsiblePanel>
+
+                  {/* Starting Status Effects */}
+                  <CollapsiblePanel title="Starting Status Effects">
+                    <p className="text-xs text-stone-400 mb-3">Status effects applied when this enemy spawns on the board.</p>
+                    {(editing.initialStatusEffects || []).length > 0 && (
+                      <div className="space-y-2 mb-3">
+                        {editing.initialStatusEffects!.map((ise, index) => {
+                          const effectAsset = loadStatusEffectAsset(ise.statusAssetId);
+                          if (!effectAsset) return null;
+                          return (
+                            <div key={index} className="flex items-center gap-2 bg-stone-700 rounded p-2">
+                              <SpriteThumbnail sprite={effectAsset.iconSprite} size={24} />
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium truncate">{effectAsset.name}</div>
+                                <div className="flex gap-2 mt-1">
+                                  <div className="flex items-center gap-1">
+                                    <label className="text-xs text-stone-400">Duration:</label>
+                                    <select
+                                      value={ise.durationOverride === -1 ? '-1' : (ise.durationOverride || 0).toString()}
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value);
+                                        const updated = [...editing.initialStatusEffects!];
+                                        updated[index] = { ...updated[index], durationOverride: val || undefined };
+                                        updateEnemy({ initialStatusEffects: updated });
+                                      }}
+                                      className="px-1 py-0.5 bg-stone-600 rounded text-xs w-20"
+                                    >
+                                      <option value="0">Default ({effectAsset.defaultDuration})</option>
+                                      <option value="-1">Permanent</option>
+                                      {[1, 2, 3, 4, 5, 10, 15, 20].map(n => (
+                                        <option key={n} value={n}>{n} turns</option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                  {effectAsset.defaultValue !== undefined && (
+                                    <div className="flex items-center gap-1">
+                                      <label className="text-xs text-stone-400">Value:</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        max="999"
+                                        value={ise.valueOverride ?? effectAsset.defaultValue ?? 0}
+                                        onChange={(e) => {
+                                          const val = parseInt(e.target.value) || 0;
+                                          const updated = [...editing.initialStatusEffects!];
+                                          updated[index] = { ...updated[index], valueOverride: val };
+                                          updateEnemy({ initialStatusEffects: updated });
+                                        }}
+                                        className="px-1 py-0.5 bg-stone-600 rounded text-xs w-14"
+                                      />
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const updated = editing.initialStatusEffects!.filter((_, i) => i !== index);
+                                  updateEnemy({ initialStatusEffects: updated.length > 0 ? updated : undefined });
+                                }}
+                                className="text-red-400 hover:text-red-300 text-sm px-1"
+                                title="Remove"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (!e.target.value) return;
+                        const existing = editing.initialStatusEffects || [];
+                        updateEnemy({
+                          initialStatusEffects: [...existing, { statusAssetId: e.target.value }],
+                        });
+                        e.target.value = '';
+                      }}
+                      className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
+                    >
+                      <option value="">+ Add Status Effect...</option>
+                      {getStatusEffectAssets().map((effect) => (
+                        <option key={effect.id} value={effect.id}>{effect.name}</option>
                       ))}
                     </select>
                   </CollapsiblePanel>
