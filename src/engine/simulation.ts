@@ -2033,21 +2033,23 @@ export function updateProjectiles(gameState: GameState): void {
           newX = lastTile.x;
           newY = lastTile.y;
           reachedTarget = true;
+          proj.visualPastReflectPoint = true;
         } else if (elapsed < approachTime) {
           // Segment 1: straight line from start to pivot (reflect point)
           const segProgress = elapsed / approachTime;
           newX = firstTile.x + (pivotTile.x - firstTile.x) * segProgress;
           newY = firstTile.y + (pivotTile.y - firstTile.y) * segProgress;
-          // Direction faces toward the reflect point
           proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, pivotTile.x, pivotTile.y);
+          // Still approaching — not past reflect point
         } else {
           // Segment 2: straight line from pivot back to end
           const segElapsed = elapsed - approachTime;
           const segProgress = segElapsed / reflectTime;
           newX = pivotTile.x + (lastTile.x - pivotTile.x) * segProgress;
           newY = pivotTile.y + (lastTile.y - pivotTile.y) * segProgress;
-          // Direction faces toward the end (reflected direction)
           proj.direction = calculateDirectionTo(pivotTile.x, pivotTile.y, lastTile.x, lastTile.y);
+          // Mark as past reflect point (stable, never toggles back)
+          proj.visualPastReflectPoint = true;
         }
       } else if (visualTileIndex >= proj.tilePath.length - 1) {
         reachedTarget = true;
@@ -2119,13 +2121,10 @@ export function updateProjectiles(gameState: GameState): void {
     proj.y = newY;
 
     // Spawn deferred reflect VFX when visual reaches the reflect point
-    if (proj.pendingReflectVfx && proj.reflectAtTileIndex !== undefined) {
-      const currentIdx = proj.currentTileIndex ?? 0;
-      if (currentIdx >= proj.reflectAtTileIndex) {
-        const vfx = proj.pendingReflectVfx;
-        spawnParticleEffect(vfx.x, vfx.y, vfx.sprite, vfx.duration, gameState);
-        proj.pendingReflectVfx = undefined; // Only spawn once
-      }
+    if (proj.pendingReflectVfx && proj.visualPastReflectPoint) {
+      const vfx = proj.pendingReflectVfx;
+      spawnParticleEffect(vfx.x, vfx.y, vfx.sprite, vfx.duration, gameState);
+      proj.pendingReflectVfx = undefined; // Only spawn once
     }
 
     // Consume pre-resolved hit results from resolveProjectiles

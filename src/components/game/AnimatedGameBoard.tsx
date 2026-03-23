@@ -2673,8 +2673,7 @@ function getHomingTargetGlow(gameState: GameState, entityId: string, isEnemy: bo
       return proj.attackData.healing !== undefined ? '#4ade80' : '#ef4444';
     }
     // For reflected projectiles still in approach phase, glow the original target (the reflector)
-    if (proj.reflected && proj.reflectAtTileIndex !== undefined &&
-        (proj.currentTileIndex ?? 0) < proj.reflectAtTileIndex) {
+    if (proj.reflected && !proj.visualPastReflectPoint) {
       // The reflector is the opposite team's entity stored in hitEntityIds[0]
       const reflectorId = proj.hitEntityIds?.[0];
       if (reflectorId === entityId && !isEnemy !== !proj.targetIsEnemy) {
@@ -3540,8 +3539,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   const scale = projectile.attackData.projectileScale ?? 1;
 
   // Check if the visual has passed the reflect point (tint only applies after reflect)
-  const pastReflectPoint = projectile.reflected &&
-    (projectile.reflectAtTileIndex === undefined || (projectile.currentTileIndex ?? 0) >= projectile.reflectAtTileIndex);
+  const pastReflectPoint = projectile.reflected && !!projectile.visualPastReflectPoint;
 
   // If reflected with an override sprite, use that instead of the original
   if (pastReflectPoint && projectile.reflectOverrideSprite?.spriteData) {

@@ -827,6 +827,7 @@ export interface Projectile {
   hitResult?: ProjectileHitResult; // Pre-computed collision from turn resolution
   pendingDeactivation?: boolean; // Reached max range — deactivate when visual reaches end of tilePath
   pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // Deferred reflect VFX — spawned when visual reaches reflect point
+  visualPastReflectPoint?: boolean; // Set once when visual crosses reflect point — stable, never toggles back
 }
 
 /**
