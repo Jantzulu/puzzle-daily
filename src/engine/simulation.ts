@@ -2523,7 +2523,10 @@ function resolveProjectiles(gameState: GameState): void {
           if (wallBlocked) continue;
         }
 
-        if (distance <= tilesPerTurn) {
+        // Clamp effective reach to remaining range
+        const effectiveReach = Math.min(tilesPerTurn, remainingRange);
+
+        if (distance <= effectiveReach) {
           // Reached target — determine if hostile or healing
           const hitX = targetEntity.x;
           const hitY = targetEntity.y;
@@ -2618,13 +2621,15 @@ function resolveProjectiles(gameState: GameState): void {
           let newY: number;
 
           if (proj.homingPathStyle === 'pathfinding') {
+            const clampedTiles = Math.min(tilesPerTurn, Math.floor(remainingRange));
             const fullPath = findPathBFS(proj.x, proj.y, targetEntity.x, targetEntity.y, gameState);
-            turnTiles = fullPath.slice(0, tilesPerTurn + 1);
+            turnTiles = fullPath.slice(0, clampedTiles + 1);
             const lastTile = turnTiles[turnTiles.length - 1];
             newX = lastTile.x;
             newY = lastTile.y;
           } else {
-            const moveRatio = tilesPerTurn / distance;
+            const clampedMove = Math.min(tilesPerTurn, remainingRange);
+            const moveRatio = clampedMove / distance;
             newX = proj.x + dx * moveRatio;
             newY = proj.y + dy * moveRatio;
             turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
