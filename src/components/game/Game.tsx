@@ -1109,19 +1109,27 @@ export const Game: React.FC = () => {
         }
       }
 
+      // Calculate how far the projectile should be at this turn
+      const turnsElapsed = turnIndex - life.spawnTurn;
+      const speed = spawn.speed || 4;
+      const tilesAdvancedByTurn = turnsElapsed * speed;
+      const maxTileIdx = tilePath ? tilePath.length - 1 : 0;
+      const turnTileIndex = Math.min(tilesAdvancedByTurn, maxTileIdx);
+      const posAtTurn = tilePath?.[turnTileIndex] ?? { x: spawn.x, y: spawn.y };
+
       const proj: Projectile = {
         id: spawn.projId,
         active: true,
-        x: spawn.x,
-        y: spawn.y,
+        x: posAtTurn.x,
+        y: posAtTurn.y,
         startX: spawn.x,
         startY: spawn.y,
         targetX: tilePath?.[tilePath.length - 1]?.x ?? spawn.x,
         targetY: tilePath?.[tilePath.length - 1]?.y ?? spawn.y,
         direction: spawn.direction || Direction.SOUTH,
-        speed: spawn.speed || 4,
+        speed,
         tilePath,
-        currentTileIndex: 0,
+        currentTileIndex: turnTileIndex,
         tileEntryTime: now,
         startTime: now,
         attackData: spawn.attackData || { damage: 0, pattern: 'projectile' as any },

@@ -1091,7 +1091,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       ctx.translate(offsetX, offsetY);
 
       // Execute parallel actions (time-based, runs independently of turns)
-      if (gameState.gameStatus === 'running') {
+      // Skip during replay freeze to prevent melee/spell VFX spam
+      if (gameState.gameStatus === 'running' && !replayFrozen) {
         executeParallelActions(gameState);
       }
 
