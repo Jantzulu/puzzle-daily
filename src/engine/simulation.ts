@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations, prefer-const */
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle, Projectile, SpriteReference } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle, Projectile, SpriteReference, ProjectileEvent } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
@@ -2507,6 +2507,15 @@ function resolveReflectedPath(
 }
 
 /**
+ * Record a projectile event to the timeline (only when timeline exists).
+ * Used during replay generation to capture projectile lifecycle events.
+ */
+function recordProjectileEvent(gameState: GameState, event: Omit<ProjectileEvent, 'turn'>) {
+  if (!gameState.projectileTimeline) return;
+  gameState.projectileTimeline.push({ ...event, turn: gameState.currentTurn });
+}
+
+/**
  * Deterministic turn-based projectile resolution for non-headless mode.
  * Mirrors updateProjectilesHeadless for game logic (damage, effects, death)
  * but stores visual metadata (tilePath, hitResult) instead of removing projectiles,
@@ -2993,6 +3002,26 @@ function updateProjectilesHeadless(gameState: GameState): void {
       continue;
     }
 
+    // Record spawn event if this projectile hasn't been recorded yet
+    if (gameState.projectileTimeline && !proj._recorded) {
+      recordProjectileEvent(gameState, {
+        type: 'spawn',
+        projId: proj.id,
+        x: proj.startX, y: proj.startY,
+        tilePath: proj.tilePath ? [...proj.tilePath] : undefined,
+        direction: proj.direction,
+        speed: proj.speed,
+        sourceEntityId: proj.sourceCharacterId || proj.sourceEnemyId,
+        sourceIsEnemy: !!proj.sourceEnemyId,
+        isHoming: proj.isHoming,
+        homingPathStyle: proj.homingPathStyle,
+        spellAssetId: proj.spellAssetId,
+        attackData: proj.attackData,
+        projectileScale: proj.attackData.projectileScale,
+      });
+      proj._recorded = true;
+    }
+
     const isHealingProjectile = proj.attackData.healing !== undefined;
     const range = proj.attackData.range || 10;
     const tilesPerTurn = proj.speed || 4;
@@ -3003,16 +3032,20 @@ function updateProjectilesHeadless(gameState: GameState): void {
     // === HOMING PROJECTILES ===
     if (proj.isHoming && proj.targetEntityId) {
       let targetEntity: { x: number; y: number; dead?: boolean } | undefined;
+      let targetEntityId: string | undefined;
+      let targetIsEnemyFlag = false;
       if (proj.targetIsEnemy) {
         if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
           const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
-          if (!enemy.dead) targetEntity = enemy;
+          if (!enemy.dead) { targetEntity = enemy; targetEntityId = enemy.enemyId; targetIsEnemyFlag = true; }
         }
         if (!targetEntity) {
-          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead);
+          const enemy = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead);
+          if (enemy) { targetEntity = enemy; targetEntityId = enemy.enemyId; targetIsEnemyFlag = true; }
         }
       } else {
-        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead);
+        const char = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead);
+        if (char) { targetEntity = char; targetEntityId = char.characterId; targetIsEnemyFlag = false; }
       }
 
       if (targetEntity) {
@@ -3029,13 +3062,41 @@ function updateProjectilesHeadless(gameState: GameState): void {
             const hitResult = applyEntityHit(
               targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
               proj, gameState, 'headless');
-            if (hitResult.reflected) continue;
+            if (hitResult.reflected) {
+              recordProjectileEvent(gameState, {
+                type: 'reflect',
+                projId: proj.id,
+                x: targetEntity.x, y: targetEntity.y,
+                reflected: true,
+                reflectTintColor: proj.reflectTintColor,
+                reflectOverrideSprite: proj.reflectOverrideSprite,
+                reflectAtTileIndex: proj.reflectAtTileIndex,
+                combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
+              });
+              continue;
+            }
+            // Record hit event
+            recordProjectileEvent(gameState, {
+              type: 'hit',
+              projId: proj.id,
+              x: targetEntity.x, y: targetEntity.y,
+              targetEntityId,
+              targetIsEnemy: targetIsEnemyFlag,
+              damage: proj.attackData.damage,
+            });
           } else {
             // Friendly homing heal/buff
             const targetIsEnemy = !!(proj.sourceEnemyId && proj.targetIsEnemy);
             applyHealingHit(
               targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
               proj, gameState, true);
+            recordProjectileEvent(gameState, {
+              type: 'hit',
+              projId: proj.id,
+              x: targetEntity.x, y: targetEntity.y,
+              targetEntityId,
+              targetIsEnemy: targetIsEnemyFlag,
+            });
           }
           shouldRemove = true;
         } else {
@@ -3085,6 +3146,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
           }
           hitWall = true;
           shouldRemove = true;
+          // Record wall_hit event
+          recordProjectileEvent(gameState, {
+            type: 'wall_hit',
+            projId: proj.id,
+            x: checkX, y: checkY,
+          });
           break;
         }
 
@@ -3098,15 +3165,42 @@ function updateProjectilesHeadless(gameState: GameState): void {
               applyHealingHit(hitAlly as PlacedCharacter, false, proj, gameState, true);
               hitSomething = true;
               if (!canPierce) shouldRemove = true;
+              recordProjectileEvent(gameState, {
+                type: 'hit',
+                projId: proj.id,
+                x: checkX, y: checkY,
+                targetEntityId: (hitAlly as PlacedCharacter).characterId,
+                targetIsEnemy: false,
+              });
             }
           } else {
             const hitEnemy = findEntityAtTile(checkX, checkY, gameState, proj, true, false);
             if (hitEnemy) {
               const hitResult = applyEntityHit(hitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
-              if (hitResult.reflected) break;
+              if (hitResult.reflected) {
+                recordProjectileEvent(gameState, {
+                  type: 'reflect',
+                  projId: proj.id,
+                  x: checkX, y: checkY,
+                  reflected: true,
+                  reflectTintColor: proj.reflectTintColor,
+                  reflectOverrideSprite: proj.reflectOverrideSprite,
+                  reflectAtTileIndex: proj.reflectAtTileIndex,
+                  combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
+                });
+                break;
+              }
               hitEntityIds.push((hitEnemy as PlacedEnemy).enemyId);
               hitSomething = true;
               if (!canPierce) shouldRemove = true;
+              recordProjectileEvent(gameState, {
+                type: 'hit',
+                projId: proj.id,
+                x: checkX, y: checkY,
+                targetEntityId: (hitEnemy as PlacedEnemy).enemyId,
+                targetIsEnemy: true,
+                damage: proj.attackData.damage,
+              });
             }
           }
         } else if (targetsCharacters) {
@@ -3120,15 +3214,42 @@ function updateProjectilesHeadless(gameState: GameState): void {
               hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
               hitSomething = true;
               if (!canPierce) shouldRemove = true;
+              recordProjectileEvent(gameState, {
+                type: 'hit',
+                projId: proj.id,
+                x: checkX, y: checkY,
+                targetEntityId: (hitAllyEnemy as PlacedEnemy).enemyId,
+                targetIsEnemy: true,
+              });
             }
           } else {
             const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, false);
             if (hitChar) {
               const hitResult = applyEntityHit(hitChar as PlacedCharacter, false, proj, gameState, 'headless');
-              if (hitResult.reflected) break;
+              if (hitResult.reflected) {
+                recordProjectileEvent(gameState, {
+                  type: 'reflect',
+                  projId: proj.id,
+                  x: checkX, y: checkY,
+                  reflected: true,
+                  reflectTintColor: proj.reflectTintColor,
+                  reflectOverrideSprite: proj.reflectOverrideSprite,
+                  reflectAtTileIndex: proj.reflectAtTileIndex,
+                  combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
+                });
+                break;
+              }
               hitEntityIds.push((hitChar as PlacedCharacter).characterId);
               hitSomething = true;
               if (!canPierce) shouldRemove = true;
+              recordProjectileEvent(gameState, {
+                type: 'hit',
+                projId: proj.id,
+                x: checkX, y: checkY,
+                targetEntityId: (hitChar as PlacedCharacter).characterId,
+                targetIsEnemy: false,
+                damage: proj.attackData.damage,
+              });
             }
           }
         }
@@ -3155,6 +3276,18 @@ function updateProjectilesHeadless(gameState: GameState): void {
     }
 
     if (shouldRemove) {
+      // Record deactivate event for projectiles that weren't already recorded as hit/wall_hit
+      if (gameState.projectileTimeline) {
+        const lastEvent = gameState.projectileTimeline.filter(e => e.projId === proj.id);
+        const hasEndEvent = lastEvent.some(e => e.type === 'hit' || e.type === 'wall_hit' || e.type === 'deactivate');
+        if (!hasEndEvent) {
+          recordProjectileEvent(gameState, {
+            type: 'deactivate',
+            projId: proj.id,
+            x: proj.x, y: proj.y,
+          });
+        }
+      }
       proj.active = false;
       projectilesToRemove.push(proj.id);
     }

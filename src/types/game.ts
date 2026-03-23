@@ -613,6 +613,9 @@ export interface GameState {
   // Tiles being vacated this turn (for train-like movement)
   // If an entity tries to move into a tile that's being vacated by an ally, allow it
   tilesBeingVacated?: Set<string>;  // Set of "x,y" strings
+
+  // Projectile event timeline — recorded during replay generation
+  projectileTimeline?: ProjectileTimeline;
 }
 
 export interface PlayerProgress {
@@ -842,7 +845,59 @@ export interface Projectile {
   pendingDeactivation?: boolean; // Reached max range — deactivate when visual reaches end of tilePath
   pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // Deferred reflect VFX — spawned when visual reaches reflect point
   visualPastReflectPoint?: boolean; // Set once when visual crosses reflect point — stable, never toggles back
+
+  // Internal flag for timeline recording (not serialized)
+  _recorded?: boolean;
 }
+
+// ==========================================
+// PROJECTILE EVENT TIMELINE (Replay System)
+// ==========================================
+
+/**
+ * A single projectile event recorded during replay generation.
+ * These events are used to recreate projectile visuals during replay playback.
+ */
+export interface ProjectileEvent {
+  turn: number;           // Which turn this event occurs
+  projId: string;         // Unique projectile ID
+  type: 'spawn' | 'hit' | 'reflect' | 'deactivate' | 'wall_hit';
+
+  // Position
+  x: number;
+  y: number;
+
+  // Spawn-specific
+  tilePath?: Array<{ x: number; y: number }>;  // Full visual path
+  direction?: Direction;
+  speed?: number;
+  sourceEntityId?: string;
+  sourceIsEnemy?: boolean;
+  isHoming?: boolean;
+  homingPathStyle?: string;
+
+  // Spell appearance
+  spellAssetId?: string;       // For loading the projectile sprite
+  attackData?: CustomAttack;   // Contains sprite info
+  projectileScale?: number;
+
+  // Reflect-specific
+  reflected?: boolean;
+  reflectTintColor?: string;
+  reflectOverrideSprite?: SpriteReference;
+  reflectAtTileIndex?: number;
+  combinedPath?: Array<{ x: number; y: number }>;  // approach + reflected tiles
+
+  // Hit-specific
+  targetEntityId?: string;
+  targetIsEnemy?: boolean;
+  damage?: number;
+  hitTileIndex?: number;
+  hitVfxSprite?: SpriteReference;
+}
+
+/** Timeline stored alongside turn history */
+export type ProjectileTimeline = ProjectileEvent[];
 
 /**
  * Pre-computed projectile hit result from deterministic turn resolution.

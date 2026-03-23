@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore } from '../../types/game';
+import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore, ProjectileEvent, Projectile } from '../../types/game';
 import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
@@ -126,6 +126,8 @@ export const Game: React.FC = () => {
   const [replaySpeed, setReplaySpeed] = useState(1);
   const turnHistoryRef = useRef<GameState[]>([]);
   const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
+  const projectileTimelineRef = useRef<ProjectileEvent[]>([]);
+  const projectileLifetimesRef = useRef<Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; spawnTurn: number; endTurn: number }>>(new Map());
 
   // Bug report system
   const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
@@ -515,20 +517,7 @@ export const Game: React.FC = () => {
           setReplayPlaying(false);
           return prev;
         }
-        // Deep copy snapshot so playback mutations don't corrupt stored history
-        const snapshot = JSON.parse(JSON.stringify(history[next]));
-        // Restore Map/Set structures lost in JSON copy
-        snapshot.tileStates = new Map();
-        if (history[next].tileStates) {
-          history[next].tileStates.forEach((value: any, key: string) => {
-            snapshot.tileStates.set(key, {
-              ...value,
-              damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
-            });
-          });
-        }
-        resetProjectileTiming(snapshot);
-        setGameState(snapshot);
+        setGameState(copySnapshotForPlayback(history[next], history, next));
         return next;
       });
     }, intervalMs);
@@ -543,6 +532,8 @@ export const Game: React.FC = () => {
       setReplayPlaying(false);
       turnHistoryRef.current = [];
       replayEventsRef.current = new Map();
+      projectileTimelineRef.current = [];
+      projectileLifetimesRef.current = new Map();
     }
   }, [currentPuzzle?.id]);
 
@@ -882,7 +873,7 @@ export const Game: React.FC = () => {
   };
 
   // Generate turn history by re-simulating from saved placements (deterministic)
-  const generateTurnHistory = useCallback((): GameState[] => {
+  const generateTurnHistory = useCallback((): { history: GameState[]; timeline: ProjectileEvent[] } => {
     const puzzleCopy: Puzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const initialState = initializeGameState(puzzleCopy);
 
@@ -903,6 +894,8 @@ export const Game: React.FC = () => {
     // Projectiles are resolved instantly — no visual animation in replay,
     // but behavior (who dies, when, where) is correct
     initialState.headlessMode = true;
+    // Initialize projectile timeline for recording events during replay generation
+    initialState.projectileTimeline = [];
 
     // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys
     const deepCopyState = (state: GameState): GameState => {
@@ -960,13 +953,32 @@ export const Game: React.FC = () => {
       history.push(deepCopyState(current));
     }
 
-    return history;
+    // Extract the projectile timeline from the final state
+    const timeline = current.projectileTimeline || [];
+
+    return { history, timeline };
   }, [originalPuzzle, playStartCharacters]);
 
   // Enter replay mode
   const handleWatchReplay = useCallback(() => {
-    const history = generateTurnHistory();
+    const { history, timeline } = generateTurnHistory();
     turnHistoryRef.current = history;
+    projectileTimelineRef.current = timeline;
+
+    // Build per-turn active projectile lifetimes from timeline
+    const lifetimes = new Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; spawnTurn: number; endTurn: number }>();
+    for (const event of timeline) {
+      if (event.type === 'spawn') {
+        lifetimes.set(event.projId, { spawn: event, spawnTurn: event.turn, endTurn: 9999 });
+      } else if (event.type === 'reflect') {
+        const life = lifetimes.get(event.projId);
+        if (life) life.reflect = event;
+      } else if (event.type === 'hit' || event.type === 'wall_hit' || event.type === 'deactivate') {
+        const life = lifetimes.get(event.projId);
+        if (life) { life.end = event; life.endTurn = event.turn; }
+      }
+    }
+    projectileLifetimesRef.current = lifetimes;
 
     // Compute notable events per turn for timeline markers
     const events = new Map<number, Set<import('../../engine/combatLog').LogEventType>>();
@@ -1001,6 +1013,8 @@ export const Game: React.FC = () => {
       setJustExitedReplay(true);
       turnHistoryRef.current = [];
       replayEventsRef.current = new Map();
+      projectileTimelineRef.current = [];
+      projectileLifetimesRef.current = new Map();
 
       if (livesRemaining <= 0) {
         // Return to game over screen
@@ -1011,7 +1025,7 @@ export const Game: React.FC = () => {
         setShowGameOver(true);
       } else if (puzzleScore) {
         // Return to victory screen - re-derive the final state
-        const history = generateTurnHistory();
+        const { history } = generateTurnHistory();
         if (history.length > 0) {
           setGameState(history[history.length - 1]);
         }
@@ -1043,6 +1057,77 @@ export const Game: React.FC = () => {
     }
   };
 
+  // Helper: build replay projectiles from timeline for a given turn index
+  const buildReplayProjectiles = (turnIndex: number): Projectile[] => {
+    const lifetimes = projectileLifetimesRef.current;
+    if (lifetimes.size === 0) return [];
+
+    const now = Date.now();
+    const replayProjectiles: Projectile[] = [];
+
+    for (const [, life] of lifetimes) {
+      // A projectile is alive from its spawn turn through its end turn
+      if (turnIndex < life.spawnTurn || turnIndex > life.endTurn) continue;
+
+      const spawn = life.spawn;
+      const proj: Projectile = {
+        id: spawn.projId,
+        active: true,
+        x: spawn.x,
+        y: spawn.y,
+        startX: spawn.x,
+        startY: spawn.y,
+        targetX: spawn.tilePath?.[spawn.tilePath.length - 1]?.x ?? spawn.x,
+        targetY: spawn.tilePath?.[spawn.tilePath.length - 1]?.y ?? spawn.y,
+        direction: spawn.direction || Direction.SOUTH,
+        speed: spawn.speed || 4,
+        tilePath: spawn.tilePath ? [...spawn.tilePath] : undefined,
+        currentTileIndex: 0,
+        tileEntryTime: now,
+        startTime: now,
+        attackData: spawn.attackData || { damage: 0, pattern: 'projectile' as any },
+        sourceCharacterId: spawn.sourceIsEnemy ? undefined : spawn.sourceEntityId,
+        sourceEnemyId: spawn.sourceIsEnemy ? spawn.sourceEntityId : undefined,
+        isHoming: spawn.isHoming,
+        homingPathStyle: spawn.homingPathStyle,
+        spellAssetId: spawn.spellAssetId,
+        bounceOffWalls: false,
+        teamSwapped: false,
+      };
+
+      // Apply reflect visuals if the reflect happened on or before this turn
+      if (life.reflect && turnIndex >= life.reflect.turn) {
+        proj.reflected = true;
+        proj.reflectTintColor = life.reflect.reflectTintColor;
+        proj.reflectOverrideSprite = life.reflect.reflectOverrideSprite;
+        proj.reflectAtTileIndex = life.reflect.reflectAtTileIndex;
+        if (life.reflect.combinedPath) {
+          proj.tilePath = [...life.reflect.combinedPath];
+        }
+      }
+
+      // If this is the end turn, set hitResult so the visual system knows when to stop
+      if (life.end && turnIndex === life.endTurn) {
+        if (life.end.type === 'hit') {
+          proj.hitResult = {
+            hitTileIndex: life.end.hitTileIndex ?? (proj.tilePath ? proj.tilePath.length - 1 : 0),
+            deactivate: true,
+            vfxSprite: life.end.hitVfxSprite,
+            vfxX: life.end.x,
+            vfxY: life.end.y,
+          };
+        } else {
+          // wall_hit or deactivate
+          proj.pendingDeactivation = true;
+        }
+      }
+
+      replayProjectiles.push(proj);
+    }
+
+    return replayProjectiles;
+  };
+
   // Helper: deep copy a replay snapshot for safe playback
   const copySnapshotForPlayback = (snapshot: GameState, history: GameState[], index: number) => {
     const copy = JSON.parse(JSON.stringify(snapshot));
@@ -1054,6 +1139,14 @@ export const Game: React.FC = () => {
           damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
         });
       });
+    }
+    // Inject replay projectiles from the timeline
+    const replayProjectiles = buildReplayProjectiles(index);
+    if (replayProjectiles.length > 0) {
+      copy.activeProjectiles = [
+        ...(copy.activeProjectiles || []),
+        ...replayProjectiles,
+      ];
     }
     resetProjectileTiming(copy);
     return copy;
