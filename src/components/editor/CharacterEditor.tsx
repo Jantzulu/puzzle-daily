@@ -11,6 +11,7 @@ import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { AttackEditor } from './AttackEditor';
 import { SpellPicker } from './SpellPicker';
+import { StatusEffectPicker } from './StatusEffectPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
@@ -51,6 +52,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
   const [_isCreating, setIsCreating] = useState(false);
   const [editingAttack, setEditingAttack] = useState<{ attack: CustomAttack; actionIndex: number } | null>(null);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
+  const [showStatusEffectPicker, setShowStatusEffectPicker] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -646,10 +648,15 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                             if (!effectAsset) return null;
                             return (
                               <div key={index} className="flex items-center gap-2 bg-stone-700 rounded p-2">
-                                <SpriteThumbnail sprite={effectAsset.iconSprite} size={24} />
+                                <SpriteThumbnail sprite={effectAsset.iconSprite} size={32} />
                                 <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium truncate">{effectAsset.name}</div>
-                                  <div className="flex gap-2 mt-1">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-medium truncate">{effectAsset.name}</span>
+                                    <span className="text-xs capitalize px-1.5 py-0.5 rounded" style={{ color: effectAsset.type === 'stun' ? '#000' : undefined, backgroundColor: `${({'poison':'#22c55e','regen':'#4ade80','sleep':'#6366f1','stun':'#eab308','shield':'#3b82f6','slow':'#f97316','haste':'#06b6d4','burn':'#ef4444','freeze':'#67e8f9','disarmed':'#a855f7','silenced':'#ec4899','polymorph':'#d946ef','deflect':'#f59e0b','stealth':'#6b7280','invulnerable':'#fcd34d','steadfast':'#78716c','reflect':'#06b6d4','bleed':'#dc2626'} as Record<string,string>)[effectAsset.type] || '#9ca3af'}33` }}>
+                                      {effectAsset.type}
+                                    </span>
+                                  </div>
+                                  <div className="flex flex-wrap gap-2 mt-1">
                                     <div className="flex items-center gap-1">
                                       <label className="text-xs text-stone-400">Duration:</label>
                                       <select
@@ -704,23 +711,12 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           })}
                         </div>
                       )}
-                      <select
-                        value=""
-                        onChange={(e) => {
-                          if (!e.target.value) return;
-                          const existing = editing.initialStatusEffects || [];
-                          updateCharacter({
-                            initialStatusEffects: [...existing, { statusAssetId: e.target.value }],
-                          });
-                          e.target.value = '';
-                        }}
-                        className="w-full px-3 py-2 bg-stone-700 rounded text-sm"
+                      <button
+                        onClick={() => setShowStatusEffectPicker(true)}
+                        className="w-full px-3 py-2 bg-stone-700 rounded text-sm hover:bg-stone-600 transition-colors border border-dashed border-stone-500"
                       >
-                        <option value="">+ Add Status Effect...</option>
-                        {getStatusEffectAssets().map((effect) => (
-                          <option key={effect.id} value={effect.id}>{effect.name}</option>
-                        ))}
-                      </select>
+                        + Add Status Effect
+                      </button>
                     </CollapsiblePanel>
                   </div>
                 )}
@@ -801,6 +797,20 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
             setShowSpellPicker(null);
           }}
           onCancel={() => setShowSpellPicker(null)}
+        />
+      )}
+
+      {/* Status Effect Picker Modal */}
+      {showStatusEffectPicker && editing && (
+        <StatusEffectPicker
+          onSelect={(effect) => {
+            const existing = editing.initialStatusEffects || [];
+            updateCharacter({
+              initialStatusEffects: [...existing, { statusAssetId: effect.id }],
+            });
+            setShowStatusEffectPicker(false);
+          }}
+          onCancel={() => setShowStatusEffectPicker(false)}
         />
       )}
 
