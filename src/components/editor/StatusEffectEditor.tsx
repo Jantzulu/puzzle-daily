@@ -57,6 +57,8 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [reflectTintColor, setReflectTintColor] = useState(effect?.reflectTintColor || '#ff0000');
   const [reflectOverrideSprite, setReflectOverrideSprite] = useState<SpriteReference | undefined>(effect?.reflectOverrideSprite);
   const [editingReflectSprite, setEditingReflectSprite] = useState(false);
+  const [reflectImpactSprite, setReflectImpactSprite] = useState<SpriteReference | undefined>(effect?.reflectImpactSprite);
+  const [editingReflectImpactSprite, setEditingReflectImpactSprite] = useState(false);
   const [reflectDirections, setReflectDirections] = useState<('front' | 'back' | 'left' | 'right')[]>(
     effect?.reflectDirections || ['front', 'back', 'left', 'right']
   );
@@ -92,6 +94,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       overlayOpacity: overlaySprite ? overlayOpacity : undefined,
       reflectTintColor: type === StatusEffectType.REFLECT ? reflectTintColor : undefined,
       reflectOverrideSprite: type === StatusEffectType.REFLECT ? reflectOverrideSprite : undefined,
+      reflectImpactSprite: type === StatusEffectType.REFLECT ? reflectImpactSprite : undefined,
       reflectDirections: type === StatusEffectType.REFLECT && !reflectAllDirections ? reflectDirections : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       isBuiltIn: false, // Never save as built-in when editing
@@ -567,6 +570,44 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   </div>
                 </div>
               </div>
+
+              {/* Impact VFX Sprite */}
+              <div>
+                <label className="block text-xs font-medium mb-1">Impact Sprite (optional)</label>
+                <p className="text-xs text-stone-400 mb-2">
+                  VFX that plays at the reflect point when a projectile bounces off. If not set, a default circle using the tint color is used.
+                </p>
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-cyan-500"
+                    onClick={() => !isBuiltIn && setEditingReflectImpactSprite(true)}
+                  >
+                    {reflectImpactSprite?.spriteData ? (
+                      <SpriteThumbnail sprite={reflectImpactSprite.spriteData} size={40} />
+                    ) : (
+                      <span className="text-[9px] text-stone-500 text-center">None</span>
+                    )}
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    {!isBuiltIn && (
+                      <button
+                        onClick={() => setEditingReflectImpactSprite(true)}
+                        className="px-2 py-1 bg-cyan-700 rounded text-xs hover:bg-cyan-600"
+                      >
+                        {reflectImpactSprite ? 'Edit' : 'Add Sprite'}
+                      </button>
+                    )}
+                    {reflectImpactSprite && !isBuiltIn && (
+                      <button
+                        onClick={() => setReflectImpactSprite(undefined)}
+                        className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                      >
+                        Remove
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
@@ -831,6 +872,41 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             <div className="flex justify-end gap-2 mt-4">
               <button
                 onClick={() => setEditingReflectSprite(false)}
+                className="px-4 py-2 bg-cyan-600 rounded hover:bg-cyan-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reflect Impact Sprite Editor Modal */}
+      {editingReflectImpactSprite && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-stone-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
+            <h3 className="text-lg font-bold mb-4">Reflect Impact VFX Sprite</h3>
+            <p className="text-sm text-stone-400 mb-4">
+              This sprite plays as a VFX at the reflect point when a projectile bounces off. Supports static images and animated spritesheets.
+            </p>
+            <SimpleIconEditor
+              sprite={reflectImpactSprite || {
+                type: 'inline',
+                spriteData: {
+                  id: `reflect_impact_${Date.now()}`,
+                  name: 'Reflect Impact',
+                  type: 'simple',
+                  shape: 'circle',
+                  primaryColor: '#06b6d4',
+                  createdAt: new Date().toISOString(),
+                },
+              }}
+              onChange={(sprite) => setReflectImpactSprite(sprite)}
+              size={96}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setEditingReflectImpactSprite(false)}
                 className="px-4 py-2 bg-cyan-600 rounded hover:bg-cyan-700"
               >
                 Done

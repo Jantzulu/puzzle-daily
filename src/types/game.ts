@@ -1078,6 +1078,7 @@ export interface StatusEffectAsset {
   // Reflect configuration — visual treatment for reflected projectiles
   reflectTintColor?: string;             // Color to tint reflected projectiles (e.g. '#ff0000')
   reflectOverrideSprite?: SpriteReference; // Optional sprite to replace reflected projectile appearance
+  reflectImpactSprite?: SpriteReference;  // Optional sprite for the bounce VFX at the reflect point
   reflectDirections?: ('front' | 'back' | 'left' | 'right')[]; // Which directions to reflect from (default: all)
 
   // Metadata

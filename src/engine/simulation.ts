@@ -208,7 +208,7 @@ function canReflectDirection(entity: PlacedCharacter | PlacedEnemy, projectileDi
  * Get the reflect status effect's visual config from an entity's active reflect effect.
  * Returns the tint color and override sprite from the StatusEffectAsset.
  */
-function getReflectVisuals(entity: PlacedCharacter | PlacedEnemy): { tintColor?: string; overrideSprite?: SpriteReference } {
+function getReflectVisuals(entity: PlacedCharacter | PlacedEnemy): { tintColor?: string; overrideSprite?: SpriteReference; impactSprite?: SpriteReference } {
   if (!entity.statusEffects) return {};
   const reflectEffect = entity.statusEffects.find(
     e => e.type === StatusEffectType.REFLECT || e.type === 'reflect'
@@ -219,6 +219,7 @@ function getReflectVisuals(entity: PlacedCharacter | PlacedEnemy): { tintColor?:
   return {
     tintColor: asset.reflectTintColor,
     overrideSprite: asset.reflectOverrideSprite,
+    impactSprite: asset.reflectImpactSprite,
   };
 }
 
@@ -327,7 +328,7 @@ function reflectProjectile(
   // Store reflect VFX data — will be spawned when visual reaches reflect point
   // (not now, because the approach animation hasn't played yet)
   proj.pendingReflectVfx = {
-    sprite: visuals.overrideSprite || { type: 'inline', spriteData: { shape: 'circle', primaryColor: visuals.tintColor || '#06b6d4' } },
+    sprite: visuals.impactSprite || { type: 'inline', spriteData: { shape: 'circle', primaryColor: visuals.tintColor || '#06b6d4' } },
     x: reflector.x,
     y: reflector.y,
     duration: 300,
