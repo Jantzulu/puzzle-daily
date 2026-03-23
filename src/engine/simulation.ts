@@ -2069,7 +2069,6 @@ export function updateProjectiles(gameState: GameState): void {
     const currentTileIdx = proj.currentTileIndex ?? 0;
     const straightLineReached = proj.homingPathStyle === 'straight' && reachedTarget;
     if (proj.hitResult && (currentTileIdx >= proj.hitResult.hitTileIndex || straightLineReached)) {
-      console.log(`[VISUAL CONSUME] id=${proj.id.slice(-6)} currentTileIdx=${currentTileIdx} hitTileIdx=${proj.hitResult.hitTileIndex} tilePathLen=${proj.tilePath?.length} elapsed=${((Date.now() - (proj.tileEntryTime ?? 0))/1000).toFixed(2)}s`);
       // Spawn hit VFX
       if (proj.hitResult.vfxSprite && proj.hitResult.vfxX !== undefined && proj.hitResult.vfxY !== undefined) {
         spawnParticleEffect(proj.hitResult.vfxX, proj.hitResult.vfxY, proj.hitResult.vfxSprite,
@@ -2110,10 +2109,9 @@ export function updateProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Deactivate at end of tile path if no hit result
-    if (reachedTarget && !proj.hitResult) {
-      // Projectile reached end of this turn's visual path, sits until next resolveProjectiles
-      // Don't deactivate — resolveProjectiles will set hitResult.deactivate when appropriate
+    // Deactivate at end of tile path if no hit result and projectile is inactive
+    if (reachedTarget && !proj.hitResult && !proj.active) {
+      projectilesToRemove.push(proj.id);
     }
   }
 
@@ -2951,17 +2949,13 @@ function resolveProjectiles(gameState: GameState): void {
     }
 
     if (shouldRemove) {
-      // Always let the visual system handle deactivation.
-      // If no hitResult, create one that just deactivates at end of path.
-      if (!proj.hitResult) {
-        const hitIdx = Math.min(logicalEndTile, (proj.tilePath?.length ?? 1) - 1);
-        console.log(`[PROJ REMOVE] id=${proj.id.slice(-6)} logicalEndTile=${logicalEndTile} tilePathLen=${proj.tilePath?.length} hitIdx=${hitIdx} isHoming=${proj.isHoming}`);
-        proj.hitResult = {
-          hitTileIndex: hitIdx,
-          deactivate: true,
-        };
+      if (proj.hitResult) {
+        // Entity was hit — visual system will deactivate when animation reaches hitTileIndex
+      } else {
+        // No entity hit — just mark as inactive. The visual system will deactivate
+        // when the tilePath animation naturally reaches the end (reachedTarget).
+        proj.active = false;
       }
-      // If hitResult exists, the visual system will deactivate when animation reaches hitTileIndex
     }
   }
 
