@@ -49,6 +49,7 @@ interface AnimatedGameBoardProps {
   maxHeight?: number;  // Maximum height in pixels for responsive scaling
   onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
   skinOverride?: PuzzleSkin;  // Override skin instead of loading from localStorage
+  replayFrozen?: boolean;  // When true, freeze projectile/particle animations — used during replay pause/step
 }
 
 const TILE_SIZE = 48;
@@ -619,7 +620,7 @@ interface LiftOffAnimation {
   characterId: string;
 }
 
-export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride }) => {
+export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState, onTileClick, isEditor = false, maxWidth, maxHeight, onProjectileKill, skinOverride, replayFrozen = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const imageCache = useRef<Map<string, HTMLImageElement>>(new Map());
   const [characterPositions, setCharacterPositions] = useState<Map<number, CharacterPosition>>(new Map());
@@ -1095,10 +1096,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
 
       // Update projectiles and particles (time-based, needs to run every frame)
-      // Track enemy kills for victory check callback
+      // Skip during replay freeze — projectiles and particles should be static
       const deadCountBefore = gameState.puzzle.enemies.filter(e => e.dead).length;
-      updateProjectiles(gameState);
-      updateParticles(gameState);
+      if (!replayFrozen) {
+        updateProjectiles(gameState);
+        updateParticles(gameState);
+      }
       const deadCountAfter = gameState.puzzle.enemies.filter(e => e.dead).length;
 
       // If any enemies were killed, notify parent to check victory conditions
@@ -1456,7 +1459,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations, maxWidth, maxHeight]);
+  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations, maxWidth, maxHeight, replayFrozen]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onTileClick) return;
@@ -4173,6 +4176,7 @@ interface ResponsiveGameBoardProps {
   isEditor?: boolean;
   onProjectileKill?: () => void;  // Callback when a projectile kills an enemy (for victory check)
   skinOverride?: PuzzleSkin;  // Override skin instead of loading from localStorage
+  replayFrozen?: boolean;  // Freeze animations during replay pause
 }
 
 // Maximum dimensions for the puzzle board on desktop
@@ -4228,7 +4232,7 @@ export const ResponsiveGameBoard: React.FC<ResponsiveGameBoardProps> = (props) =
 
   return (
     <div ref={containerRef} className="w-full flex justify-center overflow-hidden">
-      {measured && <AnimatedGameBoard {...props} maxWidth={maxWidth} maxHeight={maxHeight} />}
+      {measured && <AnimatedGameBoard {...props} maxWidth={maxWidth} maxHeight={maxHeight} replayFrozen={props.replayFrozen} />}
     </div>
   );
 };
