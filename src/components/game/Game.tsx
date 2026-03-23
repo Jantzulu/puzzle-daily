@@ -983,6 +983,13 @@ export const Game: React.FC = () => {
     console.log(`[REPLAY] Timeline: ${timeline.length} events, ${lifetimes.size} projectile lifetimes`);
     if (timeline.length > 0) {
       console.log(`[REPLAY] Events:`, timeline.map(e => `T${e.turn}:${e.type}(${e.projId?.slice(-6)})`).join(', '));
+      // Detail on spawns
+      timeline.filter(e => e.type === 'spawn').forEach(e => {
+        console.log(`[REPLAY SPAWN] ${e.projId?.slice(-6)} tilePath=${e.tilePath?.length || 0} tiles, pos=(${e.x},${e.y}), homing=${e.isHoming}`);
+      });
+      timeline.filter(e => e.type === 'hit').forEach(e => {
+        console.log(`[REPLAY HIT] ${e.projId?.slice(-6)} hitTileIdx=${e.hitTileIndex} target=${e.targetEntityId?.slice(-6)} pos=(${e.x},${e.y})`);
+      });
     }
 
     // Compute notable events per turn for timeline markers
