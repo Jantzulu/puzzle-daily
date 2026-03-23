@@ -1069,6 +1069,22 @@ export const Game: React.FC = () => {
     }
   };
 
+  // Helper: compute tiles along a line (Bresenham-style) for replay path generation
+  const computeReplayPath = (x0: number, y0: number, x1: number, y1: number): Array<{x: number, y: number}> => {
+    const tiles: Array<{x: number, y: number}> = [];
+    const sx = Math.floor(x0), sy = Math.floor(y0);
+    const ex = Math.floor(x1), ey = Math.floor(y1);
+    tiles.push({ x: sx, y: sy });
+    if (sx === ex && sy === ey) return tiles;
+    const dx = ex - sx, dy = ey - sy;
+    const steps = Math.max(Math.abs(dx), Math.abs(dy));
+    for (let i = 1; i <= steps; i++) {
+      const t = i / steps;
+      tiles.push({ x: sx + Math.round(dx * t), y: sy + Math.round(dy * t) });
+    }
+    return tiles;
+  };
+
   // Helper: build replay projectiles from timeline for a given turn index
   const buildReplayProjectiles = (turnIndex: number): Projectile[] => {
     const lifetimes = projectileLifetimesRef.current;
@@ -1082,6 +1098,17 @@ export const Game: React.FC = () => {
       if (turnIndex < life.spawnTurn || turnIndex > life.endTurn) continue;
 
       const spawn = life.spawn;
+
+      // Compute tilePath if not recorded (common for homing in headless mode)
+      let tilePath = spawn.tilePath ? [...spawn.tilePath] : undefined;
+      if (!tilePath || tilePath.length === 0) {
+        // Use hit/end position as the destination
+        const endEvent = life.end;
+        if (endEvent) {
+          tilePath = computeReplayPath(spawn.x, spawn.y, endEvent.x, endEvent.y);
+        }
+      }
+
       const proj: Projectile = {
         id: spawn.projId,
         active: true,
@@ -1089,11 +1116,11 @@ export const Game: React.FC = () => {
         y: spawn.y,
         startX: spawn.x,
         startY: spawn.y,
-        targetX: spawn.tilePath?.[spawn.tilePath.length - 1]?.x ?? spawn.x,
-        targetY: spawn.tilePath?.[spawn.tilePath.length - 1]?.y ?? spawn.y,
+        targetX: tilePath?.[tilePath.length - 1]?.x ?? spawn.x,
+        targetY: tilePath?.[tilePath.length - 1]?.y ?? spawn.y,
         direction: spawn.direction || Direction.SOUTH,
         speed: spawn.speed || 4,
-        tilePath: spawn.tilePath ? [...spawn.tilePath] : undefined,
+        tilePath,
         currentTileIndex: 0,
         tileEntryTime: now,
         startTime: now,
@@ -1121,8 +1148,17 @@ export const Game: React.FC = () => {
       // If this is the end turn, set hitResult so the visual system knows when to stop
       if (life.end && turnIndex === life.endTurn) {
         if (life.end.type === 'hit') {
+          // hitTileIndex: use recorded value, or compute from tilePath (last tile before or at hit position)
+          let hitIdx = life.end.hitTileIndex;
+          if (hitIdx === undefined && proj.tilePath && proj.tilePath.length > 0) {
+            // Find the tile in the path closest to the hit position
+            const hitX = Math.floor(life.end.x);
+            const hitY = Math.floor(life.end.y);
+            hitIdx = proj.tilePath.findIndex(t => t.x === hitX && t.y === hitY);
+            if (hitIdx === -1) hitIdx = proj.tilePath.length - 1;
+          }
           proj.hitResult = {
-            hitTileIndex: life.end.hitTileIndex ?? (proj.tilePath ? proj.tilePath.length - 1 : 0),
+            hitTileIndex: hitIdx ?? (proj.tilePath ? proj.tilePath.length - 1 : 0),
             deactivate: true,
             vfxSprite: life.end.hitVfxSprite,
             vfxX: life.end.x,
