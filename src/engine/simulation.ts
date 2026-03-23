@@ -251,6 +251,12 @@ function reflectProjectile(
   proj.maxBounces = 0;
   proj.bounceCount = 0;
 
+  // Clear homing visual state — reflected projectiles use tile-by-tile animation
+  // (straight-line would interpolate from start to end, missing the V-shaped bounce)
+  proj.homingVisualStartX = undefined;
+  proj.homingVisualStartY = undefined;
+  proj.homingVisualStartTime = undefined;
+
   // Reverse direction 180°
   proj.direction = turnAround(proj.direction);
   const offset = getDirectionOffset(proj.direction);
