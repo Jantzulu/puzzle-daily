@@ -8,7 +8,7 @@ interface StatusEffectPickerProps {
   onCancel: () => void;
 }
 
-const TYPE_COLORS: Record<string, string> = {
+export const TYPE_COLORS: Record<string, string> = {
   poison: '#22c55e',
   regen: '#4ade80',
   sleep: '#6366f1',
@@ -29,6 +29,16 @@ const TYPE_COLORS: Record<string, string> = {
   bleed: '#dc2626',
 };
 
+export function getStatusEffectFlags(effect: StatusEffectAsset): string[] {
+  const flags: string[] = [];
+  if (effect.preventsMelee) flags.push('Prevents Melee');
+  if (effect.preventsRanged) flags.push('Prevents Ranged');
+  if (effect.preventsMovement) flags.push('Prevents Movement');
+  if (effect.preventsAllActions) flags.push('Prevents All Actions');
+  if (effect.removedOnDamage) flags.push('Removed on Damage');
+  return flags;
+}
+
 export const StatusEffectPicker: React.FC<StatusEffectPickerProps> = ({ onSelect, onCancel }) => {
   const [effects, setEffects] = useState<StatusEffectAsset[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,16 +52,6 @@ export const StatusEffectPicker: React.FC<StatusEffectPickerProps> = ({ onSelect
     effect.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     effect.description.toLowerCase().includes(searchTerm.toLowerCase())
   );
-
-  const getSpecialFlags = (effect: StatusEffectAsset): string[] => {
-    const flags: string[] = [];
-    if (effect.preventsMelee) flags.push('Prevents Melee');
-    if (effect.preventsRanged) flags.push('Prevents Ranged');
-    if (effect.preventsMovement) flags.push('Prevents Movement');
-    if (effect.preventsAllActions) flags.push('Prevents All Actions');
-    if (effect.removedOnDamage) flags.push('Removed on Damage');
-    return flags;
-  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -83,7 +83,7 @@ export const StatusEffectPicker: React.FC<StatusEffectPickerProps> = ({ onSelect
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               {filteredEffects.map((effect) => {
                 const typeColor = TYPE_COLORS[effect.type] || '#9ca3af';
-                const specialFlags = getSpecialFlags(effect);
+                const specialFlags = getStatusEffectFlags(effect);
 
                 return (
                   <button

@@ -10,7 +10,7 @@ import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { SpellPicker } from './SpellPicker';
-import { StatusEffectPicker } from './StatusEffectPicker';
+import { StatusEffectPicker, TYPE_COLORS, getStatusEffectFlags } from './StatusEffectPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
@@ -588,66 +588,96 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         {editing.initialStatusEffects!.map((ise, index) => {
                           const effectAsset = loadStatusEffectAsset(ise.statusAssetId);
                           if (!effectAsset) return null;
+                          const typeColor = TYPE_COLORS[effectAsset.type] || '#9ca3af';
                           return (
-                            <div key={index} className="flex items-center gap-2 bg-stone-700 rounded p-2">
-                              <SpriteThumbnail sprite={effectAsset.iconSprite} size={32} />
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-sm font-medium truncate">{effectAsset.name}</span>
-                                  <span className="text-xs capitalize px-1.5 py-0.5 rounded" style={{ color: effectAsset.type === 'stun' ? '#000' : undefined, backgroundColor: `${({'poison':'#22c55e','regen':'#4ade80','sleep':'#6366f1','stun':'#eab308','shield':'#3b82f6','slow':'#f97316','haste':'#06b6d4','burn':'#ef4444','freeze':'#67e8f9','disarmed':'#a855f7','silenced':'#ec4899','polymorph':'#d946ef','deflect':'#f59e0b','stealth':'#6b7280','invulnerable':'#fcd34d','steadfast':'#78716c','reflect':'#06b6d4','bleed':'#dc2626'} as Record<string,string>)[effectAsset.type] || '#9ca3af'}33` }}>
-                                    {effectAsset.type}
-                                  </span>
-                                </div>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  <div className="flex items-center gap-1">
-                                    <label className="text-xs text-stone-400">Duration:</label>
-                                    <select
-                                      value={ise.durationOverride === -1 ? '-1' : (ise.durationOverride || 0).toString()}
-                                      onChange={(e) => {
-                                        const val = parseInt(e.target.value);
-                                        const updated = [...editing.initialStatusEffects!];
-                                        updated[index] = { ...updated[index], durationOverride: val || undefined };
-                                        updateEnemy({ initialStatusEffects: updated });
-                                      }}
-                                      className="px-1 py-0.5 bg-stone-600 rounded text-xs w-20"
-                                    >
-                                      <option value="0">Default ({effectAsset.defaultDuration})</option>
-                                      <option value="-1">Permanent</option>
-                                      {[1, 2, 3, 4, 5, 10, 15, 20].map(n => (
-                                        <option key={n} value={n}>{n} turns</option>
-                                      ))}
-                                    </select>
+                            <div key={index} className="bg-stone-900 rounded-lg p-3 border border-stone-700">
+                              {/* Header row */}
+                              <div className="flex items-start gap-3 mb-2">
+                                <SpriteThumbnail sprite={effectAsset.iconSprite} size={40} className="rounded border border-stone-600 flex-shrink-0" />
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-sm font-semibold truncate">{effectAsset.name}</span>
+                                    <span className="text-xs capitalize px-1.5 py-0.5 rounded" style={{ color: typeColor, backgroundColor: `${typeColor}22` }}>
+                                      {effectAsset.type}
+                                    </span>
                                   </div>
-                                  {effectAsset.defaultValue !== undefined && (
-                                    <div className="flex items-center gap-1">
-                                      <label className="text-xs text-stone-400">Value:</label>
-                                      <input
-                                        type="number"
-                                        min="0"
-                                        max="999"
-                                        value={ise.valueOverride ?? effectAsset.defaultValue ?? 0}
-                                        onChange={(e) => {
-                                          const val = parseInt(e.target.value) || 0;
-                                          const updated = [...editing.initialStatusEffects!];
-                                          updated[index] = { ...updated[index], valueOverride: val };
-                                          updateEnemy({ initialStatusEffects: updated });
-                                        }}
-                                        className="px-1 py-0.5 bg-stone-600 rounded text-xs w-14"
-                                      />
-                                    </div>
+                                  {effectAsset.description && (
+                                    <p className="text-xs text-stone-400 mt-0.5 line-clamp-2">{effectAsset.description}</p>
                                   )}
                                 </div>
+                                <button
+                                  onClick={() => {
+                                    const updated = editing.initialStatusEffects!.filter((_, i) => i !== index);
+                                    updateEnemy({ initialStatusEffects: updated.length > 0 ? updated : undefined });
+                                  }}
+                                  className="text-red-400 hover:text-red-300 text-lg px-1 flex-shrink-0"
+                                  title="Remove"
+                                >
+                                  ✕
+                                </button>
                               </div>
-                              <button
-                                onClick={() => {
-                                  const updated = editing.initialStatusEffects!.filter((_, i) => i !== index);
-                                  updateEnemy({ initialStatusEffects: updated.length > 0 ? updated : undefined });
-                                }}
-                                className="text-red-400 hover:text-red-300 text-sm px-1"
-                                title="Remove"
-                              >
-                                ✕
-                              </button>
+
+                              {/* Info grid */}
+                              <div className="grid grid-cols-2 gap-1.5 text-xs mb-2">
+                                <div className="bg-stone-800 rounded px-2 py-1">
+                                  <span className="text-stone-400">Stacking:</span>{' '}
+                                  <span className="text-parchment-100 font-semibold capitalize">{effectAsset.stackingBehavior}</span>
+                                </div>
+                                <div className="bg-stone-800 rounded px-2 py-1">
+                                  <span className="text-stone-400">Processes:</span>{' '}
+                                  <span className="text-parchment-100 font-semibold">{effectAsset.processAtTurnStart ? 'Turn Start' : 'Turn End'}</span>
+                                </div>
+                              </div>
+
+                              {/* Special flags */}
+                              {(() => { const flags = getStatusEffectFlags(effectAsset); return flags.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mb-2">
+                                  {flags.map(flag => (
+                                    <span key={flag} className="text-xs px-1.5 py-0.5 rounded bg-stone-800 text-stone-300">{flag}</span>
+                                  ))}
+                                </div>
+                              ) : null; })()}
+
+                              {/* Override controls */}
+                              <div className="flex flex-wrap gap-3 pt-2 border-t border-stone-700">
+                                <div className="flex items-center gap-1.5">
+                                  <label className="text-xs text-stone-400 font-medium">Duration:</label>
+                                  <select
+                                    value={ise.durationOverride === -1 ? '-1' : (ise.durationOverride || 0).toString()}
+                                    onChange={(e) => {
+                                      const val = parseInt(e.target.value);
+                                      const updated = [...editing.initialStatusEffects!];
+                                      updated[index] = { ...updated[index], durationOverride: val || undefined };
+                                      updateEnemy({ initialStatusEffects: updated });
+                                    }}
+                                    className="px-2 py-1 bg-stone-700 rounded text-xs"
+                                  >
+                                    <option value="0">Default ({effectAsset.defaultDuration} turns)</option>
+                                    <option value="-1">♾ Permanent</option>
+                                    {[1, 2, 3, 4, 5, 10, 15, 20].map(n => (
+                                      <option key={n} value={n}>{n} turns</option>
+                                    ))}
+                                  </select>
+                                </div>
+                                {effectAsset.defaultValue !== undefined && (
+                                  <div className="flex items-center gap-1.5">
+                                    <label className="text-xs text-stone-400 font-medium">Value:</label>
+                                    <input
+                                      type="number"
+                                      min="0"
+                                      max="999"
+                                      value={ise.valueOverride ?? effectAsset.defaultValue ?? 0}
+                                      onChange={(e) => {
+                                        const val = parseInt(e.target.value) || 0;
+                                        const updated = [...editing.initialStatusEffects!];
+                                        updated[index] = { ...updated[index], valueOverride: val };
+                                        updateEnemy({ initialStatusEffects: updated });
+                                      }}
+                                      className="px-2 py-1 bg-stone-700 rounded text-xs w-16"
+                                    />
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
