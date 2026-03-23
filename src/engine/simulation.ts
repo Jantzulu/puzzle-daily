@@ -1980,50 +1980,49 @@ export function updateProjectiles(gameState: GameState): void {
         proj.direction = calculateDirectionTo(proj.x, proj.y, proj.targetX, proj.targetY);
       }
     } else if (proj.tilePath && proj.tilePath.length > 0) {
-      // TILE-BASED MOVEMENT: Use pre-computed tile path for visual interpolation
+      // TILE-BASED MOVEMENT: Calculate visual position purely from time
+      // Don't mutate currentTileIndex or tileEntryTime — these get deep-copied
+      // into game state and would cause resolveProjectiles to see stale visual state.
 
-      const tileEntryTime = proj.tileEntryTime ?? proj.startTime;
-      const timeSinceTileEntry = (now - tileEntryTime) / 1000; // seconds
+      const spawnTime = proj.tileEntryTime ?? proj.startTime;
+      const elapsed = (now - spawnTime) / 1000; // seconds since spawn
       const speedTilesPerSecond = (proj.speed || 4) / 0.8;
       const tileTransitTime = 1 / speedTilesPerSecond;
 
-      const tilesAdvanced = Math.floor(timeSinceTileEntry / tileTransitTime);
-      const newTileIndex = Math.min(
-        (proj.currentTileIndex ?? 0) + tilesAdvanced,
+      // Calculate which tile we should be on based purely on elapsed time
+      const visualTileIndex = Math.min(
+        Math.floor(elapsed / tileTransitTime),
         proj.tilePath.length - 1
       );
 
       if (proj.homingPathStyle === 'straight' && proj.tilePath.length >= 2) {
-        // STRAIGHT-LINE: smooth interpolation from first to last tile (ignores grid)
+        // STRAIGHT-LINE: smooth interpolation from first to last tile
         const firstTile = proj.tilePath[0];
         const lastTile = proj.tilePath[proj.tilePath.length - 1];
-        // Use actual distance for timing, not tile count (avoids rapid short bursts)
         const actualDistance = Math.max(1, Math.sqrt(
           Math.pow(lastTile.x - firstTile.x, 2) + Math.pow(lastTile.y - firstTile.y, 2)
         ));
         const totalTransitTime = actualDistance * tileTransitTime;
-        const progress = Math.min(timeSinceTileEntry / totalTransitTime, 1);
+        const progress = Math.min(elapsed / totalTransitTime, 1);
         newX = firstTile.x + (lastTile.x - firstTile.x) * progress;
         newY = firstTile.y + (lastTile.y - firstTile.y) * progress;
         if (progress >= 1) reachedTarget = true;
-      } else if (newTileIndex >= proj.tilePath.length - 1) {
+      } else if (visualTileIndex >= proj.tilePath.length - 1) {
         reachedTarget = true;
         const finalTile = proj.tilePath[proj.tilePath.length - 1];
         newX = finalTile.x;
         newY = finalTile.y;
       } else {
-        const currentTile = proj.tilePath[newTileIndex];
-        const nextTile = proj.tilePath[Math.min(newTileIndex + 1, proj.tilePath.length - 1)];
-        const tileProgress = (timeSinceTileEntry % tileTransitTime) / tileTransitTime;
+        // Interpolate between current and next tile for smooth movement
+        const currentTile = proj.tilePath[visualTileIndex];
+        const nextTile = proj.tilePath[visualTileIndex + 1];
+        const tileProgress = (elapsed % tileTransitTime) / tileTransitTime;
         newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
         newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
       }
 
-      // Update tile index and entry time if we moved to a new tile
-      if (newTileIndex > (proj.currentTileIndex ?? 0)) {
-        proj.currentTileIndex = newTileIndex;
-        proj.tileEntryTime = now - ((timeSinceTileEntry % tileTransitTime) * 1000);
-      }
+      // Store visual tile index for hitResult consumption (don't mutate currentTileIndex)
+      proj.currentTileIndex = visualTileIndex;
 
       // Update direction for sprite rotation
       if (proj.tilePath.length >= 2) {
