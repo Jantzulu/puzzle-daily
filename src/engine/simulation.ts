@@ -2013,6 +2013,44 @@ export function updateProjectiles(gameState: GameState): void {
         newX = firstTile.x + (lastTile.x - firstTile.x) * progress;
         newY = firstTile.y + (lastTile.y - firstTile.y) * progress;
         if (progress >= 1) reachedTarget = true;
+      } else if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined && proj.tilePath.length >= 2) {
+        // TWO-SEGMENT STRAIGHT-LINE: approach straight to reflect point, then straight back
+        const pivotIdx = proj.reflectAtTileIndex;
+        const firstTile = proj.tilePath[0];
+        const pivotTile = proj.tilePath[Math.min(pivotIdx, proj.tilePath.length - 1)];
+        const lastTile = proj.tilePath[proj.tilePath.length - 1];
+
+        // Calculate distances for each segment
+        const approachDist = Math.max(0.5, Math.sqrt(
+          Math.pow(pivotTile.x - firstTile.x, 2) + Math.pow(pivotTile.y - firstTile.y, 2)
+        ));
+        const reflectDist = Math.max(0.5, Math.sqrt(
+          Math.pow(lastTile.x - pivotTile.x, 2) + Math.pow(lastTile.y - pivotTile.y, 2)
+        ));
+        const approachTime = approachDist * tileTransitTime;
+        const reflectTime = reflectDist * tileTransitTime;
+        const totalTime = approachTime + reflectTime;
+
+        if (elapsed >= totalTime) {
+          newX = lastTile.x;
+          newY = lastTile.y;
+          reachedTarget = true;
+        } else if (elapsed < approachTime) {
+          // Segment 1: straight line from start to pivot (reflect point)
+          const segProgress = elapsed / approachTime;
+          newX = firstTile.x + (pivotTile.x - firstTile.x) * segProgress;
+          newY = firstTile.y + (pivotTile.y - firstTile.y) * segProgress;
+          // Direction faces toward the reflect point
+          proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, pivotTile.x, pivotTile.y);
+        } else {
+          // Segment 2: straight line from pivot back to end
+          const segElapsed = elapsed - approachTime;
+          const segProgress = segElapsed / reflectTime;
+          newX = pivotTile.x + (lastTile.x - pivotTile.x) * segProgress;
+          newY = pivotTile.y + (lastTile.y - pivotTile.y) * segProgress;
+          // Direction faces toward the end (reflected direction)
+          proj.direction = calculateDirectionTo(pivotTile.x, pivotTile.y, lastTile.x, lastTile.y);
+        }
       } else if (visualTileIndex >= proj.tilePath.length - 1) {
         reachedTarget = true;
         const finalTile = proj.tilePath[proj.tilePath.length - 1];
@@ -2027,8 +2065,20 @@ export function updateProjectiles(gameState: GameState): void {
         newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
       }
 
-      // Store visual tile index for hitResult consumption (don't mutate currentTileIndex)
-      proj.currentTileIndex = visualTileIndex;
+      // Store visual tile index for hitResult consumption
+      // For two-segment straight-line reflects, estimate tile index from position
+      if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined) {
+        // Map current position to nearest tile in the combined path
+        let bestIdx = 0;
+        let bestDist = Infinity;
+        for (let ti = 0; ti < proj.tilePath.length; ti++) {
+          const td = Math.abs(proj.tilePath[ti].x - newX) + Math.abs(proj.tilePath[ti].y - newY);
+          if (td < bestDist) { bestDist = td; bestIdx = ti; }
+        }
+        proj.currentTileIndex = bestIdx;
+      } else {
+        proj.currentTileIndex = visualTileIndex;
+      }
 
       // Update direction for sprite rotation
       if (proj.tilePath.length >= 2) {
