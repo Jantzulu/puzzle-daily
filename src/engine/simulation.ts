@@ -2486,7 +2486,7 @@ function resolveProjectiles(gameState: GameState): void {
         );
         const remainingRange = Math.max(0, range - totalDistanceTraveled);
         if (remainingRange <= 0) {
-          // Out of range — deactivate
+          // Out of range — deactivate. Clear homing visual state so tile-based branch handles it.
           const vStartX = proj.homingVisualStartX ?? proj.x;
           const vStartY = proj.homingVisualStartY ?? proj.y;
           const endPath = getTilesAlongLine(vStartX, vStartY, proj.x, proj.y);
@@ -2494,6 +2494,9 @@ function resolveProjectiles(gameState: GameState): void {
           proj.currentTileIndex = 0;
           proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
           proj.hitResult = { hitTileIndex: proj.tilePath.length - 1, deactivate: true };
+          proj.homingVisualStartX = undefined;
+          proj.homingVisualStartY = undefined;
+          proj.homingVisualStartTime = undefined;
           continue;
         }
 
@@ -2510,6 +2513,9 @@ function resolveProjectiles(gameState: GameState): void {
               proj.currentTileIndex = 0;
               proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
               proj.hitResult = { hitTileIndex: wallPath.length - 1, deactivate: true };
+              proj.homingVisualStartX = undefined;
+              proj.homingVisualStartY = undefined;
+              proj.homingVisualStartTime = undefined;
               wallBlocked = true;
               break;
             }
