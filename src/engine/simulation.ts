@@ -1935,9 +1935,10 @@ export function updateProjectiles(gameState: GameState): void {
     let newY: number;
     let reachedTarget = false;
 
-    // Debug: log reflected projectile visual state
-    if (proj.reflected && Date.now() % 500 < 20) {
-      console.log(`[REFLECT VISUAL] id=${proj.id.slice(-6)} isHoming=${proj.isHoming} tilePath=${proj.tilePath?.length} homingStart=${proj.homingVisualStartX !== undefined} hitResult=${!!proj.hitResult} hitIdx=${proj.hitResult?.hitTileIndex} active=${proj.active}`);
+    // Debug: log reflected projectile visual state (every frame)
+    if (proj.reflected) {
+      const dbgElapsed = ((Date.now()) - (proj.tileEntryTime ?? proj.startTime)) / 1000;
+      console.log(`[REFLECT VISUAL] id=${proj.id.slice(-6)} isHoming=${proj.isHoming} tilePath=${proj.tilePath?.length} tileIdx=${proj.currentTileIndex} hitIdx=${proj.hitResult?.hitTileIndex} elapsed=${dbgElapsed.toFixed(2)}s tileEntryTime=${proj.tileEntryTime ? 'set' : 'UNSET'} pos=(${proj.x?.toFixed(1)},${proj.y?.toFixed(1)})`);
     }
 
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
