@@ -1188,6 +1188,9 @@ export const Game: React.FC = () => {
         });
       });
     }
+    // Clear stale particles from headless generation (they have wrong startTimes)
+    copy.activeParticles = [];
+
     // Inject replay projectiles from the timeline
     const replayProjectiles = buildReplayProjectiles(index);
     if (replayProjectiles.length > 0) {
