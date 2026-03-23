@@ -2523,15 +2523,18 @@ function resolveProjectiles(gameState: GameState): void {
 
           if (isHostileHit) {
             const targetIsEnemy = !!proj.targetIsEnemy;
+            // Save pre-reflect position BEFORE applyEntityHit (which calls reflectProjectile
+            // and overwrites proj.x/y and clears homingVisualStartX)
+            const preReflectStartX = proj.homingVisualStartX ?? proj.x;
+            const preReflectStartY = proj.homingVisualStartY ?? proj.y;
+            const preReflectStartTime = proj.homingVisualStartTime;
             const hitResult = applyEntityHit(
               targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
               proj, gameState, 'visual');
             if (hitResult.reflected) {
               // Build visual path: approach to reflector + reflected path back
-              const approachStartX = proj.homingPathStyle === 'straight'
-                ? (proj.homingVisualStartX ?? proj.x) : proj.x;
-              const approachStartY = proj.homingPathStyle === 'straight'
-                ? (proj.homingVisualStartY ?? proj.y) : proj.y;
+              const approachStartX = preReflectStartX;
+              const approachStartY = preReflectStartY;
               const approachTiles = proj.homingPathStyle === 'pathfinding'
                 ? findPathBFS(approachStartX, approachStartY, hitX, hitY, gameState)
                 : getTilesAlongLine(approachStartX, approachStartY, hitX, hitY);
@@ -2543,7 +2546,7 @@ function resolveProjectiles(gameState: GameState): void {
               proj.tilePath = combinedPath;
               proj.currentTileIndex = 0;
               proj.tileEntryTime = proj.homingPathStyle === 'straight'
-                ? (proj.homingVisualStartTime ?? Date.now()) : Date.now();
+                ? (preReflectStartTime ?? Date.now()) : Date.now();
               proj.reflectAtTileIndex = approachTiles.length - 1;
 
               if (!reflectedHit) {
