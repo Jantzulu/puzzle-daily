@@ -2510,6 +2510,8 @@ function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
   );
 }
 
+// isStealthed alias — uses the existing isEntityStealthed function defined below
+
 /**
  * Helper to apply damage and handle sleep wake-up and shield absorption.
  * This is the centralized damage function - ALL damage should go through here
@@ -3328,53 +3330,53 @@ export function checkTriggerCondition(
 ): boolean {
   switch (event) {
     case 'enemy_adjacent':
-      // Check if any enemy is within 1 tile (adjacent, including diagonals)
+      // Check if any enemy is within 1 tile (adjacent, including diagonals) (stealthed enemies are invisible)
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead) return false;
+        if (enemy.dead || isEntityStealthed(enemy)) return false;
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
 
     case 'enemy_in_range':
-      // Check if any enemy is within specified range
+      // Check if any enemy is within specified range (stealthed enemies are invisible)
       const enemyRange = eventRange || 3; // Default to 3 if not specified
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead) return false;
+        if (enemy.dead || isEntityStealthed(enemy)) return false;
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= enemyRange;
       });
 
     case 'contact_with_enemy':
-      // Check if character is on the same tile as an enemy
+      // Check if character is on the same tile as an enemy (stealthed enemies are invisible)
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead) return false;
+        if (enemy.dead || isEntityStealthed(enemy)) return false;
         return enemy.x === character.x && enemy.y === character.y;
       });
 
     case 'character_adjacent':
       // Check if any character is within 1 tile (adjacent, including diagonals)
-      // Used by enemies to detect nearby characters
+      // Used by enemies to detect nearby characters (stealthed characters are invisible)
       return gameState.placedCharacters.some(char => {
-        if (char.dead) return false;
+        if (char.dead || isEntityStealthed(char)) return false;
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
 
     case 'character_in_range':
       // Check if any character is within specified range
-      // Used by enemies to detect characters at a distance
+      // Used by enemies to detect characters at a distance (stealthed characters are invisible)
       const charRange = eventRange || 3; // Default to 3 if not specified
       return gameState.placedCharacters.some(char => {
-        if (char.dead) return false;
+        if (char.dead || isEntityStealthed(char)) return false;
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= charRange;
       });
 
     case 'contact_with_character':
       // Check if entity is on the same tile as a character
-      // Used by enemies to detect characters in melee range
+      // Used by enemies to detect characters in melee range (stealthed characters are invisible)
       return gameState.placedCharacters.some(char => {
-        if (char.dead) return false;
+        if (char.dead || isEntityStealthed(char)) return false;
         return char.x === character.x && char.y === character.y;
       });
 
