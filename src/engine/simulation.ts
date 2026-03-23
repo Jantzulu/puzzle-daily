@@ -1941,16 +1941,6 @@ export function updateProjectiles(gameState: GameState): void {
     let newY: number;
     let reachedTarget = false;
 
-    // Debug: log reflected projectile visual state (throttled after first few)
-    if (proj.reflected) {
-      const dbgElapsed = ((Date.now()) - (proj.tileEntryTime ?? proj.startTime)) / 1000;
-      const pathStr = proj.tilePath ? proj.tilePath.map((t: any) => `(${t.x},${t.y})`).join('→') : 'none';
-      const pathStyle = (proj as any).homingPathStyle || 'unset';
-      if (dbgElapsed < 0.05 || Math.floor(dbgElapsed * 10) % 5 === 0) {
-        console.log(`[REFLECT VISUAL] id=${proj.id.slice(-6)} elapsed=${dbgElapsed.toFixed(2)}s tileIdx=${proj.currentTileIndex} pos=(${proj.x?.toFixed(2)},${proj.y?.toFixed(2)}) pathStyle=${pathStyle} path=${pathStr}`);
-      }
-    }
-
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
       // STRAIGHT-LINE HOMING: smooth interpolation from original start to target
       const startX = proj.homingVisualStartX;
@@ -2407,7 +2397,6 @@ function resolveReflectedPath(
     // Check for entity hits along reflected path (damage only, not healing)
     if (!isHealingProjectile) {
       const hitTarget = findEntityAtTile(rx, ry, gameState, proj, targetsEnemies, true);
-      console.log(`[REFLECT PATH] checking (${rx},${ry}) targetsEnemies=${targetsEnemies} found=${hitTarget ? ('enemyId' in hitTarget ? (hitTarget as any).enemyId : (hitTarget as any).characterId) + '@(' + Math.floor(hitTarget.x) + ',' + Math.floor(hitTarget.y) + ')' : 'none'}`);
       if (hitTarget) {
         const targetIsEnemy = 'enemyId' in hitTarget;
         const entityId = targetIsEnemy
@@ -2490,6 +2479,24 @@ function resolveProjectiles(gameState: GameState): void {
         const dy = targetEntity.y - proj.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
+        // Range check — homing projectiles should respect their range
+        const totalDistanceTraveled = Math.sqrt(
+          Math.pow(proj.x - (proj.homingVisualStartX ?? proj.startX), 2) +
+          Math.pow(proj.y - (proj.homingVisualStartY ?? proj.startY), 2)
+        );
+        const remainingRange = Math.max(0, range - totalDistanceTraveled);
+        if (remainingRange <= 0) {
+          // Out of range — deactivate
+          const vStartX = proj.homingVisualStartX ?? proj.x;
+          const vStartY = proj.homingVisualStartY ?? proj.y;
+          const endPath = getTilesAlongLine(vStartX, vStartY, proj.x, proj.y);
+          proj.tilePath = endPath.length > 0 ? endPath : [{ x: Math.floor(proj.x), y: Math.floor(proj.y) }];
+          proj.currentTileIndex = 0;
+          proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
+          proj.hitResult = { hitTileIndex: proj.tilePath.length - 1, deactivate: true };
+          continue;
+        }
+
         // Wall check for homing projectiles that don't ignore walls
         if (!proj.homingIgnoreWalls) {
           const pathTiles = getTilesAlongLine(proj.x, proj.y, targetEntity.x, targetEntity.y);
@@ -2544,19 +2551,6 @@ function resolveProjectiles(gameState: GameState): void {
                 proj, approachTiles, gameState, !!proj.attackData.projectilePierces);
 
               const combinedPath = [...approachTiles, ...reflectedTiles];
-
-              // Debug: full reflect lifecycle
-              const enemies = gameState.puzzle.enemies.filter(e => !e.dead && !e.pendingProjectileDeath);
-              console.log(`[REFLECT LIFECYCLE] Homing reflect:`,
-                `\n  projectile: id=${proj.id.slice(-6)} dir=${proj.direction} range=${proj.attackData.range} teamSwapped=${proj.teamSwapped}`,
-                `\n  approach: (${approachStartX.toFixed(0)},${approachStartY.toFixed(0)}) → hero@(${hitX},${hitY}) [${approachTiles.length} tiles]`,
-                `\n  reflected: startX/Y=(${proj.startX},${proj.startY}) dir=${proj.direction} [${reflectedTiles.length} tiles]`,
-                `\n  reflectedTiles: ${reflectedTiles.map(t => `(${t.x},${t.y})`).join('→')}`,
-                `\n  combinedPath: ${combinedPath.map(t => `(${t.x},${t.y})`).join('→')}`,
-                `\n  reflectedHit: ${reflectedHit} hitResult: ${proj.hitResult ? `hitIdx=${proj.hitResult.hitTileIndex} deathId=${proj.hitResult.deferredDeathEntityId}` : 'none'}`,
-                `\n  enemies alive: ${enemies.map(e => `${e.enemyId}@(${Math.floor(e.x)},${Math.floor(e.y)}) hp=${e.currentHealth}`).join(', ')}`,
-                `\n  hitEntityIds: [${proj.hitEntityIds?.join(',')}]`
-              );
               proj.tilePath = combinedPath;
               proj.currentTileIndex = 0;
               proj.tileEntryTime = proj.homingPathStyle === 'straight'
