@@ -2109,8 +2109,9 @@ export function updateProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Deactivate at end of tile path if no hit result and projectile is inactive
-    if (reachedTarget && !proj.hitResult && !proj.active) {
+    // Deactivate at end of tile path when projectile has reached max range
+    if (reachedTarget && proj.pendingDeactivation) {
+      proj.active = false;
       projectilesToRemove.push(proj.id);
     }
   }
@@ -2952,9 +2953,9 @@ function resolveProjectiles(gameState: GameState): void {
       if (proj.hitResult) {
         // Entity was hit — visual system will deactivate when animation reaches hitTileIndex
       } else {
-        // No entity hit — just mark as inactive. The visual system will deactivate
-        // when the tilePath animation naturally reaches the end (reachedTarget).
-        proj.active = false;
+        // No entity hit — mark for deactivation when visual reaches end of tilePath.
+        // Don't set active=false (that would remove it before the visual plays).
+        proj.pendingDeactivation = true;
       }
     }
   }

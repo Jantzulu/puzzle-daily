@@ -825,6 +825,7 @@ export interface Projectile {
   logicalTileIndex?: number;    // Deterministic total tiles traversed (incremented by speed each turn)
   reflectAtTileIndex?: number;  // Tile index where reflect happened (tint applies after this)
   hitResult?: ProjectileHitResult; // Pre-computed collision from turn resolution
+  pendingDeactivation?: boolean; // Reached max range — deactivate when visual reaches end of tilePath
 }
 
 /**
