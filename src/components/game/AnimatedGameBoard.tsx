@@ -2668,9 +2668,19 @@ function getHomingTargetGlow(gameState: GameState, entityId: string, isEnemy: bo
   if (!gameState.activeProjectiles) return undefined;
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active || !proj.isHoming || proj.homingPathStyle !== 'straight') continue;
+    // Current target match (non-reflected, or reflected post-pivot)
     if (proj.targetEntityId === entityId && proj.targetIsEnemy === isEnemy) {
-      // Determine color: red for damage, green for healing
       return proj.attackData.healing !== undefined ? '#4ade80' : '#ef4444';
+    }
+    // For reflected projectiles still in approach phase, glow the original target (the reflector)
+    if (proj.reflected && proj.reflectAtTileIndex !== undefined &&
+        (proj.currentTileIndex ?? 0) < proj.reflectAtTileIndex) {
+      // The reflector is the opposite team's entity stored in hitEntityIds[0]
+      const reflectorId = proj.hitEntityIds?.[0];
+      if (reflectorId === entityId && !isEnemy !== !proj.targetIsEnemy) {
+        // The reflector is the entity being checked — glow it during approach
+        return proj.attackData.healing !== undefined ? '#4ade80' : '#ef4444';
+      }
     }
   }
   return undefined;

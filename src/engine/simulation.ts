@@ -324,17 +324,15 @@ function reflectProjectile(
   // Clear piercing tracking so reflected projectile can hit new targets
   proj.hitEntityIds = [(reflector as any).characterId || (reflector as any).enemyId];
 
-  // Spawn reflect VFX
-  gameState.activeParticles = gameState.activeParticles || [];
-  gameState.activeParticles.push({
-    id: `reflect_vfx_${proj.id}_${Date.now()}`,
+  // Store reflect VFX data — will be spawned when visual reaches reflect point
+  // (not now, because the approach animation hasn't played yet)
+  proj.pendingReflectVfx = {
     sprite: visuals.overrideSprite || { type: 'inline', spriteData: { shape: 'circle', primaryColor: visuals.tintColor || '#06b6d4' } },
     x: reflector.x,
     y: reflector.y,
-    startTime: now,
     duration: 300,
     scale: 0.8,
-  });
+  };
 
   return true;
 }
@@ -2119,6 +2117,16 @@ export function updateProjectiles(gameState: GameState): void {
     // Update position
     proj.x = newX;
     proj.y = newY;
+
+    // Spawn deferred reflect VFX when visual reaches the reflect point
+    if (proj.pendingReflectVfx && proj.reflectAtTileIndex !== undefined) {
+      const currentIdx = proj.currentTileIndex ?? 0;
+      if (currentIdx >= proj.reflectAtTileIndex) {
+        const vfx = proj.pendingReflectVfx;
+        spawnParticleEffect(vfx.x, vfx.y, vfx.sprite, vfx.duration, gameState);
+        proj.pendingReflectVfx = undefined; // Only spawn once
+      }
+    }
 
     // Consume pre-resolved hit results from resolveProjectiles
     const currentTileIdx = proj.currentTileIndex ?? 0;

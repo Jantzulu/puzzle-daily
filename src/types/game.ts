@@ -826,6 +826,7 @@ export interface Projectile {
   reflectAtTileIndex?: number;  // Tile index where reflect happened (tint applies after this)
   hitResult?: ProjectileHitResult; // Pre-computed collision from turn resolution
   pendingDeactivation?: boolean; // Reached max range — deactivate when visual reaches end of tilePath
+  pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // Deferred reflect VFX — spawned when visual reaches reflect point
 }
 
 /**
