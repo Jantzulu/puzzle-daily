@@ -1178,6 +1178,13 @@ export const Game: React.FC = () => {
         }
       }
 
+      // Set x/y from tilePath so projectile renders at correct position when frozen (stepping)
+      if (proj.tilePath && proj.tilePath.length > 0) {
+        const tileIdx = Math.min(proj.currentTileIndex ?? 0, proj.tilePath.length - 1);
+        proj.x = proj.tilePath[tileIdx].x;
+        proj.y = proj.tilePath[tileIdx].y;
+      }
+
       replayProjectiles.push(proj);
     }
 
