@@ -1935,6 +1935,11 @@ export function updateProjectiles(gameState: GameState): void {
     let newY: number;
     let reachedTarget = false;
 
+    // Debug: log reflected projectile visual state
+    if (proj.reflected && Date.now() % 500 < 20) {
+      console.log(`[REFLECT VISUAL] id=${proj.id.slice(-6)} isHoming=${proj.isHoming} tilePath=${proj.tilePath?.length} homingStart=${proj.homingVisualStartX !== undefined} hitResult=${!!proj.hitResult} hitIdx=${proj.hitResult?.hitTileIndex} active=${proj.active}`);
+    }
+
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
       // STRAIGHT-LINE HOMING: smooth interpolation from original start to target
       const startX = proj.homingVisualStartX;
