@@ -24,6 +24,9 @@ export const BehaviorSequenceBuilder: React.FC<BehaviorSequenceBuilderProps> = (
 }) => {
   const [dragIndex, setDragIndex] = useState<number | null>(null);
   const [dragOverIndex, setDragOverIndex] = useState<number | null>(null);
+  const touchStartY = React.useRef<number>(0);
+  const touchDragIndex = React.useRef<number | null>(null);
+  const actionRefs = React.useRef<(HTMLDivElement | null)[]>([]);
 
   const updateAction = useCallback((index: number, action: CharacterAction) => {
     const updated = [...actions];
@@ -80,6 +83,44 @@ export const BehaviorSequenceBuilder: React.FC<BehaviorSequenceBuilderProps> = (
     setDragOverIndex(null);
   }, []);
 
+  // Touch-based drag for mobile
+  const handleTouchStart = useCallback((e: React.TouchEvent, index: number) => {
+    touchStartY.current = e.touches[0].clientY;
+    touchDragIndex.current = index;
+    setDragIndex(index);
+  }, []);
+
+  const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (touchDragIndex.current === null) return;
+    e.preventDefault(); // Prevent page scroll while dragging
+    const touchY = e.touches[0].clientY;
+    // Find which action node the touch is over
+    for (let i = 0; i < actionRefs.current.length; i++) {
+      const ref = actionRefs.current[i];
+      if (!ref) continue;
+      const rect = ref.getBoundingClientRect();
+      if (touchY >= rect.top && touchY <= rect.bottom) {
+        setDragOverIndex(i);
+        break;
+      }
+    }
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    if (touchDragIndex.current !== null && dragOverIndex !== null && touchDragIndex.current !== dragOverIndex) {
+      const updated = [...actions];
+      const [dragged] = updated.splice(touchDragIndex.current, 1);
+      updated.splice(dragOverIndex, 0, dragged);
+      if (updated.length > 0) {
+        updated[updated.length - 1] = { ...updated[updated.length - 1], linkedToNext: undefined };
+      }
+      onChange(updated);
+    }
+    touchDragIndex.current = null;
+    setDragIndex(null);
+    setDragOverIndex(null);
+  }, [dragOverIndex, actions, onChange]);
+
   const toggleLinkedToNext = useCallback((index: number) => {
     const updated = [...actions];
     updated[index] = { ...updated[index], linkedToNext: !updated[index].linkedToNext };
@@ -105,11 +146,16 @@ export const BehaviorSequenceBuilder: React.FC<BehaviorSequenceBuilderProps> = (
           <div key={index}>
             {/* Action Node */}
             <div
+              ref={el => { actionRefs.current[index] = el; }}
               draggable
               onDragStart={() => handleDragStart(index)}
               onDragOver={(e) => handleDragOver(e, index)}
               onDrop={() => handleDrop(index)}
               onDragEnd={handleDragEnd}
+              onTouchStart={(e) => handleTouchStart(e, index)}
+              onTouchMove={handleTouchMove}
+              onTouchEnd={handleTouchEnd}
+              style={{ touchAction: 'none' }}
               className={`
                 bg-stone-700 p-3 rounded border-2 transition-colors
                 ${dragIndex === index ? 'opacity-50' : ''}
