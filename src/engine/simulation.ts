@@ -2005,7 +2005,7 @@ export function updateProjectiles(gameState: GameState): void {
         proj.tilePath.length - 1
       );
 
-      if (proj.homingPathStyle === 'straight' && proj.tilePath.length >= 2) {
+      if (proj.homingPathStyle === 'straight' && proj.tilePath.length >= 2 && !proj.reflected) {
         // STRAIGHT-LINE: smooth interpolation from first to last tile
         const firstTile = proj.tilePath[0];
         const lastTile = proj.tilePath[proj.tilePath.length - 1];
