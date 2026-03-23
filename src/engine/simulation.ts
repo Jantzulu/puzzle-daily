@@ -2407,6 +2407,7 @@ function resolveReflectedPath(
     // Check for entity hits along reflected path (damage only, not healing)
     if (!isHealingProjectile) {
       const hitTarget = findEntityAtTile(rx, ry, gameState, proj, targetsEnemies, true);
+      console.log(`[REFLECT PATH] checking (${rx},${ry}) targetsEnemies=${targetsEnemies} found=${hitTarget ? ('enemyId' in hitTarget ? (hitTarget as any).enemyId : (hitTarget as any).characterId) + '@(' + Math.floor(hitTarget.x) + ',' + Math.floor(hitTarget.y) + ')' : 'none'}`);
       if (hitTarget) {
         const targetIsEnemy = 'enemyId' in hitTarget;
         const entityId = targetIsEnemy
@@ -2543,6 +2544,19 @@ function resolveProjectiles(gameState: GameState): void {
                 proj, approachTiles, gameState, !!proj.attackData.projectilePierces);
 
               const combinedPath = [...approachTiles, ...reflectedTiles];
+
+              // Debug: full reflect lifecycle
+              const enemies = gameState.puzzle.enemies.filter(e => !e.dead && !e.pendingProjectileDeath);
+              console.log(`[REFLECT LIFECYCLE] Homing reflect:`,
+                `\n  projectile: id=${proj.id.slice(-6)} dir=${proj.direction} range=${proj.attackData.range} teamSwapped=${proj.teamSwapped}`,
+                `\n  approach: (${approachStartX.toFixed(0)},${approachStartY.toFixed(0)}) → hero@(${hitX},${hitY}) [${approachTiles.length} tiles]`,
+                `\n  reflected: startX/Y=(${proj.startX},${proj.startY}) dir=${proj.direction} [${reflectedTiles.length} tiles]`,
+                `\n  reflectedTiles: ${reflectedTiles.map(t => `(${t.x},${t.y})`).join('→')}`,
+                `\n  combinedPath: ${combinedPath.map(t => `(${t.x},${t.y})`).join('→')}`,
+                `\n  reflectedHit: ${reflectedHit} hitResult: ${proj.hitResult ? `hitIdx=${proj.hitResult.hitTileIndex} deathId=${proj.hitResult.deferredDeathEntityId}` : 'none'}`,
+                `\n  enemies alive: ${enemies.map(e => `${e.enemyId}@(${Math.floor(e.x)},${Math.floor(e.y)}) hp=${e.currentHealth}`).join(', ')}`,
+                `\n  hitEntityIds: [${proj.hitEntityIds?.join(',')}]`
+              );
               proj.tilePath = combinedPath;
               proj.currentTileIndex = 0;
               proj.tileEntryTime = proj.homingPathStyle === 'straight'
