@@ -2510,7 +2510,39 @@ function resolveProjectiles(gameState: GameState): void {
             const hitResult = applyEntityHit(
               targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
               proj, gameState, 'visual');
-            if (hitResult.reflected) continue;
+            if (hitResult.reflected) {
+              // Build visual path: approach to reflector + reflected path back
+              const approachStartX = proj.homingPathStyle === 'straight'
+                ? (proj.homingVisualStartX ?? proj.x) : proj.x;
+              const approachStartY = proj.homingPathStyle === 'straight'
+                ? (proj.homingVisualStartY ?? proj.y) : proj.y;
+              const approachTiles = proj.homingPathStyle === 'pathfinding'
+                ? findPathBFS(approachStartX, approachStartY, hitX, hitY, gameState)
+                : getTilesAlongLine(approachStartX, approachStartY, hitX, hitY);
+
+              const { reflectedTiles, reflectedHit } = resolveReflectedPath(
+                proj, approachTiles, gameState, !!proj.attackData.projectilePierces);
+
+              const combinedPath = [...approachTiles, ...reflectedTiles];
+              proj.tilePath = combinedPath;
+              proj.currentTileIndex = 0;
+              proj.tileEntryTime = proj.homingPathStyle === 'straight'
+                ? (proj.homingVisualStartTime ?? Date.now()) : Date.now();
+              proj.reflectAtTileIndex = approachTiles.length - 1;
+
+              if (!reflectedHit) {
+                proj.hitResult = {
+                  hitTileIndex: combinedPath.length - 1,
+                  deactivate: true,
+                };
+              }
+
+              if (combinedPath.length > 0) {
+                proj.x = combinedPath[combinedPath.length - 1].x;
+                proj.y = combinedPath[combinedPath.length - 1].y;
+              }
+              continue;
+            }
             vfxSprite = hitResult.vfxSprite;
             deferredDeathEntityId = hitResult.deferredDeathEntityId;
             deferredDeathIsEnemy = hitResult.deferredDeathIsEnemy;
