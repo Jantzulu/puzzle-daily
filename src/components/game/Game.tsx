@@ -980,6 +980,11 @@ export const Game: React.FC = () => {
     }
     projectileLifetimesRef.current = lifetimes;
 
+    console.log(`[REPLAY] Timeline: ${timeline.length} events, ${lifetimes.size} projectile lifetimes`);
+    if (timeline.length > 0) {
+      console.log(`[REPLAY] Events:`, timeline.map(e => `T${e.turn}:${e.type}(${e.projId?.slice(-6)})`).join(', '));
+    }
+
     // Compute notable events per turn for timeline markers
     const events = new Map<number, Set<import('../../engine/combatLog').LogEventType>>();
     for (let i = 1; i < history.length; i++) {
