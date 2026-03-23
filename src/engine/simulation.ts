@@ -1935,10 +1935,14 @@ export function updateProjectiles(gameState: GameState): void {
     let newY: number;
     let reachedTarget = false;
 
-    // Debug: log reflected projectile visual state (every frame)
+    // Debug: log reflected projectile visual state (throttled after first few)
     if (proj.reflected) {
       const dbgElapsed = ((Date.now()) - (proj.tileEntryTime ?? proj.startTime)) / 1000;
-      console.log(`[REFLECT VISUAL] id=${proj.id.slice(-6)} isHoming=${proj.isHoming} tilePath=${proj.tilePath?.length} tileIdx=${proj.currentTileIndex} hitIdx=${proj.hitResult?.hitTileIndex} elapsed=${dbgElapsed.toFixed(2)}s tileEntryTime=${proj.tileEntryTime ? 'set' : 'UNSET'} pos=(${proj.x?.toFixed(1)},${proj.y?.toFixed(1)})`);
+      const pathStr = proj.tilePath ? proj.tilePath.map((t: any) => `(${t.x},${t.y})`).join('→') : 'none';
+      const pathStyle = (proj as any).homingPathStyle || 'unset';
+      if (dbgElapsed < 0.05 || Math.floor(dbgElapsed * 10) % 5 === 0) {
+        console.log(`[REFLECT VISUAL] id=${proj.id.slice(-6)} elapsed=${dbgElapsed.toFixed(2)}s tileIdx=${proj.currentTileIndex} pos=(${proj.x?.toFixed(2)},${proj.y?.toFixed(2)}) pathStyle=${pathStyle} path=${pathStr}`);
+      }
     }
 
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
