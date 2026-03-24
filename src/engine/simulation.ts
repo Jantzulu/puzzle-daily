@@ -2705,6 +2705,14 @@ function resolveProjectiles(gameState: GameState): void {
           proj.y = turnTiles[turnTiles.length - 1].y;
         } else {
           // Move toward target but don't reach it yet
+          // For straight-line homing: preserve homingVisualStartX for smooth animation
+          // Only set on first turn (subsequent turns keep the original start)
+          if (proj.homingVisualStartX === undefined) {
+            proj.homingVisualStartX = proj.x;
+            proj.homingVisualStartY = proj.y;
+            proj.homingVisualStartTime = Date.now();
+          }
+
           let turnTiles: Array<{x: number; y: number}>;
           let newX: number;
           let newY: number;
@@ -2728,9 +2736,20 @@ function resolveProjectiles(gameState: GameState): void {
             checkHomingPathForHits(proj, turnTiles, gameState);
           }
 
-          proj.tilePath = turnTiles;
-          proj.currentTileIndex = 0;
-          proj.tileEntryTime = Date.now();
+          // For grid/pathfinding: append new tiles to existing path instead of replacing
+          // This prevents visual restarts each turn for slow projectiles
+          if ((proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding') && proj.tilePath && proj.tilePath.length > 0) {
+            // Append new tiles, skip the first (it's where we already are)
+            const newTiles = turnTiles.slice(1);
+            if (newTiles.length > 0) {
+              proj.tilePath = [...proj.tilePath, ...newTiles];
+            }
+            // Don't reset currentTileIndex or tileEntryTime — continue from where we are
+          } else {
+            proj.tilePath = turnTiles;
+            proj.currentTileIndex = 0;
+            proj.tileEntryTime = Date.now();
+          }
           proj.x = newX;
           proj.y = newY;
           proj.targetX = targetEntity.x;
