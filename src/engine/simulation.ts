@@ -1963,29 +1963,32 @@ export function updateProjectiles(gameState: GameState): void {
     let reachedTarget = false;
 
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
-      // STRAIGHT-LINE HOMING: move toward current target at projectile speed
-      // Uses distance-traveled approach: projectile has covered (elapsed * speed) tiles from start
-      const startX = proj.homingVisualStartX;
-      const startY = proj.homingVisualStartY ?? proj.y;
-      const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
+      // STRAIGHT-LINE HOMING: smoothly follow target like a heat-seeking missile
+      // Each frame, move from current visual position toward target at projectile speed
+      const prevX = proj.homingPrevX ?? proj.homingVisualStartX;
+      const prevY = proj.homingPrevY ?? (proj.homingVisualStartY ?? proj.y);
+      const dx = proj.targetX - prevX;
+      const dy = proj.targetY - prevY;
+      const distToTarget = Math.sqrt(dx * dx + dy * dy);
+
+      const frameTime = Math.min((now - (proj._lastFrameTime ?? now)) / 1000, 0.05);
+      proj._lastFrameTime = now;
       const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-      const distanceTraveled = elapsed * speedTilesPerSecond;
+      const moveDistance = speedTilesPerSecond * (frameTime || 0.016);
 
-      // Direction from start to CURRENT target (updates when target moves)
-      const dx = proj.targetX - startX;
-      const dy = proj.targetY - startY;
-      const totalDist = Math.sqrt(dx * dx + dy * dy);
-
-      if (totalDist < 0.1 || distanceTraveled >= totalDist) {
+      if (distToTarget <= moveDistance || distToTarget < 0.1) {
         newX = proj.targetX;
         newY = proj.targetY;
         reachedTarget = true;
       } else {
-        // Position along the line from start to current target
-        const progress = distanceTraveled / totalDist;
-        newX = startX + dx * progress;
-        newY = startY + dy * progress;
+        const moveRatio = moveDistance / distToTarget;
+        newX = prevX + dx * moveRatio;
+        newY = prevY + dy * moveRatio;
       }
+
+      // Store current visual position for next frame
+      proj.homingPrevX = newX;
+      proj.homingPrevY = newY;
 
       // Update direction for sprite rotation toward current target
       if (dx !== 0 || dy !== 0) {
@@ -2578,11 +2581,8 @@ function resolveProjectiles(gameState: GameState): void {
         const dy = targetEntity.y - proj.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Range check — homing projectiles should respect their range
-        const totalDistanceTraveled = Math.sqrt(
-          Math.pow(proj.x - (proj.homingVisualStartX ?? proj.startX), 2) +
-          Math.pow(proj.y - (proj.homingVisualStartY ?? proj.startY), 2)
-        );
+        // Range check — use cumulative distance traveled, not Euclidean from spawn
+        const totalDistanceTraveled = proj.totalDistanceTraveled ?? 0;
         const remainingRange = Math.max(0, range - totalDistanceTraveled);
         if (remainingRange <= 0) {
           // Out of range — deactivate. Clear homing visual state so tile-based branch handles it.
@@ -2621,6 +2621,9 @@ function resolveProjectiles(gameState: GameState): void {
           }
           if (wallBlocked) continue;
         }
+
+        // Track distance for reaching target
+        proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + Math.min(distance, remainingRange);
 
         // Clamp effective reach to remaining range
         const effectiveReach = Math.min(tilesPerTurn, remainingRange);
@@ -2760,6 +2763,10 @@ function resolveProjectiles(gameState: GameState): void {
             proj.currentTileIndex = 0;
             proj.tileEntryTime = Date.now();
           }
+          // Track cumulative distance traveled for range enforcement
+          const distThisTurn = Math.sqrt(Math.pow(newX - proj.x, 2) + Math.pow(newY - proj.y, 2));
+          proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + distThisTurn;
+
           proj.x = newX;
           proj.y = newY;
           proj.targetX = targetEntity.x;
