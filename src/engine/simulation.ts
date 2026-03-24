@@ -1992,7 +1992,7 @@ export function updateProjectiles(gameState: GameState): void {
 
       // Update direction for sprite rotation toward current target
       if (dx !== 0 || dy !== 0) {
-        proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
+        proj.direction = calculateDirectionTo(prevX, prevY, proj.targetX, proj.targetY);
       }
     } else if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
       // Grid homing projectiles without tilePath: move towards current target from current position
