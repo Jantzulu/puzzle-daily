@@ -1963,22 +1963,32 @@ export function updateProjectiles(gameState: GameState): void {
     let reachedTarget = false;
 
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
-      // STRAIGHT-LINE HOMING: smooth interpolation from original start to target
+      // STRAIGHT-LINE HOMING: move toward current target at projectile speed
+      // Uses distance-traveled approach: projectile has covered (elapsed * speed) tiles from start
       const startX = proj.homingVisualStartX;
       const startY = proj.homingVisualStartY ?? proj.y;
       const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
       const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-      const totalDist = Math.sqrt(Math.pow(proj.targetX - startX, 2) + Math.pow(proj.targetY - startY, 2));
-      const totalTime = Math.max(0.1, totalDist / speedTilesPerSecond);
-      const progress = Math.min(elapsed / totalTime, 1);
-      newX = startX + (proj.targetX - startX) * progress;
-      newY = startY + (proj.targetY - startY) * progress;
-      if (progress >= 1) reachedTarget = true;
+      const distanceTraveled = elapsed * speedTilesPerSecond;
 
-      // Update direction for sprite rotation
-      const sdx = proj.targetX - startX;
-      const sdy = proj.targetY - startY;
-      if (sdx !== 0 || sdy !== 0) {
+      // Direction from start to CURRENT target (updates when target moves)
+      const dx = proj.targetX - startX;
+      const dy = proj.targetY - startY;
+      const totalDist = Math.sqrt(dx * dx + dy * dy);
+
+      if (totalDist < 0.1 || distanceTraveled >= totalDist) {
+        newX = proj.targetX;
+        newY = proj.targetY;
+        reachedTarget = true;
+      } else {
+        // Position along the line from start to current target
+        const progress = distanceTraveled / totalDist;
+        newX = startX + dx * progress;
+        newY = startY + dy * progress;
+      }
+
+      // Update direction for sprite rotation toward current target
+      if (dx !== 0 || dy !== 0) {
         proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
       }
     } else if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
