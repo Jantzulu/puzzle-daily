@@ -2622,13 +2622,16 @@ function resolveProjectiles(gameState: GameState): void {
           if (wallBlocked) continue;
         }
 
-        // Track distance for reaching target
-        proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + Math.min(distance, remainingRange);
+        // Track distance for reaching target — use tile-steps (same as "didn't reach" branch)
+        // so diagonal targets are equally reachable as cardinal ones
+        proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + Math.min(tilesPerTurn, remainingRange);
 
-        // Clamp effective reach to remaining range
+        // Clamp effective reach to remaining range (tile-steps, not Euclidean)
         const effectiveReach = Math.min(tilesPerTurn, remainingRange);
 
-        if (distance <= effectiveReach) {
+        // Use Chebyshev distance (max of dx, dy) for reach check — treats diagonal as 1 step
+        const chebyshevDist = Math.max(Math.abs(dx), Math.abs(dy));
+        if (chebyshevDist <= effectiveReach) {
           // Reached target — determine if hostile or healing
           const hitX = targetEntity.x;
           const hitY = targetEntity.y;
@@ -2739,7 +2742,9 @@ function resolveProjectiles(gameState: GameState): void {
             newY = lastTile.y;
           } else {
             const clampedMove = Math.min(tilesPerTurn, remainingRange);
-            const moveRatio = clampedMove / distance;
+            // Use Chebyshev distance for movement ratio — diagonal counts as 1 step
+            const chebyshevDistToTarget = Math.max(Math.abs(dx), Math.abs(dy));
+            const moveRatio = Math.min(clampedMove / Math.max(chebyshevDistToTarget, 0.1), 1);
             newX = proj.x + dx * moveRatio;
             newY = proj.y + dy * moveRatio;
             turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
