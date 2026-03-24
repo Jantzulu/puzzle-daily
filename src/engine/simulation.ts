@@ -1963,36 +1963,23 @@ export function updateProjectiles(gameState: GameState): void {
     let reachedTarget = false;
 
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
-      // STRAIGHT-LINE HOMING: smoothly follow target like a heat-seeking missile
-      // Each frame, move from current visual position toward target at projectile speed
-      const prevX = proj.homingPrevX ?? proj.homingVisualStartX;
-      const prevY = proj.homingPrevY ?? (proj.homingVisualStartY ?? proj.y);
-      const dx = proj.targetX - prevX;
-      const dy = proj.targetY - prevY;
-      const distToTarget = Math.sqrt(dx * dx + dy * dy);
-
-      const frameTime = Math.min((now - (proj._lastFrameTime ?? now)) / 1000, 0.05);
-      proj._lastFrameTime = now;
+      // STRAIGHT-LINE HOMING: smooth interpolation from original start to target
+      const startX = proj.homingVisualStartX;
+      const startY = proj.homingVisualStartY ?? proj.y;
+      const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
       const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-      const moveDistance = speedTilesPerSecond * (frameTime || 0.016);
+      const totalDist = Math.sqrt(Math.pow(proj.targetX - startX, 2) + Math.pow(proj.targetY - startY, 2));
+      const totalTime = Math.max(0.1, totalDist / speedTilesPerSecond);
+      const progress = Math.min(elapsed / totalTime, 1);
+      newX = startX + (proj.targetX - startX) * progress;
+      newY = startY + (proj.targetY - startY) * progress;
+      if (progress >= 1) reachedTarget = true;
 
-      if (distToTarget <= moveDistance || distToTarget < 0.1) {
-        newX = proj.targetX;
-        newY = proj.targetY;
-        reachedTarget = true;
-      } else {
-        const moveRatio = moveDistance / distToTarget;
-        newX = prevX + dx * moveRatio;
-        newY = prevY + dy * moveRatio;
-      }
-
-      // Store current visual position for next frame
-      proj.homingPrevX = newX;
-      proj.homingPrevY = newY;
-
-      // Update direction for sprite rotation toward current target
-      if (dx !== 0 || dy !== 0) {
-        proj.direction = calculateDirectionTo(prevX, prevY, proj.targetX, proj.targetY);
+      // Update direction for sprite rotation
+      const sdx = proj.targetX - startX;
+      const sdy = proj.targetY - startY;
+      if (sdx !== 0 || sdy !== 0) {
+        proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
       }
     } else if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
       // Grid homing projectiles without tilePath: move towards current target from current position
@@ -2581,8 +2568,11 @@ function resolveProjectiles(gameState: GameState): void {
         const dy = targetEntity.y - proj.y;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Range check — use cumulative distance traveled, not Euclidean from spawn
-        const totalDistanceTraveled = proj.totalDistanceTraveled ?? 0;
+        // Range check — homing projectiles should respect their range
+        const totalDistanceTraveled = Math.sqrt(
+          Math.pow(proj.x - (proj.homingVisualStartX ?? proj.startX), 2) +
+          Math.pow(proj.y - (proj.homingVisualStartY ?? proj.startY), 2)
+        );
         const remainingRange = Math.max(0, range - totalDistanceTraveled);
         if (remainingRange <= 0) {
           // Out of range — deactivate. Clear homing visual state so tile-based branch handles it.
@@ -2622,16 +2612,10 @@ function resolveProjectiles(gameState: GameState): void {
           if (wallBlocked) continue;
         }
 
-        // Track distance for reaching target — use tile-steps (same as "didn't reach" branch)
-        // so diagonal targets are equally reachable as cardinal ones
-        proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + Math.min(tilesPerTurn, remainingRange);
-
-        // Clamp effective reach to remaining range (tile-steps, not Euclidean)
+        // Clamp effective reach to remaining range
         const effectiveReach = Math.min(tilesPerTurn, remainingRange);
 
-        // Use Chebyshev distance (max of dx, dy) for reach check — treats diagonal as 1 step
-        const chebyshevDist = Math.max(Math.abs(dx), Math.abs(dy));
-        if (chebyshevDist <= effectiveReach) {
+        if (distance <= effectiveReach) {
           // Reached target — determine if hostile or healing
           const hitX = targetEntity.x;
           const hitY = targetEntity.y;
@@ -2721,14 +2705,6 @@ function resolveProjectiles(gameState: GameState): void {
           proj.y = turnTiles[turnTiles.length - 1].y;
         } else {
           // Move toward target but don't reach it yet
-          // For straight-line homing: preserve homingVisualStartX for smooth animation
-          // Only set on first turn (subsequent turns keep the original start)
-          if (proj.homingVisualStartX === undefined) {
-            proj.homingVisualStartX = proj.x;
-            proj.homingVisualStartY = proj.y;
-            proj.homingVisualStartTime = Date.now();
-          }
-
           let turnTiles: Array<{x: number; y: number}>;
           let newX: number;
           let newY: number;
@@ -2742,9 +2718,7 @@ function resolveProjectiles(gameState: GameState): void {
             newY = lastTile.y;
           } else {
             const clampedMove = Math.min(tilesPerTurn, remainingRange);
-            // Use Chebyshev distance for movement ratio — diagonal counts as 1 step
-            const chebyshevDistToTarget = Math.max(Math.abs(dx), Math.abs(dy));
-            const moveRatio = Math.min(clampedMove / Math.max(chebyshevDistToTarget, 0.1), 1);
+            const moveRatio = clampedMove / distance;
             newX = proj.x + dx * moveRatio;
             newY = proj.y + dy * moveRatio;
             turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
@@ -2754,25 +2728,9 @@ function resolveProjectiles(gameState: GameState): void {
             checkHomingPathForHits(proj, turnTiles, gameState);
           }
 
-          // For grid/pathfinding: append new tiles to existing path instead of replacing
-          // This prevents visual restarts each turn for slow projectiles
-          if ((proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding') && proj.tilePath && proj.tilePath.length > 0) {
-            // Append new tiles, skip the first (it's where we already are)
-            const newTiles = turnTiles.slice(1);
-            if (newTiles.length > 0) {
-              proj.tilePath = [...proj.tilePath, ...newTiles];
-            }
-            // Don't reset currentTileIndex or tileEntryTime — continue from where we are
-          } else {
-            proj.tilePath = turnTiles;
-            proj.currentTileIndex = 0;
-            proj.tileEntryTime = Date.now();
-          }
-          // Track cumulative distance traveled for range enforcement
-          // Use the known movement amount (not position delta, which is affected by visual mutations)
-          const clampedMove = Math.min(tilesPerTurn, remainingRange);
-          proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + clampedMove;
-
+          proj.tilePath = turnTiles;
+          proj.currentTileIndex = 0;
+          proj.tileEntryTime = Date.now();
           proj.x = newX;
           proj.y = newY;
           proj.targetX = targetEntity.x;

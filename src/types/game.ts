@@ -816,11 +816,6 @@ export interface Projectile {
   homingVisualStartX?: number;  // Original start X for straight-line visual continuity
   homingVisualStartY?: number;  // Original start Y for straight-line visual continuity
   homingVisualStartTime?: number; // Original start time for straight-line timing
-  totalDistanceTraveled?: number; // Cumulative distance traveled (for homing range tracking)
-  homingPrevX?: number;         // Previous frame position for visual smooth following
-  homingPrevY?: number;
-  _lastFrameTime?: number;      // Last animation frame timestamp for per-frame movement
-  _turnStartTileIndex?: number; // Start tile index for replay step animation
   targetEntityId?: string;      // ID of entity being tracked
   targetIsEnemy?: boolean;      // true = target is enemy, false = target is character
 
