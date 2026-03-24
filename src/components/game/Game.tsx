@@ -1112,18 +1112,21 @@ export const Game: React.FC = () => {
       }
 
       // Calculate how far the projectile should be at this turn
-      const turnsElapsed = turnIndex - life.spawnTurn;
+      // +1 because the spawn turn itself is the first turn of travel
+      const turnsOfTravel = turnIndex - life.spawnTurn + 1;
       const speed = spawn.speed || 4;
-      const tilesAdvancedByTurn = turnsElapsed * speed;
+      const tilesAtEndOfTurn = turnsOfTravel * speed;
+      const tilesAtStartOfTurn = (turnsOfTravel - 1) * speed; // where it was at end of previous turn
       const maxTileIdx = tilePath ? tilePath.length - 1 : 0;
-      let turnTileIndex = Math.min(tilesAdvancedByTurn, maxTileIdx);
+      let turnTileIndex = Math.min(tilesAtEndOfTurn, maxTileIdx);
+      let turnStartTileIndex = Math.min(tilesAtStartOfTurn, maxTileIdx);
 
-      // For same-turn hits (spawn and end on same turn), show at hit position, not spawn
-      if (life.end && turnIndex === life.endTurn && turnsElapsed === 0) {
+      // For hits on the end turn, cap at the hit position
+      if (life.end && turnIndex === life.endTurn) {
         if (life.end.type === 'hit' && life.end.hitTileIndex !== undefined) {
           turnTileIndex = Math.min(life.end.hitTileIndex, maxTileIdx);
         } else {
-          turnTileIndex = maxTileIdx; // end of path for deactivate/wall_hit
+          turnTileIndex = maxTileIdx;
         }
       }
 
@@ -1143,9 +1146,10 @@ export const Game: React.FC = () => {
         tilePath,
         currentTileIndex: turnTileIndex,
         // Offset tileEntryTime so visual picks up at the correct tile, not restart from 0
-        // tileTransitTime = 1 / (speed / 0.8) = 0.8 / speed seconds per tile
         tileEntryTime: now - (turnTileIndex * (800 / speed)),
         startTime: now - (turnTileIndex * (800 / speed)),
+        // Store start-of-turn tile index for step animation (so it starts from previous turn's end)
+        _turnStartTileIndex: turnStartTileIndex,
         attackData: spawn.attackData || { damage: 0, pattern: 'projectile' as any },
         sourceCharacterId: spawn.sourceIsEnemy ? undefined : spawn.sourceEntityId,
         sourceEnemyId: spawn.sourceIsEnemy ? spawn.sourceEntityId : undefined,
@@ -1236,15 +1240,18 @@ export const Game: React.FC = () => {
       const next = Math.min(prev + 1, history.length - 1);
       // Set projectiles at their START position for this turn (so they animate from there)
       const copy = copySnapshotForPlayback(history[next], history, next);
-      // Reset projectile positions to start of turn for animation
+      // Reset projectile positions to START of this turn (end of previous turn)
+      // so animation plays from where they left off, not from tile 0
       if (copy.activeProjectiles) {
         for (const proj of copy.activeProjectiles) {
-          if (proj.tilePath && proj.tilePath.length > 0) {
-            // Set to tile 0 of this turn's path so animation plays from start
-            proj.currentTileIndex = 0;
-            proj.x = proj.tilePath[0].x;
-            proj.y = proj.tilePath[0].y;
-            proj.tileEntryTime = Date.now();
+          if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
+            const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
+            proj.currentTileIndex = startIdx;
+            proj.x = proj.tilePath[startIdx].x;
+            proj.y = proj.tilePath[startIdx].y;
+            // Offset tileEntryTime so visual starts at startIdx
+            const tileTransitMs = 800 / (proj.speed || 4);
+            proj.tileEntryTime = Date.now() - (startIdx * tileTransitMs);
           }
         }
       }
@@ -1272,14 +1279,16 @@ export const Game: React.FC = () => {
       const next = Math.max(prev - 1, 0);
       // Show the previous turn's state and animate it playing out
       const copy = copySnapshotForPlayback(history[next], history, next);
-      // Reset projectile positions to start of turn for animation
+      // Reset projectile positions to START of this turn (end of previous turn)
       if (copy.activeProjectiles) {
         for (const proj of copy.activeProjectiles) {
-          if (proj.tilePath && proj.tilePath.length > 0) {
-            proj.currentTileIndex = 0;
-            proj.x = proj.tilePath[0].x;
-            proj.y = proj.tilePath[0].y;
-            proj.tileEntryTime = Date.now();
+          if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
+            const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
+            proj.currentTileIndex = startIdx;
+            proj.x = proj.tilePath[startIdx].x;
+            proj.y = proj.tilePath[startIdx].y;
+            const tileTransitMs = 800 / (proj.speed || 4);
+            proj.tileEntryTime = Date.now() - (startIdx * tileTransitMs);
           }
         }
       }
