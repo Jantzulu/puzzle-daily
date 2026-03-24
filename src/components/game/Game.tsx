@@ -1270,13 +1270,31 @@ export const Game: React.FC = () => {
 
     setReplayTurnIndex(prev => {
       const next = Math.max(prev - 1, 0);
-      // Step back shows the final state of that turn (no animation needed)
-      setGameState(copySnapshotForPlayback(history[next], history, next));
+      // Show the previous turn's state and animate it playing out
+      const copy = copySnapshotForPlayback(history[next], history, next);
+      // Reset projectile positions to start of turn for animation
+      if (copy.activeProjectiles) {
+        for (const proj of copy.activeProjectiles) {
+          if (proj.tilePath && proj.tilePath.length > 0) {
+            proj.currentTileIndex = 0;
+            proj.x = proj.tilePath[0].x;
+            proj.y = proj.tilePath[0].y;
+            proj.tileEntryTime = Date.now();
+          }
+        }
+      }
+      setGameState(copy);
       return next;
     });
-    // No animation for stepping back — just show the frozen state
-    setReplayStepAnimating(false);
-  }, []);
+
+    // Animate for one turn interval then freeze
+    const minSpeed = Math.min(4, ...((gameState.activeProjectiles || []).map(p => p.speed || 4)));
+    const stepDuration = Math.max(800, Math.ceil(800 / Math.max(1, minSpeed) * 4));
+    setReplayStepAnimating(true);
+    replayStepTimerRef.current = setTimeout(() => {
+      setReplayStepAnimating(false);
+    }, stepDuration);
+  }, [gameState]);
 
   const handleReplaySeek = useCallback((turn: number) => {
     setReplayPlaying(false);
