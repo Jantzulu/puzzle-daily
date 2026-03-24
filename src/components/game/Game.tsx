@@ -1114,7 +1114,17 @@ export const Game: React.FC = () => {
       const speed = spawn.speed || 4;
       const tilesAdvancedByTurn = turnsElapsed * speed;
       const maxTileIdx = tilePath ? tilePath.length - 1 : 0;
-      const turnTileIndex = Math.min(tilesAdvancedByTurn, maxTileIdx);
+      let turnTileIndex = Math.min(tilesAdvancedByTurn, maxTileIdx);
+
+      // For same-turn hits (spawn and end on same turn), show at hit position, not spawn
+      if (life.end && turnIndex === life.endTurn && turnsElapsed === 0) {
+        if (life.end.type === 'hit' && life.end.hitTileIndex !== undefined) {
+          turnTileIndex = Math.min(life.end.hitTileIndex, maxTileIdx);
+        } else {
+          turnTileIndex = maxTileIdx; // end of path for deactivate/wall_hit
+        }
+      }
+
       const posAtTurn = tilePath?.[turnTileIndex] ?? { x: spawn.x, y: spawn.y };
 
       const proj: Projectile = {
