@@ -124,6 +124,8 @@ export const Game: React.FC = () => {
   const [replayTurnIndex, setReplayTurnIndex] = useState(0);
   const [replayPlaying, setReplayPlaying] = useState(false);
   const [replaySpeed, setReplaySpeed] = useState(1);
+  const [replayStepAnimating, setReplayStepAnimating] = useState(false);
+  const replayStepTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const turnHistoryRef = useRef<GameState[]>([]);
   const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
   const projectileTimelineRef = useRef<ProjectileEvent[]>([]);
@@ -1225,21 +1227,49 @@ export const Game: React.FC = () => {
   const handleReplayStepForward = useCallback(() => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
+    // Clear any existing step timer
+    if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
+
     setReplayTurnIndex(prev => {
       const next = Math.min(prev + 1, history.length - 1);
-      setGameState(copySnapshotForPlayback(history[next], history, next));
+      // Set projectiles at their START position for this turn (so they animate from there)
+      const copy = copySnapshotForPlayback(history[next], history, next);
+      // Reset projectile positions to start of turn for animation
+      if (copy.activeProjectiles) {
+        for (const proj of copy.activeProjectiles) {
+          if (proj.tilePath && proj.tilePath.length > 0) {
+            // Set to tile 0 of this turn's path so animation plays from start
+            proj.currentTileIndex = 0;
+            proj.x = proj.tilePath[0].x;
+            proj.y = proj.tilePath[0].y;
+            proj.tileEntryTime = Date.now();
+          }
+        }
+      }
+      setGameState(copy);
       return next;
     });
+
+    // Allow animation to play for one turn interval, then freeze
+    setReplayStepAnimating(true);
+    replayStepTimerRef.current = setTimeout(() => {
+      setReplayStepAnimating(false);
+    }, 800); // TURN_INTERVAL_MS
   }, []);
 
   const handleReplayStepBack = useCallback(() => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
+    if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
+
     setReplayTurnIndex(prev => {
       const next = Math.max(prev - 1, 0);
+      // Step back shows the final state of that turn (no animation needed)
       setGameState(copySnapshotForPlayback(history[next], history, next));
       return next;
     });
+    // No animation for stepping back — just show the frozen state
+    setReplayStepAnimating(false);
   }, []);
 
   const handleReplaySeek = useCallback((turn: number) => {
@@ -1575,7 +1605,7 @@ export const Game: React.FC = () => {
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
               >
-                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying} />
+                <ResponsiveGameBoard gameState={gameState} onTileClick={handleTileClick} onProjectileKill={handleProjectileKill} replayFrozen={replayMode && !replayPlaying && !replayStepAnimating} />
               </div>
               {!spritesReady && (
                 <div className="absolute inset-0 flex items-center justify-center bg-stone-900/80">
