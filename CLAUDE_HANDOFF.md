@@ -1,391 +1,182 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: January 22, 2026
+Last Updated: March 24, 2026
 
 ## Project Overview
 
-**Puzzle Daily** is a sophisticated React/TypeScript puzzle game development platform with a medieval dungeon theme. It features:
-- Turn-based puzzle gameplay with characters and enemies
-- A full-featured map editor for creating puzzles with playtest mode
-- A comprehensive asset manager for custom sprites, tiles, enemies, characters, spells, status effects, etc.
-- A compendium for viewing all game content
-- Cloud sync with Supabase (draft vs. live asset tiers)
-- Extensive theming system with 50+ customizable properties
+**Puzzle Daily** (branded "Knightly") is a React/TypeScript turn-based puzzle game platform with a medieval dungeon theme. It features a full editor suite and a player-facing game.
 
 ## Tech Stack
 
-- **Frontend**: React 19 + TypeScript + Vite 7
-- **Styling**: Tailwind CSS with custom dungeon-themed palette + CSS variables for theming
-- **Canvas Rendering**: Pixi.js 8 for 2D animations
-- **Backend**: Supabase (PostgreSQL)
-- **Hosting**: Netlify
+- **Frontend**: React 19 + TypeScript + Vite
+- **Styling**: Tailwind CSS with custom dungeon-themed palette
+- **Canvas Rendering**: Custom canvas-based AnimatedGameBoard (no Pixi.js)
+- **Backend**: Supabase (PostgreSQL) for cloud puzzles, daily scheduling
+- **Hosting**: Netlify (editor at knightly-dev, player at separate site)
 - **Repository**: https://github.com/Jantzulu/puzzle-daily.git
 
-## Key Directories
+## Key Architecture
 
+### File Structure
 ```
-puzzle-game/
-├── src/
-│   ├── components/
-│   │   ├── game/           # Game components (Game.tsx, AnimatedGameBoard.tsx)
-│   │   ├── editor/         # Map editor, asset editors, theme editor
-│   │   ├── compendium/     # Compendium views
-│   │   └── shared/         # Shared components (SoundSettings, Tooltips, etc.)
-│   ├── utils/
-│   │   ├── themeAssets.ts  # Theme system - CSS variables, storage
-│   │   ├── cloudSync.ts    # Supabase sync logic
-│   │   ├── assetStorage.ts # Local storage for assets
-│   │   ├── puzzleStorage.ts
-│   │   ├── soundManager.ts # Audio playback
-│   │   └── imageLoader.ts  # Image URL validation
-│   ├── services/
-│   │   └── supabaseService.ts  # Supabase API calls
-│   ├── data/               # Built-in characters, enemies, tiles
-│   ├── engine/             # Game simulation logic
-│   │   ├── simulation.ts   # Turn-based game engine
-│   │   ├── actions.ts      # Player/AI actions and damage
-│   │   ├── puzzleSolver.ts # Solution finder
-│   │   └── scoring.ts      # Score calculation
-│   ├── types/
-│   │   └── game.ts         # All TypeScript type definitions
-│   └── lib/
-│       └── supabase.ts     # Supabase client config
-├── docs/                   # Architecture documentation
-├── index.html
-├── tailwind.config.js
-└── package.json
+src/
+  components/
+    game/           # Game play (Game.tsx, AnimatedGameBoard.tsx, CharacterSelector.tsx)
+    editor/         # Asset editors (MapEditor.tsx, CharacterEditor.tsx, EnemyEditor.tsx, SpellAssetBuilder.tsx, StatusEffectEditor.tsx, etc.)
+    shared/         # Shared UI components
+  engine/
+    simulation.ts   # Turn execution, projectile resolution, status effects
+    actions.ts      # Entity action execution, spell casting, triggers
+    utils.ts        # Direction math, collision helpers
+    scoring.ts      # Score calculation
+  types/
+    game.ts         # ALL type definitions (PlacedCharacter, PlacedEnemy, Projectile, SpellAsset, StatusEffectAsset, etc.)
+  utils/
+    assetStorage.ts # localStorage CRUD for all asset types + migrations
+  data/             # Built-in characters, enemies, puzzles
 ```
 
-## Game Engine Architecture
+### Projectile System (CRITICAL - read carefully)
 
-### Core Systems (src/engine/)
+The projectile system was extensively refactored for determinism. Here is how it works:
 
-**simulation.ts** - Turn-based game engine:
-- Character/enemy movement and AI
-- Combat, damage calculation, and deflect mechanics
-- Special tile effects (teleports, damage, ice, pressure plates)
-- Status effect processing (poison, burn, shield, deflect, etc.)
-- Win/loss condition checking
-- Boss enemy system
-- Lives/attempt system
-- Projectile system with animations
+**Two-phase architecture:**
+1. **`resolveProjectiles()`** (in simulation.ts) - runs at turn boundaries inside `executeTurn()`. Deterministic collision resolution. Advances projectiles logically, checks hits, applies damage, handles reflect. Sets `hitResult` on projectiles for visual consumption.
+2. **`updateProjectiles()`** (in simulation.ts) - runs per-frame in AnimatedGameBoard's animation loop. Visual-only: interpolates projectile positions, consumes `hitResult` when visual reaches the target, spawns VFX.
 
-**actions.ts** - Action execution:
-- `applyDamageToEntity()` - Handles damage with source tracking for deflect
-- `applyDamageToEntityNoDeflect()` - Prevents infinite deflect loops
-- Melee, ranged, and AOE attack execution
-- Spell casting (resurrect, heal, damage, status effects)
-- Movement actions
+**Key design decisions:**
+- Non-homing projectiles get their `tilePath` at spawn time (via `computeTilePathWithWallLookahead`). `resolveProjectiles` does NOT overwrite `tilePath` - it only updates `logicalTileIndex` and sets `hitResult`.
+- Homing straight-line projectiles use `homingVisualStartX/Y/Time` for smooth interpolation from spawn to target, independent of `resolveProjectiles`.
+- Reflected projectiles use a combined approach+reflect `tilePath` with `reflectAtTileIndex` for tint switching. `reflectProjectile()` clears `homingVisualStartX/Y/Time` so reflected projectiles use tile-by-tile animation.
+- `visualTileIndex` is calculated from time (`elapsed / tileTransitTime`), NOT from a stored `currentTileIndex`. This avoids deep-copy mutation issues.
+- `pendingDeactivation` flag replaces `active = false` for end-of-range, letting the visual system control deactivation timing.
+- `pendingProjectileDeath` defers entity death until the projectile visual arrives. `visualHealth` defers HP bar changes similarly.
 
-### Key Game Concepts
+**Known issues / pending work:**
+- Slow homing projectiles (speed 1-2) have visual issues - they do not smoothly track moving targets. The straight-line interpolation was designed for fast projectiles. Attempts to fix (per-frame following, cumulative distance) broke fast projectiles. The slow homing fix needs a separate visual path that does not affect fast projectiles.
+- Replays show projectiles via an event timeline system (`projectileTimeline` in Game.tsx). Events are recorded during headless replay generation. `buildReplayProjectiles()` reconstructs projectile visuals from events. Step-by-step replay works with animation + freeze. Some edge cases remain with slow projectiles in replays.
+- The projectile system has technical debt: multiple overlapping flags (`pendingDeactivation`, `pendingProjectileDeath`, `hitResult`, `visualHealth`), duplicated collision logic between `resolveProjectiles` and `updateProjectilesHeadless`, and the visual system still mutates `proj.x/y` and `proj.currentTileIndex` on game state objects (deep copy captures these).
 
-**Tile Types**:
-- Standard: empty, wall, goal, teleport
-- Custom tile types with behaviors: damage, teleport, direction_change, ice, pressure_plate
+### Reflect Status Effect
 
-**Cadence System**: Tiles can toggle on/off in patterns
-```typescript
-interface CadenceConfig {
-  enabled: boolean;
-  pattern: 'alternating' | 'interval' | 'custom';
-  onTurns?: number;
-  offTurns?: number;
-  customPattern?: boolean[];
-  startState: 'on' | 'off';
-}
-```
+The Reflect status effect bounces incoming projectiles back:
+- `reflectProjectile()` reverses direction, swaps team targeting (`teamSwapped`), applies tint
+- Directional filter: `reflectDirections` on StatusEffectAsset (front/back/left/right checkboxes)
+- `canReflectDirection()` checks if projectile approach angle matches allowed zones
+- Reflected projectiles cannot bounce again (`proj.reflected = true`)
+- Combined approach+reflect visual path with `reflectAtTileIndex` for tint timing
+- `visualPastReflectPoint` boolean prevents glow/tint flickering
+- Separate `reflectImpactSprite` for the bounce VFX (distinct from projectile override sprite)
+- Reflect impact VFX is deferred via `pendingReflectVfx` until visual reaches reflect point
 
-**Pressure Plates**: Can trigger wall toggles, enemy spawns/despawns, teleports
+### Stealth Status Effect
 
-**Win Conditions**:
-- `defeat_all_enemies`
-- `defeat_boss` - All boss enemies must be defeated
-- `collect_all`
-- `reach_goal`
-- `survive_turns`
-- `win_in_turns`
-- `max_characters`
-- `characters_alive`
+- Stealthed entities cannot trigger opposing team's proximity/range/contact triggers
+- Cannot be auto-targeted by homing projectiles
+- Same-team entities CAN still see stealthed allies
+- `isEntityStealthed()` helper in actions.ts
 
-**Status Effect Types** (StatusEffectType enum):
-- POISON, BURN, BLEED - Damage over time
-- REGEN - Healing over time
-- STUN, SLEEP - Prevents actions
-- SLOW - Movement restriction
-- SILENCED - Prevents ranged/spells
-- DISARMED - Prevents melee
-- POLYMORPH - Transformation
-- STEALTH - Reduced visibility, can't be auto-targeted
-- SHIELD - Damage absorption with health bar color change
-- HASTE - Extra actions
-- DEFLECT - Reflects spell damage back to caster
+### Steadfast Status Effect
 
-## Status Effect System
+- Prevents entity from being affected by any redirect effects (spell, item, or tile)
+- `isSteadfast()` helper checked at all redirect application sites
 
-### StatusEffectAsset Interface
-```typescript
-interface StatusEffectAsset {
-  id: string;
-  name: string;
-  description?: string;
-  type: StatusEffectType;
-  iconSprite?: SpriteReference;
-  defaultDuration: number;
-  defaultValue?: number;           // Damage/heal per turn, or shield amount
-  processAtTurnStart?: boolean;
-  removedOnDamage?: boolean;       // For Sleep
-  preventsMelee?: boolean;
-  preventsRanged?: boolean;
-  preventsMovement?: boolean;
-  preventsAllActions?: boolean;
-  stackingBehavior: 'refresh' | 'stack' | 'replace' | 'highest';
-  maxStacks?: number;
-  healthBarColor?: string;         // For Shield type
-  stealthOpacity?: number;         // For Stealth type
-  overlaySprite?: SpriteReference; // Sprite overlay on entity (e.g., shield bubble)
-  overlayOpacity?: number;         // Opacity of overlay (0-1, default 0.5)
-}
-```
+### Redirect Spell System
 
-### Deflect System (New)
-- Added `DEFLECT` to StatusEffectType enum
-- When entity with DEFLECT takes spell damage, damage reflects to caster
-- Source tracking added to `applyDamageToEntity()` for deflect logic
-- Separate `applyDamageToEntityNoDeflect()` prevents infinite loops
-- Works with projectiles via `applyProjectileDamageWithDeflect()` in simulation.ts
+- Projectile that changes target's facing direction on hit
+- Modes: clockwise, counter_clockwise, face_projectile, face_away, fixed
+- Player-choosable direction: `redirectAcceptsUserInput` flag, compass UI in CharacterSelector
+- `spellDirectionOverrides` on PlacedCharacter, `pendingSpellDirectionOverrides` for pre-placement
+- Also available as collectible effect and tile behavior
 
-### Visual Overlay System (New)
-- Status effects can have an `overlaySprite` that renders on top of entities
-- Supports static images and animated spritesheets
-- Configurable opacity via `overlayOpacity`
-- Rendered in `drawStatusEffectOverlays()` in AnimatedGameBoard.tsx
+### Initial Status Effects
 
-## Spell System
+- Characters and enemies can start with status effects configured in their asset editors
+- `initialStatusEffects` array on Character/Enemy types
+- Duration override (-1 = permanent/99999 turns)
+- Applied during character placement (heroes) and `initializeGameState()` (enemies)
 
-### SpellAsset Interface
-```typescript
-interface SpellAsset {
-  id: string;
-  name: string;
-  description?: string;
-  projectileSprite?: SpriteReference;
-  impactSprite?: SpriteReference;
-  damage?: number;
-  healing?: number;
-  range?: number;
-  aoeRadius?: number;
-  projectileSpeed?: number;
-  projectilePierces?: boolean;
-  statusEffects?: SpellStatusEffect[];
-  // Resurrect spells
-  isResurrect?: boolean;
-  resurrectHealthPercent?: number;
-  resurrectMaxUses?: number;
-}
-```
+### Spell Types
 
-### Spell Templates in SpellAssetBuilder
-- Fire (damage projectile)
-- Ice (slow effect)
-- Lightning (piercing)
-- Heal (ally healing)
-- Buff (status effect)
-- Debuff (enemy status effect)
-- AOE (area damage)
-- Resurrect (revive dead allies)
+- `MELEE` / `MELEE_CONE` - close-range attacks
+- `LINEAR` (was MAGIC_LINEAR, RANGE_LINEAR merged) - projectile in a line
+- `REDIRECT` - changes target's facing direction
+- `RESURRECT` - revives dead allies
+- `PUSH` - pushes target tiles away
+- Backstab: per-spell toggle for 2x damage from behind (`isAttackFromBehind()` in utils.ts)
 
-### Auto-Targeting System (CharacterAction)
-```typescript
-interface CharacterAction {
-  // ... other fields
-  autoTargetNearestEnemy?: boolean;      // Auto-target closest enemy
-  autoTargetNearestCharacter?: boolean;  // Auto-target closest ally
-  autoTargetNearestDeadAlly?: boolean;   // Auto-target dead ally for resurrect
-  autoTargetRange?: number;              // Max range for auto-targeting (0 = unlimited)
-  autoTargetMaxTargets?: number;         // Max number of auto-targets
-}
-```
+### Homing Projectile Path Styles
 
-## Theme System
+- `straight` - smooth line from caster to target (works well for fast projectiles)
+- `grid` - tile-by-tile path following grid
+- `pathfinding` - BFS pathfinding around walls
+- `homingIgnoreWalls` - whether homing projectiles pass through walls
+- `homingHitAlongPath` - whether grid/pathfinding can hit entities along the path (not just target)
+- Health bar glow indicator for homing targets (red for damage, green for healing)
 
-The app has a comprehensive theming system in `src/utils/themeAssets.ts`:
+### Validator/Solver
 
-### Key Theme Properties
-- **Branding**: logo, logoAlt, siteTitle, siteSubtitle, navLabels
-- **Navigation Icons**: iconNavPlay, iconNavCompendium, iconNavEditor, iconNavAssets
-- **Compendium Tab Icons**: iconTabHeroes, iconTabEnemies, iconTabEnchantments, iconTabTiles, iconTabItems
-- **Backgrounds**: bgMain, bgPanel, bgGameArea, bgNavbar
-- **Preview Backgrounds** (separate for entities vs assets):
-  - `colorBgPreviewEntity` / `bgPreviewEntity` - For heroes/enemies
-  - `colorBgPreviewAsset` / `bgPreviewAsset` - For tiles/items/enchantments
-- **Panel Colors**: Defeat panel, Game Over panel, Concede modal (all customizable)
-- **Styles**: borderRadius, borderWidth, shadowIntensity, fonts
+- Async puzzle solver in MapEditor validates solvability
+- Tests all character placement permutations
+- For redirect spells with `redirectAcceptsUserInput`, tests all 8 direction permutations
+- Headless mode uses `updateProjectilesHeadless()` (separate from visual projectile system)
+- Shows optimal placement with redirect direction in validation modal
 
-### How Theming Works
-1. Theme settings stored in localStorage under `theme_assets`
-2. `applyThemeAssets()` converts values to CSS custom properties
-3. CSS in `src/index.css` uses variables with fallbacks
-4. Components use Tailwind classes overridden by CSS variable rules
+### Turn Execution Order (in `executeTurn`)
 
-### Theme Editor
-Located at `src/components/editor/ThemeAssetsEditor.tsx` - accessible via Assets > Theme tab
+1. Process status effects (turn start)
+2. Character actions
+3. Enemy actions
+4. `resolveProjectiles()` - projectile advancement and collision
+5. Process status effects (turn end)
+6. Check victory/defeat conditions
 
-## Data Storage & Cloud Sync
+### Map Editor Autosave
 
-### Local Storage (src/utils/)
-- **assetStorage.ts** - Manages local asset definitions
-- **puzzleStorage.ts** - Manages local puzzle definitions
-- **editorState.ts** - Persists editor UI state
-- **historyManager.ts** - Undo/redo support
+- Flushes to localStorage on `useEffect` cleanup (handles Vite HMR)
+- `beforeunload` handler for tab close
 
-### Cloud Sync (src/utils/cloudSync.ts)
-- Supabase integration for collaborative puzzle creation
-- Two-tier system:
-  - `assets_draft`, `puzzles_draft` - Editor work
-  - `assets_live`, `puzzles_live` - Published for player app (future)
+### Replay System
 
-## Key Component Files
+- Generates turn history via headless simulation
+- Event timeline records projectile spawn/hit/reflect/deactivate events
+- `buildReplayProjectiles()` reconstructs projectile visuals from events
+- Step forward/backward plays one turn of animation then freezes
+- `replayStepAnimating` flag controls the animation window
+- `replayFrozen` prop on AnimatedGameBoard freezes `updateProjectiles`
 
-| File | Size | Purpose |
-|------|------|---------|
-| `AnimatedGameBoard.tsx` | ~3200 lines | Canvas-based game rendering, entity drawing, overlays |
-| `MapEditor.tsx` | ~3000+ lines | Puzzle creation with embedded playtest mode |
-| `Game.tsx` | Medium | Main game logic and state management |
-| `simulation.ts` | Large | Turn-based game engine |
-| `actions.ts` | Large | Action execution, damage, spells |
-| `themeAssets.ts` | Large | Theme system with 50+ properties |
-| `StatusEffectEditor.tsx` | Medium | Status effect configuration with overlay sprite UI |
-| `SpellAssetBuilder.tsx` | Medium | Spell creation with templates |
-| `CharacterEditor.tsx` | Medium | Character abilities, auto-targeting config |
+## Pending Tasks
 
-## Recent Work (January 22, 2026 Session)
+1. **Slow homing projectile visuals** - speed 1-2 homing spells do not visually track moving targets well. Need a separate visual approach for slow homing that does not break fast projectile behavior.
+2. **Projectile system refactor** - clean up technical debt: extract helpers, eliminate duplicated collision logic, consolidate overlapping flags, make visual system truly read-only.
+3. **Replay projectile polish** - edge cases with slow projectiles, melee VFX timing.
+4. **Sentry environment variables** - add to Netlify player site.
+5. **Run `007_player_roles.sql` migration** against Supabase.
+6. **POST error on puzzle completion** - 400 Bad Request to `puzzle_completions` table, schema mismatch.
 
-### Deflect Status Effect
-Added a new status effect type that reflects spell damage back to caster:
+## Important Patterns
 
-1. **Type Definition**: Added `DEFLECT = 'deflect'` to StatusEffectType enum
-2. **Source Tracking**: Modified `applyDamageToEntity()` to accept optional `source` parameter
-3. **Deflect Logic**: When entity with DEFLECT takes damage, damage is applied to source instead
-4. **Loop Prevention**: Created `applyDamageToEntityNoDeflect()` to prevent infinite reflection
-5. **Projectile Support**: Added `hasDeflect()` and `applyProjectileDamageWithDeflect()` helpers
+- **Deep copy issue**: `setGameState((prev) => { const copy = JSON.parse(JSON.stringify(prev)); executeTurn(copy); return copy; })` - the deep copy captures visual mutations from `updateProjectiles`. This is why `resolveProjectiles` uses `logicalTileIndex` (not `currentTileIndex`) and why reflected projectiles are skipped on subsequent turns.
+- **Axiom**: Visuals must represent reality. The game is a puzzle - players plan based on what they see. Visual/logic mismatches are bugs, not cosmetic issues.
+- **Determinism**: Same puzzle setup must produce the same result every run. The `resolveProjectiles` system at turn boundaries achieves this. Frame timing should never affect game outcomes.
+- **Safe revert point**: Commit `e3b5b58` is the pre-deterministic state where everything worked visually (per-frame collision) but had rare frame-timing variance. Can always revert there if needed.
 
-### Visual Overlay System for Status Effects
-Added ability to display overlay sprites on entities with status effects:
+## Recent Session Summary (March 20-24, 2026)
 
-1. **Type Support**: Added `overlaySprite` and `overlayOpacity` to StatusEffectAsset
-2. **Rendering**: Added `drawStatusEffectOverlays()` in AnimatedGameBoard.tsx
-3. **Editor UI**: Added overlay sprite configuration in StatusEffectEditor.tsx with:
-   - Preview thumbnail
-   - Add/Edit/Remove buttons
-   - Opacity slider (10%-100%)
-   - SimpleIconEditor modal for sprite editing
-
-### Auto-Target Range for Spells
-Added configurable range limit for auto-targeting:
-
-1. Added `autoTargetRange` to CharacterAction interface
-2. Updated `findNearestEnemies`, `findNearestCharacters`, `findNearestDeadAllies` to accept maxRange
-3. Added Max Range input field in CharacterEditor UI
-
-### Resurrect Spell Feature (Previous Session)
-- Added resurrect spell template to SpellAssetBuilder
-- Added `autoTargetNearestDeadAlly` option for characters
-- Resurrect restores dead allies with configurable health percent
-- Can limit uses per game via `resurrectMaxUses`
-
-## Supabase Configuration
-
-- **URL**: `https://rmkxayrfodctnqhsiphw.supabase.co`
-- **Tables**: `puzzles_draft`, `assets_draft`, `daily_schedule`, `puzzles_live`, `assets_live`
-- **Asset Types**: tile_type, enemy, character, object, skin, spell, status_effect, folder, collectible_type, collectible, hidden_assets, sound, global_sound_config, help_content, theme_settings
-
-## Common Commands
-
-```bash
-# Development
-cd "C:/Users/jantz/Desktop/Claude/puzzle-game"
-npm run dev
-
-# Build (always run before committing to catch errors)
-npm run build
-
-# Git
-git add -A && git commit -m "message" && git push
-```
-
-## Key Type Interfaces
-
-### Enemy (src/types/game.ts)
-```typescript
-interface Enemy {
-  id: string;
-  name: string;
-  health: number;
-  attackDamage?: number;
-  behavior?: EnemyBehavior;
-  isBoss?: boolean;  // Enables 'defeat_boss' win condition
-  customSprite?: CustomSprite;
-}
-```
-
-### WinConditionType
-```typescript
-type WinConditionType =
-  | 'defeat_all_enemies'
-  | 'defeat_boss'
-  | 'collect_all'
-  | 'reach_goal'
-  | 'survive_turns'
-  | 'win_in_turns'
-  | 'max_characters'
-  | 'characters_alive';
-```
-
-### SpriteReference
-```typescript
-interface SpriteReference {
-  type: 'stored' | 'inline';
-  spriteId?: string;           // ID from asset storage
-  spriteData?: CustomSprite;   // Inline sprite data
-}
-```
-
-## CSS Variable Reference
-
-Key CSS variables used throughout the app:
-- `--theme-bg-primary`, `--theme-bg-secondary`
-- `--theme-text-primary`, `--theme-text-secondary`
-- `--theme-border-primary`, `--theme-border-accent`
-- `--theme-button-bg`, `--theme-button-border`
-- `--theme-button-primary-bg`, `--theme-button-primary-border`
-- `--theme-button-danger-bg`, `--theme-button-danger-border`
-- `--theme-border-radius`, `--theme-border-width`
-- `--theme-font-family`, `--theme-font-family-heading`
-- `--theme-bg-preview-entity`, `--asset-bg-preview-entity`
-- `--theme-bg-preview-asset`, `--asset-bg-preview-asset`
-
-## User Preferences
-
-- Uses Windows with Git Bash (use powershell for npm commands)
-- Project is at `C:\Users\jantz\Desktop\Claude\puzzle-game`
-- Prefers commits with descriptive messages
-- Testing on iPhone 15 Pro for mobile
-- Appreciates detailed explanations of implementation
-
-## Tips for New Claude Instance
-
-1. **Large Files**: AnimatedGameBoard.tsx and MapEditor.tsx are very large - use offset/limit when reading
-2. **Theme Changes**: Require both updating themeAssets.ts (types + config) AND index.css (CSS variable usage)
-3. **Build Verification**: Always run `npm run build` to verify no errors before committing
-4. **Powershell for npm**: Use `powershell.exe -ExecutionPolicy Bypass -Command "cd 'path'; npm run build"` for build commands
-5. **Boss Enemies**: Use `isBoss: true` flag and enable the `defeat_boss` win condition
-6. **Status Effects**: Check StatusEffectAsset interface for all configurable properties including new overlay system
-7. **Damage Tracking**: All damage functions now support optional `source` parameter for deflect mechanics
-8. **Preview Backgrounds**: Differentiate between 'entity' (heroes/enemies) and 'asset' (tiles/items) types
-9. **Spell Targeting**: Auto-targeting has separate flags for enemies, allies, and dead allies with optional range limit
-
-## Architecture Documentation
-
-Additional docs in the `docs/` folder:
-- **PLAYER_APP_ARCHITECTURE.md** - Future player-facing app design with on-demand asset fetching
-- **PLAYER_APP_VISION.md** - Comprehensive vision including daily puzzle system, monetization, security requirements
+Major work done:
+- Deterministic projectile system (`resolveProjectiles`)
+- Reflect status effect (directional filter, combined visual path, tint switching, VFX)
+- Redirect spell system (all modes, player-choosable direction, collectible/tile variants)
+- Steadfast status effect (immune to redirects)
+- Stealth status effect (trigger/targeting immunity)
+- Homing projectile path styles (straight/grid/pathfinding, wall ignore, hit along path)
+- Health bar glow for homing targets
+- Projectile scale control in spell editor
+- Initial status effects on entities
+- Backstab system (per-spell, critical hit sprite)
+- Replay event timeline system
+- Spell link navigation from behavior editor
+- Entity usage badges on spell cards
+- Touch drag reordering for mobile
+- Rich spell/status info in behavior and status effect pickers
+- Multiple projectile/reflect bug fixes
