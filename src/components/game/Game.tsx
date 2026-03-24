@@ -1142,8 +1142,10 @@ export const Game: React.FC = () => {
         speed,
         tilePath,
         currentTileIndex: turnTileIndex,
-        tileEntryTime: now,
-        startTime: now,
+        // Offset tileEntryTime so visual picks up at the correct tile, not restart from 0
+        // tileTransitTime = 1 / (speed / 0.8) = 0.8 / speed seconds per tile
+        tileEntryTime: now - (turnTileIndex * (800 / speed)),
+        startTime: now - (turnTileIndex * (800 / speed)),
         attackData: spawn.attackData || { damage: 0, pattern: 'projectile' as any },
         sourceCharacterId: spawn.sourceIsEnemy ? undefined : spawn.sourceEntityId,
         sourceEnemyId: spawn.sourceIsEnemy ? spawn.sourceEntityId : undefined,
@@ -1250,11 +1252,15 @@ export const Game: React.FC = () => {
       return next;
     });
 
-    // Allow animation to play for one turn interval, then freeze
+    // Allow animation to play, then freeze. Duration accounts for slow projectiles.
+    // Base is one turn interval (800ms), but slow projectiles need longer
+    // (speed 2 = 400ms/tile, speed 1 = 800ms/tile)
+    const minSpeed = Math.min(4, ...((gameState.activeProjectiles || []).map(p => p.speed || 4)));
+    const stepDuration = Math.max(800, Math.ceil(800 / Math.max(1, minSpeed) * 4));
     setReplayStepAnimating(true);
     replayStepTimerRef.current = setTimeout(() => {
       setReplayStepAnimating(false);
-    }, 800); // TURN_INTERVAL_MS
+    }, stepDuration);
   }, []);
 
   const handleReplayStepBack = useCallback(() => {
