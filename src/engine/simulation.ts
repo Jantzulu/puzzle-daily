@@ -2764,8 +2764,9 @@ function resolveProjectiles(gameState: GameState): void {
             proj.tileEntryTime = Date.now();
           }
           // Track cumulative distance traveled for range enforcement
-          const distThisTurn = Math.sqrt(Math.pow(newX - proj.x, 2) + Math.pow(newY - proj.y, 2));
-          proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + distThisTurn;
+          // Use the known movement amount (not position delta, which is affected by visual mutations)
+          const clampedMove = Math.min(tilesPerTurn, remainingRange);
+          proj.totalDistanceTraveled = (proj.totalDistanceTraveled ?? 0) + clampedMove;
 
           proj.x = newX;
           proj.y = newY;
