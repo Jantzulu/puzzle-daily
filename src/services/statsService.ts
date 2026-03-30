@@ -80,39 +80,81 @@ export async function submitCompletion(submission: CompletionSubmission): Promis
       userId = data.user?.id;
     } catch { /* ignore */ }
 
+    // Clamp values to match database CHECK constraints
+    const clamp = (val: number | undefined, min: number, max: number) =>
+      val !== undefined ? Math.max(min, Math.min(max, val)) : null;
+
     const row: Record<string, unknown> = {
       player_id: playerId,
       user_id: userId || null,
       puzzle_id: submission.puzzleId,
       puzzle_date: submission.puzzleDate || null,
       outcome: submission.outcome,
-      characters_used: submission.charactersUsed,
-      character_ids: submission.characterIds,
-      turns_used: submission.turnsUsed,
-      lives_remaining: submission.livesRemaining ?? null,
+      characters_used: clamp(submission.charactersUsed, 0, 20),
+      character_ids: submission.characterIds.slice(0, 20),
+      turns_used: clamp(submission.turnsUsed, 0, 200),
+      lives_remaining: clamp(submission.livesRemaining, 0, 10),
       defeat_reason: submission.defeatReason || null,
-      defeat_turn: submission.defeatTurn || null,
-      attempt_duration_ms: submission.attemptDurationMs || null,
+      defeat_turn: clamp(submission.defeatTurn, 0, 200),
+      attempt_duration_ms: clamp(submission.attemptDurationMs, 0, 3600000),
     };
 
     // Add victory-specific fields
     if (submission.outcome === 'victory' && submission.score) {
       const s = submission.score;
       row.rank = s.rank;
-      row.total_points = s.totalPoints;
-      row.base_points = s.breakdown.basePoints;
-      row.character_bonus = s.breakdown.characterBonus;
-      row.turn_bonus = s.breakdown.turnBonus;
-      row.lives_bonus = s.breakdown.livesBonus;
-      row.side_quest_points = s.breakdown.sideQuestPoints;
-      row.completed_side_quests = s.completedSideQuests;
+      row.total_points = clamp(s.totalPoints, 0, 100000);
+      row.base_points = clamp(s.breakdown.basePoints, 0, 50000);
+      row.character_bonus = clamp(s.breakdown.characterBonus, 0, 50000);
+      row.turn_bonus = clamp(s.breakdown.turnBonus, 0, 50000);
+      row.lives_bonus = clamp(s.breakdown.livesBonus, 0, 50000);
+      row.side_quest_points = clamp(s.breakdown.sideQuestPoints, 0, 50000);
+      row.completed_side_quests = (s.completedSideQuests || []).slice(0, 20);
       row.par_met_characters = s.parMet.characters;
       row.par_met_turns = s.parMet.turns;
     }
 
-    await supabase.from('puzzle_completions').insert(row);
+    const { error } = await supabase.from('puzzle_completions').insert(row);
+    if (error) {
+      console.warn('[Stats] Completion insert error:', error.code, error.message, error.details);
+    }
   } catch (e) {
     console.warn('[Stats] Failed to submit completion:', e);
+  }
+}
+
+/**
+ * Clear all completion records for a specific puzzle.
+ * Used to reset analytics before a puzzle goes live.
+ * Returns the number of records deleted, or -1 on error.
+ */
+export async function clearPuzzleCompletions(puzzleId: string): Promise<number> {
+  try {
+    // Count records first
+    const { count, error: countError } = await supabase
+      .from('puzzle_completions')
+      .select('*', { count: 'exact', head: true })
+      .eq('puzzle_id', puzzleId);
+
+    if (countError) {
+      console.warn('[Stats] Failed to count completions:', countError.message);
+      return -1;
+    }
+
+    const { error } = await supabase
+      .from('puzzle_completions')
+      .delete()
+      .eq('puzzle_id', puzzleId);
+
+    if (error) {
+      console.warn('[Stats] Failed to clear completions:', error.message);
+      return -1;
+    }
+
+    return count ?? 0;
+  } catch (e) {
+    console.warn('[Stats] Failed to clear completions:', e);
+    return -1;
   }
 }
 

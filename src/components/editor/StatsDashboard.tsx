@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   fetchOverviewStats,
   fetchPuzzleStats,
+  clearPuzzleCompletions,
   type PuzzleStats,
   type OverviewStats,
 } from '../../services/statsService';
@@ -154,7 +155,8 @@ const PuzzleDetailView: React.FC<{
   puzzleName: string;
   stats: PuzzleStats;
   onBack: () => void;
-}> = ({ puzzleName, stats, onBack }) => {
+  onClear: (puzzleId: string) => void;
+}> = ({ puzzleId, puzzleName, stats, onBack, onClear }) => {
   const rankColors: Record<string, string> = {
     gold: 'bg-yellow-500',
     silver: 'bg-stone-400',
@@ -173,12 +175,26 @@ const PuzzleDetailView: React.FC<{
 
   return (
     <>
-      <button
-        onClick={onBack}
-        className="text-stone-400 hover:text-copper-400 text-sm transition-colors"
-      >
-        &larr; Back to Overview
-      </button>
+      <div className="flex items-center justify-between">
+        <button
+          onClick={onBack}
+          className="text-stone-400 hover:text-copper-400 text-sm transition-colors"
+        >
+          &larr; Back to Overview
+        </button>
+        {stats.totalAttempts > 0 && (
+          <button
+            onClick={() => {
+              if (window.confirm(`Clear all ${stats.totalAttempts} analytics record${stats.totalAttempts !== 1 ? 's' : ''} for "${puzzleName}"? This cannot be undone.`)) {
+                onClear(puzzleId);
+              }
+            }}
+            className="text-xs px-3 py-1.5 bg-blood-900/50 text-blood-300 border border-blood-700 rounded hover:bg-blood-800/60 transition-colors"
+          >
+            Clear Analytics
+          </button>
+        )}
+      </div>
 
       <h2 className="font-medieval text-copper-400 text-xl mt-2">{puzzleName}</h2>
 
@@ -370,6 +386,14 @@ export const StatsDashboard: React.FC = () => {
     setPuzzleStats(null);
   };
 
+  const handleClearAnalytics = async (puzzleId: string) => {
+    const deleted = await clearPuzzleCompletions(puzzleId);
+    if (deleted >= 0) {
+      // Refresh the detail view to show empty state
+      loadPuzzleDetail(puzzleId);
+    }
+  };
+
   return (
     <div className="p-4 md:p-6 max-w-6xl mx-auto pb-24">
       <h1 className="text-2xl font-medieval text-copper-400 text-shadow-dungeon">
@@ -397,6 +421,7 @@ export const StatsDashboard: React.FC = () => {
           puzzleName={puzzleNames[selectedPuzzleId] || selectedPuzzleId.slice(0, 8)}
           stats={puzzleStats}
           onBack={handleBack}
+          onClear={handleClearAnalytics}
         />
       ) : (
         <div className="text-stone-500 text-sm mt-8">
