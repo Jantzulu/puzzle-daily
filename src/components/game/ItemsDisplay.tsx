@@ -3,7 +3,7 @@ import type { Puzzle } from '../../types/game';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
 import { getCharacter, type CharacterWithSprite } from '../../data/characters';
 import { getEnemy, type EnemyWithSprite } from '../../data/enemies';
-import { loadCollectible, type CustomSprite, type CustomCollectible } from '../../utils/assetStorage';
+import { loadCollectible, loadSpellAsset, type CustomSprite, type CustomCollectible } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { HelpButton } from './HelpOverlay';
 
@@ -21,11 +21,23 @@ interface EntitySource {
   isEnemy: boolean;
 }
 
+// Spell source info for throw/place items
+interface SpellSource {
+  spellName: string;
+  entityId: string;
+  entityName: string;
+  entitySprite?: CustomSprite;
+  isEnemy: boolean;
+  isThrow: boolean; // true = thrown (range 2+), false = placed (range 0-1)
+  duration?: number; // override duration from spell
+}
+
 // Item with optional drop sources
 interface ItemWithSources {
   collectible: CustomCollectible;
   onMap: boolean;
   dropSources: EntitySource[];
+  spellSources: SpellSource[];
 }
 
 /**
@@ -45,6 +57,7 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
             collectible,
             onMap: true,
             dropSources: [],
+            spellSources: [],
           });
         } else {
           itemMap.get(collectible.id)!.onMap = true;
@@ -64,6 +77,7 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
             collectible,
             onMap: false,
             dropSources: [],
+            spellSources: [],
           });
         }
         const item = itemMap.get(collectible.id)!;
@@ -94,6 +108,7 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
             collectible,
             onMap: false,
             dropSources: [],
+            spellSources: [],
           });
         }
         const item = itemMap.get(collectible.id)!;
@@ -106,6 +121,63 @@ function getPuzzleItemsWithSources(puzzle: Puzzle): ItemWithSources[] {
           });
         }
       }
+    }
+  }
+
+  // Check characters and enemies for Throw/Place spell sources
+  const scanEntitySpells = (entityId: string, entityName: string, entitySprite: CustomSprite | undefined, isEnemy: boolean) => {
+    const entity = isEnemy ? getEnemy(entityId) : getCharacter(entityId);
+    if (!entity || !Array.isArray(entity.behavior)) return;
+
+    const seenSpellIds = new Set<string>();
+    for (const action of entity.behavior) {
+      if (action.type !== 'spell' || !action.spellId) continue;
+      if (seenSpellIds.has(action.spellId)) continue;
+      seenSpellIds.add(action.spellId);
+
+      const spell = loadSpellAsset(action.spellId);
+      if (!spell || spell.templateType !== 'throw_place' || !spell.spawnCollectibleId) continue;
+
+      const collectible = loadCollectible(spell.spawnCollectibleId);
+      if (!collectible) continue;
+
+      if (!itemMap.has(collectible.id)) {
+        itemMap.set(collectible.id, {
+          collectible,
+          onMap: false,
+          dropSources: [],
+          spellSources: [],
+        });
+      }
+      const item = itemMap.get(collectible.id)!;
+      if (!item.spellSources.some(s => s.entityId === entityId && s.spellName === spell.name)) {
+        item.spellSources.push({
+          spellName: spell.name,
+          entityId,
+          entityName,
+          entitySprite: entitySprite,
+          isEnemy,
+          isThrow: (spell.range ?? 0) >= 2,
+          duration: spell.throwPlaceDuration,
+        });
+      }
+    }
+  };
+
+  for (const charId of puzzle.availableCharacters) {
+    const character = getCharacter(charId);
+    if (character) {
+      scanEntitySpells(charId, character.name, (character as CharacterWithSprite).customSprite, false);
+    }
+  }
+
+  const seenEnemyIds2 = new Set<string>();
+  for (const placedEnemy of puzzle.enemies) {
+    if (seenEnemyIds2.has(placedEnemy.enemyId)) continue;
+    seenEnemyIds2.add(placedEnemy.enemyId);
+    const enemy = getEnemy(placedEnemy.enemyId);
+    if (enemy) {
+      scanEntitySpells(placedEnemy.enemyId, enemy.name, (enemy as EnemyWithSprite).customSprite, true);
     }
   }
 
@@ -163,7 +235,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
       </div>
 
       <div className="space-y-2">
-        {itemsWithSources.map(({ collectible, onMap, dropSources }) => (
+        {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources }) => (
           <div
             key={collectible.id}
             className="p-2 bg-stone-800/80 rounded-pixel-md border border-parchment-900/30"
@@ -226,6 +298,51 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                     </div>
                   ))}
                 </div>
+              </div>
+            )}
+
+            {/* Spell sources - who places/throws this item */}
+            {spellSources.length > 0 && (
+              <div className="mt-2 pt-2 border-t border-stone-700">
+                <div className="flex items-center gap-1 flex-wrap">
+                  {spellSources.map((source, idx) => (
+                    <div
+                      key={`${source.entityId}-${source.spellName}-${idx}`}
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${
+                        source.isEnemy
+                          ? 'bg-teal-900/50 text-teal-300 border border-teal-700'
+                          : 'bg-teal-900/50 text-teal-300 border border-teal-700'
+                      }`}
+                      title={`${source.isThrow ? 'Thrown' : 'Placed'} by ${source.entityName}`}
+                    >
+                      {source.entitySprite && (
+                        <SpriteThumbnail sprite={source.entitySprite} size={16} previewType="entity" />
+                      )}
+                      <span className="max-w-[80px] truncate">
+                        {source.isThrow ? 'Thrown' : 'Placed'} by {source.entityName}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {/* Duration info */}
+                {spellSources.some(s => s.duration && s.duration > 0) && (
+                  <div className="text-xs text-stone-400 mt-1">
+                    {spellSources.filter(s => s.duration && s.duration > 0).map((s, i) => (
+                      <span key={i}>
+                        {i > 0 && ', '}Lasts {s.duration} turn{s.duration !== 1 ? 's' : ''}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Duration info for base collectible */}
+            {collectible.duration && collectible.duration > 0 && spellSources.length === 0 && (
+              <div className="mt-1">
+                <span className="text-xs text-stone-400">
+                  Lasts {collectible.duration} turn{collectible.duration !== 1 ? 's' : ''}
+                </span>
               </div>
             )}
           </div>

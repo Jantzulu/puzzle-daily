@@ -345,6 +345,19 @@ export interface PlacedCollectible {
 
   // Runtime ID for tracking
   instanceId?: string;           // Unique instance ID for this placed collectible
+
+  // Throw/Place spell fields
+  spawnTurn?: number;                      // Game turn when spawned (for duration tracking)
+  spawnTime?: number;                      // Date.now() when spawned (for scale-up animation)
+  duration?: number;                       // Turns remaining before despawn (undefined = permanent)
+  despawning?: boolean;                    // Despawn animation in progress
+  despawnTime?: number;                    // Date.now() when despawn animation began
+  placedByEntityId?: string;               // Entity that placed/threw this
+  placedByEntityType?: 'character' | 'enemy';
+  placerImmuneUntilTurn?: number;          // Grace period: placer can't pick up until this turn
+  placerPermanentlyImmune?: boolean;       // Placer can never pick up
+  overridePermissions?: CollectiblePickupPermissions; // Override base collectible permissions
+  sourceSpellId?: string;                  // Spell that created this (for ItemsDisplay)
 }
 
 /**
@@ -846,6 +859,9 @@ export interface Projectile {
   pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // Deferred reflect VFX — spawned when visual reaches reflect point
   visualPastReflectPoint?: boolean; // Set once when visual crosses reflect point — stable, never toggles back
 
+  // Throw/Place — carries item placement data through projectile flight
+  throwPlaceConfig?: ThrowPlaceConfig;
+
   // Internal flag for timeline recording (not serialized)
   _recorded?: boolean;
 }
@@ -900,6 +916,21 @@ export interface ProjectileEvent {
 export type ProjectileTimeline = ProjectileEvent[];
 
 /**
+ * Configuration for Throw/Place spell item placement.
+ * Carried on the projectile during flight, consumed on arrival.
+ */
+export interface ThrowPlaceConfig {
+  collectibleId: string;                            // CustomCollectible asset to place
+  duration?: number;                                // Turns before despawn (undefined = permanent)
+  overridePermissions?: CollectiblePickupPermissions; // Override base collectible permissions
+  placerEntityId: string;                           // Entity that cast the spell
+  placerEntityType: 'character' | 'enemy';
+  gracePeriodTurns: number;                         // Turns of caster immunity (default 1)
+  placerPermanentlyImmune: boolean;                 // Caster can never pick up (default false)
+  sourceSpellId: string;                            // Reference to the spell for ItemsDisplay
+}
+
+/**
  * Pre-computed projectile hit result from deterministic turn resolution.
  * Stored on the projectile so the visual system knows when/where to show VFX and deactivate.
  */
@@ -912,6 +943,7 @@ export interface ProjectileHitResult {
   deferredDeathEntityId?: string; // Entity whose death animation should wait for projectile arrival
   deferredDeathIsEnemy?: boolean; // Whether the deferred entity is an enemy
   deferredDeathIndex?: number;    // Array index for duplicate enemies
+  placeCollectibleConfig?: ThrowPlaceConfig; // Throw/Place: place item when visual arrives
 }
 
 /**
@@ -968,6 +1000,7 @@ export enum SpellTemplate {
   RESURRECT = 'resurrect',       // Bring dead ally back to life
   PUSH = 'push',                 // Push target entity in a direction
   REDIRECT = 'redirect',         // Projectile that changes target's facing direction
+  THROW_PLACE = 'throw_place',   // Place or throw a collectible item onto a tile
 }
 
 /**
@@ -1079,6 +1112,13 @@ export interface SpellAsset {
   redirectAngle?: 45 | 90 | 135 | 180; // Degrees to rotate (for clockwise/counter_clockwise modes, default: 90)
   redirectFixedDirection?: Direction;  // For 'fixed' mode — set target to this exact compass direction
   redirectAcceptsUserInput?: boolean;  // If true, player picks the redirect direction during setup
+
+  // Throw/Place-specific settings (for THROW_PLACE template)
+  spawnCollectibleId?: string;                        // CustomCollectible asset ID to place/throw
+  throwPlaceDuration?: number;                        // Override item duration in turns (0 = permanent)
+  throwPlaceOverridePermissions?: CollectiblePickupPermissions; // Override who can pick up
+  throwPlaceGracePeriod?: number;                     // Turns of caster immunity (default 1)
+  throwPlacePermanentImmunity?: boolean;              // Caster can never pick up (default false)
 
   // Backstab (critical strike from behind)
   backstabEnabled?: boolean;      // If true, deals double damage when attacking from behind the target

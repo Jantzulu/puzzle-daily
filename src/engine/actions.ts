@@ -17,6 +17,7 @@ import type {
   TileRuntimeState,
   StatusEffectInstance,
   CadenceConfig,
+  ThrowPlaceConfig,
 } from '../types/game';
 import {
   ActionType,
@@ -1699,6 +1700,96 @@ function executeSpellInDirection(
       executePushSpell(character, spell, direction, gameState);
       break;
 
+    case SpellTemplate.THROW_PLACE: {
+      // Throw/Place spell - place or throw a collectible item onto a tile
+      if (!spell.spawnCollectibleId) {
+        console.warn('THROW_PLACE spell missing spawnCollectibleId');
+        break;
+      }
+
+      const collectibleAsset = loadCollectible(spell.spawnCollectibleId);
+      if (!collectibleAsset) {
+        console.warn(`THROW_PLACE: collectible asset not found: ${spell.spawnCollectibleId}`);
+        break;
+      }
+
+      // Determine if source is an enemy
+      const tpIsEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+
+      // Build placement config
+      const throwConfig: ThrowPlaceConfig = {
+        collectibleId: spell.spawnCollectibleId,
+        duration: spell.throwPlaceDuration !== undefined && spell.throwPlaceDuration > 0
+          ? spell.throwPlaceDuration
+          : (collectibleAsset.duration && collectibleAsset.duration > 0 ? collectibleAsset.duration : undefined),
+        overridePermissions: spell.throwPlaceOverridePermissions,
+        placerEntityId: character.characterId,
+        placerEntityType: tpIsEnemy ? 'enemy' : 'character',
+        gracePeriodTurns: spell.throwPlaceGracePeriod ?? 1,
+        placerPermanentlyImmune: spell.throwPlacePermanentImmunity ?? false,
+        sourceSpellId: spell.id,
+      };
+
+      const tpRange = spell.range || 0;
+
+      if (tpRange <= 1) {
+        // Place directly (no projectile)
+        let placeX = character.x;
+        let placeY = character.y;
+
+        if (tpRange === 1) {
+          // Place on adjacent tile in facing direction
+          const { dx, dy } = getDirectionOffset(direction);
+          const adjX = character.x + dx;
+          const adjY = character.y + dy;
+
+          // Check if adjacent tile is valid (not wall, in bounds)
+          if (isInBounds(adjX, adjY, gameState.puzzle.width, gameState.puzzle.height)) {
+            const adjTile = gameState.puzzle.tiles[adjY]?.[adjX];
+            if (adjTile && adjTile.type !== TileType.WALL) {
+              placeX = adjX;
+              placeY = adjY;
+            }
+            // else: wall, fail silently (don't place)
+            else return;
+          } else {
+            return; // Out of bounds, fail silently
+          }
+        }
+
+        placeCollectibleFromSpell(placeX, placeY, throwConfig, gameState);
+      } else {
+        // Throw as projectile (range 2+)
+        attackData.pattern = AttackPattern.PROJECTILE;
+        attackData.damage = 0;
+        attackData.healing = 0;
+
+        // Use collectible's sprite as projectile visual
+        if (collectibleAsset.customSprite) {
+          attackData.projectileSprite = {
+            type: 'inline' as const,
+            spriteData: collectibleAsset.customSprite,
+          };
+        }
+
+        // Scale down during flight (will scale up on arrival)
+        attackData.projectileScale = (spell.projectileScale ?? 1) * 0.6;
+
+        const origFacingTP = character.facing;
+        character.facing = direction;
+        spawnProjectile(character, attackData, gameState, spell, homingTarget);
+
+        // Attach throwPlaceConfig to the just-spawned projectile
+        const lastProj = gameState.activeProjectiles[gameState.activeProjectiles.length - 1];
+        if (lastProj) {
+          lastProj.throwPlaceConfig = throwConfig;
+        }
+
+        character.facing = origFacingTP;
+      }
+      break;
+    }
+
     default:
       console.warn(`Spell template not yet implemented: ${spell.templateType}`);
   }
@@ -2667,6 +2758,64 @@ export function applyDamageToEntityNoDeflect(
 }
 
 // ==========================================
+// THROW/PLACE ITEM SYSTEM
+// ==========================================
+
+/**
+ * Place a collectible item on the board from a Throw/Place spell.
+ * Handles grace period, override permissions, and immediate pickup.
+ */
+export function placeCollectibleFromSpell(
+  x: number,
+  y: number,
+  config: ThrowPlaceConfig,
+  gameState: GameState
+): void {
+  const collectibleAsset = loadCollectible(config.collectibleId);
+  if (!collectibleAsset) {
+    console.warn(`placeCollectibleFromSpell: collectible not found: ${config.collectibleId}`);
+    return;
+  }
+
+  const placedItem: PlacedCollectible = {
+    collectibleId: config.collectibleId,
+    x,
+    y,
+    collected: false,
+    instanceId: `spell_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    spawnTurn: gameState.currentTurn,
+    spawnTime: Date.now(),
+    duration: config.duration,
+    placedByEntityId: config.placerEntityId,
+    placedByEntityType: config.placerEntityType,
+    placerImmuneUntilTurn: gameState.currentTurn + config.gracePeriodTurns,
+    placerPermanentlyImmune: config.placerPermanentlyImmune || undefined,
+    overridePermissions: config.overridePermissions,
+    sourceSpellId: config.sourceSpellId,
+  };
+
+  gameState.puzzle.collectibles.push(placedItem);
+
+  // Check if any entity is standing on the landing tile for immediate pickup
+  // Check characters
+  for (const char of gameState.placedCharacters) {
+    if (char.x === x && char.y === y && char.currentHealth > 0) {
+      processCollectiblePickup(char, false, x, y, gameState);
+      break;
+    }
+  }
+  // Check enemies (if not already collected)
+  if (!placedItem.collected) {
+    for (const enemy of gameState.puzzle.enemies) {
+      if (enemy.x === x && enemy.y === y && enemy.currentHealth > 0) {
+        processCollectiblePickup(enemy, true, x, y, gameState);
+        break;
+      }
+    }
+  }
+}
+
+// ==========================================
 // COLLECTIBLE PICKUP SYSTEM
 // ==========================================
 
@@ -2701,8 +2850,21 @@ export function processCollectiblePickup(
   const collectibleData = loadCollectible(collectible.collectibleId);
   if (!collectibleData) return;
 
-  // Check pickup permissions
-  const permissions = collectibleData.pickupPermissions;
+  // Don't pick up despawning items
+  if (collectible.despawning) return;
+
+  // Check grace period / permanent placer immunity
+  const entityId = isEnemy
+    ? (entity as PlacedEnemy).enemyId
+    : (entity as PlacedCharacter).characterId;
+  if (collectible.placedByEntityId && collectible.placedByEntityId === entityId) {
+    if (collectible.placerPermanentlyImmune) return;
+    if (collectible.placerImmuneUntilTurn !== undefined &&
+        gameState.currentTurn < collectible.placerImmuneUntilTurn) return;
+  }
+
+  // Check pickup permissions (override takes priority over base)
+  const permissions = collectible.overridePermissions || collectibleData.pickupPermissions;
   if (isEnemy && !permissions.enemies) return;
   if (!isEnemy && !permissions.characters) return;
 

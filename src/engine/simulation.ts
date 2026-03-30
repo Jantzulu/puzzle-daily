@@ -3,7 +3,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, St
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect } from './actions';
+import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind } from './utils';
 
@@ -774,8 +774,8 @@ export function canEntityCastSpell(
       return { allowed: false, reason: 'Disarmed' };
     }
 
-    // Check ranged/AOE prevention (Silenced)
-    if ((spellTemplate === 'magic_linear' || spellTemplate === 'redirect' || spellTemplate === 'aoe') &&
+    // Check ranged/AOE prevention (Silenced) — includes throw/place
+    if ((spellTemplate === 'magic_linear' || spellTemplate === 'redirect' || spellTemplate === 'aoe' || spellTemplate === 'throw_place') &&
         (effectAsset?.preventsRanged || effect.type === StatusEffectType.SILENCED)) {
       return { allowed: false, reason: 'Silenced' };
     }
@@ -1701,6 +1701,9 @@ export function executeTurn(gameState: GameState): GameState {
   // Process persistent area effects
   processPersistentAreaEffects(gameState);
 
+  // Process collectible durations (despawn expired items)
+  processCollectibleDurations(gameState);
+
   // Process turn-end status effects for all entities
   processAllStatusEffectsTurnEnd(gameState);
 
@@ -1910,7 +1913,18 @@ export function initializeGameState(puzzle: Puzzle): GameState {
 
         return placedEnemy;
       }),
-      collectibles: puzzle.collectibles.map((c) => ({ ...c, collected: false })),
+      collectibles: puzzle.collectibles.map((c) => {
+        const placed = { ...c, collected: false };
+        // Initialize duration from base collectible asset if it has one
+        if (placed.collectibleId && placed.duration === undefined) {
+          const asset = loadCollectible(placed.collectibleId);
+          if (asset?.duration && asset.duration > 0) {
+            placed.duration = asset.duration;
+            placed.spawnTurn = 0;
+          }
+        }
+        return placed;
+      }),
     },
     placedCharacters: [],
     currentTurn: 0,
@@ -2516,6 +2530,44 @@ function recordProjectileEvent(gameState: GameState, event: Omit<ProjectileEvent
 }
 
 /**
+ * Process collectible durations — decrement turn counters and despawn expired items.
+ * Called once per turn after projectile resolution.
+ */
+const ITEM_DESPAWN_DURATION = 400; // ms for scale-down animation (matches AnimatedGameBoard)
+
+function processCollectibleDurations(gameState: GameState): void {
+  for (const collectible of gameState.puzzle.collectibles) {
+    if (collectible.collected) continue;
+    if (collectible.duration === undefined) continue;
+
+    // Handle already-despawning items: finalize after animation
+    if (collectible.despawning) {
+      if (gameState.headlessMode) {
+        // Headless: no animation, remove immediately
+        collectible.collected = true;
+      } else if (collectible.despawnTime && Date.now() - collectible.despawnTime > ITEM_DESPAWN_DURATION) {
+        collectible.collected = true;
+      }
+      continue;
+    }
+
+    // Decrement duration
+    collectible.duration--;
+
+    if (collectible.duration <= 0) {
+      if (gameState.headlessMode) {
+        // Headless: remove immediately
+        collectible.collected = true;
+      } else {
+        // Visual: start despawn animation
+        collectible.despawning = true;
+        collectible.despawnTime = Date.now();
+      }
+    }
+  }
+}
+
+/**
  * Deterministic turn-based projectile resolution for non-headless mode.
  * Mirrors updateProjectilesHeadless for game logic (damage, effects, death)
  * but stores visual metadata (tilePath, hitResult) instead of removing projectiles,
@@ -2793,6 +2845,14 @@ function resolveProjectiles(gameState: GameState): void {
 
         turnTiles.push({ x: checkX, y: checkY });
 
+        // THROW_PLACE projectiles pass through entities — skip all collision checks
+        if (proj.throwPlaceConfig) {
+          if (dist === endTile) {
+            // Reached end of travel range this turn — will be handled below
+          }
+          continue;
+        }
+
         const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
 
         if (targetsEnemies) {
@@ -2971,9 +3031,32 @@ function resolveProjectiles(gameState: GameState): void {
       }
     }
 
+    // THROW_PLACE: place item when projectile reaches destination
+    if (shouldRemove && proj.throwPlaceConfig) {
+      // Find the last valid (non-wall) tile to place the item
+      let placeTile = turnTiles.length > 0 ? turnTiles[turnTiles.length - 1] : null;
+      // If the last tile in turnTiles is a wall, use the one before it
+      if (placeTile) {
+        const placeTileData = gameState.puzzle.tiles[placeTile.y]?.[placeTile.x];
+        if (!placeTileData || placeTileData.type === TileTypeEnum.WALL ||
+            !isInBounds(placeTile.x, placeTile.y, gameState.puzzle.width, gameState.puzzle.height)) {
+          placeTile = turnTiles.length > 1 ? turnTiles[turnTiles.length - 2] : null;
+        }
+      }
+
+      if (placeTile) {
+        placeCollectibleFromSpell(placeTile.x, placeTile.y, proj.throwPlaceConfig, gameState);
+        proj.hitResult = {
+          hitTileIndex: turnTiles.length - 1,
+          deactivate: true,
+          placeCollectibleConfig: proj.throwPlaceConfig,
+        };
+      }
+    }
+
     if (shouldRemove) {
       if (proj.hitResult) {
-        // Entity was hit — visual system will deactivate when animation reaches hitTileIndex
+        // Entity was hit or item placed — visual system will deactivate when animation reaches hitTileIndex
       } else {
         proj.pendingDeactivation = true;
       }
@@ -3155,6 +3238,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
           break;
         }
 
+        // THROW_PLACE projectiles pass through entities in headless mode too
+        if (proj.throwPlaceConfig) {
+          continue;
+        }
+
         const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
 
         if (targetsEnemies) {
@@ -3271,6 +3359,19 @@ function updateProjectilesHeadless(gameState: GameState): void {
             }
           }
           shouldRemove = true;
+        }
+      }
+    }
+
+    // THROW_PLACE: place item when headless projectile reaches destination
+    if (shouldRemove && proj.throwPlaceConfig) {
+      const placeX = Math.floor(proj.x);
+      const placeY = Math.floor(proj.y);
+      // Verify it's a valid tile (not wall, in bounds)
+      if (isInBounds(placeX, placeY, gameState.puzzle.width, gameState.puzzle.height)) {
+        const placeTile = gameState.puzzle.tiles[placeY]?.[placeX];
+        if (placeTile && placeTile.type !== TileTypeEnum.WALL) {
+          placeCollectibleFromSpell(placeX, placeY, proj.throwPlaceConfig, gameState);
         }
       }
     }

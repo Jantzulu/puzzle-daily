@@ -423,6 +423,24 @@ export const CollectibleEditor: React.FC<{ initialSelectedId?: string }> = ({ in
                 </div>
               </CollapsiblePanel>
 
+              {/* Duration */}
+              <CollapsiblePanel title="Duration" className="space-y-3">
+                <div>
+                  <label className="block text-sm mb-1">Default Lifetime (turns)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    max="99"
+                    value={editing.duration ?? 0}
+                    onChange={e => setEditing({ ...editing, duration: parseInt(e.target.value) || 0 })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    Turns before item despawns (0 = permanent). Can be overridden by Throw/Place spells.
+                  </p>
+                </div>
+              </CollapsiblePanel>
+
               {/* Pickup Behavior */}
               <CollapsiblePanel title="Pickup Behavior" className="space-y-3">
                 <div>

@@ -64,6 +64,8 @@ const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower th
 const TELEPORT_APPEAR_DURATION = 100; // Small delay after walking to teleport tile before appearing at destination
 const DROP_PLACE_DURATION = 250; // ms for hero drop-in effect when placed during setup
 const DROP_PLACE_OFFSET = 0.4; // tiles above final position (subtle)
+const ITEM_SPAWN_DURATION = 400; // ms for collectible scale-up animation (thrown/placed items)
+const ITEM_DESPAWN_DURATION = 400; // ms for collectible scale-down animation (duration expiry)
 
 const COLORS = {
   empty: '#2a2a2a',
@@ -3258,7 +3260,7 @@ function drawDirectionIndicator(
 
 function drawCollectible(
   ctx: CanvasRenderingContext2D,
-  collectible: { x: number; y: number; collectibleId?: string; type?: 'coin' | 'gem' },
+  collectible: { x: number; y: number; collectibleId?: string; type?: 'coin' | 'gem'; spawnTime?: number; despawning?: boolean; despawnTime?: number },
   imageCache: Map<string, HTMLImageElement>,
   now: number
 ) {
@@ -3266,11 +3268,51 @@ function drawCollectible(
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
+  // Calculate scale for spawn/despawn animations
+  let animScale = 1;
+
+  // Scale-up animation (item just spawned from throw/place spell)
+  if (collectible.spawnTime !== undefined) {
+    const elapsed = now - collectible.spawnTime;
+    if (elapsed < ITEM_SPAWN_DURATION) {
+      const t = elapsed / ITEM_SPAWN_DURATION;
+      // easeOutBack: overshoot slightly then settle
+      const c1 = 1.70158;
+      const c3 = c1 + 1;
+      animScale = 1 + c3 * Math.pow(t - 1, 3) + c1 * Math.pow(t - 1, 2);
+    }
+  }
+
+  // Scale-down animation (item despawning due to duration expiry)
+  if (collectible.despawning && collectible.despawnTime !== undefined) {
+    const elapsed = now - collectible.despawnTime;
+    if (elapsed >= ITEM_DESPAWN_DURATION) {
+      return; // Animation complete, don't draw
+    }
+    const t = elapsed / ITEM_DESPAWN_DURATION;
+    // easeInBack: accelerate into disappearance
+    const c1 = 1.70158;
+    const c3 = c1 + 1;
+    animScale = 1 - (c3 * t * t * t - c1 * t * t);
+    if (animScale <= 0) return;
+  }
+
   // Calculate bobbing offset - gentle up/down animation like items dropped on the ground
   // All items bob in sync (no position-based phase offset)
   const bobSpeed = 1; // Cycles per second
   const bobAmount = TILE_SIZE * 0.06; // 6% of tile size
   const bobOffset = Math.sin((now / 1000) * bobSpeed * Math.PI * 2) * bobAmount;
+
+  // Apply scale transform if animating
+  const needsScale = animScale !== 1;
+  if (needsScale) {
+    const centerX = px + TILE_SIZE / 2;
+    const centerY = py + TILE_SIZE / 2;
+    ctx.save();
+    ctx.translate(centerX, centerY);
+    ctx.scale(animScale, animScale);
+    ctx.translate(-centerX, -centerY);
+  }
 
   // Try to load custom collectible data
   const collectibleData = collectibleId ? loadCollectible(collectibleId) : null;
@@ -3297,6 +3339,7 @@ function drawCollectible(
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
     ctx.shadowOffsetY = 0;
+    if (needsScale) ctx.restore();
     return;
   }
 
@@ -3314,6 +3357,7 @@ function drawCollectible(
     ctx.lineTo(cx - size, cy);
     ctx.closePath();
     ctx.fill();
+    if (needsScale) ctx.restore();
     return;
   }
 
@@ -3341,6 +3385,7 @@ function drawCollectible(
 
   ctx.closePath();
   ctx.fill();
+  if (needsScale) ctx.restore();
 }
 
 function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: number, y: number) {

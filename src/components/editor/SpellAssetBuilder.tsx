@@ -2,7 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
-import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
+import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets, getCustomCollectibles } from '../../utils/assetStorage';
+import type { CollectiblePickupPermissions } from '../../types/game';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -820,6 +821,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
   const templateIsResurrect = editedSpell.templateType === 'resurrect';
   const templateIsPush = editedSpell.templateType === 'push';
   const templateIsRedirect = editedSpell.templateType === 'redirect';
+  const templateIsThrowPlace = editedSpell.templateType === 'throw_place';
 
   return (
     <div className="space-y-6">
@@ -1111,6 +1113,18 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <div className="font-semibold">Redirect</div>
                   <div className="text-xs text-stone-400">Change target's direction</div>
                 </button>
+
+                <button
+                  onClick={() => setEditedSpell({ ...editedSpell, templateType: 'throw_place' as SpellTemplate })}
+                  className={`p-3 rounded border-2 transition-colors ${
+                    editedSpell.templateType === 'throw_place'
+                      ? 'border-teal-500 bg-teal-900'
+                      : 'border-stone-600 bg-stone-700 hover:border-stone-500'
+                  }`}
+                >
+                  <div className="font-semibold">Throw/Place</div>
+                  <div className="text-xs text-stone-400">Place or throw an item</div>
+                </button>
               </div>
             </div>
           </div>
@@ -1212,9 +1226,147 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             </div>
           )}
 
+          {/* Throw/Place Configuration */}
+          {templateIsThrowPlace && (
+            <div className="space-y-4">
+              <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Throw/Place Configuration</h3>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Collectible Item *</label>
+                <select
+                  value={editedSpell.spawnCollectibleId || ''}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, spawnCollectibleId: e.target.value || undefined })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                >
+                  <option value="">-- Select Collectible --</option>
+                  {getCustomCollectibles().map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+                <p className="text-xs text-stone-400 mt-1">
+                  The item to place or throw onto the board
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Range (tiles)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="20"
+                  value={editedSpell.range ?? 0}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, range: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  0 = place on self, 1 = adjacent tile, 2+ = throw as projectile
+                </p>
+              </div>
+
+              {(editedSpell.range ?? 0) >= 2 && (
+                <div>
+                  <label className="block text-sm font-medium mb-1">Projectile Speed (tiles/turn)</label>
+                  <input
+                    type="number"
+                    min="1"
+                    max="20"
+                    value={editedSpell.projectileSpeed ?? 4}
+                    onChange={(e) => setEditedSpell({ ...editedSpell, projectileSpeed: parseInt(e.target.value) || 4 })}
+                    className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                  />
+                  <p className="text-xs text-stone-400 mt-1">
+                    How fast the item travels when thrown
+                  </p>
+                </div>
+              )}
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Item Duration (turns)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={editedSpell.throwPlaceDuration ?? 0}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, throwPlaceDuration: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  Turns before item despawns (0 = permanent, overrides collectible default)
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">Caster Grace Period (turns)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="99"
+                  value={editedSpell.throwPlaceGracePeriod ?? 1}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, throwPlaceGracePeriod: parseInt(e.target.value) || 0 })}
+                  className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
+                />
+                <p className="text-xs text-stone-400 mt-1">
+                  Turns the caster is immune from picking up their own placed item
+                </p>
+              </div>
+
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  id="throwPlacePermanentImmunity"
+                  checked={editedSpell.throwPlacePermanentImmunity ?? false}
+                  onChange={(e) => setEditedSpell({ ...editedSpell, throwPlacePermanentImmunity: e.target.checked })}
+                  className="w-4 h-4 rounded border-stone-600 bg-stone-700"
+                />
+                <label htmlFor="throwPlacePermanentImmunity" className="text-sm">
+                  Permanent caster immunity (caster can never pick up this item)
+                </label>
+              </div>
+
+              <div className="space-y-2">
+                <label className="block text-sm font-medium">Override Pickup Permissions</label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={editedSpell.throwPlaceOverridePermissions?.characters ?? true}
+                      onChange={(e) => {
+                        const current = editedSpell.throwPlaceOverridePermissions || { characters: true, enemies: true };
+                        setEditedSpell({
+                          ...editedSpell,
+                          throwPlaceOverridePermissions: { ...current, characters: e.target.checked }
+                        });
+                      }}
+                      className="w-4 h-4 rounded border-stone-600 bg-stone-700"
+                    />
+                    Characters can pick up
+                  </label>
+                  <label className="flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={editedSpell.throwPlaceOverridePermissions?.enemies ?? true}
+                      onChange={(e) => {
+                        const current = editedSpell.throwPlaceOverridePermissions || { characters: true, enemies: true };
+                        setEditedSpell({
+                          ...editedSpell,
+                          throwPlaceOverridePermissions: { ...current, enemies: e.target.checked }
+                        });
+                      }}
+                      className="w-4 h-4 rounded border-stone-600 bg-stone-700"
+                    />
+                    Enemies can pick up
+                  </label>
+                </div>
+                <p className="text-xs text-stone-400">
+                  Override the base collectible's pickup permissions (leave both checked to use default)
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Combat Stats */}
           <div className="space-y-4">
-            {!templateIsRedirect && (
+            {!templateIsRedirect && !templateIsThrowPlace && (
               <h3 className="text-lg font-semibold border-b border-stone-700 pb-2">Combat Stats</h3>
             )}
 
@@ -1413,7 +1565,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
 
             {/* Damage vs Healing Toggle - hidden for resurrect, push, and redirect */}
-            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && (
+            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && !templateIsThrowPlace && (
               <div>
                 <label className="block text-sm font-medium mb-2">Effect Type</label>
                 <div className="flex gap-2 mb-3">
@@ -1452,7 +1604,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
 
             {/* Damage or Healing Amount - hidden for resurrect, push, and redirect */}
-            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && (
+            {!templateIsResurrect && !templateIsPush && !templateIsRedirect && !templateIsThrowPlace && (
               <div>
                 <label className="block text-sm font-medium mb-1">
                   {editedSpell.healing !== undefined ? 'Healing Amount' : 'Damage Amount *'}
@@ -1482,7 +1634,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
 
             {/* Backstab (Critical Strike from Behind) - only for melee/cone/linear damage spells */}
-            {(templateIsMeleeOrCone || templateNeedsRange) && !templateIsRedirect && editedSpell.healing === undefined && (
+            {(templateIsMeleeOrCone || templateNeedsRange) && !templateIsRedirect && !templateIsThrowPlace && editedSpell.healing === undefined && (
               <div>
                 <label className="flex items-center gap-2">
                   <input
@@ -2073,11 +2225,13 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
             )}
           </div>
 
-          {/* Status Effect Configuration */}
-          <StatusEffectConfig
-            editedSpell={editedSpell}
-            setEditedSpell={setEditedSpell}
-          />
+          {/* Status Effect Configuration - hidden for Throw/Place (item carries its own effects) */}
+          {!templateIsThrowPlace && (
+            <StatusEffectConfig
+              editedSpell={editedSpell}
+              setEditedSpell={setEditedSpell}
+            />
+          )}
         </div>
       </div>
   );

@@ -392,6 +392,9 @@ export interface CustomCollectible {
   pickupMethod: 'step_on';
   pickupPermissions: CollectiblePickupPermissions;
 
+  // Duration / despawn
+  duration?: number;             // Default lifetime in turns (0/undefined = permanent)
+
   // Placement restrictions
   preventPlacement?: boolean;    // Prevent characters from being placed here during setup (but allow walking)
 

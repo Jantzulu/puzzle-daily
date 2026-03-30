@@ -103,7 +103,25 @@ The Reflect status effect bounces incoming projectiles back:
 - `REDIRECT` - changes target's facing direction
 - `RESURRECT` - revives dead allies
 - `PUSH` - pushes target tiles away
+- `THROW_PLACE` - place or throw a collectible item onto a tile (see below)
 - Backstab: per-spell toggle for 2x damage from behind (`isAttackFromBehind()` in utils.ts)
+
+### Throw/Place Spell System
+
+- Entity places (range 0-1) or throws (range 2+) a collectible item onto the board
+- No damage component — purely for item placement
+- Range 0: place on own tile, Range 1: adjacent tile, Range 2+: projectile with item sprite
+- Projectile passes through entities (only stops at walls or max range)
+- `placeCollectibleFromSpell()` in actions.ts creates the PlacedCollectible
+- Grace period: 1-turn caster immunity by default (configurable), with permanent immunity toggle
+- Immediate pickup: entity standing on landing tile picks it up right away (respecting permissions + grace)
+- Item duration/despawn: optional `duration` field on all CustomCollectible (permanent by default)
+  - `processCollectibleDurations()` in simulation.ts decrements each turn, triggers despawn
+  - Scale-up animation on spawn (400ms easeOutBack), scale-down on despawn (400ms easeInBack)
+  - Throw/Place spell can override duration, pickup permissions via `ThrowPlaceConfig`
+- `PlacedCollectible` extended with: `spawnTurn`, `spawnTime`, `duration`, `despawning`, `despawnTime`, `placedByEntityId`, `placerImmuneUntilTurn`, `placerPermanentlyImmune`, `overridePermissions`, `sourceSpellId`
+- ItemsDisplay shows "Thrown by" / "Placed by" badges with entity sprites and duration info
+- Blocked by Silenced status effect (classified as ranged)
 
 ### Homing Projectile Path Styles
 
