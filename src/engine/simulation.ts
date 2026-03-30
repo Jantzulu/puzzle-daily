@@ -2787,6 +2787,13 @@ function resolveProjectiles(gameState: GameState): void {
           proj.y = newY;
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
+          // Update visual start to current position each turn so slow projectiles (speed 1-2)
+          // interpolate from their actual logical position instead of the original spawn point
+          if (proj.homingPathStyle === 'straight') {
+            proj.homingVisualStartX = newX;
+            proj.homingVisualStartY = newY;
+            proj.homingVisualStartTime = Date.now();
+          }
         }
       } else {
         shouldRemove = true;
@@ -3200,10 +3207,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
       if (!proj.hitEntityIds) proj.hitEntityIds = [];
       const hitEntityIds = proj.hitEntityIds;
 
-      const currentDist = Math.sqrt(
-        Math.pow(proj.x - proj.startX, 2) + Math.pow(proj.y - proj.startY, 2)
-      );
-      const startTile = Math.floor(currentDist) + 1;
+      const startTile = (proj.logicalTileIndex ?? 0) + 1;
       const endTile = Math.min(startTile + tilesPerTurn - 1, range);
       let hitWall = false;
 
@@ -3262,7 +3266,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               });
             }
           } else {
-            const hitEnemy = findEntityAtTile(checkX, checkY, gameState, proj, true, false);
+            const hitEnemy = findEntityAtTile(checkX, checkY, gameState, proj, true, true);
             if (hitEnemy) {
               const hitResult = applyEntityHit(hitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
               if (hitResult.reflected) {
@@ -3276,6 +3280,57 @@ function updateProjectilesHeadless(gameState: GameState): void {
                   reflectAtTileIndex: proj.reflectAtTileIndex,
                   combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
                 });
+                // Resolve reflected path in headless mode (replaces resolveReflectedPath which uses 'visual' mode)
+                {
+                  const { dx: rDx, dy: rDy } = getDirectionOffset(proj.direction);
+                  const reflRange = proj.attackData.range ?? 5;
+                  const { targetsEnemies: rTE, targetsCharacters: rTC } = getEffectiveTeams(proj);
+                  let rFinalDist = 0;
+                  for (let rDist = 1; rDist <= reflRange; rDist++) {
+                    const rx = Math.floor(proj.startX + rDx * rDist);
+                    const ry = Math.floor(proj.startY + rDy * rDist);
+                    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
+                      rFinalDist = rDist - 1;
+                      shouldRemove = true;
+                      break;
+                    }
+                    const rTile = gameState.puzzle.tiles[ry]?.[rx];
+                    if (!rTile || rTile.type === TileTypeEnum.WALL) {
+                      recordProjectileEvent(gameState, { type: 'wall_hit', projId: proj.id, x: rx, y: ry });
+                      rFinalDist = rDist;
+                      shouldRemove = true;
+                      break;
+                    }
+                    rFinalDist = rDist;
+                    if (rTE) {
+                      const rHitEnemy = findEntityAtTile(rx, ry, gameState, proj, true, true);
+                      if (rHitEnemy) {
+                        applyEntityHit(rHitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
+                        recordProjectileEvent(gameState, {
+                          type: 'hit', projId: proj.id, x: rx, y: ry,
+                          targetEntityId: (rHitEnemy as PlacedEnemy).enemyId, targetIsEnemy: true,
+                          damage: proj.attackData.damage,
+                        });
+                        if (!canPierce) { shouldRemove = true; break; }
+                      }
+                    } else if (rTC) {
+                      const rHitChar = findEntityAtTile(rx, ry, gameState, proj, false, true);
+                      if (rHitChar) {
+                        applyEntityHit(rHitChar as PlacedCharacter, false, proj, gameState, 'headless');
+                        recordProjectileEvent(gameState, {
+                          type: 'hit', projId: proj.id, x: rx, y: ry,
+                          targetEntityId: (rHitChar as PlacedCharacter).characterId, targetIsEnemy: false,
+                          damage: proj.attackData.damage,
+                        });
+                        if (!canPierce) { shouldRemove = true; break; }
+                      }
+                    }
+                    if (rDist === reflRange) shouldRemove = true;
+                  }
+                  proj.x = proj.startX + rDx * rFinalDist;
+                  proj.y = proj.startY + rDy * rFinalDist;
+                  proj.logicalTileIndex = rFinalDist;
+                }
                 break;
               }
               hitEntityIds.push((hitEnemy as PlacedEnemy).enemyId);
@@ -3311,7 +3366,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
               });
             }
           } else {
-            const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, false);
+            const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, true);
             if (hitChar) {
               const hitResult = applyEntityHit(hitChar as PlacedCharacter, false, proj, gameState, 'headless');
               if (hitResult.reflected) {
@@ -3325,6 +3380,57 @@ function updateProjectilesHeadless(gameState: GameState): void {
                   reflectAtTileIndex: proj.reflectAtTileIndex,
                   combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
                 });
+                // Resolve reflected path in headless mode (replaces resolveReflectedPath which uses 'visual' mode)
+                {
+                  const { dx: rDx, dy: rDy } = getDirectionOffset(proj.direction);
+                  const reflRange = proj.attackData.range ?? 5;
+                  const { targetsEnemies: rTE, targetsCharacters: rTC } = getEffectiveTeams(proj);
+                  let rFinalDist = 0;
+                  for (let rDist = 1; rDist <= reflRange; rDist++) {
+                    const rx = Math.floor(proj.startX + rDx * rDist);
+                    const ry = Math.floor(proj.startY + rDy * rDist);
+                    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
+                      rFinalDist = rDist - 1;
+                      shouldRemove = true;
+                      break;
+                    }
+                    const rTile = gameState.puzzle.tiles[ry]?.[rx];
+                    if (!rTile || rTile.type === TileTypeEnum.WALL) {
+                      recordProjectileEvent(gameState, { type: 'wall_hit', projId: proj.id, x: rx, y: ry });
+                      rFinalDist = rDist;
+                      shouldRemove = true;
+                      break;
+                    }
+                    rFinalDist = rDist;
+                    if (rTE) {
+                      const rHitEnemy = findEntityAtTile(rx, ry, gameState, proj, true, true);
+                      if (rHitEnemy) {
+                        applyEntityHit(rHitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
+                        recordProjectileEvent(gameState, {
+                          type: 'hit', projId: proj.id, x: rx, y: ry,
+                          targetEntityId: (rHitEnemy as PlacedEnemy).enemyId, targetIsEnemy: true,
+                          damage: proj.attackData.damage,
+                        });
+                        if (!canPierce) { shouldRemove = true; break; }
+                      }
+                    } else if (rTC) {
+                      const rHitChar = findEntityAtTile(rx, ry, gameState, proj, false, true);
+                      if (rHitChar) {
+                        applyEntityHit(rHitChar as PlacedCharacter, false, proj, gameState, 'headless');
+                        recordProjectileEvent(gameState, {
+                          type: 'hit', projId: proj.id, x: rx, y: ry,
+                          targetEntityId: (rHitChar as PlacedCharacter).characterId, targetIsEnemy: false,
+                          damage: proj.attackData.damage,
+                        });
+                        if (!canPierce) { shouldRemove = true; break; }
+                      }
+                    }
+                    if (rDist === reflRange) shouldRemove = true;
+                  }
+                  proj.x = proj.startX + rDx * rFinalDist;
+                  proj.y = proj.startY + rDy * rFinalDist;
+                  proj.logicalTileIndex = rFinalDist;
+                }
                 break;
               }
               hitEntityIds.push((hitChar as PlacedCharacter).characterId);
@@ -3348,6 +3454,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
         const newDist = Math.min(endTile, range);
         proj.x = proj.startX + dx * newDist;
         proj.y = proj.startY + dy * newDist;
+        proj.logicalTileIndex = newDist;
 
         if (newDist >= range) {
           if (!hitSomething && proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {

@@ -4,7 +4,7 @@
 import { initializeGameState, executeTurn } from './simulation';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { loadTileType, loadCollectible, loadSpellAsset } from '../utils/assetStorage';
+import { loadTileType, loadCollectible, loadSpellAsset, loadStatusEffectAsset } from '../utils/assetStorage';
 import type { Puzzle, PlacedCharacter, Direction, TileType } from '../types/game';
 
 export interface SolverResult {
@@ -190,7 +190,7 @@ function* generatePlacements(
 function createPlacedCharacters(placements: CharacterPlacement[]): PlacedCharacter[] {
   return placements.map(p => {
     const charData = getCharacter(p.characterId);
-    return {
+    const placed: PlacedCharacter = {
       characterId: p.characterId,
       x: p.x,
       y: p.y,
@@ -201,6 +201,28 @@ function createPlacedCharacters(placements: CharacterPlacement[]): PlacedCharact
       dead: false,
       ...(p.spellDirectionOverrides ? { spellDirectionOverrides: p.spellDirectionOverrides } : {}),
     };
+
+    // Apply initial status effects from character definition (mirrors initializeGameState for enemies)
+    if (charData?.initialStatusEffects && charData.initialStatusEffects.length > 0) {
+      placed.statusEffects = charData.initialStatusEffects.map(ise => {
+        const effectAsset = loadStatusEffectAsset(ise.statusAssetId);
+        if (!effectAsset) return null;
+        return {
+          id: `initial_${ise.statusAssetId}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: effectAsset.type,
+          statusAssetId: ise.statusAssetId,
+          duration: ise.durationOverride === -1 ? 99999 : (ise.durationOverride ?? effectAsset.defaultDuration),
+          value: ise.valueOverride ?? effectAsset.defaultValue,
+          currentStacks: 1,
+          appliedOnTurn: 0,
+          sourceEntityId: 'initial',
+          sourceIsEnemy: false,
+          movementSkipCounter: 0,
+        };
+      }).filter(Boolean) as NonNullable<typeof placed.statusEffects>;
+    }
+
+    return placed;
   });
 }
 
