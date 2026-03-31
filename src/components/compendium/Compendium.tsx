@@ -36,7 +36,7 @@ interface TabConfig {
 const TABS: TabConfig[] = [
   { id: 'characters', label: 'Heroes', defaultIcon: '⚔️', themeIconKey: 'iconTabHeroes' },
   { id: 'enemies', label: 'Enemies', defaultIcon: '👹', themeIconKey: 'iconTabEnemies' },
-  { id: 'status_effects', label: 'Enchantments', defaultIcon: '✨', themeIconKey: 'iconTabEnchantments' },
+  { id: 'status_effects', label: 'Status Effects', defaultIcon: '✨', themeIconKey: 'iconTabEnchantments' },
   { id: 'special_tiles', label: 'Dungeon Tiles', defaultIcon: '🧱', themeIconKey: 'iconTabTiles' },
   { id: 'items', label: 'Items', defaultIcon: '💎', themeIconKey: 'iconTabItems' },
 ];
@@ -44,7 +44,7 @@ const TABS: TabConfig[] = [
 const TAB_LABELS: Record<TabId, { plural: string; singular: string }> = {
   characters: { plural: 'Heroes', singular: 'hero' },
   enemies: { plural: 'Enemies', singular: 'enemy' },
-  status_effects: { plural: 'Enchantments', singular: 'enchantment' },
+  status_effects: { plural: 'Status Effects', singular: 'status effect' },
   special_tiles: { plural: 'Dungeon Tiles', singular: 'tile' },
   items: { plural: 'Items', singular: 'item' },
 };
@@ -254,7 +254,7 @@ export const Compendium: React.FC = () => {
         {/* Header — above the book, in the dungeon theme */}
         <div className="mb-6">
           <h1 className="text-5xl md:text-6xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">Compendium</h1>
-          <p className="text-stone-400">A tome of all Dungeon knowledge — Heroes, Enemies, Enchantments, Tiles, and Items.</p>
+          <p className="text-stone-400">A tome of all Dungeon knowledge — Heroes, Enemies, Status Effects, Tiles, and Items.</p>
         </div>
 
         {/* Desktop: Two-page book layout (lg+) */}

@@ -137,11 +137,11 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
     <AssetEditorLayout
       isEditing={isCreating || !!editingEffect}
       onBack={handleBack}
-      listTitle="Enchantments"
+      listTitle="Status Effects"
       listPanel={
         <>
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-bold font-medieval text-copper-400">Enchantments</h2>
+            <h2 className="text-xl font-bold font-medieval text-copper-400">Status Effects</h2>
             <button
               onClick={handleNew}
               className="dungeon-btn-success text-sm"

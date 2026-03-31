@@ -99,7 +99,7 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       types.push({ type: 'item', label: 'Item' });
     }
     if (puzzleSpells.effectsInPuzzle.length > 0) {
-      types.push({ type: 'enchantment', label: 'Enchantment' });
+      types.push({ type: 'enchantment', label: 'Status Effect' });
     }
     types.push({ type: 'other', label: 'Other / Not sure' });
     return types;

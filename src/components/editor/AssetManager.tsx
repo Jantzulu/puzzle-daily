@@ -17,7 +17,7 @@ const TABS: { id: AssetTab; label: string; icon: string }[] = [
   { id: 'characters', label: 'Heroes', icon: '\u2694\uFE0F' },
   { id: 'enemies', label: 'Enemies', icon: '\uD83D\uDC79' },
   { id: 'spells', label: 'Spells', icon: '\u2728' },
-  { id: 'status_effects', label: 'Enchantments', icon: '\uD83D\uDD2E' },
+  { id: 'status_effects', label: 'Status Effects', icon: '\uD83D\uDD2E' },
   { id: 'tiles', label: 'Tiles', icon: '\uD83E\uDDF1' },
   { id: 'skins', label: 'Skins', icon: '\uD83C\uDFA8' },
   { id: 'objects', label: 'Objects', icon: '\uD83C\uDFFA' },

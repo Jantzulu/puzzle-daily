@@ -284,7 +284,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   iconBugReport: { label: 'Bug Report Icon', description: 'Icon/emoji shown on the Report Bug link (default: 🐛)', category: 'icons', inputType: 'text' },
   iconTabHeroes: { label: 'Heroes Tab Icon', description: 'Icon/emoji for Heroes tab in Compendium (default: ⚔️)', category: 'icons', inputType: 'text' },
   iconTabEnemies: { label: 'Enemies Tab Icon', description: 'Icon/emoji for Enemies tab in Compendium (default: 👹)', category: 'icons', inputType: 'text' },
-  iconTabEnchantments: { label: 'Enchantments Tab Icon', description: 'Icon/emoji for Enchantments tab in Compendium (default: ✨)', category: 'icons', inputType: 'text' },
+  iconTabEnchantments: { label: 'Status Effects Tab Icon', description: 'Icon/emoji for Status Effects tab in Compendium (default: ✨)', category: 'icons', inputType: 'text' },
   iconTabTiles: { label: 'Tiles Tab Icon', description: 'Icon/emoji for Dungeon Tiles tab in Compendium (default: 🧱)', category: 'icons', inputType: 'text' },
   iconTabItems: { label: 'Items Tab Icon', description: 'Icon/emoji for Items tab in Compendium (default: 💎)', category: 'icons', inputType: 'text' },
   iconPixelPencil: { label: 'Pixel Pencil Icon', description: 'Custom icon for the Pencil tool in Pixel Editor', category: 'icons', inputType: 'image' },

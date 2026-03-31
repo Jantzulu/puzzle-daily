@@ -19,7 +19,7 @@ const CATEGORIES = [
   { key: 'characters', icon: '⚔️', label: 'Heroes', route: '/assets', tab: 'characters' },
   { key: 'enemies', icon: '👹', label: 'Enemies', route: '/assets', tab: 'enemies' },
   { key: 'spells', icon: '✨', label: 'Spells', route: '/assets', tab: 'spells' },
-  { key: 'status_effects', icon: '🔮', label: 'Enchantments', route: '/assets', tab: 'status_effects' },
+  { key: 'status_effects', icon: '🔮', label: 'Status Effects', route: '/assets', tab: 'status_effects' },
   { key: 'tiles', icon: '🧱', label: 'Tiles', route: '/assets', tab: 'tiles' },
   { key: 'skins', icon: '🎨', label: 'Skins', route: '/assets', tab: 'skins' },
   { key: 'objects', icon: '🏺', label: 'Objects', route: '/assets', tab: 'objects' },
