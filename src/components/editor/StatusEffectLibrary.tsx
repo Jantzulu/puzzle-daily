@@ -69,11 +69,6 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
 
   const handleDelete = (effectId: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const effect = effects.find(ef => ef.id === effectId);
-    if (effect?.isBuiltIn) {
-      toast.warning('Cannot delete built-in status effects.');
-      return;
-    }
     const usages = findAssetUsages('status_effect', effectId);
     const warning = usages.length > 0 ? `\n\n${formatUsageWarning(usages)}` : '';
     if (!confirm(`Delete this status effect?${warning}`)) return;
@@ -87,7 +82,7 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
 
   const handleFolderChange = (effectId: string, folderId: string | undefined) => {
     const effect = effects.find(ef => ef.id === effectId);
-    if (effect && !effect.isBuiltIn) {
+    if (effect) {
       saveStatusEffectAsset({ ...effect, folderId });
       loadEffects();
       if (editingEffect && editingEffect.id === effectId) {
@@ -103,7 +98,6 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
       id: 'status_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
       name: effect.name + ' (Copy)',
       createdAt: new Date().toISOString(),
-      isBuiltIn: false,
     };
     setEditingEffect(duplicated);
     setSelectedId(null);
@@ -241,19 +235,16 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                       <div className="min-w-0">
                         <h3 className={`font-bold ${scaledNameClass(effect.name || 'Unnamed')}`}>{effect.name || 'Unnamed'}</h3>
                         <p className="text-xs text-stone-400 capitalize">
-                          {effect.isBuiltIn && <span className="text-stone-500 mr-1">Built-in</span>}
                           {effect.type.replace('_', ' ')}
                         </p>
                       </div>
                     </div>
                     <div className="flex flex-col gap-0.5 flex-shrink-0">
-                      {!effect.isBuiltIn && (
-                        <InlineFolderPicker
-                          category="status_effects"
-                          currentFolderId={effect.folderId}
-                          onFolderChange={(folderId) => handleFolderChange(effect.id, folderId)}
-                        />
-                      )}
+                      <InlineFolderPicker
+                        category="status_effects"
+                        currentFolderId={effect.folderId}
+                        onFolderChange={(folderId) => handleFolderChange(effect.id, folderId)}
+                      />
                       <button
                         onClick={(e) => handleDuplicate(effect, e)}
                         className="p-1 text-xs leading-none bg-stone-600 rounded hover:bg-stone-500"
@@ -261,15 +252,13 @@ export const StatusEffectLibrary: React.FC<{ initialSelectedId?: string }> = ({ 
                       >
                         ⎘
                       </button>
-                      {!effect.isBuiltIn && (
-                        <button
-                          onClick={(e) => handleDelete(effect.id, e)}
-                          className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
-                          title="Delete"
-                        >
-                          ✕
-                        </button>
-                      )}
+                      <button
+                        onClick={(e) => handleDelete(effect.id, e)}
+                        className="p-1 text-xs leading-none bg-blood-700 rounded hover:bg-blood-600"
+                        title="Delete"
+                      >
+                        ✕
+                      </button>
                     </div>
                   </div>
                   {/* Quick stats */}

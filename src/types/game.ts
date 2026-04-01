@@ -1157,16 +1157,6 @@ export interface StatusEffectAsset {
   defaultDuration: number;        // Turns the effect lasts
   defaultValue?: number;          // Damage/heal per turn (for Poison, Regen, etc.)
 
-  // Processing
-  processAtTurnStart: boolean;    // When to apply effect (start or end of turn)
-
-  // Special behaviors
-  removedOnDamage?: boolean;      // For Sleep - wake up when damaged
-  preventsMelee?: boolean;        // For Disarmed
-  preventsRanged?: boolean;       // For Silenced
-  preventsMovement?: boolean;     // For effects that root/freeze
-  preventsAllActions?: boolean;   // For Stun/Sleep
-
   // Stacking rules
   stackingBehavior: 'refresh' | 'stack' | 'replace' | 'highest';
   maxStacks?: number;             // Maximum stack count (for 'stack' behavior)

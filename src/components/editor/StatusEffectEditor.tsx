@@ -14,17 +14,61 @@ interface StatusEffectEditorProps {
   onCancel: () => void;
 }
 
-const defaultIconSprite: SpriteReference = {
-  type: 'inline',
-  spriteData: {
-    id: `icon_${Date.now()}`,
-    name: 'Status Icon',
-    type: 'simple',
-    shape: 'circle',
-    primaryColor: '#ffffff',
-    createdAt: new Date().toISOString(),
-  },
+// What each type does mechanically — shown below the type selector
+const TYPE_DESCRIPTIONS: Record<StatusEffectType, string> = {
+  [StatusEffectType.POISON]: 'Deals damage each turn. Stacks by default — multiple applications increase damage per tick.',
+  [StatusEffectType.REGEN]: 'Heals a set amount each turn.',
+  [StatusEffectType.SHIELD]: 'Absorbs incoming damage before health is reduced. Depletes as it absorbs hits; breaks when fully consumed. Set value to 0 for an infinite shield.',
+  [StatusEffectType.STUN]: 'Cannot take any action for the duration. Not broken by damage.',
+  [StatusEffectType.SLOW]: 'Skips every other movement action.',
+  [StatusEffectType.HASTE]: 'Gains a bonus movement on every other movement action.',
+  [StatusEffectType.SLEEP]: 'Cannot act. Immediately removed when taking any damage.',
+  [StatusEffectType.SILENCED]: 'Cannot cast ranged or AOE spells.',
+  [StatusEffectType.DISARMED]: 'Cannot perform melee attacks.',
+  [StatusEffectType.BURN]: 'Deals fire damage each turn. Stacks by default.',
+  [StatusEffectType.BLEED]: 'Deals physical damage each turn. Stacks by default.',
+  [StatusEffectType.POLYMORPH]: 'Cannot act. Removed when taking damage. Optionally replaces the entity\'s sprite for the duration.',
+  [StatusEffectType.STEALTH]: 'Cannot be auto-targeted by enemies. Entity is rendered at reduced opacity.',
+  [StatusEffectType.DEFLECT]: 'Reflects incoming projectile damage back to the source.',
+  [StatusEffectType.INVULNERABLE]: 'Completely immune to all damage for the duration.',
+  [StatusEffectType.STEADFAST]: 'Immune to direction changes — redirect spells, tiles, and items have no effect.',
+  [StatusEffectType.REFLECT]: 'Reflects incoming projectiles back at the caster\'s team. Configurable by direction, tint color, and sprite.',
 };
+
+// Default icon color per type
+const TYPE_COLORS: Record<StatusEffectType, string> = {
+  [StatusEffectType.POISON]: '#22c55e',
+  [StatusEffectType.REGEN]: '#10b981',
+  [StatusEffectType.SHIELD]: '#22d3ee',
+  [StatusEffectType.STUN]: '#eab308',
+  [StatusEffectType.SLOW]: '#3b82f6',
+  [StatusEffectType.HASTE]: '#fbbf24',
+  [StatusEffectType.SLEEP]: '#6366f1',
+  [StatusEffectType.SILENCED]: '#8b5cf6',
+  [StatusEffectType.DISARMED]: '#9ca3af',
+  [StatusEffectType.BURN]: '#f97316',
+  [StatusEffectType.BLEED]: '#dc2626',
+  [StatusEffectType.POLYMORPH]: '#ff69b4',
+  [StatusEffectType.STEALTH]: '#4a5568',
+  [StatusEffectType.DEFLECT]: '#a855f7',
+  [StatusEffectType.INVULNERABLE]: '#fcd34d',
+  [StatusEffectType.STEADFAST]: '#78716c',
+  [StatusEffectType.REFLECT]: '#06b6d4',
+};
+
+function makeDefaultIcon(color: string): SpriteReference {
+  return {
+    type: 'inline',
+    spriteData: {
+      id: `icon_${Date.now()}`,
+      name: 'Status Icon',
+      type: 'simple',
+      shape: 'circle',
+      primaryColor: color,
+      createdAt: new Date().toISOString(),
+    },
+  };
+}
 
 export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   effect,
@@ -37,20 +81,18 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [type, setType] = useState<StatusEffectType>(effect?.type || StatusEffectType.POISON);
   const [defaultDuration, setDefaultDuration] = useState(effect?.defaultDuration ?? 3);
   const [defaultValue, setDefaultValue] = useState(effect?.defaultValue ?? 1);
-  const [processAtTurnStart, setProcessAtTurnStart] = useState(effect?.processAtTurnStart ?? false);
-  const [removedOnDamage, setRemovedOnDamage] = useState(effect?.removedOnDamage ?? false);
-  const [preventsMelee, setPreventsMelee] = useState(effect?.preventsMelee ?? false);
-  const [preventsRanged, setPreventsRanged] = useState(effect?.preventsRanged ?? false);
-  const [preventsMovement, setPreventsMovement] = useState(effect?.preventsMovement ?? false);
-  const [preventsAllActions, setPreventsAllActions] = useState(effect?.preventsAllActions ?? false);
   const [stackingBehavior, setStackingBehavior] = useState<'refresh' | 'stack' | 'replace' | 'highest'>(
     effect?.stackingBehavior || 'refresh'
   );
   const [maxStacks, setMaxStacks] = useState(effect?.maxStacks ?? 5);
-  const [iconSprite, setIconSprite] = useState<SpriteReference>(effect?.iconSprite || defaultIconSprite);
+  const [iconSprite, setIconSprite] = useState<SpriteReference>(
+    effect?.iconSprite || makeDefaultIcon(TYPE_COLORS[effect?.type || StatusEffectType.POISON])
+  );
   const [editingIcon, setEditingIcon] = useState(false);
   const [healthBarColor, setHealthBarColor] = useState(effect?.healthBarColor || '#22d3ee');
   const [stealthOpacity, setStealthOpacity] = useState(effect?.stealthOpacity ?? 0.5);
+  const [polymorphSprite, setPolymorphSprite] = useState<SpriteReference | undefined>(effect?.polymorphSprite);
+  const [editingPolymorphSprite, setEditingPolymorphSprite] = useState(false);
   const [overlaySprite, setOverlaySprite] = useState<SpriteReference | undefined>(effect?.overlaySprite);
   const [overlayOpacity, setOverlayOpacity] = useState(effect?.overlayOpacity ?? 0.5);
   const [editingOverlay, setEditingOverlay] = useState(false);
@@ -63,8 +105,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
     effect?.reflectDirections || ['front', 'back', 'left', 'right']
   );
   const reflectAllDirections = reflectDirections.length === 4;
-
-  const isBuiltIn = effect?.isBuiltIn ?? false;
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -80,16 +120,11 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       iconSprite,
       defaultDuration,
       defaultValue: defaultValue || undefined,
-      processAtTurnStart,
-      removedOnDamage,
-      preventsMelee,
-      preventsRanged,
-      preventsMovement,
-      preventsAllActions,
       stackingBehavior,
       maxStacks: stackingBehavior === 'stack' ? maxStacks : undefined,
       healthBarColor: type === StatusEffectType.SHIELD ? healthBarColor : undefined,
       stealthOpacity: type === StatusEffectType.STEALTH ? stealthOpacity : undefined,
+      polymorphSprite: type === StatusEffectType.POLYMORPH ? polymorphSprite : undefined,
       overlaySprite: overlaySprite,
       overlayOpacity: overlaySprite ? overlayOpacity : undefined,
       reflectTintColor: type === StatusEffectType.REFLECT ? reflectTintColor : undefined,
@@ -97,7 +132,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       reflectImpactSprite: type === StatusEffectType.REFLECT ? reflectImpactSprite : undefined,
       reflectDirections: type === StatusEffectType.REFLECT && !reflectAllDirections ? reflectDirections : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
-      isBuiltIn: false, // Never save as built-in when editing
       folderId: effect?.folderId,
     };
 
@@ -106,172 +140,65 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
     onSave();
   };
 
-  // Get suggested settings based on effect type
+  // Apply sensible defaults (duration, value, stacking, icon color) when type changes
   const applyTypeDefaults = (newType: StatusEffectType) => {
     setType(newType);
+    // Update icon to the type's default color (preserves shape)
+    setIconSprite(prev => ({
+      ...prev,
+      spriteData: prev.spriteData
+        ? { ...prev.spriteData, primaryColor: TYPE_COLORS[newType] }
+        : makeDefaultIcon(TYPE_COLORS[newType]).spriteData!,
+    }));
 
     switch (newType) {
       case StatusEffectType.POISON:
       case StatusEffectType.BURN:
       case StatusEffectType.BLEED:
-        setDefaultValue(1);
-        setProcessAtTurnStart(false);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
+        setDefaultDuration(3); setDefaultValue(1);
+        setStackingBehavior('stack'); setMaxStacks(5);
         break;
       case StatusEffectType.REGEN:
-        setDefaultValue(1);
-        setProcessAtTurnStart(false);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
-        break;
-      case StatusEffectType.STUN:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(true);
-        break;
-      case StatusEffectType.SLEEP:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(true);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(true);
-        break;
-      case StatusEffectType.SLOW:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(true);
-        setPreventsAllActions(false);
-        break;
-      case StatusEffectType.SILENCED:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(true);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
-        break;
-      case StatusEffectType.DISARMED:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(true);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
+        setDefaultDuration(3); setDefaultValue(1);
+        setStackingBehavior('refresh');
         break;
       case StatusEffectType.SHIELD:
-        setDefaultValue(5); // Default shield absorbs 5 damage (0 = infinite)
-        setProcessAtTurnStart(false);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
+        setDefaultDuration(3); setDefaultValue(5);
+        setStackingBehavior('replace');
         break;
+      case StatusEffectType.STUN:
+        setDefaultDuration(1); setDefaultValue(0);
+        setStackingBehavior('refresh');
+        break;
+      case StatusEffectType.SLEEP:
+        setDefaultDuration(2); setDefaultValue(0);
+        setStackingBehavior('refresh');
+        break;
+      case StatusEffectType.SLOW:
       case StatusEffectType.HASTE:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
+        setDefaultDuration(3); setDefaultValue(0);
+        setStackingBehavior('refresh');
+        break;
+      case StatusEffectType.SILENCED:
+      case StatusEffectType.DISARMED:
+        setDefaultDuration(2); setDefaultValue(0);
+        setStackingBehavior('refresh');
         break;
       case StatusEffectType.POLYMORPH:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(true); // By default, polymorph is broken by damage
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(true); // Polymorph prevents actions like sleep
+        setDefaultDuration(3); setDefaultValue(0);
+        setStackingBehavior('refresh');
         break;
       case StatusEffectType.STEALTH:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
-        break;
       case StatusEffectType.DEFLECT:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
+      case StatusEffectType.STEADFAST:
+      case StatusEffectType.REFLECT:
+        setDefaultDuration(3); setDefaultValue(0);
+        setStackingBehavior('refresh');
         break;
       case StatusEffectType.INVULNERABLE:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
+        setDefaultDuration(1); setDefaultValue(0);
+        setStackingBehavior('refresh');
         break;
-      case StatusEffectType.STEADFAST:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
-        break;
-      case StatusEffectType.REFLECT:
-        setDefaultValue(0);
-        setProcessAtTurnStart(true);
-        setRemovedOnDamage(false);
-        setPreventsMelee(false);
-        setPreventsRanged(false);
-        setPreventsMovement(false);
-        setPreventsAllActions(false);
-        break;
-    }
-  };
-
-  // Get color for type indicator
-  const getTypeColor = (t: StatusEffectType): string => {
-    switch (t) {
-      case StatusEffectType.POISON: return '#22c55e';
-      case StatusEffectType.BURN: return '#f97316';
-      case StatusEffectType.BLEED: return '#dc2626';
-      case StatusEffectType.REGEN: return '#10b981';
-      case StatusEffectType.STUN: return '#eab308';
-      case StatusEffectType.SLEEP: return '#6366f1';
-      case StatusEffectType.SLOW: return '#3b82f6';
-      case StatusEffectType.SILENCED: return '#8b5cf6';
-      case StatusEffectType.DISARMED: return '#9ca3af';
-      case StatusEffectType.SHIELD: return '#22d3ee'; // Cyan for shield
-      case StatusEffectType.HASTE: return '#fbbf24'; // Amber/gold for haste
-      case StatusEffectType.POLYMORPH: return '#ff69b4'; // Pink for polymorph
-      case StatusEffectType.STEALTH: return '#4a5568'; // Gray for stealth
-      case StatusEffectType.DEFLECT: return '#a855f7'; // Purple for deflect
-      case StatusEffectType.INVULNERABLE: return '#fcd34d'; // Gold for invulnerable
-      case StatusEffectType.STEADFAST: return '#78716c'; // Stone for steadfast
-      case StatusEffectType.REFLECT: return '#06b6d4'; // Cyan for reflect
-      default: return '#ffffff';
     }
   };
 
@@ -291,7 +218,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">
                 {name || 'Unnamed Effect'}
               </h2>
-              <p className="text-xs text-stone-400">{type}{isBuiltIn ? ' • built-in' : ''}</p>
+              <p className="text-xs text-stone-400">{type}</p>
             </div>
           </div>
           <div className="flex gap-1.5 md:gap-2 flex-shrink-0">
@@ -303,21 +230,13 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               <span className="md:hidden">✕</span>
               <span className="hidden md:inline">Cancel</span>
             </button>
-            {!isBuiltIn && (
-              <button onClick={handleSave} className="dungeon-btn-success text-sm">
-                <span className="md:hidden">💾</span>
-                <span className="hidden md:inline">Save</span>
-              </button>
-            )}
+            <button onClick={handleSave} className="dungeon-btn-success text-sm">
+              <span className="md:hidden">💾</span>
+              <span className="hidden md:inline">Save</span>
+            </button>
           </div>
         </div>
       </div>
-
-      {isBuiltIn && (
-        <div className="bg-yellow-900/30 border border-yellow-600 p-3 rounded text-sm text-yellow-200">
-          This is a built-in status effect and cannot be edited. Use "Duplicate" to create an editable copy.
-        </div>
-      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Left Column - Basic Info */}
@@ -328,26 +247,19 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              disabled={isBuiltIn}
-              className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
+              className="w-full px-3 py-2 bg-stone-700 rounded"
               placeholder="e.g., Poison, Stun, Sleep"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium mb-1">Description</label>
-            {isBuiltIn ? (
-              <div className="w-full px-3 py-2 bg-stone-700 rounded opacity-50 text-stone-400">
-                {description || 'No description'}
-              </div>
-            ) : (
-              <RichTextEditor
-                value={description}
-                onChange={setDescription}
-                placeholder="Describe what this effect does..."
-                multiline
-              />
-            )}
+            <RichTextEditor
+              value={description}
+              onChange={setDescription}
+              placeholder="Describe what this effect does..."
+              multiline
+            />
           </div>
 
           <div>
@@ -355,8 +267,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             <select
               value={type}
               onChange={(e) => applyTypeDefaults(e.target.value as StatusEffectType)}
-              disabled={isBuiltIn}
-              className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
+              className="w-full px-3 py-2 bg-stone-700 rounded"
             >
               {Object.values(StatusEffectType).map(t => (
                 <option key={t} value={t}>
@@ -365,9 +276,12 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               ))}
             </select>
             <div
-              className="mt-1 h-2 rounded"
-              style={{ backgroundColor: getTypeColor(type) }}
+              className="mt-1 h-1.5 rounded"
+              style={{ backgroundColor: TYPE_COLORS[type] }}
             />
+            <p className="mt-2 text-xs text-stone-300 bg-stone-700/60 rounded px-2 py-1.5 leading-relaxed">
+              {TYPE_DESCRIPTIONS[type]}
+            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -377,8 +291,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 type="number"
                 value={defaultDuration}
                 onChange={(e) => setDefaultDuration(Math.max(1, parseInt(e.target.value) || 1))}
-                disabled={isBuiltIn}
-                className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
+                className="w-full px-3 py-2 bg-stone-700 rounded"
                 min="1"
               />
             </div>
@@ -391,14 +304,17 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 type="number"
                 value={defaultValue}
                 onChange={(e) => setDefaultValue(Math.max(0, parseInt(e.target.value) || 0))}
-                disabled={isBuiltIn}
-                className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
+                className="w-full px-3 py-2 bg-stone-700 rounded"
                 min="0"
               />
               <p className="text-xs text-stone-400 mt-1">
                 {type === StatusEffectType.SHIELD
                   ? 'Total damage absorbed before shield breaks (0 = blocks all damage)'
-                  : 'Damage per turn (poison/burn) or heal per turn (regen)'}
+                  : type === StatusEffectType.REGEN
+                  ? 'Health restored per turn'
+                  : [StatusEffectType.POISON, StatusEffectType.BURN, StatusEffectType.BLEED].includes(type)
+                  ? 'Damage dealt per turn (multiplied by stacks)'
+                  : 'Not used by this effect type'}
               </p>
             </div>
           </div>
@@ -412,7 +328,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   type="color"
                   value={healthBarColor}
                   onChange={(e) => setHealthBarColor(e.target.value)}
-                  disabled={isBuiltIn}
                   className="w-12 h-8 rounded cursor-pointer border border-stone-600"
                 />
                 <div
@@ -439,7 +354,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   step="0.1"
                   value={stealthOpacity}
                   onChange={(e) => setStealthOpacity(parseFloat(e.target.value))}
-                  disabled={isBuiltIn}
                   className="flex-1"
                 />
                 <span className="text-xs text-stone-400 font-mono w-12 text-right">
@@ -452,9 +366,44 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
               >
                 <span className="text-xs text-stone-300">Preview</span>
               </div>
-              <p className="text-xs text-stone-400 mt-1">
-                Entity sprite opacity when stealthed. Cannot be auto-targeted by opposing team.
+            </div>
+          )}
+
+          {/* Polymorph Sprite - only for Polymorph type */}
+          {type === StatusEffectType.POLYMORPH && (
+            <div className="space-y-2 p-3 rounded-lg bg-pink-900/20 border border-pink-800">
+              <h4 className="text-sm font-medium text-pink-300">Polymorph Sprite (optional)</h4>
+              <p className="text-xs text-stone-400">
+                If set, the entity's sprite is replaced with this during the transformation.
               </p>
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-14 h-14 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-pink-500"
+                  onClick={() => setEditingPolymorphSprite(true)}
+                >
+                  {polymorphSprite?.spriteData ? (
+                    <SpriteThumbnail sprite={polymorphSprite.spriteData} size={44} />
+                  ) : (
+                    <span className="text-[9px] text-stone-500 text-center">None</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button
+                    onClick={() => setEditingPolymorphSprite(true)}
+                    className="px-2 py-1 bg-pink-700 rounded text-xs hover:bg-pink-600"
+                  >
+                    {polymorphSprite ? 'Edit' : 'Add Sprite'}
+                  </button>
+                  {polymorphSprite && (
+                    <button
+                      onClick={() => setPolymorphSprite(undefined)}
+                      className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
+                    >
+                      Remove
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
           )}
 
@@ -474,7 +423,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                       onChange={(e) => {
                         setReflectDirections(e.target.checked ? ['front', 'back', 'left', 'right'] : []);
                       }}
-                      disabled={isBuiltIn}
                       className="rounded"
                     />
                     <span className="text-sm font-medium">Reflect All Directions</span>
@@ -491,7 +439,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                                 e.target.checked ? [...prev, dir] : prev.filter(d => d !== dir)
                               );
                             }}
-                            disabled={isBuiltIn}
                             className="rounded"
                           />
                           <span className="text-xs capitalize">{dir}</span>
@@ -523,7 +470,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                     type="color"
                     value={reflectTintColor}
                     onChange={(e) => setReflectTintColor(e.target.value)}
-                    disabled={isBuiltIn}
                     className="w-10 h-7 rounded cursor-pointer border border-stone-600"
                   />
                   <span className="text-xs text-stone-400 font-mono">{reflectTintColor}</span>
@@ -542,7 +488,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 <div className="flex items-center gap-4">
                   <div
                     className="w-12 h-12 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-cyan-500"
-                    onClick={() => !isBuiltIn && setEditingReflectSprite(true)}
+                    onClick={() => setEditingReflectSprite(true)}
                   >
                     {reflectOverrideSprite?.spriteData ? (
                       <SpriteThumbnail sprite={reflectOverrideSprite.spriteData} size={40} />
@@ -551,15 +497,13 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                     )}
                   </div>
                   <div className="flex flex-col gap-1">
-                    {!isBuiltIn && (
-                      <button
-                        onClick={() => setEditingReflectSprite(true)}
-                        className="px-2 py-1 bg-cyan-700 rounded text-xs hover:bg-cyan-600"
-                      >
-                        {reflectOverrideSprite ? 'Edit' : 'Add Sprite'}
-                      </button>
-                    )}
-                    {reflectOverrideSprite && !isBuiltIn && (
+                    <button
+                      onClick={() => setEditingReflectSprite(true)}
+                      className="px-2 py-1 bg-cyan-700 rounded text-xs hover:bg-cyan-600"
+                    >
+                      {reflectOverrideSprite ? 'Edit' : 'Add Sprite'}
+                    </button>
+                    {reflectOverrideSprite && (
                       <button
                         onClick={() => setReflectOverrideSprite(undefined)}
                         className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
@@ -580,7 +524,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 <div className="flex items-center gap-4">
                   <div
                     className="w-12 h-12 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-cyan-500"
-                    onClick={() => !isBuiltIn && setEditingReflectImpactSprite(true)}
+                    onClick={() => setEditingReflectImpactSprite(true)}
                   >
                     {reflectImpactSprite?.spriteData ? (
                       <SpriteThumbnail sprite={reflectImpactSprite.spriteData} size={40} />
@@ -589,15 +533,13 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                     )}
                   </div>
                   <div className="flex flex-col gap-1">
-                    {!isBuiltIn && (
-                      <button
-                        onClick={() => setEditingReflectImpactSprite(true)}
-                        className="px-2 py-1 bg-cyan-700 rounded text-xs hover:bg-cyan-600"
-                      >
-                        {reflectImpactSprite ? 'Edit' : 'Add Sprite'}
-                      </button>
-                    )}
-                    {reflectImpactSprite && !isBuiltIn && (
+                    <button
+                      onClick={() => setEditingReflectImpactSprite(true)}
+                      className="px-2 py-1 bg-cyan-700 rounded text-xs hover:bg-cyan-600"
+                    >
+                      {reflectImpactSprite ? 'Edit' : 'Add Sprite'}
+                    </button>
+                    {reflectImpactSprite && (
                       <button
                         onClick={() => setReflectImpactSprite(undefined)}
                         className="px-2 py-1 bg-red-600 rounded text-xs hover:bg-red-700"
@@ -616,13 +558,12 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             <select
               value={stackingBehavior}
               onChange={(e) => setStackingBehavior(e.target.value as typeof stackingBehavior)}
-              disabled={isBuiltIn}
-              className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
+              className="w-full px-3 py-2 bg-stone-700 rounded"
             >
-              <option value="refresh">Refresh - Reset duration</option>
-              <option value="stack">Stack - Increase stacks</option>
-              <option value="replace">Replace - Remove old, add new</option>
-              <option value="highest">Highest - Keep stronger effect</option>
+              <option value="refresh">Refresh — Reset duration on reapplication</option>
+              <option value="stack">Stack — Increase stacks (multiply effect)</option>
+              <option value="replace">Replace — Remove old, apply new</option>
+              <option value="highest">Highest — Keep the stronger instance</option>
             </select>
           </div>
 
@@ -633,8 +574,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 type="number"
                 value={maxStacks}
                 onChange={(e) => setMaxStacks(Math.max(1, parseInt(e.target.value) || 1))}
-                disabled={isBuiltIn}
-                className="w-full px-3 py-2 bg-stone-700 rounded disabled:opacity-50"
+                className="w-full px-3 py-2 bg-stone-700 rounded"
                 min="1"
                 max="99"
               />
@@ -642,25 +582,23 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
           )}
         </div>
 
-        {/* Right Column - Behaviors & Icon */}
+        {/* Right Column - Visuals */}
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium mb-2">Icon</label>
             <div className="flex items-center gap-4">
               <div
                 className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-blue-500"
-                onClick={() => !isBuiltIn && setEditingIcon(true)}
+                onClick={() => setEditingIcon(true)}
               >
                 <SpriteThumbnail sprite={iconSprite.spriteData} size={48} />
               </div>
-              {!isBuiltIn && (
-                <button
-                  onClick={() => setEditingIcon(true)}
-                  className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
-                >
-                  Edit Icon
-                </button>
-              )}
+              <button
+                onClick={() => setEditingIcon(true)}
+                className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
+              >
+                Edit Icon
+              </button>
             </div>
           </div>
 
@@ -668,12 +606,12 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
           <div>
             <label className="block text-sm font-medium mb-2">Overlay Sprite (optional)</label>
             <p className="text-xs text-stone-400 mb-2">
-              Sprite displayed on top of entities with this effect (e.g., shield bubble)
+              Sprite displayed on top of entities with this effect (e.g., shield bubble, chains)
             </p>
             <div className="flex items-center gap-4">
               <div
                 className="w-16 h-16 bg-stone-900 rounded border border-stone-600 flex items-center justify-center cursor-pointer hover:border-blue-500"
-                onClick={() => !isBuiltIn && setEditingOverlay(true)}
+                onClick={() => setEditingOverlay(true)}
                 style={{ opacity: overlaySprite ? overlayOpacity : 0.3 }}
               >
                 {overlaySprite?.spriteData ? (
@@ -683,15 +621,13 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 )}
               </div>
               <div className="flex flex-col gap-2">
-                {!isBuiltIn && (
-                  <button
-                    onClick={() => setEditingOverlay(true)}
-                    className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
-                  >
-                    {overlaySprite ? 'Edit Overlay' : 'Add Overlay'}
-                  </button>
-                )}
-                {overlaySprite && !isBuiltIn && (
+                <button
+                  onClick={() => setEditingOverlay(true)}
+                  className="px-3 py-1 bg-blue-600 rounded text-sm hover:bg-blue-700"
+                >
+                  {overlaySprite ? 'Edit Overlay' : 'Add Overlay'}
+                </button>
+                {overlaySprite && (
                   <button
                     onClick={() => setOverlaySprite(undefined)}
                     className="px-3 py-1 bg-red-600 rounded text-sm hover:bg-red-700"
@@ -712,7 +648,6 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                     step="0.1"
                     value={overlayOpacity}
                     onChange={(e) => setOverlayOpacity(parseFloat(e.target.value))}
-                    disabled={isBuiltIn}
                     className="flex-1"
                   />
                   <span className="text-xs text-stone-400 font-mono w-12 text-right">
@@ -723,100 +658,28 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             )}
           </div>
 
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">Behavior Settings</label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={processAtTurnStart}
-                onChange={(e) => setProcessAtTurnStart(e.target.checked)}
-                disabled={isBuiltIn}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Process at turn start</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={removedOnDamage}
-                onChange={(e) => setRemovedOnDamage(e.target.checked)}
-                disabled={isBuiltIn}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Removed when taking damage (Sleep)</span>
-            </label>
-          </div>
-
-          <div className="space-y-3">
-            <label className="block text-sm font-medium">Action Restrictions</label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preventsAllActions}
-                onChange={(e) => setPreventsAllActions(e.target.checked)}
-                disabled={isBuiltIn}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Prevents all actions (Stun/Sleep)</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preventsMelee}
-                onChange={(e) => setPreventsMelee(e.target.checked)}
-                disabled={isBuiltIn || preventsAllActions}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Prevents melee attacks (Disarmed)</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preventsRanged}
-                onChange={(e) => setPreventsRanged(e.target.checked)}
-                disabled={isBuiltIn || preventsAllActions}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Prevents ranged/AOE attacks (Silenced)</span>
-            </label>
-
-            <label className="flex items-center gap-2 cursor-pointer">
-              <input
-                type="checkbox"
-                checked={preventsMovement}
-                onChange={(e) => setPreventsMovement(e.target.checked)}
-                disabled={isBuiltIn || preventsAllActions}
-                className="w-4 h-4"
-              />
-              <span className="text-sm">Slows movement (skip every other move)</span>
-            </label>
-          </div>
-
           {/* Preview */}
           <div className="mt-4 p-4 bg-stone-900 rounded">
             <h3 className="text-sm font-medium mb-2">Preview</h3>
             <div className="flex items-center gap-3">
               <div
                 className="w-8 h-8 rounded flex items-center justify-center"
-                style={{ backgroundColor: getTypeColor(type) }}
+                style={{ backgroundColor: TYPE_COLORS[type] }}
               >
                 <SpriteThumbnail sprite={iconSprite.spriteData} size={24} />
               </div>
               <div>
                 <p className="font-bold">{name || 'Unnamed'}</p>
                 <p className="text-xs text-stone-400">
-                  {defaultDuration} turns
+                  {defaultDuration} turn{defaultDuration !== 1 ? 's' : ''}
                   {defaultValue > 0 && ` | ${defaultValue} ${
                     type === StatusEffectType.REGEN ? 'heal/turn' :
                     type === StatusEffectType.SHIELD ? 'dmg absorbed' :
-                    'dmg/turn'
+                    [StatusEffectType.POISON, StatusEffectType.BURN, StatusEffectType.BLEED].includes(type) ? 'dmg/turn' :
+                    'value'
                   }`}
                   {type === StatusEffectType.SHIELD && defaultValue === 0 && ' | blocks all dmg'}
+                  {stackingBehavior === 'stack' && ` | max ${maxStacks} stacks`}
                 </p>
               </div>
             </div>
@@ -846,13 +709,48 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         </div>
       )}
 
+      {/* Polymorph Sprite Editor Modal */}
+      {editingPolymorphSprite && (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+          <div className="bg-stone-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
+            <h3 className="text-lg font-bold mb-4">Polymorph Replacement Sprite</h3>
+            <p className="text-sm text-stone-400 mb-4">
+              This sprite replaces the entity's appearance while they are polymorphed.
+            </p>
+            <SimpleIconEditor
+              sprite={polymorphSprite || {
+                type: 'inline',
+                spriteData: {
+                  id: `polymorph_sprite_${Date.now()}`,
+                  name: 'Polymorph Sprite',
+                  type: 'simple',
+                  shape: 'circle',
+                  primaryColor: '#ff69b4',
+                  createdAt: new Date().toISOString(),
+                },
+              }}
+              onChange={(sprite) => setPolymorphSprite(sprite)}
+              size={96}
+            />
+            <div className="flex justify-end gap-2 mt-4">
+              <button
+                onClick={() => setEditingPolymorphSprite(false)}
+                className="px-4 py-2 bg-pink-600 rounded hover:bg-pink-700"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Reflect Override Sprite Editor Modal */}
       {editingReflectSprite && (
         <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
           <div className="bg-stone-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
             <h3 className="text-lg font-bold mb-4">Reflected Projectile Sprite</h3>
             <p className="text-sm text-stone-400 mb-4">
-              This sprite replaces the original projectile sprite when reflected. Supports static images and animated spritesheets.
+              This sprite replaces the original projectile sprite when reflected.
             </p>
             <SimpleIconEditor
               sprite={reflectOverrideSprite || {
@@ -887,7 +785,7 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
           <div className="bg-stone-800 p-6 rounded-lg max-w-md max-h-[90vh] overflow-auto">
             <h3 className="text-lg font-bold mb-4">Reflect Impact VFX Sprite</h3>
             <p className="text-sm text-stone-400 mb-4">
-              This sprite plays as a VFX at the reflect point when a projectile bounces off. Supports static images and animated spritesheets.
+              This sprite plays as a VFX at the reflect point when a projectile bounces off.
             </p>
             <SimpleIconEditor
               sprite={reflectImpactSprite || {
@@ -923,13 +821,11 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             <h3 className="text-lg font-bold mb-4">Edit Overlay Sprite</h3>
             <p className="text-sm text-stone-400 mb-4">
               This sprite will be drawn over entities with this status effect.
-              Supports static images and animated spritesheets.
             </p>
             <SimpleIconEditor
               sprite={overlaySprite || {
                 type: 'inline',
                 spriteData: {
-                  // eslint-disable-next-line react-hooks/purity
                   id: `overlay_${Date.now()}`,
                   name: 'Overlay',
                   type: 'simple',

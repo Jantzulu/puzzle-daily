@@ -674,9 +674,9 @@ function processEntityStatusEffects(
                                   effect.type === StatusEffectType.SLEEP ||
                                   effect.type === StatusEffectType.POLYMORPH ||
                                   effect.type === StatusEffectType.SLOW ||
+                                  effect.type === StatusEffectType.HASTE ||
                                   effect.type === StatusEffectType.SILENCED ||
-                                  effect.type === StatusEffectType.DISARMED ||
-                                  effectAsset?.processAtTurnStart;
+                                  effect.type === StatusEffectType.DISARMED;
 
     const processNow = timing === 'start' ? shouldProcessAtStart : !shouldProcessAtStart;
 
@@ -735,11 +735,7 @@ export function canEntityAct(entity: PlacedCharacter | PlacedEnemy): { allowed: 
   if (!entity.statusEffects) return { allowed: true };
 
   for (const effect of entity.statusEffects) {
-    const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
-
-    // Check for action-preventing effects
-    if (effectAsset?.preventsAllActions ||
-        effect.type === StatusEffectType.STUN ||
+    if (effect.type === StatusEffectType.STUN ||
         effect.type === StatusEffectType.SLEEP ||
         effect.type === StatusEffectType.POLYMORPH) {
       const reasonMap: Record<string, string> = {
@@ -767,16 +763,14 @@ export function canEntityCastSpell(
   if (!actCheck.allowed) return actCheck;
 
   for (const effect of entity.statusEffects) {
-    const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
-
     // Check melee prevention (Disarmed) - applies to both melee and melee_cone
-    if ((spellTemplate === 'melee' || spellTemplate === 'melee_cone') && (effectAsset?.preventsMelee || effect.type === StatusEffectType.DISARMED)) {
+    if ((spellTemplate === 'melee' || spellTemplate === 'melee_cone') && effect.type === StatusEffectType.DISARMED) {
       return { allowed: false, reason: 'Disarmed' };
     }
 
     // Check ranged/AOE prevention (Silenced) — includes throw/place
     if ((spellTemplate === 'magic_linear' || spellTemplate === 'redirect' || spellTemplate === 'aoe' || spellTemplate === 'throw_place') &&
-        (effectAsset?.preventsRanged || effect.type === StatusEffectType.SILENCED)) {
+        effect.type === StatusEffectType.SILENCED) {
       return { allowed: false, reason: 'Silenced' };
     }
   }
@@ -838,23 +832,10 @@ export function hasHasteBonus(entity: PlacedCharacter | PlacedEnemy): boolean {
 export function removeEffectsOnDamage(entity: PlacedCharacter | PlacedEnemy): void {
   if (!entity.statusEffects) return;
 
-  entity.statusEffects = entity.statusEffects.filter(e => {
-    // Sleep and Polymorph are always removed by damage (built-in behavior)
-    if (e.type === StatusEffectType.SLEEP || e.type === StatusEffectType.POLYMORPH) {
-      const effectAsset = loadStatusEffectAsset(e.statusAssetId);
-      // Check if the asset explicitly disables removal on damage
-      if (effectAsset?.removedOnDamage === false) {
-        return true;
-      }
-      return false;
-    }
-    // For other effects, check the removedOnDamage flag
-    const effectAsset = loadStatusEffectAsset(e.statusAssetId);
-    if (effectAsset?.removedOnDamage) {
-      return false;
-    }
-    return true;
-  });
+  // Sleep and Polymorph are removed when the entity takes damage
+  entity.statusEffects = entity.statusEffects.filter(e =>
+    e.type !== StatusEffectType.SLEEP && e.type !== StatusEffectType.POLYMORPH
+  );
 }
 
 /**
