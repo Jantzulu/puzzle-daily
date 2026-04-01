@@ -12,15 +12,20 @@ interface StatusEffectsDisplayProps {
   noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
 }
 
-// Source type for status effects
-type SourceType = 'character' | 'enemy' | 'item';
+// How the status effect reaches an entity
+type ApplicationMethod = 'innate' | 'spell' | 'pickup' | 'death_drop';
 
 // Entity source info for a status effect
 interface EntitySource {
   id: string;
   name: string;
   sprite?: CustomSprite;
-  sourceType: SourceType;
+  sourceType: 'character' | 'enemy' | 'item';
+  method: ApplicationMethod;
+  spellName?: string;        // method === 'spell'
+  dropperName?: string;      // method === 'death_drop': entity whose death triggers drop
+  dropperSprite?: CustomSprite;
+  dropperType?: 'character' | 'enemy';
 }
 
 // Status effect with source entities
@@ -37,26 +42,34 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
   // Map from status effect ID to sources
   const effectSources = new Map<string, EntitySource[]>();
 
-  // Helper to add a source for an effect
+  // Helper to add a source — deduplicates by id + sourceType + method + spellName
   const addEffectSource = (effectId: string, source: EntitySource) => {
     if (!effectSources.has(effectId)) {
       effectSources.set(effectId, []);
     }
     const sources = effectSources.get(effectId)!;
-    if (!sources.some(s => s.id === source.id && s.sourceType === source.sourceType)) {
-      sources.push(source);
-    }
+    const isDupe = sources.some(
+      s => s.id === source.id && s.sourceType === source.sourceType &&
+           s.method === source.method && s.spellName === source.spellName
+    );
+    if (!isDupe) sources.push(source);
   };
 
-  // Helper to extract status effects from an array of actions
-  const extractFromActions = (actions: CharacterAction[] | undefined, source: EntitySource) => {
+  // Helper to extract spell-applied effects from a behavior action list
+  const extractFromActions = (
+    actions: CharacterAction[] | undefined,
+    baseSource: Omit<EntitySource, 'method' | 'spellName'>
+  ) => {
     if (!actions) return;
-
     for (const action of actions) {
       if (action.spellId) {
         const spell = loadSpellAsset(action.spellId);
         if (spell?.appliesStatusEffect?.statusAssetId) {
-          addEffectSource(spell.appliesStatusEffect.statusAssetId, source);
+          addEffectSource(spell.appliesStatusEffect.statusAssetId, {
+            ...baseSource,
+            method: 'spell',
+            spellName: spell.name,
+          });
         }
       }
     }
@@ -66,21 +79,20 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
   for (const charId of puzzle.availableCharacters) {
     const character = getCharacter(charId);
     if (character) {
-      const charSource: EntitySource = {
+      const base = {
         id: charId,
         name: character.name,
         sprite: (character as CharacterWithSprite).customSprite,
-        sourceType: 'character',
+        sourceType: 'character' as const,
       };
-      extractFromActions(character.behavior, charSource);
-      // Initial (permanent) status effects
+      extractFromActions(character.behavior, base);
       for (const ise of character.initialStatusEffects ?? []) {
-        addEffectSource(ise.statusAssetId, charSource);
+        addEffectSource(ise.statusAssetId, { ...base, method: 'innate' });
       }
     }
   }
 
-  // Check all enemies (get unique enemy IDs)
+  // Check all enemies (unique by enemyId)
   const seenEnemyIds = new Set<string>();
   for (const placedEnemy of puzzle.enemies) {
     if (seenEnemyIds.has(placedEnemy.enemyId)) continue;
@@ -88,25 +100,24 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
 
     const enemy = getEnemy(placedEnemy.enemyId);
     if (enemy) {
-      const enemySource: EntitySource = {
+      const base = {
         id: placedEnemy.enemyId,
         name: enemy.name,
         sprite: (enemy as EnemyWithSprite).customSprite,
-        sourceType: 'enemy',
+        sourceType: 'enemy' as const,
       };
-      if (enemy.behavior?.pattern) extractFromActions(enemy.behavior.pattern, enemySource);
-      // Initial (permanent) status effects
+      if (enemy.behavior?.pattern) extractFromActions(enemy.behavior.pattern, base);
       for (const ise of enemy.initialStatusEffects ?? []) {
-        addEffectSource(ise.statusAssetId, enemySource);
+        addEffectSource(ise.statusAssetId, { ...base, method: 'innate' });
       }
     }
   }
 
-  // Check collectibles on the map for status effect applications
-  const seenCollectibleIds = new Set<string>();
+  // Check collectibles placed on the map
+  const seenMapCollectibleIds = new Set<string>();
   for (const placed of puzzle.collectibles) {
-    if (placed.collectibleId && !seenCollectibleIds.has(placed.collectibleId)) {
-      seenCollectibleIds.add(placed.collectibleId);
+    if (placed.collectibleId && !seenMapCollectibleIds.has(placed.collectibleId)) {
+      seenMapCollectibleIds.add(placed.collectibleId);
       const collectible = loadCollectible(placed.collectibleId);
       if (collectible) {
         for (const effect of collectible.effects) {
@@ -116,6 +127,7 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
               name: collectible.name,
               sprite: collectible.customSprite,
               sourceType: 'item',
+              method: 'pickup',
             });
           }
         }
@@ -123,44 +135,52 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
     }
   }
 
-  // Check death drops from characters and enemies for status effect applications
+  // Check death drops — attribute to the dropping entity, not the item
+  const processDeathDrop = (
+    collectibleId: string,
+    dropperName: string,
+    dropperSprite: CustomSprite | undefined,
+    dropperType: 'character' | 'enemy'
+  ) => {
+    const collectible = loadCollectible(collectibleId);
+    if (!collectible) return;
+    for (const effect of collectible.effects) {
+      if (effect.type === 'status_effect' && effect.statusAssetId) {
+        addEffectSource(effect.statusAssetId, {
+          id: `${dropperType}-drop-${collectibleId}`,
+          name: collectible.name,
+          sprite: collectible.customSprite,
+          sourceType: 'item',
+          method: 'death_drop',
+          dropperName,
+          dropperSprite,
+          dropperType,
+        });
+      }
+    }
+  };
+
   for (const charId of puzzle.availableCharacters) {
     const character = getCharacter(charId);
-    if (character?.droppedCollectibleId && !seenCollectibleIds.has(character.droppedCollectibleId)) {
-      seenCollectibleIds.add(character.droppedCollectibleId);
-      const collectible = loadCollectible(character.droppedCollectibleId);
-      if (collectible) {
-        for (const effect of collectible.effects) {
-          if (effect.type === 'status_effect' && effect.statusAssetId) {
-            addEffectSource(effect.statusAssetId, {
-              id: collectible.id,
-              name: collectible.name,
-              sprite: collectible.customSprite,
-              sourceType: 'item',
-            });
-          }
-        }
-      }
+    if (character?.droppedCollectibleId) {
+      processDeathDrop(
+        character.droppedCollectibleId,
+        character.name,
+        (character as CharacterWithSprite).customSprite,
+        'character'
+      );
     }
   }
 
   for (const placedEnemy of puzzle.enemies) {
     const enemy = getEnemy(placedEnemy.enemyId);
-    if (enemy?.droppedCollectibleId && !seenCollectibleIds.has(enemy.droppedCollectibleId)) {
-      seenCollectibleIds.add(enemy.droppedCollectibleId);
-      const collectible = loadCollectible(enemy.droppedCollectibleId);
-      if (collectible) {
-        for (const effect of collectible.effects) {
-          if (effect.type === 'status_effect' && effect.statusAssetId) {
-            addEffectSource(effect.statusAssetId, {
-              id: collectible.id,
-              name: collectible.name,
-              sprite: collectible.customSprite,
-              sourceType: 'item',
-            });
-          }
-        }
-      }
+    if (enemy?.droppedCollectibleId) {
+      processDeathDrop(
+        enemy.droppedCollectibleId,
+        enemy.name,
+        (enemy as EnemyWithSprite).customSprite,
+        'enemy'
+      );
     }
   }
 
@@ -264,34 +284,99 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               </div>
             </div>
 
-            {/* Entity sources - who can apply this effect */}
-            {sources.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-stone-700">
-                <div className="flex items-center gap-1 flex-wrap">
-                  <span className="text-xs text-stone-500 mr-1">Applied by:</span>
-                  {sources.map((source) => {
-                    const colorClass = source.sourceType === 'enemy'
-                      ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
-                      : source.sourceType === 'item'
-                      ? 'bg-parchment-900/50 text-parchment-300 border border-parchment-700'
-                      : 'bg-copper-900/50 text-copper-300 border border-copper-700';
+            {/* Source groups — grouped by application method */}
+            {sources.length > 0 && (() => {
+              const innate    = sources.filter(s => s.method === 'innate');
+              const spells    = sources.filter(s => s.method === 'spell');
+              const pickups   = sources.filter(s => s.method === 'pickup');
+              const deathDrop = sources.filter(s => s.method === 'death_drop');
 
-                    return (
-                      <div
-                        key={`${source.sourceType}-${source.id}`}
-                        className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${colorClass}`}
-                        title={source.name}
-                      >
-                        {source.sprite && (
-                          <SpriteThumbnail sprite={source.sprite} size={16} previewType="entity" />
-                        )}
-                        <span className="max-w-[60px] truncate">{source.name}</span>
-                      </div>
-                    );
-                  })}
+              const entityBadge = (source: EntitySource, key: string) => {
+                const colorClass = source.sourceType === 'enemy'
+                  ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
+                  : source.sourceType === 'item'
+                  ? 'bg-parchment-900/50 text-parchment-300 border border-parchment-700'
+                  : 'bg-copper-900/50 text-copper-300 border border-copper-700';
+                return (
+                  <div
+                    key={key}
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${colorClass}`}
+                    title={source.name}
+                  >
+                    {source.sprite && (
+                      <SpriteThumbnail sprite={source.sprite} size={16} previewType="entity" />
+                    )}
+                    <span className="max-w-[72px] truncate">{source.name}</span>
+                  </div>
+                );
+              };
+
+              // Group spells by spell name so identical spells from multiple entities are shown together
+              const spellGroups = new Map<string, EntitySource[]>();
+              for (const s of spells) {
+                const key = s.spellName ?? 'Unknown Spell';
+                if (!spellGroups.has(key)) spellGroups.set(key, []);
+                spellGroups.get(key)!.push(s);
+              }
+
+              return (
+                <div className="mt-2 pt-2 border-t border-stone-700 space-y-1">
+                  {/* Innate: entity starts with the effect */}
+                  {innate.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-stone-500 mr-1">Innate on:</span>
+                      {innate.map(s => entityBadge(s, `innate-${s.id}`))}
+                    </div>
+                  )}
+
+                  {/* Spell: entity casts a named spell that applies it */}
+                  {[...spellGroups.entries()].map(([spellName, casters]) => (
+                    <div key={`spell-${spellName}`} className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-stone-500 mr-1">
+                        Via <span className="text-mystic-400 italic">"{spellName}"</span>:
+                      </span>
+                      {casters.map(s => entityBadge(s, `spell-${s.id}-${spellName}`))}
+                    </div>
+                  ))}
+
+                  {/* Pickup: collecting a map item grants it */}
+                  {pickups.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-stone-500 mr-1">On pickup:</span>
+                      {pickups.map(s => entityBadge(s, `pickup-${s.id}`))}
+                    </div>
+                  )}
+
+                  {/* Death drop: item drops from a defeated entity and grants it when collected */}
+                  {deathDrop.length > 0 && (
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <span className="text-xs text-stone-500 mr-1">Dropped on death by:</span>
+                      {deathDrop.map(s => {
+                        const dropperColorClass = s.dropperType === 'enemy'
+                          ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
+                          : 'bg-copper-900/50 text-copper-300 border border-copper-700';
+                        return (
+                          <div
+                            key={`death-${s.id}`}
+                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${dropperColorClass}`}
+                            title={`${s.dropperName} drops "${s.name}" — collecting it grants this effect`}
+                          >
+                            {s.dropperSprite && (
+                              <SpriteThumbnail sprite={s.dropperSprite} size={16} previewType="entity" />
+                            )}
+                            <span className="max-w-[72px] truncate">{s.dropperName}</span>
+                            <span className="text-stone-500">→</span>
+                            {s.sprite && (
+                              <SpriteThumbnail sprite={s.sprite} size={16} previewType="asset" />
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
-              </div>
-            )}
+              );
+            })()}
           </div>
         ))}
       </div>
