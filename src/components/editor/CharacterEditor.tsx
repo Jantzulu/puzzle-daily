@@ -651,7 +651,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                               <div key={index} className="bg-stone-900 rounded-lg p-3 border border-stone-700">
                                 {/* Header row */}
                                 <div className="flex items-start gap-3 mb-2">
-                                  <SpriteThumbnail sprite={effectAsset.iconSprite} size={40} className="rounded border border-stone-600 flex-shrink-0" />
+                                  <SpriteThumbnail sprite={effectAsset.iconSprite?.type === 'inline' ? effectAsset.iconSprite.spriteData : undefined} size={40} className="rounded border border-stone-600 flex-shrink-0" />
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-2">
                                       <span className="text-sm font-semibold truncate">{effectAsset.name}</span>
