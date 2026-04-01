@@ -66,12 +66,17 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
   for (const charId of puzzle.availableCharacters) {
     const character = getCharacter(charId);
     if (character) {
-      extractFromActions(character.behavior, {
+      const charSource: EntitySource = {
         id: charId,
         name: character.name,
         sprite: (character as CharacterWithSprite).customSprite,
         sourceType: 'character',
-      });
+      };
+      extractFromActions(character.behavior, charSource);
+      // Initial (permanent) status effects
+      for (const ise of character.initialStatusEffects ?? []) {
+        addEffectSource(ise.statusAssetId, charSource);
+      }
     }
   }
 
@@ -82,13 +87,18 @@ function getPuzzleStatusEffectsWithSources(puzzle: Puzzle): StatusEffectWithSour
     seenEnemyIds.add(placedEnemy.enemyId);
 
     const enemy = getEnemy(placedEnemy.enemyId);
-    if (enemy?.behavior?.pattern) {
-      extractFromActions(enemy.behavior.pattern, {
+    if (enemy) {
+      const enemySource: EntitySource = {
         id: placedEnemy.enemyId,
         name: enemy.name,
         sprite: (enemy as EnemyWithSprite).customSprite,
         sourceType: 'enemy',
-      });
+      };
+      if (enemy.behavior?.pattern) extractFromActions(enemy.behavior.pattern, enemySource);
+      // Initial (permanent) status effects
+      for (const ise of enemy.initialStatusEffects ?? []) {
+        addEffectSource(ise.statusAssetId, enemySource);
+      }
     }
   }
 

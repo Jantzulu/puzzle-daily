@@ -29,14 +29,8 @@ export const TYPE_COLORS: Record<string, string> = {
   bleed: '#dc2626',
 };
 
-export function getStatusEffectFlags(effect: StatusEffectAsset): string[] {
-  const flags: string[] = [];
-  if (effect.preventsMelee) flags.push('Prevents Melee');
-  if (effect.preventsRanged) flags.push('Prevents Ranged');
-  if (effect.preventsMovement) flags.push('Prevents Movement');
-  if (effect.preventsAllActions) flags.push('Prevents All Actions');
-  if (effect.removedOnDamage) flags.push('Removed on Damage');
-  return flags;
+export function getStatusEffectFlags(_effect: StatusEffectAsset): string[] {
+  return [];
 }
 
 export const StatusEffectPicker: React.FC<StatusEffectPickerProps> = ({ onSelect, onCancel }) => {
@@ -93,7 +87,7 @@ export const StatusEffectPicker: React.FC<StatusEffectPickerProps> = ({ onSelect
                   >
                     {/* Effect Header */}
                     <div className="flex items-start gap-3 mb-2">
-                      <SpriteThumbnail sprite={effect.iconSprite} size={48} className="rounded border border-stone-600 flex-shrink-0" />
+                      <SpriteThumbnail sprite={effect.iconSprite?.type === 'inline' ? effect.iconSprite.spriteData : undefined} size={48} className="rounded border border-stone-600 flex-shrink-0" />
                       <div className="flex-1 min-w-0">
                         <h3 className="font-semibold truncate">{effect.name}</h3>
                         <div className="text-xs capitalize" style={{ color: typeColor }}>
@@ -129,12 +123,6 @@ export const StatusEffectPicker: React.FC<StatusEffectPickerProps> = ({ onSelect
                       <div className="bg-stone-800 rounded px-2 py-1">
                         <span className="text-stone-400">Stacking:</span>{' '}
                         <span className="text-parchment-100 font-semibold capitalize">{effect.stackingBehavior}</span>
-                      </div>
-                      <div className="bg-stone-800 rounded px-2 py-1">
-                        <span className="text-stone-400">Processes:</span>{' '}
-                        <span className="text-parchment-100 font-semibold">
-                          {effect.processAtTurnStart ? 'Turn Start' : 'Turn End'}
-                        </span>
                       </div>
                     </div>
 

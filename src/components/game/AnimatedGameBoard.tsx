@@ -2882,25 +2882,10 @@ function drawStatusEffectIcons(
     // Try to draw the icon sprite if available
     if (effectAsset?.iconSprite?.spriteData) {
       const spriteData = effectAsset.iconSprite.spriteData;
-
-      // Draw the sprite at icon size
+      const centerX = iconX + iconSize / 2;
+      const centerY = iconY + iconSize / 2;
       ctx.save();
-
-      if (spriteData.imageData || spriteData.idleImageData || spriteData.spriteSheet) {
-        // For image-based sprites, draw the image directly
-        const imgData = spriteData.imageData || spriteData.idleImageData;
-        if (imgData) {
-          const img = loadImage(imgData);
-          if (img.complete) {
-            ctx.drawImage(img, iconX, iconY, iconSize, iconSize);
-          }
-        }
-      } else if (spriteData.shape) {
-        // For simple shape sprites, draw a colored shape
-        ctx.fillStyle = spriteData.primaryColor || getDefaultEffectColor(effect.type);
-        drawEffectShape(ctx, iconX, iconY, iconSize, spriteData.shape);
-      }
-
+      drawSprite(ctx, spriteData, centerX, centerY, iconSize);
       ctx.restore();
     } else {
       // Fallback: draw a colored shape based on effect type
