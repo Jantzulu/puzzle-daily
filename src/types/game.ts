@@ -690,6 +690,17 @@ export enum StatusEffectType {
   INVULNERABLE = 'invulnerable', // Immune to all damage from enemies
   STEADFAST = 'steadfast', // Immune to direction changes (redirect spells, items, tiles)
   REFLECT = 'reflect',     // Reflects projectiles back at caster's team
+  // Entity trait types (replace property flags)
+  CONTACT_DAMAGE = 'contact_damage', // Deals damage when another entity enters same tile
+  GHOST = 'ghost',                   // Can overlap / pass through other entities
+  WALL_ALIVE = 'wall_alive',         // Triggers wall-collision reactions when alive
+  WALL_DEAD = 'wall_dead',           // Triggers wall-collision reactions when dead (corpse)
+  WALL_BOTH = 'wall_both',           // Triggers wall-collision reactions alive and dead
+  HALT_ALIVE = 'halt_alive',         // Stops movement without triggering wall reactions when alive
+  HALT_DEAD = 'halt_dead',           // Stops movement without triggering wall reactions when dead
+  HALT_BOTH = 'halt_both',           // Stops movement without triggering wall reactions alive and dead
+  PRIORITY = 'priority',             // Acts before non-priority entities in melee ordering
+  STURDY = 'sturdy',                 // Immune to push effects
 }
 
 /**

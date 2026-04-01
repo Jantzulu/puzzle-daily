@@ -1611,7 +1611,7 @@ export function executeTurn(gameState: GameState): GameState {
   // Execute priority enemies first
   for (const enemy of pendingEnemyTriggers) {
     const enemyData = getEnemy(enemy.enemyId);
-    if (enemyData?.hasMeleePriority) {
+    if (enemy.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY)) {
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
         x: enemy.x,
@@ -1645,7 +1645,7 @@ export function executeTurn(gameState: GameState): GameState {
   // Execute non-priority enemy triggers
   for (const enemy of pendingEnemyTriggers) {
     const enemyData = getEnemy(enemy.enemyId);
-    if (!enemyData?.hasMeleePriority && !enemy.dead) {
+    if (!enemy.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY) && !enemy.dead) {
       const tempCharForTrigger: PlacedCharacter = {
         characterId: enemy.enemyId,
         x: enemy.x,

@@ -524,17 +524,6 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                             className="w-full px-3 py-2 bg-stone-700 rounded"
                           />
                         </div>
-                        <div>
-                          <label className="block text-sm mb-1">Contact Damage</label>
-                          <input
-                            type="number"
-                            min="0"
-                            max="99"
-                            value={editing.contactDamage ?? 0}
-                            onChange={(e) => updateCharacter({ contactDamage: parseInt(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 bg-stone-700 rounded"
-                          />
-                        </div>
                       </div>
                       <div className="grid grid-cols-2 gap-3 mt-3">
                         <div>
@@ -559,36 +548,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
 
                     {/* Properties */}
                     <CollapsiblePanel title="Properties" className="space-y-2">
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={editing.canOverlapEntities || false}
-                          onChange={(e) => updateCharacter({ canOverlapEntities: e.target.checked })} className="w-4 h-4" />
-                        <span className="text-sm">Can Overlap Entities (Ghost)</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={editing.behavesLikeWall || false}
-                          onChange={(e) => updateCharacter({ behavesLikeWall: e.target.checked })} className="w-4 h-4" />
-                        <span className="text-sm">Behaves Like Wall (Alive)</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={editing.behavesLikeWallDead || false}
-                          onChange={(e) => updateCharacter({ behavesLikeWallDead: e.target.checked })} className="w-4 h-4" />
-                        <span className="text-sm">Behaves Like Wall (Dead)</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={editing.blocksMovement || false}
-                          onChange={(e) => updateCharacter({ blocksMovement: e.target.checked })} className="w-4 h-4" />
-                        <span className="text-sm">Blocks Movement (Alive)</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={editing.blocksMovementDead || false}
-                          onChange={(e) => updateCharacter({ blocksMovementDead: e.target.checked })} className="w-4 h-4" />
-                        <span className="text-sm">Blocks Movement (Dead)</span>
-                      </label>
-                      <label className="flex items-center gap-2">
-                        <input type="checkbox" checked={editing.immuneToPush || false}
-                          onChange={(e) => updateCharacter({ immuneToPush: e.target.checked })} className="w-4 h-4" />
-                        <span className="text-sm">Immune to Push</span>
-                      </label>
+                      <p className="text-xs text-stone-500 ml-1">Traits (Ghost, Wall, Halt, Sturdy, Contact Damage) are assigned via starting status effects.</p>
                     </CollapsiblePanel>
 
                     {/* Sound Effects */}

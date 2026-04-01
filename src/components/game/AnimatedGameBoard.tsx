@@ -2529,6 +2529,9 @@ function drawEnemy(
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
   if (!enemy.dead) {
     drawStatusEffectOverlays(ctx, px, py, enemy.statusEffects, now);
+  } else {
+    // Show dead-variant trait icons above corpses
+    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects, true);
   }
 
   if (!enemy.dead) {
@@ -2850,15 +2853,31 @@ function drawHealthBar(
   }
 }
 
+const DEAD_VARIANT_TYPES = new Set<StatusEffectType>([
+  StatusEffectType.WALL_DEAD,
+  StatusEffectType.WALL_BOTH,
+  StatusEffectType.HALT_DEAD,
+  StatusEffectType.HALT_BOTH,
+]);
+
 // Helper to draw status effect icons above health bar
 function drawStatusEffectIcons(
   ctx: CanvasRenderingContext2D,
   px: number,
   py: number,
-  statusEffects: StatusEffectInstance[] | undefined
+  statusEffects: StatusEffectInstance[] | undefined,
+  isCorpse?: boolean
 ) {
-
   if (!statusEffects || statusEffects.length === 0) return;
+
+  const filtered = isCorpse
+    ? statusEffects.filter(e => DEAD_VARIANT_TYPES.has(e.type as StatusEffectType))
+    : statusEffects;
+
+  if (filtered.length === 0) return;
+
+  // Reassign for rest of function
+  statusEffects = filtered;
 
   const iconSize = 8;
   const iconSpacing = 1;
@@ -3183,6 +3202,9 @@ function drawCharacter(
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
   if (!character.dead) {
     drawStatusEffectOverlays(ctx, px, py, character.statusEffects, now);
+  } else {
+    // Show dead-variant trait icons above corpses
+    drawStatusEffectIcons(ctx, px, py, character.statusEffects, true);
   }
 
   if (!character.dead) {

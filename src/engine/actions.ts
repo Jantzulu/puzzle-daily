@@ -35,6 +35,23 @@ import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus } from './simulation';
 import { wakeFromSleep } from './simulation';
 
+// ── Trait helpers ────────────────────────────────────────────────────────────
+// These replace the old property-flag reads (canOverlapEntities, behavesLikeWall, etc.)
+// by checking the placed entity's live statusEffects array instead.
+
+function hasTraitType(entity: PlacedCharacter | PlacedEnemy, ...types: StatusEffectType[]): boolean {
+  return entity.statusEffects?.some(e => types.includes(e.type)) ?? false;
+}
+
+const isGhost      = (e: PlacedCharacter | PlacedEnemy) => hasTraitType(e, StatusEffectType.GHOST);
+const isWallAlive  = (e: PlacedCharacter | PlacedEnemy) => hasTraitType(e, StatusEffectType.WALL_ALIVE, StatusEffectType.WALL_BOTH);
+const isWallDead   = (e: PlacedCharacter | PlacedEnemy) => hasTraitType(e, StatusEffectType.WALL_DEAD,  StatusEffectType.WALL_BOTH);
+const isHaltAlive  = (e: PlacedCharacter | PlacedEnemy) => hasTraitType(e, StatusEffectType.HALT_ALIVE, StatusEffectType.HALT_BOTH);
+const isHaltDead   = (e: PlacedCharacter | PlacedEnemy) => hasTraitType(e, StatusEffectType.HALT_DEAD,  StatusEffectType.HALT_BOTH);
+const isSturdy     = (e: PlacedCharacter | PlacedEnemy) => hasTraitType(e, StatusEffectType.STURDY);
+
+// ─────────────────────────────────────────────────────────────────────────────
+
 /**
  * Compute the tile path for a projectile from start to target.
  * Uses simple tile stepping - for a diagonal from (11,2) to (13,0), returns: [(11,2), (12,1), (13,0)]
@@ -555,8 +572,7 @@ function processIceBehavior(
       c => c.x === nextX && c.y === nextY && !c.dead && c !== updatedChar
     );
     if (blockingChar) {
-      const blockingCharData = getCharacter(blockingChar.characterId);
-      if (!blockingCharData?.canOverlapEntities) {
+      if (!isGhost(blockingChar)) {
         break; // Hit character
       }
     }
@@ -565,8 +581,7 @@ function processIceBehavior(
       e => e.x === nextX && e.y === nextY && !e.dead
     );
     if (blockingEnemy) {
-      const blockingEnemyData = getEnemy(blockingEnemy.enemyId);
-      if (!blockingEnemyData?.canOverlapEntities) {
+      if (!isGhost(blockingEnemy)) {
         break; // Hit enemy
       }
     }
@@ -736,54 +751,32 @@ function moveCharacter(
 
   // Also check for entities that behave like walls
   if (!willHitWall && isInBounds(firstX, firstY, gameState.puzzle.width, gameState.puzzle.height)) {
-    // Check for living character with behavesLikeWall
+    // Check for living character/enemy with wall trait
     const wallCharacter = gameState.placedCharacters.find(
       (c) => c.x === firstX && c.y === firstY && !c.dead && c !== updatedChar
     );
-    if (wallCharacter) {
-      const wallCharData = getCharacter(wallCharacter.characterId);
-      if (wallCharData?.behavesLikeWall) {
-        willHitWall = true;
-      }
-    }
+    if (wallCharacter && isWallAlive(wallCharacter)) willHitWall = true;
 
-    // Check for living enemy with behavesLikeWall
     if (!willHitWall) {
       const wallEnemy = gameState.puzzle.enemies.find(
         (e) => e.x === firstX && e.y === firstY && !e.dead
       );
-      if (wallEnemy) {
-        const wallEnemyData = getEnemy(wallEnemy.enemyId);
-        if (wallEnemyData?.behavesLikeWall) {
-          willHitWall = true;
-        }
-      }
+      if (wallEnemy && isWallAlive(wallEnemy)) willHitWall = true;
     }
 
-    // Check for dead enemy with behavesLikeWallDead
+    // Check for dead entity with wall-dead trait
     if (!willHitWall) {
       const deadWallEnemy = gameState.puzzle.enemies.find(
         (e) => e.x === firstX && e.y === firstY && e.dead
       );
-      if (deadWallEnemy) {
-        const deadWallEnemyData = getEnemy(deadWallEnemy.enemyId);
-        if (deadWallEnemyData?.behavesLikeWallDead) {
-          willHitWall = true;
-        }
-      }
+      if (deadWallEnemy && isWallDead(deadWallEnemy)) willHitWall = true;
     }
 
-    // Check for dead character with behavesLikeWallDead
     if (!willHitWall) {
       const deadWallChar = gameState.placedCharacters.find(
         (c) => c.x === firstX && c.y === firstY && c.dead
       );
-      if (deadWallChar) {
-        const deadWallCharData = getCharacter(deadWallChar.characterId);
-        if (deadWallCharData?.behavesLikeWallDead) {
-          willHitWall = true;
-        }
-      }
+      if (deadWallChar && isWallDead(deadWallChar)) willHitWall = true;
     }
   }
 
@@ -853,19 +846,15 @@ function moveCharacter(
       (c) => c.x === newX && c.y === newY && !c.dead && c !== updatedChar
     );
     if (otherCharacter) {
-      // Check if EITHER entity can overlap (ghost mode - bidirectional)
-      const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
-      const otherCharData = getCharacter(otherCharacter.characterId);
-      if (movingEntityData?.canOverlapEntities || otherCharData?.canOverlapEntities) {
-        // Ghost mode - can pass through, move to this tile
+      // Ghost mode — either entity being a ghost allows passing through
+      if (isGhost(updatedChar) || isGhost(otherCharacter)) {
         updatedChar.x = newX;
         updatedChar.y = newY;
-        continue; // Continue to next tile if multi-tile move
+        continue;
       }
 
       // Check if character behaves like a wall (triggers wall collision behaviors)
-      if (otherCharData?.behavesLikeWall) {
-        // Handle like a wall collision based on behavior
+      if (isWallAlive(otherCharacter)) {
         switch (onWallCollision) {
           case 'turn_left':
             updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
@@ -877,17 +866,16 @@ function moveCharacter(
             updatedChar.facing = turnAround(updatedChar.facing);
             return updatedChar;
           case 'continue':
-            // Skip this tile and continue to next
             continue;
           case 'stop':
           default:
-            return updatedChar; // Stop movement
+            return updatedChar;
         }
       }
 
-      // Check if character blocks movement (stops without triggering wall reactions)
-      if (otherCharData?.blocksMovement) {
-        return updatedChar; // Just stop, no wall collision behavior
+      // Check if character halts movement (stops without triggering wall reactions)
+      if (isHaltAlive(otherCharacter)) {
+        return updatedChar;
       }
 
       // Check if the target tile is being vacated (train-like movement)
@@ -928,17 +916,12 @@ function moveCharacter(
       const enemyData = getEnemy(deadEnemy.enemyId);
 
       // Check if dead enemy behaves like a wall (triggers wall collision behaviors)
-      if (enemyData?.behavesLikeWallDead) {
-        // Check if the moving entity can overlap (ghost mode)
-        const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
-        if (movingEntityData?.canOverlapEntities) {
-          // Ghost mode - can pass through corpses too
+      if (isWallDead(deadEnemy)) {
+        if (isGhost(updatedChar)) {
           updatedChar.x = newX;
           updatedChar.y = newY;
           continue;
         }
-
-        // Handle like a wall collision based on behavior
         switch (onWallCollision) {
           case 'turn_left':
             updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
@@ -950,22 +933,18 @@ function moveCharacter(
             updatedChar.facing = turnAround(updatedChar.facing);
             return updatedChar;
           case 'continue':
-            // Skip this tile and continue to next
             continue;
           case 'stop':
           default:
-            return updatedChar; // Stop movement
+            return updatedChar;
         }
       }
 
-      // Check if dead enemy blocks movement (stops without triggering wall reactions)
-      if (enemyData?.blocksMovementDead) {
-        const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
-        if (!movingEntityData?.canOverlapEntities) {
-          return updatedChar; // Just stop, no wall collision behavior
-        }
+      // Check if dead enemy halts movement
+      if (isHaltDead(deadEnemy) && !isGhost(updatedChar)) {
+        return updatedChar;
       }
-      // Dead enemies without behavesLikeWallDead or blocksMovementDead can be walked over
+      // Dead enemies without wall/halt traits can be walked over
     }
 
     // Check for living enemy at target position
@@ -974,21 +953,15 @@ function moveCharacter(
     );
 
     if (enemyAtTarget) {
-      // Check if EITHER entity can overlap (ghost mode - bidirectional)
-      const movingEntityData = getCharacter(updatedChar.characterId) || getEnemy(updatedChar.characterId);
-      const targetEnemyData = getEnemy(enemyAtTarget.enemyId);
-      if (movingEntityData?.canOverlapEntities || targetEnemyData?.canOverlapEntities) {
-        // Ghost mode - can pass through living enemies too
+      // Ghost mode
+      if (isGhost(updatedChar) || isGhost(enemyAtTarget)) {
         updatedChar.x = newX;
         updatedChar.y = newY;
         continue;
       }
 
-      const enemyData = getEnemy(enemyAtTarget.enemyId);
-
-      // Check if enemy behaves like a wall (triggers wall collision behaviors)
-      if (enemyData?.behavesLikeWall) {
-        // Handle like a wall collision based on behavior
+      // Check if enemy behaves like a wall
+      if (isWallAlive(enemyAtTarget)) {
         switch (onWallCollision) {
           case 'turn_left':
             updatedChar.facing = turnLeft(updatedChar.facing, turnDegrees);
@@ -1000,17 +973,16 @@ function moveCharacter(
             updatedChar.facing = turnAround(updatedChar.facing);
             return updatedChar;
           case 'continue':
-            // Skip this tile and continue to next
             continue;
           case 'stop':
           default:
-            return updatedChar; // Stop movement
+            return updatedChar;
         }
       }
 
-      // Check if enemy blocks movement (stops without triggering wall reactions)
-      if (enemyData?.blocksMovement) {
-        return updatedChar; // Just stop, no wall collision behavior, no combat
+      // Check if enemy halts movement
+      if (isHaltAlive(enemyAtTarget)) {
+        return updatedChar;
       }
 
       // Check if this is an enemy trying to move into another enemy (no combat, just block)
@@ -1046,15 +1018,14 @@ function moveCharacter(
 
       // Combat: Check if enemy has melee priority
       const charData = getCharacter(updatedChar.characterId);
-      const enemyDataForCombat = getEnemy(enemyAtTarget.enemyId);
 
-      if (charData && enemyDataForCombat) {
-        // Determine who attacks first based on priority
-        const enemyHasPriority = enemyDataForCombat.hasMeleePriority === true;
+      if (charData) {
+        const enemyHasPriority = enemyAtTarget.statusEffects?.some(e => e.type === StatusEffectType.PRIORITY) ?? false;
 
-        // Contact damage is now explicit - 0 or undefined means no contact damage
-        const enemyContactDamage = enemyDataForCombat.contactDamage ?? 0;
-        const charContactDamage = charData.contactDamage ?? 0;
+        const enemyContactEffect = enemyAtTarget.statusEffects?.find(e => e.type === StatusEffectType.CONTACT_DAMAGE);
+        const charContactEffect = updatedChar.statusEffects?.find(e => e.type === StatusEffectType.CONTACT_DAMAGE);
+        const enemyContactDamage = enemyContactEffect?.value ?? 0;
+        const charContactDamage = charContactEffect?.value ?? 0;
 
         if (enemyHasPriority) {
           // Enemy attacks first (enemy has priority)
@@ -1077,10 +1048,6 @@ function moveCharacter(
             applyDamageToEntity(updatedChar, enemyContactDamage, gameState, enemyAtTarget);
           }
         }
-      } else if (charData) {
-        // Fallback: just character data available (shouldn't normally happen)
-        const charContactDamage = charData.contactDamage ?? 0;
-        applyDamageToEntity(enemyAtTarget, charContactDamage, gameState, updatedChar);
       }
 
       // Only move into space if enemy is now dead
@@ -1126,54 +1093,30 @@ function moveCharacter(
 
     // Also check for entities that behave like walls
     if (!willHitWallNext && isInBounds(nextX, nextY, gameState.puzzle.width, gameState.puzzle.height)) {
-      // Check for living character with behavesLikeWall
       const wallCharNext = gameState.placedCharacters.find(
         (c) => c.x === nextX && c.y === nextY && !c.dead && c !== updatedChar
       );
-      if (wallCharNext) {
-        const wallCharData = getCharacter(wallCharNext.characterId);
-        if (wallCharData?.behavesLikeWall) {
-          willHitWallNext = true;
-        }
-      }
+      if (wallCharNext && isWallAlive(wallCharNext)) willHitWallNext = true;
 
-      // Check for living enemy with behavesLikeWall
       if (!willHitWallNext) {
         const wallEnemyNext = gameState.puzzle.enemies.find(
           (e) => e.x === nextX && e.y === nextY && !e.dead
         );
-        if (wallEnemyNext) {
-          const wallEnemyData = getEnemy(wallEnemyNext.enemyId);
-          if (wallEnemyData?.behavesLikeWall) {
-            willHitWallNext = true;
-          }
-        }
+        if (wallEnemyNext && isWallAlive(wallEnemyNext)) willHitWallNext = true;
       }
 
-      // Check for dead enemy with behavesLikeWallDead
       if (!willHitWallNext) {
         const deadWallEnemyNext = gameState.puzzle.enemies.find(
           (e) => e.x === nextX && e.y === nextY && e.dead
         );
-        if (deadWallEnemyNext) {
-          const deadWallEnemyData = getEnemy(deadWallEnemyNext.enemyId);
-          if (deadWallEnemyData?.behavesLikeWallDead) {
-            willHitWallNext = true;
-          }
-        }
+        if (deadWallEnemyNext && isWallDead(deadWallEnemyNext)) willHitWallNext = true;
       }
 
-      // Check for dead character with behavesLikeWallDead
       if (!willHitWallNext) {
         const deadWallCharNext = gameState.placedCharacters.find(
           (c) => c.x === nextX && c.y === nextY && c.dead
         );
-        if (deadWallCharNext) {
-          const deadWallCharData = getCharacter(deadWallCharNext.characterId);
-          if (deadWallCharData?.behavesLikeWallDead) {
-            willHitWallNext = true;
-          }
-        }
+        if (deadWallCharNext && isWallDead(deadWallCharNext)) willHitWallNext = true;
       }
     }
 
@@ -1256,40 +1199,22 @@ function handleIfWall(
     ? gameState.puzzle.tiles[checkY]?.[checkX]
     : null;
 
-  // Check for wall-like character ahead
   const blockingCharacter = gameState.placedCharacters.find(
     (c) => c.x === checkX && c.y === checkY && !c.dead && c !== character
   );
-  const blockingCharData = blockingCharacter ? getCharacter(blockingCharacter.characterId) : null;
-  const isWallLikeCharacter = blockingCharData?.behavesLikeWall || false;
-
-  // Check for blocking dead enemy (behaves like wall)
   const blockingDeadEnemy = gameState.puzzle.enemies.find(
     (e) => e.x === checkX && e.y === checkY && e.dead
   );
-  const isBlockingCorpse = blockingDeadEnemy ?
-    getEnemy(blockingDeadEnemy.enemyId)?.behavesLikeWallDead : false;
 
-  // Check for blocking living enemy
-  const blockingEnemy = gameState.puzzle.enemies.find(
-    (e) => e.x === checkX && e.y === checkY && !e.dead
-  );
-  const blockingEnemyData = blockingEnemy ? getEnemy(blockingEnemy.enemyId) : null;
-
-  // Check if EITHER entity can overlap (ghost mode - bidirectional)
-  const movingEntityData = getCharacter(character.characterId) || getEnemy(character.characterId);
-  const canOverlapCharacter = movingEntityData?.canOverlapEntities || blockingCharData?.canOverlapEntities;
-  const canOverlapEnemy = movingEntityData?.canOverlapEntities || blockingEnemyData?.canOverlapEntities;
-
-  // Check for blocking corpse data
-  const blockingCorpseData = blockingDeadEnemy ? getEnemy(blockingDeadEnemy.enemyId) : null;
-  const canOverlapCorpse = movingEntityData?.canOverlapEntities || blockingCorpseData?.canOverlapEntities;
+  const movingIsGhost = isGhost(character);
+  const isWallLikeCharacter = blockingCharacter ? isWallAlive(blockingCharacter) : false;
+  const isBlockingCorpse = blockingDeadEnemy ? isWallDead(blockingDeadEnemy) : false;
 
   const isWall =
     !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height) ||
     isTileBlockingMovement(tile, gameState) ||
-    (!canOverlapCharacter && isWallLikeCharacter) ||
-    (!canOverlapCorpse && isBlockingCorpse);
+    (!movingIsGhost && isWallLikeCharacter) ||
+    (!movingIsGhost && isBlockingCorpse);
 
   if (isWall && action.params?.then) {
     // Execute the "then" actions
@@ -3294,11 +3219,7 @@ function executePushSpell(
       const enemyTileX = Math.floor(enemy.x);
       const enemyTileY = Math.floor(enemy.y);
       if (enemyTileX === checkX && enemyTileY === checkY) {
-        // Check if enemy is immune to push
-        const enemyData = getEnemy(enemy.enemyId);
-        if (enemyData?.immuneToPush) {
-          continue;
-        }
+        if (isSturdy(enemy)) continue;
         entitiesToPush.push({ entity: enemy, x: enemy.x, y: enemy.y, isEnemy: true });
       }
     }
@@ -3310,11 +3231,7 @@ function executePushSpell(
       const charTileX = Math.floor(char.x);
       const charTileY = Math.floor(char.y);
       if (charTileX === checkX && charTileY === checkY) {
-        // Check if character is immune to push
-        const charData = getCharacter(char.characterId);
-        if (charData?.immuneToPush) {
-          continue;
-        }
+        if (isSturdy(char)) continue;
         entitiesToPush.push({ entity: char, x: char.x, y: char.y, isEnemy: false });
       }
     }

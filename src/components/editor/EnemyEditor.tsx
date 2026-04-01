@@ -485,12 +485,6 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           onChange={(e) => updateEnemy({ health: parseInt(e.target.value) })}
                           className="w-full px-3 py-2 bg-stone-700 rounded" />
                       </div>
-                      <div>
-                        <label className="block text-sm mb-1">Contact Damage</label>
-                        <input type="number" min="0" max="99" value={editing.contactDamage ?? 0}
-                          onChange={(e) => updateEnemy({ contactDamage: parseInt(e.target.value) || 0 })}
-                          className="w-full px-3 py-2 bg-stone-700 rounded" />
-                      </div>
                     </div>
                   </CollapsiblePanel>
 
@@ -501,42 +495,8 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                         onChange={(e) => updateEnemy({ isBoss: e.target.checked })} className="w-4 h-4" />
                       <span className="text-sm font-medium text-blood-300">Boss Enemy</span>
                     </label>
-                    <p className="text-xs text-stone-400 mb-2 ml-1">Boss enemies enable the "Defeat the Boss" win condition.</p>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={editing.canOverlapEntities || false}
-                        onChange={(e) => updateEnemy({ canOverlapEntities: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm">Can Overlap Entities (Ghost)</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={editing.behavesLikeWall || false}
-                        onChange={(e) => updateEnemy({ behavesLikeWall: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm">Behaves Like Wall (Alive)</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={editing.behavesLikeWallDead || false}
-                        onChange={(e) => updateEnemy({ behavesLikeWallDead: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm">Behaves Like Wall (Dead)</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={editing.blocksMovement || false}
-                        onChange={(e) => updateEnemy({ blocksMovement: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm">Blocks Movement (Alive)</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={editing.blocksMovementDead || false}
-                        onChange={(e) => updateEnemy({ blocksMovementDead: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm">Blocks Movement (Dead)</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={editing.hasMeleePriority || false}
-                        onChange={(e) => updateEnemy({ hasMeleePriority: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm">Has Melee Priority</span>
-                    </label>
-                    <label className="flex items-center gap-2">
-                      <input type="checkbox" checked={editing.immuneToPush || false}
-                        onChange={(e) => updateEnemy({ immuneToPush: e.target.checked })} className="w-4 h-4" />
-                      <span className="text-sm">Immune to Push</span>
-                    </label>
+                    <p className="text-xs text-stone-400 ml-1">Boss enemies enable the "Defeat the Boss" win condition.</p>
+                    <p className="text-xs text-stone-500 ml-1 mt-1">Other traits (Ghost, Wall, Halt, Priority, Sturdy, Contact Damage) are assigned via starting status effects.</p>
                   </CollapsiblePanel>
 
                   {/* Sound Effects */}

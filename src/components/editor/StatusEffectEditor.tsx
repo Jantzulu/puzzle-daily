@@ -33,6 +33,16 @@ const TYPE_DESCRIPTIONS: Record<StatusEffectType, string> = {
   [StatusEffectType.INVULNERABLE]: 'Completely immune to all damage for the duration.',
   [StatusEffectType.STEADFAST]: 'Immune to direction changes — redirect spells, tiles, and items have no effect.',
   [StatusEffectType.REFLECT]: 'Reflects incoming projectiles back at the caster\'s team. Configurable by direction, tint color, and sprite.',
+  [StatusEffectType.CONTACT_DAMAGE]: 'Deals damage equal to the value when another entity enters the same tile. Use the value field to set how much damage is dealt.',
+  [StatusEffectType.GHOST]: 'Can freely overlap and pass through other entities. Also allows other entities to pass through this one.',
+  [StatusEffectType.WALL_ALIVE]: 'While alive, triggers wall-collision reactions in moving entities (turn left, turn right, bounce, etc.).',
+  [StatusEffectType.WALL_DEAD]: 'While a corpse, triggers wall-collision reactions in moving entities. Has no effect while alive.',
+  [StatusEffectType.WALL_BOTH]: 'Triggers wall-collision reactions in moving entities both while alive and as a corpse.',
+  [StatusEffectType.HALT_ALIVE]: 'While alive, stops movement of entities that attempt to enter the same tile — without triggering wall-collision reactions.',
+  [StatusEffectType.HALT_DEAD]: 'While a corpse, stops movement of entities that attempt to enter the same tile. Has no effect while alive.',
+  [StatusEffectType.HALT_BOTH]: 'Stops movement of entities that attempt to enter the same tile both while alive and as a corpse.',
+  [StatusEffectType.PRIORITY]: 'Acts before non-priority entities in melee ordering each turn.',
+  [StatusEffectType.STURDY]: 'Cannot be pushed by push effects from spells or tiles.',
 };
 
 // Default icon color per type
@@ -54,6 +64,16 @@ const TYPE_COLORS: Record<StatusEffectType, string> = {
   [StatusEffectType.INVULNERABLE]: '#fcd34d',
   [StatusEffectType.STEADFAST]: '#78716c',
   [StatusEffectType.REFLECT]: '#06b6d4',
+  [StatusEffectType.CONTACT_DAMAGE]: '#dc2626',
+  [StatusEffectType.GHOST]: '#e0f2fe',
+  [StatusEffectType.WALL_ALIVE]: '#b45309',
+  [StatusEffectType.WALL_DEAD]: '#78350f',
+  [StatusEffectType.WALL_BOTH]: '#92400e',
+  [StatusEffectType.HALT_ALIVE]: '#7c3aed',
+  [StatusEffectType.HALT_DEAD]: '#4c1d95',
+  [StatusEffectType.HALT_BOTH]: '#5b21b6',
+  [StatusEffectType.PRIORITY]: '#be123c',
+  [StatusEffectType.STURDY]: '#374151',
 };
 
 function makeDefaultIcon(color: string): SpriteReference {
@@ -197,6 +217,22 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
         break;
       case StatusEffectType.INVULNERABLE:
         setDefaultDuration(1); setDefaultValue(0);
+        setStackingBehavior('refresh');
+        break;
+      case StatusEffectType.CONTACT_DAMAGE:
+        setDefaultDuration(99999); setDefaultValue(1);
+        setStackingBehavior('refresh');
+        break;
+      case StatusEffectType.GHOST:
+      case StatusEffectType.WALL_ALIVE:
+      case StatusEffectType.WALL_DEAD:
+      case StatusEffectType.WALL_BOTH:
+      case StatusEffectType.HALT_ALIVE:
+      case StatusEffectType.HALT_DEAD:
+      case StatusEffectType.HALT_BOTH:
+      case StatusEffectType.PRIORITY:
+      case StatusEffectType.STURDY:
+        setDefaultDuration(99999); setDefaultValue(0);
         setStackingBehavior('refresh');
         break;
     }
