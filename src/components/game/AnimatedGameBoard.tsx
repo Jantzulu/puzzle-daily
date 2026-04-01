@@ -2884,9 +2884,25 @@ function drawStatusEffectIcons(
       const spriteData = effectAsset.iconSprite.spriteData;
       const centerX = iconX + iconSize / 2;
       const centerY = iconY + iconSize / 2;
-      ctx.save();
-      drawSprite(ctx, spriteData, centerX, centerY, iconSize);
-      ctx.restore();
+
+      // Check for URL-based image first (drawSprite only checks imageData, not imageUrl)
+      const imgSrc = resolveImageSource(
+        spriteData.idleImageData || spriteData.imageData,
+        spriteData.idleImageUrl || spriteData.imageUrl
+      );
+      if (imgSrc) {
+        const img = loadImage(imgSrc);
+        if (isImageReady(img)) {
+          const drawSize = iconSize * (spriteData.size || 0.8);
+          ctx.save();
+          ctx.drawImage(img, Math.round(centerX - drawSize / 2), Math.round(centerY - drawSize / 2), Math.round(drawSize), Math.round(drawSize));
+          ctx.restore();
+        }
+      } else {
+        ctx.save();
+        drawSprite(ctx, spriteData, centerX, centerY, iconSize);
+        ctx.restore();
+      }
     } else {
       // Fallback: draw a colored shape based on effect type
       ctx.fillStyle = getDefaultEffectColor(effect.type);
