@@ -201,8 +201,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
               {/* Sprite */}
               <div
-                className="relative flex-shrink-0 rounded-pixel"
-                style={isSelected ? { boxShadow: '0 0 0 2px #f59e0b, 0 0 8px #f59e0b66' } : undefined}
+                className="relative flex-shrink-0"
+                style={isSelected ? { filter: 'drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
               >
                 <SpriteThumbnail
                   sprite={character.customSprite}
@@ -245,18 +245,27 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
               </div>
 
-              {/* "More Info" + caret (unselected) or just caret (selected) */}
+              {/* "More Info" + down caret (unselected), or up caret straddling boundary (selected) */}
               <div className="mt-0.5 flex flex-col items-center justify-center">
                 {!isSelected && !cannotSelect && (
                   <span className="text-[9px] text-stone-500 leading-none">More Info</span>
                 )}
-                <svg
-                  width="12" height="7" viewBox="0 0 12 7" fill="currentColor"
-                  className={isSelected ? 'text-copper-400 mt-0.5' : 'text-stone-600 mt-0.5'}
-                >
-                  <path d="M6 7L0 0h12z" />
-                </svg>
+                {!isSelected && (
+                  <svg width="12" height="7" viewBox="0 0 12 7" fill="currentColor" className="text-stone-600 mt-0.5">
+                    <path d="M6 7L0 0h12z" />
+                  </svg>
+                )}
               </div>
+              {/* Selected: up-pointing caret straddling the strip/tooltip boundary */}
+              {isSelected && (
+                <svg
+                  width="14" height="8" viewBox="0 0 14 8" fill="currentColor"
+                  className="text-copper-400 absolute z-10"
+                  style={{ bottom: 0, left: '50%', transform: 'translate(-50%, 50%)' }}
+                >
+                  <path d="M7 0L14 8H0z" />
+                </svg>
+              )}
             </div>
           );
         })}
@@ -264,7 +273,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
       {/* Tooltip area — full width, shown for selected hero */}
       {selectedCharacterId && selectedCharacter && (
-        <div className="border-t border-copper-700/50 pt-2 mt-0.5">
+        <div className="pt-4 mt-0">
           {hasTooltipSteps && (
             <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5 px-2 mb-2">
               {selectedCharacter.tooltipSteps!.map((step, idx) => (
