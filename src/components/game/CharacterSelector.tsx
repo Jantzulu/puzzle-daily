@@ -184,7 +184,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   ? 'opacity-40 cursor-not-allowed'
                   : isSelected
                   ? 'bg-copper-900/15 cursor-pointer'
-                  : 'hover:bg-stone-700/30 cursor-pointer'
+                  : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
               {/* Name + Title */}
