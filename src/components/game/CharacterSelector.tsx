@@ -183,7 +183,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isSelected
-                  ? 'bg-copper-900/10 cursor-pointer'
+                  ? 'bg-copper-900/15 cursor-pointer'
                   : 'hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
@@ -202,7 +202,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* Sprite */}
               <div
                 className="relative flex-shrink-0"
-                style={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
+                style={(isSelected && !isPlaced) ? { boxShadow: '0 0 6px 2px rgba(212,165,116,0.7), 0 0 14px 4px rgba(212,165,116,0.35)' } : undefined}
               >
                 <SpriteThumbnail
                   sprite={character.customSprite}
@@ -270,7 +270,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
       {/* Tooltip area — full width, shown for selected hero */}
       {selectedCharacterId && selectedCharacter && (
-        <div className="pt-4 mt-0 bg-copper-900/10 rounded-b-pixel-md">
+        <div className="pt-4 mt-0 bg-copper-900/15 rounded-b-pixel-md">
           {hasTooltipSteps && (
             <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5 px-2 mb-2">
               {selectedCharacter.tooltipSteps!.map((step, idx) => (
