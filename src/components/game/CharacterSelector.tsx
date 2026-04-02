@@ -208,7 +208,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   noBackground
                   spriteScale={1.8}
                   bottomAlign={!character.isFloating}
-                  canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
+                  canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 1px rgba(0,0,0,0.9)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
                 />
                 {isPlaced && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
