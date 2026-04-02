@@ -17,9 +17,11 @@ interface SpriteThumbnailProps {
   spriteScale?: number;
   /** If true, sizes sprites by height and bottom-aligns them (consistent entity heights, feet line up) */
   bottomAlign?: boolean;
+  /** Extra styles applied directly to the canvas element (e.g. filter/glow effects) */
+  canvasStyle?: React.CSSProperties;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
@@ -300,11 +302,11 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   };
 
   return (
-    <div className={`rounded overflow-hidden ${className}`} style={backgroundStyle}>
+    <div className={`rounded ${noBackground ? 'overflow-visible' : 'overflow-hidden'} ${className}`} style={backgroundStyle}>
       <canvas
         ref={canvasRef}
         className="block"
-        style={{ width: cssSize, height: cssSize, imageRendering: 'pixelated' as const }}
+        style={{ width: cssSize, height: cssSize, imageRendering: 'pixelated' as const, ...canvasStyle }}
       />
     </div>
   );

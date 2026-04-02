@@ -200,10 +200,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* Sprite */}
-              <div
-                className="relative flex-shrink-0"
-                style={(isSelected && !isPlaced) ? { boxShadow: '0 0 6px 2px rgba(212,165,116,0.7), 0 0 14px 4px rgba(212,165,116,0.35)' } : undefined}
-              >
+              <div className="relative flex-shrink-0">
                 <SpriteThumbnail
                   sprite={character.customSprite}
                   size={52}
@@ -211,6 +208,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   noBackground
                   spriteScale={1.8}
                   bottomAlign={!character.isFloating}
+                  canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
                 />
                 {isPlaced && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
