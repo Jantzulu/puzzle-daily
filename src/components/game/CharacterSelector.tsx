@@ -183,17 +183,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isSelected
-                  ? 'bg-copper-900/15 cursor-pointer'
+                  ? 'bg-copper-900/10 cursor-pointer'
                   : 'hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
               {/* Name + Title */}
               <div className="text-center w-full mb-0.5" style={{ lineHeight: 1.2 }}>
-                <span className={`text-xs font-medium break-words ${isSelected ? 'text-parchment-100' : 'text-arcane-400'}`}>
+                <span className="text-xs font-medium break-words text-arcane-400">
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className={`text-xs italic ${isSelected ? 'text-copper-200' : 'text-parchment-300'}`}>
+                  <span className="text-xs italic text-parchment-300">
                     {' '}{character.title}
                   </span>
                 )}
@@ -222,22 +222,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* Attribute row: HP + movement */}
               <div className="flex items-center justify-center mt-0.5 w-full">
                 <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
-                  <span className={`text-xs font-medium ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>HP:</span>
-                  <span
-                    className={`text-xs font-bold ${isSelected ? 'text-parchment-100' : ''}`}
-                    style={isSelected ? undefined : { color: '#4ade80' }}
-                  >
+                  <span className="text-xs font-medium text-copper-400">HP:</span>
+                  <span className="text-xs font-bold" style={{ color: '#4ade80' }}>
                     {character.health}
                   </span>
                 </div>
-                <div className={`flex items-center gap-0.5 pl-1.5 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
+                <div className="flex items-center gap-0.5 pl-1.5 text-copper-400">
                   {moveInfo ? (
                     <>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">
                         <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
                       </svg>
                       <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
-                      <DirectionArrow direction={character.defaultFacing} className={isSelected ? 'text-parchment-100' : 'text-copper-400'} size={8} />
+                      <DirectionArrow direction={character.defaultFacing} className="text-copper-400" size={8} />
                     </>
                   ) : (
                     <span className="text-xs text-stone-500">—</span>
@@ -273,7 +270,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
       {/* Tooltip area — full width, shown for selected hero */}
       {selectedCharacterId && selectedCharacter && (
-        <div className="pt-4 mt-0 bg-copper-900/15 rounded-b-pixel-md">
+        <div className="pt-4 mt-0 bg-copper-900/10 rounded-b-pixel-md">
           {hasTooltipSteps && (
             <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5 px-2 mb-2">
               {selectedCharacter.tooltipSteps!.map((step, idx) => (
