@@ -273,7 +273,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
       {/* Tooltip area — full width, shown for selected hero */}
       {selectedCharacterId && selectedCharacter && (
-        <div className="pt-4 mt-0">
+        <div className="pt-4 mt-0 bg-copper-900/30 rounded-b-pixel-md">
           {hasTooltipSteps && (
             <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5 px-2 mb-2">
               {selectedCharacter.tooltipSteps!.map((step, idx) => (
