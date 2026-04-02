@@ -200,7 +200,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* Sprite */}
-              <div className="relative flex-shrink-0">
+              <div
+                className="relative flex-shrink-0 rounded-pixel"
+                style={isSelected ? { boxShadow: '0 0 0 2px #f59e0b, 0 0 8px #f59e0b66' } : undefined}
+              >
                 <SpriteThumbnail
                   sprite={character.customSprite}
                   size={52}
@@ -242,15 +245,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
               </div>
 
-              {/* "More Info" hint or selection caret */}
-              <div className="mt-0.5 h-4 flex items-center justify-center">
-                {isSelected ? (
-                  <svg width="12" height="7" viewBox="0 0 12 7" fill="currentColor" className="text-copper-400">
-                    <path d="M6 7L0 0h12z" />
-                  </svg>
-                ) : !cannotSelect ? (
-                  <span className="text-[9px] text-stone-500">More Info</span>
-                ) : null}
+              {/* "More Info" + caret (unselected) or just caret (selected) */}
+              <div className="mt-0.5 flex flex-col items-center justify-center">
+                {!isSelected && !cannotSelect && (
+                  <span className="text-[9px] text-stone-500 leading-none">More Info</span>
+                )}
+                <svg
+                  width="12" height="7" viewBox="0 0 12 7" fill="currentColor"
+                  className={isSelected ? 'text-copper-400 mt-0.5' : 'text-stone-600 mt-0.5'}
+                >
+                  <path d="M6 7L0 0h12z" />
+                </svg>
               </div>
             </div>
           );
