@@ -20,7 +20,6 @@ function getMovementInfo(behavior: CharacterAction[]) {
 
 // SVG arrow component for consistent rendering across platforms
 const CompassArrow: React.FC<{ direction: string; size?: number; className?: string }> = ({ direction, size = 10, className = '' }) => {
-  // Rotation angles for each direction (0 = up/north)
   const rotations: Record<string, number> = {
     north: 0, northeast: 45, east: 90, southeast: 135,
     south: 180, southwest: 225, west: 270, northwest: 315,
@@ -33,20 +32,31 @@ const CompassArrow: React.FC<{ direction: string; size?: number; className?: str
   );
 };
 
+const COMPASS_DIRS: { value: Direction; dir: string }[] = [
+  { value: 'northwest' as Direction, dir: 'northwest' },
+  { value: 'north' as Direction, dir: 'north' },
+  { value: 'northeast' as Direction, dir: 'northeast' },
+  { value: 'west' as Direction, dir: 'west' },
+  { value: 'east' as Direction, dir: 'east' },
+  { value: 'southwest' as Direction, dir: 'southwest' },
+  { value: 'south' as Direction, dir: 'south' },
+  { value: 'southeast' as Direction, dir: 'southeast' },
+];
+
 interface CharacterSelectorProps {
   availableCharacterIds: string[];
   selectedCharacterId: string | null;
   onSelectCharacter: (id: string | null) => void;
   placedCharacterIds?: string[];
-  maxPlaceable?: number; // Max heroes player can place (defaults to availableCharacterIds.length)
+  maxPlaceable?: number;
   onClearAll?: () => void;
   onTest?: () => void;
   themeAssets?: ThemeAssets;
   disabled?: boolean;
-  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
-  placedCharacters?: PlacedCharacter[]; // For redirect spell direction overrides
+  noPanel?: boolean;
+  placedCharacters?: PlacedCharacter[];
   onSpellDirectionOverride?: (characterId: string, spellId: string, direction: Direction) => void;
-  pendingSpellDirectionOverrides?: Record<string, Record<string, Direction>>; // charId -> spellId -> direction (before placement)
+  pendingSpellDirectionOverrides?: Record<string, Record<string, Direction>>;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -64,10 +74,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   onSpellDirectionOverride,
   pendingSpellDirectionOverrides = {},
 }) => {
-  // If maxPlaceable not specified, default to number of available characters
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
-  // Determine button shape class
+
   const getShapeClass = (shape?: string) => {
     switch (shape) {
       case 'rounded': return 'rounded-lg';
@@ -76,11 +85,23 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
 
+  // Tooltip area for selected hero
+  const selectedCharacter = selectedCharacterId ? getCharacter(selectedCharacterId) : null;
+  const hasTooltipSteps = (selectedCharacter?.tooltipSteps?.length ?? 0) > 0;
+
+  const redirectSpells = selectedCharacter
+    ? selectedCharacter.behavior
+        .filter(a => a.type === 'spell' && a.spellId)
+        .map(a => loadSpellAsset(a.spellId!))
+        .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput)
+    : [];
+
+  const placedSelectedChar = placedCharacters.find(pc => pc.characterId === selectedCharacterId);
+
   const content = (
     <>
-      {/* Header row */}
+      {/* Header row — unchanged */}
       <div className="relative flex items-center justify-between mb-2">
-        {/* Left: Test button */}
         <div className="flex items-center gap-2 min-w-[60px]">
           {onTest && !disabled && (
             themeAssets.actionButtonTestHeroesImage ? (
@@ -117,14 +138,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             )
           )}
         </div>
-        {/* Center: Help + Title */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="characters" />
           </div>
           <h3 className="text-lg lg:text-xl font-bold text-purple-400">Heroes</h3>
         </div>
-        {/* Right: Count + Clear button */}
         <div className="flex items-center gap-2">
           <span className={`text-sm lg:text-base ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
             {placedCharacterIds.length}/{effectiveMaxPlaceable} placed
@@ -143,182 +162,169 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 justify-center">
+      {/* Hero strip — equal-width slots separated by vertical dividers */}
+      <div className="flex divide-x divide-stone-700">
         {availableCharacterIds.map((charId) => {
           const character = getCharacter(charId);
           if (!character) return null;
 
           const isSelected = selectedCharacterId === charId;
           const isPlaced = placedCharacterIds.includes(charId);
-          const hasTooltipSteps = character.tooltipSteps && character.tooltipSteps.length > 0;
-          // Can't select if disabled, already placed, or at max and not already selected
           const cannotSelect = disabled || isPlaced || (isAtMaxPlaced && !isSelected);
+          const moveInfo = getMovementInfo(character.behavior);
 
           return (
             <div
               key={charId}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
-              className={`rounded-pixel-md px-1 py-1 transition-all flex flex-col items-center border-2 min-w-[72px] max-w-[100px] ${
-                disabled
-                  ? 'bg-stone-800/80 border-stone-600 cursor-default'
-                  : isPlaced
-                  ? 'bg-stone-900/80 border-dashed border-stone-600 opacity-60 cursor-not-allowed'
-                  : isAtMaxPlaced && !isSelected
-                  ? 'bg-stone-800/80 border-stone-600 opacity-50 cursor-not-allowed'
+              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors ${
+                isPlaced
+                  ? 'opacity-50 cursor-not-allowed'
+                  : cannotSelect
+                  ? 'opacity-40 cursor-not-allowed'
                   : isSelected
-                  ? 'bg-copper-800/80 border-copper-500 shadow-torch cursor-pointer'
-                  : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700 hover:border-copper-600 cursor-pointer'
+                  ? 'bg-copper-900/30 cursor-pointer'
+                  : 'hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
-              {/* Sprite */}
-              <div className="relative flex-shrink-0">
-                <SpriteThumbnail sprite={character.customSprite} size={72} previewType="entity" noBackground spriteScale={1.8} bottomAlign={!character.isFloating} />
-                {isPlaced && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
-                    <span className="text-copper-400 text-lg">✓</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Name and Title */}
-              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px] text-xs lg:text-sm !leading-[1.2]">
-                <span className={`font-medium ${
-                  isSelected ? 'text-parchment-100' : 'text-arcane-400'
-                }`}>
+              {/* Name + Title */}
+              <div className="text-center w-full mb-0.5" style={{ lineHeight: 1.2 }}>
+                <span className={`text-xs font-medium break-words ${isSelected ? 'text-parchment-100' : 'text-arcane-400'}`}>
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className={`italic ${
-                    isSelected ? 'text-copper-200' : 'text-parchment-300'
-                  }`}> {character.title}</span>
+                  <span className={`text-xs italic ${isSelected ? 'text-copper-200' : 'text-parchment-300'}`}>
+                    {' '}{character.title}
+                  </span>
                 )}
               </div>
 
-              {/* HP and movement info */}
-              {(() => {
-                const moveInfo = getMovementInfo(character.behavior);
-                return (
-                  <div className="flex items-center justify-center mt-0.5 w-full">
-                    {/* HP section */}
-                    <div className={`flex items-center justify-center gap-1 pr-2 border-r border-stone-600`}>
-                      <span className={`text-xs lg:text-sm font-medium ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>HP:</span>
-                      <span className={`text-sm lg:text-base font-bold ${isSelected ? 'text-parchment-100' : ''}`} style={isSelected ? undefined : { color: '#4ade80' }}>{character.health}</span>
-                    </div>
-                    {/* Movement section */}
-                    <div className={`flex items-center justify-center gap-0.5 pl-2 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
-                      {moveInfo ? (
-                        <>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className={`opacity-60 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
-                            <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
-                          </svg>
-                          <span className={`text-xs font-medium ${isSelected ? 'text-parchment-100' : 'text-stone-400'}`}>{moveInfo.tilesPerMove}</span>
-                          <DirectionArrow direction={character.defaultFacing} className={isSelected ? 'text-parchment-100' : 'text-copper-400'} size={10} />
-                        </>
-                      ) : (
-                        <span className="text-xs text-stone-500">—</span>
-                      )}
-                    </div>
+              {/* Sprite */}
+              <div className="relative flex-shrink-0">
+                <SpriteThumbnail
+                  sprite={character.customSprite}
+                  size={52}
+                  previewType="entity"
+                  noBackground
+                  spriteScale={1.8}
+                  bottomAlign={!character.isFloating}
+                />
+                {isPlaced && (
+                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
+                    <span className="text-copper-400 text-base">✓</span>
                   </div>
-                );
-              })()}
+                )}
+              </div>
 
-              {/* Tooltip steps - always visible */}
-              {hasTooltipSteps && (
-                <ul className={`mt-0.5 text-xs lg:text-sm !leading-[1.2] text-left max-w-[160px] lg:max-w-[200px] list-disc list-inside break-words ${
-                  isSelected ? 'text-copper-200' : 'text-stone-400'
-                }`}>
-                  {character.tooltipSteps!.map((step, idx) => (
-                    <li key={idx}><RichTextRenderer html={step} /></li>
-                  ))}
-                </ul>
-              )}
+              {/* Attribute row: HP + movement */}
+              <div className="flex items-center justify-center mt-0.5 w-full">
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
+                  <span className={`text-xs font-medium ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>HP:</span>
+                  <span
+                    className={`text-xs font-bold ${isSelected ? 'text-parchment-100' : ''}`}
+                    style={isSelected ? undefined : { color: '#4ade80' }}
+                  >
+                    {character.health}
+                  </span>
+                </div>
+                <div className={`flex items-center gap-0.5 pl-1.5 ${isSelected ? 'text-parchment-100' : 'text-copper-400'}`}>
+                  {moveInfo ? (
+                    <>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">
+                        <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
+                      </svg>
+                      <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
+                      <DirectionArrow direction={character.defaultFacing} className={isSelected ? 'text-parchment-100' : 'text-copper-400'} size={8} />
+                    </>
+                  ) : (
+                    <span className="text-xs text-stone-500">—</span>
+                  )}
+                </div>
+              </div>
 
-              {/* Redirect spell direction display/picker */}
-              {(() => {
-                // Find redirect spells that accept user input
-                const redirectSpells = character.behavior
-                  .filter(a => a.type === 'spell' && a.spellId)
-                  .map(a => loadSpellAsset(a.spellId!))
-                  .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput);
-                if (redirectSpells.length === 0) return null;
-
-                const placedChar = placedCharacters.find(pc => pc.characterId === charId);
-
-                const COMPASS_DIRS: { value: Direction; dir: string }[] = [
-                  { value: 'northwest' as Direction, dir: 'northwest' },
-                  { value: 'north' as Direction, dir: 'north' },
-                  { value: 'northeast' as Direction, dir: 'northeast' },
-                  { value: 'west' as Direction, dir: 'west' },
-                  { value: 'east' as Direction, dir: 'east' },
-                  { value: 'southwest' as Direction, dir: 'southwest' },
-                  { value: 'south' as Direction, dir: 'south' },
-                  { value: 'southeast' as Direction, dir: 'southeast' },
-                ];
-
-                return redirectSpells.map(spell => {
-                  if (!spell) return null;
-                  // Get current direction from placed character or pending overrides
-                  const currentDir = placedChar?.spellDirectionOverrides?.[spell.id]
-                    || pendingSpellDirectionOverrides[charId]?.[spell.id]
-                    || 'north';
-
-                  // Read-only during simulation: just show the selected direction
-                  if (disabled || !onSpellDirectionOverride) {
-                    return (
-                      <div key={spell.id} className="mt-1 w-full flex items-center justify-center gap-1">
-                        <CompassArrow direction={currentDir} size={14} className="text-purple-300" />
-                        <span className="text-[10px] text-purple-300 capitalize">{currentDir}</span>
-                      </div>
-                    );
-                  }
-
-                  // Interactive: compass grid picker
-                  return (
-                    <div key={spell.id} className="mt-1 w-full" onClick={e => e.stopPropagation()}>
-                      <div className="relative w-full mb-0.5">
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2">
-                          <HelpButton sectionId="redirect_spell" className="!p-0" />
-                        </div>
-                        <div className="text-center">
-                          <span className="text-[9px] text-purple-300 font-medium">{spell.name}</span>
-                        </div>
-                      </div>
-                      <div className="grid grid-cols-3 gap-px mx-auto" style={{ width: '54px' }}>
-                        {[
-                          ...COMPASS_DIRS.slice(0, 4),
-                          null,
-                          ...COMPASS_DIRS.slice(4),
-                        ].map((d, i) => d ? (
-                          <button
-                            key={d.value}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onSpellDirectionOverride(charId, spell.id, d.value);
-                            }}
-                            className={`w-[17px] h-[17px] rounded-sm transition-colors flex items-center justify-center ${
-                              currentDir === d.value
-                                ? 'bg-purple-600 text-white border border-purple-400'
-                                : 'bg-stone-700 text-stone-400 border border-stone-600 hover:bg-stone-600'
-                            }`}
-                          >
-                            <CompassArrow direction={d.dir} size={9} />
-                          </button>
-                        ) : (
-                          <div key="center" className="w-[17px] h-[17px]" />
-                        ))}
-                      </div>
-                    </div>
-                  );
-                });
-              })()}
+              {/* "More Info" hint or selection caret */}
+              <div className="mt-0.5 h-4 flex items-center justify-center">
+                {isSelected ? (
+                  <svg width="12" height="7" viewBox="0 0 12 7" fill="currentColor" className="text-copper-400">
+                    <path d="M6 7L0 0h12z" />
+                  </svg>
+                ) : !cannotSelect ? (
+                  <span className="text-[9px] text-stone-500">More Info</span>
+                ) : null}
+              </div>
             </div>
           );
         })}
       </div>
 
-      {selectedCharacterId && (
-        <div className="mt-3 pt-3 border-t border-stone-700 text-sm lg:text-base text-copper-400 font-medium text-center">
-          Click on the dungeon to place your hero
+      {/* Tooltip area — full width, shown for selected hero */}
+      {selectedCharacterId && selectedCharacter && (
+        <div className="border-t border-copper-700/50 pt-2 mt-0.5">
+          {hasTooltipSteps && (
+            <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5 px-2 mb-2">
+              {selectedCharacter.tooltipSteps!.map((step, idx) => (
+                <li key={idx}><RichTextRenderer html={step} /></li>
+              ))}
+            </ul>
+          )}
+
+          {/* Redirect spell compass */}
+          {redirectSpells.map(spell => {
+            if (!spell) return null;
+            const currentDir: Direction = (
+              placedSelectedChar?.spellDirectionOverrides?.[spell.id]
+              || pendingSpellDirectionOverrides[selectedCharacterId]?.[spell.id]
+              || 'north'
+            ) as Direction;
+
+            if (disabled || !onSpellDirectionOverride) {
+              return (
+                <div key={spell.id} className="flex items-center justify-center gap-1 mb-1">
+                  <CompassArrow direction={currentDir} size={14} className="text-purple-300" />
+                  <span className="text-[10px] text-purple-300 capitalize">{currentDir}</span>
+                </div>
+              );
+            }
+
+            return (
+              <div key={spell.id} className="flex flex-col items-center gap-1 mb-2">
+                <div className="relative w-full flex items-center justify-center">
+                  <div className="absolute left-2">
+                    <HelpButton sectionId="redirect_spell" className="!p-0" />
+                  </div>
+                  <span className="text-[9px] text-purple-300 font-medium">{spell.name}</span>
+                </div>
+                <div className="grid grid-cols-3 gap-px" style={{ width: '54px' }}>
+                  {[
+                    ...COMPASS_DIRS.slice(0, 4),
+                    null,
+                    ...COMPASS_DIRS.slice(4),
+                  ].map((d, i) => d ? (
+                    <button
+                      key={d.value}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSpellDirectionOverride(selectedCharacterId, spell.id, d.value);
+                      }}
+                      className={`w-[17px] h-[17px] rounded-sm transition-colors flex items-center justify-center ${
+                        currentDir === d.value
+                          ? 'bg-purple-600 text-white border border-purple-400'
+                          : 'bg-stone-700 text-stone-400 border border-stone-600 hover:bg-stone-600'
+                      }`}
+                    >
+                      <CompassArrow direction={d.dir} size={9} />
+                    </button>
+                  ) : (
+                    <div key={`center-${i}`} className="w-[17px] h-[17px]" />
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+
+          <div className="text-sm text-copper-400 font-medium text-center">
+            Click on the dungeon to place your hero
+          </div>
         </div>
       )}
     </>
