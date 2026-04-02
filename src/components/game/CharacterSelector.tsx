@@ -243,7 +243,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* "More Info" + down caret (unselected), or up caret straddling boundary (selected) */}
-              <div className="mt-0.5 flex flex-col items-center justify-center">
+              <div className="mt-0.5 flex flex-col items-center justify-center" style={{ minHeight: '20px' }}>
                 {!isSelected && !cannotSelect && (
                   <span className="text-[9px] text-stone-500 leading-none">More Info</span>
                 )}
