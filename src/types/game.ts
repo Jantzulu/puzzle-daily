@@ -270,7 +270,9 @@ export interface Enemy {
   health: number;
   attackDamage: number;
   behavior?: EnemyBehavior;
-  tooltipSteps?: string[]; // Custom tooltip steps for display on play/playtest pages
+  tooltipSteps?: string[]; // Legacy — superseded by actionSteps
+  actionSteps?: ActionStep[]; // Numbered steps describing what this enemy does
+  attributes?: string[]; // Passive traits shown alongside action steps
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead

@@ -126,13 +126,47 @@ export const EnemyDetail: React.FC<{ enemy: CustomEnemy }> = ({ enemy }) => {
         </div>
       )}
 
-      {/* Behavior (Tooltip Steps) */}
-      {enemy.tooltipSteps && enemy.tooltipSteps.length > 0 && (
+      {/* Action Steps — new format with fallback to legacy tooltipSteps */}
+      {(() => {
+        const steps = enemy.actionSteps ?? enemy.tooltipSteps?.map(t => ({ text: t }));
+        if (!steps || steps.length === 0) return null;
+        return (
+          <div className="compendium-detail-section">
+            <h3>Actions</h3>
+            <ol className="space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+              {steps.map((step, idx) => (
+                <li key={idx} className="flex items-baseline gap-1">
+                  <span className="font-semibold flex-shrink-0">{idx + 1}.</span>
+                  <span>
+                    <RichTextRenderer html={step.text} />
+                    {step.subSteps && step.subSteps.length > 0 && (
+                      <ul className="mt-0.5 space-y-0.5 ml-2">
+                        {step.subSteps.map((sub, subIdx) => (
+                          <li key={subIdx} className="flex items-baseline gap-1">
+                            <span className="flex-shrink-0">•</span>
+                            <RichTextRenderer html={sub} />
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </span>
+                </li>
+              ))}
+            </ol>
+          </div>
+        );
+      })()}
+
+      {/* Attributes */}
+      {enemy.attributes && enemy.attributes.length > 0 && (
         <div className="compendium-detail-section">
-          <h3>Behavior</h3>
-          <ul className="list-disc list-inside space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-            {enemy.tooltipSteps.map((step, idx) => (
-              <li key={idx}><RichTextRenderer html={step} /></li>
+          <h3>Attributes</h3>
+          <ul className="space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+            {enemy.attributes.map((attr, idx) => (
+              <li key={idx} className="flex items-baseline gap-1">
+                <span className="flex-shrink-0">•</span>
+                <RichTextRenderer html={attr} />
+              </li>
             ))}
           </ul>
         </div>

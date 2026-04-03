@@ -1,5 +1,5 @@
-import React from 'react';
-import type { PlacedEnemy, EnemyBehavior } from '../../types/game';
+import React, { useEffect, useRef, useState } from 'react';
+import type { PlacedEnemy, EnemyBehavior, ActionStep } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
@@ -24,11 +24,17 @@ interface EnemyDisplayProps {
   showTestButton?: boolean;
   themeAssets?: ThemeAssets;
   className?: string;
-  noPanel?: boolean; // If true, renders without the dungeon-panel wrapper
+  noPanel?: boolean;
 }
 
-export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, showTestButton = false, themeAssets = {}, className = '', noPanel = false }) => {
-  // Determine button shape class
+export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
+  enemies,
+  onTest,
+  showTestButton = false,
+  themeAssets = {},
+  className = '',
+  noPanel = false,
+}) => {
   const getShapeClass = (shape?: string) => {
     switch (shape) {
       case 'rounded': return 'rounded-lg';
@@ -36,34 +42,68 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
       default: return 'rounded';
     }
   };
-  // Filter to only show living enemies and get unique enemy types
-  const livingEnemies = enemies.filter(e => !e.dead);
 
-  // Group enemies by type and count them
-  const enemyGroups = new Map<string, { enemy: PlacedEnemy; count: number; totalHealth: number }>();
+  // Info panel animation state
+  const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
+  const [renderedEnemyId, setRenderedEnemyId] = useState<string | null>(null);
+  const [panelAnimClass, setPanelAnimClass] = useState('');
+  const prevEnemyIdRef = useRef<string | null>(null);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  for (const enemy of livingEnemies) {
+  useEffect(() => {
+    const prev = prevEnemyIdRef.current;
+    prevEnemyIdRef.current = selectedEnemyId;
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+
+    if (selectedEnemyId !== null && prev === null) {
+      setRenderedEnemyId(selectedEnemyId);
+      setPanelAnimClass('animate-info-slide-down');
+    } else if (selectedEnemyId === null && prev !== null) {
+      setPanelAnimClass('animate-info-slide-up');
+      exitTimerRef.current = setTimeout(() => {
+        setRenderedEnemyId(null);
+        setPanelAnimClass('');
+      }, 300);
+    } else if (selectedEnemyId !== null) {
+      setRenderedEnemyId(selectedEnemyId);
+      setPanelAnimClass('');
+    }
+  }, [selectedEnemyId]);
+
+  // Group all enemies by type (alive + dead) for initial counts
+  const enemyGroups = new Map<string, { totalCount: number; livingCount: number }>();
+  for (const enemy of enemies) {
     const existing = enemyGroups.get(enemy.enemyId);
     if (existing) {
-      existing.count++;
-      existing.totalHealth += enemy.currentHealth;
+      existing.totalCount++;
+      if (!enemy.dead) existing.livingCount++;
     } else {
-      enemyGroups.set(enemy.enemyId, { enemy, count: 1, totalHealth: enemy.currentHealth });
+      enemyGroups.set(enemy.enemyId, { totalCount: 1, livingCount: enemy.dead ? 0 : 1 });
     }
   }
+  const uniqueEnemyIds = Array.from(enemyGroups.keys());
+  const totalLiving = Array.from(enemyGroups.values()).reduce((sum, g) => sum + g.livingCount, 0);
 
-  const uniqueEnemies = Array.from(enemyGroups.values());
+  // Rendered enemy info
+  const renderedEnemyData = renderedEnemyId ? getEnemy(renderedEnemyId) : null;
 
-  // More prominent divider for noPanel mode - separates interactive Heroes from informational sections
+  // Resolve actionSteps — use new field, fall back to legacy tooltipSteps
+  const actionSteps: ActionStep[] =
+    renderedEnemyData?.actionSteps ??
+    (renderedEnemyData?.tooltipSteps?.map(t => ({ text: t })) ?? []);
+  const hasActionSteps = actionSteps.length > 0;
+  const hasAttributes = (renderedEnemyData?.attributes?.length ?? 0) > 0;
+
+  // Selected glow — red variant matching enemy colour scheme
+  const selectedGlow =
+    'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(180,50,50,0.9)) drop-shadow(0 0 7px rgba(180,50,50,0.5))';
+
+  // "DUNGEON ◆ DETAILS" divider shown in noPanel mode
   const divider = noPanel ? (
     <div className="mt-2 mb-1.5">
-      {/* Divider line with "Dungeon [icon] Details" integrated */}
       <div className="relative flex items-center justify-center">
-        {/* Left line segment */}
         <div className="flex-1 border-t-2 border-copper-700/60" />
-        {/* "Dungeon" text */}
         <span className="mx-2 text-xs text-stone-500 tracking-wider uppercase">Dungeon</span>
-        {/* Center icon - custom or fallback diamond */}
         {themeAssets.iconDungeonDetails ? (
           <img
             src={themeAssets.iconDungeonDetails}
@@ -74,46 +114,39 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
         ) : (
           <div className="w-2 h-2 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
         )}
-        {/* "Details" text */}
         <span className="mx-2 text-xs text-stone-500 tracking-wider uppercase">Details</span>
-        {/* Right line segment */}
         <div className="flex-1 border-t-2 border-copper-700/60" />
       </div>
     </div>
   ) : null;
 
-  const emptyContent = (
-    <>
-      {divider}
-      <div className="flex items-center justify-center mb-2">
-        <div className="relative flex items-center">
-          <div className="absolute right-full mr-1">
-            <HelpButton sectionId="enemies" />
+  // Empty state
+  if (uniqueEnemyIds.length === 0) {
+    const emptyContent = (
+      <>
+        {divider}
+        <div className="flex items-center justify-center mb-2">
+          <div className="relative flex items-center">
+            <div className="absolute right-full mr-1">
+              <HelpButton sectionId="enemies" />
+            </div>
+            <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
           </div>
-          <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
         </div>
-      </div>
-      <p className="text-sm lg:text-base text-stone-500 text-center">No enemies remaining</p>
-    </>
-  );
-
-  if (uniqueEnemies.length === 0) {
-    if (noPanel) {
-      return <div className={className}>{emptyContent}</div>;
-    }
-    return (
-      <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>
-        {emptyContent}
-      </div>
+        <p className="text-sm lg:text-base text-stone-500 text-center">No enemies remaining</p>
+      </>
     );
+    return noPanel
+      ? <div className={className}>{emptyContent}</div>
+      : <div className={`dungeon-panel p-2 lg:p-3 ${className}`}>{emptyContent}</div>;
   }
 
   const content = (
     <>
       {divider}
+
       {/* Header row */}
       <div className="relative flex items-center justify-between mb-2">
-        {/* Left: Test button */}
         <div className="flex items-center gap-2 min-w-[60px]">
           {showTestButton && onTest && (
             themeAssets.actionButtonTestEnemiesImage ? (
@@ -150,90 +183,169 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({ enemies, onTest, sho
             )
           )}
         </div>
-        {/* Center: Help + Title */}
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="enemies" />
           </div>
           <h3 className="text-lg lg:text-xl font-bold text-blood-400">Enemies</h3>
         </div>
-        {/* Right: Count indicator */}
         <span className="text-sm lg:text-base text-stone-400">
-          {livingEnemies.length} remaining
+          {totalLiving} remaining
         </span>
       </div>
 
-      <div className="flex flex-wrap gap-2 justify-center">
-        {uniqueEnemies.map(({ enemy, count }) => {
-          const enemyData = getEnemy(enemy.enemyId);
+      {/* Enemy strip — equal-width slots separated by vertical dividers */}
+      <div className="flex divide-x divide-stone-700">
+        {uniqueEnemyIds.map((enemyId) => {
+          const enemyData = getEnemy(enemyId);
           if (!enemyData) return null;
 
-          const hasTooltipSteps = enemyData.tooltipSteps && enemyData.tooltipSteps.length > 0;
+          const { totalCount, livingCount } = enemyGroups.get(enemyId)!;
+          const isSelected = selectedEnemyId === enemyId;
+          const allDead = livingCount === 0;
+          const moveInfo = getEnemyMovementInfo(enemyData.behavior);
 
           return (
             <div
-              key={enemy.enemyId}
-              className="px-1 py-1 bg-stone-800/80 rounded-pixel-md border border-blood-900/50 flex flex-col items-center max-w-[100px]"
+              key={enemyId}
+              onClick={() => setSelectedEnemyId(isSelected ? null : enemyId)}
+              className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors cursor-pointer ${
+                isSelected
+                  ? 'bg-blood-900/15'
+                  : '[@media(hover:hover)]:hover:bg-stone-700/30'
+              } ${allDead ? 'opacity-50' : ''}`}
             >
-              {/* Sprite */}
-              <div className="relative flex-shrink-0">
-                <SpriteThumbnail sprite={enemyData.customSprite} size={60} previewType="entity" noBackground spriteScale={1.8} bottomAlign={!enemyData.isFloating} />
-                {count > 1 && (
-                  <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700">
-                    {count}
-                  </span>
-                )}
-              </div>
-              {/* Name and Title */}
-              <div className="mt-0.5 text-center max-w-[100px] lg:max-w-[120px] text-xs lg:text-sm !leading-[1.2]">
-                <span className="font-medium text-blood-300">
+              {/* Name + Title */}
+              <div className="text-center w-full mb-0.5" style={{ lineHeight: 1.2 }}>
+                <span className="text-xs font-medium break-words text-blood-300">
                   {enemyData.name}
                 </span>
                 {enemyData.title && (
-                  <span className="text-parchment-300 italic"> {enemyData.title}</span>
+                  <span className="text-xs italic text-parchment-300"> {enemyData.title}</span>
                 )}
               </div>
 
-              {/* HP and movement info */}
-              {(() => {
-                const moveInfo = getEnemyMovementInfo(enemyData.behavior);
-                return (
-                  <div className="flex items-center justify-center mt-0.5 w-full">
-                    {/* HP section */}
-                    <div className="flex items-center justify-center gap-1 pr-2 border-r border-stone-600">
-                      <span className="text-xs lg:text-sm font-medium text-blood-300">HP:</span>
-                      <span className="text-sm lg:text-base font-bold text-blood-400">{enemyData.health}</span>
-                    </div>
-                    {/* Movement section */}
-                    <div className="flex items-center justify-center gap-0.5 pl-2 text-blood-300">
-                      {moveInfo && enemyData.behavior?.defaultFacing ? (
-                        <>
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="opacity-60 text-blood-300">
-                            <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
-                          </svg>
-                          <span className="text-xs font-medium text-stone-400">{moveInfo.tilesPerMove}</span>
-                          <DirectionArrow direction={enemyData.behavior.defaultFacing} className="text-blood-300" size={10} />
-                        </>
-                      ) : (
-                        <span className="text-xs text-stone-500">—</span>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
+              {/* Sprite + initial-count badge */}
+              <div className="relative flex-shrink-0">
+                <SpriteThumbnail
+                  sprite={enemyData.customSprite}
+                  size={52}
+                  previewType="entity"
+                  noBackground
+                  spriteScale={1.8}
+                  bottomAlign={!enemyData.isFloating}
+                  canvasStyle={isSelected ? { filter: selectedGlow } : undefined}
+                />
+                {totalCount > 1 && (
+                  <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none">
+                    {totalCount}
+                  </span>
+                )}
+              </div>
 
-              {/* Tooltip steps - always visible */}
-              {hasTooltipSteps && (
-                <ul className="mt-0.5 text-xs lg:text-sm !leading-[1.2] text-stone-400 text-left max-w-[160px] lg:max-w-[200px] list-disc list-inside break-words">
-                  {enemyData.tooltipSteps!.map((step, idx) => (
-                    <li key={idx}><RichTextRenderer html={step} /></li>
-                  ))}
-                </ul>
+              {/* HP + movement */}
+              <div className="flex items-center justify-center mt-0.5 w-full">
+                <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
+                  <span className="text-xs font-medium text-blood-300">HP:</span>
+                  <span className="text-xs font-bold text-blood-400">{enemyData.health}</span>
+                </div>
+                <div className="flex items-center gap-0.5 pl-1.5 text-blood-300">
+                  {moveInfo && enemyData.behavior?.defaultFacing ? (
+                    <>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">
+                        <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
+                      </svg>
+                      <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
+                      <DirectionArrow direction={enemyData.behavior.defaultFacing} className="text-blood-300" size={8} />
+                    </>
+                  ) : (
+                    <span className="text-xs text-stone-500">—</span>
+                  )}
+                </div>
+              </div>
+
+              {/* "More Info" + down caret (unselected) */}
+              <div className="mt-0.5 flex flex-col items-center justify-center" style={{ minHeight: '20px' }}>
+                {!isSelected && (
+                  <>
+                    <span className="text-[9px] text-stone-500 leading-none">More Info</span>
+                    <svg width="12" height="7" viewBox="0 0 12 7" fill="currentColor" className="text-stone-600 mt-0.5">
+                      <path d="M6 7L0 0h12z" />
+                    </svg>
+                  </>
+                )}
+              </div>
+
+              {/* Selected: up-pointing caret straddling strip/panel boundary */}
+              {isSelected && (
+                <svg
+                  width="14" height="8" viewBox="0 0 14 8" fill="currentColor"
+                  className="text-blood-400 absolute z-10"
+                  style={{ bottom: 0, left: '50%', transform: 'translate(-50%, 50%)' }}
+                >
+                  <path d="M7 0L14 8H0z" />
+                </svg>
               )}
             </div>
           );
         })}
       </div>
+
+      {/* Info panel — animated drop-down */}
+      {renderedEnemyId && renderedEnemyData && (
+        <div className={`overflow-hidden ${panelAnimClass}`}>
+          <div className="pt-4 mt-0 bg-blood-900/15 rounded-b-pixel-md">
+            {(hasActionSteps || hasAttributes) && (
+              <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
+                {hasActionSteps && (
+                  <div className={`${hasAttributes ? 'flex-1 pr-2' : 'w-full'}`}>
+                    <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
+                    <ol className="text-xs lg:text-sm text-stone-300 space-y-1 pl-2">
+                      {actionSteps.map((step, idx) => (
+                        <li key={idx} className="flex items-baseline gap-1">
+                          <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
+                          <span>
+                            <RichTextRenderer html={step.text} />
+                            {step.subSteps && step.subSteps.length > 0 && (
+                              <ul className="mt-0.5 space-y-1 text-stone-400">
+                                {step.subSteps.map((sub, subIdx) => (
+                                  <li key={subIdx} className="flex items-baseline gap-1">
+                                    <span className="flex-shrink-0">•</span>
+                                    <RichTextRenderer html={sub} />
+                                  </li>
+                                ))}
+                              </ul>
+                            )}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+                {hasActionSteps && hasAttributes && (
+                  <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
+                )}
+                {hasAttributes && (
+                  <div className={`${hasActionSteps ? 'flex-1 pl-2' : 'w-full'}`}>
+                    <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
+                    <ul className="text-xs lg:text-sm text-stone-300 space-y-1">
+                      {renderedEnemyData.attributes!.map((attr, idx) => (
+                        <li key={idx} className="flex items-baseline gap-1">
+                          <span className="text-stone-400 flex-shrink-0">•</span>
+                          <RichTextRenderer html={attr} />
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            )}
+            {!hasActionSteps && !hasAttributes && (
+              <p className="text-xs text-stone-500 text-center mb-3 italic">No additional info.</p>
+            )}
+          </div>
+        </div>
+      )}
     </>
   );
 
