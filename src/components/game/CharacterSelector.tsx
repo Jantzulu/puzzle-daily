@@ -275,9 +275,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           {(hasActionSteps || hasAttributes) && (
             <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
               {hasActionSteps && (
-                <div className={`${hasActionSteps && hasAttributes ? 'flex-1 pr-2' : 'w-full text-center'}`}>
-                  {hasAttributes && <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Actions</p>}
-                  <ul className={`text-xs lg:text-sm text-stone-300 list-disc space-y-0.5 ${hasActionSteps && hasAttributes ? 'list-inside' : 'list-inside'}`}>
+                <div className={`${hasAttributes ? 'flex-1 pr-2' : 'w-full'}`}>
+                  <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
+                  <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5">
                     {selectedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx}><RichTextRenderer html={step} /></li>
                     ))}
@@ -288,8 +288,8 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 <div className="w-px bg-stone-700 self-stretch mx-1 flex-shrink-0" />
               )}
               {hasAttributes && (
-                <div className={`${hasActionSteps && hasAttributes ? 'flex-1 pl-2' : 'w-full text-center'}`}>
-                  {hasActionSteps && <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Attributes</p>}
+                <div className={`${hasActionSteps ? 'flex-1 pl-2' : 'w-full'}`}>
+                  <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
                   <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5">
                     {selectedCharacter.attributes!.map((attr, idx) => (
                       <li key={idx}><RichTextRenderer html={attr} /></li>
