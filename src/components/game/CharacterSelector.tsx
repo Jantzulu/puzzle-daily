@@ -113,7 +113,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     } else if (prev !== null) {
       // hero → null: animate closed, then unmount
       setIsOpen(false);
-      exitTimerRef.current = setTimeout(() => setRenderedCharId(null), 550);
+      exitTimerRef.current = setTimeout(() => setRenderedCharId(null), 300);
     }
   }, [selectedCharacterId]);
 
@@ -305,7 +305,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           gridTemplateRows: isOpen ? '1fr' : '0fr',
           transition: isOpen
             ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            : 'grid-template-rows 0.45s ease-in',
+            : 'grid-template-rows 0.28s ease-in',
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
         <div
