@@ -106,7 +106,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       exitTimerRef.current = setTimeout(() => {
         setRenderedCharId(null);
         setPanelAnimClass('');
-      }, 300);
+      }, 400);
     } else if (selectedCharacterId !== null) {
       // hero → different hero: swap content, no animation
       setRenderedCharId(selectedCharacterId);

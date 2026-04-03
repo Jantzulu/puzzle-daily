@@ -63,7 +63,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       exitTimerRef.current = setTimeout(() => {
         setRenderedEnemyId(null);
         setPanelAnimClass('');
-      }, 300);
+      }, 400);
     } else if (selectedEnemyId !== null) {
       setRenderedEnemyId(selectedEnemyId);
       setPanelAnimClass('');
