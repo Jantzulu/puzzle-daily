@@ -8,12 +8,6 @@ import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 
-function toOrdinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
   'move_diagonal_ne', 'move_diagonal_nw', 'move_diagonal_se', 'move_diagonal_sw',
@@ -286,7 +280,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   <ol className="text-xs lg:text-sm text-stone-300 space-y-1">
                     {selectedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx}>
-                        <span className="font-semibold text-stone-400">{toOrdinal(idx + 1)}</span>
+                        <span className="font-semibold text-stone-400">{idx + 1}.</span>
                         {' '}<RichTextRenderer html={step.text} />
                         {step.subSteps && step.subSteps.length > 0 && (
                           <ul className="list-disc list-inside ml-3 mt-0.5 space-y-0.5 text-stone-400">
@@ -301,7 +295,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 </div>
               )}
               {hasActionSteps && hasAttributes && (
-                <div className="w-px bg-stone-700 self-stretch mx-1 flex-shrink-0" />
+                <div className="self-stretch mx-2 flex-shrink-0 border-l border-dashed border-stone-600/40" />
               )}
               {hasAttributes && (
                 <div className={`${hasActionSteps ? 'flex-1 pl-2' : 'w-full'}`}>

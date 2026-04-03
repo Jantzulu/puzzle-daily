@@ -22,12 +22,6 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
-function toOrdinal(n: number): string {
-  const s = ['th', 'st', 'nd', 'rd'];
-  const v = n % 100;
-  return n + (s[(v - 20) % 10] || s[v] || s[0]);
-}
-
 export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const isMobile = useIsMobile();
   // Helper to ensure all characters have a default customSprite
@@ -476,7 +470,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                               <div className="flex-1 min-w-0">
                                 {/* Ordinal label + main text + delete */}
                                 <div className="flex gap-2 items-center">
-                                  <span className="text-stone-400 text-xs font-semibold flex-shrink-0">{toOrdinal(index + 1)}</span>
+                                  <span className="text-stone-400 text-xs font-semibold flex-shrink-0">{index + 1}.</span>
                                   <div className="flex-1">
                                     <RichTextEditor
                                       value={step.text}
