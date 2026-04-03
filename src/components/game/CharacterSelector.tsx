@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { getCharacter } from '../../data/characters';
 import type { CharacterAction, PlacedCharacter, Direction } from '../../types/game';
 import { loadSpellAsset } from '../../utils/assetStorage';
@@ -85,19 +85,47 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
 
-  // Info area for selected hero
-  const selectedCharacter = selectedCharacterId ? getCharacter(selectedCharacterId) : null;
-  const hasActionSteps = (selectedCharacter?.actionSteps?.length ?? 0) > 0;
-  const hasAttributes = (selectedCharacter?.attributes?.length ?? 0) > 0;
+  // Info panel animation: track what to render (lags behind on exit) and which CSS class to apply
+  const [renderedCharId, setRenderedCharId] = useState<string | null>(selectedCharacterId);
+  const [panelAnimClass, setPanelAnimClass] = useState('');
+  const prevCharIdRef = useRef<string | null>(selectedCharacterId);
+  const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const redirectSpells = selectedCharacter
-    ? selectedCharacter.behavior
+  useEffect(() => {
+    const prev = prevCharIdRef.current;
+    prevCharIdRef.current = selectedCharacterId;
+    if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+
+    if (selectedCharacterId !== null && prev === null) {
+      // null → hero: slide down
+      setRenderedCharId(selectedCharacterId);
+      setPanelAnimClass('animate-menu-slide-down');
+    } else if (selectedCharacterId === null && prev !== null) {
+      // hero → null: slide up, then unmount
+      setPanelAnimClass('animate-menu-slide-up');
+      exitTimerRef.current = setTimeout(() => {
+        setRenderedCharId(null);
+        setPanelAnimClass('');
+      }, 200);
+    } else if (selectedCharacterId !== null) {
+      // hero → different hero: swap content, no animation
+      setRenderedCharId(selectedCharacterId);
+      setPanelAnimClass('');
+    }
+  }, [selectedCharacterId]);
+
+  const renderedCharacter = renderedCharId ? getCharacter(renderedCharId) : null;
+  const hasActionSteps = (renderedCharacter?.actionSteps?.length ?? 0) > 0;
+  const hasAttributes = (renderedCharacter?.attributes?.length ?? 0) > 0;
+
+  const redirectSpells = renderedCharacter
+    ? renderedCharacter.behavior
         .filter(a => a.type === 'spell' && a.spellId)
         .map(a => loadSpellAsset(a.spellId!))
         .filter(s => s && s.templateType === 'redirect' && s.redirectAcceptsUserInput)
     : [];
 
-  const placedSelectedChar = placedCharacters.find(pc => pc.characterId === selectedCharacterId);
+  const placedSelectedChar = placedCharacters.find(pc => pc.characterId === renderedCharId);
 
   const content = (
     <>
@@ -267,8 +295,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         })}
       </div>
 
-      {/* Info area — shown for selected hero */}
-      {selectedCharacterId && selectedCharacter && (
+      {/* Info area — animated drop-down when hero selected, slide-up on deselect */}
+      {renderedCharId && renderedCharacter && (
+        <div className={`overflow-hidden ${panelAnimClass}`}>
         <div className="pt-4 mt-0 bg-copper-900/15 rounded-b-pixel-md">
 
           {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
@@ -276,14 +305,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
               {hasActionSteps && (
                 <div className={`${hasAttributes ? 'flex-1 pr-2' : 'w-full'}`}>
-                  <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
-                  <ol className="text-xs lg:text-sm text-stone-300 space-y-1">
-                    {selectedCharacter.actionSteps!.map((step, idx) => (
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
+                  <ol className="text-xs lg:text-sm text-stone-300 space-y-1 pl-1">
+                    {renderedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx}>
                         <span className="font-semibold text-stone-400">{idx + 1}.</span>
                         {' '}<RichTextRenderer html={step.text} />
                         {step.subSteps && step.subSteps.length > 0 && (
-                          <ul className="list-disc list-inside ml-3 mt-0.5 space-y-0.5 text-stone-400">
+                          <ul className="list-disc list-inside ml-3 mt-0.5 space-y-1 text-stone-400">
                             {step.subSteps.map((sub, subIdx) => (
                               <li key={subIdx}><RichTextRenderer html={sub} /></li>
                             ))}
@@ -299,9 +328,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               )}
               {hasAttributes && (
                 <div className={`${hasActionSteps ? 'flex-1 pl-2' : 'w-full'}`}>
-                  <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
-                  <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5">
-                    {selectedCharacter.attributes!.map((attr, idx) => (
+                  <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Attributes</p>
+                  <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-1">
+                    {renderedCharacter.attributes!.map((attr, idx) => (
                       <li key={idx}><RichTextRenderer html={attr} /></li>
                     ))}
                   </ul>
@@ -315,7 +344,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             if (!spell) return null;
             const currentDir: Direction = (
               placedSelectedChar?.spellDirectionOverrides?.[spell.id]
-              || pendingSpellDirectionOverrides[selectedCharacterId]?.[spell.id]
+              || pendingSpellDirectionOverrides[renderedCharId]?.[spell.id]
               || 'north'
             ) as Direction;
 
@@ -367,6 +396,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <div className="text-sm text-copper-400 font-medium text-center">
             Click on the dungeon to place your hero
           </div>
+        </div>
         </div>
       )}
     </>
