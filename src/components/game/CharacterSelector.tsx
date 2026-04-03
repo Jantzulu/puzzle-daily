@@ -85,9 +85,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
 
-  // Tooltip area for selected hero
+  // Info area for selected hero
   const selectedCharacter = selectedCharacterId ? getCharacter(selectedCharacterId) : null;
-  const hasTooltipSteps = (selectedCharacter?.tooltipSteps?.length ?? 0) > 0;
+  const hasActionSteps = (selectedCharacter?.actionSteps?.length ?? 0) > 0;
+  const hasAttributes = (selectedCharacter?.attributes?.length ?? 0) > 0;
 
   const redirectSpells = selectedCharacter
     ? selectedCharacter.behavior
@@ -266,15 +267,37 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         })}
       </div>
 
-      {/* Tooltip area — full width, shown for selected hero */}
+      {/* Info area — shown for selected hero */}
       {selectedCharacterId && selectedCharacter && (
         <div className="pt-4 mt-0 bg-copper-900/15 rounded-b-pixel-md">
-          {hasTooltipSteps && (
-            <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5 px-2 mb-2">
-              {selectedCharacter.tooltipSteps!.map((step, idx) => (
-                <li key={idx}><RichTextRenderer html={step} /></li>
-              ))}
-            </ul>
+
+          {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
+          {(hasActionSteps || hasAttributes) && (
+            <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
+              {hasActionSteps && (
+                <div className={`${hasActionSteps && hasAttributes ? 'flex-1 pr-2' : 'w-full text-center'}`}>
+                  {hasAttributes && <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Actions</p>}
+                  <ul className={`text-xs lg:text-sm text-stone-300 list-disc space-y-0.5 ${hasActionSteps && hasAttributes ? 'list-inside' : 'list-inside'}`}>
+                    {selectedCharacter.actionSteps!.map((step, idx) => (
+                      <li key={idx}><RichTextRenderer html={step} /></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              {hasActionSteps && hasAttributes && (
+                <div className="w-px bg-stone-700 self-stretch mx-1 flex-shrink-0" />
+              )}
+              {hasAttributes && (
+                <div className={`${hasActionSteps && hasAttributes ? 'flex-1 pl-2' : 'w-full text-center'}`}>
+                  {hasActionSteps && <p className="text-[10px] font-semibold text-stone-500 uppercase tracking-wide mb-1">Attributes</p>}
+                  <ul className="text-xs lg:text-sm text-stone-300 list-disc list-inside space-y-0.5">
+                    {selectedCharacter.attributes!.map((attr, idx) => (
+                      <li key={idx}><RichTextRenderer html={attr} /></li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </div>
           )}
 
           {/* Redirect spell compass */}

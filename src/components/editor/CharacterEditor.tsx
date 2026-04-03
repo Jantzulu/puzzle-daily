@@ -421,14 +421,14 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                         />
                       </div>
 
-                      {/* Tooltip Steps (moved here, under description) */}
+                      {/* Action Steps */}
                       <div className="border-t border-stone-600 pt-3 mt-3">
                         <div className="flex justify-between items-center mb-2">
-                          <label className="text-sm font-semibold">Tooltip Steps</label>
+                          <label className="text-sm font-semibold">Action Steps</label>
                           <button
                             onClick={() => {
-                              const steps = editing.tooltipSteps || [];
-                              updateCharacter({ tooltipSteps: [...steps, ''] });
+                              const steps = editing.actionSteps || [];
+                              updateCharacter({ actionSteps: [...steps, ''] });
                             }}
                             className="px-2 py-0.5 text-xs bg-arcane-700 rounded hover:bg-arcane-600"
                           >
@@ -436,18 +436,18 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           </button>
                         </div>
                         <p className="text-xs text-stone-400 mb-2">
-                          Custom tooltip displayed on play/playtest pages. Each step appears as a bullet point.
+                          Describes what this hero does each turn. Each step appears as a bullet point.
                         </p>
                         <div className="space-y-2">
-                          {(editing.tooltipSteps || []).map((step, index) => (
+                          {(editing.actionSteps || []).map((step, index) => (
                             <div key={index} className="flex gap-2 items-center">
                               <div className="flex flex-col gap-0.5">
                                 <button
                                   onClick={() => {
                                     if (index === 0) return;
-                                    const newSteps = [...(editing.tooltipSteps || [])];
+                                    const newSteps = [...(editing.actionSteps || [])];
                                     [newSteps[index - 1], newSteps[index]] = [newSteps[index], newSteps[index - 1]];
-                                    updateCharacter({ tooltipSteps: newSteps });
+                                    updateCharacter({ actionSteps: newSteps });
                                   }}
                                   disabled={index === 0}
                                   className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
@@ -456,13 +456,13 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                                 </button>
                                 <button
                                   onClick={() => {
-                                    const steps = editing.tooltipSteps || [];
+                                    const steps = editing.actionSteps || [];
                                     if (index === steps.length - 1) return;
                                     const newSteps = [...steps];
                                     [newSteps[index], newSteps[index + 1]] = [newSteps[index + 1], newSteps[index]];
-                                    updateCharacter({ tooltipSteps: newSteps });
+                                    updateCharacter({ actionSteps: newSteps });
                                   }}
-                                  disabled={index === (editing.tooltipSteps?.length || 0) - 1}
+                                  disabled={index === (editing.actionSteps?.length || 0) - 1}
                                   className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
                                 >
                                   ↓
@@ -473,17 +473,17 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                                 <RichTextEditor
                                   value={step}
                                   onChange={(value) => {
-                                    const newSteps = [...(editing.tooltipSteps || [])];
+                                    const newSteps = [...(editing.actionSteps || [])];
                                     newSteps[index] = value;
-                                    updateCharacter({ tooltipSteps: newSteps });
+                                    updateCharacter({ actionSteps: newSteps });
                                   }}
-                                  placeholder="Enter tooltip step..."
+                                  placeholder="Enter action step..."
                                 />
                               </div>
                               <button
                                 onClick={() => {
-                                  const newSteps = (editing.tooltipSteps || []).filter((_, i) => i !== index);
-                                  updateCharacter({ tooltipSteps: newSteps.length > 0 ? newSteps : undefined });
+                                  const newSteps = (editing.actionSteps || []).filter((_, i) => i !== index);
+                                  updateCharacter({ actionSteps: newSteps.length > 0 ? newSteps : undefined });
                                 }}
                                 className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
                               >
@@ -491,9 +491,87 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                               </button>
                             </div>
                           ))}
-                          {(!editing.tooltipSteps || editing.tooltipSteps.length === 0) && (
+                          {(!editing.actionSteps || editing.actionSteps.length === 0) && (
                             <div className="text-stone-500 text-sm italic">
-                              No tooltip steps. Click "+ Add Step" to create one.
+                              No action steps. Click "+ Add Step" to create one.
+                            </div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Attributes */}
+                      <div className="border-t border-stone-600 pt-3 mt-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <label className="text-sm font-semibold">Attributes</label>
+                          <button
+                            onClick={() => {
+                              const attrs = editing.attributes || [];
+                              updateCharacter({ attributes: [...attrs, ''] });
+                            }}
+                            className="px-2 py-0.5 text-xs bg-arcane-700 rounded hover:bg-arcane-600"
+                          >
+                            + Add Attribute
+                          </button>
+                        </div>
+                        <p className="text-xs text-stone-400 mb-2">
+                          Passive traits or stats shown alongside action steps. Each entry appears as a bullet point.
+                        </p>
+                        <div className="space-y-2">
+                          {(editing.attributes || []).map((attr, index) => (
+                            <div key={index} className="flex gap-2 items-center">
+                              <div className="flex flex-col gap-0.5">
+                                <button
+                                  onClick={() => {
+                                    if (index === 0) return;
+                                    const newAttrs = [...(editing.attributes || [])];
+                                    [newAttrs[index - 1], newAttrs[index]] = [newAttrs[index], newAttrs[index - 1]];
+                                    updateCharacter({ attributes: newAttrs });
+                                  }}
+                                  disabled={index === 0}
+                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                >
+                                  ↑
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    const attrs = editing.attributes || [];
+                                    if (index === attrs.length - 1) return;
+                                    const newAttrs = [...attrs];
+                                    [newAttrs[index], newAttrs[index + 1]] = [newAttrs[index + 1], newAttrs[index]];
+                                    updateCharacter({ attributes: newAttrs });
+                                  }}
+                                  disabled={index === (editing.attributes?.length || 0) - 1}
+                                  className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
+                                >
+                                  ↓
+                                </button>
+                              </div>
+                              <span className="text-stone-400 text-sm">•</span>
+                              <div className="flex-1">
+                                <RichTextEditor
+                                  value={attr}
+                                  onChange={(value) => {
+                                    const newAttrs = [...(editing.attributes || [])];
+                                    newAttrs[index] = value;
+                                    updateCharacter({ attributes: newAttrs });
+                                  }}
+                                  placeholder="Enter attribute..."
+                                />
+                              </div>
+                              <button
+                                onClick={() => {
+                                  const newAttrs = (editing.attributes || []).filter((_, i) => i !== index);
+                                  updateCharacter({ attributes: newAttrs.length > 0 ? newAttrs : undefined });
+                                }}
+                                className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
+                              >
+                                ✕
+                              </button>
+                            </div>
+                          ))}
+                          {(!editing.attributes || editing.attributes.length === 0) && (
+                            <div className="text-stone-500 text-sm italic">
+                              No attributes. Click "+ Add Attribute" to create one.
                             </div>
                           )}
                         </div>

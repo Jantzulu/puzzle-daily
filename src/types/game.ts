@@ -229,7 +229,8 @@ export interface Character {
   attackDamage: number;
   defaultFacing: Direction;
   behavior: CharacterAction[];
-  tooltipSteps?: string[]; // Custom tooltip steps for display on play/playtest pages
+  actionSteps?: string[];   // Action steps displayed on play/playtest pages
+  attributes?: string[];    // Attribute bullets displayed alongside action steps
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive
   behavesLikeWallDead?: boolean; // If true, triggers wall collision behaviors when dead

@@ -62,12 +62,12 @@ export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ char
         </div>
       )}
 
-      {/* Behavior (Tooltip Steps) */}
-      {character.tooltipSteps && character.tooltipSteps.length > 0 && (
+      {/* Behavior (Action Steps) */}
+      {character.actionSteps && character.actionSteps.length > 0 && (
         <div className="compendium-detail-section">
           <h3>Behavior</h3>
           <ul className="list-disc list-inside space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-            {character.tooltipSteps.map((step, idx) => (
+            {character.actionSteps.map((step, idx) => (
               <li key={idx}><RichTextRenderer html={step} /></li>
             ))}
           </ul>
