@@ -43,10 +43,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     }
   };
 
-  // Info panel animation state
+  // Info panel animation state — grid 0fr→1fr so easing applies to real content height
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
   const [renderedEnemyId, setRenderedEnemyId] = useState<string | null>(null);
-  const [panelAnimClass, setPanelAnimClass] = useState('');
+  const [isOpen, setIsOpen] = useState(false);
   const prevEnemyIdRef = useRef<string | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -55,18 +55,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     prevEnemyIdRef.current = selectedEnemyId;
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
 
-    if (selectedEnemyId !== null && prev === null) {
+    if (selectedEnemyId !== null) {
       setRenderedEnemyId(selectedEnemyId);
-      setPanelAnimClass('animate-info-slide-down');
-    } else if (selectedEnemyId === null && prev !== null) {
-      setPanelAnimClass('animate-info-slide-up');
-      exitTimerRef.current = setTimeout(() => {
-        setRenderedEnemyId(null);
-        setPanelAnimClass('');
-      }, 400);
-    } else if (selectedEnemyId !== null) {
-      setRenderedEnemyId(selectedEnemyId);
-      setPanelAnimClass('');
+      setIsOpen(true);
+    } else if (prev !== null) {
+      setIsOpen(false);
+      exitTimerRef.current = setTimeout(() => setRenderedEnemyId(null), 500);
     }
   }, [selectedEnemyId]);
 
@@ -291,9 +285,17 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         })}
       </div>
 
-      {/* Info panel — animated drop-down */}
+      {/* Info panel — grid height animation so easing applies to real content height */}
       {renderedEnemyId && renderedEnemyData && (
-        <div className={`overflow-hidden ${panelAnimClass}`}>
+        <div style={{
+          display: 'grid',
+          gridTemplateRows: isOpen ? '1fr' : '0fr',
+          opacity: isOpen ? 1 : 0,
+          transition: isOpen
+            ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            : 'grid-template-rows 0.4s ease-in, opacity 0.3s ease-in',
+        }}>
+        <div style={{ overflow: 'hidden', minHeight: 0 }}>
           <div className="pt-4 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md">
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
@@ -344,6 +346,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               <p className="text-xs text-stone-500 text-center mb-3 italic">No additional info.</p>
             )}
           </div>
+        </div>
         </div>
       )}
     </>

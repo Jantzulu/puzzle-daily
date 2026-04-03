@@ -85,9 +85,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
 
-  // Info panel animation: track what to render (lags behind on exit) and which CSS class to apply
+  // Info panel animation: grid 0fr→1fr so easing applies to real content height
   const [renderedCharId, setRenderedCharId] = useState<string | null>(selectedCharacterId);
-  const [panelAnimClass, setPanelAnimClass] = useState('');
+  const [isOpen, setIsOpen] = useState(selectedCharacterId !== null);
   const prevCharIdRef = useRef<string | null>(selectedCharacterId);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -96,21 +96,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     prevCharIdRef.current = selectedCharacterId;
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
 
-    if (selectedCharacterId !== null && prev === null) {
-      // null → hero: slide down
+    if (selectedCharacterId !== null) {
+      // null→hero or hero→hero: update content, open panel
       setRenderedCharId(selectedCharacterId);
-      setPanelAnimClass('animate-info-slide-down');
-    } else if (selectedCharacterId === null && prev !== null) {
-      // hero → null: slide up, then unmount
-      setPanelAnimClass('animate-info-slide-up');
-      exitTimerRef.current = setTimeout(() => {
-        setRenderedCharId(null);
-        setPanelAnimClass('');
-      }, 400);
-    } else if (selectedCharacterId !== null) {
-      // hero → different hero: swap content, no animation
-      setRenderedCharId(selectedCharacterId);
-      setPanelAnimClass('');
+      setIsOpen(true);
+    } else if (prev !== null) {
+      // hero→null: close panel, then unmount after transition
+      setIsOpen(false);
+      exitTimerRef.current = setTimeout(() => setRenderedCharId(null), 500);
     }
   }, [selectedCharacterId]);
 
@@ -295,9 +288,17 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         })}
       </div>
 
-      {/* Info area — animated drop-down when hero selected, slide-up on deselect */}
+      {/* Info area — grid height animation so easing applies to real content height */}
       {renderedCharId && renderedCharacter && (
-        <div className={`overflow-hidden ${panelAnimClass}`}>
+        <div style={{
+          display: 'grid',
+          gridTemplateRows: isOpen ? '1fr' : '0fr',
+          opacity: isOpen ? 1 : 0,
+          transition: isOpen
+            ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            : 'grid-template-rows 0.4s ease-in, opacity 0.3s ease-in',
+        }}>
+        <div style={{ overflow: 'hidden', minHeight: 0 }}>
         <div className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md">
 
           {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
@@ -404,6 +405,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <div className="text-sm text-copper-400 font-medium text-center">
             Click on the dungeon to place your hero
           </div>
+        </div>
         </div>
         </div>
       )}
