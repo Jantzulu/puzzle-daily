@@ -174,7 +174,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <h3 className="text-lg lg:text-xl font-bold text-purple-400">Heroes</h3>
         </div>
         <div className="flex items-center gap-2">
-          <span className={`text-sm lg:text-base ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
+          <span className={`text-sm lg:text-base ${isAtMaxPlaced ? 'text-purple-400' : 'text-stone-400'}`}>
             {placedCharacterIds.length}/{effectiveMaxPlaceable} placed
           </span>
           {onClearAll && placedCharacterIds.length > 0 && !disabled && (
@@ -212,7 +212,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isSelected
-                  ? 'bg-copper-900/15 cursor-pointer'
+                  ? 'bg-purple-900/15 cursor-pointer'
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
@@ -237,11 +237,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   noBackground
                   spriteScale={1.8}
                   bottomAlign={!character.isFloating}
-                  canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
+                  canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(147,51,234,0.9)) drop-shadow(0 0 7px rgba(147,51,234,0.5))' } : undefined}
                 />
                 {isPlaced && (
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
-                    <span className="text-copper-400 text-base">✓</span>
+                    <span className="text-purple-400 text-base">✓</span>
                   </div>
                 )}
               </div>
@@ -249,19 +249,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {/* Attribute row: HP + movement */}
               <div className="flex items-center justify-center mt-0.5 w-full">
                 <div className="flex items-center gap-0.5 pr-1.5 border-r border-stone-600">
-                  <span className="text-xs font-medium text-copper-400">HP:</span>
+                  <span className="text-xs font-medium text-purple-400">HP:</span>
                   <span className="text-xs font-bold" style={{ color: '#4ade80' }}>
                     {character.health}
                   </span>
                 </div>
-                <div className="flex items-center gap-0.5 pl-1.5 text-copper-400">
+                <div className="flex items-center gap-0.5 pl-1.5 text-purple-400">
                   {moveInfo ? (
                     <>
                       <svg width="10" height="10" viewBox="0 0 24 24" fill="currentColor" className="opacity-60">
                         <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.9L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L6 8.3V13h2V9.6l1.8-.7"/>
                       </svg>
                       <span className="text-xs font-medium">{moveInfo.tilesPerMove}</span>
-                      <DirectionArrow direction={character.defaultFacing} className="text-copper-400" size={8} />
+                      <DirectionArrow direction={character.defaultFacing} className="text-purple-400" size={8} />
                     </>
                   ) : (
                     <span className="text-xs text-stone-500">—</span>
@@ -284,7 +284,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {isSelected && (
                 <svg
                   width="14" height="8" viewBox="0 0 14 8" fill="currentColor"
-                  className="text-copper-400 absolute z-10"
+                  className="text-purple-400 absolute z-10"
                   style={{ bottom: 0, left: '50%', transform: 'translate(-50%, 50%)' }}
                 >
                   <path d="M7 0L14 8H0z" />
@@ -298,7 +298,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       {/* Info area — animated drop-down when hero selected, slide-up on deselect */}
       {renderedCharId && renderedCharacter && (
         <div className={`overflow-hidden ${panelAnimClass}`}>
-        <div className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md">
+        <div className="pt-4 pb-3 mt-0 bg-purple-900/15 rounded-b-pixel-md">
 
           {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
           {(hasActionSteps || hasAttributes) && (
@@ -401,7 +401,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             );
           })}
 
-          <div className="text-sm text-copper-400 font-medium text-center">
+          <div className="text-sm text-purple-400 font-medium text-center">
             Click on the dungeon to place your hero
           </div>
         </div>
