@@ -294,7 +294,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
       {/* Info panel — animated drop-down */}
       {renderedEnemyId && renderedEnemyData && (
         <div className={`overflow-hidden ${panelAnimClass}`}>
-          <div className="pt-4 mt-0 bg-blood-900/15 rounded-b-pixel-md">
+          <div className="pt-4 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md">
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
                 {hasActionSteps && (

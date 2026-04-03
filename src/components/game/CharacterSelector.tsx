@@ -298,7 +298,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       {/* Info area — animated drop-down when hero selected, slide-up on deselect */}
       {renderedCharId && renderedCharacter && (
         <div className={`overflow-hidden ${panelAnimClass}`}>
-        <div className="pt-4 mt-0 bg-copper-900/15 rounded-b-pixel-md">
+        <div className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md">
 
           {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
           {(hasActionSteps || hasAttributes) && (
