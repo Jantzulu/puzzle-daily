@@ -99,14 +99,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     if (selectedCharacterId !== null && prev === null) {
       // null → hero: slide down
       setRenderedCharId(selectedCharacterId);
-      setPanelAnimClass('animate-menu-slide-down');
+      setPanelAnimClass('animate-info-slide-down');
     } else if (selectedCharacterId === null && prev !== null) {
       // hero → null: slide up, then unmount
-      setPanelAnimClass('animate-menu-slide-up');
+      setPanelAnimClass('animate-info-slide-up');
       exitTimerRef.current = setTimeout(() => {
         setRenderedCharId(null);
         setPanelAnimClass('');
-      }, 200);
+      }, 300);
     } else if (selectedCharacterId !== null) {
       // hero → different hero: swap content, no animation
       setRenderedCharId(selectedCharacterId);
