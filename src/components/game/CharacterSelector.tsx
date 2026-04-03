@@ -306,7 +306,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               {hasActionSteps && (
                 <div className={`${hasAttributes ? 'flex-1 pr-2' : 'w-full'}`}>
                   <p className="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-1 text-center">Actions</p>
-                  <ol className="text-xs lg:text-sm text-stone-300 space-y-1">
+                  <ol className="text-xs lg:text-sm text-stone-300 space-y-1 pl-2">
                     {renderedCharacter.actionSteps!.map((step, idx) => (
                       <li key={idx} className="flex items-baseline gap-1">
                         <span className="font-semibold text-stone-400 flex-shrink-0">{idx + 1}.</span>
