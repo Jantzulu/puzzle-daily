@@ -20,6 +20,15 @@ export enum TileType {
 }
 
 // ==========================================
+// ACTION STEP
+// ==========================================
+
+export interface ActionStep {
+  text: string;
+  subSteps?: string[];
+}
+
+// ==========================================
 // CUSTOM TILE TYPE SYSTEM
 // ==========================================
 
@@ -229,7 +238,7 @@ export interface Character {
   attackDamage: number;
   defaultFacing: Direction;
   behavior: CharacterAction[];
-  actionSteps?: string[];   // Action steps displayed on play/playtest pages
+  actionSteps?: ActionStep[]; // Numbered action steps displayed on play/playtest pages
   attributes?: string[];    // Attribute bullets displayed alongside action steps
   canOverlapEntities?: boolean; // If true, can walk through other entities and trigger overlap events (ghost mode)
   behavesLikeWall?: boolean; // If true, triggers wall collision behaviors when alive

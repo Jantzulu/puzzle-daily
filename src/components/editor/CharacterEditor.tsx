@@ -22,6 +22,12 @@ import { AssetEditorLayout } from './AssetEditorLayout';
 import { CollapsiblePanel } from './CollapsiblePanel';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 
+function toOrdinal(n: number): string {
+  const s = ['th', 'st', 'nd', 'rd'];
+  const v = n % 100;
+  return n + (s[(v - 20) % 10] || s[v] || s[0]);
+}
+
 export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
   const isMobile = useIsMobile();
   // Helper to ensure all characters have a default customSprite
@@ -428,7 +434,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           <button
                             onClick={() => {
                               const steps = editing.actionSteps || [];
-                              updateCharacter({ actionSteps: [...steps, ''] });
+                              updateCharacter({ actionSteps: [...steps, { text: '' }] });
                             }}
                             className="px-2 py-0.5 text-xs bg-arcane-700 rounded hover:bg-arcane-600"
                           >
@@ -436,12 +442,13 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           </button>
                         </div>
                         <p className="text-xs text-stone-400 mb-2">
-                          Describes what this hero does each turn. Each step appears as a bullet point.
+                          Numbered steps describing what this hero does. Each step can have sub-bullets for multiple actions on the same turn.
                         </p>
-                        <div className="space-y-2">
+                        <div className="space-y-3">
                           {(editing.actionSteps || []).map((step, index) => (
-                            <div key={index} className="flex gap-2 items-center">
-                              <div className="flex flex-col gap-0.5">
+                            <div key={index} className="flex gap-2">
+                              {/* Reorder buttons */}
+                              <div className="flex flex-col gap-0.5 flex-shrink-0 mt-1">
                                 <button
                                   onClick={() => {
                                     if (index === 0) return;
@@ -451,9 +458,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                                   }}
                                   disabled={index === 0}
                                   className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
-                                >
-                                  ↑
-                                </button>
+                                >↑</button>
                                 <button
                                   onClick={() => {
                                     const steps = editing.actionSteps || [];
@@ -464,31 +469,76 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                                   }}
                                   disabled={index === (editing.actionSteps?.length || 0) - 1}
                                   className="px-1 py-0.5 text-xs bg-stone-600 rounded hover:bg-stone-500 disabled:opacity-30"
-                                >
-                                  ↓
-                                </button>
+                                >↓</button>
                               </div>
-                              <span className="text-stone-400 text-sm">•</span>
-                              <div className="flex-1">
-                                <RichTextEditor
-                                  value={step}
-                                  onChange={(value) => {
+
+                              {/* Step content */}
+                              <div className="flex-1 min-w-0">
+                                {/* Ordinal label + main text + delete */}
+                                <div className="flex gap-2 items-center">
+                                  <span className="text-stone-400 text-xs font-semibold flex-shrink-0">{toOrdinal(index + 1)}</span>
+                                  <div className="flex-1">
+                                    <RichTextEditor
+                                      value={step.text}
+                                      onChange={(value) => {
+                                        const newSteps = [...(editing.actionSteps || [])];
+                                        newSteps[index] = { ...newSteps[index], text: value };
+                                        updateCharacter({ actionSteps: newSteps });
+                                      }}
+                                      placeholder="Describe this turn's action..."
+                                    />
+                                  </div>
+                                  <button
+                                    onClick={() => {
+                                      const newSteps = (editing.actionSteps || []).filter((_, i) => i !== index);
+                                      updateCharacter({ actionSteps: newSteps.length > 0 ? newSteps : undefined });
+                                    }}
+                                    className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600 flex-shrink-0"
+                                  >✕</button>
+                                </div>
+
+                                {/* Sub-steps */}
+                                {(step.subSteps || []).map((sub, subIndex) => (
+                                  <div key={subIndex} className="flex gap-2 items-center mt-1 ml-4">
+                                    <span className="text-stone-500 text-xs">•</span>
+                                    <div className="flex-1">
+                                      <RichTextEditor
+                                        value={sub}
+                                        onChange={(value) => {
+                                          const newSteps = [...(editing.actionSteps || [])];
+                                          const newSubs = [...(newSteps[index].subSteps || [])];
+                                          newSubs[subIndex] = value;
+                                          newSteps[index] = { ...newSteps[index], subSteps: newSubs };
+                                          updateCharacter({ actionSteps: newSteps });
+                                        }}
+                                        placeholder="Sub-action..."
+                                      />
+                                    </div>
+                                    <button
+                                      onClick={() => {
+                                        const newSteps = [...(editing.actionSteps || [])];
+                                        const newSubs = (newSteps[index].subSteps || []).filter((_, i) => i !== subIndex);
+                                        newSteps[index] = { ...newSteps[index], subSteps: newSubs.length > 0 ? newSubs : undefined };
+                                        updateCharacter({ actionSteps: newSteps });
+                                      }}
+                                      className="px-2 py-1 text-xs bg-blood-800 rounded hover:bg-blood-700 flex-shrink-0"
+                                    >✕</button>
+                                  </div>
+                                ))}
+
+                                {/* Add sub-step button */}
+                                <button
+                                  onClick={() => {
                                     const newSteps = [...(editing.actionSteps || [])];
-                                    newSteps[index] = value;
+                                    const newSubs = [...(newSteps[index].subSteps || []), ''];
+                                    newSteps[index] = { ...newSteps[index], subSteps: newSubs };
                                     updateCharacter({ actionSteps: newSteps });
                                   }}
-                                  placeholder="Enter action step..."
-                                />
+                                  className="mt-1 ml-4 px-2 py-0.5 text-xs text-stone-400 hover:text-stone-200 bg-stone-700 rounded hover:bg-stone-600"
+                                >
+                                  + Sub-step
+                                </button>
                               </div>
-                              <button
-                                onClick={() => {
-                                  const newSteps = (editing.actionSteps || []).filter((_, i) => i !== index);
-                                  updateCharacter({ actionSteps: newSteps.length > 0 ? newSteps : undefined });
-                                }}
-                                className="px-2 py-1 text-sm bg-blood-700 rounded hover:bg-blood-600"
-                              >
-                                ✕
-                              </button>
                             </div>
                           ))}
                           {(!editing.actionSteps || editing.actionSteps.length === 0) && (

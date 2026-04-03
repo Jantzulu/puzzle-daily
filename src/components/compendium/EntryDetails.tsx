@@ -66,11 +66,21 @@ export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ char
       {character.actionSteps && character.actionSteps.length > 0 && (
         <div className="compendium-detail-section">
           <h3>Behavior</h3>
-          <ul className="list-disc list-inside space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
+          <ol className="space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
             {character.actionSteps.map((step, idx) => (
-              <li key={idx}><RichTextRenderer html={step} /></li>
+              <li key={idx}>
+                <span style={{ color: 'var(--text-secondary)', fontWeight: 600 }}>{idx + 1}.</span>{' '}
+                <RichTextRenderer html={step.text} />
+                {step.subSteps && step.subSteps.length > 0 && (
+                  <ul className="list-disc list-inside ml-4 mt-0.5 space-y-0.5">
+                    {step.subSteps.map((sub, subIdx) => (
+                      <li key={subIdx}><RichTextRenderer html={sub} /></li>
+                    ))}
+                  </ul>
+                )}
+              </li>
             ))}
-          </ul>
+          </ol>
         </div>
       )}
     </div>
