@@ -43,24 +43,36 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     }
   };
 
-  // Info panel animation state — grid 0fr→1fr so easing applies to real content height
+  // Info panel animation state — grid 0fr→1fr so easing applies to real content height.
+  // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);
   const [renderedEnemyId, setRenderedEnemyId] = useState<string | null>(null);
   const [isOpen, setIsOpen] = useState(false);
   const prevEnemyIdRef = useRef<string | null>(null);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const prev = prevEnemyIdRef.current;
     prevEnemyIdRef.current = selectedEnemyId;
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    if (openRafRef.current) cancelAnimationFrame(openRafRef.current);
 
-    if (selectedEnemyId !== null) {
+    if (selectedEnemyId !== null && prev === null) {
+      // null → enemy: mount closed, then animate open
+      setRenderedEnemyId(selectedEnemyId);
+      setIsOpen(false);
+      openRafRef.current = requestAnimationFrame(() => {
+        openRafRef.current = requestAnimationFrame(() => setIsOpen(true));
+      });
+    } else if (selectedEnemyId !== null) {
+      // enemy → different enemy: swap content instantly, stay open
       setRenderedEnemyId(selectedEnemyId);
       setIsOpen(true);
     } else if (prev !== null) {
+      // enemy → null: animate closed, then unmount
       setIsOpen(false);
-      exitTimerRef.current = setTimeout(() => setRenderedEnemyId(null), 500);
+      exitTimerRef.current = setTimeout(() => setRenderedEnemyId(null), 550);
     }
   }, [selectedEnemyId]);
 
@@ -290,13 +302,21 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
-          opacity: isOpen ? 1 : 0,
           transition: isOpen
-            ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            : 'grid-template-rows 0.4s ease-in, opacity 0.3s ease-in',
+            ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            : 'grid-template-rows 0.45s ease-in',
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
-          <div className="pt-4 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md">
+          <div
+            className="pt-4 pb-3 mt-0 bg-blood-900/15 rounded-b-pixel-md"
+            style={{
+              opacity: isOpen ? 1 : 0,
+              transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
+              transition: isOpen
+                ? 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                : 'opacity 0.2s ease-in, transform 0.3s ease-in',
+            }}
+          >
             {(hasActionSteps || hasAttributes) && (
               <div className={`flex mb-2 px-2 ${hasActionSteps && hasAttributes ? 'gap-0' : 'justify-center'}`}>
                 {hasActionSteps && (

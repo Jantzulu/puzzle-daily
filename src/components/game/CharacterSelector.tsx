@@ -85,25 +85,35 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     }
   };
 
-  // Info panel animation: grid 0fr→1fr so easing applies to real content height
+  // Info panel animation: grid 0fr→1fr so easing applies to real content height.
+  // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [renderedCharId, setRenderedCharId] = useState<string | null>(selectedCharacterId);
-  const [isOpen, setIsOpen] = useState(selectedCharacterId !== null);
+  const [isOpen, setIsOpen] = useState(false);
   const prevCharIdRef = useRef<string | null>(selectedCharacterId);
   const exitTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const openRafRef = useRef<number | null>(null);
 
   useEffect(() => {
     const prev = prevCharIdRef.current;
     prevCharIdRef.current = selectedCharacterId;
     if (exitTimerRef.current) clearTimeout(exitTimerRef.current);
+    if (openRafRef.current) cancelAnimationFrame(openRafRef.current);
 
-    if (selectedCharacterId !== null) {
-      // null→hero or hero→hero: update content, open panel
+    if (selectedCharacterId !== null && prev === null) {
+      // null → hero: mount closed, then animate open
+      setRenderedCharId(selectedCharacterId);
+      setIsOpen(false);
+      openRafRef.current = requestAnimationFrame(() => {
+        openRafRef.current = requestAnimationFrame(() => setIsOpen(true));
+      });
+    } else if (selectedCharacterId !== null) {
+      // hero → different hero: swap content instantly, stay open
       setRenderedCharId(selectedCharacterId);
       setIsOpen(true);
     } else if (prev !== null) {
-      // hero→null: close panel, then unmount after transition
+      // hero → null: animate closed, then unmount
       setIsOpen(false);
-      exitTimerRef.current = setTimeout(() => setRenderedCharId(null), 500);
+      exitTimerRef.current = setTimeout(() => setRenderedCharId(null), 550);
     }
   }, [selectedCharacterId]);
 
@@ -293,13 +303,21 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
-          opacity: isOpen ? 1 : 0,
           transition: isOpen
-            ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1)'
-            : 'grid-template-rows 0.4s ease-in, opacity 0.3s ease-in',
+            ? 'grid-template-rows 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            : 'grid-template-rows 0.45s ease-in',
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
-        <div className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md">
+        <div
+          className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
+          style={{
+            opacity: isOpen ? 1 : 0,
+            transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
+            transition: isOpen
+              ? 'opacity 0.45s cubic-bezier(0.34, 1.56, 0.64, 1), transform 0.55s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              : 'opacity 0.2s ease-in, transform 0.3s ease-in',
+          }}
+        >
 
           {/* Action Steps + Attributes: split 50/50 if both present, full-width centered if only one */}
           {(hasActionSteps || hasAttributes) && (
