@@ -1249,10 +1249,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
               } else {
                 // Phase 2: Appear at destination with normal sprite
-                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
               }
             } else {
               // Normal movement animation (or ice slide)
@@ -1266,13 +1266,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
+                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
               } else {
-                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
               }
             }
           } else {
-            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow);
+            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
           }
         } else {
           const character = entity as PlacedCharacter;
@@ -1308,10 +1308,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
-                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow);
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
               } else {
                 // Phase 2: Appear at destination with normal sprite
-                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow);
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
               }
             } else {
               // Normal movement animation (or ice slide)
@@ -1325,9 +1325,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow);
+                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
               } else {
-                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow);
+                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
               }
             }
           } else {
@@ -1344,7 +1344,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 dropOffsetY = -DROP_PLACE_OFFSET * (1 - eased);
               }
             }
-            drawCharacter(ctx, character, character.x, character.y + dropOffsetY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow);
+            drawCharacter(ctx, character, character.x, character.y + dropOffsetY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
           }
         }
       });
@@ -2431,7 +2431,8 @@ function drawEnemy(
   deathAnimState?: DeathAnimationState,
   now: number = Date.now(),
   spawnAnimState?: SpawnAnimationState,
-  homingGlowColor?: string
+  homingGlowColor?: string,
+  entityIndex?: number
 ) {
   const x = renderX !== undefined ? renderX : enemy.x;
   const y = renderY !== undefined ? renderY : enemy.y;
@@ -2527,7 +2528,7 @@ function drawEnemy(
   ctx.globalAlpha = originalAlpha;
 
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
-  const enemyKey = `e_${enemy.x}_${enemy.y}`;
+  const enemyKey = entityIndex !== undefined ? `e_${entityIndex}` : `e_${enemy.x}_${enemy.y}`;
   if (!enemy.dead) {
     drawStatusEffectOverlays(ctx, px, py, enemy.statusEffects, now);
     trackStatusIconAnimations(enemyKey, enemy.statusEffects, now, gameStarted);
@@ -2574,10 +2575,16 @@ const healthBarState = new Map<string, {
   displayHealth: number; // For smooth color transitions
 }>();
 
-// Status effect icon animation state — tracks apply pop per entity+effect
-const prevEntityStatusIds = new Map<string, Set<string>>();
-const statusIconAnims = new Map<string, number>(); // entityKey_assetId → startTime
+// Status effect icon animation state — tracks apply pop and remove fade per entity+effect
+interface StatusIconAnim {
+  startTime: number;
+  type: 'apply' | 'remove';
+  effect?: StatusEffectInstance; // stored for 'remove' ghost rendering
+}
+const prevEntityStatusEffects = new Map<string, StatusEffectInstance[]>();
+const statusIconAnims = new Map<string, StatusIconAnim>(); // entityKey_assetId → anim state
 const STATUS_ICON_ANIM_DURATION = 380;
+const STATUS_ICON_REMOVE_DURATION = 200;
 
 function trackStatusIconAnimations(
   entityKey: string,
@@ -2585,24 +2592,58 @@ function trackStatusIconAnimations(
   now: number,
   gameStarted: boolean
 ) {
-  const currentIds = new Set((currentEffects ?? []).map(e => e.statusAssetId));
-  const prevIds = prevEntityStatusIds.get(entityKey);
-  if (gameStarted && prevIds !== undefined) {
+  const current = currentEffects ?? [];
+  const currentIds = new Set(current.map(e => e.statusAssetId));
+  const prevEffects = prevEntityStatusEffects.get(entityKey);
+  if (gameStarted && prevEffects !== undefined) {
+    const prevIds = new Set(prevEffects.map(e => e.statusAssetId));
     for (const id of currentIds) {
       if (!prevIds.has(id)) {
-        statusIconAnims.set(`${entityKey}_${id}`, now);
+        statusIconAnims.set(`${entityKey}_${id}`, { startTime: now, type: 'apply' });
+      }
+    }
+    for (const prevEffect of prevEffects) {
+      if (!currentIds.has(prevEffect.statusAssetId)) {
+        statusIconAnims.set(`${entityKey}_${prevEffect.statusAssetId}`, {
+          startTime: now,
+          type: 'remove',
+          effect: prevEffect,
+        });
       }
     }
   }
-  prevEntityStatusIds.set(entityKey, currentIds);
+  prevEntityStatusEffects.set(entityKey, [...current]);
 }
 
 function getStatusIconScale(entityKey: string, statusAssetId: string, now: number): number {
-  const startTime = statusIconAnims.get(`${entityKey}_${statusAssetId}`);
-  if (startTime === undefined) return 1;
-  const t = Math.min((now - startTime) / STATUS_ICON_ANIM_DURATION, 1);
-  if (t >= 1) { statusIconAnims.delete(`${entityKey}_${statusAssetId}`); return 1; }
-  return 1 + 0.65 * Math.sin(Math.PI * t);
+  const anim = statusIconAnims.get(`${entityKey}_${statusAssetId}`);
+  if (anim === undefined) return 1;
+  if (anim.type === 'apply') {
+    const t = Math.min((now - anim.startTime) / STATUS_ICON_ANIM_DURATION, 1);
+    if (t >= 1) { statusIconAnims.delete(`${entityKey}_${statusAssetId}`); return 1; }
+    return 1 + 0.3 * Math.sin(Math.PI * t);
+  } else {
+    const t = Math.min((now - anim.startTime) / STATUS_ICON_REMOVE_DURATION, 1);
+    if (t >= 1) { statusIconAnims.delete(`${entityKey}_${statusAssetId}`); return 0; }
+    return 1 - t;
+  }
+}
+
+function getGhostStatusEffects(
+  entityKey: string,
+  now: number,
+  currentEffects: StatusEffectInstance[]
+): StatusEffectInstance[] {
+  const currentIds = new Set(currentEffects.map(e => e.statusAssetId));
+  const ghosts: StatusEffectInstance[] = [];
+  for (const [key, anim] of statusIconAnims) {
+    if (anim.type === 'remove' && key.startsWith(`${entityKey}_`) && anim.effect) {
+      if (!currentIds.has(anim.effect.statusAssetId)) {
+        ghosts.push(anim.effect);
+      }
+    }
+  }
+  return ghosts;
 }
 
 // Helper to get unique key for entity health tracking
@@ -2903,16 +2944,25 @@ function drawStatusEffectIcons(
   entityKey?: string,
   now?: number
 ) {
-  if (!statusEffects || statusEffects.length === 0) return;
+  if (!statusEffects || statusEffects.length === 0) {
+    // Still need to render ghost effects even if no current effects
+    if (!entityKey || now === undefined) return;
+    const ghosts = getGhostStatusEffects(entityKey, now, []);
+    if (ghosts.length === 0) return;
+    statusEffects = ghosts;
+  }
 
   const filtered = isCorpse
     ? statusEffects.filter(e => DEAD_VARIANT_TYPES.has(e.type as StatusEffectType))
     : statusEffects;
 
-  if (filtered.length === 0) return;
+  // Combine with ghost effects (animating-out removed effects)
+  const ghosts = (entityKey && now !== undefined && !isCorpse)
+    ? getGhostStatusEffects(entityKey, now, filtered)
+    : [];
+  const combined = [...filtered, ...ghosts];
 
-  // Reassign for rest of function
-  statusEffects = filtered;
+  if (combined.length === 0) return;
 
   const iconSize = 8;
   const iconSpacing = 1;
@@ -2923,8 +2973,8 @@ function drawStatusEffectIcons(
   const startX = px + (TILE_SIZE - 32) / 2; // Same as health bar start
   const startY = py - 6; // Position above the health bar
 
-  const visibleEffects = statusEffects.slice(0, maxIconsVisible);
-  const hasOverflow = statusEffects.length > maxIconsVisible;
+  const visibleEffects = combined.slice(0, maxIconsVisible);
+  const hasOverflow = combined.length > maxIconsVisible;
 
   visibleEffects.forEach((effect, index) => {
     const iconX = startX + index * (iconSize + iconSpacing);
@@ -3148,7 +3198,8 @@ function drawCharacter(
   deathAnimState?: DeathAnimationState,
   now: number = Date.now(),
   spawnAnimState?: SpawnAnimationState,
-  homingGlowColor?: string
+  homingGlowColor?: string,
+  entityIndex?: number
 ) {
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
@@ -3263,7 +3314,7 @@ function drawCharacter(
   ctx.globalAlpha = originalAlpha;
 
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
-  const charKey = `c_${character.x}_${character.y}`;
+  const charKey = entityIndex !== undefined ? `c_${entityIndex}` : `c_${character.x}_${character.y}`;
   if (!character.dead) {
     drawStatusEffectOverlays(ctx, px, py, character.statusEffects, now);
     trackStatusIconAnimations(charKey, character.statusEffects, now, gameStarted);
