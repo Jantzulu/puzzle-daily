@@ -2914,18 +2914,32 @@ function drawStatusEffectIcons(
         if (isImageReady(img)) {
           const drawSize = iconSize * (spriteData.size || 0.8);
           ctx.save();
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+          ctx.shadowBlur = 4;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 1;
           ctx.drawImage(img, Math.round(centerX - drawSize / 2), Math.round(centerY - drawSize / 2), Math.round(drawSize), Math.round(drawSize));
           ctx.restore();
         }
       } else {
         ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+        ctx.shadowBlur = 4;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 1;
         drawSprite(ctx, spriteData, centerX, centerY, iconSize);
         ctx.restore();
       }
     } else {
       // Fallback: draw a colored shape based on effect type
+      ctx.save();
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
+      ctx.shadowBlur = 4;
+      ctx.shadowOffsetX = 0;
+      ctx.shadowOffsetY = 1;
       ctx.fillStyle = getDefaultEffectColor(effect.type);
       drawEffectShape(ctx, iconX, iconY, iconSize, 'circle');
+      ctx.restore();
     }
   });
 }
