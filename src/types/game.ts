@@ -713,6 +713,7 @@ export enum StatusEffectType {
   HALT_BOTH = 'halt_both',           // Stops movement without triggering wall reactions alive and dead
   PRIORITY = 'priority',             // Acts before non-priority entities in melee ordering
   STURDY = 'sturdy',                 // Immune to push effects
+  CHARM = 'charm',                   // Inverts team allegiance for duration; entity auto-executes its normal behavior against its own original team
 }
 
 /**

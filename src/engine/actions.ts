@@ -1067,7 +1067,9 @@ function moveCharacter(
     // Check for collectibles
     // Detect if this is actually an enemy (enemies use characterId = enemyId when wrapped as PlacedCharacter)
     const isEnemy = !getCharacter(updatedChar.characterId) && !!getEnemy(updatedChar.characterId);
-    processCollectiblePickup(updatedChar, isEnemy, newX, newY, gameState);
+    // Charmed entities use their effective team for pickup permissions
+    const effectiveIsEnemy = isEntityCharmed(updatedChar) ? !isEnemy : isEnemy;
+    processCollectiblePickup(updatedChar, effectiveIsEnemy, newX, newY, gameState);
 
     // Process custom tile behaviors (damage, teleport, ice, etc.)
     const currentTile = gameState.puzzle.tiles[updatedChar.y]?.[updatedChar.x];
@@ -1766,12 +1768,14 @@ function spawnProjectile(
     targetY = character.y + dy * range;
   }
 
-  // Determine if source is an enemy or character
+  // Determine if source is structurally an enemy or character
   const isEnemy = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
   // Store enemy array index for reflect targeting (duplicate enemies share the same ID)
   const sourceEnemyIndex = isEnemy
     ? gameState.puzzle.enemies.findIndex(e => e.enemyId === character.characterId && e.x === character.x && e.y === character.y)
     : undefined;
+  // Charmed entities fire with teamSwapped so getEffectiveTeams() hits their structural team
+  const casterIsCharmed = isEntityCharmed(character);
 
   // Pre-compute tile path for deterministic collision detection
   // For non-homing projectiles, this path is fixed at creation time
@@ -1817,6 +1821,7 @@ function spawnProjectile(
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
     sourceEnemyIndex: sourceEnemyIndex !== undefined && sourceEnemyIndex >= 0 ? sourceEnemyIndex : undefined,
+    teamSwapped: casterIsCharmed || undefined,  // Charm: flip hit resolution via getEffectiveTeams()
     spellAssetId: spell?.id,
     // Bounce settings from spell
     bounceOffWalls: spell?.bounceOffWalls,
@@ -1882,7 +1887,9 @@ function executeMeleeAttack(
   const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
 
   // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
-  const isEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+  // Charm inverts which team is targeted for melee attacks
+  const structurallyEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+  const isEnemyCaster = isEntityCharmed(character) ? !structurallyEnemyCaster : structurallyEnemyCaster;
 
   // Handle range 0 as self-target
   if (meleeRange === 0) {
@@ -2010,7 +2017,8 @@ function executeConeAttack(
 ): void {
   const damage = attackData.damage ?? 1;
   const skipCasterTile = spell?.skipSpriteOnCasterTile || false;
-  const isEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+  const structurallyEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+  const isEnemyCaster = isEntityCharmed(character) ? !structurallyEnemyCaster : structurallyEnemyCaster;
 
   // Get attack sprite (same logic as executeMeleeAttack)
   let attackSprite = spell?.sprites.meleeAttack;
@@ -2128,7 +2136,9 @@ export function executeAOEAttack(
   const isHeal = healing > 0;
 
   // Check if the caster is an enemy (attacking characters) or a character (attacking enemies)
-  const isEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+  // Charm inverts which team is targeted/healed
+  const structurallyEnemyCaster = gameState.puzzle.enemies.some(e => e.enemyId === character.characterId);
+  const isEnemyCaster = isEntityCharmed(character) ? !structurallyEnemyCaster : structurallyEnemyCaster;
 
   // Determine center point
   let centerX = character.x;
@@ -2990,6 +3000,14 @@ function isEntityStealthed(entity: PlacedCharacter | PlacedEnemy): boolean {
 }
 
 /**
+ * Check if an entity has an active charm effect (team allegiance inverted)
+ */
+function isEntityCharmed(entity: PlacedCharacter | PlacedEnemy): boolean {
+  if (!entity.statusEffects) return false;
+  return entity.statusEffects.some(e => e.type === StatusEffectType.CHARM);
+}
+
+/**
  * Find the nearest living enemies to an entity, up to maxTargets
  * Returns array of {enemy, direction} sorted by distance (closest first)
  * Excludes the entity itself if it's an enemy (when an enemy targets other enemies)
@@ -3002,18 +3020,30 @@ function findNearestEnemies(
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
 ): Array<{ enemy: any; direction: Direction; distance: number }> {
-  // Check if the caster is an enemy (enemies can see other stealthed enemies)
+  // Determine structural team and whether charm inverts it
   const casterIsEnemy = 'enemyId' in character;
+  const casterIsCharmed = isEntityCharmed(character);
+  // Charmed entities target their own structural team; uncharmed target the opposite
+  const targetEnemiesArray = casterIsCharmed ? !casterIsEnemy : casterIsEnemy;
 
-  // Exclude the entity itself if it's an enemy (important when an enemy targets other enemies)
-  // Also exclude stealthed enemies if caster is a character (hero)
-  const livingEnemies = gameState.puzzle.enemies.filter(e => {
-    if (e.dead) return false;
-    if (e.enemyId === character.characterId) return false;
-    // Characters cannot auto-target stealthed enemies, but enemies can target stealthed enemies
-    if (!casterIsEnemy && isEntityStealthed(e)) return false;
-    return true;
-  });
+  // Build candidate list from the correct array
+  // Stealth guard uses structural casterIsEnemy: charmed chars still lack enemy-detection abilities
+  let livingTargets: Array<PlacedCharacter | PlacedEnemy>;
+  if (targetEnemiesArray) {
+    livingTargets = gameState.puzzle.enemies.filter(e => {
+      if (e.dead) return false;
+      if (e.enemyId === character.characterId) return false;
+      if (!casterIsEnemy && isEntityStealthed(e)) return false;
+      return true;
+    });
+  } else {
+    livingTargets = gameState.placedCharacters.filter(c => {
+      if (c.dead) return false;
+      if (c.characterId === character.characterId) return false;
+      if (casterIsEnemy && isEntityStealthed(c)) return false;
+      return true;
+    });
+  }
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
@@ -3021,8 +3051,8 @@ function findNearestEnemies(
   // Diagonal directions: NE, SE, SW, NW
   const diagonalDirections: Direction[] = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST];
 
-  // Calculate distance and direction to each enemy
-  const enemiesWithDistance = livingEnemies.map(enemy => ({
+  // Calculate distance and direction to each target (property named 'enemy' for caller compatibility)
+  const enemiesWithDistance = livingTargets.map(enemy => ({
     enemy,
     distance: calculateDistance(character.x, character.y, enemy.x, enemy.y),
     direction: calculateDirectionTo(character.x, character.y, enemy.x, enemy.y),
@@ -3061,19 +3091,28 @@ function findNearestCharacters(
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
 ): Array<{ character: PlacedCharacter; direction: Direction; distance: number }> {
-  // Check if the caster is an enemy (characters can see other stealthed characters)
+  // Determine structural team and whether charm inverts it
   const casterIsEnemy = 'enemyId' in entity;
+  const casterIsCharmed = isEntityCharmed(entity);
+  // Charmed entities heal/buff their structural opposite team; uncharmed target their own team
+  const alliesAreEnemies = casterIsCharmed ? !casterIsEnemy : casterIsEnemy;
 
-  // Exclude the casting entity itself (important when a character targets other characters)
-  // Must compare by characterId, not object reference, because entity may be a shallow copy
-  // Also exclude stealthed characters if caster is an enemy
-  const livingCharacters = gameState.placedCharacters.filter(c => {
-    if (c.dead) return false;
-    if (c.characterId === entity.characterId) return false;
-    // Enemies cannot auto-target stealthed characters, but characters can target stealthed characters
-    if (casterIsEnemy && isEntityStealthed(c)) return false;
-    return true;
-  });
+  // Build candidate list from the correct array
+  let livingTargets: Array<PlacedCharacter | PlacedEnemy>;
+  if (alliesAreEnemies) {
+    livingTargets = gameState.puzzle.enemies.filter(e => {
+      if (e.dead) return false;
+      if (e.enemyId === entity.characterId) return false;
+      return true;
+    });
+  } else {
+    livingTargets = gameState.placedCharacters.filter(c => {
+      if (c.dead) return false;
+      if (c.characterId === entity.characterId) return false;
+      if (casterIsEnemy && isEntityStealthed(c)) return false;
+      return true;
+    });
+  }
 
   // Cardinal directions: N, S, E, W
   const cardinalDirections: Direction[] = [Direction.NORTH, Direction.SOUTH, Direction.EAST, Direction.WEST];
@@ -3081,9 +3120,9 @@ function findNearestCharacters(
   // Diagonal directions: NE, SE, SW, NW
   const diagonalDirections: Direction[] = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST];
 
-  // Calculate distance and direction to each character
-  const charactersWithDistance = livingCharacters.map(char => ({
-    character: char,
+  // Calculate distance and direction to each target (property named 'character' for caller compatibility)
+  const charactersWithDistance = livingTargets.map(char => ({
+    character: char as PlacedCharacter,
     distance: calculateDistance(entity.x, entity.y, char.x, char.y),
     direction: calculateDirectionTo(entity.x, entity.y, char.x, char.y),
   }));
@@ -3120,18 +3159,21 @@ function findNearestDeadAllies(
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
 ): Array<{ entity: PlacedCharacter | PlacedEnemy; direction: Direction; distance: number; isEnemy: boolean }> {
-  // Check if the caster is an enemy
+  // Determine structural team and whether charm inverts it
   const casterIsEnemy = 'enemyId' in caster;
+  const casterIsCharmed = isEntityCharmed(caster);
+  // Charmed casters resurrect from their structural opposite team (now their "allies")
+  const alliesAreEnemies = casterIsCharmed ? !casterIsEnemy : casterIsEnemy;
 
-  // Get dead allies (same team as caster)
+  // Get dead allies (effective team as caster)
   let deadAllies: Array<{ entity: PlacedCharacter | PlacedEnemy; isEnemy: boolean }> = [];
 
-  if (casterIsEnemy) {
-    // Enemy caster targets dead enemies
+  if (alliesAreEnemies) {
+    // Caster targets dead enemies (either naturally enemy, or charmed character)
     const deadEnemies = gameState.puzzle.enemies.filter(e => e.dead && e.enemyId !== caster.characterId);
     deadAllies = deadEnemies.map(e => ({ entity: e as any, isEnemy: true }));
   } else {
-    // Character caster targets dead characters
+    // Caster targets dead characters (either naturally character, or charmed enemy)
     const deadChars = gameState.placedCharacters.filter(c => c.dead && c.characterId !== caster.characterId);
     deadAllies = deadChars.map(c => ({ entity: c, isEnemy: false }));
   }

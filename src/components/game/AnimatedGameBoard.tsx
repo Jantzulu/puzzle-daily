@@ -2527,6 +2527,17 @@ function drawEnemy(
   // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
   ctx.globalAlpha = originalAlpha;
 
+  // Charm tint: pink overlay + heart icon above charmed enemies
+  if (!enemy.dead && isEntityCharmedForRender(enemy)) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#e879f9'; // fuchsia-400
+    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+    ctx.restore();
+    drawCharmHeartIcon(ctx, px, py);
+  }
+
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
   const enemyKey = entityIndex !== undefined ? `e_${entityIndex}` : `e_${enemy.x}_${enemy.y}`;
   if (!enemy.dead) {
@@ -3043,6 +3054,24 @@ function drawStatusEffectIcons(
   });
 }
 
+// Inline charm check for rendering (avoids importing from actions.ts)
+function isEntityCharmedForRender(entity: { statusEffects?: StatusEffectInstance[] }): boolean {
+  return entity.statusEffects?.some(e => e.type === StatusEffectType.CHARM) ?? false;
+}
+
+// Draw a small pink heart above a charmed entity's tile
+function drawCharmHeartIcon(ctx: CanvasRenderingContext2D, px: number, py: number) {
+  ctx.save();
+  ctx.fillStyle = '#f472b6'; // pink-400
+  ctx.font = 'bold 10px sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.shadowColor = 'rgba(0,0,0,0.8)';
+  ctx.shadowBlur = 3;
+  ctx.fillText('♥', px + TILE_SIZE / 2, py - 10);
+  ctx.restore();
+}
+
 // Get default color for status effect type
 function getDefaultEffectColor(type: StatusEffectType): string {
   switch (type) {
@@ -3072,6 +3101,8 @@ function getDefaultEffectColor(type: StatusEffectType): string {
       return '#22d3ee'; // cyan
     case StatusEffectType.HASTE:
       return '#fbbf24'; // amber
+    case StatusEffectType.CHARM:
+      return '#e879f9'; // fuchsia
     default:
       return '#ffffff'; // white
   }
@@ -3312,6 +3343,17 @@ function drawCharacter(
 
   // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
   ctx.globalAlpha = originalAlpha;
+
+  // Charm tint: pink overlay + heart icon above charmed characters
+  if (!character.dead && isEntityCharmedForRender(character)) {
+    ctx.save();
+    ctx.globalCompositeOperation = 'source-atop';
+    ctx.globalAlpha = 0.35;
+    ctx.fillStyle = '#e879f9'; // fuchsia-400
+    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+    ctx.restore();
+    drawCharmHeartIcon(ctx, px, py);
+  }
 
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
   const charKey = entityIndex !== undefined ? `c_${entityIndex}` : `c_${character.x}_${character.y}`;
