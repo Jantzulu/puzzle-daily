@@ -371,50 +371,73 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
 
           {/* Health Bar Color - only for Shield type */}
           {type === StatusEffectType.SHIELD && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Health Bar Color</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="color"
-                  value={healthBarColor}
-                  onChange={(e) => setHealthBarColor(e.target.value)}
-                  className="w-12 h-8 rounded cursor-pointer border border-stone-600"
-                />
-                <div
-                  className="flex-1 h-4 rounded"
-                  style={{ backgroundColor: healthBarColor }}
-                />
-                <span className="text-xs text-stone-400 font-mono">{healthBarColor}</span>
-              </div>
-              <p className="text-xs text-stone-400 mt-1">
-                Color applied to health bar when shielded (fill and border)
+            <div className="space-y-3 p-3 rounded-lg bg-cyan-900/20 border border-cyan-800">
+              <h4 className="text-sm font-medium text-cyan-300">Shield Visuals</h4>
+              <p className="text-xs text-stone-400">
+                While shielded, the entity's health bar changes to this colour to indicate active protection.
               </p>
+              <div>
+                <label className="block text-xs font-medium mb-1">Health Bar Colour</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="color"
+                    value={healthBarColor}
+                    onChange={(e) => setHealthBarColor(e.target.value)}
+                    className="w-10 h-7 rounded cursor-pointer border border-stone-600"
+                  />
+                  <div
+                    className="flex-1 h-4 rounded"
+                    style={{ backgroundColor: healthBarColor }}
+                  />
+                  <span className="text-xs text-stone-400 font-mono">{healthBarColor}</span>
+                  <button
+                    onClick={() => setHealthBarColor('#22d3ee')}
+                    className="text-xs text-stone-500 hover:text-stone-300 underline"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <p className="text-xs text-stone-500 mt-1">Applied to the health bar fill and border while the shield is active.</p>
+              </div>
             </div>
           )}
 
           {/* Stealth Opacity - only for Stealth type */}
           {type === StatusEffectType.STEALTH && (
-            <div>
-              <label className="block text-sm font-medium mb-1">Stealth Opacity</label>
-              <div className="flex items-center gap-3">
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.1"
-                  value={stealthOpacity}
-                  onChange={(e) => setStealthOpacity(parseFloat(e.target.value))}
-                  className="flex-1"
-                />
-                <span className="text-xs text-stone-400 font-mono w-12 text-right">
-                  {Math.round(stealthOpacity * 100)}%
-                </span>
-              </div>
-              <div
-                className="mt-2 h-8 rounded border border-stone-600 flex items-center justify-center"
-                style={{ backgroundColor: `rgba(74, 85, 104, ${stealthOpacity})` }}
-              >
-                <span className="text-xs text-stone-300">Preview</span>
+            <div className="space-y-3 p-3 rounded-lg bg-stone-700/40 border border-stone-600">
+              <h4 className="text-sm font-medium text-stone-300">Stealth Visuals</h4>
+              <p className="text-xs text-stone-400">
+                Stealthed entities are rendered at reduced opacity and cannot be auto-targeted by opposing entities.
+              </p>
+              <div>
+                <label className="block text-xs font-medium mb-1">Stealth Opacity</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="range"
+                    min="0"
+                    max="1"
+                    step="0.1"
+                    value={stealthOpacity}
+                    onChange={(e) => setStealthOpacity(parseFloat(e.target.value))}
+                    className="flex-1"
+                  />
+                  <span className="text-xs text-stone-400 font-mono w-12 text-right">
+                    {Math.round(stealthOpacity * 100)}%
+                  </span>
+                  <button
+                    onClick={() => setStealthOpacity(0.5)}
+                    className="text-xs text-stone-500 hover:text-stone-300 underline"
+                  >
+                    Reset
+                  </button>
+                </div>
+                <div
+                  className="mt-2 h-8 rounded border border-stone-600 flex items-center justify-center text-xs text-stone-300 overflow-hidden relative"
+                  style={{ backgroundColor: '#374151' }}
+                >
+                  <div className="absolute inset-0" style={{ opacity: stealthOpacity, backgroundColor: '#4a5568' }} />
+                  <span className="relative">Entity sprite</span>
+                </div>
               </div>
             </div>
           )}
