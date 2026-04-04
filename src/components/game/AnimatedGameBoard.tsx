@@ -2914,8 +2914,8 @@ function drawStatusEffectIcons(
         if (isImageReady(img)) {
           const drawSize = iconSize * (spriteData.size || 0.8);
           ctx.save();
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-          ctx.shadowBlur = 4;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+          ctx.shadowBlur = 6;
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 1;
           ctx.drawImage(img, Math.round(centerX - drawSize / 2), Math.round(centerY - drawSize / 2), Math.round(drawSize), Math.round(drawSize));
