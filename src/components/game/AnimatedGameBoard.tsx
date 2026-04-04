@@ -2527,15 +2527,25 @@ function drawEnemy(
   // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
   ctx.globalAlpha = originalAlpha;
 
-  // Charm tint: pink overlay + heart icon above charmed enemies
-  if (!enemy.dead && isEntityCharmedForRender(enemy)) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = '#e879f9'; // fuchsia-400
-    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-    ctx.restore();
-    drawCharmHeartIcon(ctx, px, py);
+  // Charm tint: configurable colour overlay + optional heart icon
+  if (!enemy.dead) {
+    const charmEffect = enemy.statusEffects?.find(e => e.type === StatusEffectType.CHARM);
+    if (charmEffect) {
+      const charmAsset = loadStatusEffectAsset(charmEffect.statusAssetId);
+      const tintEnabled = charmAsset?.charmTintEnabled !== false;
+      const tintColor = charmAsset?.charmTintColor ?? '#e879f9';
+      const tintOpacity = charmAsset?.charmTintOpacity ?? 0.35;
+      const showHeart = charmAsset?.charmShowHeart !== false;
+      if (tintEnabled) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.globalAlpha = tintOpacity;
+        ctx.fillStyle = tintColor;
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.restore();
+      }
+      if (showHeart) drawCharmHeartIcon(ctx, px, py);
+    }
   }
 
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
@@ -3054,11 +3064,6 @@ function drawStatusEffectIcons(
   });
 }
 
-// Inline charm check for rendering (avoids importing from actions.ts)
-function isEntityCharmedForRender(entity: { statusEffects?: StatusEffectInstance[] }): boolean {
-  return entity.statusEffects?.some(e => e.type === StatusEffectType.CHARM) ?? false;
-}
-
 // Draw a small pink heart above a charmed entity's tile
 function drawCharmHeartIcon(ctx: CanvasRenderingContext2D, px: number, py: number) {
   ctx.save();
@@ -3344,15 +3349,25 @@ function drawCharacter(
   // Reset globalAlpha after drawing sprite (before health bar, which should always be visible)
   ctx.globalAlpha = originalAlpha;
 
-  // Charm tint: pink overlay + heart icon above charmed characters
-  if (!character.dead && isEntityCharmedForRender(character)) {
-    ctx.save();
-    ctx.globalCompositeOperation = 'source-atop';
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = '#e879f9'; // fuchsia-400
-    ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-    ctx.restore();
-    drawCharmHeartIcon(ctx, px, py);
+  // Charm tint: configurable colour overlay + optional heart icon
+  if (!character.dead) {
+    const charmEffect = character.statusEffects?.find(e => e.type === StatusEffectType.CHARM);
+    if (charmEffect) {
+      const charmAsset = loadStatusEffectAsset(charmEffect.statusAssetId);
+      const tintEnabled = charmAsset?.charmTintEnabled !== false;
+      const tintColor = charmAsset?.charmTintColor ?? '#e879f9';
+      const tintOpacity = charmAsset?.charmTintOpacity ?? 0.35;
+      const showHeart = charmAsset?.charmShowHeart !== false;
+      if (tintEnabled) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-atop';
+        ctx.globalAlpha = tintOpacity;
+        ctx.fillStyle = tintColor;
+        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.restore();
+      }
+      if (showHeart) drawCharmHeartIcon(ctx, px, py);
+    }
   }
 
   // Draw status effect overlays (e.g., shield bubble) on top of the entity

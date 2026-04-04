@@ -43,6 +43,7 @@ const TYPE_DESCRIPTIONS: Record<StatusEffectType, string> = {
   [StatusEffectType.HALT_BOTH]: 'Stops movement of entities that attempt to enter the same tile both while alive and as a corpse.',
   [StatusEffectType.PRIORITY]: 'Acts before non-priority entities in melee ordering each turn.',
   [StatusEffectType.STURDY]: 'Cannot be pushed by push effects from spells or tiles.',
+  [StatusEffectType.CHARM]: 'Temporarily inverts the entity\'s team allegiance for the duration. The entity auto-executes its normal behavior pattern but attacks its own original allies. Visually indicated by a configurable colour tint and ♥ heart icon above the entity.',
 };
 
 // Default icon color per type
@@ -74,6 +75,7 @@ const TYPE_COLORS: Record<StatusEffectType, string> = {
   [StatusEffectType.HALT_BOTH]: '#5b21b6',
   [StatusEffectType.PRIORITY]: '#be123c',
   [StatusEffectType.STURDY]: '#374151',
+  [StatusEffectType.CHARM]: '#e879f9',
 };
 
 function makeDefaultIcon(color: string): SpriteReference {
@@ -125,6 +127,10 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
     effect?.reflectDirections || ['front', 'back', 'left', 'right']
   );
   const reflectAllDirections = reflectDirections.length === 4;
+  const [charmTintEnabled, setCharmTintEnabled] = useState(effect?.charmTintEnabled !== false);
+  const [charmTintColor, setCharmTintColor] = useState(effect?.charmTintColor || '#e879f9');
+  const [charmTintOpacity, setCharmTintOpacity] = useState(effect?.charmTintOpacity ?? 0.35);
+  const [charmShowHeart, setCharmShowHeart] = useState(effect?.charmShowHeart !== false);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -151,6 +157,10 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       reflectOverrideSprite: type === StatusEffectType.REFLECT ? reflectOverrideSprite : undefined,
       reflectImpactSprite: type === StatusEffectType.REFLECT ? reflectImpactSprite : undefined,
       reflectDirections: type === StatusEffectType.REFLECT && !reflectAllDirections ? reflectDirections : undefined,
+      charmTintEnabled: type === StatusEffectType.CHARM ? charmTintEnabled : undefined,
+      charmTintColor: type === StatusEffectType.CHARM && charmTintEnabled ? charmTintColor : undefined,
+      charmTintOpacity: type === StatusEffectType.CHARM && charmTintEnabled ? charmTintOpacity : undefined,
+      charmShowHeart: type === StatusEffectType.CHARM ? charmShowHeart : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       folderId: effect?.folderId,
     };
@@ -233,6 +243,10 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       case StatusEffectType.PRIORITY:
       case StatusEffectType.STURDY:
         setDefaultDuration(99999); setDefaultValue(0);
+        setStackingBehavior('refresh');
+        break;
+      case StatusEffectType.CHARM:
+        setDefaultDuration(3); setDefaultValue(0);
         setStackingBehavior('refresh');
         break;
     }
@@ -586,6 +600,92 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   </div>
                 </div>
               </div>
+            </div>
+          )}
+
+          {/* Charm Visuals — only for Charm type */}
+          {type === StatusEffectType.CHARM && (
+            <div className="space-y-3 p-3 rounded-lg bg-fuchsia-900/20 border border-fuchsia-800">
+              <h4 className="text-sm font-medium text-fuchsia-300">Charm Visuals</h4>
+              <p className="text-xs text-stone-400">
+                Charmed entities display a colour tint and ♥ heart icon by default. These are canvas-drawn and always visible — configure or disable them here.
+              </p>
+
+              {/* Tint toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={charmTintEnabled}
+                  onChange={(e) => setCharmTintEnabled(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm">Show colour tint overlay</span>
+              </label>
+
+              {charmTintEnabled && (
+                <>
+                  {/* Tint color */}
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Tint Colour</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="color"
+                        value={charmTintColor}
+                        onChange={(e) => setCharmTintColor(e.target.value)}
+                        className="w-10 h-7 rounded cursor-pointer border border-stone-600"
+                      />
+                      <span className="text-xs text-stone-400 font-mono">{charmTintColor}</span>
+                      <button
+                        onClick={() => setCharmTintColor('#e879f9')}
+                        className="text-xs text-stone-500 hover:text-stone-300 underline"
+                      >
+                        Reset
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tint opacity */}
+                  <div>
+                    <label className="block text-xs font-medium mb-1">Tint Opacity</label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="range"
+                        min="0.05"
+                        max="1"
+                        step="0.05"
+                        value={charmTintOpacity}
+                        onChange={(e) => setCharmTintOpacity(parseFloat(e.target.value))}
+                        className="flex-1"
+                      />
+                      <span className="text-xs text-stone-400 font-mono w-12 text-right">
+                        {Math.round(charmTintOpacity * 100)}%
+                      </span>
+                    </div>
+                    {/* Tint preview */}
+                    <div
+                      className="mt-2 h-8 rounded border border-stone-600 flex items-center justify-center text-xs text-white overflow-hidden relative"
+                      style={{ backgroundColor: '#52525b' }}
+                    >
+                      <div
+                        className="absolute inset-0"
+                        style={{ backgroundColor: charmTintColor, opacity: charmTintOpacity }}
+                      />
+                      <span className="relative drop-shadow-md">Entity sprite</span>
+                    </div>
+                  </div>
+                </>
+              )}
+
+              {/* Heart icon toggle */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={charmShowHeart}
+                  onChange={(e) => setCharmShowHeart(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm">Show ♥ heart icon above entity</span>
+              </label>
             </div>
           )}
 

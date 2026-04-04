@@ -1204,6 +1204,12 @@ export interface StatusEffectAsset {
   reflectImpactSprite?: SpriteReference;  // Optional sprite for the bounce VFX at the reflect point
   reflectDirections?: ('front' | 'back' | 'left' | 'right')[]; // Which directions to reflect from (default: all)
 
+  // Charm configuration — controls the canvas-drawn tint and heart icon
+  charmTintEnabled?: boolean;   // Default true; set false to disable the colour tint overlay
+  charmTintColor?: string;      // Hex colour for tint; default '#e879f9' (fuchsia)
+  charmTintOpacity?: number;    // Opacity 0-1 for tint; default 0.35
+  charmShowHeart?: boolean;     // Default true; set false to hide the ♥ heart icon
+
   // Metadata
   createdAt: string;
   isBuiltIn?: boolean;            // Built-in vs custom
