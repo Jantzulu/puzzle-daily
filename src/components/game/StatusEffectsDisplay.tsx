@@ -311,67 +311,31 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
                 );
               };
 
-              // Group spells by spell name so identical spells from multiple entities are shown together
-              const spellGroups = new Map<string, EntitySource[]>();
-              for (const s of spells) {
-                const key = s.spellName ?? 'Unknown Spell';
-                if (!spellGroups.has(key)) spellGroups.set(key, []);
-                spellGroups.get(key)!.push(s);
-              }
+              const allPickups = [...pickups, ...deathDrop];
 
               return (
                 <div className="mt-2 pt-2 border-t border-stone-700 space-y-1">
                   {/* Innate: entity starts with the effect */}
                   {innate.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-xs text-stone-500 mr-1">Innate on:</span>
+                      <span className="text-xs text-stone-500 mr-1">Starts with:</span>
                       {innate.map(s => entityBadge(s, `innate-${s.id}`))}
                     </div>
                   )}
 
-                  {/* Spell: entity casts a named spell that applies it */}
-                  {[...spellGroups.entries()].map(([spellName, casters]) => (
-                    <div key={`spell-${spellName}`} className="flex items-center gap-1 flex-wrap">
-                      <span className="text-xs text-stone-500 mr-1">
-                        Via <span className="text-mystic-400 italic">"{spellName}"</span>:
-                      </span>
-                      {casters.map(s => entityBadge(s, `spell-${s.id}-${spellName}`))}
-                    </div>
-                  ))}
-
-                  {/* Pickup: collecting a map item grants it */}
-                  {pickups.length > 0 && (
+                  {/* Spell/attack: show which unit applies it, not the spell name */}
+                  {spells.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-xs text-stone-500 mr-1">On pickup:</span>
-                      {pickups.map(s => entityBadge(s, `pickup-${s.id}`))}
+                      <span className="text-xs text-stone-500 mr-1">Applied by:</span>
+                      {spells.map(s => entityBadge(s, `spell-${s.id}`))}
                     </div>
                   )}
 
-                  {/* Death drop: item drops from a defeated entity and grants it when collected */}
-                  {deathDrop.length > 0 && (
+                  {/* Pickup: collecting an item grants it (includes death-drop items) */}
+                  {allPickups.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">
-                      <span className="text-xs text-stone-500 mr-1">Dropped on death by:</span>
-                      {deathDrop.map(s => {
-                        const dropperColorClass = s.dropperType === 'enemy'
-                          ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
-                          : 'bg-copper-900/50 text-copper-300 border border-copper-700';
-                        return (
-                          <div
-                            key={`death-${s.id}`}
-                            className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${dropperColorClass}`}
-                            title={`${s.dropperName} drops "${s.name}" — collecting it grants this effect`}
-                          >
-                            {s.dropperSprite && (
-                              <SpriteThumbnail sprite={s.dropperSprite} size={16} previewType="entity" />
-                            )}
-                            <span className="max-w-[72px] truncate">{s.dropperName}</span>
-                            <span className="text-stone-500">→</span>
-                            {s.sprite && (
-                              <SpriteThumbnail sprite={s.sprite} size={16} previewType="asset" />
-                            )}
-                          </div>
-                        );
-                      })}
+                      <span className="text-xs text-stone-500 mr-1">On pickup:</span>
+                      {allPickups.map(s => entityBadge(s, `pickup-${s.id}`))}
                     </div>
                   )}
                 </div>
