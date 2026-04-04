@@ -1442,6 +1442,40 @@ function executeSpell(
     } else {
       return;
     }
+  } else if (!action.autoTargetNearestCharacter && !action.autoTargetNearestEnemy && spell.appliesStatusEffect?.statusAssetId) {
+    // Infer targeting from status effect asset's targetingIntent (for Dispel/Cleanse-style spells)
+    const statusAsset = loadStatusEffectAsset(spell.appliesStatusEffect.statusAssetId);
+    if (statusAsset?.targetingIntent) {
+      const casterIsCharmed = isEntityCharmed(character);
+      const maxTargets = action.maxTargets || 1;
+      const targetMode = action.autoTargetMode || 'omnidirectional';
+      const maxRange = action.autoTargetRange || 0;
+      // 'hostile' targets enemies, 'friendly' targets allies — inverted when charmed
+      const wantsEnemies = casterIsCharmed
+        ? statusAsset.targetingIntent === 'friendly'
+        : statusAsset.targetingIntent === 'hostile';
+      if (wantsEnemies) {
+        const nearestEnemies = findNearestEnemies(character, gameState, maxTargets, targetMode, maxRange);
+        if (nearestEnemies.length > 0) {
+          castDirections = nearestEnemies.map(t => t.direction);
+          if (action.homing) {
+            homingTargets = nearestEnemies.map(t => ({ direction: t.direction, targetEntityId: t.enemy.enemyId, targetIsEnemy: true }));
+          }
+        } else {
+          return;
+        }
+      } else {
+        const nearestCharacters = findNearestCharacters(character, gameState, maxTargets, targetMode, maxRange);
+        if (nearestCharacters.length > 0) {
+          castDirections = nearestCharacters.map(t => t.direction);
+          if (action.homing) {
+            homingTargets = nearestCharacters.map(t => ({ direction: t.direction, targetEntityId: t.character.characterId, targetIsEnemy: false }));
+          }
+        } else {
+          return;
+        }
+      }
+    }
   } else if (action.useRelativeOverride && action.relativeDirectionOverride && action.relativeDirectionOverride.length > 0) {
     // Use relative override from behavior action
     castDirections = action.relativeDirectionOverride.map(relDir =>

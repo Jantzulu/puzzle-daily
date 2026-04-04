@@ -2975,7 +2975,10 @@ function drawStatusEffectIcons(
 
   const filtered = isCorpse
     ? statusEffects.filter(e => DEAD_VARIANT_TYPES.has(e.type as StatusEffectType))
-    : statusEffects;
+    : statusEffects.filter(e => {
+        const asset = loadStatusEffectAsset(e.statusAssetId);
+        return !asset?.hideFromStatusBar;
+      });
 
   // Combine with ghost effects (animating-out removed effects)
   const ghosts = (entityKey && now !== undefined && !isCorpse)
@@ -3108,6 +3111,10 @@ function getDefaultEffectColor(type: StatusEffectType): string {
       return '#fbbf24'; // amber
     case StatusEffectType.CHARM:
       return '#e879f9'; // fuchsia
+    case StatusEffectType.DISPEL:
+      return '#f59e0b'; // amber
+    case StatusEffectType.CLEANSE:
+      return '#34d399'; // emerald
     default:
       return '#ffffff'; // white
   }

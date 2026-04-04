@@ -676,7 +676,9 @@ function processEntityStatusEffects(
                                   effect.type === StatusEffectType.SLOW ||
                                   effect.type === StatusEffectType.HASTE ||
                                   effect.type === StatusEffectType.SILENCED ||
-                                  effect.type === StatusEffectType.DISARMED;
+                                  effect.type === StatusEffectType.DISARMED ||
+                                  effect.type === StatusEffectType.DISPEL ||
+                                  effect.type === StatusEffectType.CLEANSE;
 
     const processNow = timing === 'start' ? shouldProcessAtStart : !shouldProcessAtStart;
 
@@ -704,6 +706,28 @@ function processEntityStatusEffects(
         );
         break;
 
+      case StatusEffectType.DISPEL:
+      case StatusEffectType.CLEANSE: {
+        const isDispel = effect.type === StatusEffectType.DISPEL;
+        const targetPolarity = isDispel ? 'positive' : 'negative';
+        const immuneKey = isDispel ? 'immuneToDispel' : 'immuneToCleanse';
+        const targetTypes = effectAsset?.targetEffectTypes;
+
+        (updatedEntity.statusEffects || []).forEach(other => {
+          if (other.id === effect.id) return; // skip self
+          const otherAsset = loadStatusEffectAsset(other.statusAssetId);
+          if (otherAsset?.[immuneKey]) return; // immune
+          const polarity = STATUS_EFFECT_POLARITY[other.type];
+          if (polarity !== targetPolarity) return; // wrong polarity
+          // Check targetEffectTypes filter
+          if (targetTypes && targetTypes !== 'all' && !targetTypes.includes(other.type)) return;
+          effectsToRemove.push(other.id);
+        });
+        // DISPEL/CLEANSE itself is also consumed (duration 1)
+        effectsToRemove.push(effect.id);
+        break;
+      }
+
       // Action-preventing effects are checked in canEntityAct()
       // Duration handling is done at the end of processing
     }
@@ -727,6 +751,44 @@ function processEntityStatusEffects(
 
   return updatedEntity;
 }
+
+/**
+ * Polarity of each status effect type — used by DISPEL (removes positive) and CLEANSE (removes negative).
+ * 'neutral' effects (innate traits) are never removed by either.
+ */
+const STATUS_EFFECT_POLARITY: Record<StatusEffectType, 'positive' | 'negative' | 'neutral'> = {
+  [StatusEffectType.POISON]:          'negative',
+  [StatusEffectType.BURN]:            'negative',
+  [StatusEffectType.BLEED]:           'negative',
+  [StatusEffectType.STUN]:            'negative',
+  [StatusEffectType.SLEEP]:           'negative',
+  [StatusEffectType.SLOW]:            'negative',
+  [StatusEffectType.SILENCED]:        'negative',
+  [StatusEffectType.DISARMED]:        'negative',
+  [StatusEffectType.CHARM]:           'negative',
+  [StatusEffectType.DISPEL]:          'neutral',  // instant, shouldn't linger
+  [StatusEffectType.CLEANSE]:         'neutral',  // instant, shouldn't linger
+  [StatusEffectType.REGEN]:           'positive',
+  [StatusEffectType.SHIELD]:          'positive',
+  [StatusEffectType.HASTE]:           'positive',
+  [StatusEffectType.STEALTH]:         'positive',
+  [StatusEffectType.DEFLECT]:         'positive',
+  [StatusEffectType.INVULNERABLE]:    'positive',
+  [StatusEffectType.STEADFAST]:       'positive',
+  [StatusEffectType.REFLECT]:         'positive',
+  [StatusEffectType.POLYMORPH]:       'negative',
+  // Innate traits — never removed by Dispel/Cleanse
+  [StatusEffectType.CONTACT_DAMAGE]:  'neutral',
+  [StatusEffectType.GHOST]:           'neutral',
+  [StatusEffectType.WALL_ALIVE]:      'neutral',
+  [StatusEffectType.WALL_DEAD]:       'neutral',
+  [StatusEffectType.WALL_BOTH]:       'neutral',
+  [StatusEffectType.HALT_ALIVE]:      'neutral',
+  [StatusEffectType.HALT_DEAD]:       'neutral',
+  [StatusEffectType.HALT_BOTH]:       'neutral',
+  [StatusEffectType.PRIORITY]:        'neutral',
+  [StatusEffectType.STURDY]:          'neutral',
+};
 
 /**
  * Check if an entity can perform actions based on status effects

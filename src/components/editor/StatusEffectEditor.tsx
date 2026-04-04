@@ -44,6 +44,8 @@ const TYPE_DESCRIPTIONS: Record<StatusEffectType, string> = {
   [StatusEffectType.PRIORITY]: 'Acts before non-priority entities in melee ordering each turn.',
   [StatusEffectType.STURDY]: 'Cannot be pushed by push effects from spells or tiles.',
   [StatusEffectType.CHARM]: 'Temporarily inverts the entity\'s team allegiance for the duration. The entity auto-executes its normal behavior pattern but attacks its own original allies. Visually indicated by a configurable colour tint and ♥ heart icon above the entity.',
+  [StatusEffectType.DISPEL]: 'Instantly strips positive status effects from the target (Regen, Shield, Haste, Stealth, Deflect, Invulnerable, Steadfast, Reflect). Use on hostile spells. Configure which effect types to remove and whether to show an icon.',
+  [StatusEffectType.CLEANSE]: 'Instantly strips negative status effects from the target (Poison, Burn, Bleed, Stun, Sleep, Slow, Silenced, Disarmed, Charm, Polymorph). Use on friendly spells. Configure which effect types to remove and whether to show an icon.',
 };
 
 // Default icon color per type
@@ -76,6 +78,8 @@ const TYPE_COLORS: Record<StatusEffectType, string> = {
   [StatusEffectType.PRIORITY]: '#be123c',
   [StatusEffectType.STURDY]: '#374151',
   [StatusEffectType.CHARM]: '#e879f9',
+  [StatusEffectType.DISPEL]: '#f59e0b',
+  [StatusEffectType.CLEANSE]: '#34d399',
 };
 
 function makeDefaultIcon(color: string): SpriteReference {
@@ -132,6 +136,18 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [charmTintOpacity, setCharmTintOpacity] = useState(effect?.charmTintOpacity ?? 0.35);
   const [charmShowHeart, setCharmShowHeart] = useState(effect?.charmShowHeart !== false);
 
+  // Dispel/Cleanse state
+  const [targetingIntent, setTargetingIntent] = useState<'hostile' | 'friendly' | undefined>(effect?.targetingIntent);
+  const [targetEffectTypesAll, setTargetEffectTypesAll] = useState<boolean>(
+    !effect?.targetEffectTypes || effect.targetEffectTypes === 'all'
+  );
+  const [targetEffectTypesList, setTargetEffectTypesList] = useState<StatusEffectType[]>(
+    Array.isArray(effect?.targetEffectTypes) ? effect.targetEffectTypes : []
+  );
+  const [immuneToDispel, setImmuneToDispel] = useState(effect?.immuneToDispel ?? false);
+  const [immuneToCleanse, setImmuneToCleanse] = useState(effect?.immuneToCleanse ?? false);
+  const [hideFromStatusBar, setHideFromStatusBar] = useState(effect?.hideFromStatusBar ?? false);
+
   const handleSave = () => {
     if (!name.trim()) {
       toast.warning('Please enter a name for the status effect.');
@@ -161,6 +177,13 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       charmTintColor: type === StatusEffectType.CHARM && charmTintEnabled ? charmTintColor : undefined,
       charmTintOpacity: type === StatusEffectType.CHARM && charmTintEnabled ? charmTintOpacity : undefined,
       charmShowHeart: type === StatusEffectType.CHARM ? charmShowHeart : undefined,
+      targetingIntent: (type === StatusEffectType.DISPEL || type === StatusEffectType.CLEANSE) ? targetingIntent : undefined,
+      targetEffectTypes: (type === StatusEffectType.DISPEL || type === StatusEffectType.CLEANSE)
+        ? (targetEffectTypesAll ? 'all' : targetEffectTypesList)
+        : undefined,
+      immuneToDispel: immuneToDispel || undefined,
+      immuneToCleanse: immuneToCleanse || undefined,
+      hideFromStatusBar: (type === StatusEffectType.DISPEL || type === StatusEffectType.CLEANSE) ? hideFromStatusBar : undefined,
       createdAt: effect?.createdAt || new Date().toISOString(),
       folderId: effect?.folderId,
     };
@@ -248,6 +271,20 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       case StatusEffectType.CHARM:
         setDefaultDuration(3); setDefaultValue(0);
         setStackingBehavior('refresh');
+        break;
+      case StatusEffectType.DISPEL:
+        setDefaultDuration(1); setDefaultValue(0);
+        setStackingBehavior('replace');
+        setTargetingIntent('hostile');
+        setTargetEffectTypesAll(true);
+        setHideFromStatusBar(true);
+        break;
+      case StatusEffectType.CLEANSE:
+        setDefaultDuration(1); setDefaultValue(0);
+        setStackingBehavior('replace');
+        setTargetingIntent('friendly');
+        setTargetEffectTypesAll(true);
+        setHideFromStatusBar(true);
         break;
     }
   };
@@ -626,6 +663,108 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
             </div>
           )}
 
+          {/* Dispel Config — only for Dispel type */}
+          {type === StatusEffectType.DISPEL && (
+            <div className="space-y-3 p-3 rounded-lg bg-amber-900/20 border border-amber-800">
+              <h4 className="text-sm font-medium text-amber-300">Dispel Configuration</h4>
+              <p className="text-xs text-stone-400">
+                Dispel strips <strong>positive</strong> effects from the target when this effect is applied. The effect is consumed instantly (duration 1). Best used on hostile spells.
+              </p>
+
+              {/* Effect types to remove */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none mb-2">
+                  <input
+                    type="checkbox"
+                    checked={targetEffectTypesAll}
+                    onChange={(e) => setTargetEffectTypesAll(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium">Remove all positive effects</span>
+                </label>
+                {!targetEffectTypesAll && (
+                  <div className="ml-6 space-y-1">
+                    {([StatusEffectType.REGEN, StatusEffectType.SHIELD, StatusEffectType.HASTE, StatusEffectType.STEALTH, StatusEffectType.DEFLECT, StatusEffectType.INVULNERABLE, StatusEffectType.STEADFAST, StatusEffectType.REFLECT] as StatusEffectType[]).map(t => (
+                      <label key={t} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={targetEffectTypesList.includes(t)}
+                          onChange={(e) => setTargetEffectTypesList(prev =>
+                            e.target.checked ? [...prev, t] : prev.filter(x => x !== t)
+                          )}
+                          className="rounded"
+                        />
+                        <span className="text-xs capitalize">{t}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Hide from status bar */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={hideFromStatusBar}
+                  onChange={(e) => setHideFromStatusBar(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm">Hide icon from health bar (recommended for instant effects)</span>
+              </label>
+            </div>
+          )}
+
+          {/* Cleanse Config — only for Cleanse type */}
+          {type === StatusEffectType.CLEANSE && (
+            <div className="space-y-3 p-3 rounded-lg bg-emerald-900/20 border border-emerald-800">
+              <h4 className="text-sm font-medium text-emerald-300">Cleanse Configuration</h4>
+              <p className="text-xs text-stone-400">
+                Cleanse strips <strong>negative</strong> effects from the target when this effect is applied. The effect is consumed instantly (duration 1). Best used on friendly spells.
+              </p>
+
+              {/* Effect types to remove */}
+              <div>
+                <label className="flex items-center gap-2 cursor-pointer select-none mb-2">
+                  <input
+                    type="checkbox"
+                    checked={targetEffectTypesAll}
+                    onChange={(e) => setTargetEffectTypesAll(e.target.checked)}
+                    className="rounded"
+                  />
+                  <span className="text-sm font-medium">Remove all negative effects</span>
+                </label>
+                {!targetEffectTypesAll && (
+                  <div className="ml-6 space-y-1">
+                    {([StatusEffectType.POISON, StatusEffectType.BURN, StatusEffectType.BLEED, StatusEffectType.STUN, StatusEffectType.SLEEP, StatusEffectType.SLOW, StatusEffectType.SILENCED, StatusEffectType.DISARMED, StatusEffectType.CHARM, StatusEffectType.POLYMORPH] as StatusEffectType[]).map(t => (
+                      <label key={t} className="flex items-center gap-2 cursor-pointer select-none">
+                        <input
+                          type="checkbox"
+                          checked={targetEffectTypesList.includes(t)}
+                          onChange={(e) => setTargetEffectTypesList(prev =>
+                            e.target.checked ? [...prev, t] : prev.filter(x => x !== t)
+                          )}
+                          className="rounded"
+                        />
+                        <span className="text-xs capitalize">{t}</span>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* Hide from status bar */}
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={hideFromStatusBar}
+                  onChange={(e) => setHideFromStatusBar(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-sm">Hide icon from health bar (recommended for instant effects)</span>
+              </label>
+            </div>
+          )}
+
           {/* Charm Visuals — only for Charm type */}
           {type === StatusEffectType.CHARM && (
             <div className="space-y-3 p-3 rounded-lg bg-fuchsia-900/20 border border-fuchsia-800">
@@ -737,6 +876,31 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                 min="1"
                 max="99"
               />
+            </div>
+          )}
+
+          {/* Dispel/Cleanse Immunity toggles — available on all types */}
+          {type !== StatusEffectType.DISPEL && type !== StatusEffectType.CLEANSE && (
+            <div className="space-y-2 pt-1">
+              <p className="text-xs text-stone-400 font-medium">Removal Immunity</p>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={immuneToDispel}
+                  onChange={(e) => setImmuneToDispel(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-xs">Immune to Dispel (cannot be stripped by Dispel effects)</span>
+              </label>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={immuneToCleanse}
+                  onChange={(e) => setImmuneToCleanse(e.target.checked)}
+                  className="rounded"
+                />
+                <span className="text-xs">Immune to Cleanse (cannot be stripped by Cleanse effects)</span>
+              </label>
             </div>
           )}
         </div>

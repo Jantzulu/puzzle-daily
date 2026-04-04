@@ -714,6 +714,8 @@ export enum StatusEffectType {
   PRIORITY = 'priority',             // Acts before non-priority entities in melee ordering
   STURDY = 'sturdy',                 // Immune to push effects
   CHARM = 'charm',                   // Inverts team allegiance for duration; entity auto-executes its normal behavior against its own original team
+  DISPEL = 'dispel',                 // Instantly removes positive status effects from the target
+  CLEANSE = 'cleanse',               // Instantly removes negative status effects from the target
 }
 
 /**
@@ -1209,6 +1211,13 @@ export interface StatusEffectAsset {
   charmTintColor?: string;      // Hex colour for tint; default '#e879f9' (fuchsia)
   charmTintOpacity?: number;    // Opacity 0-1 for tint; default 0.35
   charmShowHeart?: boolean;     // Default true; set false to hide the ♥ heart icon
+
+  // Dispel/Cleanse configuration
+  targetingIntent?: 'hostile' | 'friendly'; // Determines auto-targeting for pure status spells (hostile=enemies, friendly=allies)
+  targetEffectTypes?: StatusEffectType[] | 'all'; // Which effect types to remove (default 'all')
+  immuneToDispel?: boolean;     // If true, this effect cannot be removed by Dispel
+  immuneToCleanse?: boolean;    // If true, this effect cannot be removed by Cleanse
+  hideFromStatusBar?: boolean;  // If true, this effect's icon is hidden from the health bar
 
   // Metadata
   createdAt: string;
