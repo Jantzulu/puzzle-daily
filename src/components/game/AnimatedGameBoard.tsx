@@ -2527,11 +2527,13 @@ function drawEnemy(
   ctx.globalAlpha = originalAlpha;
 
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
+  const enemyKey = `e_${enemy.x}_${enemy.y}`;
   if (!enemy.dead) {
     drawStatusEffectOverlays(ctx, px, py, enemy.statusEffects, now);
+    trackStatusIconAnimations(enemyKey, enemy.statusEffects, now, gameStarted);
   } else {
     // Show dead-variant trait icons above corpses
-    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects, true);
+    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects, true, enemyKey, now);
   }
 
   if (!enemy.dead) {
@@ -2548,7 +2550,7 @@ function drawEnemy(
     }
 
     // Draw status effect icons above health bar
-    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects);
+    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects, false, enemyKey, now);
   }
 }
 
@@ -2571,6 +2573,37 @@ const healthBarState = new Map<string, {
   changeType: 'damage' | 'heal' | null;
   displayHealth: number; // For smooth color transitions
 }>();
+
+// Status effect icon animation state — tracks apply pop per entity+effect
+const prevEntityStatusIds = new Map<string, Set<string>>();
+const statusIconAnims = new Map<string, number>(); // entityKey_assetId → startTime
+const STATUS_ICON_ANIM_DURATION = 380;
+
+function trackStatusIconAnimations(
+  entityKey: string,
+  currentEffects: StatusEffectInstance[] | undefined,
+  now: number,
+  gameStarted: boolean
+) {
+  const currentIds = new Set((currentEffects ?? []).map(e => e.statusAssetId));
+  const prevIds = prevEntityStatusIds.get(entityKey);
+  if (gameStarted && prevIds !== undefined) {
+    for (const id of currentIds) {
+      if (!prevIds.has(id)) {
+        statusIconAnims.set(`${entityKey}_${id}`, now);
+      }
+    }
+  }
+  prevEntityStatusIds.set(entityKey, currentIds);
+}
+
+function getStatusIconScale(entityKey: string, statusAssetId: string, now: number): number {
+  const startTime = statusIconAnims.get(`${entityKey}_${statusAssetId}`);
+  if (startTime === undefined) return 1;
+  const t = Math.min((now - startTime) / STATUS_ICON_ANIM_DURATION, 1);
+  if (t >= 1) { statusIconAnims.delete(`${entityKey}_${statusAssetId}`); return 1; }
+  return 1 + 0.65 * Math.sin(Math.PI * t);
+}
 
 // Helper to get unique key for entity health tracking
 // Uses entity type, ID, and logical position to create a unique key per placed entity instance
@@ -2866,7 +2899,9 @@ function drawStatusEffectIcons(
   px: number,
   py: number,
   statusEffects: StatusEffectInstance[] | undefined,
-  isCorpse?: boolean
+  isCorpse?: boolean,
+  entityKey?: string,
+  now?: number
 ) {
   if (!statusEffects || statusEffects.length === 0) return;
 
@@ -2895,6 +2930,11 @@ function drawStatusEffectIcons(
     const iconX = startX + index * (iconSize + iconSpacing);
     const iconY = startY;
 
+    // Scale pop animation when effect is newly applied
+    const scale = (entityKey && now !== undefined)
+      ? getStatusIconScale(entityKey, effect.statusAssetId, now)
+      : 1;
+
     // Load the status effect asset to get the icon
     const effectAsset = loadStatusEffectAsset(effect.statusAssetId);
 
@@ -2918,25 +2958,34 @@ function drawStatusEffectIcons(
           ctx.shadowBlur = 6;
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 1;
+          ctx.translate(centerX, centerY);
+          ctx.scale(scale, scale);
+          ctx.translate(-centerX, -centerY);
           ctx.drawImage(img, Math.round(centerX - drawSize / 2), Math.round(centerY - drawSize / 2), Math.round(drawSize), Math.round(drawSize));
           ctx.restore();
         }
       } else {
         ctx.save();
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-        ctx.shadowBlur = 4;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+        ctx.shadowBlur = 6;
         ctx.shadowOffsetX = 0;
         ctx.shadowOffsetY = 1;
+        ctx.translate(centerX, centerY);
+        ctx.scale(scale, scale);
+        ctx.translate(-centerX, -centerY);
         drawSprite(ctx, spriteData, centerX, centerY, iconSize);
         ctx.restore();
       }
     } else {
       // Fallback: draw a colored shape based on effect type
       ctx.save();
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.85)';
-      ctx.shadowBlur = 4;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
+      ctx.shadowBlur = 6;
       ctx.shadowOffsetX = 0;
       ctx.shadowOffsetY = 1;
+      ctx.translate(iconX + iconSize / 2, iconY + iconSize / 2);
+      ctx.scale(scale, scale);
+      ctx.translate(-(iconX + iconSize / 2), -(iconY + iconSize / 2));
       ctx.fillStyle = getDefaultEffectColor(effect.type);
       drawEffectShape(ctx, iconX, iconY, iconSize, 'circle');
       ctx.restore();
@@ -3214,11 +3263,13 @@ function drawCharacter(
   ctx.globalAlpha = originalAlpha;
 
   // Draw status effect overlays (e.g., shield bubble) on top of the entity
+  const charKey = `c_${character.x}_${character.y}`;
   if (!character.dead) {
     drawStatusEffectOverlays(ctx, px, py, character.statusEffects, now);
+    trackStatusIconAnimations(charKey, character.statusEffects, now, gameStarted);
   } else {
     // Show dead-variant trait icons above corpses
-    drawStatusEffectIcons(ctx, px, py, character.statusEffects, true);
+    drawStatusEffectIcons(ctx, px, py, character.statusEffects, true, charKey, now);
   }
 
   if (!character.dead) {
@@ -3234,7 +3285,7 @@ function drawCharacter(
     }
 
     // Draw status effect icons above health bar
-    drawStatusEffectIcons(ctx, px, py, character.statusEffects);
+    drawStatusEffectIcons(ctx, px, py, character.statusEffects, false, charKey, now);
   }
 }
 
