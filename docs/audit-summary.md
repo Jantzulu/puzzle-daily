@@ -24,7 +24,7 @@ Full-game determinism is a non-negotiable requirement (see [`memory/project_dete
 
 ### ✅ Done — Status effect `applyChance` removed
 
-Fixed in `<commit-pending>`. Removed the `Math.random() > applyChance` gate from `actions.ts` and `simulation.ts`, dropped the `applyChance?: number` field from the `appliesStatusEffect` type in [`game.ts`](../src/types/game.ts), and removed the associated editor UI + handler from [`SpellAssetBuilder.tsx`](../src/components/editor/SpellAssetBuilder.tsx). Status effects now always apply on hit.
+Fixed in `7590223`. Removed the `Math.random() > applyChance` gate from `actions.ts` and `simulation.ts`, dropped the `applyChance?: number` field from the `appliesStatusEffect` type in [`game.ts`](../src/types/game.ts), and removed the associated editor UI + handler from [`SpellAssetBuilder.tsx`](../src/components/editor/SpellAssetBuilder.tsx). Status effects now always apply on hit.
 
 **Future:** if a chance-based game mode is ever introduced, reintroduce probability via a seeded PRNG (keyed on `puzzleId + turn + effectInstance`) so outcomes remain reproducible across runs and replays — do not reintroduce raw `Math.random()`.
 
