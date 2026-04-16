@@ -2303,17 +2303,6 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
     });
   };
 
-  const handleChanceChange = (value: string) => {
-    const numValue = parseFloat(value) / 100;
-    setEditedSpell({
-      ...editedSpell,
-      appliesStatusEffect: {
-        ...editedSpell.appliesStatusEffect!,
-        applyChance: numValue >= 0 && numValue <= 1 ? numValue : undefined,
-      },
-    });
-  };
-
   const selectedEffect = statusEffects.find(e => e.id === editedSpell.appliesStatusEffect?.statusAssetId);
 
   return (
@@ -2372,7 +2361,7 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                   </div>
 
                   {/* Override Settings */}
-                  <div className="grid grid-cols-3 gap-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div>
                       <label className="block text-sm font-medium mb-1">Duration Override</label>
                       <input
@@ -2397,22 +2386,6 @@ const StatusEffectConfig: React.FC<StatusEffectConfigProps> = ({ editedSpell, se
                         className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                       />
                       <p className="text-xs text-stone-400 mt-1">Damage/heal per turn</p>
-                    </div>
-
-                    <div>
-                      <label className="block text-sm font-medium mb-1">Apply Chance %</label>
-                      <input
-                        type="number"
-                        min="0"
-                        max="100"
-                        value={editedSpell.appliesStatusEffect?.applyChance !== undefined
-                          ? Math.round(editedSpell.appliesStatusEffect.applyChance * 100)
-                          : ''}
-                        onChange={(e) => handleChanceChange(e.target.value)}
-                        placeholder="100"
-                        className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
-                      />
-                      <p className="text-xs text-stone-400 mt-1">100% = always applies</p>
                     </div>
                   </div>
                 </>

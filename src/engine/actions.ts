@@ -2482,12 +2482,6 @@ function applyStatusEffectFromSpell(
     return;
   }
 
-  // Check apply chance
-  const applyChance = effectConfig.applyChance ?? 1;
-  if (Math.random() > applyChance) {
-    return;
-  }
-
   // Initialize status effects array if needed
   if (!target.statusEffects) {
     target.statusEffects = [];

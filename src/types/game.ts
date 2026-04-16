@@ -1117,7 +1117,6 @@ export interface SpellAsset {
     statusAssetId: string;        // Reference to StatusEffectAsset
     durationOverride?: number;    // Override default duration
     valueOverride?: number;       // Override default damage/heal value
-    applyChance?: number;         // 0-1, default 1 (100%)
   };
 
   // Cooldown

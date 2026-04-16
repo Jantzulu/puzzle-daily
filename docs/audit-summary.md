@@ -22,21 +22,11 @@ The audit verified claims against current code; where the initial sub-agent anal
 
 Full-game determinism is a non-negotiable requirement (see [`memory/project_determinism_requirement.md`](../../../../.claude/projects/C--Users-jantz-Desktop-Claude/memory/project_determinism_requirement.md)). Two identical runs must produce identical results; the validator must reflect live game behavior; replays cannot show impossible outcomes.
 
-### 🎯 HIGH — Status effect `applyChance` uses unseeded `Math.random()`
+### ✅ Done — Status effect `applyChance` removed
 
-- [`src/engine/actions.ts:2487`](../src/engine/actions.ts) — `applyStatusEffectToTarget()`
-- [`src/engine/simulation.ts:1078`](../src/engine/simulation.ts) — `applyStatusEffectFromProjectile()`
+Fixed in `<commit-pending>`. Removed the `Math.random() > applyChance` gate from `actions.ts` and `simulation.ts`, dropped the `applyChance?: number` field from the `appliesStatusEffect` type in [`game.ts`](../src/types/game.ts), and removed the associated editor UI + handler from [`SpellAssetBuilder.tsx`](../src/components/editor/SpellAssetBuilder.tsx). Status effects now always apply on hit.
 
-Creators can set `applyChance < 1` on spell status effects via [`SpellAssetBuilder.tsx`](../src/components/editor/SpellAssetBuilder.tsx). When used, the roll is non-deterministic: two identical runs of the same puzzle can produce different status-effect outcomes.
-
-**Why it matters:** breaks the core determinism axiom. The solver can certify a puzzle as solvable via a specific stun chain that doesn't actually trigger in real play.
-
-**Fix options (pick one):**
-1. Remove `applyChance` entirely — status effects always apply. Simplest. Avoids the whole problem class.
-2. Replace with a seeded PRNG keyed on `(puzzleId, currentTurn, effectInstance)` so the roll is reproducible across runs and replays.
-3. Convert chance to guaranteed outcomes at puzzle-design time (e.g., 25% → apply every 4th time via a counter).
-
-**Recommendation:** Option 1 unless there's a design reason to keep probabilistic effects. If Option 2, the same PRNG should serve other future probabilistic systems (enemy AI tiebreakers, etc.).
+**Future:** if a chance-based game mode is ever introduced, reintroduce probability via a seeded PRNG (keyed on `puzzleId + turn + effectInstance`) so outcomes remain reproducible across runs and replays — do not reintroduce raw `Math.random()`.
 
 ### 🎯 MEDIUM — `Math.random()` in `puzzleGenerator.ts`
 
@@ -184,7 +174,7 @@ Ordered by impact × risk × effort. Items shift between tiers as context change
 
 ### Tier 1 — Determinism & correctness (do soon)
 
-1. **Remove or seed `applyChance` randomness** (Section 1, HIGH) — one small change, closes the one real live-game determinism hole.
+1. ✅ **Remove `applyChance` randomness** — done; live-game is now fully deterministic with respect to status effect application.
 2. **Fix sync push/edit race** (Section 3, MEDIUM) — small change to `syncTracker`, flip the test assertion afterward.
 
 ### Tier 2 — Foundation for future work
