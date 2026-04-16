@@ -1989,6 +1989,247 @@ export function resetGameState(gameState: GameState, originalPuzzle: Puzzle): Ga
 import type { Projectile, ParticleEffect } from '../types/game';
 import { TileType } from '../types/game';
 
+// ==========================================
+// PROJECTILE VISUAL UPDATE HELPERS (Phase B of projectile refactor)
+// ==========================================
+// Each helper is a verbatim extraction of a movement branch previously nested
+// in updateProjectiles(). Same math, same side effects on
+// proj.direction / proj.visualPastReflectPoint / proj.currentTileIndex.
+// No behavior change — only code organization. See
+// docs/projectile-refactor-plan.md Phase B.
+//
+// Each returns { newX, newY, reachedTarget }; updateProjectiles applies
+// proj.x = newX, proj.y = newY and runs shared bridge-field consumption.
+
+interface ProjectileMovementResult {
+  newX: number;
+  newY: number;
+  reachedTarget: boolean;
+}
+
+/**
+ * STRAIGHT-LINE HOMING: smooth interpolation from original start to target.
+ * Active when: proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined
+ */
+function updateStraightLineHomingVisual(proj: Projectile, now: number): ProjectileMovementResult {
+  const startX = proj.homingVisualStartX!;
+  const startY = proj.homingVisualStartY ?? proj.y;
+  const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
+  const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+  const totalDist = Math.sqrt(Math.pow(proj.targetX - startX, 2) + Math.pow(proj.targetY - startY, 2));
+  const totalTime = Math.max(0.1, totalDist / speedTilesPerSecond);
+  const progress = Math.min(elapsed / totalTime, 1);
+  const newX = startX + (proj.targetX - startX) * progress;
+  const newY = startY + (proj.targetY - startY) * progress;
+  const reachedTarget = progress >= 1;
+
+  // Update direction for sprite rotation
+  const sdx = proj.targetX - startX;
+  const sdy = proj.targetY - startY;
+  if (sdx !== 0 || sdy !== 0) {
+    proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
+  }
+
+  return { newX, newY, reachedTarget };
+}
+
+/**
+ * GRID HOMING (no tilePath): move toward current target from current position.
+ * Active when: proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)
+ */
+function updateGridHomingVisual(proj: Projectile): ProjectileMovementResult {
+  const dx = proj.targetX - proj.x;
+  const dy = proj.targetY - proj.y;
+  const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
+
+  const frameTime = 0.016; // 16ms in seconds
+  const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+  const moveDistance = speedTilesPerSecond * frameTime;
+
+  let newX: number;
+  let newY: number;
+  let reachedTarget = false;
+
+  if (distanceToTarget <= moveDistance || distanceToTarget < 0.1) {
+    newX = proj.targetX;
+    newY = proj.targetY;
+    reachedTarget = true;
+  } else {
+    const normalizedDx = dx / distanceToTarget;
+    const normalizedDy = dy / distanceToTarget;
+    newX = proj.x + normalizedDx * moveDistance;
+    newY = proj.y + normalizedDy * moveDistance;
+  }
+
+  // Update direction for sprite rotation
+  if (dx !== 0 || dy !== 0) {
+    proj.direction = calculateDirectionTo(proj.x, proj.y, proj.targetX, proj.targetY);
+  }
+
+  return { newX, newY, reachedTarget };
+}
+
+/**
+ * TILE-BASED MOVEMENT: visual position computed purely from elapsed time.
+ * Handles three sub-cases internally:
+ *  - straight-line interpolation (non-reflected homing)
+ *  - two-segment reflected path
+ *  - standard tile-to-tile interpolation
+ * Active when: proj.tilePath && proj.tilePath.length > 0
+ * (and not already handled by straight-line homing branch above)
+ *
+ * Don't mutate currentTileIndex or tileEntryTime mid-interpolation — they
+ * get deep-copied into game state and would cause resolveProjectiles to see
+ * stale visual state.
+ */
+function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovementResult {
+  const tilePath = proj.tilePath!;
+  const spawnTime = proj.tileEntryTime ?? proj.startTime;
+  const elapsed = (now - spawnTime) / 1000; // seconds since spawn
+  const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+  const tileTransitTime = 1 / speedTilesPerSecond;
+
+  // Calculate which tile we should be on based purely on elapsed time
+  const visualTileIndex = Math.min(
+    Math.floor(elapsed / tileTransitTime),
+    tilePath.length - 1
+  );
+
+  let newX: number;
+  let newY: number;
+  let reachedTarget = false;
+
+  if (proj.homingPathStyle === 'straight' && tilePath.length >= 2 && !proj.reflected) {
+    // STRAIGHT-LINE: smooth interpolation from first to last tile
+    const firstTile = tilePath[0];
+    const lastTile = tilePath[tilePath.length - 1];
+    const actualDistance = Math.max(1, Math.sqrt(
+      Math.pow(lastTile.x - firstTile.x, 2) + Math.pow(lastTile.y - firstTile.y, 2)
+    ));
+    const totalTransitTime = actualDistance * tileTransitTime;
+    const progress = Math.min(elapsed / totalTransitTime, 1);
+    newX = firstTile.x + (lastTile.x - firstTile.x) * progress;
+    newY = firstTile.y + (lastTile.y - firstTile.y) * progress;
+    if (progress >= 1) reachedTarget = true;
+  } else if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined && tilePath.length >= 2) {
+    // TWO-SEGMENT STRAIGHT-LINE: approach straight to reflect point, then straight back
+    const pivotIdx = proj.reflectAtTileIndex;
+    const firstTile = tilePath[0];
+    const pivotTile = tilePath[Math.min(pivotIdx, tilePath.length - 1)];
+    const lastTile = tilePath[tilePath.length - 1];
+
+    // Calculate distances for each segment
+    const approachDist = Math.max(0.5, Math.sqrt(
+      Math.pow(pivotTile.x - firstTile.x, 2) + Math.pow(pivotTile.y - firstTile.y, 2)
+    ));
+    const reflectDist = Math.max(0.5, Math.sqrt(
+      Math.pow(lastTile.x - pivotTile.x, 2) + Math.pow(lastTile.y - pivotTile.y, 2)
+    ));
+    const approachTime = approachDist * tileTransitTime;
+    const reflectTime = reflectDist * tileTransitTime;
+    const totalTime = approachTime + reflectTime;
+
+    if (elapsed >= totalTime) {
+      newX = lastTile.x;
+      newY = lastTile.y;
+      reachedTarget = true;
+      proj.visualPastReflectPoint = true;
+    } else if (elapsed < approachTime) {
+      // Segment 1: straight line from start to pivot (reflect point)
+      const segProgress = elapsed / approachTime;
+      newX = firstTile.x + (pivotTile.x - firstTile.x) * segProgress;
+      newY = firstTile.y + (pivotTile.y - firstTile.y) * segProgress;
+      proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, pivotTile.x, pivotTile.y);
+      // Still approaching — not past reflect point
+    } else {
+      // Segment 2: straight line from pivot back to end
+      const segElapsed = elapsed - approachTime;
+      const segProgress = segElapsed / reflectTime;
+      newX = pivotTile.x + (lastTile.x - pivotTile.x) * segProgress;
+      newY = pivotTile.y + (lastTile.y - pivotTile.y) * segProgress;
+      proj.direction = calculateDirectionTo(pivotTile.x, pivotTile.y, lastTile.x, lastTile.y);
+      // Mark as past reflect point (stable, never toggles back)
+      proj.visualPastReflectPoint = true;
+    }
+  } else if (visualTileIndex >= tilePath.length - 1) {
+    reachedTarget = true;
+    const finalTile = tilePath[tilePath.length - 1];
+    newX = finalTile.x;
+    newY = finalTile.y;
+  } else {
+    // Interpolate between current and next tile for smooth movement
+    const currentTile = tilePath[visualTileIndex];
+    const nextTile = tilePath[visualTileIndex + 1];
+    const tileProgress = (elapsed % tileTransitTime) / tileTransitTime;
+    newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
+    newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
+  }
+
+  // Store visual tile index for hitResult consumption
+  // For two-segment straight-line reflects, estimate tile index from position
+  if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined) {
+    // Map current position to nearest tile in the combined path
+    let bestIdx = 0;
+    let bestDist = Infinity;
+    for (let ti = 0; ti < tilePath.length; ti++) {
+      const td = Math.abs(tilePath[ti].x - newX) + Math.abs(tilePath[ti].y - newY);
+      if (td < bestDist) { bestDist = td; bestIdx = ti; }
+    }
+    proj.currentTileIndex = bestIdx;
+  } else {
+    proj.currentTileIndex = visualTileIndex;
+  }
+
+  // Update direction for sprite rotation
+  if (tilePath.length >= 2) {
+    const firstTile = tilePath[0];
+    const lastTile = tilePath[tilePath.length - 1];
+    const dx = lastTile.x - firstTile.x;
+    const dy = lastTile.y - firstTile.y;
+    if (dx !== 0 || dy !== 0) {
+      proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, lastTile.x, lastTile.y);
+    }
+  }
+
+  return { newX, newY, reachedTarget };
+}
+
+/**
+ * LEGACY: non-homing projectiles without tilePath.
+ * Simple A-to-B linear interpolation from spawn to target.
+ * Active when: none of the other branches match.
+ */
+function updateLegacyNoPathVisual(proj: Projectile, now: number): ProjectileMovementResult {
+  const elapsed = (now - proj.startTime) / 1000;
+  const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+  const distanceTraveled = speedTilesPerSecond * elapsed;
+
+  const dx = proj.targetX - proj.startX;
+  const dy = proj.targetY - proj.startY;
+  const totalDistance = Math.sqrt(dx * dx + dy * dy);
+
+  let newX: number;
+  let newY: number;
+  let reachedTarget = false;
+
+  if (distanceTraveled >= totalDistance) {
+    reachedTarget = true;
+    newX = proj.targetX;
+    newY = proj.targetY;
+  } else {
+    const progress = distanceTraveled / totalDistance;
+    newX = proj.startX + dx * progress;
+    newY = proj.startY + dy * progress;
+  }
+
+  // Update direction for sprite rotation
+  if (dx !== 0 || dy !== 0) {
+    proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
+  }
+
+  return { newX, newY, reachedTarget };
+}
+
 /**
  * Visual-only projectile update — called from animation loop.
  * All damage/effects are already resolved by resolveProjectiles() during executeTurn.
@@ -2008,187 +2249,19 @@ export function updateProjectiles(gameState: GameState): void {
       continue;
     }
 
-    // Calculate position based on whether this is a homing projectile or not
-    let newX: number;
-    let newY: number;
-    let reachedTarget = false;
-
+    // Dispatch to the appropriate movement branch. Same conditions as before
+    // the Phase B extraction — behavior is identical.
+    let result: ProjectileMovementResult;
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
-      // STRAIGHT-LINE HOMING: smooth interpolation from original start to target
-      const startX = proj.homingVisualStartX;
-      const startY = proj.homingVisualStartY ?? proj.y;
-      const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
-      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-      const totalDist = Math.sqrt(Math.pow(proj.targetX - startX, 2) + Math.pow(proj.targetY - startY, 2));
-      const totalTime = Math.max(0.1, totalDist / speedTilesPerSecond);
-      const progress = Math.min(elapsed / totalTime, 1);
-      newX = startX + (proj.targetX - startX) * progress;
-      newY = startY + (proj.targetY - startY) * progress;
-      if (progress >= 1) reachedTarget = true;
-
-      // Update direction for sprite rotation
-      const sdx = proj.targetX - startX;
-      const sdy = proj.targetY - startY;
-      if (sdx !== 0 || sdy !== 0) {
-        proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
-      }
+      result = updateStraightLineHomingVisual(proj, now);
     } else if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
-      // Grid homing projectiles without tilePath: move towards current target from current position
-      const dx = proj.targetX - proj.x;
-      const dy = proj.targetY - proj.y;
-      const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
-
-      const frameTime = 0.016; // 16ms in seconds
-      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-      const moveDistance = speedTilesPerSecond * frameTime;
-
-      if (distanceToTarget <= moveDistance || distanceToTarget < 0.1) {
-        newX = proj.targetX;
-        newY = proj.targetY;
-        reachedTarget = true;
-      } else {
-        const normalizedDx = dx / distanceToTarget;
-        const normalizedDy = dy / distanceToTarget;
-        newX = proj.x + normalizedDx * moveDistance;
-        newY = proj.y + normalizedDy * moveDistance;
-      }
-
-      // Update direction for sprite rotation
-      if (dx !== 0 || dy !== 0) {
-        proj.direction = calculateDirectionTo(proj.x, proj.y, proj.targetX, proj.targetY);
-      }
+      result = updateGridHomingVisual(proj);
     } else if (proj.tilePath && proj.tilePath.length > 0) {
-      // TILE-BASED MOVEMENT: Calculate visual position purely from time
-      // Don't mutate currentTileIndex or tileEntryTime — these get deep-copied
-      // into game state and would cause resolveProjectiles to see stale visual state.
-
-      const spawnTime = proj.tileEntryTime ?? proj.startTime;
-      const elapsed = (now - spawnTime) / 1000; // seconds since spawn
-      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-      const tileTransitTime = 1 / speedTilesPerSecond;
-
-      // Calculate which tile we should be on based purely on elapsed time
-      const visualTileIndex = Math.min(
-        Math.floor(elapsed / tileTransitTime),
-        proj.tilePath.length - 1
-      );
-
-      if (proj.homingPathStyle === 'straight' && proj.tilePath.length >= 2 && !proj.reflected) {
-        // STRAIGHT-LINE: smooth interpolation from first to last tile
-        const firstTile = proj.tilePath[0];
-        const lastTile = proj.tilePath[proj.tilePath.length - 1];
-        const actualDistance = Math.max(1, Math.sqrt(
-          Math.pow(lastTile.x - firstTile.x, 2) + Math.pow(lastTile.y - firstTile.y, 2)
-        ));
-        const totalTransitTime = actualDistance * tileTransitTime;
-        const progress = Math.min(elapsed / totalTransitTime, 1);
-        newX = firstTile.x + (lastTile.x - firstTile.x) * progress;
-        newY = firstTile.y + (lastTile.y - firstTile.y) * progress;
-        if (progress >= 1) reachedTarget = true;
-      } else if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined && proj.tilePath.length >= 2) {
-        // TWO-SEGMENT STRAIGHT-LINE: approach straight to reflect point, then straight back
-        const pivotIdx = proj.reflectAtTileIndex;
-        const firstTile = proj.tilePath[0];
-        const pivotTile = proj.tilePath[Math.min(pivotIdx, proj.tilePath.length - 1)];
-        const lastTile = proj.tilePath[proj.tilePath.length - 1];
-
-        // Calculate distances for each segment
-        const approachDist = Math.max(0.5, Math.sqrt(
-          Math.pow(pivotTile.x - firstTile.x, 2) + Math.pow(pivotTile.y - firstTile.y, 2)
-        ));
-        const reflectDist = Math.max(0.5, Math.sqrt(
-          Math.pow(lastTile.x - pivotTile.x, 2) + Math.pow(lastTile.y - pivotTile.y, 2)
-        ));
-        const approachTime = approachDist * tileTransitTime;
-        const reflectTime = reflectDist * tileTransitTime;
-        const totalTime = approachTime + reflectTime;
-
-        if (elapsed >= totalTime) {
-          newX = lastTile.x;
-          newY = lastTile.y;
-          reachedTarget = true;
-          proj.visualPastReflectPoint = true;
-        } else if (elapsed < approachTime) {
-          // Segment 1: straight line from start to pivot (reflect point)
-          const segProgress = elapsed / approachTime;
-          newX = firstTile.x + (pivotTile.x - firstTile.x) * segProgress;
-          newY = firstTile.y + (pivotTile.y - firstTile.y) * segProgress;
-          proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, pivotTile.x, pivotTile.y);
-          // Still approaching — not past reflect point
-        } else {
-          // Segment 2: straight line from pivot back to end
-          const segElapsed = elapsed - approachTime;
-          const segProgress = segElapsed / reflectTime;
-          newX = pivotTile.x + (lastTile.x - pivotTile.x) * segProgress;
-          newY = pivotTile.y + (lastTile.y - pivotTile.y) * segProgress;
-          proj.direction = calculateDirectionTo(pivotTile.x, pivotTile.y, lastTile.x, lastTile.y);
-          // Mark as past reflect point (stable, never toggles back)
-          proj.visualPastReflectPoint = true;
-        }
-      } else if (visualTileIndex >= proj.tilePath.length - 1) {
-        reachedTarget = true;
-        const finalTile = proj.tilePath[proj.tilePath.length - 1];
-        newX = finalTile.x;
-        newY = finalTile.y;
-      } else {
-        // Interpolate between current and next tile for smooth movement
-        const currentTile = proj.tilePath[visualTileIndex];
-        const nextTile = proj.tilePath[visualTileIndex + 1];
-        const tileProgress = (elapsed % tileTransitTime) / tileTransitTime;
-        newX = currentTile.x + (nextTile.x - currentTile.x) * tileProgress;
-        newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
-      }
-
-      // Store visual tile index for hitResult consumption
-      // For two-segment straight-line reflects, estimate tile index from position
-      if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined) {
-        // Map current position to nearest tile in the combined path
-        let bestIdx = 0;
-        let bestDist = Infinity;
-        for (let ti = 0; ti < proj.tilePath.length; ti++) {
-          const td = Math.abs(proj.tilePath[ti].x - newX) + Math.abs(proj.tilePath[ti].y - newY);
-          if (td < bestDist) { bestDist = td; bestIdx = ti; }
-        }
-        proj.currentTileIndex = bestIdx;
-      } else {
-        proj.currentTileIndex = visualTileIndex;
-      }
-
-      // Update direction for sprite rotation
-      if (proj.tilePath.length >= 2) {
-        const firstTile = proj.tilePath[0];
-        const lastTile = proj.tilePath[proj.tilePath.length - 1];
-        const dx = lastTile.x - firstTile.x;
-        const dy = lastTile.y - firstTile.y;
-        if (dx !== 0 || dy !== 0) {
-          proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, lastTile.x, lastTile.y);
-        }
-      }
+      result = updateTileBasedVisual(proj, now);
     } else {
-      // LEGACY: Non-homing projectiles without tilePath
-      const elapsed = (now - proj.startTime) / 1000;
-      const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-      const distanceTraveled = speedTilesPerSecond * elapsed;
-
-      const dx = proj.targetX - proj.startX;
-      const dy = proj.targetY - proj.startY;
-      const totalDistance = Math.sqrt(dx * dx + dy * dy);
-
-      if (distanceTraveled >= totalDistance) {
-        reachedTarget = true;
-        newX = proj.targetX;
-        newY = proj.targetY;
-      } else {
-        const progress = distanceTraveled / totalDistance;
-        newX = proj.startX + dx * progress;
-        newY = proj.startY + dy * progress;
-      }
-
-      // Update direction for sprite rotation
-      if (dx !== 0 || dy !== 0) {
-        proj.direction = calculateDirectionTo(proj.startX, proj.startY, proj.targetX, proj.targetY);
-      }
+      result = updateLegacyNoPathVisual(proj, now);
     }
+    const { newX, newY, reachedTarget } = result;
 
     // Update position
     proj.x = newX;

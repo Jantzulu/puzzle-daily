@@ -50,22 +50,18 @@ Every `Projectile` field is now annotated LOGICAL / VISUAL / BRIDGE inline so th
 
 **Zero behavior change.** The new interface is declared but not yet consumed at any callsite; the existing fields remain on `Projectile`. 198/198 tests still pass.
 
-### Phase B — Extract movement-mode branches out of `updateProjectiles` — LOW RISK
+### ✅ Phase B — Movement branches extracted (done)
 
-**Goal:** shrink the 616-line function (D5) without changing semantics.
+Four file-scoped helpers now live in [`simulation.ts`](../src/engine/simulation.ts), extracted verbatim from the nested conditionals previously inside `updateProjectiles`:
 
-Extract these private functions in `simulation.ts` (keep them file-scoped, no exports):
+- `updateStraightLineHomingVisual(proj, now)` — straight-line homing with spawn anchor
+- `updateGridHomingVisual(proj)` — grid homing without tilePath (per-frame follow)
+- `updateTileBasedVisual(proj, now)` — tilePath movement; handles three sub-cases internally (straight, two-segment reflect, standard tile-to-tile)
+- `updateLegacyNoPathVisual(proj, now)` — non-homing projectiles without tilePath
 
-- `updateStraightLineHomingVisual(proj, gameState, now)` — current straight-line homing branch
-- `updateGridHomingVisual(proj, gameState, now)` — grid/pathfinding homing branch
-- `updateTileBasedVisual(proj, gameState, now)` — non-homing `tilePath` branch
-- `updateReflectedVisual(proj, gameState, now)` — reflected projectile branch
+Each helper returns `{ newX, newY, reachedTarget }`. `updateProjectiles` now dispatches on the same conditions as before (identical branch order and predicates), applies `proj.x = newX; proj.y = newY`, and runs the shared bridge-field consumption (`pendingReflectVfx`, `hitResult`, `pendingDeactivation`).
 
-Each extracted function receives the same parameters, performs the same mutations. This is a pure code-motion refactor — each function should be identical to the existing nested block it replaces.
-
-Use `git diff --color-words` to verify each extraction is textually identical except for the function wrapper. Run engine tests between each extraction.
-
-**Verification:** engine test suite + manual smoke test of one puzzle with each projectile variant (one straight, one grid-homing, one pathfinding, one reflect).
+**Pure code motion.** Same math, same side effects, same branch predicates. No behavior change. 198/198 tests pass, and `tsc -b --noEmit` reports zero new errors attributable to Phase B (pre-existing errors unchanged).
 
 ### Phase C — Move visual fields to a side-table — MEDIUM RISK
 
