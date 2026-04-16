@@ -77,15 +77,17 @@ These are referenced by backward-compat code paths for saved puzzle/asset data. 
 
 ## 3. Architecture & Tech Debt
 
-### 🎯 HIGH — Projectile system refactor
+### 🎯 Projectile system refactor — Phases A & B done, C/D/E pending
 
-Tracked in [projectile-refactor-plan.md](projectile-refactor-plan.md) as a phased plan. Summary:
+Tracked in [projectile-refactor-plan.md](projectile-refactor-plan.md) as a phased plan.
 
-- Phase A: introduce `ProjectileVisualState` type (additive, zero behavior change) — LOW RISK
-- Phase B: extract movement-mode branches out of `updateProjectiles` — LOW RISK
-- Phase C: move visual fields off `GameState` so deep-copy can't capture them — MEDIUM RISK
-- Phase D: unify 6 overlapping deferred-state flags into one struct — MEDIUM RISK
-- Phase E: de-duplicate `updateProjectilesHeadless` vs `resolveProjectiles` — HIGH VALUE (prevents solver/game drift, the exact determinism risk), needs golden-test corpus first
+- ✅ Phase A: `ProjectileVisualState` type introduced (commit `45fdf9d`).
+- ✅ Phase B: movement branches extracted into 4 helpers (commit `af55a53`).
+- 🎯 **Phase C (deferred — needs dedicated session)**: move visual fields off `GameState` so deep-copy can't capture them. Scouted: ~117 callsites across 4 files, 3 of them critical (`simulation.ts`, `AnimatedGameBoard.tsx`, `Game.tsx`). Design open: where does the `Map<string, ProjectileVisualState>` live, and do simulation helpers take it as a parameter or is the write step lifted out of simulation entirely?
+- 🎯 **Phase D (deferred — needs dedicated session)**: consolidate overlapping deferred-state flags. Scouted: ~137 callsites across 5-6 files when counting `hitResult` decomposition. Full Phase D is roughly Phase C's size. A smaller *scoped* version — consolidating just the reflect triad (`reflectAtTileIndex`, `pendingReflectVfx`, `visualPastReflectPoint`) — is ~20 callsites if we want a self-contained mini-D without committing to the full struct.
+- 🎯 **Phase E (highest determinism value, deferred)**: de-duplicate `updateProjectilesHeadless` vs `resolveProjectiles` so the solver and live game can't drift. Needs a golden-test corpus of saved puzzles first.
+
+**Recommendation for resuming:** tackle Phase C, D, or E as its own focused session. Each has non-trivial blast radius; don't interleave with other work. Phase E has the highest correctness payoff; Phase C has the cleanest structural payoff; scoped Phase D (reflect triad only) is the safest next increment if you want projectile progress in a smaller session.
 
 ### ✅ Done — Sync race condition in `syncTracker.ts`
 
