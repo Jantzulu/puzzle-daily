@@ -120,12 +120,28 @@ export function detectConflicts(
 }
 
 /**
- * Mark push as completed - clear local changes for pushed IDs and record time
+ * Mark push as completed - clear local changes for pushed IDs and record time.
+ *
+ * Only clears the dirty flag for an asset if its latest local-change timestamp
+ * is at or before `pushStartTime`. This guards against the race where a user
+ * edits an asset AFTER the push had already collected the id list but BEFORE
+ * the push finished — in that case the dirty flag must stay set so the next
+ * push picks up the post-start edit, and the next pull does not silently
+ * overwrite it.
+ *
+ * `pushStartTime` MUST be captured at the top of the push flow, before any
+ * ids are gathered for upload.
  */
-export function markPushCompleted(pushedIds: string[]): void {
+export function markPushCompleted(pushedIds: string[], pushStartTime: string): void {
   const state = loadState();
   for (const id of pushedIds) {
-    delete state.localChanges[id];
+    const localTs = state.localChanges[id];
+    // Only clear if the local change is from before the push started.
+    // If localTs > pushStartTime, the user edited this asset during the push
+    // and the dirty flag must persist.
+    if (localTs && localTs <= pushStartTime) {
+      delete state.localChanges[id];
+    }
   }
   state.lastPushTime = new Date().toISOString();
   saveState(state);

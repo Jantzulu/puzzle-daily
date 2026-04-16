@@ -166,6 +166,9 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
 
   isSyncing = true;
   notifySyncStatus('syncing');
+  // Capture the push-start time BEFORE gathering any ids. markPushCompleted
+  // uses this to preserve dirty flags for assets edited DURING the push.
+  const pushStartTime = new Date().toISOString();
   const errors: string[] = [];
 
   try {
@@ -347,7 +350,7 @@ export async function pushAllToCloud(): Promise<{ success: boolean; errors: stri
       ...collectibleAssets.map(c => c.id),
       ...puzzles.map(p => p.id),
     ];
-    markPushCompleted(allPushedIds);
+    markPushCompleted(allPushedIds, pushStartTime);
 
     lastSyncTime = new Date();
     logActivity({ action: 'sync_push', details: { errors: errors.length } });

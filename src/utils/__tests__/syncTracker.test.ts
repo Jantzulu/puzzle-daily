@@ -80,51 +80,64 @@ describe('syncTracker', () => {
     expect(conflicts[0].cloudUpdatedAt).toBe('2026-04-10T00:00:00.000Z');
   });
 
-  it('markPushCompleted clears only the explicitly pushed ids', () => {
+  it('markPushCompleted clears dirty flags for ids whose local change is at/before pushStartTime', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-16T10:00:00.000Z'));
     trackLocalChange('pushed-1');
+    vi.setSystemTime(new Date('2026-04-16T10:00:01.000Z'));
     trackLocalChange('pushed-2');
+    vi.setSystemTime(new Date('2026-04-16T10:00:02.000Z'));
     trackLocalChange('not-pushed');
 
-    markPushCompleted(['pushed-1', 'pushed-2']);
+    // Push kicks off AFTER all three edits land.
+    const pushStartTime = '2026-04-16T10:00:03.000Z';
+    markPushCompleted(['pushed-1', 'pushed-2'], pushStartTime);
 
     expect(hasLocalChanges('pushed-1')).toBe(false);
     expect(hasLocalChanges('pushed-2')).toBe(false);
     // Critical: an id that wasn't in the push list must stay dirty.
     expect(hasLocalChanges('not-pushed')).toBe(true);
+    vi.useRealTimers();
   });
 
   /**
-   * Known issue: markPushCompleted does not guard against edits that happen
-   * BETWEEN push-start (when the id list was gathered) and push-end. If the
-   * user edits the same asset during the push, the completion clears the
-   * dirty flag even though the tracker's current timestamp reflects an edit
-   * newer than what the server received. The next pull will then silently
-   * overwrite the post-push edit.
+   * Regression test for the push/edit race.
    *
-   * This test documents the current (buggy) behavior. When the race is
-   * fixed — likely by comparing `localChanges[id]` timestamp against a
-   * push-start cutoff — flip the assertion to `.toBe(true)`.
+   * If the user edits an asset BETWEEN push-start (when the id list was
+   * gathered) and push-end, the dirty flag must stay set — the post-start
+   * edit has not been uploaded yet, and clearing the flag would let a
+   * subsequent pull silently overwrite it.
+   *
+   * markPushCompleted guards against this by comparing each asset's local
+   * change timestamp to pushStartTime. Only ids whose most recent edit is
+   * at or before pushStartTime have their flag cleared.
    */
-  it('DOCUMENTS BUG: concurrent edit during push is silently cleared', () => {
-    // User edits asset at T0.
-    trackLocalChange('x');
-    const firstChange = getLocallyChangedIds();
-    expect(firstChange.has('x')).toBe(true);
+  it('markPushCompleted preserves dirty flag for assets edited during the push', () => {
+    vi.useFakeTimers();
 
-    // Push starts, gathers ['x'] to send.
+    // T1 — user edits asset.
+    vi.setSystemTime(new Date('2026-04-16T10:00:00.000Z'));
+    trackLocalChange('x');
+    expect(getLocallyChangedIds().has('x')).toBe(true);
+
+    // T2 — push starts, captures its cutoff and gathers ['x'] to send.
+    vi.setSystemTime(new Date('2026-04-16T10:00:01.000Z'));
+    const pushStartTime = new Date().toISOString();
     const idsBeingPushed = ['x'];
 
-    // While push is in flight, user edits 'x' again.
-    // (In production this happens because push is async.)
+    // T3 — while push is in flight, user edits 'x' again.
+    vi.setSystemTime(new Date('2026-04-16T10:00:02.000Z'));
     trackLocalChange('x');
 
-    // Push completes.
-    markPushCompleted(idsBeingPushed);
+    // T4 — push completes.
+    vi.setSystemTime(new Date('2026-04-16T10:00:03.000Z'));
+    markPushCompleted(idsBeingPushed, pushStartTime);
 
-    // Current (buggy) behavior: the second edit is forgotten. The next pull
-    // will see cloud X (which is the PRE-second-edit version the server has)
-    // and silently clobber local.
-    expect(hasLocalChanges('x')).toBe(false); // ← flip to `true` when fixed.
+    // The second edit (T3) is newer than pushStartTime (T2), so the flag
+    // must remain set so the next push picks it up and the next pull does
+    // not overwrite it.
+    expect(hasLocalChanges('x')).toBe(true);
+    vi.useRealTimers();
   });
 
   it('resolveConflictKeepLocal updates known cloud timestamp so it stops firing', () => {

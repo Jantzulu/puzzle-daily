@@ -87,13 +87,11 @@ Tracked in [projectile-refactor-plan.md](projectile-refactor-plan.md) as a phase
 - Phase D: unify 6 overlapping deferred-state flags into one struct — MEDIUM RISK
 - Phase E: de-duplicate `updateProjectilesHeadless` vs `resolveProjectiles` — HIGH VALUE (prevents solver/game drift, the exact determinism risk), needs golden-test corpus first
 
-### 🎯 MEDIUM — Sync race condition in `syncTracker.ts`
+### ✅ Done — Sync race condition in `syncTracker.ts`
 
-[`src/utils/syncTracker.ts:125-131`](../src/utils/syncTracker.ts) — `markPushCompleted()` unconditionally clears `localChanges[id]` for every pushed id. If the user edits the same asset between push-start and push-complete, the post-start edit is forgotten and a subsequent pull silently overwrites it.
+`markPushCompleted()` now takes a required `pushStartTime` parameter and only clears `localChanges[id]` when the local-change timestamp is ≤ `pushStartTime`. `pushAllToCloud` captures the start time immediately after acquiring the sync lock, before gathering any ids. Edits made during an in-flight push keep their dirty flag, so the next push picks them up and the next pull can't overwrite them.
 
-Test documents the current behavior at [`src/utils/__tests__/syncTracker.test.ts`](../src/utils/__tests__/syncTracker.test.ts) — the test named `"DOCUMENTS BUG: concurrent edit during push is silently cleared"` is marked to flip its final assertion when the race is fixed.
-
-**Fix:** capture `pushStartTime` when gathering ids; in `markPushCompleted`, only delete `localChanges[id]` when its timestamp is ≤ `pushStartTime`.
+Regression test in [`src/utils/__tests__/syncTracker.test.ts`](../src/utils/__tests__/syncTracker.test.ts) (`"markPushCompleted preserves dirty flag for assets edited during the push"`) locks the behavior in place using fake timers.
 
 ### 🎯 MEDIUM — MapEditor / PixelEditor / AnimatedGameBoard monoliths
 
@@ -172,10 +170,10 @@ Wrapping confirmed in both [`App.tsx:560`](../src/App.tsx) (with inner boundary 
 
 Ordered by impact × risk × effort. Items shift between tiers as context changes.
 
-### Tier 1 — Determinism & correctness (do soon)
+### Tier 1 — Determinism & correctness (✅ complete)
 
 1. ✅ **Remove `applyChance` randomness** — done; live-game is now fully deterministic with respect to status effect application.
-2. **Fix sync push/edit race** (Section 3, MEDIUM) — small change to `syncTracker`, flip the test assertion afterward.
+2. ✅ **Fix sync push/edit race** — done; `markPushCompleted` now uses a push-start cutoff to preserve flags for concurrent edits.
 
 ### Tier 2 — Foundation for future work
 
