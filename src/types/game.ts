@@ -813,83 +813,140 @@ export interface CustomAttack {
 }
 
 /**
- * Active projectile in the game world
+ * Per-frame visual state for an active projectile.
+ *
+ * This type groups every field that is written by the per-frame visual loop
+ * (`updateProjectiles` in simulation.ts) and/or used purely for visual
+ * interpolation. It exists as the target shape for Phase C of the projectile
+ * refactor (see docs/projectile-refactor-plan.md): moving these fields off
+ * `GameState` into a visual-only side-table keyed by projectile id, so that
+ * `JSON.parse(JSON.stringify(gameState))` (the deep-copy turn snapshot) can
+ * never capture wall-clock-timing noise.
+ *
+ * ⚠️ Phase A (current): this interface is declared but not yet used at any
+ * callsite. The fields still live on `Projectile` to keep Phase A purely
+ * additive. Phase C will introduce a `Map<string, ProjectileVisualState>` in
+ * AnimatedGameBoard and remove the corresponding fields from `Projectile`.
+ */
+export interface ProjectileVisualState {
+  /** Current visual X position (can be fractional, updated per-frame). */
+  x: number;
+  /** Current visual Y position (can be fractional, updated per-frame). */
+  y: number;
+  /** Wall-clock spawn time — anchor for all visual interpolation. */
+  startTime: number;
+  /** Visual progress through tilePath. Distinct from Projectile.logicalTileIndex. */
+  currentTileIndex?: number;
+  /** Wall-clock time when visual entered the current tile (for tile-to-tile animation). */
+  tileEntryTime?: number;
+  /** For straight-line homing: anchor X (never changes after spawn). */
+  homingVisualStartX?: number;
+  /** For straight-line homing: anchor Y (never changes after spawn). */
+  homingVisualStartY?: number;
+  /** For straight-line homing: anchor timestamp (never changes after spawn). */
+  homingVisualStartTime?: number;
+  /** Set once when visual crosses reflect point. Stable — never toggles back. */
+  visualPastReflectPoint?: boolean;
+}
+
+/**
+ * Active projectile in the game world.
+ *
+ * Fields are grouped by role. Categories matter for the projectile refactor
+ * plan (docs/projectile-refactor-plan.md):
+ *
+ * - LOGICAL: authoritative game state. Read/written by resolveProjectiles at
+ *   turn boundaries. Determines gameplay outcomes.
+ * - VISUAL: per-frame interpolation state. Written by updateProjectiles,
+ *   never read by logic. Will move to ProjectileVisualState in Phase C.
+ * - BRIDGE: set by logical resolution, consumed by the visual loop when the
+ *   visual catches up (e.g. `hitResult` — logic decides a hit at turn N, the
+ *   visual applies damage/VFX when the projectile sprite reaches the target).
  */
 export interface Projectile {
+  // -------- Identity (LOGICAL) --------
   id: string;                   // Unique instance ID
   attackData: CustomAttack;     // Attack definition
 
-  // Position
-  x: number;                    // Current X (can be fractional)
-  y: number;                    // Current Y (can be fractional)
-  startX: number;               // Original spawn X
-  startY: number;               // Original spawn Y
-  targetX: number;              // Destination X
-  targetY: number;              // Destination Y
+  // -------- Position (mixed: spawn/target are LOGICAL, x/y are VISUAL) --------
+  /** VISUAL — current interpolated X (Phase C: moves to ProjectileVisualState). */
+  x: number;
+  /** VISUAL — current interpolated Y (Phase C: moves to ProjectileVisualState). */
+  y: number;
+  startX: number;               // Original spawn X (LOGICAL)
+  startY: number;               // Original spawn Y (LOGICAL)
+  targetX: number;              // Destination X (LOGICAL)
+  targetY: number;              // Destination Y (LOGICAL)
 
-  // Movement
+  // -------- Movement (LOGICAL) --------
   direction: Direction;         // Facing direction for sprite rotation
   speed: number;                // Tiles per turn
 
-  // State
-  active: boolean;
-  startTime: number;            // Date.now() when spawned
-  // Bounce behavior
+  // -------- State --------
+  active: boolean;              // LOGICAL
+  /** VISUAL — wall-clock spawn time, anchor for visual interpolation (Phase C: moves). */
+  startTime: number;
+
+  // -------- Bounce behavior (LOGICAL) --------
   bounceOffWalls?: boolean;     // Enable wall bouncing
   maxBounces?: number;          // Maximum allowed bounces
   bounceCount?: number;         // Current bounce count
   bounceBehavior?: BounceBehavior; // How projectile bounces
   bounceTurnDegrees?: 45 | 90 | 135; // Turn amount for turn_left/turn_right
 
-  // Metadata
+  // -------- Metadata (LOGICAL) --------
   sourceCharacterId?: string;   // Who fired this
   sourceEnemyId?: string;       // If fired by enemy
   sourceEnemyIndex?: number;    // Array index of source enemy (for duplicate ID handling in reflect)
   spellAssetId?: string;        // For status effect application on hit
 
-  // Homing behavior - projectile tracks a moving target
-  isHoming?: boolean;           // If true, projectile chases target entity
-  homingPathStyle?: 'grid' | 'straight'; // Visual: 'grid' follows tiles, 'straight' flies direct
-  homingIgnoreWalls?: boolean;  // If true, passes through walls (default: true)
-  homingHitAlongPath?: boolean; // If true, grid homing hits entities along path
-  homingVisualStartX?: number;  // Original start X for straight-line visual continuity
-  homingVisualStartY?: number;  // Original start Y for straight-line visual continuity
-  homingVisualStartTime?: number; // Original start time for straight-line timing
-  targetEntityId?: string;      // ID of entity being tracked
-  targetIsEnemy?: boolean;      // true = target is enemy, false = target is character
+  // -------- Homing (mixed: config + target are LOGICAL, visual anchors are VISUAL) --------
+  isHoming?: boolean;           // LOGICAL — If true, projectile chases target entity
+  homingPathStyle?: 'grid' | 'straight'; // LOGICAL — Visual: 'grid' follows tiles, 'straight' flies direct
+  homingIgnoreWalls?: boolean;  // LOGICAL — If true, passes through walls (default: true)
+  homingHitAlongPath?: boolean; // LOGICAL — If true, grid homing hits entities along path
+  /** VISUAL — straight-line homing anchor X (Phase C: moves to ProjectileVisualState). */
+  homingVisualStartX?: number;
+  /** VISUAL — straight-line homing anchor Y (Phase C: moves to ProjectileVisualState). */
+  homingVisualStartY?: number;
+  /** VISUAL — straight-line homing anchor timestamp (Phase C: moves to ProjectileVisualState). */
+  homingVisualStartTime?: number;
+  targetEntityId?: string;      // LOGICAL — ID of entity being tracked
+  targetIsEnemy?: boolean;      // LOGICAL — true = target is enemy, false = target is character
 
-  // Piercing tracking - prevents hitting same entity multiple times
+  // -------- Piercing tracking (LOGICAL) --------
   hitEntityIds?: string[];      // IDs of entities already hit by this projectile
   hitEnemyIndices?: number[];   // Array indices of enemies hit (for duplicate ID handling)
 
-  // Tile-based movement - deterministic collision detection
-  // Pre-computed path of tiles the projectile will traverse
+  // -------- Tile-based movement (LOGICAL path + VISUAL progress) --------
+  /** LOGICAL — pre-computed at spawn, deterministic. */
   tilePath?: Array<{ x: number; y: number }>;
-  // Current index in tilePath (which tile we're at or moving toward)
+  /** VISUAL — current index in tilePath (Phase C: moves to ProjectileVisualState). */
   currentTileIndex?: number;
-  // Time when we entered the current tile (for smooth animation)
+  /** VISUAL — wall-clock time when visual entered current tile (Phase C: moves). */
   tileEntryTime?: number;
 
-  // Reflect status — projectile was bounced back by Reflect status effect
+  // -------- Reflect status (LOGICAL) --------
   reflected?: boolean;        // True if this projectile has been reflected
   teamSwapped?: boolean;      // True = targeting is flipped (hero proj hits heroes, enemy proj hits enemies)
   reflectTintColor?: string;            // Tint color applied to reflected projectile
   reflectOverrideSprite?: SpriteReference; // Replacement sprite for reflected projectile
 
-  // Deterministic turn resolution metadata
-  spawnTurn?: number;           // gameState.currentTurn when spawned
-  logicalTileIndex?: number;    // Deterministic total tiles traversed (incremented by speed each turn)
-  reflectAtTileIndex?: number;  // Tile index where reflect happened (tint applies after this)
-  hitResult?: ProjectileHitResult; // Pre-computed collision from turn resolution
-  pendingDeactivation?: boolean; // Reached max range — deactivate when visual reaches end of tilePath
-  pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // Deferred reflect VFX — spawned when visual reaches reflect point
-  visualPastReflectPoint?: boolean; // Set once when visual crosses reflect point — stable, never toggles back
+  // -------- Deterministic turn resolution (LOGICAL + BRIDGE fields) --------
+  spawnTurn?: number;           // LOGICAL — gameState.currentTurn when spawned
+  logicalTileIndex?: number;    // LOGICAL — Deterministic total tiles traversed (incremented by speed each turn)
+  reflectAtTileIndex?: number;  // BRIDGE — logic sets the reflect tile; visual applies tint after this
+  hitResult?: ProjectileHitResult; // BRIDGE — logic decides the hit; visual applies damage/VFX when sprite arrives
+  pendingDeactivation?: boolean; // BRIDGE — logic marks end-of-range; visual deactivates when sprite reaches path end
+  pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // BRIDGE — deferred reflect VFX
+  /** VISUAL — set once when visual crosses reflect point (Phase C: moves to ProjectileVisualState). */
+  visualPastReflectPoint?: boolean;
 
-  // Throw/Place — carries item placement data through projectile flight
+  // -------- Throw/Place (LOGICAL) — carries item placement data through projectile flight --------
   throwPlaceConfig?: ThrowPlaceConfig;
 
-  // Internal flag for timeline recording (not serialized)
-  _recorded?: boolean;
+  // -------- Internal (not serialized) --------
+  _recorded?: boolean;          // Timeline recording flag for replay
 }
 
 // ==========================================

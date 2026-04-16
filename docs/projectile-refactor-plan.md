@@ -42,26 +42,13 @@ Determinism at turn boundaries is **working**. This plan is about cleanup, not c
 
 Phases are ordered smallest-blast-radius first so each can land independently with its own PR and test run. Stop at any point if confidence drops.
 
-### Phase A — Introduce `ProjectileVisualState` (no behavior change) — LOW RISK
+### ✅ Phase A — `ProjectileVisualState` introduced (done)
 
-**Goal:** separate visual-only fields from the `Projectile` type, so the deep-copy issue (D1) has a clean boundary to fix against in later phases.
+[`src/types/game.ts`](../src/types/game.ts) now exports a `ProjectileVisualState` interface grouping every visual-only field on `Projectile`: `x`, `y`, `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time`, `visualPastReflectPoint`. Phase C will introduce a `Map<string, ProjectileVisualState>` in `AnimatedGameBoard` and remove these fields from `Projectile`.
 
-1. Create a companion type `ProjectileVisualState` in [src/types/game.ts:855](../src/types/game.ts):
-   ```ts
-   interface ProjectileVisualState {
-     x: number;                       // current visual position
-     y: number;
-     currentTileIndex: number;
-     visualPastReflectPoint?: boolean;
-     homingVisualStartX?: number;
-     homingVisualStartY?: number;
-     homingVisualStartTime?: number;
-   }
-   ```
-2. Keep the fields on `Projectile` for now (additive only, zero callsite changes). Add a typedoc `@deprecated — will move to ProjectileVisualState in Phase C`.
-3. Document which fields are logical-only, which are visual-only, which are bridge (`hitResult`, `pendingDeactivation`).
+Every `Projectile` field is now annotated LOGICAL / VISUAL / BRIDGE inline so the categorization is unambiguous at the field level — no drift risk if someone adds a new field and forgets which role it plays.
 
-**Verification:** Type-check + engine test suite (192 tests) must pass unchanged.
+**Zero behavior change.** The new interface is declared but not yet consumed at any callsite; the existing fields remain on `Projectile`. 198/198 tests still pass.
 
 ### Phase B — Extract movement-mode branches out of `updateProjectiles` — LOW RISK
 
