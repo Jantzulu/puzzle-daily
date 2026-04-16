@@ -27,11 +27,16 @@ Determinism at turn boundaries is **working**. This plan is about cleanup, not c
 | D5 | `updateProjectiles` is ~616 lines with deep branching | Single function covers 5 movement modes: straight-line homing, grid homing, pathfinding, reflected, legacy |
 | D6 | Slow homing projectiles (speed 1–2) don't smoothly track moving targets | Noted in handoff as pending work; previous fix attempts broke fast projectiles |
 
-## 3. Non-Goals
+## 3. Non-Goals & Acceptable Changes
 
-- **No gameplay changes.** Determinism, collision timing, VFX timing must remain identical turn-by-turn. Every phase below is a pure refactor.
-- **No visual behavior changes.** Existing replay recordings must play back pixel-identically.
-- **No changes to the public API of `executeTurn` / `initializeGameState`.**
+**Hard rule — do not change:**
+- The **gameplay loop**. Turn order, action resolution, damage numbers, status effect timing, victory/defeat conditions must remain identical. A puzzle that's solvable today must be solvable the same way after each phase.
+- Determinism guarantees. Two identical runs continue to produce identical results.
+- The public API of `executeTurn` / `initializeGameState`.
+
+**Acceptable and in some cases required:**
+- **Visual changes that bring visuals into alignment with logical behavior.** Logic is the source of truth. If a spell's projectile visually misses a target the logic has already recorded as hit, the correct fix is to change the visual to match — *not* change the logic to match the visual. This is explicitly the axiom from `CLAUDE_HANDOFF.md`: "Visuals must represent reality."
+- As a consequence, recorded replays are **not** guaranteed to play back pixel-identically across phases. What is guaranteed is that turn-by-turn **logical** outcomes stay identical, and visuals stay consistent with those logical outcomes.
 
 ## 4. Proposed Phases
 
