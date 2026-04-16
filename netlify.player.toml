@@ -1,0 +1,28 @@
+# Netlify configuration — player site
+#
+# To use this file, open the player site's Netlify dashboard:
+#   Site settings → Build & deploy → Build settings → Custom TOML file path
+# and set it to `netlify.player.toml`.
+
+[build]
+  command = "npm ci && npm run build:player"
+  publish = "dist-player"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback for the player app's client-side routes.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"

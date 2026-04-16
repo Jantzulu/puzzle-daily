@@ -1,0 +1,31 @@
+# Netlify configuration — editor site (knightly-dev)
+#
+# Player site uses netlify.player.toml; set "Custom TOML file path" in the
+# player site's Netlify dashboard (Site settings → Build & deploy → Build
+# settings) to `netlify.player.toml`.
+
+[build]
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# SPA fallback — React Router handles client-side routing.
+# Also present in public/_redirects; kept here for explicitness.
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+# Long cache for hashed assets (Vite emits content-hashed filenames).
+[[headers]]
+  for = "/assets/*"
+  [headers.values]
+    Cache-Control = "public, max-age=31536000, immutable"
+
+# Short cache for the entry HTML — always serve fresh.
+[[headers]]
+  for = "/index.html"
+  [headers.values]
+    Cache-Control = "public, max-age=0, must-revalidate"
