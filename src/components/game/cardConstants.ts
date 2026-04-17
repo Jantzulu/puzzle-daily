@@ -21,4 +21,4 @@
  * If you raise the constant, you may need to widen the card container or
  * accept sprites extending past the card edges.
  */
-export const CARD_PIXEL_SCALE = 2;
+export const CARD_PIXEL_SCALE = 3;
