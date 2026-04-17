@@ -120,13 +120,18 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         targetHeight = size;
       }
 
-      // Snap to integer source-pixel-scale. Pick the NEAREST integer scale
-      // to the target (Math.round, not Math.floor) so sprites render close
-      // to the intended sprite.size fraction rather than snapping strictly
-      // smaller. Clamped to whatever fits the canvas bounds — this prevents
-      // overshoot from clipping off the edge.
-      // Math.max(1, ...) ensures at least 1× for tiny sprites.
-      const idealPixelScale = Math.max(1, Math.round(targetHeight / frameHeight));
+      // Snap to integer source-pixel-scale. Pick the smallest integer scale
+      // that reaches or exceeds the target size (Math.ceil). This ensures
+      // sprites never appear smaller than the sprite.size fraction intends,
+      // at the cost of occasionally being slightly larger. Clamped to
+      // whatever fits the canvas bounds so overshoot never clips off the
+      // edge. Math.max(1, ...) ensures at least 1× for tiny sprites.
+      //
+      // Why ceil over round: round undersizes when the sprite's native
+      // height is close to the target (e.g. 30-pixel sprite targeting 38.4
+      // rounds 1.28 → 1 = draws at 30, 22% smaller than target). Ceil
+      // picks 2 = draws at 60 = close to twice target, but pixel-perfect.
+      const idealPixelScale = Math.max(1, Math.ceil(targetHeight / frameHeight));
       const maxScaleByCanvas = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
       const pixelScale = Math.min(idealPixelScale, maxScaleByCanvas);
 
@@ -253,10 +258,10 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             targetHeight = size;
           }
 
-          // Integer-scale snap for pixel-perfect rendering. Use Math.round
-          // for nearest integer to target (matches the bottomAlign path);
-          // clamp to canvas-fit.
-          const idealPixelScale = Math.max(1, Math.round(targetHeight / img.height));
+          // Integer-scale snap for pixel-perfect rendering. Math.ceil so
+          // sprites never render smaller than the sprite.size target;
+          // clamp to canvas-fit to prevent overshoot clipping.
+          const idealPixelScale = Math.max(1, Math.ceil(targetHeight / img.height));
           const maxScaleByCanvas = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
           const pixelScale = Math.min(idealPixelScale, maxScaleByCanvas);
 
