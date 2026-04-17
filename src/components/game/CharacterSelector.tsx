@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { getCharacter } from '../../data/characters';
 import type { CharacterAction, PlacedCharacter, Direction } from '../../types/game';
 import { loadSpellAsset } from '../../utils/assetStorage';
@@ -7,7 +7,7 @@ import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
-import { CARD_PIXEL_SCALE } from './cardConstants';
+import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -77,6 +77,15 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
+
+  // Uniform card sprite-area height across the hero row — derived from the
+  // tallest native sprite in the row × CARD_PIXEL_SCALE. Prevents clipping
+  // of the tallest sprite's head and keeps all cards the same height.
+  const cardSpriteHeight = useMemo(() => {
+    return computeCardSpriteAreaHeight(
+      availableCharacterIds.map(id => getCharacter(id)?.customSprite)
+    );
+  }, [availableCharacterIds]);
 
   const getShapeClass = (shape?: string) => {
     switch (shape) {
@@ -220,23 +229,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
-              {/* Name + Title */}
-              <div className="text-center w-full mb-0.5" style={{ lineHeight: 1.2 }}>
-                <span className="text-xs font-medium break-words text-arcane-400">
-                  {character.name}
-                </span>
-                {character.title && (
-                  <span className="text-xs italic text-parchment-300">
-                    {' '}{character.title}
-                  </span>
-                )}
-              </div>
-
-              {/* Sprite */}
-              <div className="relative flex-shrink-0">
+              {/* Sprite — takes full card width, uniform height across the row */}
+              <div className="relative w-full">
                 <SpriteThumbnail
                   sprite={character.customSprite}
-                  size={52}
+                  size={cardSpriteHeight}
+                  fillWidth
                   previewType="entity"
                   noBackground
                   pixelScale={CARD_PIXEL_SCALE}
@@ -247,6 +245,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
                     <span className="text-copper-400 text-base">✓</span>
                   </div>
+                )}
+              </div>
+
+              {/* Name + Title (below sprite) */}
+              <div className="text-center w-full mt-0.5 mb-0.5" style={{ lineHeight: 1.2 }}>
+                <span className="text-xs font-medium break-words text-arcane-400">
+                  {character.name}
+                </span>
+                {character.title && (
+                  <span className="text-xs italic text-parchment-300">
+                    {' '}{character.title}
+                  </span>
                 )}
               </div>
 

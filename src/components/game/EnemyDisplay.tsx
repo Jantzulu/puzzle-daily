@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import type { PlacedEnemy, EnemyBehavior, ActionStep } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
@@ -6,7 +6,7 @@ import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
-import { CARD_PIXEL_SCALE } from './cardConstants';
+import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -89,6 +89,15 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     }
   }
   const uniqueEnemyIds = Array.from(enemyGroups.keys());
+
+  // Uniform card sprite-area height across the enemy row — derived from the
+  // tallest native sprite × CARD_PIXEL_SCALE. Prevents clipping of the
+  // tallest sprite's head and keeps all cards the same height.
+  const cardSpriteHeight = useMemo(() => {
+    return computeCardSpriteAreaHeight(
+      uniqueEnemyIds.map(id => getEnemy(id)?.customSprite)
+    );
+  }, [uniqueEnemyIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
   const totalLiving = Array.from(enemyGroups.values()).reduce((sum, g) => sum + g.livingCount, 0);
 
   // Rendered enemy info
@@ -222,21 +231,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   : '[@media(hover:hover)]:hover:bg-stone-700/30'
               } ${allDead ? 'opacity-50' : ''}`}
             >
-              {/* Name + Title */}
-              <div className="text-center w-full mb-0.5" style={{ lineHeight: 1.2 }}>
-                <span className="text-xs font-medium break-words text-blood-300">
-                  {enemyData.name}
-                </span>
-                {enemyData.title && (
-                  <span className="text-xs italic text-parchment-300"> {enemyData.title}</span>
-                )}
-              </div>
-
-              {/* Sprite + initial-count badge */}
-              <div className="relative flex-shrink-0">
+              {/* Sprite — takes full card width, uniform height across the row */}
+              <div className="relative w-full">
                 <SpriteThumbnail
                   sprite={enemyData.customSprite}
-                  size={52}
+                  size={cardSpriteHeight}
+                  fillWidth
                   previewType="entity"
                   noBackground
                   pixelScale={CARD_PIXEL_SCALE}
@@ -247,6 +247,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none">
                     {totalCount}
                   </span>
+                )}
+              </div>
+
+              {/* Name + Title (below sprite) */}
+              <div className="text-center w-full mt-0.5 mb-0.5" style={{ lineHeight: 1.2 }}>
+                <span className="text-xs font-medium break-words text-blood-300">
+                  {enemyData.name}
+                </span>
+                {enemyData.title && (
+                  <span className="text-xs italic text-parchment-300"> {enemyData.title}</span>
                 )}
               </div>
 

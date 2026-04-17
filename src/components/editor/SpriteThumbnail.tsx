@@ -32,15 +32,50 @@ interface SpriteThumbnailProps {
    * that want target-size-based rendering.
    */
   pixelScale?: number;
+  /**
+   * If true, the canvas stretches horizontally to fill its container's width
+   * (measured via ResizeObserver). The `size` prop controls the CANVAS HEIGHT
+   * only in this mode — the canvas is rectangular, width = parent width,
+   * height = `size`.
+   *
+   * Use this for card-style layouts where you want sprites to have room to
+   * render at their full native width (up to the card width) without
+   * horizontal clipping, and the card row shares a uniform sprite-area
+   * height based on the tallest entity.
+   */
+  fillWidth?: boolean;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillWidth = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
+  const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
+
+  // Observe container width when fillWidth is enabled. Re-renders on resize
+  // so the canvas's internal resolution tracks the parent's actual width.
+  useEffect(() => {
+    if (!fillWidth || !containerRef.current) return;
+    const element = containerRef.current;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const w = Math.floor(entry.contentRect.width);
+        if (w > 0) setMeasuredWidth(w);
+      }
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [fillWidth]);
+
+  // Effective canvas dimensions (CSS pixels).
+  // fillWidth: width tracks parent; height is `size`. Non-fillWidth: both equal `size`.
+  const canvasWidthCSS = fillWidth ? (measuredWidth ?? size) : size;
+  const canvasHeightCSS = size;
 
   // Snap CSS display size to match canvas resolution / dpr exactly (prevents sub-pixel stretching on mobile)
   const dprForCss = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  const cssSize = Math.round(size * dprForCss) / dprForCss;
+  const cssWidth = fillWidth ? '100%' : Math.round(canvasWidthCSS * dprForCss) / dprForCss;
+  const cssHeight = Math.round(canvasHeightCSS * dprForCss) / dprForCss;
 
   useEffect(() => {
     // Subscribe to image load events to re-render when images finish loading
@@ -70,11 +105,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
 
     // Account for device pixel ratio for sharp rendering on high-DPI displays
     const dpr = window.devicePixelRatio || 1;
-    const canvasRes = Math.round(size * dpr);
+    const canvasResW = Math.round(canvasWidthCSS * dpr);
+    const canvasResH = Math.round(canvasHeightCSS * dpr);
 
     // Set canvas internal size to rounded resolution (prevents sub-pixel mismatch with CSS)
-    canvas.width = canvasRes;
-    canvas.height = canvasRes;
+    canvas.width = canvasResW;
+    canvas.height = canvasResH;
 
     // Scale context to match
     ctx.scale(dpr, dpr);
@@ -92,7 +128,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       ax: number = 0.5, ay: number = 0.5, ox: number = 0, oy: number = 0,
       sc: number = 1
     ) => {
-      ctx.clearRect(0, 0, size, size);
+      ctx.clearRect(0, 0, canvasWidthCSS, canvasHeightCSS);
       const frameAspectRatio = frameWidth / frameHeight;
       let drawWidth: number, drawHeight: number;
 
@@ -105,10 +141,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         drawWidth = frameWidth * pixelScale;
         drawHeight = frameHeight * pixelScale;
       } else {
-        // Fit-to-box legacy path (preserved for backward compatibility)
-        const maxSize = (sprite.size || 0.6) * size * sc * uScale * spriteScale;
+        // Fit-to-box legacy path (preserved for backward compatibility).
+        // Uses height as the reference dimension (matches the original
+        // square-canvas behavior exactly when width === height).
+        const legacySize = canvasHeightCSS;
+        const maxSize = (sprite.size || 0.6) * legacySize * sc * uScale * spriteScale;
         if (bottomAlign) {
-          // Same bounding-box sizing as game board for proportional consistency
           drawWidth = maxSize;
           drawHeight = maxSize;
           if (frameAspectRatio > 1) {
@@ -117,13 +155,13 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawWidth = maxSize * frameAspectRatio;
           }
           // Clamp to canvas bounds (spriteScale can push beyond canvas)
-          if (drawWidth > size) {
-            drawHeight *= size / drawWidth;
-            drawWidth = size;
+          if (drawWidth > canvasWidthCSS) {
+            drawHeight *= canvasWidthCSS / drawWidth;
+            drawWidth = canvasWidthCSS;
           }
-          if (drawHeight > size) {
-            drawWidth *= size / drawHeight;
-            drawHeight = size;
+          if (drawHeight > canvasHeightCSS) {
+            drawWidth *= canvasHeightCSS / drawHeight;
+            drawHeight = canvasHeightCSS;
           }
           drawWidth = Math.round(drawWidth);
           drawHeight = Math.round(drawHeight);
@@ -135,9 +173,9 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           } else {
             drawWidth = maxSize * frameAspectRatio;
           }
-          // Always use integer multiples of source pixel size for crisp pixel art
+          // Integer-multiple scaling for crisp pixel art
           const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
-          const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
+          const maxFitScale = Math.max(1, Math.floor(Math.min(canvasWidthCSS, canvasHeightCSS) / Math.max(frameWidth, frameHeight)));
           const fittedPixelScale = Math.min(idealPixelScale, maxFitScale);
           drawWidth = frameWidth * fittedPixelScale;
           drawHeight = frameHeight * fittedPixelScale;
@@ -147,14 +185,18 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       const sourceX = Math.round(frameIndex * frameWidth);
       const sw = Math.round(frameWidth);
       const sh = Math.round(frameHeight);
-      const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * ax + ox);
-      const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * ay + oy);
+      const xPos = bottomAlign
+        ? Math.round(canvasWidthCSS / 2 - drawWidth * 0.5)
+        : Math.round(canvasWidthCSS / 2 - drawWidth * ax + ox);
+      const yPos = bottomAlign
+        ? Math.round(canvasHeightCSS - drawHeight)
+        : Math.round(canvasHeightCSS / 2 - drawHeight * ay + oy);
       ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
     };
 
     const renderThumbnail = () => {
       // Clear canvas (background is handled by CSS on parent div)
-      ctx.clearRect(0, 0, size, size);
+      ctx.clearRect(0, 0, canvasWidthCSS, canvasHeightCSS);
 
       // Determine what to render based on sprite mode
       let spriteSheet = null;
@@ -243,9 +285,9 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawWidth = img.width * pixelScale;
             drawHeight = img.height * pixelScale;
           } else {
-            const maxSize = (sprite.size || 0.6) * size * imgScale * uScale * spriteScale;
+            const legacySize = canvasHeightCSS;
+            const maxSize = (sprite.size || 0.6) * legacySize * imgScale * uScale * spriteScale;
             if (bottomAlign) {
-              // Same bounding-box sizing as game board for proportional consistency
               drawWidth = maxSize;
               drawHeight = maxSize;
               if (aspectRatio > 1) {
@@ -254,13 +296,13 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
                 drawWidth = maxSize * aspectRatio;
               }
               // Clamp to canvas bounds (spriteScale can push beyond canvas)
-              if (drawWidth > size) {
-                drawHeight *= size / drawWidth;
-                drawWidth = size;
+              if (drawWidth > canvasWidthCSS) {
+                drawHeight *= canvasWidthCSS / drawWidth;
+                drawWidth = canvasWidthCSS;
               }
-              if (drawHeight > size) {
-                drawWidth *= size / drawHeight;
-                drawHeight = size;
+              if (drawHeight > canvasHeightCSS) {
+                drawWidth *= canvasHeightCSS / drawHeight;
+                drawHeight = canvasHeightCSS;
               }
               drawWidth = Math.round(drawWidth);
               drawHeight = Math.round(drawHeight);
@@ -273,21 +315,25 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
                 drawWidth = maxSize * aspectRatio;
               }
               const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
-              const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
+              const maxFitScale = Math.max(1, Math.floor(Math.min(canvasWidthCSS, canvasHeightCSS) / Math.max(img.width, img.height)));
               const fittedPixelScale = Math.min(idealPixelScale, maxFitScale);
               drawWidth = img.width * fittedPixelScale;
               drawHeight = img.height * fittedPixelScale;
             }
           }
 
-          const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * imgAx + imgOx);
-          const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * imgAy + imgOy);
+          const xPos = bottomAlign
+            ? Math.round(canvasWidthCSS / 2 - drawWidth * 0.5)
+            : Math.round(canvasWidthCSS / 2 - drawWidth * imgAx + imgOx);
+          const yPos = bottomAlign
+            ? Math.round(canvasHeightCSS - drawHeight)
+            : Math.round(canvasHeightCSS / 2 - drawHeight * imgAy + imgOy);
           ctx.drawImage(img, xPos, yPos, drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
       } else {
-        // Draw sprite using shapes
-        drawSprite(ctx, sprite, size / 2, size / 2, size);
+        // Draw sprite using shapes (uses height as reference dimension)
+        drawSprite(ctx, sprite, canvasWidthCSS / 2, canvasHeightCSS / 2, canvasHeightCSS);
       }
     };
 
@@ -299,13 +345,13 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale]);
+  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale, fillWidth, canvasWidthCSS, canvasHeightCSS]);
 
   if (!sprite) {
     return (
       <div
         className={`bg-stone-700 rounded flex items-center justify-center ${className}`}
-        style={{ width: cssSize, height: cssSize }}
+        style={{ width: cssWidth, height: cssHeight }}
       >
         <span className="text-stone-500 text-xs">No Sprite</span>
       </div>
@@ -318,8 +364,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   const bgTiled = getPreviewBgTiled(previewType);
 
   const backgroundStyle: React.CSSProperties = {
-    width: cssSize,
-    height: cssSize,
+    width: cssWidth,
+    height: cssHeight,
     ...(noBackground ? {} : {
       backgroundColor: bgColor,
       ...(bgImageUrl && {
@@ -332,11 +378,11 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   };
 
   return (
-    <div className={`rounded ${noBackground ? 'overflow-visible' : 'overflow-hidden'} ${className}`} style={backgroundStyle}>
+    <div ref={containerRef} className={`rounded ${noBackground ? 'overflow-visible' : 'overflow-hidden'} ${className}`} style={backgroundStyle}>
       <canvas
         ref={canvasRef}
         className="block"
-        style={{ width: cssSize, height: cssSize, imageRendering: 'pixelated' as const, ...canvasStyle }}
+        style={{ width: cssWidth, height: cssHeight, imageRendering: 'pixelated' as const, ...canvasStyle }}
       />
     </div>
   );
