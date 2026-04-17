@@ -19,9 +19,22 @@ interface SpriteThumbnailProps {
   bottomAlign?: boolean;
   /** Extra styles applied directly to the canvas element (e.g. filter/glow effects) */
   canvasStyle?: React.CSSProperties;
+  /**
+   * If set, renders the sprite at `nativeDimensions × pixelScale` — integer,
+   * pixel-perfect. Bypasses all fit-to-box / sprite.size / spriteScale math;
+   * the sprite's native pixel dimensions are the only thing that matters for
+   * size, and each native pixel becomes exactly `pixelScale` display pixels.
+   *
+   * Use this for contexts (like hero/enemy selector cards) where you want
+   * "all sprites magnified by the same factor, taller native sprites appear
+   * taller in the UI." When unset, the sprite is sized by the existing
+   * fit-to-box rules — preserved for backward compatibility with callers
+   * that want target-size-based rendering.
+   */
+  pixelScale?: number;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
@@ -80,44 +93,55 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       sc: number = 1
     ) => {
       ctx.clearRect(0, 0, size, size);
-      const maxSize = (sprite.size || 0.6) * size * sc * uScale * spriteScale;
       const frameAspectRatio = frameWidth / frameHeight;
       let drawWidth: number, drawHeight: number;
 
-      if (bottomAlign) {
-        // Same bounding-box sizing as game board for proportional consistency
-        drawWidth = maxSize;
-        drawHeight = maxSize;
-        if (frameAspectRatio > 1) {
-          drawHeight = maxSize / frameAspectRatio;
-        } else {
-          drawWidth = maxSize * frameAspectRatio;
-        }
-        // Clamp to canvas bounds (spriteScale can push beyond canvas)
-        if (drawWidth > size) {
-          drawHeight *= size / drawWidth;
-          drawWidth = size;
-        }
-        if (drawHeight > size) {
-          drawWidth *= size / drawHeight;
-          drawHeight = size;
-        }
-        drawWidth = Math.round(drawWidth);
-        drawHeight = Math.round(drawHeight);
-      } else {
-        drawWidth = maxSize;
-        drawHeight = maxSize;
-        if (frameAspectRatio > 1) {
-          drawHeight = maxSize / frameAspectRatio;
-        } else {
-          drawWidth = maxSize * frameAspectRatio;
-        }
-        // Always use integer multiples of source pixel size for crisp pixel art
-        const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
-        const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
-        const pixelScale = Math.min(idealPixelScale, maxFitScale);
+      if (pixelScale !== undefined) {
+        // Explicit pixelScale mode — render at exact integer multiples of
+        // the sprite's native frame dimensions. Pixel-perfect; sprite.size,
+        // spriteScale, uScale, sc are all IGNORED. The sprite fills exactly
+        // frameWidth*pixelScale × frameHeight*pixelScale canvas pixels, may
+        // extend beyond canvas bounds (canvas will clip naturally).
         drawWidth = frameWidth * pixelScale;
         drawHeight = frameHeight * pixelScale;
+      } else {
+        // Fit-to-box legacy path (preserved for backward compatibility)
+        const maxSize = (sprite.size || 0.6) * size * sc * uScale * spriteScale;
+        if (bottomAlign) {
+          // Same bounding-box sizing as game board for proportional consistency
+          drawWidth = maxSize;
+          drawHeight = maxSize;
+          if (frameAspectRatio > 1) {
+            drawHeight = maxSize / frameAspectRatio;
+          } else {
+            drawWidth = maxSize * frameAspectRatio;
+          }
+          // Clamp to canvas bounds (spriteScale can push beyond canvas)
+          if (drawWidth > size) {
+            drawHeight *= size / drawWidth;
+            drawWidth = size;
+          }
+          if (drawHeight > size) {
+            drawWidth *= size / drawHeight;
+            drawHeight = size;
+          }
+          drawWidth = Math.round(drawWidth);
+          drawHeight = Math.round(drawHeight);
+        } else {
+          drawWidth = maxSize;
+          drawHeight = maxSize;
+          if (frameAspectRatio > 1) {
+            drawHeight = maxSize / frameAspectRatio;
+          } else {
+            drawWidth = maxSize * frameAspectRatio;
+          }
+          // Always use integer multiples of source pixel size for crisp pixel art
+          const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
+          const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
+          const fittedPixelScale = Math.min(idealPixelScale, maxFitScale);
+          drawWidth = frameWidth * fittedPixelScale;
+          drawHeight = frameHeight * fittedPixelScale;
+        }
       }
 
       const sourceX = Math.round(frameIndex * frameWidth);
@@ -211,43 +235,49 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         // Use centralized image loader with caching
         const img = loadImage(imageSrc);
         if (img && isImageReady(img)) {
-          const maxSize = (sprite.size || 0.6) * size * imgScale * uScale * spriteScale;
           const aspectRatio = img.width / img.height;
           let drawWidth: number, drawHeight: number;
 
-          if (bottomAlign) {
-            // Same bounding-box sizing as game board for proportional consistency
-            drawWidth = maxSize;
-            drawHeight = maxSize;
-            if (aspectRatio > 1) {
-              drawHeight = maxSize / aspectRatio;
-            } else {
-              drawWidth = maxSize * aspectRatio;
-            }
-            // Clamp to canvas bounds (spriteScale can push beyond canvas)
-            if (drawWidth > size) {
-              drawHeight *= size / drawWidth;
-              drawWidth = size;
-            }
-            if (drawHeight > size) {
-              drawWidth *= size / drawHeight;
-              drawHeight = size;
-            }
-            drawWidth = Math.round(drawWidth);
-            drawHeight = Math.round(drawHeight);
-          } else {
-            drawWidth = maxSize;
-            drawHeight = maxSize;
-            if (aspectRatio > 1) {
-              drawHeight = maxSize / aspectRatio;
-            } else {
-              drawWidth = maxSize * aspectRatio;
-            }
-            const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
-            const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
-            const pixelScale = Math.min(idealPixelScale, maxFitScale);
+          if (pixelScale !== undefined) {
+            // Explicit pixelScale mode — see drawSpriteFrame for rationale
             drawWidth = img.width * pixelScale;
             drawHeight = img.height * pixelScale;
+          } else {
+            const maxSize = (sprite.size || 0.6) * size * imgScale * uScale * spriteScale;
+            if (bottomAlign) {
+              // Same bounding-box sizing as game board for proportional consistency
+              drawWidth = maxSize;
+              drawHeight = maxSize;
+              if (aspectRatio > 1) {
+                drawHeight = maxSize / aspectRatio;
+              } else {
+                drawWidth = maxSize * aspectRatio;
+              }
+              // Clamp to canvas bounds (spriteScale can push beyond canvas)
+              if (drawWidth > size) {
+                drawHeight *= size / drawWidth;
+                drawWidth = size;
+              }
+              if (drawHeight > size) {
+                drawWidth *= size / drawHeight;
+                drawHeight = size;
+              }
+              drawWidth = Math.round(drawWidth);
+              drawHeight = Math.round(drawHeight);
+            } else {
+              drawWidth = maxSize;
+              drawHeight = maxSize;
+              if (aspectRatio > 1) {
+                drawHeight = maxSize / aspectRatio;
+              } else {
+                drawWidth = maxSize * aspectRatio;
+              }
+              const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
+              const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
+              const fittedPixelScale = Math.min(idealPixelScale, maxFitScale);
+              drawWidth = img.width * fittedPixelScale;
+              drawHeight = img.height * fittedPixelScale;
+            }
           }
 
           const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * imgAx + imgOx);
@@ -269,7 +299,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger]);
+  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale]);
 
   if (!sprite) {
     return (

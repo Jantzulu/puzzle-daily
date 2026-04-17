@@ -6,6 +6,7 @@ import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
+import { CARD_PIXEL_SCALE } from './cardConstants';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -238,7 +239,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   size={52}
                   previewType="entity"
                   noBackground
-                  spriteScale={1.8}
+                  pixelScale={CARD_PIXEL_SCALE}
                   bottomAlign={!enemyData.isFloating}
                   canvasStyle={isSelected ? { filter: selectedGlow } : undefined}
                 />
