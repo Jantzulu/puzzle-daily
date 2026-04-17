@@ -263,12 +263,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* Name + Title (below sprite) */}
-              <div className="text-center w-full mt-0.5 mb-0.5" style={{ lineHeight: 1.2 }}>
+              <div className="text-center w-full mt-0.5 mb-0.5" style={{ lineHeight: 1 }}>
                 <span className="text-xs font-medium break-words text-arcane-400">
                   {character.name}
                 </span>
                 {character.title && (
-                  <span className="text-xs italic text-parchment-300">
+                  <span className="text-[10px] italic text-parchment-300">
                     {' '}{character.title}
                   </span>
                 )}
