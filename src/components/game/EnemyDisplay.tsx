@@ -263,7 +263,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
 
               {/* Name + Title (below sprite) */}
               <div className="text-center w-full mt-0.5 mb-0.5" style={{ lineHeight: 1 }}>
-                <span className="text-xs font-medium break-words text-blood-300">
+                <span className="text-[12px] font-medium break-words text-blood-300">
                   {enemyData.name}
                 </span>
                 {enemyData.title && (
