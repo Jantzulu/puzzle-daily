@@ -272,7 +272,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   {character.name}
                 </div>
                 {character.title && (
-                  <div className="text-[10px] italic text-parchment-300 leading-none -mt-px">
+                  <div className="text-[10px] italic text-parchment-300 leading-none">
                     {character.title}
                   </div>
                 )}

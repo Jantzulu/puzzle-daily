@@ -268,7 +268,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   {enemyData.name}
                 </div>
                 {enemyData.title && (
-                  <div className="text-[10px] italic text-parchment-300 leading-none -mt-px">
+                  <div className="text-[10px] italic text-parchment-300 leading-none">
                     {enemyData.title}
                   </div>
                 )}
