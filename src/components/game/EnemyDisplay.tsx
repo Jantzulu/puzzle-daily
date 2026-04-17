@@ -261,13 +261,16 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                 )}
               </div>
 
-              {/* Name + Title (below sprite) */}
-              <div className="text-center w-full mt-0.5 mb-0.5 leading-none">
-                <span className="text-[12px] font-medium break-words text-blood-300 leading-none">
+              {/* Name + Title (below sprite). Block divs for tight control;
+                  see CharacterSelector comment for rationale. */}
+              <div className="text-center w-full mt-0.5 mb-0.5">
+                <div className="text-[12px] font-medium break-words text-blood-300 leading-none">
                   {enemyData.name}
-                </span>
+                </div>
                 {enemyData.title && (
-                  <span className="text-[10px] italic text-parchment-300 leading-none"> {enemyData.title}</span>
+                  <div className="text-[10px] italic text-parchment-300 leading-none -mt-px">
+                    {enemyData.title}
+                  </div>
                 )}
               </div>
 

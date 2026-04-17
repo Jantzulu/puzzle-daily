@@ -262,15 +262,19 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 )}
               </div>
 
-              {/* Name + Title (below sprite) */}
-              <div className="text-center w-full mt-0.5 mb-0.5 leading-none">
-                <span className="text-[12px] font-medium break-words text-arcane-400 leading-none">
+              {/* Name + Title (below sprite).
+                  Separate block divs with negative margin guarantees the
+                  title sits tight under the name regardless of the font's
+                  intrinsic ascent/descent metrics (which CSS line-height
+                  can't always fully control). */}
+              <div className="text-center w-full mt-0.5 mb-0.5">
+                <div className="text-[12px] font-medium break-words text-arcane-400 leading-none">
                   {character.name}
-                </span>
+                </div>
                 {character.title && (
-                  <span className="text-[10px] italic text-parchment-300 leading-none">
-                    {' '}{character.title}
-                  </span>
+                  <div className="text-[10px] italic text-parchment-300 leading-none -mt-px">
+                    {character.title}
+                  </div>
                 )}
               </div>
 
