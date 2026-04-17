@@ -26,11 +26,19 @@ export const PixelEditorAnimationPreview: React.FC<PixelEditorAnimationPreviewPr
   const rafRef = useRef<number>(0);
   const lastFrameTimeRef = useRef(0);
 
-  // Preview canvas size
+  // Preview canvas size.
+  // Phase 1 of the native-resolution rendering refactor: use an INTEGER
+  // scale factor from source to destination so pixel art renders without
+  // non-uniform column widths. Fractional scale (e.g. 128/20 = 6.4) would
+  // make some source pixels 6 canvas pixels wide and some 7, producing the
+  // "half-pixel" deformation users were seeing. Integer scale ensures every
+  // source pixel has the same canvas-pixel footprint.
+  // See docs/native-resolution-rendering-plan.md.
   const previewSize = 128;
-  const scale = Math.min(previewSize / canvasWidth, previewSize / canvasHeight);
-  const dw = Math.round(canvasWidth * scale);
-  const dh = Math.round(canvasHeight * scale);
+  const rawScale = Math.min(previewSize / canvasWidth, previewSize / canvasHeight);
+  const scale = Math.max(1, Math.floor(rawScale));
+  const dw = canvasWidth * scale;
+  const dh = canvasHeight * scale;
 
   // Render current frame
   useEffect(() => {

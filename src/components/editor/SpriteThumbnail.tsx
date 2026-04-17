@@ -21,13 +21,32 @@ interface SpriteThumbnailProps {
   canvasStyle?: React.CSSProperties;
 }
 
+/**
+ * Native pixel resolution of the thumbnail canvas. The canvas's internal
+ * buffer is sized to this number (NOT multiplied by devicePixelRatio), and
+ * CSS + `image-rendering: pixelated` handles upscaling to the display size.
+ *
+ * This is Phase 1 of the native-resolution rendering refactor (see
+ * docs/native-resolution-rendering-plan.md). By rendering at a fixed small
+ * buffer and scaling uniformly, we get:
+ *  - Consistent output across 1× / 2× / 3× DPR displays (browser handles final scale)
+ *  - No DPR-dependent double-scaling chain
+ *  - Whatever rounding happens inside the canvas happens ONCE, at native scale
+ *
+ * Chosen to match TILE_SIZE conceptually so sprite.size fractions produce
+ * the same visual proportions as the game board.
+ */
+const NATIVE_THUMBNAIL_SIZE = 48;
+
 export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
-  // Snap CSS display size to match canvas resolution / dpr exactly (prevents sub-pixel stretching on mobile)
-  const dprForCss = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-  const cssSize = Math.round(size * dprForCss) / dprForCss;
+  // CSS display size for the thumbnail container. The canvas's internal
+  // buffer is fixed at NATIVE_THUMBNAIL_SIZE × NATIVE_THUMBNAIL_SIZE; CSS
+  // scales it to `size`. Integer CSS multiples (48, 96, 144) give the
+  // crispest result, but `image-rendering: pixelated` handles any scale.
+  const cssSize = size;
 
   useEffect(() => {
     // Subscribe to image load events to re-render when images finish loading
@@ -55,16 +74,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Account for device pixel ratio for sharp rendering on high-DPI displays
-    const dpr = window.devicePixelRatio || 1;
-    const canvasRes = Math.round(size * dpr);
-
-    // Set canvas internal size to rounded resolution (prevents sub-pixel mismatch with CSS)
-    canvas.width = canvasRes;
-    canvas.height = canvasRes;
-
-    // Scale context to match
-    ctx.scale(dpr, dpr);
+    // Set canvas internal size to native resolution. No DPR multiplication —
+    // CSS handles the display scale uniformly. This eliminates per-DPR
+    // rounding differences and lets `image-rendering: pixelated` produce
+    // consistent output on 1×, 2×, 3× screens.
+    canvas.width = NATIVE_THUMBNAIL_SIZE;
+    canvas.height = NATIVE_THUMBNAIL_SIZE;
 
     // Disable image smoothing for crisp pixel art rendering
     ctx.imageSmoothingEnabled = false;
@@ -72,15 +87,17 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     let animationFrameId: number | null = null;
     const uScale = sprite.universalScale ?? 1;
 
-    // Helper to draw sprite frame with anchor/offset/scale support
+    // Helper to draw sprite frame with anchor/offset/scale support.
+    // All draw math operates in NATIVE pixel coords (the canvas buffer).
+    // CSS scales the whole canvas uniformly to display size.
     const drawSpriteFrame = (
       img: HTMLImageElement, frameIndex: number, frameCount: number,
       frameWidth: number, frameHeight: number,
       ax: number = 0.5, ay: number = 0.5, ox: number = 0, oy: number = 0,
       sc: number = 1
     ) => {
-      ctx.clearRect(0, 0, size, size);
-      const maxSize = (sprite.size || 0.6) * size * sc * uScale * spriteScale;
+      ctx.clearRect(0, 0, NATIVE_THUMBNAIL_SIZE, NATIVE_THUMBNAIL_SIZE);
+      const maxSize = (sprite.size || 0.6) * NATIVE_THUMBNAIL_SIZE * sc * uScale * spriteScale;
       const frameAspectRatio = frameWidth / frameHeight;
       let drawWidth: number, drawHeight: number;
 
@@ -94,13 +111,13 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
           drawWidth = maxSize * frameAspectRatio;
         }
         // Clamp to canvas bounds (spriteScale can push beyond canvas)
-        if (drawWidth > size) {
-          drawHeight *= size / drawWidth;
-          drawWidth = size;
+        if (drawWidth > NATIVE_THUMBNAIL_SIZE) {
+          drawHeight *= NATIVE_THUMBNAIL_SIZE / drawWidth;
+          drawWidth = NATIVE_THUMBNAIL_SIZE;
         }
-        if (drawHeight > size) {
-          drawWidth *= size / drawHeight;
-          drawHeight = size;
+        if (drawHeight > NATIVE_THUMBNAIL_SIZE) {
+          drawWidth *= NATIVE_THUMBNAIL_SIZE / drawHeight;
+          drawHeight = NATIVE_THUMBNAIL_SIZE;
         }
         drawWidth = Math.round(drawWidth);
         drawHeight = Math.round(drawHeight);
@@ -112,25 +129,32 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         } else {
           drawWidth = maxSize * frameAspectRatio;
         }
-        // Always use integer multiples of source pixel size for crisp pixel art
+        // Snap to integer multiples of source pixel size for crisp pixel art
         const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
-        const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
+        const maxFitScale = Math.max(1, Math.floor(NATIVE_THUMBNAIL_SIZE / Math.max(frameWidth, frameHeight)));
         const pixelScale = Math.min(idealPixelScale, maxFitScale);
         drawWidth = frameWidth * pixelScale;
         drawHeight = frameHeight * pixelScale;
       }
 
-      const sourceX = Math.round(frameIndex * frameWidth);
-      const sw = Math.round(frameWidth);
-      const sh = Math.round(frameHeight);
-      const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * ax + ox);
-      const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * ay + oy);
+      // Use Math.floor for sourceX so per-frame drift is one-directional when
+      // frameWidth is fractional (imported sheets with non-divisible width).
+      // This eliminates the oscillating sample-shift that causes animation wobble.
+      const sourceX = Math.floor(frameIndex * frameWidth);
+      const sw = Math.floor(frameWidth);
+      const sh = Math.floor(frameHeight);
+      const xPos = bottomAlign
+        ? Math.round(NATIVE_THUMBNAIL_SIZE / 2 - drawWidth * 0.5)
+        : Math.round(NATIVE_THUMBNAIL_SIZE / 2 - drawWidth * ax + ox);
+      const yPos = bottomAlign
+        ? Math.round(NATIVE_THUMBNAIL_SIZE - drawHeight)
+        : Math.round(NATIVE_THUMBNAIL_SIZE / 2 - drawHeight * ay + oy);
       ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
     };
 
     const renderThumbnail = () => {
       // Clear canvas (background is handled by CSS on parent div)
-      ctx.clearRect(0, 0, size, size);
+      ctx.clearRect(0, 0, NATIVE_THUMBNAIL_SIZE, NATIVE_THUMBNAIL_SIZE);
 
       // Determine what to render based on sprite mode
       let spriteSheet = null;
@@ -211,7 +235,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         // Use centralized image loader with caching
         const img = loadImage(imageSrc);
         if (img && isImageReady(img)) {
-          const maxSize = (sprite.size || 0.6) * size * imgScale * uScale * spriteScale;
+          const maxSize = (sprite.size || 0.6) * NATIVE_THUMBNAIL_SIZE * imgScale * uScale * spriteScale;
           const aspectRatio = img.width / img.height;
           let drawWidth: number, drawHeight: number;
 
@@ -225,13 +249,13 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               drawWidth = maxSize * aspectRatio;
             }
             // Clamp to canvas bounds (spriteScale can push beyond canvas)
-            if (drawWidth > size) {
-              drawHeight *= size / drawWidth;
-              drawWidth = size;
+            if (drawWidth > NATIVE_THUMBNAIL_SIZE) {
+              drawHeight *= NATIVE_THUMBNAIL_SIZE / drawWidth;
+              drawWidth = NATIVE_THUMBNAIL_SIZE;
             }
-            if (drawHeight > size) {
-              drawWidth *= size / drawHeight;
-              drawHeight = size;
+            if (drawHeight > NATIVE_THUMBNAIL_SIZE) {
+              drawWidth *= NATIVE_THUMBNAIL_SIZE / drawHeight;
+              drawHeight = NATIVE_THUMBNAIL_SIZE;
             }
             drawWidth = Math.round(drawWidth);
             drawHeight = Math.round(drawHeight);
@@ -244,20 +268,24 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               drawWidth = maxSize * aspectRatio;
             }
             const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
-            const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
+            const maxFitScale = Math.max(1, Math.floor(NATIVE_THUMBNAIL_SIZE / Math.max(img.width, img.height)));
             const pixelScale = Math.min(idealPixelScale, maxFitScale);
             drawWidth = img.width * pixelScale;
             drawHeight = img.height * pixelScale;
           }
 
-          const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * imgAx + imgOx);
-          const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * imgAy + imgOy);
+          const xPos = bottomAlign
+            ? Math.round(NATIVE_THUMBNAIL_SIZE / 2 - drawWidth * 0.5)
+            : Math.round(NATIVE_THUMBNAIL_SIZE / 2 - drawWidth * imgAx + imgOx);
+          const yPos = bottomAlign
+            ? Math.round(NATIVE_THUMBNAIL_SIZE - drawHeight)
+            : Math.round(NATIVE_THUMBNAIL_SIZE / 2 - drawHeight * imgAy + imgOy);
           ctx.drawImage(img, xPos, yPos, drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
       } else {
-        // Draw sprite using shapes
-        drawSprite(ctx, sprite, size / 2, size / 2, size);
+        // Draw sprite using shapes (native-resolution coords)
+        drawSprite(ctx, sprite, NATIVE_THUMBNAIL_SIZE / 2, NATIVE_THUMBNAIL_SIZE / 2, NATIVE_THUMBNAIL_SIZE);
       }
     };
 
@@ -305,6 +333,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     <div className={`rounded ${noBackground ? 'overflow-visible' : 'overflow-hidden'} ${className}`} style={backgroundStyle}>
       <canvas
         ref={canvasRef}
+        width={NATIVE_THUMBNAIL_SIZE}
+        height={NATIVE_THUMBNAIL_SIZE}
         className="block"
         style={{ width: cssSize, height: cssSize, imageRendering: 'pixelated' as const, ...canvasStyle }}
       />
