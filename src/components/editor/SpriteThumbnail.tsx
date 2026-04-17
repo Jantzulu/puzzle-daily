@@ -120,14 +120,15 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         targetHeight = size;
       }
 
-      // Snap to integer source-pixel-scale. Pick the largest integer scale
-      // that keeps the sprite within the target size. Floor (not round)
-      // ensures we never exceed the target; Math.max(1, ...) ensures at
-      // least 1× (tiny sprites still render at source size).
-      const maxScaleByTargetHeight = Math.max(1, Math.floor(targetHeight / frameHeight));
-      const maxScaleByTargetWidth = Math.max(1, Math.floor(targetWidth / frameWidth));
+      // Snap to integer source-pixel-scale. Pick the NEAREST integer scale
+      // to the target (Math.round, not Math.floor) so sprites render close
+      // to the intended sprite.size fraction rather than snapping strictly
+      // smaller. Clamped to whatever fits the canvas bounds — this prevents
+      // overshoot from clipping off the edge.
+      // Math.max(1, ...) ensures at least 1× for tiny sprites.
+      const idealPixelScale = Math.max(1, Math.round(targetHeight / frameHeight));
       const maxScaleByCanvas = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
-      const pixelScale = Math.min(maxScaleByTargetHeight, maxScaleByTargetWidth, maxScaleByCanvas);
+      const pixelScale = Math.min(idealPixelScale, maxScaleByCanvas);
 
       const drawWidth = frameWidth * pixelScale;
       const drawHeight = frameHeight * pixelScale;
@@ -252,11 +253,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             targetHeight = size;
           }
 
-          // Integer-scale snap for pixel-perfect rendering
-          const maxScaleByTargetHeight = Math.max(1, Math.floor(targetHeight / img.height));
-          const maxScaleByTargetWidth = Math.max(1, Math.floor(targetWidth / img.width));
+          // Integer-scale snap for pixel-perfect rendering. Use Math.round
+          // for nearest integer to target (matches the bottomAlign path);
+          // clamp to canvas-fit.
+          const idealPixelScale = Math.max(1, Math.round(targetHeight / img.height));
           const maxScaleByCanvas = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
-          const pixelScale = Math.min(maxScaleByTargetHeight, maxScaleByTargetWidth, maxScaleByCanvas);
+          const pixelScale = Math.min(idealPixelScale, maxScaleByCanvas);
 
           const drawWidth = img.width * pixelScale;
           const drawHeight = img.height * pixelScale;
