@@ -4,6 +4,8 @@
  */
 
 import type { CustomSprite } from '../../utils/assetStorage';
+import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetStorage';
+import { loadImage, isImageReady } from '../../utils/imageLoader';
 
 /**
  * Pixel scale for sprites shown inside selector/info cards.
@@ -41,23 +43,61 @@ export const MIN_NATIVE_HEIGHT = 16;
 /**
  * Read the native pixel height of a sprite's idle frame synchronously.
  *
- * Prefers the sprite-sheet's explicit `frameHeight` (which is configured
- * by the Pixel Editor when the sheet is created). For sprites without a
- * sprite sheet (static image or shape fallback), returns the fallback.
+ * Lookup order:
+ *  1. Explicit `frameHeight` on the sprite-sheet config (set by the
+ *     in-game Pixel Editor when sheets are authored there).
+ *  2. `img.naturalHeight` from the image loader's cache — covers
+ *     imported sheets (e.g. authored in Aseprite) where the config
+ *     doesn't carry an explicit `frameHeight`. Images are cached
+ *     globally and are usually loaded by the time card rows render.
+ *  3. For static-image sprites (no sheet): same `img.naturalHeight`
+ *     fallback.
+ *  4. `FALLBACK_NATIVE_HEIGHT` if nothing is loaded yet.
  *
- * Directional sprites use the `default` direction's idle sheet as the
- * reference — that's the frame that shows in card previews.
+ * Directional sprites use the `default` direction's idle variant —
+ * that's the frame shown in card previews. Card components should
+ * subscribe to image-load events and trigger a re-compute on each,
+ * so when the fallback path was hit initially, the true height is
+ * picked up once the image finishes loading.
  */
 export function getSpriteNativeHeight(sprite?: CustomSprite): number {
   if (!sprite) return FALLBACK_NATIVE_HEIGHT;
 
-  if (sprite.useDirectional && sprite.directionalSprites?.default) {
-    const sheet = sprite.directionalSprites.default.idleSpriteSheet;
-    if (sheet?.frameHeight) return sheet.frameHeight;
-  } else if (sprite.idleSpriteSheet?.frameHeight) {
-    return sprite.idleSpriteSheet.frameHeight;
+  const isDirectional = sprite.useDirectional && sprite.directionalSprites?.default;
+  const config = isDirectional ? sprite.directionalSprites!.default : sprite;
+
+  // 1. Explicit frameHeight from config
+  const sheet = config.idleSpriteSheet;
+  if (sheet?.frameHeight) return sheet.frameHeight;
+
+  // 2. For sprite sheets: read from loaded image's natural height.
+  //    For a horizontal strip (game convention), each frame's height
+  //    equals the full image's naturalHeight.
+  if (sheet) {
+    const src = resolveSpriteSheetSource(sheet);
+    if (src) {
+      const img = loadImage(src);
+      if (img && isImageReady(img) && img.naturalHeight > 0) {
+        return img.naturalHeight;
+      }
+    }
   }
 
+  // 3. For static-image sprites: use the image's natural height
+  const imageSrc = resolveImageSource(
+    config.idleImageData || config.imageData,
+    config.idleImageUrl || config.imageUrl,
+  );
+  if (imageSrc) {
+    const img = loadImage(imageSrc);
+    if (img && isImageReady(img) && img.naturalHeight > 0) {
+      return img.naturalHeight;
+    }
+  }
+
+  // 4. Fallback when nothing is loaded yet. The card row should subscribe
+  //    to image-load events and re-compute so this value gets replaced
+  //    with the true height once images load.
   return FALLBACK_NATIVE_HEIGHT;
 }
 

@@ -7,6 +7,7 @@ import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
+import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -93,11 +94,21 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   // Uniform card sprite-area height across the enemy row — derived from the
   // tallest native sprite × CARD_PIXEL_SCALE. Prevents clipping of the
   // tallest sprite's head and keeps all cards the same height.
+  // imageLoadTrigger forces a re-compute when any sprite image finishes
+  // loading (see CharacterSelector for rationale).
+  const [imageLoadTrigger, setImageLoadTrigger] = useState(0);
+  useEffect(() => {
+    const unsubscribe = subscribeToImageLoads(() => {
+      setImageLoadTrigger(prev => prev + 1);
+    });
+    return unsubscribe;
+  }, []);
   const cardSpriteHeight = useMemo(() => {
     return computeCardSpriteAreaHeight(
       uniqueEnemyIds.map(id => getEnemy(id)?.customSprite)
     );
-  }, [uniqueEnemyIds.join(',')]); // eslint-disable-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- triggers intentional
+  }, [uniqueEnemyIds.join(','), imageLoadTrigger]);
   const totalLiving = Array.from(enemyGroups.values()).reduce((sum, g) => sum + g.livingCount, 0);
 
   // Rendered enemy info

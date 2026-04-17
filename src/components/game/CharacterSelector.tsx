@@ -8,6 +8,7 @@ import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
+import { subscribeToImageLoads } from '../../utils/imageLoader';
 
 const MOVEMENT_TYPES = new Set([
   'move_forward', 'move_backward', 'move_left', 'move_right',
@@ -81,11 +82,24 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   // Uniform card sprite-area height across the hero row — derived from the
   // tallest native sprite in the row × CARD_PIXEL_SCALE. Prevents clipping
   // of the tallest sprite's head and keeps all cards the same height.
+  //
+  // imageLoadTrigger makes the memo re-run when any sprite image finishes
+  // loading — important because some imported sprite sheets don't have
+  // `frameHeight` stored in their config, and the fallback only resolves
+  // to the correct value once the image itself is cached.
+  const [imageLoadTrigger, setImageLoadTrigger] = useState(0);
+  useEffect(() => {
+    const unsubscribe = subscribeToImageLoads(() => {
+      setImageLoadTrigger(prev => prev + 1);
+    });
+    return unsubscribe;
+  }, []);
   const cardSpriteHeight = useMemo(() => {
     return computeCardSpriteAreaHeight(
       availableCharacterIds.map(id => getCharacter(id)?.customSprite)
     );
-  }, [availableCharacterIds]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- imageLoadTrigger intentionally forces re-compute after image loads
+  }, [availableCharacterIds, imageLoadTrigger]);
 
   const getShapeClass = (shape?: string) => {
     switch (shape) {
