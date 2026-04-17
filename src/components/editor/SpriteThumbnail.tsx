@@ -120,18 +120,9 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         drawHeight = frameHeight * pixelScale;
       }
 
-      // Math.floor (not round) on source-rect positions. When a sprite
-      // sheet's image width isn't exactly divisible by frame count,
-      // frameWidth is fractional (e.g. 20.2). Math.round would give
-      // frame 0: 0, frame 1: 20, frame 2: 40, frame 3: 61 — the drift
-      // alternates, so consecutive frames sample the sheet at shifted
-      // offsets, producing the animation "wobble" where the sprite
-      // appears to shift 1 pixel each frame. Math.floor keeps the drift
-      // strictly one-directional, so each frame samples a consistent
-      // window.
-      const sourceX = Math.floor(frameIndex * frameWidth);
-      const sw = Math.floor(frameWidth);
-      const sh = Math.floor(frameHeight);
+      const sourceX = Math.round(frameIndex * frameWidth);
+      const sw = Math.round(frameWidth);
+      const sh = Math.round(frameHeight);
       const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * ax + ox);
       const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * ay + oy);
       ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
