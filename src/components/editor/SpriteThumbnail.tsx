@@ -25,21 +25,9 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
 
-  // CSS display size AND canvas internal size are the same `size` value.
-  // We intentionally DON'T multiply by devicePixelRatio — CSS scaling at
-  // 1:1 means `image-rendering: pixelated` only has to handle the final
-  // DPR-aware device rasterization, which browsers do cleanly with
-  // nearest-neighbor at integer scales (1× → 1×, 2× → 2×, 3× → 3×).
-  //
-  // The key constraint: canvas internal == CSS size means browser scale
-  // is 1.0 at the CSS step, which is trivially integer. Sprites drawn
-  // inside the canvas use integer multiples of their source pixel size,
-  // so there's no fractional scale at any step of the pipeline. This
-  // eliminates the "half pixel" deformation where some source pixels
-  // occupy 1 display pixel and others occupy 2.
-  //
-  // See docs/native-resolution-rendering-plan.md.
-  const cssSize = size;
+  // Snap CSS display size to match canvas resolution / dpr exactly (prevents sub-pixel stretching on mobile)
+  const dprForCss = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  const cssSize = Math.round(size * dprForCss) / dprForCss;
 
   useEffect(() => {
     // Subscribe to image load events to re-render when images finish loading
@@ -67,12 +55,16 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
-    // Canvas internal size matches CSS size (1:1). No DPR multiplication —
-    // browsers handle DPR via the CSS → device rasterization with
-    // `image-rendering: pixelated` enabling nearest-neighbor at integer
-    // scales (which is what device DPR always provides).
-    canvas.width = size;
-    canvas.height = size;
+    // Account for device pixel ratio for sharp rendering on high-DPI displays
+    const dpr = window.devicePixelRatio || 1;
+    const canvasRes = Math.round(size * dpr);
+
+    // Set canvas internal size to rounded resolution (prevents sub-pixel mismatch with CSS)
+    canvas.width = canvasRes;
+    canvas.height = canvasRes;
+
+    // Scale context to match
+    ctx.scale(dpr, dpr);
 
     // Disable image smoothing for crisp pixel art rendering
     ctx.imageSmoothingEnabled = false;
@@ -80,17 +72,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     let animationFrameId: number | null = null;
     const uScale = sprite.universalScale ?? 1;
 
-    // Helper to draw sprite frame with anchor/offset/scale support.
-    //
-    // Pixel-perfect rule: the sprite always draws at an INTEGER multiple
-    // of its source pixel size. This guarantees every source pixel is the
-    // same number of canvas pixels wide — no "half-pixel" deformation.
-    //
-    // The `sprite.size` / `spriteScale` / `uScale` / `sc` multipliers are
-    // used to pick the target draw size, but we then snap to the nearest
-    // integer source-scale multiple that fits. The sprite may end up
-    // slightly smaller than a fractional scale would allow, but the pixels
-    // are uniform.
+    // Helper to draw sprite frame with anchor/offset/scale support
     const drawSpriteFrame = (
       img: HTMLImageElement, frameIndex: number, frameCount: number,
       frameWidth: number, frameHeight: number,
@@ -100,56 +82,58 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       ctx.clearRect(0, 0, size, size);
       const maxSize = (sprite.size || 0.6) * size * sc * uScale * spriteScale;
       const frameAspectRatio = frameWidth / frameHeight;
+      let drawWidth: number, drawHeight: number;
 
-      // Target size from sprite configuration (may be fractional)
-      let targetWidth = maxSize;
-      let targetHeight = maxSize;
-      if (frameAspectRatio > 1) {
-        targetHeight = maxSize / frameAspectRatio;
+      if (bottomAlign) {
+        // Same bounding-box sizing as game board for proportional consistency
+        drawWidth = maxSize;
+        drawHeight = maxSize;
+        if (frameAspectRatio > 1) {
+          drawHeight = maxSize / frameAspectRatio;
+        } else {
+          drawWidth = maxSize * frameAspectRatio;
+        }
+        // Clamp to canvas bounds (spriteScale can push beyond canvas)
+        if (drawWidth > size) {
+          drawHeight *= size / drawWidth;
+          drawWidth = size;
+        }
+        if (drawHeight > size) {
+          drawWidth *= size / drawHeight;
+          drawHeight = size;
+        }
+        drawWidth = Math.round(drawWidth);
+        drawHeight = Math.round(drawHeight);
       } else {
-        targetWidth = maxSize * frameAspectRatio;
+        drawWidth = maxSize;
+        drawHeight = maxSize;
+        if (frameAspectRatio > 1) {
+          drawHeight = maxSize / frameAspectRatio;
+        } else {
+          drawWidth = maxSize * frameAspectRatio;
+        }
+        // Always use integer multiples of source pixel size for crisp pixel art
+        const idealPixelScale = Math.max(1, Math.round(drawWidth / frameWidth));
+        const maxFitScale = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
+        const pixelScale = Math.min(idealPixelScale, maxFitScale);
+        drawWidth = frameWidth * pixelScale;
+        drawHeight = frameHeight * pixelScale;
       }
 
-      // Clamp to canvas bounds (spriteScale can push beyond canvas)
-      if (targetWidth > size) {
-        targetHeight *= size / targetWidth;
-        targetWidth = size;
-      }
-      if (targetHeight > size) {
-        targetWidth *= size / targetHeight;
-        targetHeight = size;
-      }
-
-      // Snap to integer source-pixel-scale. Pick the smallest integer scale
-      // that reaches or exceeds the target size (Math.ceil). This ensures
-      // sprites never appear smaller than the sprite.size fraction intends,
-      // at the cost of occasionally being slightly larger. Clamped to
-      // whatever fits the canvas bounds so overshoot never clips off the
-      // edge. Math.max(1, ...) ensures at least 1× for tiny sprites.
-      //
-      // Why ceil over round: round undersizes when the sprite's native
-      // height is close to the target (e.g. 30-pixel sprite targeting 38.4
-      // rounds 1.28 → 1 = draws at 30, 22% smaller than target). Ceil
-      // picks 2 = draws at 60 = close to twice target, but pixel-perfect.
-      const idealPixelScale = Math.max(1, Math.ceil(targetHeight / frameHeight));
-      const maxScaleByCanvas = Math.max(1, Math.floor(size / Math.max(frameWidth, frameHeight)));
-      const pixelScale = Math.min(idealPixelScale, maxScaleByCanvas);
-
-      const drawWidth = frameWidth * pixelScale;
-      const drawHeight = frameHeight * pixelScale;
-
-      // Use Math.floor for sourceX so per-frame drift is one-directional when
-      // frameWidth is fractional (imported sheets with non-divisible width).
-      // This eliminates the oscillating sample-shift that causes animation wobble.
+      // Math.floor (not round) on source-rect positions. When a sprite
+      // sheet's image width isn't exactly divisible by frame count,
+      // frameWidth is fractional (e.g. 20.2). Math.round would give
+      // frame 0: 0, frame 1: 20, frame 2: 40, frame 3: 61 — the drift
+      // alternates, so consecutive frames sample the sheet at shifted
+      // offsets, producing the animation "wobble" where the sprite
+      // appears to shift 1 pixel each frame. Math.floor keeps the drift
+      // strictly one-directional, so each frame samples a consistent
+      // window.
       const sourceX = Math.floor(frameIndex * frameWidth);
       const sw = Math.floor(frameWidth);
       const sh = Math.floor(frameHeight);
-      const xPos = bottomAlign
-        ? Math.round(size / 2 - drawWidth * 0.5)
-        : Math.round(size / 2 - drawWidth * ax + ox);
-      const yPos = bottomAlign
-        ? Math.round(size - drawHeight)
-        : Math.round(size / 2 - drawHeight * ay + oy);
+      const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * ax + ox);
+      const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * ay + oy);
       ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
     };
 
@@ -238,47 +222,50 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         if (img && isImageReady(img)) {
           const maxSize = (sprite.size || 0.6) * size * imgScale * uScale * spriteScale;
           const aspectRatio = img.width / img.height;
+          let drawWidth: number, drawHeight: number;
 
-          // Target size from config (may be fractional)
-          let targetWidth = maxSize;
-          let targetHeight = maxSize;
-          if (aspectRatio > 1) {
-            targetHeight = maxSize / aspectRatio;
+          if (bottomAlign) {
+            // Same bounding-box sizing as game board for proportional consistency
+            drawWidth = maxSize;
+            drawHeight = maxSize;
+            if (aspectRatio > 1) {
+              drawHeight = maxSize / aspectRatio;
+            } else {
+              drawWidth = maxSize * aspectRatio;
+            }
+            // Clamp to canvas bounds (spriteScale can push beyond canvas)
+            if (drawWidth > size) {
+              drawHeight *= size / drawWidth;
+              drawWidth = size;
+            }
+            if (drawHeight > size) {
+              drawWidth *= size / drawHeight;
+              drawHeight = size;
+            }
+            drawWidth = Math.round(drawWidth);
+            drawHeight = Math.round(drawHeight);
           } else {
-            targetWidth = maxSize * aspectRatio;
+            drawWidth = maxSize;
+            drawHeight = maxSize;
+            if (aspectRatio > 1) {
+              drawHeight = maxSize / aspectRatio;
+            } else {
+              drawWidth = maxSize * aspectRatio;
+            }
+            const idealPixelScale = Math.max(1, Math.round(drawWidth / img.width));
+            const maxFitScale = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
+            const pixelScale = Math.min(idealPixelScale, maxFitScale);
+            drawWidth = img.width * pixelScale;
+            drawHeight = img.height * pixelScale;
           }
 
-          // Clamp to canvas bounds
-          if (targetWidth > size) {
-            targetHeight *= size / targetWidth;
-            targetWidth = size;
-          }
-          if (targetHeight > size) {
-            targetWidth *= size / targetHeight;
-            targetHeight = size;
-          }
-
-          // Integer-scale snap for pixel-perfect rendering. Math.ceil so
-          // sprites never render smaller than the sprite.size target;
-          // clamp to canvas-fit to prevent overshoot clipping.
-          const idealPixelScale = Math.max(1, Math.ceil(targetHeight / img.height));
-          const maxScaleByCanvas = Math.max(1, Math.floor(size / Math.max(img.width, img.height)));
-          const pixelScale = Math.min(idealPixelScale, maxScaleByCanvas);
-
-          const drawWidth = img.width * pixelScale;
-          const drawHeight = img.height * pixelScale;
-
-          const xPos = bottomAlign
-            ? Math.round(size / 2 - drawWidth * 0.5)
-            : Math.round(size / 2 - drawWidth * imgAx + imgOx);
-          const yPos = bottomAlign
-            ? Math.round(size - drawHeight)
-            : Math.round(size / 2 - drawHeight * imgAy + imgOy);
+          const xPos = bottomAlign ? Math.round(size / 2 - drawWidth * 0.5) : Math.round(size/2 - drawWidth * imgAx + imgOx);
+          const yPos = bottomAlign ? Math.round(size - drawHeight) : Math.round(size/2 - drawHeight * imgAy + imgOy);
           ctx.drawImage(img, xPos, yPos, drawWidth, drawHeight);
         }
         // If image not ready yet, the subscription will trigger re-render when it loads
       } else {
-        // Draw sprite using shapes (canvas-resolution coords)
+        // Draw sprite using shapes
         drawSprite(ctx, sprite, size / 2, size / 2, size);
       }
     };
@@ -327,8 +314,6 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     <div className={`rounded ${noBackground ? 'overflow-visible' : 'overflow-hidden'} ${className}`} style={backgroundStyle}>
       <canvas
         ref={canvasRef}
-        width={size}
-        height={size}
         className="block"
         style={{ width: cssSize, height: cssSize, imageRendering: 'pixelated' as const, ...canvasStyle }}
       />
