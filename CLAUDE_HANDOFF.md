@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: March 24, 2026
+Last Updated: April 17, 2026
 
 ## Project Overview
 
@@ -165,12 +165,39 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
-1. **Slow homing projectile visuals** - speed 1-2 homing spells do not visually track moving targets well. Need a separate visual approach for slow homing that does not break fast projectile behavior.
-2. **Projectile system refactor** - clean up technical debt: extract helpers, eliminate duplicated collision logic, consolidate overlapping flags, make visual system truly read-only.
-3. **Replay projectile polish** - edge cases with slow projectiles, melee VFX timing.
-4. **Sentry environment variables** - add to Netlify player site.
-5. **Run `007_player_roles.sql` migration** against Supabase.
-6. **POST error on puzzle completion** - 400 Bad Request to `puzzle_completions` table, schema mismatch.
+### Tracked refactors (see docs/ for detailed plans)
+
+1. **Native-resolution rendering, Phase 2 — game board** (next up).
+   Plan: [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md).
+   Phase 1 (cards/thumbnails) shipped April 2026 via per-sprite `pixelScale` + `fillWidth` + adaptive row heights. Phase 2 is different — the board keeps the "native-resolution canvas + uniform CSS upscale" pattern because fractional per-sheet `scale`/`offset` tuning needs to stay, and the shared `TILE_SIZE` across all board sprites makes the uniform CSS-upscale factor clean. **Files affected**: `AnimatedGameBoard.tsx` (critical), `SpriteEditor.tsx`'s `drawSprite`/`drawSpriteSheet`, `MapEditor.tsx` (critical if it renders its own board), click/touch coord handlers, possibly text rendering. Expected multi-session effort.
+
+2. **Projectile system refactor — Phases C, D, E** (pending).
+   Plan: [docs/projectile-refactor-plan.md](docs/projectile-refactor-plan.md).
+   Phases A (ProjectileVisualState type introduced, commit `45fdf9d`) and B (movement branch extraction, commit `af55a53`) shipped April 2026. Remaining phases:
+   - **Phase C**: move visual fields (`x`, `y`, `currentTileIndex`, `tileEntryTime`, homing-visual anchors, `visualPastReflectPoint`) off `GameState` into a `Map<string, ProjectileVisualState>` owned by `AnimatedGameBoard`. Fixes the deep-copy issue (`JSON.parse(JSON.stringify(prev))` currently captures visual state). ~117 callsites, medium risk.
+   - **Phase D**: collapse the 6 overlapping deferred-state flags (`pendingDeactivation`, `pendingProjectileDeath`, `hitResult`, `visualHealth`, `pendingReflectVfx`, `visualPastReflectPoint`) into a coherent state machine. Scoped variant: consolidate just the reflect triad (`reflectAtTileIndex`, `pendingReflectVfx`, `visualPastReflectPoint`) as a ~20-callsite mini-D if full D is too big.
+   - **Phase E** (highest determinism value): de-duplicate `updateProjectilesHeadless` (solver) and `resolveProjectiles` (real game) collision logic into a shared helper. Prevents solver/game drift. Requires a golden-test corpus of saved puzzles first.
+
+3. **`puzzleGenerator.ts` Math.random audit** (small, standalone).
+   Plan: [docs/audit-summary.md](docs/audit-summary.md) section 1.
+   Does any runtime path (solver, replay, live play) invoke the generator? If yes, `Math.random()` there is a determinism violation and needs a seeded PRNG. If only editor-authoring invokes it (expected), no action needed — but verify before assuming.
+
+### One-off tasks
+
+4. **Slow homing projectile visuals** — speed 1-2 homing spells do not visually track moving targets well. Needs a separate visual approach for slow homing that does not break fast projectile behavior. Best tackled AFTER projectile Phase C (gives a cleaner place for a new visual code path).
+5. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
+6. **Sentry environment variables** — add to Netlify player site.
+7. **Run `007_player_roles.sql` migration** against Supabase.
+8. **POST error on puzzle completion** — 400 Bad Request to `puzzle_completions` table, schema mismatch.
+
+### Recently completed (April 17, 2026 session)
+
+Work done this session — relevant to keep in mind but not on the to-do list:
+- **Tier 1 determinism fixes** (audit follow-up): removed `Math.random()` gate on status effect `applyChance` (commit `7590223`) — live gameplay is now fully deterministic with respect to status effects. Fixed the syncTracker push/edit race (commit `7f9d3a7`) — concurrent edits during sync no longer get silently dropped.
+- **Audit summary doc** [docs/audit-summary.md](docs/audit-summary.md) — living roadmap of outstanding work.
+- **Netlify config cleanup** — removed repo-level `netlify.toml` (was silently overriding player site settings), each site now configured in its own dashboard. Dev site: `npm ci && npm run build` → `dist`. Player site: `npm ci && npm run build:player` → `dist-player`.
+- **Dead code removal** — deleted `CloudSyncPanel.tsx` (superseded), cleaned ~13 unused CSS classes.
+- **Card rendering rework** — hero/enemy cards in CharacterSelector and EnemyDisplay now use the new `pixelScale`/`fillWidth` rendering with aligned HP rows via name-block min-height measurement.
 
 ## Important Patterns
 
@@ -179,7 +206,7 @@ The Reflect status effect bounces incoming projectiles back:
 - **Determinism**: Same puzzle setup must produce the same result every run. The `resolveProjectiles` system at turn boundaries achieves this. Frame timing should never affect game outcomes.
 - **Safe revert point**: Commit `e3b5b58` is the pre-deterministic state where everything worked visually (per-frame collision) but had rare frame-timing variance. Can always revert there if needed.
 
-## Recent Session Summary (March 20-24, 2026)
+## Historical Session Summary (March 20-24, 2026)
 
 Major work done:
 - Deterministic projectile system (`resolveProjectiles`)

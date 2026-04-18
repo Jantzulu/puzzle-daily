@@ -71,17 +71,24 @@ Introduced as `NATIVE_TILE_SIZE = 16` alongside existing `TILE_SIZE = 48`. `TILE
 
 Each phase is an independent commit. Any single phase can be reverted without rolling back subsequent phases.
 
-### Phase 1 — Thumbnails (POC) ✅ planned
-Convert `SpriteThumbnail.tsx` and `PixelEditorAnimationPreview.tsx` to native-resolution rendering. Validates the pattern on contained, non-critical surfaces.
+### ✅ Phase 1 — Cards / thumbnails (done 2026-04-17, with revisions)
 
-**Files:**
-- `src/components/editor/SpriteThumbnail.tsx`
-- `src/components/editor/PixelEditorAnimationPreview.tsx`
+**Landed approach differs from the original sketch.** The "native-resolution canvas + uniform CSS upscale" approach was tried first but produced *either* undersized sprites (integer-scale snap too restrictive for narrow 52px cards) or no real improvement (fractional CSS scale at the browser step reintroduced half-pixels). After multiple iterations the team settled on a per-sprite integer `pixelScale` multiplier, which works for cards because they don't need the directional-sheet scale/offset fractional tuning that the main board does.
 
-**Expected visible outcome:**
-- Sprites in thumbnails no longer wobble during idle animation.
-- Side-facing and front-facing sprites for the same entity look more consistent to each other.
-- Thumbnails should look identical across 1× and 2× DPR displays.
+**Final shipped design:**
+- `SpriteThumbnail` got a new `pixelScale?: number` prop. When set, sprites render at exactly `frameWidth × pixelScale` × `frameHeight × pixelScale` (integer, pixel-perfect). No fit-to-box, no `sprite.size`, no `spriteScale` math. Bypasses all the old legacy sizing code.
+- `SpriteThumbnail` also got a `fillWidth?: boolean` prop. With ResizeObserver, the canvas width tracks its container; the `size` prop becomes canvas *height only*. Lets sprites use the full card width without overflowing into other cards.
+- New `cardConstants.ts` holds the shared `CARD_PIXEL_SCALE = 3` and `computeCardSpriteAreaHeight()` helper. The helper picks the tallest native sprite in a row × `CARD_PIXEL_SCALE` so all cards in the row have a uniform sprite-area height (no head clipping even if a character is taller than most).
+- `CharacterSelector` and `EnemyDisplay` measure their name-block rendered heights on mount/resize and apply the max as `minHeight` to each card's name block. This aligns the HP row, More Info row, and carets vertically across cards regardless of name length / wrapping.
+- `getSpriteNativeHeight()` falls back to `img.naturalHeight` from the image loader's cache when a sheet's config doesn't carry an explicit `frameHeight` (common for sprites imported from Aseprite before the in-game Pixel Editor existed).
+- Commits: `2674078` (initial pixelScale prop), `a31cd98` (bump to 3), `b919ef5` (fillWidth + adaptive height + rearranged layout), `75ab2b3` (image-dimension fallback), `921f2b8`/`d0945e9`/`4101e34` (line-height/title-gap polish), `0f0a25e` (name-row alignment).
+
+**`PixelEditorAnimationPreview` was reverted** to its pre-session state — the integer-scale snap that helped thumbnails didn't apply cleanly to a preview with a fixed-size 128×128 canvas and variable-aspect source art.
+
+**Why the original plan didn't work for cards (preserved for Phase 2 context):**
+The plan assumed a single `NATIVE_TILE_SIZE` × tile-count canvas whose CSS upscale was a clean integer. Thumbnails have no shared tile grid — each one is a standalone canvas with arbitrary display size (52, 64, 80, 128…). Making canvas-internal match CSS-display at 1:1 eliminated one source of fractional scaling but the sprite-inside-the-canvas math still had fractional destinations. This was still visible as half-pixels. The integer-multiple `pixelScale` approach is the clean fix for that specific geometry.
+
+**Phase 2 is materially different.** The game board has a shared `TILE_SIZE` across all sprites AND needs fractional per-sheet scale/offset for directional-sprite normalization. The original "native-resolution canvas + uniform CSS upscale" plan IS the right approach for the board (Phase 2) because the shared tile grid gives a clean integer CSS-upscale factor, and the fractional scaling that would otherwise cause wobble happens *inside* the canvas where a uniform CSS upscale makes it invisible at display level.
 
 ### Phase 2 — Main game board
 Convert `AnimatedGameBoard.tsx` to native-resolution rendering.
