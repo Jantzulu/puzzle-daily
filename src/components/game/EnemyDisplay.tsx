@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import type { PlacedEnemy, EnemyBehavior, ActionStep } from '../../types/game';
 import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
@@ -109,6 +109,31 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- triggers intentional
   }, [uniqueEnemyIds.join(','), imageLoadTrigger]);
+
+  // Uniform name/title block height across the enemy row so HP/info/caret
+  // rows align vertically across cards. See CharacterSelector for rationale.
+  const nameBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [maxNameBlockHeight, setMaxNameBlockHeight] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => {
+      let max = 0;
+      for (const el of nameBlockRefs.current) {
+        if (!el) continue;
+        const h = el.offsetHeight;
+        if (h > max) max = h;
+      }
+      if (max > 0) {
+        setMaxNameBlockHeight(prev => (prev === max ? prev : max));
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const el of nameBlockRefs.current) {
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [uniqueEnemyIds.join(',')]);
   const totalLiving = Array.from(enemyGroups.values()).reduce((sum, g) => sum + g.livingCount, 0);
 
   // Rendered enemy info
@@ -223,7 +248,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
 
       {/* Enemy strip — equal-width slots separated by vertical dividers */}
       <div className="flex divide-x divide-stone-700">
-        {uniqueEnemyIds.map((enemyId) => {
+        {uniqueEnemyIds.map((enemyId, enemyIndex) => {
           const enemyData = getEnemy(enemyId);
           if (!enemyData) return null;
 
@@ -261,14 +286,19 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                 )}
               </div>
 
-              {/* Name + Title (below sprite). Block divs for tight control;
-                  see CharacterSelector comment for rationale. */}
-              <div className="text-center w-full mt-0.5 mb-0.5">
+              {/* Name + Title (below sprite). Shared minHeight across the
+                  row aligns HP/info/caret rows below across cards; see
+                  CharacterSelector for full rationale. */}
+              <div
+                ref={(el) => { nameBlockRefs.current[enemyIndex] = el; }}
+                className="text-center w-full mt-0.5 mb-0.5"
+                style={{ minHeight: maxNameBlockHeight || undefined }}
+              >
                 <div className="text-[12px] font-medium break-words text-blood-300 leading-none">
                   {enemyData.name}
                 </div>
                 {enemyData.title && (
-                  <div className="text-[10px] italic text-parchment-300 leading-none">
+                  <div className="text-[10px] italic text-parchment-300 leading-none mt-0.5">
                     {enemyData.title}
                   </div>
                 )}

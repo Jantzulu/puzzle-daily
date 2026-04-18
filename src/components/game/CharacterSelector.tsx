@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { getCharacter } from '../../data/characters';
 import type { CharacterAction, PlacedCharacter, Direction } from '../../types/game';
 import { loadSpellAsset } from '../../utils/assetStorage';
@@ -100,6 +100,33 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps -- imageLoadTrigger intentionally forces re-compute after image loads
   }, [availableCharacterIds, imageLoadTrigger]);
+
+  // Uniform name/title block height across the hero row — picks the max
+  // rendered height of any card's name/title and applies it as min-height
+  // to all of them. Ensures HP rows and everything below line up vertically
+  // across cards regardless of name length (which varies with wrapping).
+  const nameBlockRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [maxNameBlockHeight, setMaxNameBlockHeight] = useState(0);
+  useLayoutEffect(() => {
+    const measure = () => {
+      let max = 0;
+      for (const el of nameBlockRefs.current) {
+        if (!el) continue;
+        const h = el.offsetHeight;
+        if (h > max) max = h;
+      }
+      if (max > 0) {
+        setMaxNameBlockHeight(prev => (prev === max ? prev : max));
+      }
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    for (const el of nameBlockRefs.current) {
+      if (el) observer.observe(el);
+    }
+    return () => observer.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [availableCharacterIds]);
 
   const getShapeClass = (shape?: string) => {
     switch (shape) {
@@ -220,7 +247,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
       {/* Hero strip — equal-width slots separated by vertical dividers */}
       <div className="flex divide-x divide-stone-700">
-        {availableCharacterIds.map((charId) => {
+        {availableCharacterIds.map((charId, charIndex) => {
           const character = getCharacter(charId);
           if (!character) return null;
 
@@ -263,16 +290,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               </div>
 
               {/* Name + Title (below sprite).
-                  Separate block divs with negative margin guarantees the
-                  title sits tight under the name regardless of the font's
-                  intrinsic ascent/descent metrics (which CSS line-height
-                  can't always fully control). */}
-              <div className="text-center w-full mt-0.5 mb-0.5">
+                  Separate block divs for tight vertical spacing control.
+                  Container carries a ref + shared minHeight so all cards
+                  in the row have the same name-block height, aligning the
+                  HP/info/caret rows below across cards. */}
+              <div
+                ref={(el) => { nameBlockRefs.current[charIndex] = el; }}
+                className="text-center w-full mt-0.5 mb-0.5"
+                style={{ minHeight: maxNameBlockHeight || undefined }}
+              >
                 <div className="text-[12px] font-medium break-words text-arcane-400 leading-none">
                   {character.name}
                 </div>
                 {character.title && (
-                  <div className="text-[10px] italic text-parchment-300 leading-none">
+                  <div className="text-[10px] italic text-parchment-300 leading-none mt-0.5">
                     {character.title}
                   </div>
                 )}
