@@ -167,28 +167,28 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Tracked refactors (see docs/ for detailed plans)
 
-1. **Native-resolution rendering, Phase 2 — game board** (next up).
-   Plan: [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md).
-   Phase 1 (cards/thumbnails) shipped April 2026 via per-sprite `pixelScale` + `fillWidth` + adaptive row heights. Phase 2 is different — the board keeps the "native-resolution canvas + uniform CSS upscale" pattern because fractional per-sheet `scale`/`offset` tuning needs to stay, and the shared `TILE_SIZE` across all board sprites makes the uniform CSS-upscale factor clean. **Files affected**: `AnimatedGameBoard.tsx` (critical), `SpriteEditor.tsx`'s `drawSprite`/`drawSpriteSheet`, `MapEditor.tsx` (critical if it renders its own board), click/touch coord handlers, possibly text rendering. Expected multi-session effort.
-
-2. **Projectile system refactor — Phases C, D, E** (pending).
+1. **Projectile system refactor — Phases C, D, E** (pending).
    Plan: [docs/projectile-refactor-plan.md](docs/projectile-refactor-plan.md).
    Phases A (ProjectileVisualState type introduced, commit `45fdf9d`) and B (movement branch extraction, commit `af55a53`) shipped April 2026. Remaining phases:
    - **Phase C**: move visual fields (`x`, `y`, `currentTileIndex`, `tileEntryTime`, homing-visual anchors, `visualPastReflectPoint`) off `GameState` into a `Map<string, ProjectileVisualState>` owned by `AnimatedGameBoard`. Fixes the deep-copy issue (`JSON.parse(JSON.stringify(prev))` currently captures visual state). ~117 callsites, medium risk.
    - **Phase D**: collapse the 6 overlapping deferred-state flags (`pendingDeactivation`, `pendingProjectileDeath`, `hitResult`, `visualHealth`, `pendingReflectVfx`, `visualPastReflectPoint`) into a coherent state machine. Scoped variant: consolidate just the reflect triad (`reflectAtTileIndex`, `pendingReflectVfx`, `visualPastReflectPoint`) as a ~20-callsite mini-D if full D is too big.
    - **Phase E** (highest determinism value): de-duplicate `updateProjectilesHeadless` (solver) and `resolveProjectiles` (real game) collision logic into a shared helper. Prevents solver/game drift. Requires a golden-test corpus of saved puzzles first.
 
-3. **`puzzleGenerator.ts` Math.random audit** (small, standalone).
+2. **`puzzleGenerator.ts` Math.random audit** (small, standalone).
    Plan: [docs/audit-summary.md](docs/audit-summary.md) section 1.
    Does any runtime path (solver, replay, live play) invoke the generator? If yes, `Math.random()` there is a determinism violation and needs a seeded PRNG. If only editor-authoring invokes it (expected), no action needed — but verify before assuming.
 
 ### One-off tasks
 
-4. **Slow homing projectile visuals** — speed 1-2 homing spells do not visually track moving targets well. Needs a separate visual approach for slow homing that does not break fast projectile behavior. Best tackled AFTER projectile Phase C (gives a cleaner place for a new visual code path).
-5. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
-6. **Sentry environment variables** — add to Netlify player site.
-7. **Run `007_player_roles.sql` migration** against Supabase.
-8. **POST error on puzzle completion** — 400 Bad Request to `puzzle_completions` table, schema mismatch.
+3. **Slow homing projectile visuals** — speed 1-2 homing spells do not visually track moving targets well. Needs a separate visual approach for slow homing that does not break fast projectile behavior. Best tackled AFTER projectile Phase C (gives a cleaner place for a new visual code path).
+4. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
+5. **Sentry environment variables** — add to Netlify player site.
+6. **Run `007_player_roles.sql` migration** against Supabase.
+7. **POST error on puzzle completion** — 400 Bad Request to `puzzle_completions` table, schema mismatch.
+
+### Won't-do (decided)
+
+- **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
 
 ### Recently completed (April 17, 2026 session)
 

@@ -1,6 +1,6 @@
 # Native-Resolution Rendering — Plan
 
-**Status:** Execution in progress (2026-04-16 session)
+**Status:** Closed (2026-04-17). Phase 1 (cards/thumbnails) shipped. Phases 2–4 (board, map editor, text) marked won't-do — see Phase 2 section for reasoning.
 **Goal:** Eliminate sprite deformation (static non-uniform pixel sizes, and frame-to-frame "wobble" during sprite-sheet animation) by rendering the game and its thumbnails at a small native pixel resolution, then CSS-scaling the canvas uniformly to display size.
 **Scope:** `AnimatedGameBoard.tsx`, `MapEditor.tsx` board rendering, `SpriteThumbnail.tsx`, `PixelEditorAnimationPreview.tsx`, and related helpers in `SpriteEditor.tsx` (`drawSprite`, `drawSpriteSheet`).
 
@@ -90,7 +90,33 @@ The plan assumed a single `NATIVE_TILE_SIZE` × tile-count canvas whose CSS upsc
 
 **Phase 2 is materially different.** The game board has a shared `TILE_SIZE` across all sprites AND needs fractional per-sheet scale/offset for directional-sprite normalization. The original "native-resolution canvas + uniform CSS upscale" plan IS the right approach for the board (Phase 2) because the shared tile grid gives a clean integer CSS-upscale factor, and the fractional scaling that would otherwise cause wobble happens *inside* the canvas where a uniform CSS upscale makes it invisible at display level.
 
-### Phase 2 — Main game board
+### Phase 2 — Main game board — ❌ Won't do (decided 2026-04-17)
+
+**Status:** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). Will not retry without a fundamentally different approach.
+
+**Why it failed in practice:**
+The plan's core claim — *"fractional scaling that would otherwise cause wobble happens inside the canvas where a uniform CSS upscale makes it invisible at display level"* — turned out to be wrong. Fractional downsampling **destroys pixel uniformity**, and CSS-upscaling a damaged buffer just shows the damage bigger. Concrete artifacts observed in the implementation:
+
+- **Sprites with dramatic distortion (half/double pixels):** a 48-source sprite drawn at `sprite.size × NATIVE_TILE_SIZE = 0.6 × 24 = 14` native pixels is a 0.29× downsample (worse than the pre-refactor 0.6× downsample), then 2×-upscaled in CSS. Different source pixels map to 1 vs 2 dest pixels, then to 2×2 vs 4×4 CSS blocks.
+- **Skins low res:** custom tile sprites authored at 48 source drawn into a 24-native cell — same downsample loss.
+- **Healthbars/icons chunky:** small UI elements drawn at native then 2×-upscaled produce 2×2 CSS blocks where pre-refactor had 1:1 pixels.
+
+**Why a re-attempt isn't worth it:**
+The "pixel-perfect via integer scaling" approach (the one that worked for cards in Phase 1) requires *integer source-to-dest scaling for every sprite*. That fundamentally conflicts with the per-sheet `scale` and `sprite.size` knobs the board needs:
+
+- `sprite.size × tileSize` is fractional by design — creators set 0.6, 0.8, etc. to size sprites relative to tiles.
+- Per-sheet `scale` is **mandatory** for normalizing differently-framed sheets of the same character (e.g., a knight holding a sword vs a bow may have different bounding-box framing — `scale` makes them appear the same size on the board).
+
+Any "auto-snap to nearest integer ratio" scheme would defeat that normalization (each sheet snaps to a different ratio of its own source). And requiring all art at a uniform native size would mean re-authoring the entire asset library.
+
+**Settled position:** the small static half-pixels visible on entities are a tax for creator flexibility, and they're far less perceptually noticeable on the small board entities than they were on the large card thumbnails. Keep board rendering as-is. If a specific sprite ever looks bad, fix it at the asset level (clean source dimensions, tweak `scale`) rather than reaching for a system-wide refactor.
+
+If sprite-sheet animation drift (`Math.round(frameIndex * frameWidth)` with fractional `frameWidth`) ever becomes a real complaint, fix it source-side in the sprite editor (snap `frameWidth` to integer when loading sheets). That's an authoring-side fix, not a renderer refactor.
+
+---
+
+**Original Phase 2 plan (preserved for context — not the current direction):**
+
 Convert `AnimatedGameBoard.tsx` to native-resolution rendering.
 
 **Files:**
@@ -111,21 +137,11 @@ Convert `AnimatedGameBoard.tsx` to native-resolution rendering.
 - Projectiles remain smooth — positions are fractional, but visual effect is consistent across frames.
 - Sprite sizing relative to tile looks same as before (if `NATIVE_TILE_SIZE = 16` and `sprite.size = 0.6`, sprite still occupies ~60% of tile).
 
-### Phase 3 — Map editor board
-Apply the same pattern to `MapEditor.tsx`'s board rendering (it has its own `TILE_SIZE = 48` constant).
+### Phase 3 — Map editor board — ❌ Won't do
+Was contingent on Phase 2 succeeding; cancelled with Phase 2.
 
-**Files:**
-- `src/components/editor/MapEditor.tsx` (critical file)
-
-**Expected visible outcome:** MapEditor board matches game board appearance.
-
-### Phase 4 — Text rendering audit
-Native-resolution text (e.g. damage numbers, status labels rendered directly on canvas) will look small/blurry when scaled. Identify and either:
-- Move to HTML overlay (floating divs positioned via coordinate mapping), or
-- Render at a higher resolution to a separate layer, or
-- Accept pixel-art aesthetic for numbers
-
-**Decision deferred until visual pass after Phase 2.** The extent of this work depends on how text actually looks post-conversion.
+### Phase 4 — Text rendering audit — ❌ Won't do
+Was scoped to address post-Phase-2 text degradation; no longer relevant since the canvas buffer isn't being shrunk.
 
 ## 5. Revert strategy
 
