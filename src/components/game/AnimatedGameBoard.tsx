@@ -52,9 +52,14 @@ interface AnimatedGameBoardProps {
   replayFrozen?: boolean;  // When true, freeze projectile/particle animations — used during replay pause/step
 }
 
-const TILE_SIZE = 48;
-const BORDER_SIZE = 48; // Border thickness for top/bottom
-const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
+// Native-resolution rendering (Phase 2):
+// Canvas internal buffer = native pixels (small). CSS display size = CSS pixels (large).
+// Drawing code operates in NATIVE_* units. Layout/click math uses CSS_* units.
+// The browser upscales native→CSS via `image-rendering: pixelated` (nearest-neighbor).
+const NATIVE_TILE_SIZE = 24;
+const NATIVE_BORDER_SIZE = 24; // Top/bottom border thickness in native px
+const NATIVE_SIDE_BORDER_SIZE = 8; // Side border thickness in native px (3:1 ratio to top)
+const DEFAULT_CSS_SCALE = 2; // CSS display = 2× native (48px tile, 48px top border, 16px side border)
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
 const MOVE_DURATION = 180; // Movement duration - balance between smoothness and minimizing time on wrong tile
 const IDLE_DURATION = 220; // Idle time on destination tile (where entity actually is)
@@ -76,104 +81,6 @@ const COLORS = {
   deadEnemy: '#661111',
   collectible: '#ffd700',
 };
-
-// ==========================================
-// PIXEL-PERFECT SPRITE RENDERING
-// ==========================================
-// On mobile, ctx.scale(puzzleScale * dpr) produces non-integer scaling.
-// Even rounded logical coords → fractional physical pixels → pixel art warps.
-// Fix: reset transform to identity, convert coords to physical pixel space
-// (rounded to integers), draw sprite there, then restore transform.
-
-type DrawSpriteArgs = [
-  ctx: CanvasRenderingContext2D,
-  sprite: import('../../utils/assetStorage').CustomSprite,
-  centerX: number,
-  centerY: number,
-  tileSize: number,
-  direction?: import('../../types/game').Direction,
-  isMoving?: boolean,
-  now?: number,
-  isCasting?: boolean,
-];
-
-function drawSpritePixelPerfect(...args: DrawSpriteArgs) {
-  const [ctx, sprite, centerX, centerY, tileSize, direction, isMoving, now, isCasting] = args;
-  const transform = ctx.getTransform();
-  const scale = transform.a; // horizontal scale
-  const currentAlpha = ctx.globalAlpha; // Preserve alpha across setTransform
-
-  // Transform logical coords to physical pixel space using the full matrix
-  const physPoint = transform.transformPoint(new DOMPoint(centerX, centerY));
-
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.globalAlpha = currentAlpha; // Re-apply alpha after transform reset
-  ctx.imageSmoothingEnabled = false;
-
-  // Scale shadow to physical pixel space — avoid rounding for smoother edges
-  if (ctx.shadowColor && ctx.shadowColor !== 'transparent' && ctx.shadowColor !== 'rgba(0, 0, 0, 0)') {
-    ctx.shadowOffsetX = ctx.shadowOffsetX * scale;
-    ctx.shadowOffsetY = ctx.shadowOffsetY * scale;
-    ctx.shadowBlur = ctx.shadowBlur * scale;
-  }
-
-  const physCenterX = Math.round(physPoint.x);
-  const physCenterY = Math.round(physPoint.y);
-  const physTileSize = Math.round(tileSize * scale);
-
-  drawSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, isMoving, now, isCasting);
-  ctx.restore();
-}
-
-function drawDeathSpritePixelPerfect(
-  ctx: CanvasRenderingContext2D,
-  sprite: import('../../utils/assetStorage').CustomSprite,
-  centerX: number,
-  centerY: number,
-  tileSize: number,
-  direction: import('../../types/game').Direction | undefined,
-  startTime: number
-) {
-  const transform = ctx.getTransform();
-  const scale = transform.a;
-  const physPoint = transform.transformPoint(new DOMPoint(centerX, centerY));
-
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-
-  const physCenterX = Math.round(physPoint.x);
-  const physCenterY = Math.round(physPoint.y);
-  const physTileSize = Math.round(tileSize * scale);
-
-  drawDeathSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, startTime);
-  ctx.restore();
-}
-
-function drawSpawnSpritePixelPerfect(
-  ctx: CanvasRenderingContext2D,
-  sprite: import('../../utils/assetStorage').CustomSprite,
-  centerX: number,
-  centerY: number,
-  tileSize: number,
-  startTime: number
-) {
-  const transform = ctx.getTransform();
-  const scale = transform.a;
-  const physPoint = transform.transformPoint(new DOMPoint(centerX, centerY));
-
-  ctx.save();
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.imageSmoothingEnabled = false;
-
-  const physCenterX = Math.round(physPoint.x);
-  const physCenterY = Math.round(physPoint.y);
-  const physTileSize = Math.round(tileSize * scale);
-
-  drawSpawnSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, startTime);
-  ctx.restore();
-}
 
 // ==========================================
 // SPELL SPRITE SHEET RENDERING
@@ -1038,39 +945,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Get device pixel ratio for high-DPI rendering
-      const dpr = window.devicePixelRatio || 1;
-
-      // Calculate the puzzle scale factor (must match the scale calculation in render)
-      const borderStyleForScale = gameState.puzzle.borderConfig?.style || 'none';
-      const hasBorderForScale = borderStyleForScale !== 'none';
-      const gridWidthForScale = gameState.puzzle.width * TILE_SIZE;
-      const gridHeightForScale = gameState.puzzle.height * TILE_SIZE;
-      const canvasWidthForScale = hasBorderForScale ? gridWidthForScale + (SIDE_BORDER_SIZE * 2) : gridWidthForScale;
-      const canvasHeightForScale = hasBorderForScale ? gridHeightForScale + (BORDER_SIZE * 2) : gridHeightForScale;
-
-      let puzzleScale = 1;
-      if (maxWidth || maxHeight) {
-        const scaleX = maxWidth ? maxWidth / canvasWidthForScale : Infinity;
-        const scaleY = maxHeight ? maxHeight / canvasHeightForScale : Infinity;
-        puzzleScale = Math.min(scaleX, scaleY);
-        if (puzzleScale < 0.1) puzzleScale = 0.1;
-      }
-
-      // Quantize scale so each tile = integer physical pixels (prevents sub-pixel warping on mobile)
-      const rawEffectiveScale = puzzleScale * dpr;
-      const physicalTileSize = Math.max(1, Math.round(TILE_SIZE * rawEffectiveScale));
-      const quantizedScale = physicalTileSize / TILE_SIZE;
-
-      // Disable image smoothing for crisp pixel art
+      // Native-resolution rendering: canvas buffer is already at native pixel size
+      // (see render block). Drawing code operates in native coords; no ctx.scale,
+      // no DPR arithmetic here. The browser CSS-scales the buffer with
+      // image-rendering: pixelated for crisp uniform nearest-neighbor upscale.
       ctx.imageSmoothingEnabled = false;
-
-      // Clear entire canvas (at full resolution)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Scale context — quantized so tiles land on exact physical pixel boundaries
-      ctx.save();
-      ctx.scale(quantizedScale, quantizedScale);
 
       // Load skin for tile sprites (use override if provided, e.g. for SkinEditor live preview)
       const skin = skinOverride ?? (gameState.puzzle.skinId ? loadPuzzleSkin(gameState.puzzle.skinId) : null);
@@ -1080,8 +960,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Calculate grid offset (for borders)
       const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
       const hasBorder = borderStyle !== 'none';
-      const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
-      const offsetY = hasBorder ? BORDER_SIZE : 0;
+      const offsetX = hasBorder ? NATIVE_SIDE_BORDER_SIZE : 0;
+      const offsetY = hasBorder ? NATIVE_BORDER_SIZE : 0;
 
       // Draw border first (if enabled)
       if (hasBorder) {
@@ -1364,13 +1244,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
           const charData = getCharacter(anim.characterId) as CustomCharacter | undefined;
           if (charData && 'customSprite' in charData && charData.customSprite) {
-            const px = anim.x * TILE_SIZE;
-            const py = (anim.y + offsetY) * TILE_SIZE;
+            const px = anim.x * NATIVE_TILE_SIZE;
+            const py = (anim.y + offsetY) * NATIVE_TILE_SIZE;
             // Draw sprite to offscreen canvas then composite with alpha
             // (iOS Safari doesn't reliably apply globalAlpha through transform resets)
             const transform = ctx.getTransform();
             const scale = transform.a;
-            const physTile = Math.round(TILE_SIZE * scale) + 8; // padding for shadow
+            const physTile = Math.round(NATIVE_TILE_SIZE * scale) + 8; // padding for shadow
             const offscreen = new OffscreenCanvas(physTile, physTile);
             const offCtx = offscreen.getContext('2d')!;
             offCtx.imageSmoothingEnabled = false;
@@ -1380,7 +1260,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             offCtx.shadowOffsetY = 1;
             drawSprite(offCtx, charData.customSprite, physTile / 2, physTile / 2, physTile - 8, undefined, false, now, false);
             // Draw offscreen result with opacity onto main canvas
-            const physPoint = transform.transformPoint(new DOMPoint(px + TILE_SIZE / 2, py + TILE_SIZE / 2));
+            const physPoint = transform.transformPoint(new DOMPoint(px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2));
             ctx.save();
             ctx.setTransform(1, 0, 0, 1, 0, 0);
             ctx.globalAlpha = opacity;
@@ -1406,7 +1286,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             activation.activationSprite,
             activation.x,
             activation.y,
-            TILE_SIZE,
+            NATIVE_TILE_SIZE,
             activation.startTime,
             now
           );
@@ -1449,9 +1329,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         drawPuzzleVignette(ctx, gameState.puzzle.tiles, gameState.puzzle.width, gameState.puzzle.height, offsetX, offsetY, timestamp);
       }
 
-      // Restore context (undo dpr scaling)
-      ctx.restore();
-
       animationRef.current = requestAnimationFrame(animate);
     };
 
@@ -1472,25 +1349,18 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
     const hasBorder = borderStyle !== 'none';
-    const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
-    const offsetY = hasBorder ? BORDER_SIZE : 0;
+    const offsetX = hasBorder ? NATIVE_SIDE_BORDER_SIZE : 0;
+    const offsetY = hasBorder ? NATIVE_BORDER_SIZE : 0;
 
-    // Calculate current scale factor
-    const gridWidthPx = gameState.puzzle.width * TILE_SIZE;
-    const gridHeightPx = gameState.puzzle.height * TILE_SIZE;
-    const canvasWidthPx = hasBorder ? gridWidthPx + (SIDE_BORDER_SIZE * 2) : gridWidthPx;
-    const canvasHeightPx = hasBorder ? gridHeightPx + (BORDER_SIZE * 2) : gridHeightPx;
-
+    // Map client (CSS) coords directly to the native buffer using the actual
+    // rendered size ratio. canvas.width/height are native px; rect.width/height
+    // are CSS px. This works regardless of the CSS-to-native scale factor or DPR.
     const rect = canvas.getBoundingClientRect();
-    // Derive actual CSS scale from the rendered element size
-    const currentScale = rect.width / canvasWidthPx;
+    const nativeX = (e.clientX - rect.left) * (canvas.width / rect.width) - offsetX;
+    const nativeY = (e.clientY - rect.top) * (canvas.height / rect.height) - offsetY;
 
-    // Account for scale when converting click coordinates
-    const clickX = (e.clientX - rect.left) / currentScale - offsetX;
-    const clickY = (e.clientY - rect.top) / currentScale - offsetY;
-
-    const x = Math.floor(clickX / TILE_SIZE);
-    const y = Math.floor(clickY / TILE_SIZE);
+    const x = Math.floor(nativeX / NATIVE_TILE_SIZE);
+    const y = Math.floor(nativeY / NATIVE_TILE_SIZE);
 
     if (x >= 0 && x < gameState.puzzle.width && y >= 0 && y < gameState.puzzle.height) {
       onTileClick(x, y);
@@ -1500,39 +1370,27 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const borderStyle = gameState.puzzle.borderConfig?.style || 'none';
   const hasBorder = borderStyle !== 'none';
 
-  const gridWidth = gameState.puzzle.width * TILE_SIZE;
-  const gridHeight = gameState.puzzle.height * TILE_SIZE;
+  const gridWidth = gameState.puzzle.width * NATIVE_TILE_SIZE;
+  const gridHeight = gameState.puzzle.height * NATIVE_TILE_SIZE;
 
-  const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
-  const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
+  // Native buffer dimensions — canvas.width/height (drawing coords)
+  const canvasWidth = hasBorder ? gridWidth + (NATIVE_SIDE_BORDER_SIZE * 2) : gridWidth;
+  const canvasHeight = hasBorder ? gridHeight + (NATIVE_BORDER_SIZE * 2) : gridHeight;
 
-  // Calculate scale factor for responsive sizing
-  // Use exact scale to maximize use of available space while never exceeding container
-  let scale = 1;
+  // Determine CSS display scale. Default is 2× native (matches pre-Phase-2 pixel
+  // dimensions). Under maxWidth/maxHeight constraints, quantize to an integer
+  // scale when possible so nearest-neighbor upscale produces uniform pixel widths.
+  let displayScale = DEFAULT_CSS_SCALE;
   if (maxWidth || maxHeight) {
     const scaleX = maxWidth ? maxWidth / canvasWidth : Infinity;
     const scaleY = maxHeight ? maxHeight / canvasHeight : Infinity;
-    scale = Math.min(scaleX, scaleY);
-    // Ensure minimum scale of 0.1
-    if (scale < 0.1) scale = 0.1;
+    const rawScale = Math.min(scaleX, scaleY);
+    displayScale = rawScale >= 1 ? Math.floor(rawScale) : rawScale;
+    if (displayScale < 0.1) displayScale = 0.1;
   }
 
-  // Get device pixel ratio for crisp rendering on high-DPI displays (e.g., Retina, mobile)
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
-
-  // Quantize scale so each tile = integer physical pixels (prevents sub-pixel warping on mobile)
-  const rawEffectiveScale = scale * dpr;
-  const physicalTileSize = Math.max(1, Math.round(TILE_SIZE * rawEffectiveScale));
-  const quantizedScale = physicalTileSize / TILE_SIZE;
-
-  // Canvas resolution from quantized scale — tiles land on exact pixel boundaries
-  const canvasResWidth = Math.round(canvasWidth * quantizedScale);
-  const canvasResHeight = Math.round(canvasHeight * quantizedScale);
-
-  // CSS display size must exactly match canvas resolution / dpr
-  // to prevent the browser from stretching the canvas bitmap
-  const cssWidth = canvasResWidth / dpr;
-  const cssHeight = canvasResHeight / dpr;
+  const cssWidth = canvasWidth * displayScale;
+  const cssHeight = canvasHeight * displayScale;
 
   return (
     <div
@@ -1546,8 +1404,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     >
       <canvas
         ref={canvasRef}
-        width={canvasResWidth}
-        height={canvasResHeight}
+        width={canvasWidth}
+        height={canvasHeight}
         onClick={handleCanvasClick}
         className="cursor-pointer"
         style={{
@@ -1577,8 +1435,8 @@ function drawBorder(
   config?: any,
   tiles?: (import('../../types/game').TileOrNull)[][]
 ) {
-  const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
-  const totalHeight = gridHeight * TILE_SIZE + (BORDER_SIZE * 2);
+  const totalWidth = gridWidth * NATIVE_TILE_SIZE + (NATIVE_SIDE_BORDER_SIZE * 2);
+  const totalHeight = gridHeight * NATIVE_TILE_SIZE + (NATIVE_BORDER_SIZE * 2);
 
   // Check if we need smart borders (irregular shape with null tiles)
   const useSmartBorder = tiles && hasIrregularShape(tiles, gridWidth, gridHeight);
@@ -1608,15 +1466,15 @@ function drawSmartDungeonBorder(
   gridHeight: number
 ) {
   const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
-  const offsetX = SIDE_BORDER_SIZE;
-  const offsetY = BORDER_SIZE;
+  const offsetX = NATIVE_SIDE_BORDER_SIZE;
+  const offsetY = NATIVE_BORDER_SIZE;
 
   ctx.save();
 
   // Draw edge borders for each exposed tile edge
   borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
-    const px = offsetX + x * TILE_SIZE;
-    const py = offsetY + y * TILE_SIZE;
+    const px = offsetX + x * NATIVE_TILE_SIZE;
+    const py = offsetY + y * NATIVE_TILE_SIZE;
 
     switch (edge) {
       case 'top':
@@ -1636,8 +1494,8 @@ function drawSmartDungeonBorder(
 
   // Draw corners on top of edges
   borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
-    const px = offsetX + x * TILE_SIZE;
-    const py = offsetY + y * TILE_SIZE;
+    const px = offsetX + x * NATIVE_TILE_SIZE;
+    const py = offsetY + y * NATIVE_TILE_SIZE;
     drawCornerSegment(ctx, px, py, type, isOuterBottom);
   });
 
@@ -1650,15 +1508,15 @@ function drawSmartDungeonBorder(
 function drawTopWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
   // Main wall body (extends upward from tile)
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, BORDER_SIZE);
+  ctx.fillRect(px, py - NATIVE_BORDER_SIZE, NATIVE_TILE_SIZE, NATIVE_BORDER_SIZE);
 
   // Shadow at bottom of wall
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px, py - 12, TILE_SIZE, 12);
+  ctx.fillRect(px, py - 6, NATIVE_TILE_SIZE, 6);
 
   // Highlight at top
   ctx.fillStyle = '#4a4a5a';
-  ctx.fillRect(px, py - BORDER_SIZE, TILE_SIZE, 8);
+  ctx.fillRect(px, py - NATIVE_BORDER_SIZE, NATIVE_TILE_SIZE, 4);
 }
 
 /**
@@ -1670,19 +1528,19 @@ function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: nu
   if (isOuterEdge) {
     // Full thickness for outer perimeter bottom wall
     ctx.fillStyle = '#2a2a3a';
-    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, BORDER_SIZE);
+    ctx.fillRect(px, py + NATIVE_TILE_SIZE, NATIVE_TILE_SIZE, NATIVE_BORDER_SIZE);
 
     // Top edge highlight
     ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 8);
+    ctx.fillRect(px, py + NATIVE_TILE_SIZE, NATIVE_TILE_SIZE, 4);
   } else {
     // Thin wall top for interior voids
     ctx.fillStyle = '#323242';
-    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, SIDE_BORDER_SIZE);
+    ctx.fillRect(px, py + NATIVE_TILE_SIZE, NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE);
 
     // Inner edge (top of the wall top, darker)
     ctx.fillStyle = '#2a2a3a';
-    ctx.fillRect(px, py + TILE_SIZE, TILE_SIZE, 6);
+    ctx.fillRect(px, py + NATIVE_TILE_SIZE, NATIVE_TILE_SIZE, 3);
   }
 }
 
@@ -1692,11 +1550,11 @@ function drawBottomWallSegment(ctx: CanvasRenderingContext2D, px: number, py: nu
 function drawLeftWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
   // Main wall body (extends leftward from tile)
   ctx.fillStyle = '#323242';
-  ctx.fillRect(px - SIDE_BORDER_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
+  ctx.fillRect(px - NATIVE_SIDE_BORDER_SIZE, py, NATIVE_SIDE_BORDER_SIZE, NATIVE_TILE_SIZE);
 
   // Inner edge (right side of left wall, darker)
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(px - 6, py, 6, TILE_SIZE);
+  ctx.fillRect(px - 3, py, 3, NATIVE_TILE_SIZE);
 }
 
 /**
@@ -1705,70 +1563,70 @@ function drawLeftWallSegment(ctx: CanvasRenderingContext2D, px: number, py: numb
 function drawRightWallSegment(ctx: CanvasRenderingContext2D, px: number, py: number) {
   // Main wall body (extends rightward from tile)
   ctx.fillStyle = '#323242';
-  ctx.fillRect(px + TILE_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
+  ctx.fillRect(px + NATIVE_TILE_SIZE, py, NATIVE_SIDE_BORDER_SIZE, NATIVE_TILE_SIZE);
 
   // Inner edge (left side of right wall, lighter)
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(px + TILE_SIZE, py, 6, TILE_SIZE);
+  ctx.fillRect(px + NATIVE_TILE_SIZE, py, 3, NATIVE_TILE_SIZE);
 }
 
 /**
  * Draw corner pieces for smart borders
- * Top corners connect tall front-facing walls (BORDER_SIZE height)
+ * Top corners connect tall front-facing walls (NATIVE_BORDER_SIZE height)
  * Bottom corners: outer perimeter = full thickness, interior = thin wall-top
  */
 function drawCornerSegment(ctx: CanvasRenderingContext2D, px: number, py: number, type: CornerType, isOuterBottom: boolean = false) {
   ctx.fillStyle = '#1a1a2a'; // Dark corner color
 
   // Determine bottom corner height based on whether it's outer perimeter
-  const bottomHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
+  const bottomHeight = isOuterBottom ? NATIVE_BORDER_SIZE : NATIVE_SIDE_BORDER_SIZE;
 
   switch (type) {
     // Convex corners (outer corners - puzzle sticks out)
     case 'convex-tl':
       // Top-left corner - connects to tall front-facing wall
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px - NATIVE_SIDE_BORDER_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
       break;
     case 'convex-tr':
       // Top-right corner - connects to tall front-facing wall
-      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px + NATIVE_TILE_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
       break;
     case 'convex-bl':
       // Bottom-left corner
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
+      ctx.fillRect(px - NATIVE_SIDE_BORDER_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, bottomHeight);
       break;
     case 'convex-br':
       // Bottom-right corner
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
+      ctx.fillRect(px + NATIVE_TILE_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, bottomHeight);
       break;
 
     // Concave corners (inner corners - puzzle goes inward)
     case 'concave-tl':
       // Inner top-left - connects to tall front-facing wall
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px - NATIVE_SIDE_BORDER_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
       break;
     case 'concave-tr':
       // Inner top-right - connects to tall front-facing wall
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+      ctx.fillRect(px + NATIVE_TILE_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
       break;
     case 'concave-bl':
       // Inner bottom-left
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
+      ctx.fillRect(px - NATIVE_SIDE_BORDER_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, bottomHeight);
       break;
     case 'concave-br':
       // Inner bottom-right
       ctx.fillStyle = '#323242';
-      ctx.fillRect(px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, bottomHeight);
+      ctx.fillRect(px + NATIVE_TILE_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, bottomHeight);
       break;
   }
 }
 
 function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gridHeight: number, totalWidth: number, totalHeight: number) {
-  const gridPixelWidth = gridWidth * TILE_SIZE;
-  const gridPixelHeight = gridHeight * TILE_SIZE;
+  const gridPixelWidth = gridWidth * NATIVE_TILE_SIZE;
+  const gridPixelHeight = gridHeight * NATIVE_TILE_SIZE;
 
   ctx.save();
 
@@ -1777,54 +1635,54 @@ function drawDungeonBorder(ctx: CanvasRenderingContext2D, gridWidth: number, gri
 
   // Top wall (front-facing with depth)
   ctx.fillStyle = '#3a3a4a'; // Stone color
-  ctx.fillRect(0, 0, totalWidth, BORDER_SIZE);
+  ctx.fillRect(0, 0, totalWidth, NATIVE_BORDER_SIZE);
 
   // Add stone texture/depth to top wall
   ctx.fillStyle = '#2a2a3a'; // Shadow
-  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
-    ctx.fillRect(x, BORDER_SIZE - 12, TILE_SIZE - 2, 12);
+  for (let x = 0; x < totalWidth; x += NATIVE_TILE_SIZE) {
+    ctx.fillRect(x, NATIVE_BORDER_SIZE - 6, NATIVE_TILE_SIZE - 1, 6);
   }
 
   // Top wall highlight
   ctx.fillStyle = '#4a4a5a';
-  for (let x = 0; x < totalWidth; x += TILE_SIZE) {
-    ctx.fillRect(x, 0, TILE_SIZE - 2, 8);
+  for (let x = 0; x < totalWidth; x += NATIVE_TILE_SIZE) {
+    ctx.fillRect(x, 0, NATIVE_TILE_SIZE - 1, 4);
   }
 
   // Bottom wall - full thickness for outer perimeter (special case)
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, BORDER_SIZE);
+  ctx.fillRect(0, NATIVE_BORDER_SIZE + gridPixelHeight, totalWidth, NATIVE_BORDER_SIZE);
 
   // Bottom wall top edge highlight
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, totalWidth, 8);
+  ctx.fillRect(0, NATIVE_BORDER_SIZE + gridPixelHeight, totalWidth, 4);
 
   // Left wall (side view - THINNER)
   ctx.fillStyle = '#323242';
-  ctx.fillRect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+  ctx.fillRect(0, NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, gridPixelHeight);
 
   // Left wall inner edge
   ctx.fillStyle = '#2a2a3a';
-  ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
+  ctx.fillRect(NATIVE_SIDE_BORDER_SIZE - 3, NATIVE_BORDER_SIZE, 3, gridPixelHeight);
 
   // Right wall (side view - THINNER)
   ctx.fillStyle = '#323242';
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+  ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, gridPixelHeight);
 
   // Right wall inner edge
   ctx.fillStyle = '#3a3a4a';
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
+  ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, NATIVE_BORDER_SIZE, 3, gridPixelHeight);
 
   // Corners (darker, showing depth)
   ctx.fillStyle = '#1a1a2a';
   // Top-left - connects to tall front-facing wall
-  ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+  ctx.fillRect(0, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   // Top-right - connects to tall front-facing wall
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+  ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   // Bottom-left - connects to full thickness bottom wall
-  ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  ctx.fillRect(0, NATIVE_BORDER_SIZE + gridPixelHeight, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   // Bottom-right - connects to full thickness bottom wall
-  ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+  ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, NATIVE_BORDER_SIZE + gridPixelHeight, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
 
   ctx.restore();
 }
@@ -1846,8 +1704,8 @@ function drawCustomBorder(
   totalHeight: number,
   sprites: import('../../types/game').CustomBorderSprites
 ) {
-  const gridPixelWidth = gridWidth * TILE_SIZE;
-  const gridPixelHeight = gridHeight * TILE_SIZE;
+  const gridPixelWidth = gridWidth * NATIVE_TILE_SIZE;
+  const gridPixelHeight = gridHeight * NATIVE_TILE_SIZE;
 
   ctx.save();
 
@@ -1866,88 +1724,88 @@ function drawCustomBorder(
 
   // Draw top wall - fixed size (48x48), tiled horizontally
   if (wallFrontImg && wallFrontImg.complete) {
-    for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
-      ctx.drawImage(wallFrontImg, x, 0, TILE_SIZE, BORDER_SIZE);
+    for (let x = NATIVE_SIDE_BORDER_SIZE; x < NATIVE_SIDE_BORDER_SIZE + gridPixelWidth; x += NATIVE_TILE_SIZE) {
+      ctx.drawImage(wallFrontImg, x, 0, NATIVE_TILE_SIZE, NATIVE_BORDER_SIZE);
     }
   } else {
     // Fallback to dungeon style
     ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(SIDE_BORDER_SIZE, 0, gridPixelWidth, BORDER_SIZE);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE, 0, gridPixelWidth, NATIVE_BORDER_SIZE);
     ctx.fillStyle = '#2a2a3a';
-    ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE - 12, gridPixelWidth, 12);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE - 6, gridPixelWidth, 6);
   }
 
   // Draw bottom wall - fixed size (48x48), tiled horizontally
   if (wallBottomOuterImg && wallBottomOuterImg.complete) {
-    for (let x = SIDE_BORDER_SIZE; x < SIDE_BORDER_SIZE + gridPixelWidth; x += TILE_SIZE) {
-      ctx.drawImage(wallBottomOuterImg, x, BORDER_SIZE + gridPixelHeight, TILE_SIZE, BORDER_SIZE);
+    for (let x = NATIVE_SIDE_BORDER_SIZE; x < NATIVE_SIDE_BORDER_SIZE + gridPixelWidth; x += NATIVE_TILE_SIZE) {
+      ctx.drawImage(wallBottomOuterImg, x, NATIVE_BORDER_SIZE + gridPixelHeight, NATIVE_TILE_SIZE, NATIVE_BORDER_SIZE);
     }
   } else {
     ctx.fillStyle = '#2a2a3a';
-    ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE + gridPixelHeight, gridPixelWidth, BORDER_SIZE);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE + gridPixelHeight, gridPixelWidth, NATIVE_BORDER_SIZE);
     ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(SIDE_BORDER_SIZE, BORDER_SIZE + gridPixelHeight, gridPixelWidth, 8);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE + gridPixelHeight, gridPixelWidth, 4);
   }
 
   // Draw left wall - fixed size tiled vertically
   if (wallSideImg && wallSideImg.complete) {
-    for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
-      ctx.drawImage(wallSideImg, 0, y, SIDE_BORDER_SIZE, TILE_SIZE);
+    for (let y = NATIVE_BORDER_SIZE; y < NATIVE_BORDER_SIZE + gridPixelHeight; y += NATIVE_TILE_SIZE) {
+      ctx.drawImage(wallSideImg, 0, y, NATIVE_SIDE_BORDER_SIZE, NATIVE_TILE_SIZE);
     }
   } else {
     ctx.fillStyle = '#323242';
-    ctx.fillRect(0, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+    ctx.fillRect(0, NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, gridPixelHeight);
     ctx.fillStyle = '#2a2a3a';
-    ctx.fillRect(SIDE_BORDER_SIZE - 6, BORDER_SIZE, 6, gridPixelHeight);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE - 3, NATIVE_BORDER_SIZE, 3, gridPixelHeight);
   }
 
   // Draw right wall (mirrored) - fixed size tiled vertically
   if (wallSideImg && wallSideImg.complete) {
-    for (let y = BORDER_SIZE; y < BORDER_SIZE + gridPixelHeight; y += TILE_SIZE) {
+    for (let y = NATIVE_BORDER_SIZE; y < NATIVE_BORDER_SIZE + gridPixelHeight; y += NATIVE_TILE_SIZE) {
       ctx.save();
-      ctx.translate(SIDE_BORDER_SIZE + gridPixelWidth + SIDE_BORDER_SIZE, y);
+      ctx.translate(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth + NATIVE_SIDE_BORDER_SIZE, y);
       ctx.scale(-1, 1);
-      ctx.drawImage(wallSideImg, 0, 0, SIDE_BORDER_SIZE, TILE_SIZE);
+      ctx.drawImage(wallSideImg, 0, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_TILE_SIZE);
       ctx.restore();
     }
   } else {
     ctx.fillStyle = '#323242';
-    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, SIDE_BORDER_SIZE, gridPixelHeight);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, gridPixelHeight);
     ctx.fillStyle = '#3a3a4a';
-    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE, 6, gridPixelHeight);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, NATIVE_BORDER_SIZE, 3, gridPixelHeight);
   }
 
   // Draw corners - fixed sizes
   // Top-left corner
   if (cornerTLImg && cornerTLImg.complete) {
-    ctx.drawImage(cornerTLImg, 0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.drawImage(cornerTLImg, 0, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(0, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.fillRect(0, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   }
 
   // Top-right corner
   if (cornerTRImg && cornerTRImg.complete) {
-    ctx.drawImage(cornerTRImg, SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.drawImage(cornerTRImg, NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, 0, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   }
 
   // Bottom-left corner
   if (cornerBLImg && cornerBLImg.complete) {
-    ctx.drawImage(cornerBLImg, 0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.drawImage(cornerBLImg, 0, NATIVE_BORDER_SIZE + gridPixelHeight, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(0, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.fillRect(0, NATIVE_BORDER_SIZE + gridPixelHeight, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   }
 
   // Bottom-right corner
   if (cornerBRImg && cornerBRImg.complete) {
-    ctx.drawImage(cornerBRImg, SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.drawImage(cornerBRImg, NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, NATIVE_BORDER_SIZE + gridPixelHeight, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   } else {
     ctx.fillStyle = '#1a1a2a';
-    ctx.fillRect(SIDE_BORDER_SIZE + gridPixelWidth, BORDER_SIZE + gridPixelHeight, SIDE_BORDER_SIZE, BORDER_SIZE);
+    ctx.fillRect(NATIVE_SIDE_BORDER_SIZE + gridPixelWidth, NATIVE_BORDER_SIZE + gridPixelHeight, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
   }
 
   ctx.restore();
@@ -1964,8 +1822,8 @@ function drawSmartCustomBorder(
   sprites: import('../../types/game').CustomBorderSprites
 ) {
   const borderData = computeSmartBorder(tiles, gridWidth, gridHeight);
-  const offsetX = SIDE_BORDER_SIZE;
-  const offsetY = BORDER_SIZE;
+  const offsetX = NATIVE_SIDE_BORDER_SIZE;
+  const offsetY = NATIVE_BORDER_SIZE;
 
   // Load all sprite images
   const wallFrontImg = loadBorderImage(sprites.wallFront || '');
@@ -1993,14 +1851,14 @@ function drawSmartCustomBorder(
 
   // Draw edge borders for each exposed tile edge
   borderData.edges.forEach(({ x, y, edge, isOuterEdge }) => {
-    const px = offsetX + x * TILE_SIZE;
-    const py = offsetY + y * TILE_SIZE;
+    const px = offsetX + x * NATIVE_TILE_SIZE;
+    const py = offsetY + y * NATIVE_TILE_SIZE;
 
     switch (edge) {
       case 'top':
         // Top edge - front-facing wall (fixed 48x48 size)
         if (wallFrontImg && wallFrontImg.complete) {
-          ctx.drawImage(wallFrontImg, px, py - BORDER_SIZE, TILE_SIZE, BORDER_SIZE);
+          ctx.drawImage(wallFrontImg, px, py - NATIVE_BORDER_SIZE, NATIVE_TILE_SIZE, NATIVE_BORDER_SIZE);
         } else {
           drawTopWallSegment(ctx, px, py);
         }
@@ -2009,13 +1867,13 @@ function drawSmartCustomBorder(
         // Bottom edge - thin wall-top for interior, full for outer
         if (isOuterEdge) {
           if (wallBottomOuterImg && wallBottomOuterImg.complete) {
-            ctx.drawImage(wallBottomOuterImg, px, py + TILE_SIZE, TILE_SIZE, BORDER_SIZE);
+            ctx.drawImage(wallBottomOuterImg, px, py + NATIVE_TILE_SIZE, NATIVE_TILE_SIZE, NATIVE_BORDER_SIZE);
           } else {
             drawBottomWallSegment(ctx, px, py, true);
           }
         } else {
           if (wallTopImg && wallTopImg.complete) {
-            ctx.drawImage(wallTopImg, px, py + TILE_SIZE, TILE_SIZE, SIDE_BORDER_SIZE);
+            ctx.drawImage(wallTopImg, px, py + NATIVE_TILE_SIZE, NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE);
           } else {
             drawBottomWallSegment(ctx, px, py, false);
           }
@@ -2024,7 +1882,7 @@ function drawSmartCustomBorder(
       case 'left':
         // Left edge - side wall (fixed size)
         if (wallSideImg && wallSideImg.complete) {
-          ctx.drawImage(wallSideImg, px - SIDE_BORDER_SIZE, py, SIDE_BORDER_SIZE, TILE_SIZE);
+          ctx.drawImage(wallSideImg, px - NATIVE_SIDE_BORDER_SIZE, py, NATIVE_SIDE_BORDER_SIZE, NATIVE_TILE_SIZE);
         } else {
           drawLeftWallSegment(ctx, px, py);
         }
@@ -2033,9 +1891,9 @@ function drawSmartCustomBorder(
         // Right edge - side wall (mirrored, fixed size)
         if (wallSideImg && wallSideImg.complete) {
           ctx.save();
-          ctx.translate(px + TILE_SIZE + SIDE_BORDER_SIZE, py);
+          ctx.translate(px + NATIVE_TILE_SIZE + NATIVE_SIDE_BORDER_SIZE, py);
           ctx.scale(-1, 1);
-          ctx.drawImage(wallSideImg, 0, 0, SIDE_BORDER_SIZE, TILE_SIZE);
+          ctx.drawImage(wallSideImg, 0, 0, NATIVE_SIDE_BORDER_SIZE, NATIVE_TILE_SIZE);
           ctx.restore();
         } else {
           drawRightWallSegment(ctx, px, py);
@@ -2046,23 +1904,23 @@ function drawSmartCustomBorder(
 
   // Draw corners on top of edges (fixed sizes)
   borderData.corners.forEach(({ x, y, type, isOuterBottom }) => {
-    const px = offsetX + x * TILE_SIZE;
-    const py = offsetY + y * TILE_SIZE;
+    const px = offsetX + x * NATIVE_TILE_SIZE;
+    const py = offsetY + y * NATIVE_TILE_SIZE;
 
     // Determine corner height based on outer/inner positioning
-    const cornerHeight = isOuterBottom ? BORDER_SIZE : SIDE_BORDER_SIZE;
+    const cornerHeight = isOuterBottom ? NATIVE_BORDER_SIZE : NATIVE_SIDE_BORDER_SIZE;
 
     switch (type) {
       case 'convex-tl':
         if (cornerTLImg && cornerTLImg.complete) {
-          ctx.drawImage(cornerTLImg, px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          ctx.drawImage(cornerTLImg, px - NATIVE_SIDE_BORDER_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'convex-tr':
         if (cornerTRImg && cornerTRImg.complete) {
-          ctx.drawImage(cornerTRImg, px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          ctx.drawImage(cornerTRImg, px + NATIVE_TILE_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
@@ -2071,13 +1929,13 @@ function drawSmartCustomBorder(
         // Use thin variant for interior voids, full for outer perimeter
         if (isOuterBottom) {
           if (cornerBLImg && cornerBLImg.complete) {
-            ctx.drawImage(cornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+            ctx.drawImage(cornerBLImg, px - NATIVE_SIDE_BORDER_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
         } else {
           if (cornerBLThinImg && cornerBLThinImg.complete) {
-            ctx.drawImage(cornerBLThinImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+            ctx.drawImage(cornerBLThinImg, px - NATIVE_SIDE_BORDER_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
@@ -2087,13 +1945,13 @@ function drawSmartCustomBorder(
         // Use thin variant for interior voids, full for outer perimeter
         if (isOuterBottom) {
           if (cornerBRImg && cornerBRImg.complete) {
-            ctx.drawImage(cornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+            ctx.drawImage(cornerBRImg, px + NATIVE_TILE_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
         } else {
           if (cornerBRThinImg && cornerBRThinImg.complete) {
-            ctx.drawImage(cornerBRThinImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+            ctx.drawImage(cornerBRThinImg, px + NATIVE_TILE_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
@@ -2101,14 +1959,14 @@ function drawSmartCustomBorder(
         break;
       case 'concave-tl':
         if (innerCornerTLImg && innerCornerTLImg.complete) {
-          ctx.drawImage(innerCornerTLImg, px - SIDE_BORDER_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          ctx.drawImage(innerCornerTLImg, px - NATIVE_SIDE_BORDER_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
         break;
       case 'concave-tr':
         if (innerCornerTRImg && innerCornerTRImg.complete) {
-          ctx.drawImage(innerCornerTRImg, px + TILE_SIZE, py - BORDER_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+          ctx.drawImage(innerCornerTRImg, px + NATIVE_TILE_SIZE, py - NATIVE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
         } else {
           drawCornerSegment(ctx, px, py, type, isOuterBottom);
         }
@@ -2117,13 +1975,13 @@ function drawSmartCustomBorder(
         // Use thin variant for interior voids, full for outer perimeter
         if (isOuterBottom) {
           if (innerCornerBLImg && innerCornerBLImg.complete) {
-            ctx.drawImage(innerCornerBLImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+            ctx.drawImage(innerCornerBLImg, px - NATIVE_SIDE_BORDER_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
         } else {
           if (innerCornerBLThinImg && innerCornerBLThinImg.complete) {
-            ctx.drawImage(innerCornerBLThinImg, px - SIDE_BORDER_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+            ctx.drawImage(innerCornerBLThinImg, px - NATIVE_SIDE_BORDER_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
@@ -2133,13 +1991,13 @@ function drawSmartCustomBorder(
         // Use thin variant for interior voids, full for outer perimeter
         if (isOuterBottom) {
           if (innerCornerBRImg && innerCornerBRImg.complete) {
-            ctx.drawImage(innerCornerBRImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, BORDER_SIZE);
+            ctx.drawImage(innerCornerBRImg, px + NATIVE_TILE_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
         } else {
           if (innerCornerBRThinImg && innerCornerBRThinImg.complete) {
-            ctx.drawImage(innerCornerBRThinImg, px + TILE_SIZE, py + TILE_SIZE, SIDE_BORDER_SIZE, SIDE_BORDER_SIZE);
+            ctx.drawImage(innerCornerBRThinImg, px + NATIVE_TILE_SIZE, py + NATIVE_TILE_SIZE, NATIVE_SIDE_BORDER_SIZE, NATIVE_SIDE_BORDER_SIZE);
           } else {
             drawCornerSegment(ctx, px, py, type, isOuterBottom);
           }
@@ -2158,8 +2016,8 @@ function drawVoidTile(_ctx: CanvasRenderingContext2D, _x: number, _y: number) {
 }
 
 function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: TileType, tileSprites?: TileSprites, tile?: Tile | null, customTileSprites?: { [customTileTypeId: string]: string | { onSprite?: string; offSprite?: string } }, isEditor: boolean = false, currentTurn: number = 0, tileStates?: Map<string, import('../../types/game').TileRuntimeState>) {
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
+  const px = x * NATIVE_TILE_SIZE;
+  const py = y * NATIVE_TILE_SIZE;
 
   // Check for custom tile type
   let customTileType: CustomTileType | null = null;
@@ -2203,17 +2061,17 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
       if (customImg?.complete) {
         // Draw base color first for transparency support
         ctx.fillStyle = baseColor;
-        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         // Apply dimming effect if tile is off and using fallback sprite
         if (!isOnState && typeof skinSpriteEntry !== 'string' && !skinSpriteEntry.offSprite) {
           ctx.globalAlpha = 0.4;
         }
-        ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
+        ctx.drawImage(customImg, px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         ctx.globalAlpha = 1;
         // Draw grid lines
         ctx.strokeStyle = COLORS.grid;
         ctx.lineWidth = 1;
-        ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+        ctx.strokeRect(px + 0.5, py + 0.5, NATIVE_TILE_SIZE - 1, NATIVE_TILE_SIZE - 1);
         // Draw behavior indicators on top
         if (customTileType) {
           drawTileBehaviorIndicators(ctx, px, py, customTileType, tile, isEditor, isOnState);
@@ -2236,17 +2094,17 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     if (customImg?.complete) {
       // Draw base color first for transparency support
       ctx.fillStyle = baseColor;
-      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+      ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
       // Apply dimming if tile is off and no dedicated off sprite
       if (!isOnState && !offSpriteSource) {
         ctx.globalAlpha = 0.4;
       }
-      ctx.drawImage(customImg, px, py, TILE_SIZE, TILE_SIZE);
+      ctx.drawImage(customImg, px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
       ctx.globalAlpha = 1;
       // Draw grid lines
       ctx.strokeStyle = COLORS.grid;
       ctx.lineWidth = 1;
-      ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+      ctx.strokeRect(px + 0.5, py + 0.5, NATIVE_TILE_SIZE - 1, NATIVE_TILE_SIZE - 1);
       // Draw behavior indicators on top
       if (customTileType) {
         drawTileBehaviorIndicators(ctx, px, py, customTileType, tile, isEditor, isOnState);
@@ -2264,12 +2122,12 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
     if (tileImg?.complete) {
       // Draw base color first for transparency support
       ctx.fillStyle = baseColor;
-      ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
-      ctx.drawImage(tileImg, px, py, TILE_SIZE, TILE_SIZE);
+      ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
+      ctx.drawImage(tileImg, px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
       // Still draw grid lines on top
       ctx.strokeStyle = COLORS.grid;
       ctx.lineWidth = 1;
-      ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+      ctx.strokeRect(px + 0.5, py + 0.5, NATIVE_TILE_SIZE - 1, NATIVE_TILE_SIZE - 1);
       // Draw behavior indicators if this is a custom tile
       if (customTileType) {
         drawTileBehaviorIndicators(ctx, px, py, customTileType, tile, isEditor, isOnState);
@@ -2280,11 +2138,11 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, type: Til
 
   // Priority 4: Fallback to default colors
   ctx.fillStyle = type === TileType.WALL ? COLORS.wall : COLORS.empty;
-  ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+  ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
 
   ctx.strokeStyle = COLORS.grid;
   ctx.lineWidth = 1;
-  ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
+  ctx.strokeRect(px + 0.5, py + 0.5, NATIVE_TILE_SIZE - 1, NATIVE_TILE_SIZE - 1);
 
   // Draw behavior indicators if this is a custom tile without custom sprite
   if (customTileType) {
@@ -2301,8 +2159,8 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
     return;
   }
 
-  const centerX = px + TILE_SIZE / 2;
-  const centerY = py + TILE_SIZE / 2;
+  const centerX = px + NATIVE_TILE_SIZE / 2;
+  const centerY = py + NATIVE_TILE_SIZE / 2;
 
   // Dim indicators when tile is in "off" state
   if (!isOnState) {
@@ -2314,9 +2172,9 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
       case 'damage':
         // Red tint overlay (dimmer when off)
         ctx.fillStyle = isOnState ? 'rgba(255, 0, 0, 0.2)' : 'rgba(100, 100, 100, 0.2)';
-        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         // Fire icon
-        ctx.font = '16px Arial';
+        ctx.font = '8px Arial';
         ctx.fillStyle = isOnState ? 'rgba(255, 100, 0, 0.8)' : 'rgba(100, 100, 100, 0.6)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -2326,11 +2184,11 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
       case 'teleport':
         // Purple glow (dimmer when off)
         ctx.fillStyle = isOnState ? 'rgba(128, 0, 255, 0.2)' : 'rgba(80, 80, 80, 0.2)';
-        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         // Show teleport group letter only in editor mode
         if (isEditor) {
           const groupId = tile?.teleportGroupId || behavior.teleportGroupId || 'A';
-          ctx.font = 'bold 20px Arial';
+          ctx.font = 'bold 10px Arial';
           ctx.fillStyle = isOnState ? 'rgba(200, 100, 255, 0.9)' : 'rgba(100, 100, 100, 0.6)';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
@@ -2341,9 +2199,9 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
       case 'direction_change':
         // Arrow showing forced direction (dimmer when off)
         ctx.fillStyle = isOnState ? 'rgba(0, 200, 255, 0.3)' : 'rgba(80, 80, 80, 0.2)';
-        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         const arrow = getDirectionArrow(behavior.newFacing);
-        ctx.font = 'bold 24px Arial';
+        ctx.font = 'bold 12px Arial';
         ctx.fillStyle = isOnState ? 'rgba(0, 200, 255, 0.9)' : 'rgba(100, 100, 100, 0.5)';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
@@ -2353,18 +2211,18 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
       case 'ice':
         // Blue tint with diagonal lines (dimmer when off)
         ctx.fillStyle = isOnState ? 'rgba(100, 200, 255, 0.3)' : 'rgba(80, 80, 80, 0.2)';
-        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         // Draw diagonal lines pattern with clipping
         ctx.save();
         ctx.beginPath();
-        ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.rect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         ctx.clip();
         ctx.strokeStyle = isOnState ? 'rgba(150, 220, 255, 0.6)' : 'rgba(100, 100, 100, 0.3)';
         ctx.lineWidth = 1;
-        for (let i = -TILE_SIZE; i < TILE_SIZE * 2; i += 8) {
+        for (let i = -NATIVE_TILE_SIZE; i < NATIVE_TILE_SIZE * 2; i += 8) {
           ctx.beginPath();
           ctx.moveTo(px + i, py);
-          ctx.lineTo(px + i + TILE_SIZE, py + TILE_SIZE);
+          ctx.lineTo(px + i + NATIVE_TILE_SIZE, py + NATIVE_TILE_SIZE);
           ctx.stroke();
         }
         ctx.restore();
@@ -2373,10 +2231,10 @@ function drawTileBehaviorIndicators(ctx: CanvasRenderingContext2D, px: number, p
       case 'pressure_plate':
         // Button-like appearance (dimmer when off)
         ctx.fillStyle = isOnState ? 'rgba(100, 100, 100, 0.3)' : 'rgba(60, 60, 60, 0.2)';
-        ctx.fillRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+        ctx.fillRect(px + 4, py + 4, NATIVE_TILE_SIZE - 8, NATIVE_TILE_SIZE - 8);
         ctx.strokeStyle = isOnState ? 'rgba(80, 80, 80, 0.8)' : 'rgba(60, 60, 60, 0.4)';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(px + 8, py + 8, TILE_SIZE - 16, TILE_SIZE - 16);
+        ctx.lineWidth = 1;
+        ctx.strokeRect(px + 4, py + 4, NATIVE_TILE_SIZE - 8, NATIVE_TILE_SIZE - 8);
         break;
     }
   }
@@ -2436,8 +2294,8 @@ function drawEnemy(
 ) {
   const x = renderX !== undefined ? renderX : enemy.x;
   const y = renderY !== undefined ? renderY : enemy.y;
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
+  const px = x * NATIVE_TILE_SIZE;
+  const py = y * NATIVE_TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : enemy.facing;
 
   // Use undefined direction before game starts to force 'default' directional sprite
@@ -2472,10 +2330,10 @@ function drawEnemy(
 
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
-        drawSpawnSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
+        drawSpawnSprite(ctx, enemyData.customSprite, px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE, spawnAnimState.startTime);
       } else {
         // Normal sprite (idle/moving/casting)
-        drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+        drawSprite(ctx, enemyData.customSprite, px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE, directionToUse, isMoving, now, isCasting);
       }
 
       ctx.shadowColor = 'transparent';
@@ -2490,19 +2348,19 @@ function drawEnemy(
         // Death sprite sheet will animate and stop on final frame (corpse state)
         // Use the death animation start time for proper frame calculation
         const deathStartTime = deathAnimState?.startTime || now;
-        drawDeathSpritePixelPerfect(
+        drawDeathSprite(
           ctx,
           enemyData.customSprite,
-          px + TILE_SIZE / 2,
-          py + TILE_SIZE / 2,
-          TILE_SIZE,
+          px + NATIVE_TILE_SIZE / 2,
+          py + NATIVE_TILE_SIZE / 2,
+          NATIVE_TILE_SIZE,
           deathAnimState?.facing || facing,
           deathStartTime
         );
       } else {
         // No death sprite - draw dimmed version with X
         ctx.globalAlpha = 0.3;
-        drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
+        drawSprite(ctx, enemyData.customSprite, px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE, directionToUse, false, now);
         ctx.globalAlpha = 1.0;
         drawDeadX(ctx, px, py);
       }
@@ -2512,13 +2370,13 @@ function drawEnemy(
     if (!enemy.dead) {
       ctx.fillStyle = COLORS.enemy;
       ctx.beginPath();
-      ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+      ctx.arc(px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE / 3, 0, Math.PI * 2);
       ctx.fill();
     } else {
       // Dead default sprite
       ctx.fillStyle = COLORS.deadEnemy;
       ctx.beginPath();
-      ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
+      ctx.arc(px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE / 3, 0, Math.PI * 2);
       ctx.fill();
       drawDeadX(ctx, px, py);
     }
@@ -2541,7 +2399,7 @@ function drawEnemy(
         ctx.globalCompositeOperation = 'source-atop';
         ctx.globalAlpha = tintOpacity;
         ctx.fillStyle = tintColor;
-        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         ctx.restore();
       }
       if (showHeart) drawCharmHeartIcon(ctx, px, py);
@@ -2581,10 +2439,10 @@ function drawDeadX(ctx: CanvasRenderingContext2D, px: number, py: number) {
   ctx.strokeStyle = 'white';
   ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.moveTo(px + TILE_SIZE / 3, py + TILE_SIZE / 3);
-  ctx.lineTo(px + (2 * TILE_SIZE) / 3, py + (2 * TILE_SIZE) / 3);
-  ctx.moveTo(px + (2 * TILE_SIZE) / 3, py + TILE_SIZE / 3);
-  ctx.lineTo(px + TILE_SIZE / 3, py + (2 * TILE_SIZE) / 3);
+  ctx.moveTo(px + NATIVE_TILE_SIZE / 3, py + NATIVE_TILE_SIZE / 3);
+  ctx.lineTo(px + (2 * NATIVE_TILE_SIZE) / 3, py + (2 * NATIVE_TILE_SIZE) / 3);
+  ctx.moveTo(px + (2 * NATIVE_TILE_SIZE) / 3, py + NATIVE_TILE_SIZE / 3);
+  ctx.lineTo(px + NATIVE_TILE_SIZE / 3, py + (2 * NATIVE_TILE_SIZE) / 3);
   ctx.stroke();
 }
 
@@ -2757,12 +2615,12 @@ function loadBossIcon(): HTMLImageElement | null {
 // Helper to calculate the top Y of a rendered sprite (for healthbar positioning)
 function getSpriteTopY(sprite: import('../../utils/assetStorage').CustomSprite | undefined, py: number): number {
   if (!sprite) return py;
-  const spriteSize = (sprite.size || 0.6) * TILE_SIZE;
+  const spriteSize = (sprite.size || 0.6) * NATIVE_TILE_SIZE;
   // Use idle scale as default (most common state), multiplied by universal scale
   const scale = (sprite.idleScale ?? 1) * (sprite.universalScale ?? 1);
   const maxSize = spriteSize * scale;
   // Assume center anchor (0.5) which is the default
-  const centerY = py + TILE_SIZE / 2;
+  const centerY = py + NATIVE_TILE_SIZE / 2;
   return centerY - maxSize / 2;
 }
 
@@ -2805,18 +2663,18 @@ function drawHealthBar(
   spriteTopY?: number,
   homingGlowColor?: string
 ) {
-  const barWidth = 30; // Fixed total width of the health bar (including border)
-  const barHeight = 5; // Total height including 1px border on each side (3px inner + 2px border)
+  const barWidth = 16; // Fixed total width of the health bar (native px, including border)
+  const barHeight = 3; // Total height (native px) including 1px border on each side (1px inner + 2px border)
   const innerHeight = 3; // Height of the colored bar inside the border
 
   // Boss icon dimensions
-  const bossIconSize = 7; // Small icon size
-  const bossIconGap = 2; // Gap between icon and health bar
+  const bossIconSize = 4; // Small icon size (native px)
+  const bossIconGap = 1; // Gap between icon and health bar
 
   // Position: centered above the sprite
   // If boss, shift the bar right to make room for the icon
   const totalWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
-  const startX = px + (TILE_SIZE - totalWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
+  const startX = px + (NATIVE_TILE_SIZE - totalWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
   // Place healthbar above the sprite's top edge, or near tile top if sprite fits in tile
   const defaultY = py + 2;
   const startY = spriteTopY !== undefined ? Math.min(defaultY, spriteTopY - barHeight - 1) : defaultY;
@@ -2988,14 +2846,13 @@ function drawStatusEffectIcons(
 
   if (combined.length === 0) return;
 
-  const iconSize = 8;
+  const iconSize = 4;
   const iconSpacing = 1;
   const maxIconsVisible = 4;
 
   // Position: left-aligned, immediately above health bar
-  // Health bar is at py+2, so icons go at py-8 (8px icon height, touching the bar)
-  const startX = px + (TILE_SIZE - 32) / 2; // Same as health bar start
-  const startY = py - 6; // Position above the health bar
+  const startX = px + (NATIVE_TILE_SIZE - 16) / 2; // Aligned with health bar (barWidth=16)
+  const startY = py - 3; // Position above the health bar
 
   const visibleEffects = combined.slice(0, maxIconsVisible);
   const hasOverflow = combined.length > maxIconsVisible;
@@ -3029,9 +2886,9 @@ function drawStatusEffectIcons(
           const drawSize = iconSize * (spriteData.size || 0.8);
           ctx.save();
           ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-          ctx.shadowBlur = 6;
+          ctx.shadowBlur = 3;
           ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 1;
+          ctx.shadowOffsetY = 0.5;
           ctx.translate(centerX, centerY);
           ctx.scale(scale, scale);
           ctx.translate(-centerX, -centerY);
@@ -3041,9 +2898,9 @@ function drawStatusEffectIcons(
       } else {
         ctx.save();
         ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-        ctx.shadowBlur = 6;
+        ctx.shadowBlur = 3;
         ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 1;
+        ctx.shadowOffsetY = 0.5;
         ctx.translate(centerX, centerY);
         ctx.scale(scale, scale);
         ctx.translate(-centerX, -centerY);
@@ -3054,9 +2911,9 @@ function drawStatusEffectIcons(
       // Fallback: draw a colored shape based on effect type
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-      ctx.shadowBlur = 6;
+      ctx.shadowBlur = 3;
       ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 1;
+      ctx.shadowOffsetY = 0.5;
       ctx.translate(iconX + iconSize / 2, iconY + iconSize / 2);
       ctx.scale(scale, scale);
       ctx.translate(-(iconX + iconSize / 2), -(iconY + iconSize / 2));
@@ -3071,12 +2928,12 @@ function drawStatusEffectIcons(
 function drawCharmHeartIcon(ctx: CanvasRenderingContext2D, px: number, py: number) {
   ctx.save();
   ctx.fillStyle = '#f472b6'; // pink-400
-  ctx.font = 'bold 10px sans-serif';
+  ctx.font = 'bold 5px sans-serif';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.shadowColor = 'rgba(0,0,0,0.8)';
-  ctx.shadowBlur = 3;
-  ctx.fillText('♥', px + TILE_SIZE / 2, py - 10);
+  ctx.shadowBlur = 1.5;
+  ctx.fillText('♥', px + NATIVE_TILE_SIZE / 2, py - 5);
   ctx.restore();
 }
 
@@ -3198,13 +3055,13 @@ function drawStatusEffectOverlays(
     ctx.globalAlpha = opacity;
 
     // Draw centered on the tile
-    const centerX = px + TILE_SIZE / 2;
-    const centerY = py + TILE_SIZE / 2;
+    const centerX = px + NATIVE_TILE_SIZE / 2;
+    const centerY = py + NATIVE_TILE_SIZE / 2;
 
     // Check if it's a spritesheet with animation
     if (spriteData.idleSpriteSheet || spriteData.spriteSheet) {
       // Use pixel-perfect rendering for animated spritesheets
-      drawSpritePixelPerfect(ctx, spriteData, centerX, centerY, TILE_SIZE, undefined, false, now, false);
+      drawSprite(ctx, spriteData, centerX, centerY, NATIVE_TILE_SIZE, undefined, false, now, false);
     } else if (spriteData.imageData || spriteData.idleImageData) {
       // Static image - draw directly
       const imgData = spriteData.imageData || spriteData.idleImageData;
@@ -3214,15 +3071,15 @@ function drawStatusEffectOverlays(
           img,
           px,
           py,
-          TILE_SIZE,
-          TILE_SIZE
+          NATIVE_TILE_SIZE,
+          NATIVE_TILE_SIZE
         );
       }
     } else if (spriteData.shape) {
       // Simple shape sprite - draw scaled to tile
       ctx.fillStyle = spriteData.primaryColor || '#ffffff';
-      const size = TILE_SIZE * 0.9;
-      const offset = (TILE_SIZE - size) / 2;
+      const size = NATIVE_TILE_SIZE * 0.9;
+      const offset = (NATIVE_TILE_SIZE - size) / 2;
       drawEffectShape(ctx, px + offset, py + offset, size, spriteData.shape);
     }
 
@@ -3244,8 +3101,8 @@ function drawCharacter(
   homingGlowColor?: string,
   entityIndex?: number
 ) {
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
+  const px = x * NATIVE_TILE_SIZE;
+  const py = y * NATIVE_TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : character.facing;
 
   // Use undefined direction before game starts to force 'default' directional sprite
@@ -3280,7 +3137,7 @@ function drawCharacter(
         ctx.shadowOffsetX = 1;
         ctx.shadowOffsetY = 1;
 
-        drawSpawnSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
+        drawSpawnSprite(ctx, charData.customSprite, px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE, spawnAnimState.startTime);
 
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
@@ -3293,7 +3150,7 @@ function drawCharacter(
         ctx.shadowOffsetX = 1;
         ctx.shadowOffsetY = 1;
 
-        drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+        drawSprite(ctx, charData.customSprite, px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE, directionToUse, isMoving, now, isCasting);
 
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
@@ -3307,19 +3164,19 @@ function drawCharacter(
       if (hasDeathSprite) {
         // Death sprite sheet will animate and stop on final frame (corpse state)
         const deathStartTime = deathAnimState?.startTime || now;
-        drawDeathSpritePixelPerfect(
+        drawDeathSprite(
           ctx,
           charData.customSprite,
-          px + TILE_SIZE / 2,
-          py + TILE_SIZE / 2,
-          TILE_SIZE,
+          px + NATIVE_TILE_SIZE / 2,
+          py + NATIVE_TILE_SIZE / 2,
+          NATIVE_TILE_SIZE,
           deathAnimState?.facing || facing,
           deathStartTime
         );
       } else {
         // No death sprite - draw dimmed version with X
         ctx.globalAlpha = 0.3;
-        drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
+        drawSprite(ctx, charData.customSprite, px + NATIVE_TILE_SIZE / 2, py + NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE, directionToUse, false, now);
         ctx.globalAlpha = 1.0;
         drawDeadX(ctx, px, py);
       }
@@ -3333,8 +3190,8 @@ function drawCharacter(
       ctx.shadowOffsetY = 1;
 
       ctx.fillStyle = COLORS.character;
-      const size = TILE_SIZE * 0.6;
-      const offset = (TILE_SIZE - size) / 2;
+      const size = NATIVE_TILE_SIZE * 0.6;
+      const offset = (NATIVE_TILE_SIZE - size) / 2;
       ctx.fillRect(px + offset, py + offset, size, size);
 
       ctx.shadowColor = 'transparent';
@@ -3345,8 +3202,8 @@ function drawCharacter(
       // Dead default character - draw dimmed version with X
       ctx.globalAlpha = 0.3;
       ctx.fillStyle = COLORS.character;
-      const size = TILE_SIZE * 0.6;
-      const offset = (TILE_SIZE - size) / 2;
+      const size = NATIVE_TILE_SIZE * 0.6;
+      const offset = (NATIVE_TILE_SIZE - size) / 2;
       ctx.fillRect(px + offset, py + offset, size, size);
       ctx.globalAlpha = 1.0;
       drawDeadX(ctx, px, py);
@@ -3370,7 +3227,7 @@ function drawCharacter(
         ctx.globalCompositeOperation = 'source-atop';
         ctx.globalAlpha = tintOpacity;
         ctx.fillStyle = tintColor;
-        ctx.fillRect(px, py, TILE_SIZE, TILE_SIZE);
+        ctx.fillRect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         ctx.restore();
       }
       if (showHeart) drawCharmHeartIcon(ctx, px, py);
@@ -3413,15 +3270,15 @@ function drawDirectionIndicator(
   isBoss: boolean = false,
   isMoving: boolean = true
 ) {
-  const arrowSize = 3; // Small arrow
-  const barWidth = 30;
-  const barHeight = 5;
-  const bossIconSize = 7;
-  const bossIconGap = 2;
+  const arrowSize = 2; // Small arrow (native px)
+  const barWidth = 16;
+  const barHeight = 3;
+  const bossIconSize = 4;
+  const bossIconGap = 1;
 
   // Calculate position to the right of the health bar
   const totalBarWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
-  const barStartX = px + (TILE_SIZE - totalBarWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
+  const barStartX = px + (NATIVE_TILE_SIZE - totalBarWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
   const barEndX = barStartX + barWidth;
 
   // Position arrow to the right of health bar, vertically centered with it
@@ -3468,8 +3325,8 @@ function drawCollectible(
   now: number
 ) {
   const { x, y, collectibleId, type } = collectible;
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
+  const px = x * NATIVE_TILE_SIZE;
+  const py = y * NATIVE_TILE_SIZE;
 
   // Calculate scale for spawn/despawn animations
   let animScale = 1;
@@ -3503,14 +3360,14 @@ function drawCollectible(
   // Calculate bobbing offset - gentle up/down animation like items dropped on the ground
   // All items bob in sync (no position-based phase offset)
   const bobSpeed = 1; // Cycles per second
-  const bobAmount = TILE_SIZE * 0.06; // 6% of tile size
+  const bobAmount = NATIVE_TILE_SIZE * 0.06; // 6% of tile size
   const bobOffset = Math.sin((now / 1000) * bobSpeed * Math.PI * 2) * bobAmount;
 
   // Apply scale transform if animating
   const needsScale = animScale !== 1;
   if (needsScale) {
-    const centerX = px + TILE_SIZE / 2;
-    const centerY = py + TILE_SIZE / 2;
+    const centerX = px + NATIVE_TILE_SIZE / 2;
+    const centerY = py + NATIVE_TILE_SIZE / 2;
     ctx.save();
     ctx.translate(centerX, centerY);
     ctx.scale(animScale, animScale);
@@ -3522,14 +3379,14 @@ function drawCollectible(
 
   // If we have custom collectible data with a sprite, draw it
   if (collectibleData?.customSprite) {
-    const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
+    const spriteSize = (collectibleData.customSprite.size || 0.8) * NATIVE_TILE_SIZE;
 
     // Calculate center position based on anchor point, with bobbing
-    const centerX = px + TILE_SIZE / 2;
-    let centerY = py + TILE_SIZE / 2 + bobOffset;
+    const centerX = px + NATIVE_TILE_SIZE / 2;
+    let centerY = py + NATIVE_TILE_SIZE / 2 + bobOffset;
 
     if (collectibleData.anchorPoint === 'bottom_center') {
-      centerY = py + TILE_SIZE / 2 - spriteSize / 2 + bobOffset;
+      centerY = py + NATIVE_TILE_SIZE / 2 - spriteSize / 2 + bobOffset;
     }
 
     // Draw the sprite (pixel-perfect in physical pixel space) with shadow
@@ -3537,7 +3394,7 @@ function drawCollectible(
     ctx.shadowBlur = 2;
     ctx.shadowOffsetX = 1;
     ctx.shadowOffsetY = 1;
-    drawSpritePixelPerfect(ctx, collectibleData.customSprite, centerX, centerY, TILE_SIZE);
+    drawSprite(ctx, collectibleData.customSprite, centerX, centerY, NATIVE_TILE_SIZE);
     ctx.shadowColor = 'transparent';
     ctx.shadowBlur = 0;
     ctx.shadowOffsetX = 0;
@@ -3551,9 +3408,9 @@ function drawCollectible(
     // Draw a diamond shape for gems
     ctx.fillStyle = '#9333ea'; // Purple
     ctx.beginPath();
-    const cx = px + TILE_SIZE / 2;
-    const cy = py + TILE_SIZE / 2 + bobOffset;
-    const size = TILE_SIZE / 3;
+    const cx = px + NATIVE_TILE_SIZE / 2;
+    const cy = py + NATIVE_TILE_SIZE / 2 + bobOffset;
+    const size = NATIVE_TILE_SIZE / 3;
     ctx.moveTo(cx, cy - size);
     ctx.lineTo(cx + size, cy);
     ctx.lineTo(cx, cy + size);
@@ -3567,11 +3424,11 @@ function drawCollectible(
   // Default: draw a star shape (original behavior for coins and unknown types, with bobbing)
   ctx.fillStyle = COLORS.collectible;
   ctx.beginPath();
-  const cx = px + TILE_SIZE / 2;
-  const cy = py + TILE_SIZE / 2 + bobOffset;
+  const cx = px + NATIVE_TILE_SIZE / 2;
+  const cy = py + NATIVE_TILE_SIZE / 2 + bobOffset;
   const spikes = 5;
-  const outerRadius = TILE_SIZE / 4;
-  const innerRadius = TILE_SIZE / 8;
+  const outerRadius = NATIVE_TILE_SIZE / 4;
+  const innerRadius = NATIVE_TILE_SIZE / 8;
 
   for (let i = 0; i < spikes * 2; i++) {
     const radius = i % 2 === 0 ? outerRadius : innerRadius;
@@ -3595,29 +3452,29 @@ function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: nu
   const objectData = loadObject(objectId);
   if (!objectData) return;
 
-  const px = x * TILE_SIZE;
-  const py = y * TILE_SIZE;
+  const px = x * NATIVE_TILE_SIZE;
+  const py = y * NATIVE_TILE_SIZE;
 
   // Get sprite size (default to 0.8 if not set)
-  const spriteSize = (objectData.customSprite?.size || 0.8) * TILE_SIZE;
+  const spriteSize = (objectData.customSprite?.size || 0.8) * NATIVE_TILE_SIZE;
 
   // Calculate center position based on anchor point
-  const centerX = px + TILE_SIZE / 2;
-  let centerY = py + TILE_SIZE / 2;
+  const centerX = px + NATIVE_TILE_SIZE / 2;
+  let centerY = py + NATIVE_TILE_SIZE / 2;
 
   if (objectData.anchorPoint === 'bottom_center') {
     // For bottom_center: sprite's bottom edge aligns with tile's center
     // So sprite center is offset upward by half the sprite height
-    centerY = py + TILE_SIZE / 2 - spriteSize / 2;
+    centerY = py + NATIVE_TILE_SIZE / 2 - spriteSize / 2;
   }
 
   // Draw custom sprite if available
   if (objectData.customSprite) {
-    drawSpritePixelPerfect(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
+    drawSprite(ctx, objectData.customSprite, centerX, centerY, NATIVE_TILE_SIZE);
   } else {
     // Fallback: draw a simple brown square
     ctx.fillStyle = '#8b4513';
-    ctx.fillRect(px + TILE_SIZE / 4, py + TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2);
+    ctx.fillRect(px + NATIVE_TILE_SIZE / 4, py + NATIVE_TILE_SIZE / 4, NATIVE_TILE_SIZE / 2, NATIVE_TILE_SIZE / 2);
   }
 }
 
@@ -3781,8 +3638,8 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   if (!projectile.active) return;
 
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
-  const px = projectile.x * TILE_SIZE + TILE_SIZE / 2;
-  const py = projectile.y * TILE_SIZE + TILE_SIZE / 2;
+  const px = projectile.x * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
+  const py = projectile.y * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
 
   // Calculate rotation and mirroring based on direction
   const rotationConfig = getRotationForDirection(projectile.direction);
@@ -3797,11 +3654,11 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   if (pastReflectPoint && projectile.reflectOverrideSprite?.spriteData) {
     const overrideData = projectile.reflectOverrideSprite.spriteData;
     if (overrideData.spriteSheet) {
-      drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, Math.round(24 * scale), imageCache, now, rotationConfig);
+      drawSpellSpriteSheet(ctx, overrideData.spriteSheet, px, py, Math.round(12 * scale), imageCache, now, rotationConfig);
     } else {
       const shape = overrideData.shape || 'circle';
       const color = overrideData.primaryColor || '#ff6600';
-      drawShape(ctx, px, py, shape, color, Math.round(8 * scale), overrideData.idleImageData, imageCache, rotationConfig);
+      drawShape(ctx, px, py, shape, color, Math.round(2 * scale), overrideData.idleImageData, imageCache, rotationConfig);
     }
     return;
   }
@@ -3812,7 +3669,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
 
     // Check for sprite sheet first (highest priority)
     if (spriteData.spriteSheet) {
-      const spriteSize = Math.round(24 * scale); // Size for projectile sprite sheets
+      const spriteSize = Math.round(12 * scale); // Size for projectile sprite sheets
       drawSpellSpriteSheet(
         ctx,
         spriteData.spriteSheet,
@@ -3825,8 +3682,8 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       );
       // Apply tint overlay for reflected projectiles (over sprite sheet)
       if (pastReflectPoint && projectile.reflectTintColor) {
-        const tintHalf = Math.round(12 * scale);
-        const tintSize = Math.round(24 * scale);
+        const tintHalf = Math.round(6 * scale);
+        const tintSize = Math.round(12 * scale);
         ctx.save();
         ctx.globalCompositeOperation = 'source-atop';
         ctx.fillStyle = projectile.reflectTintColor;
@@ -3844,7 +3701,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       : spriteData.primaryColor || '#ff6600';
     const imageData = spriteData.idleImageData;
 
-    drawShape(ctx, px, py, shape, color, Math.round(8 * scale), imageData, imageCache, rotationConfig);
+    drawShape(ctx, px, py, shape, color, Math.round(2 * scale), imageData, imageCache, rotationConfig);
 
     // Apply tint overlay for reflected projectiles with images
     if (pastReflectPoint && projectile.reflectTintColor && imageData) {
@@ -3853,7 +3710,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       ctx.fillStyle = projectile.reflectTintColor;
       ctx.globalAlpha = 0.4;
       ctx.beginPath();
-      ctx.arc(px, py, Math.round(8 * scale), 0, Math.PI * 2);
+      ctx.arc(px, py, Math.round(2 * scale), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -3864,12 +3721,12 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
       // Outer glow with tint
       ctx.fillStyle = projectile.reflectTintColor + '4D'; // 30% opacity
       ctx.beginPath();
-      ctx.arc(px, py, Math.round(8 * scale), 0, Math.PI * 2);
+      ctx.arc(px, py, Math.round(2 * scale), 0, Math.PI * 2);
       ctx.fill();
       // Inner core with tint
       ctx.fillStyle = projectile.reflectTintColor;
       ctx.beginPath();
-      ctx.arc(px, py, Math.round(4 * scale), 0, Math.PI * 2);
+      ctx.arc(px, py, Math.round(2 * scale), 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     } else {
@@ -3915,13 +3772,13 @@ function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: nu
   // Outer glow
   ctx.fillStyle = 'rgba(255, 200, 100, 0.3)';
   ctx.beginPath();
-  ctx.arc(px, py, 8, 0, Math.PI * 2);
+  ctx.arc(px, py, 4, 0, Math.PI * 2);
   ctx.fill();
 
   // Inner core
   ctx.fillStyle = '#ffaa00';
   ctx.beginPath();
-  ctx.arc(px, py, 4, 0, Math.PI * 2);
+  ctx.arc(px, py, 2, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();
@@ -3940,8 +3797,8 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
   const elapsed = now - particle.startTime;
   if (elapsed >= particle.duration) return;
 
-  const px = particle.x * TILE_SIZE + TILE_SIZE / 2;
-  const py = particle.y * TILE_SIZE + TILE_SIZE / 2;
+  const px = particle.x * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
+  const py = particle.y * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
 
   // Check if particle has custom sprite
   if (particle.sprite?.spriteData) {
@@ -3972,7 +3829,7 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
       // No fade-out for spritesheets - they just play and disappear
       ctx.globalAlpha = 1.0;
 
-      const spriteSize = 32; // Size for particle sprite sheets
+      const spriteSize = 16; // Size for particle sprite sheets
       drawSpellSpriteSheetFromStartTime(
         ctx,
         spriteSheet,
@@ -4001,14 +3858,14 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
     const imageData = spriteData.idleImageData;
 
     // Draw expanding effect for shapes, static size for images
-    const radius = imageData ? 12 : (4 + progress * 20);
+    const radius = imageData ? 6 : (2 + progress * 10);
     drawShape(ctx, px, py, shape, color, radius, imageData, imageCache, rotationConfig);
 
     // Inner flash (only for non-image sprites)
     if (!imageData && progress < 0.3) {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(px, py, 8 * (1 - progress / 0.3), 0, Math.PI * 2);
+      ctx.arc(px, py, 4 * (1 - progress / 0.3), 0, Math.PI * 2);
       ctx.fill();
     }
 
@@ -4030,10 +3887,10 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
  */
 function drawDefaultParticle(ctx: CanvasRenderingContext2D, px: number, py: number, progress: number) {
   // Expanding ring effect
-  const radius = 4 + progress * 20; // Expands from 4 to 24 pixels
+  const radius = 2 + progress * 10; // Expands from 2 to 12 pixels (native units)
 
   ctx.strokeStyle = '#ffff00';
-  ctx.lineWidth = 3;
+  ctx.lineWidth = 1.5;
   ctx.beginPath();
   ctx.arc(px, py, radius, 0, Math.PI * 2);
   ctx.stroke();
@@ -4042,7 +3899,7 @@ function drawDefaultParticle(ctx: CanvasRenderingContext2D, px: number, py: numb
   if (progress < 0.3) {
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(px, py, 8 * (1 - progress / 0.3), 0, Math.PI * 2);
+    ctx.arc(px, py, 4 * (1 - progress / 0.3), 0, Math.PI * 2);
     ctx.fill();
   }
 }
@@ -4083,8 +3940,8 @@ function drawPersistentAreaEffect(
         if (!tile || tile.type === TileType.WALL) continue;
 
         // Draw default pulsing ground effect
-        const px = tileX * TILE_SIZE + TILE_SIZE / 2;
-        const py = tileY * TILE_SIZE + TILE_SIZE / 2;
+        const px = tileX * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
+        const py = tileY * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
 
         ctx.save();
         // Pulsing alpha effect
@@ -4095,7 +3952,7 @@ function drawPersistentAreaEffect(
         // Draw colored circle indicating damage zone
         ctx.fillStyle = '#ff4444';
         ctx.beginPath();
-        ctx.arc(px, py, TILE_SIZE * 0.4, 0, Math.PI * 2);
+        ctx.arc(px, py, NATIVE_TILE_SIZE * 0.4, 0, Math.PI * 2);
         ctx.fill();
 
         ctx.restore();
@@ -4129,8 +3986,8 @@ function drawPersistentAreaEffect(
       if (!tile || tile.type === TileType.WALL) continue;
 
       // Calculate pixel position (center of tile)
-      const px = tileX * TILE_SIZE + TILE_SIZE / 2;
-      const py = tileY * TILE_SIZE + TILE_SIZE / 2;
+      const px = tileX * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
+      const py = tileY * NATIVE_TILE_SIZE + NATIVE_TILE_SIZE / 2;
 
       ctx.save();
 
@@ -4146,7 +4003,7 @@ function drawPersistentAreaEffect(
         // Use a consistent start time based on effect creation
         // We use now as start time since we don't track creation time
         // This means all tiles animate in sync
-        const spriteSize = TILE_SIZE * 0.9;
+        const spriteSize = NATIVE_TILE_SIZE * 0.9;
         drawSpellSpriteSheetFromStartTime(
           ctx,
           effectiveSpriteSheet,
@@ -4163,7 +4020,7 @@ function drawPersistentAreaEffect(
         const shape = spriteData.shape || 'circle';
         const color = spriteData.primaryColor || '#ff4444';
         const imageData = spriteData.idleImageData || spriteData.imageData;
-        const size = TILE_SIZE * 0.4;
+        const size = NATIVE_TILE_SIZE * 0.4;
 
         drawShape(ctx, px, py, shape, color, size, imageData, imageCache);
       }
@@ -4201,8 +4058,8 @@ function drawPuzzleVignette(
 ) {
   // Edge shadow depths proportional to border thickness for consistent appearance
   const shadowOpacity = 0.6; // Maximum darkness at outer edges
-  const verticalShadowDepth = BORDER_SIZE * 0.6; // For top/bottom walls (48 * 0.6 = ~29px)
-  const horizontalShadowDepth = SIDE_BORDER_SIZE * 1.2; // For left/right walls (16 * 1.2 = ~19px)
+  const verticalShadowDepth = NATIVE_BORDER_SIZE * 0.6; // Top/bottom walls, proportional to border thickness
+  const horizontalShadowDepth = NATIVE_SIDE_BORDER_SIZE * 1.2; // Left/right walls, proportional to border thickness
 
   ctx.save();
 
@@ -4211,8 +4068,8 @@ function drawPuzzleVignette(
   ctx.globalCompositeOperation = 'source-atop';
 
   // Calculate the total canvas area including borders
-  const totalWidth = gridWidth * TILE_SIZE + (SIDE_BORDER_SIZE * 2);
-  const totalHeight = gridHeight * TILE_SIZE + (BORDER_SIZE * 2);
+  const totalWidth = gridWidth * NATIVE_TILE_SIZE + (NATIVE_SIDE_BORDER_SIZE * 2);
+  const totalHeight = gridHeight * NATIVE_TILE_SIZE + (NATIVE_BORDER_SIZE * 2);
 
   // SIMPLE APPROACH: Apply the same bounding-box edge shadows for ALL puzzles.
   // The source-atop composite mode ensures shadows only affect non-transparent pixels,
@@ -4261,8 +4118,8 @@ function drawPuzzleVignette(
   // Calculate the game area bounds (inside the border)
   const gameAreaX = offsetX;
   const gameAreaY = offsetY;
-  const gameAreaWidth = gridWidth * TILE_SIZE;
-  const gameAreaHeight = gridHeight * TILE_SIZE;
+  const gameAreaWidth = gridWidth * NATIVE_TILE_SIZE;
+  const gameAreaHeight = gridHeight * NATIVE_TILE_SIZE;
 
   // Create a radial gradient centered on the game area
   const centerX = gameAreaX + gameAreaWidth / 2;
@@ -4287,9 +4144,9 @@ function drawPuzzleVignette(
     for (let y = 0; y < gridHeight; y++) {
       for (let x = 0; x < gridWidth; x++) {
         if (tiles[y]?.[x] !== null) {
-          const px = gameAreaX + x * TILE_SIZE;
-          const py = gameAreaY + y * TILE_SIZE;
-          ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+          const px = gameAreaX + x * NATIVE_TILE_SIZE;
+          const py = gameAreaY + y * NATIVE_TILE_SIZE;
+          ctx.rect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
         }
       }
     }
@@ -4316,9 +4173,9 @@ function drawPuzzleVignette(
       for (let y = 0; y < gridHeight; y++) {
         for (let x = 0; x < gridWidth; x++) {
           if (tiles[y]?.[x] !== null) {
-            const px = gameAreaX + x * TILE_SIZE;
-            const py = gameAreaY + y * TILE_SIZE;
-            ctx.rect(px, py, TILE_SIZE, TILE_SIZE);
+            const px = gameAreaX + x * NATIVE_TILE_SIZE;
+            const py = gameAreaY + y * NATIVE_TILE_SIZE;
+            ctx.rect(px, py, NATIVE_TILE_SIZE, NATIVE_TILE_SIZE);
           }
         }
       }

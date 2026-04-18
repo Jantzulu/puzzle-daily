@@ -4,6 +4,8 @@
 **Goal:** Eliminate sprite deformation (static non-uniform pixel sizes, and frame-to-frame "wobble" during sprite-sheet animation) by rendering the game and its thumbnails at a small native pixel resolution, then CSS-scaling the canvas uniformly to display size.
 **Scope:** `AnimatedGameBoard.tsx`, `MapEditor.tsx` board rendering, `SpriteThumbnail.tsx`, `PixelEditorAnimationPreview.tsx`, and related helpers in `SpriteEditor.tsx` (`drawSprite`, `drawSpriteSheet`).
 
+**Known-working baseline before Phase 2:** commit `2e9aeb5` ("Docs: mark Phase 1 done in rendering plan; refresh handoff with pending refactors"). If Phase 2 breaks something that can't be fixed forward, revert to this commit.
+
 ---
 
 ## 1. Problem statement
@@ -90,7 +92,27 @@ The plan assumed a single `NATIVE_TILE_SIZE` × tile-count canvas whose CSS upsc
 
 **Phase 2 is materially different.** The game board has a shared `TILE_SIZE` across all sprites AND needs fractional per-sheet scale/offset for directional-sprite normalization. The original "native-resolution canvas + uniform CSS upscale" plan IS the right approach for the board (Phase 2) because the shared tile grid gives a clean integer CSS-upscale factor, and the fractional scaling that would otherwise cause wobble happens *inside* the canvas where a uniform CSS upscale makes it invisible at display level.
 
-### Phase 2 — Main game board
+### Phase 2 — Main game board (landed 2026-04-17)
+
+**Chosen parameters:**
+- `NATIVE_TILE_SIZE = 24` (Option B — preserves the 3:1 top-to-side border ratio exactly; native side = 8, native top = 24).
+- `DEFAULT_CSS_SCALE = 2` so a default 8×8 board renders at the same CSS pixel dimensions as pre-Phase-2 (416×480).
+- CSS display size quantized to an integer multiple of the native buffer when under `maxWidth`/`maxHeight` constraints (≥1) and allowed to fall below 1× only when container would otherwise overflow.
+- Canvas text (fire/wind, teleport letter, direction arrow, charm heart) shrunk to match native scale now rather than deferred to Phase 4.
+
+**Landed changes in `src/components/game/AnimatedGameBoard.tsx`:**
+- Deleted `drawSpritePixelPerfect`, `drawDeathSpritePixelPerfect`, `drawSpawnSpritePixelPerfect` wrappers. 13+ call sites now call the underlying `drawSprite`/`drawDeathSprite`/`drawSpawnSprite` imports from SpriteEditor directly.
+- Renamed `TILE_SIZE`/`BORDER_SIZE`/`SIDE_BORDER_SIZE` → `NATIVE_*` throughout (188+94+69 sites). Drawing code now operates in native pixels.
+- Canvas buffer is set to the native size; CSS display size is `nativeBuffer × displayScale`. No `ctx.scale(quantizedScale)`, no `devicePixelRatio` arithmetic in drawing code. The browser handles CSS→device-pixel scaling via `image-rendering: pixelated`.
+- Click handler rewritten: `clientX → nativeX = (clientX - rect.left) × (canvas.width / rect.width)`; divides by `NATIVE_TILE_SIZE` directly.
+- Hardcoded pixel offsets in procedural border rendering (`drawTopWallSegment`, `drawDungeonBorder`, smart-border corners, etc.), health bar dimensions, status effect icons, and projectile/particle sizes all halved to match the 24/48 native/CSS ratio. Further visual tuning deferred to post-commit review.
+
+**Unchanged / intentionally left alone:**
+- `SpriteEditor.tsx` `drawSprite`/`drawSpriteSheet` — already took `tileSize` as a parameter, so passing `NATIVE_TILE_SIZE` instead of `TILE_SIZE` is sufficient.
+- `MapEditor.tsx` — Phase 3.
+- Engine / simulation / scoring — purely visual refactor, no logic changes.
+
+**Original Phase 2 plan (for reference):**
 Convert `AnimatedGameBoard.tsx` to native-resolution rendering.
 
 **Files:**
