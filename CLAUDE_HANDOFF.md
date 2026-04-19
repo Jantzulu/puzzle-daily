@@ -174,17 +174,15 @@ The Reflect status effect bounces incoming projectiles back:
    - **Phase D**: collapse the 6 overlapping deferred-state flags (`pendingDeactivation`, `pendingProjectileDeath`, `hitResult`, `visualHealth`, `pendingReflectVfx`, `visualPastReflectPoint`) into a coherent state machine. Scoped variant: consolidate just the reflect triad (`reflectAtTileIndex`, `pendingReflectVfx`, `visualPastReflectPoint`) as a ~20-callsite mini-D if full D is too big.
    - **Phase E** (highest determinism value): de-duplicate `updateProjectilesHeadless` (solver) and `resolveProjectiles` (real game) collision logic into a shared helper. Prevents solver/game drift. Requires a golden-test corpus of saved puzzles first.
 
-2. **`puzzleGenerator.ts` Math.random audit** (small, standalone).
-   Plan: [docs/audit-summary.md](docs/audit-summary.md) section 1.
-   Does any runtime path (solver, replay, live play) invoke the generator? If yes, `Math.random()` there is a determinism violation and needs a seeded PRNG. If only editor-authoring invokes it (expected), no action needed — but verify before assuming.
+2. ~~**`puzzleGenerator.ts` Math.random audit**~~ — **Done 2026-04-17**. Re-verified: only `GeneratorDialog.tsx` → `MapEditor.tsx` (editor-only). No runtime path. Output is persisted as a puzzle file and played deterministically. See [docs/audit-summary.md](docs/audit-summary.md) section 1. Precondition: if any future feature invokes the generator at runtime, switch to a seeded PRNG first.
 
 ### One-off tasks
 
 3. **Slow homing projectile visuals** — speed 1-2 homing spells do not visually track moving targets well. Needs a separate visual approach for slow homing that does not break fast projectile behavior. Best tackled AFTER projectile Phase C (gives a cleaner place for a new visual code path).
 4. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
-5. **Sentry environment variables** — add to Netlify player site.
-6. **Run `007_player_roles.sql` migration** against Supabase.
-7. **POST error on puzzle completion** — 400 Bad Request to `puzzle_completions` table, schema mismatch.
+5. ~~**Sentry environment variables**~~ — **Done 2026-04-18**. `VITE_SENTRY_DSN` and `VITE_SENTRY_ENVIRONMENT` set on both Netlify sites; client at [`sentry.ts`](src/lib/sentry.ts) no-ops without DSN, so nothing to verify code-side. Redeploy each site if env vars were added after the last build (Vite injects at build time).
+6. **Run `007_player_roles.sql` and `010_silent_completion_rate_limit.sql` migrations** against Supabase.
+7. ~~**POST error on puzzle completion**~~ — **Done 2026-04-18**. Not a schema mismatch. Root cause: the `check_completion_rate_limit` trigger from migration 005 `RAISE EXCEPTION`s on the same (player, puzzle) inserting within 10s, which fires for legitimate fast-retry players. Fix: client swallows `P0001` rate-limit errors in `submitCompletion` ([`statsService.ts:118`](src/services/statsService.ts)); migration `010_silent_completion_rate_limit.sql` converts the trigger to silently `RETURN NULL`. **Needs deploy:** apply migration 010 alongside pending migration 007.
 
 ### Won't-do (decided)
 

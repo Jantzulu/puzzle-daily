@@ -116,7 +116,13 @@ export async function submitCompletion(submission: CompletionSubmission): Promis
 
     const { error } = await supabase.from('puzzle_completions').insert(row);
     if (error) {
-      console.warn('[Stats] Completion insert error:', error.code, error.message, error.details);
+      // P0001 "Rate limit: duplicate completion too soon" fires when a player
+      // fails fast and retries within 10s. Expected, not actionable — drop it.
+      // Migration 010 makes the trigger silent; this handles DBs pre-010.
+      if (error.code === 'P0001' && error.message?.includes('Rate limit')) {
+        return;
+      }
+      console.warn('[Stats] Completion insert error:', error.code, error.message, error.details, error.hint);
     }
   } catch (e) {
     console.warn('[Stats] Failed to submit completion:', e);

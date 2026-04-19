@@ -28,13 +28,13 @@ Fixed in `7590223`. Removed the `Math.random() > applyChance` gate from `actions
 
 **Future:** if a chance-based game mode is ever introduced, reintroduce probability via a seeded PRNG (keyed on `puzzleId + turn + effectInstance`) so outcomes remain reproducible across runs and replays — do not reintroduce raw `Math.random()`.
 
-### 🎯 MEDIUM — `Math.random()` in `puzzleGenerator.ts`
+### 📝 `Math.random()` in `puzzleGenerator.ts` — editor-only, verified
 
-Callers (verified): only [`src/components/editor/GeneratorDialog.tsx`](../src/components/editor/GeneratorDialog.tsx). The generator is invoked interactively from the editor and its output is persisted to a puzzle file. No runtime path — solver, live play, replay — calls it.
+Re-verified 2026-04-17. The three exported functions (`generatePuzzle`, `validateGenerationParams`, `getDifficultyPreset`) are imported only by [`GeneratorDialog.tsx`](../src/components/editor/GeneratorDialog.tsx), which is rendered only from [`MapEditor.tsx`](../src/components/editor/MapEditor.tsx). `MapEditor` is not reachable from [`PlayerApp.tsx`](../src/PlayerApp.tsx). The generator is invoked interactively from the editor and its output is persisted to a puzzle file. No runtime path — solver, live play, replay — calls it.
 
-**Verdict:** not a live determinism bug today. Generator variety is a design-time feature, and the persisted puzzle is then played deterministically.
+**Verdict:** not a live determinism bug. Generator variety is a design-time feature, and the persisted puzzle is then played deterministically.
 
-**But:** if any future feature invokes the generator at runtime (procedural content, daily-puzzle auto-gen, etc.), replace `Math.random()` with a seeded PRNG first. Flag this as a precondition for any such feature.
+**Precondition for future work:** if any future feature invokes the generator at runtime (procedural content, daily-puzzle auto-gen, etc.), replace `Math.random()` with a seeded PRNG before wiring it up.
 
 ### 📝 ID generation uses `Date.now()` + `Math.random()`
 

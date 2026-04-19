@@ -36,6 +36,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS profiles_prevent_role_change ON profiles;
 CREATE TRIGGER profiles_prevent_role_change
   BEFORE UPDATE ON profiles
   FOR EACH ROW EXECUTE FUNCTION prevent_role_change();
