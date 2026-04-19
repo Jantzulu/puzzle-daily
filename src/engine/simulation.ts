@@ -2751,8 +2751,11 @@ function resolveProjectiles(gameState: GameState): void {
           continue;
         }
 
-        // Wall check for homing projectiles that don't ignore walls
-        if (!proj.homingIgnoreWalls) {
+        // Wall check for homing projectiles that don't ignore walls.
+        // Pathfinding mode inherently routes around walls via BFS, so skip
+        // the straight-line wall block here — otherwise the pathfinder never
+        // gets a chance to run.
+        if (!proj.homingIgnoreWalls && proj.homingPathStyle !== 'pathfinding') {
           const pathTiles = getTilesAlongLine(proj.x, proj.y, targetEntity.x, targetEntity.y);
           let wallBlocked = false;
           for (const tile of pathTiles) {
