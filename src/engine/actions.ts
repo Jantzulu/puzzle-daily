@@ -3051,8 +3051,10 @@ function findNearestEnemies(
   // Determine structural team and whether charm inverts it
   const casterIsEnemy = 'enemyId' in character;
   const casterIsCharmed = isEntityCharmed(character);
-  // Charmed entities target their own structural team; uncharmed target the opposite
-  const targetEnemiesArray = casterIsCharmed ? !casterIsEnemy : casterIsEnemy;
+  // Uncharmed entities target the opposite team (their enemies); charmed entities
+  // target their own structural team (because charm flips perception of "enemy").
+  // XNOR: target-enemies-array iff casterIsEnemy === casterIsCharmed.
+  const targetEnemiesArray = casterIsCharmed ? casterIsEnemy : !casterIsEnemy;
 
   // Build candidate list from the correct array
   // Stealth guard uses structural casterIsEnemy: charmed chars still lack enemy-detection abilities
