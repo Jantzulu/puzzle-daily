@@ -149,9 +149,6 @@ export enum ActionType {
   FACE_DIRECTION = 'face_direction',
 
   // Combat (Legacy - deprecated)
-  ATTACK_FORWARD = 'attack_forward',
-  ATTACK_RANGE = 'attack_range',
-  ATTACK_AOE = 'attack_aoe',
   CUSTOM_ATTACK = 'custom_attack',  // Deprecated - use SPELL instead
 
   // Combat (New spell system)
@@ -235,7 +232,6 @@ export interface Character {
   spriteId: string;
   description: string;
   health: number;
-  attackDamage: number;
   defaultFacing: Direction;
   behavior: CharacterAction[];
   actionSteps?: ActionStep[]; // Numbered action steps displayed on play/playtest pages
@@ -268,7 +264,6 @@ export interface Enemy {
   description?: string; // Description of the enemy
   spriteId: string;
   health: number;
-  attackDamage: number;
   behavior?: EnemyBehavior;
   tooltipSteps?: string[]; // Legacy — superseded by actionSteps
   actionSteps?: ActionStep[]; // Numbered steps describing what this enemy does
@@ -762,7 +757,7 @@ export interface CustomAttack {
   pattern: AttackPattern;
 
   // Damage/Healing
-  damage?: number;              // Override character's attackDamage
+  damage?: number;              // Damage dealt (mutually exclusive with healing)
   healing?: number;             // HP to restore
 
   // Range/Area

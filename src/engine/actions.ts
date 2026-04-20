@@ -94,8 +94,8 @@ function computeTilePath(startX: number, startY: number, targetX: number, target
 }
 
 /**
- * Normalize action type - handles both enum keys (e.g., "ATTACK_FORWARD")
- * and enum values (e.g., "attack_forward")
+ * Normalize action type - handles both enum keys (e.g., "MOVE_FORWARD")
+ * and enum values (e.g., "move_forward")
  */
 function normalizeActionType(type: string): ActionType {
   // If it's already a valid enum value, return it
@@ -117,9 +117,6 @@ function normalizeActionType(type: string): ActionType {
     'TURN_RIGHT': ActionType.TURN_RIGHT,
     'TURN_AROUND': ActionType.TURN_AROUND,
     'FACE_DIRECTION': ActionType.FACE_DIRECTION,
-    'ATTACK_FORWARD': ActionType.ATTACK_FORWARD,
-    'ATTACK_RANGE': ActionType.ATTACK_RANGE,
-    'ATTACK_AOE': ActionType.ATTACK_AOE,
     'CUSTOM_ATTACK': ActionType.CUSTOM_ATTACK,
     'SPELL': ActionType.SPELL,
     'IF_WALL': ActionType.IF_WALL,
@@ -207,15 +204,6 @@ export function executeAction(
       if (action.faceDirection !== undefined) {
         updatedCharacter.facing = action.faceDirection;
       }
-      return updatedCharacter;
-
-    case ActionType.ATTACK_FORWARD:
-      attackInDirection(updatedCharacter, character.facing, gameState, 1);
-      return updatedCharacter;
-
-    case ActionType.ATTACK_RANGE:
-      const range = action.params?.range || 1;
-      attackInDirection(updatedCharacter, character.facing, gameState, range);
       return updatedCharacter;
 
     case ActionType.WAIT:
@@ -1139,49 +1127,6 @@ function moveCharacter(
   }
 
   return updatedChar;
-}
-
-/**
- * Attack in a direction (ranged or melee)
- */
-function attackInDirection(
-  character: PlacedCharacter,
-  direction: Direction,
-  gameState: GameState,
-  range: number
-): void {
-  const { dx, dy } = getDirectionOffset(direction);
-  const charData = getCharacter(character.characterId);
-  if (!charData) return;
-
-  // Check each tile in range
-  for (let i = 1; i <= range; i++) {
-    const targetX = character.x + dx * i;
-    const targetY = character.y + dy * i;
-
-    // Stop if out of bounds
-    if (!isInBounds(targetX, targetY, gameState.puzzle.width, gameState.puzzle.height)) {
-      break;
-    }
-
-    // Stop if null tile or wall
-    const tile = gameState.puzzle.tiles[targetY]?.[targetX];
-    if (!tile || tile.type === TileType.WALL) {
-      break;
-    }
-
-    // Check for enemy
-    const enemy = gameState.puzzle.enemies.find(
-      (e) => e.x === targetX && e.y === targetY && !e.dead
-    );
-
-    if (enemy) {
-      // Use centralized damage to respect shields - character is source for deflect
-      applyDamageToEntity(enemy, charData.attackDamage, gameState, character);
-      // Ranged attacks hit first enemy and stop
-      break;
-    }
-  }
 }
 
 /**

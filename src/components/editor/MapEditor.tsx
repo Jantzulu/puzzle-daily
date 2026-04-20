@@ -99,8 +99,6 @@ const formatActionSequence = (behavior: CharacterAction[] | undefined): string[]
         return `${num}. Cast Spell`;
       case ActionType.CUSTOM_ATTACK:
         return `${num}. ${action.customAttack?.name || 'Attack'}`;
-      case ActionType.ATTACK_RANGE:
-        return `${num}. Ranged Attack`;
       case ActionType.MOVE_FORWARD:
         return `${num}. Move Forward`;
       case ActionType.MOVE_BACKWARD:

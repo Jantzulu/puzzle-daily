@@ -2,7 +2,6 @@ import type { Character } from '../../types/game';
 import { getCustomCharacters, isAssetHidden, type CustomCharacter } from '../../utils/assetStorage';
 import { migrateActions } from '../../utils/actionMigration';
 import knightData from './knight.json';
-import archerData from './archer.json';
 import fireballMageData from './archer-fireball.json';
 
 // Type that includes both base Character and optional customSprite
@@ -10,7 +9,6 @@ export type CharacterWithSprite = Character & { customSprite?: CustomCharacter['
 
 const officialCharacters: Record<string, Character> = {
   [knightData.id]: knightData as Character,
-  [archerData.id]: archerData as Character,
   [fireballMageData.id]: fireballMageData as Character,
 };
 

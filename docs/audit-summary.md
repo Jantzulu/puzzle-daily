@@ -69,7 +69,7 @@ These are referenced by backward-compat code paths for saved puzzle/asset data. 
 - `TileBehaviorConfig.teleportSprite`, `PlacedEnemy.teleportSprite`, `PlacedCharacter.teleportSprite` ([`types/game.ts`](../src/types/game.ts)) — superseded by `activationSprite`, but read with fallback in [`EnemyDisplay.tsx:96`](../src/components/game/EnemyDisplay.tsx) and [`compendium/EntryDetails.tsx:129`](../src/components/compendium/EntryDetails.tsx).
 - `Enemy.tooltipSteps` — superseded by `actionSteps`.
 - `ExecutionMode.parallel_with_previous` — migration path only.
-- `ActionType.ATTACK_FORWARD | ATTACK_RANGE | ATTACK_AOE | CUSTOM_ATTACK` — old puzzle data uses these.
+- `ActionType.CUSTOM_ATTACK` — old puzzle data uses this; superseded by `SPELL`. (`ATTACK_FORWARD | ATTACK_RANGE | ATTACK_AOE` were removed.)
 
 **Action:** leave in place. Revisit only if a data migration pass is scheduled.
 

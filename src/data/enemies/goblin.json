@@ -3,7 +3,6 @@
   "name": "Goblin",
   "spriteId": "goblin_sprite",
   "health": 1,
-  "attackDamage": 1,
   "behavior": {
     "type": "active",
     "defaultFacing": "south",

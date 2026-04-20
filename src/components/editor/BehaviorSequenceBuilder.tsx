@@ -6,7 +6,7 @@ import { loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage'
 import { DirectionCompass } from './DirectionCompass';
 
 const ACTION_TYPES = Object.values(ActionType).filter(
-  type => !['attack_forward', 'attack_range', 'attack_aoe', 'custom_attack'].includes(type)
+  type => type !== 'custom_attack'
 );
 
 interface BehaviorSequenceBuilderProps {

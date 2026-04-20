@@ -68,7 +68,6 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
       name: 'New Enemy',
       spriteId: 'custom_sprite_' + Date.now(),
       health: 1,
-      attackDamage: 1,
       behavior: { type: 'static', defaultFacing: Direction.SOUTH, pattern: [] },
       customSprite: {
         id: 'sprite_' + Date.now(),

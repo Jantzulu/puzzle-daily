@@ -91,7 +91,6 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
       spriteId: 'custom_sprite_' + Date.now(),
       description: 'Custom character',
       health: 1,
-      attackDamage: 1,
       defaultFacing: Direction.EAST,
       behavior: [
         { type: ActionType.MOVE_FORWARD },

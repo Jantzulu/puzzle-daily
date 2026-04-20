@@ -4,7 +4,6 @@
   "spriteId": "fire_mage_sprite",
   "description": "Fires projectiles in facing direction, waits, then repeats.",
   "health": 2,
-  "attackDamage": 1,
   "defaultFacing": "east",
   "behavior": [
     {

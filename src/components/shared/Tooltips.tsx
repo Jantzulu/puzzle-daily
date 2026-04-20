@@ -18,12 +18,6 @@ export const formatActionSequence = (behavior: CharacterAction[] | undefined): s
         return `${num}. Cast Spell`;
       case ActionType.CUSTOM_ATTACK:
         return `${num}. ${action.customAttack?.name || 'Attack'}`;
-      case ActionType.ATTACK_RANGE:
-        return `${num}. Ranged Attack`;
-      case ActionType.ATTACK_FORWARD:
-        return `${num}. Attack Forward`;
-      case ActionType.ATTACK_AOE:
-        return `${num}. Area Attack`;
       case ActionType.MOVE_FORWARD:
         return `${num}. Move Forward`;
       case ActionType.MOVE_BACKWARD:
@@ -112,11 +106,6 @@ export const summarizeBehavior = (behavior: CharacterAction[] | undefined): stri
         break;
       case ActionType.CUSTOM_ATTACK:
         attacks.push(action.customAttack?.name || 'attacks');
-        break;
-      case ActionType.ATTACK_FORWARD:
-      case ActionType.ATTACK_RANGE:
-      case ActionType.ATTACK_AOE:
-        attacks.push('attacks');
         break;
       case ActionType.WAIT:
         hasWait = true;

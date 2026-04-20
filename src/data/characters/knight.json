@@ -4,7 +4,6 @@
   "spriteId": "knight_sprite",
   "description": "Charges forward 1 tile per turn. Attacks weak enemies (1 HP) to pass through. Trades damage with tough enemies. Turns right at walls.",
   "health": 1,
-  "attackDamage": 1,
   "defaultFacing": "east",
   "behavior": [
     {

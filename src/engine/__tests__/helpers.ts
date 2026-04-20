@@ -163,7 +163,6 @@ export function createTestCharacterDef(overrides?: Partial<Character>): Characte
     spriteId: 'sprite-hero',
     description: 'A test hero',
     health: 10,
-    attackDamage: 3,
     defaultFacing: Direction.EAST,
     behavior: [{ type: ActionType.MOVE_FORWARD }],
     ...overrides,
@@ -177,7 +176,6 @@ export function createTestEnemyDef(overrides?: Partial<Enemy>): Enemy {
     name: 'Test Goblin',
     spriteId: 'sprite-goblin',
     health: 5,
-    attackDamage: 2,
     ...overrides,
   };
 }
