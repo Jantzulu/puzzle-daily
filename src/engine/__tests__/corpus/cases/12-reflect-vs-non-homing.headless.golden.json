@@ -1,0 +1,232 @@
+[
+  {
+    "turn": 0,
+    "gameStatus": "running",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 10,
+        "dead": false,
+        "active": true,
+        "actionIndex": 0
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-reflector",
+        "x": 3,
+        "y": 0,
+        "facing": "west",
+        "currentHealth": 10,
+        "dead": false,
+        "statusEffects": [
+          {
+            "id": "se-0",
+            "type": "reflect",
+            "statusAssetId": "reflect-status",
+            "duration": 5,
+            "currentStacks": 1,
+            "appliedOnTurn": 0,
+            "sourceEntityId": "initial"
+          }
+        ]
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  },
+  {
+    "turn": 1,
+    "gameStatus": "running",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 7,
+        "dead": false,
+        "active": true,
+        "actionIndex": 1
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-reflector",
+        "x": 3,
+        "y": 0,
+        "facing": "west",
+        "currentHealth": 10,
+        "dead": false,
+        "statusEffects": [
+          {
+            "id": "se-0",
+            "type": "reflect",
+            "statusAssetId": "reflect-status",
+            "duration": 4,
+            "currentStacks": 1,
+            "appliedOnTurn": 0,
+            "sourceEntityId": "initial"
+          }
+        ]
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  },
+  {
+    "turn": 2,
+    "gameStatus": "running",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 7,
+        "dead": false,
+        "active": true,
+        "actionIndex": 2
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-reflector",
+        "x": 3,
+        "y": 0,
+        "facing": "west",
+        "currentHealth": 10,
+        "dead": false,
+        "statusEffects": [
+          {
+            "id": "se-0",
+            "type": "reflect",
+            "statusAssetId": "reflect-status",
+            "duration": 3,
+            "currentStacks": 1,
+            "appliedOnTurn": 0,
+            "sourceEntityId": "initial"
+          }
+        ]
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  },
+  {
+    "turn": 3,
+    "gameStatus": "running",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 7,
+        "dead": false,
+        "active": true,
+        "actionIndex": 3
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-reflector",
+        "x": 3,
+        "y": 0,
+        "facing": "west",
+        "currentHealth": 10,
+        "dead": false,
+        "statusEffects": [
+          {
+            "id": "se-0",
+            "type": "reflect",
+            "statusAssetId": "reflect-status",
+            "duration": 2,
+            "currentStacks": 1,
+            "appliedOnTurn": 0,
+            "sourceEntityId": "initial"
+          }
+        ]
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  },
+  {
+    "turn": 4,
+    "gameStatus": "running",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 7,
+        "dead": false,
+        "active": true,
+        "actionIndex": 4
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-reflector",
+        "x": 3,
+        "y": 0,
+        "facing": "west",
+        "currentHealth": 10,
+        "dead": false,
+        "statusEffects": [
+          {
+            "id": "se-0",
+            "type": "reflect",
+            "statusAssetId": "reflect-status",
+            "duration": 1,
+            "currentStacks": 1,
+            "appliedOnTurn": 0,
+            "sourceEntityId": "initial"
+          }
+        ]
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  },
+  {
+    "turn": 5,
+    "gameStatus": "defeat",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 7,
+        "dead": false,
+        "active": false,
+        "actionIndex": 4
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-reflector",
+        "x": 3,
+        "y": 0,
+        "facing": "west",
+        "currentHealth": 10,
+        "dead": false,
+        "statusEffects": []
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  }
+]

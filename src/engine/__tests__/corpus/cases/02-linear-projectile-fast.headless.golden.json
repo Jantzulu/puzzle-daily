@@ -1,0 +1,59 @@
+[
+  {
+    "turn": 0,
+    "gameStatus": "running",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 10,
+        "dead": false,
+        "active": true,
+        "actionIndex": 0
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-weak",
+        "x": 3,
+        "y": 0,
+        "currentHealth": 3,
+        "dead": false
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  },
+  {
+    "turn": 1,
+    "gameStatus": "victory",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 10,
+        "dead": false,
+        "active": true,
+        "actionIndex": 1
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-weak",
+        "x": 3,
+        "y": 0,
+        "facing": "south",
+        "currentHealth": 0,
+        "dead": true
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
+  }
+]
