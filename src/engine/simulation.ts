@@ -69,6 +69,7 @@ function findPathBFS(
  */
 function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: number}>, gameState: GameState): void {
   if (!proj.hitEntityIds) proj.hitEntityIds = [];
+  if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
   const isHealingProjectile = proj.attackData.healing !== undefined;
   if (isHealingProjectile) return; // Don't damage along path for healing spells
 
@@ -80,15 +81,18 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
     if (tile.x === Math.floor(proj.x) && tile.y === Math.floor(proj.y)) continue;
 
     if (effectivelyCharFired) {
-      // Check for enemy hits
-      const hitEnemy = gameState.puzzle.enemies.find(
-        e => !e.dead && !e.pendingProjectileDeath &&
+      // Check for enemy hits — dedup by array index (hitEnemyIndices), not
+      // by enemyId, so multiple enemies sharing an enemyId all get hit by
+      // pierce.
+      const hitEnemyIndex = gameState.puzzle.enemies.findIndex(
+        (e, i) => !e.dead && !e.pendingProjectileDeath &&
              Math.floor(e.x) === tile.x && Math.floor(e.y) === tile.y &&
-             !proj.hitEntityIds!.includes(e.enemyId) &&
+             !proj.hitEnemyIndices!.includes(i) &&
              e.enemyId !== proj.targetEntityId // Don't hit designated target along path
       );
+      const hitEnemy = hitEnemyIndex >= 0 ? gameState.puzzle.enemies[hitEnemyIndex] : undefined;
       if (hitEnemy) {
-        proj.hitEntityIds!.push(hitEnemy.enemyId);
+        proj.hitEnemyIndices!.push(hitEnemyIndex);
         const baseDmg = proj.attackData.damage ?? 0;
         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing);
         const damage = isCrit ? baseDmg * 2 : baseDmg;
@@ -322,8 +326,19 @@ function reflectProjectile(
     proj.tileEntryTime = now;
   }
 
-  // Clear piercing tracking so reflected projectile can hit new targets
-  proj.hitEntityIds = [(reflector as any).characterId || (reflector as any).enemyId];
+  // Clear piercing tracking so reflected projectile can hit new targets.
+  // Seed with the reflector so the reflected projectile doesn't immediately
+  // re-hit the entity it bounced off — tracked by array index for enemies
+  // (duplicate-id safe) and by characterId for characters (always unique).
+  const reflectorIsEnemy = 'enemyId' in reflector;
+  if (reflectorIsEnemy) {
+    proj.hitEntityIds = [];
+    const reflectorIdx = gameState.puzzle.enemies.indexOf(reflector as PlacedEnemy);
+    proj.hitEnemyIndices = reflectorIdx >= 0 ? [reflectorIdx] : [];
+  } else {
+    proj.hitEntityIds = [(reflector as PlacedCharacter).characterId];
+    proj.hitEnemyIndices = [];
+  }
 
   // Store reflect VFX data — will be spawned when visual reaches reflect point
   // (not now, because the approach animation hasn't played yet)
@@ -2385,17 +2400,23 @@ function isTileBlocked(x: number, y: number, gameState: GameState): boolean {
   return !tile || tile.type === TileTypeEnum.WALL;
 }
 
-/** Find a hostile entity at a tile position, respecting hitEntityIds filtering */
+/**
+ * Find a hostile entity at a tile position, respecting piercing-dedup filtering.
+ * Enemies are deduped by array index (hitEnemyIndices) because multiple
+ * enemies can share the same enemyId in real puzzles; characters are deduped
+ * by characterId (hitEntityIds) since character IDs are unique.
+ */
 function findEntityAtTile(
   x: number, y: number, gameState: GameState, proj: Projectile,
   targetEnemies: boolean, excludePendingDeath: boolean
 ): PlacedCharacter | PlacedEnemy | null {
   if (targetEnemies) {
-    return gameState.puzzle.enemies.find(
-      e => !e.dead && (!excludePendingDeath || !e.pendingProjectileDeath) &&
+    const idx = gameState.puzzle.enemies.findIndex(
+      (e, i) => !e.dead && (!excludePendingDeath || !e.pendingProjectileDeath) &&
            Math.floor(e.x) === x && Math.floor(e.y) === y &&
-           !(proj.hitEntityIds?.includes(e.enemyId))
-    ) || null;
+           !(proj.hitEnemyIndices?.includes(i))
+    );
+    return idx >= 0 ? gameState.puzzle.enemies[idx] : null;
   } else {
     return gameState.placedCharacters.find(
       c => !c.dead && (!excludePendingDeath || !c.pendingProjectileDeath) &&
@@ -2418,12 +2439,22 @@ function findHealTargetAtTile(
            !(proj.hitEntityIds?.includes(c.characterId))
     ) || null;
   } else {
-    // enemyFired healing targets enemies (allies)
-    return gameState.puzzle.enemies.find(
-      e => !e.dead && Math.floor(e.x) === x && Math.floor(e.y) === y &&
-           e.enemyId !== proj.sourceEnemyId &&
-           !(proj.hitEntityIds?.includes(e.enemyId))
-    ) || null;
+    // enemyFired healing targets enemies (allies) — dedup by array index
+    const idx = gameState.puzzle.enemies.findIndex(
+      (e, i) => !e.dead && Math.floor(e.x) === x && Math.floor(e.y) === y &&
+           i !== proj.sourceEnemyIndex &&
+           !(proj.hitEnemyIndices?.includes(i))
+    );
+    return idx >= 0 ? gameState.puzzle.enemies[idx] : null;
+  }
+}
+
+/** Record a pierce-dedup hit on an enemy by its array index. */
+function recordEnemyHit(proj: Projectile, enemy: PlacedEnemy, enemies: PlacedEnemy[]): void {
+  if (!proj.hitEnemyIndices) proj.hitEnemyIndices = [];
+  const idx = enemies.indexOf(enemy);
+  if (idx >= 0 && !proj.hitEnemyIndices.includes(idx)) {
+    proj.hitEnemyIndices.push(idx);
   }
 }
 
@@ -2603,10 +2634,12 @@ function resolveReflectedPath(
       const hitTarget = findEntityAtTile(rx, ry, gameState, proj, targetsEnemies, true);
       if (hitTarget) {
         const targetIsEnemy = 'enemyId' in hitTarget;
-        const entityId = targetIsEnemy
-          ? (hitTarget as PlacedEnemy).enemyId
-          : (hitTarget as PlacedCharacter).characterId;
-        proj.hitEntityIds?.push(entityId);
+        if (targetIsEnemy) {
+          recordEnemyHit(proj, hitTarget as PlacedEnemy, gameState.puzzle.enemies);
+        } else {
+          if (!proj.hitEntityIds) proj.hitEntityIds = [];
+          proj.hitEntityIds.push((hitTarget as PlacedCharacter).characterId);
+        }
 
         const hitResult = applyEntityHit(hitTarget, targetIsEnemy, proj, gameState, 'visual');
         // reflected won't happen here (proj is already reflected)
@@ -3026,7 +3059,7 @@ function resolveProjectiles(gameState: GameState): void {
                 break;
               }
 
-              hitEntityIds.push((hitEnemy as PlacedEnemy).enemyId);
+              recordEnemyHit(proj, hitEnemy as PlacedEnemy, gameState.puzzle.enemies);
               hitSomething = true;
               if (!canPierce) {
                 shouldRemove = true;
@@ -3048,7 +3081,7 @@ function resolveProjectiles(gameState: GameState): void {
             // enemyFired healing targets allies (enemies)
             const hitAllyEnemy = findHealTargetAtTile(checkX, checkY, gameState, proj, true);
             if (hitAllyEnemy) {
-              hitEntityIds.push((hitAllyEnemy as PlacedEnemy).enemyId);
+              recordEnemyHit(proj, hitAllyEnemy as PlacedEnemy, gameState.puzzle.enemies);
               const healing = proj.attackData.healing ?? 0;
               const enemyData = getEnemy((hitAllyEnemy as PlacedEnemy).enemyId);
               const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
@@ -3446,7 +3479,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                 }
                 break;
               }
-              hitEntityIds.push((hitEnemy as PlacedEnemy).enemyId);
+              recordEnemyHit(proj, hitEnemy as PlacedEnemy, gameState.puzzle.enemies);
               hitSomething = true;
               if (!canPierce) shouldRemove = true;
               recordProjectileEvent(gameState, {
@@ -3463,7 +3496,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
           if (isHealingProjectile) {
             const hitAllyEnemy = findHealTargetAtTile(checkX, checkY, gameState, proj, true);
             if (hitAllyEnemy) {
-              hitEntityIds.push((hitAllyEnemy as PlacedEnemy).enemyId);
+              recordEnemyHit(proj, hitAllyEnemy as PlacedEnemy, gameState.puzzle.enemies);
               const healing = proj.attackData.healing ?? 0;
               const enemyData = getEnemy((hitAllyEnemy as PlacedEnemy).enemyId);
               const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;

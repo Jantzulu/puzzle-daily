@@ -117,9 +117,10 @@
             "y": 0
           }
         ],
-        "hitEntityIds": [
-          "goblin-front",
-          "goblin-back"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0,
+          1
         ],
         "bounceCount": 0,
         "damage": 3,

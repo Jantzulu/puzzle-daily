@@ -133,8 +133,9 @@
             "y": 0
           }
         ],
-        "hitEntityIds": [
-          "goblin-weak"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -183,8 +184,9 @@
             "y": 2
           }
         ],
-        "hitEntityIds": [
-          "goblin-weak"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          1
         ],
         "bounceCount": 0,
         "damage": 3,

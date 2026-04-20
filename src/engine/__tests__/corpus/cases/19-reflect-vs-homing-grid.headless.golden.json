@@ -99,8 +99,9 @@
         "teamSwapped": true,
         "spawnTurn": 1,
         "logicalTileIndex": 0,
-        "hitEntityIds": [
-          "goblin-reflector"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,

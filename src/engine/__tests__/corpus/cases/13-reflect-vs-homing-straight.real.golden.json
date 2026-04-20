@@ -129,8 +129,9 @@
             "y": 1
           }
         ],
-        "hitEntityIds": [
-          "goblin-reflector"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -228,8 +229,9 @@
             "y": 1
           }
         ],
-        "hitEntityIds": [
-          "goblin-reflector"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -327,8 +329,9 @@
             "y": 1
           }
         ],
-        "hitEntityIds": [
-          "goblin-reflector"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -426,8 +429,9 @@
             "y": 1
           }
         ],
-        "hitEntityIds": [
-          "goblin-reflector"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -515,8 +519,9 @@
             "y": 1
           }
         ],
-        "hitEntityIds": [
-          "goblin-reflector"
+        "hitEntityIds": [],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,

@@ -128,8 +128,10 @@
           }
         ],
         "hitEntityIds": [
-          "goblin-reflector",
           "hero-caster"
+        ],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -226,8 +228,10 @@
           }
         ],
         "hitEntityIds": [
-          "goblin-reflector",
           "hero-caster"
+        ],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -324,8 +328,10 @@
           }
         ],
         "hitEntityIds": [
-          "goblin-reflector",
           "hero-caster"
+        ],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -422,8 +428,10 @@
           }
         ],
         "hitEntityIds": [
-          "goblin-reflector",
           "hero-caster"
+        ],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
@@ -510,8 +518,10 @@
           }
         ],
         "hitEntityIds": [
-          "goblin-reflector",
           "hero-caster"
+        ],
+        "hitEnemyIndices": [
+          0
         ],
         "bounceCount": 0,
         "damage": 3,
