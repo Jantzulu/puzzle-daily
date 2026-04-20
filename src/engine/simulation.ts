@@ -2614,32 +2614,54 @@ function applyHealingHit(
  * Walks the reflected direction checking for collisions. Visual mode only.
  * Returns the reflected tiles array and whether any entity was hit.
  */
-function resolveReflectedPath(
-  proj: Projectile,
-  approachTiles: Array<{ x: number; y: number }>,
-  gameState: GameState,
-  canPierce: boolean
-): { reflectedTiles: Array<{ x: number; y: number }>; reflectedHit: boolean } {
-  const reflectedDx = getDirectionOffset(proj.direction).dx;
-  const reflectedDy = getDirectionOffset(proj.direction).dy;
-  const reflectedRange = proj.attackData.range ?? 5;
-  const reflectedTiles: Array<{ x: number; y: number }> = [];
-  const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
-  const isHealingProjectile = proj.attackData.healing !== undefined;
-  let reflectedHit = false;
+/**
+ * Pure-logic walk of the reflected projectile's trajectory. Iterates tile by
+ * tile in the direction `proj` is now heading (post-reflect), stopping at
+ * out-of-bounds, wall, or the configured range. Calls `applyEntityHit` in the
+ * requested mode when it encounters a valid target; the caller translates the
+ * resulting `steps` log into mode-specific bookkeeping (bridge fields for the
+ * real game, timeline events for the solver).
+ *
+ * Returning a step log instead of mutating bridge fields is what makes this
+ * safe to share: the drift risk between `resolveProjectiles` and
+ * `updateProjectilesHeadless` lived in this collision walk, and now they
+ * can't disagree because they call the same walker.
+ */
+type ReflectedStep =
+  | { type: 'travel'; x: number; y: number; dist: number }
+  | { type: 'wall'; x: number; y: number; dist: number }
+  | { type: 'hit'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean; hitResult: EntityHitResult };
 
-  for (let rDist = 1; rDist <= reflectedRange; rDist++) {
-    const rx = Math.floor(proj.startX + reflectedDx * rDist);
-    const ry = Math.floor(proj.startY + reflectedDy * rDist);
-    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) break;
-    const rTile = gameState.puzzle.tiles[ry]?.[rx];
-    if (!rTile || rTile.type === TileTypeEnum.WALL) {
-      reflectedTiles.push({ x: rx, y: ry }); // Include wall tile visually
+function walkReflectedPath(
+  proj: Projectile, gameState: GameState, canPierce: boolean, mode: HitMode,
+): { steps: ReflectedStep[]; lastDist: number; reflectedHit: boolean; stoppedAtRangeEnd: boolean } {
+  const { dx, dy } = getDirectionOffset(proj.direction);
+  const range = proj.attackData.range ?? 5;
+  const { targetsEnemies } = getEffectiveTeams(proj);
+  const isHealingProjectile = proj.attackData.healing !== undefined;
+
+  const steps: ReflectedStep[] = [];
+  let lastDist = 0;
+  let reflectedHit = false;
+  let stoppedAtRangeEnd = false;
+
+  for (let rDist = 1; rDist <= range; rDist++) {
+    const rx = Math.floor(proj.startX + dx * rDist);
+    const ry = Math.floor(proj.startY + dy * rDist);
+
+    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
+      lastDist = rDist - 1;
       break;
     }
-    reflectedTiles.push({ x: rx, y: ry });
+    const rTile = gameState.puzzle.tiles[ry]?.[rx];
+    if (!rTile || rTile.type === TileTypeEnum.WALL) {
+      steps.push({ type: 'wall', x: rx, y: ry, dist: rDist });
+      lastDist = rDist;
+      break;
+    }
+    steps.push({ type: 'travel', x: rx, y: ry, dist: rDist });
+    lastDist = rDist;
 
-    // Check for entity hits along reflected path (damage only, not healing)
     if (!isHealingProjectile) {
       const hitTarget = findEntityAtTile(rx, ry, gameState, proj, targetsEnemies, true);
       if (hitTarget) {
@@ -2651,26 +2673,54 @@ function resolveReflectedPath(
           proj.hitEntityIds.push((hitTarget as PlacedCharacter).characterId);
         }
 
-        const hitResult = applyEntityHit(hitTarget, targetIsEnemy, proj, gameState, 'visual');
+        const hitResult = applyEntityHit(hitTarget, targetIsEnemy, proj, gameState, mode);
         // reflected won't happen here (proj is already reflected)
 
-        const combinedSoFar = [...approachTiles, ...reflectedTiles];
-        proj.hitResult = {
-          hitTileIndex: combinedSoFar.length - 1,
-          deactivate: true,
-          vfxSprite: proj.attackData.hitEffectSprite,
-          vfxX: hitTarget.x, vfxY: hitTarget.y,
-          deferredDeathEntityId: hitResult.deferredDeathEntityId,
-          deferredDeathIsEnemy: hitResult.deferredDeathIsEnemy,
-          deferredDeathIndex: hitResult.deferredDeathIndex,
-        };
+        steps.push({ type: 'hit', x: rx, y: ry, dist: rDist, target: hitTarget, targetIsEnemy, hitResult });
         reflectedHit = true;
         if (!canPierce) break;
       }
     }
+
+    if (rDist === range) stoppedAtRangeEnd = true;
   }
 
-  return { reflectedTiles, reflectedHit };
+  return { steps, lastDist, reflectedHit, stoppedAtRangeEnd };
+}
+
+/**
+ * Real-game (visual-mode) wrapper around `walkReflectedPath`.
+ * Translates the step log into:
+ *   - `reflectedTiles[]` — used by the caller to build the combined approach+reflect
+ *     tilePath the visual system animates over.
+ *   - `proj.hitResult` — BRIDGE field so the visual loop spawns VFX and applies
+ *     deferred death at the right tile index when the sprite arrives.
+ */
+function resolveReflectedPath(
+  proj: Projectile,
+  approachTiles: Array<{ x: number; y: number }>,
+  gameState: GameState,
+  canPierce: boolean,
+): { reflectedTiles: Array<{ x: number; y: number }>; reflectedHit: boolean } {
+  const walk = walkReflectedPath(proj, gameState, canPierce, 'visual');
+  const reflectedTiles: Array<{ x: number; y: number }> = [];
+  for (const step of walk.steps) {
+    if (step.type === 'travel' || step.type === 'wall') {
+      reflectedTiles.push({ x: step.x, y: step.y });
+    } else if (step.type === 'hit') {
+      const combinedSoFar = [...approachTiles, ...reflectedTiles];
+      proj.hitResult = {
+        hitTileIndex: combinedSoFar.length - 1,
+        deactivate: true,
+        vfxSprite: proj.attackData.hitEffectSprite,
+        vfxX: step.target.x, vfxY: step.target.y,
+        deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
+        deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
+        deferredDeathIndex: step.hitResult.deferredDeathIndex,
+      };
+    }
+  }
+  return { reflectedTiles, reflectedHit: walk.reflectedHit };
 }
 
 /**
@@ -2721,69 +2771,44 @@ function processCollectibleDurations(gameState: GameState): void {
 }
 
 /**
- * Headless counterpart to `resolveReflectedPath`. Walks the reflected
- * projectile's straight-line trajectory, applies damage (via applyEntityHit
- * in 'headless' mode) to the first entity the bolt can hit, records timeline
- * events, updates proj.x/y/logicalTileIndex. Returns true if the projectile
- * should be removed after the reflected walk finishes.
- *
- * Extracted from two identical inline blocks inside updateProjectilesHeadless
- * (one for enemy-fired reflections, one for character-fired). Phase E2 will
- * merge this with `resolveReflectedPath` via a mode parameter.
+ * Headless (solver) wrapper around `walkReflectedPath`. Translates the step
+ * log into timeline events (wall_hit, hit) for replay, then syncs the
+ * projectile's logical position from `lastDist`. Returns true if the
+ * projectile should be removed after the walk — either because it pierced
+ * through and reached range end, hit a wall/out-of-bounds, or hit a target
+ * it can't pierce through.
  */
 function resolveReflectedPathHeadless(
   proj: Projectile, gameState: GameState, canPierce: boolean,
 ): boolean {
-  const { dx: rDx, dy: rDy } = getDirectionOffset(proj.direction);
-  const reflRange = proj.attackData.range ?? 5;
-  const { targetsEnemies: rTE, targetsCharacters: rTC } = getEffectiveTeams(proj);
-  let rFinalDist = 0;
-  let shouldRemove = false;
+  const walk = walkReflectedPath(proj, gameState, canPierce, 'headless');
+  let shouldRemove = walk.stoppedAtRangeEnd;
 
-  for (let rDist = 1; rDist <= reflRange; rDist++) {
-    const rx = Math.floor(proj.startX + rDx * rDist);
-    const ry = Math.floor(proj.startY + rDy * rDist);
-    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
-      rFinalDist = rDist - 1;
+  for (const step of walk.steps) {
+    if (step.type === 'wall') {
+      recordProjectileEvent(gameState, { type: 'wall_hit', projId: proj.id, x: step.x, y: step.y });
       shouldRemove = true;
-      break;
+    } else if (step.type === 'hit') {
+      recordProjectileEvent(gameState, {
+        type: 'hit', projId: proj.id, x: step.x, y: step.y,
+        targetEntityId: step.targetIsEnemy
+          ? (step.target as PlacedEnemy).enemyId
+          : (step.target as PlacedCharacter).characterId,
+        targetIsEnemy: step.targetIsEnemy,
+        damage: proj.attackData.damage,
+      });
+      if (!canPierce) shouldRemove = true;
     }
-    const rTile = gameState.puzzle.tiles[ry]?.[rx];
-    if (!rTile || rTile.type === TileTypeEnum.WALL) {
-      recordProjectileEvent(gameState, { type: 'wall_hit', projId: proj.id, x: rx, y: ry });
-      rFinalDist = rDist;
-      shouldRemove = true;
-      break;
-    }
-    rFinalDist = rDist;
-    if (rTE) {
-      const rHitEnemy = findEntityAtTile(rx, ry, gameState, proj, true, true);
-      if (rHitEnemy) {
-        applyEntityHit(rHitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
-        recordProjectileEvent(gameState, {
-          type: 'hit', projId: proj.id, x: rx, y: ry,
-          targetEntityId: (rHitEnemy as PlacedEnemy).enemyId, targetIsEnemy: true,
-          damage: proj.attackData.damage,
-        });
-        if (!canPierce) { shouldRemove = true; break; }
-      }
-    } else if (rTC) {
-      const rHitChar = findEntityAtTile(rx, ry, gameState, proj, false, true);
-      if (rHitChar) {
-        applyEntityHit(rHitChar as PlacedCharacter, false, proj, gameState, 'headless');
-        recordProjectileEvent(gameState, {
-          type: 'hit', projId: proj.id, x: rx, y: ry,
-          targetEntityId: (rHitChar as PlacedCharacter).characterId, targetIsEnemy: false,
-          damage: proj.attackData.damage,
-        });
-        if (!canPierce) { shouldRemove = true; break; }
-      }
-    }
-    if (rDist === reflRange) shouldRemove = true;
   }
-  proj.x = proj.startX + rDx * rFinalDist;
-  proj.y = proj.startY + rDy * rFinalDist;
-  proj.logicalTileIndex = rFinalDist;
+
+  const { dx, dy } = getDirectionOffset(proj.direction);
+  proj.x = proj.startX + dx * walk.lastDist;
+  proj.y = proj.startY + dy * walk.lastDist;
+  proj.logicalTileIndex = walk.lastDist;
+
+  // Out-of-bounds (no step recorded at all) is also a stop condition.
+  if (walk.steps.length === 0) shouldRemove = true;
+
   return shouldRemove;
 }
 
