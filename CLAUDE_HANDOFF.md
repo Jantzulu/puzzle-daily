@@ -167,10 +167,18 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Tracked refactors (see docs/ for detailed plans)
 
-1. **Projectile system refactor — Phases C, D, E** (pending).
+1. **Projectile system refactor — Phases C, D, E** (pending; C attempt reverted 2026-04-19).
    Plan: [docs/projectile-refactor-plan.md](docs/projectile-refactor-plan.md).
-   Phases A (ProjectileVisualState type introduced, commit `45fdf9d`) and B (movement branch extraction, commit `af55a53`) shipped April 2026. Remaining phases:
-   - **Phase C**: move visual fields (`x`, `y`, `currentTileIndex`, `tileEntryTime`, homing-visual anchors, `visualPastReflectPoint`) off `GameState` into a `Map<string, ProjectileVisualState>` owned by `AnimatedGameBoard`. Fixes the deep-copy issue (`JSON.parse(JSON.stringify(prev))` currently captures visual state). ~117 callsites, medium risk.
+   Phases A (ProjectileVisualState type introduced, commit `45fdf9d`) and B (movement branch extraction, commit `af55a53`) shipped April 2026.
+
+   **Phase C attempt 1 (2026-04-19) — reverted.** Tried a module-level-singleton `Map<string, ProjectileVisualState>` to avoid prop-drilling through simulation/actions/Game. Bug fallout was death-by-a-thousand-cuts: `initializeGameState` wipes (20+ callers, some fire mid-turn on victory/defeat handlers), the replay reconstruction path, the logic/visual coordination at turn boundaries, the straight-line anchor-reset logic that produced "projectile teleports near target on first frame." Each fix exposed another edge. Reverted at user's request. All Phase C commits unwound; this session's non-Phase-C wins preserved (see "Recently completed (April 19, 2026)" below).
+
+   **Guidance for Phase C attempt 2:**
+   - **Put the map inside `AnimatedGameBoard` as a `useRef`**, as the original plan doc specified. Component lifecycle gives natural ownership: one board = one map, unmount = gone. No cross-game bleed, no singleton reset headaches. The prop-drilling cost is real but local; accept it.
+   - **Logic functions that need to signal visual intent** (reflect, retarget resets) should return explicit "visual-event" data from `resolveProjectiles` rather than mutating a global side-table.
+   - **Build the golden-test corpus FIRST** (plan §4 Phase E precondition). Even for Phase C, the corpus catches regressions immediately instead of through play. Synthetic corpus is fine — the goal is locking in current deterministic logical behavior.
+   - **The straight-line visual was latently wrong** pre-Phase-C: at each turn boundary the anchor was reset to the new logical end-of-turn position, so visuals linearly interpolated from anchor→target with `elapsed≈0` → visual appeared near target on turn-boundary frames. A per-frame seek (read current position from visual state, step toward target by `speed * dt`) produces the smooth curve "chases in a straight line" implies. Keep this in mind — it was not a Phase C bug, the Phase C revert restored the latent bug.
+
    - **Phase D**: collapse the 6 overlapping deferred-state flags (`pendingDeactivation`, `pendingProjectileDeath`, `hitResult`, `visualHealth`, `pendingReflectVfx`, `visualPastReflectPoint`) into a coherent state machine. Scoped variant: consolidate just the reflect triad (`reflectAtTileIndex`, `pendingReflectVfx`, `visualPastReflectPoint`) as a ~20-callsite mini-D if full D is too big.
    - **Phase E** (highest determinism value): de-duplicate `updateProjectilesHeadless` (solver) and `resolveProjectiles` (real game) collision logic into a shared helper. Prevents solver/game drift. Requires a golden-test corpus of saved puzzles first.
 
@@ -188,9 +196,18 @@ The Reflect status effect bounces incoming projectiles back:
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
 
+### Recently completed (April 19, 2026 session)
+
+Non-Phase-C wins shipped this session, all still on main after the Phase C revert:
+- **`puzzle_completions` 400 error closed** (commit `07665f8`). Not a schema mismatch — the 10s rate-limit trigger from migration 005 was raising on legit fast-retry players. Client swallows `P0001` rate-limit in `submitCompletion`; migration `010_silent_completion_rate_limit.sql` converts the trigger to silently `RETURN NULL`. Migration 007 trigger creation made idempotent. **Needs deploy:** apply 007 + 010 to Supabase.
+- **`handleNewPuzzle` crash fixed** (commit `2a4e2b3`). Missing `tags`, `description`, `isTraining`, `maxPlaceableCharacters`, `backgroundMusicId` in the state replacement; save path hit `state.tags.length` on undefined. Init them to empty defaults.
+- **`findNearestEnemies` ternary fixed** (commit `d034f0b`). Hero-fired `autoTargetNearestEnemy` was never acquiring targets. Ternary `casterIsCharmed ? !casterIsEnemy : casterIsEnemy` was inverted; should be `casterIsCharmed ? casterIsEnemy : !casterIsEnemy` (XNOR). Pre-existing bug — enemies firing at heroes worked because they go through the sibling `findNearestCharacters` plus a `tempCharForTrigger` wrapper that strips `enemyId`, which happened to produce correct behavior.
+- **Pathfinding-homing wall-block fix** (commit `6f3144c`). The "don't ignore walls" check ran a straight-line wall test even for `homingPathStyle: 'pathfinding'`, causing the projectile to deactivate at the first wall before the pathfinder could route around it. Skip the straight-line check for pathfinding mode.
+- **Audit item closed**: `puzzleGenerator.ts` `Math.random()` re-verified as editor-only (commit `07665f8`). No runtime determinism risk.
+- **Sentry env vars** set on both Netlify sites (user action, code already handled missing DSN).
+
 ### Recently completed (April 17, 2026 session)
 
-Work done this session — relevant to keep in mind but not on the to-do list:
 - **Tier 1 determinism fixes** (audit follow-up): removed `Math.random()` gate on status effect `applyChance` (commit `7590223`) — live gameplay is now fully deterministic with respect to status effects. Fixed the syncTracker push/edit race (commit `7f9d3a7`) — concurrent edits during sync no longer get silently dropped.
 - **Audit summary doc** [docs/audit-summary.md](docs/audit-summary.md) — living roadmap of outstanding work.
 - **Netlify config cleanup** — removed repo-level `netlify.toml` (was silently overriding player site settings), each site now configured in its own dashboard. Dev site: `npm ci && npm run build` → `dist`. Player site: `npm ci && npm run build:player` → `dist-player`.
