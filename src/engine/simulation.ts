@@ -1767,17 +1767,27 @@ export function executeTurn(gameState: GameState): GameState {
   if (!gameState.testMode) {
     checkGameConditions(gameState);
 
+    // Are there projectiles still in flight that could still cause damage
+    // or land hits this game? "In flight" = active AND not yet resolved
+    // (hitResult means damage already applied awaiting visual; pendingDeactivation
+    // means logically terminated awaiting visual deactivation). If so, don't
+    // declare defeat yet — a slow bolt fired on the last active turn still
+    // deserves a chance to land.
+    const hasInFlightProjectile = (gameState.activeProjectiles ?? []).some(
+      (p) => p.active && !p.hitResult && !p.pendingDeactivation,
+    );
+
     // Check if we've exceeded the turn limit
     const maxTurns = gameState.puzzle.maxTurns || 1000; // Default to 1000 if not specified
-    if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running') {
+    if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running' && !hasInFlightProjectile) {
       gameState.gameStatus = 'defeat';
       return gameState;
     }
 
     // Check if all characters are inactive
     const hasActiveCharacters = gameState.placedCharacters.some((c) => c.active && !c.dead);
-    if (!hasActiveCharacters && gameState.gameStatus === 'running') {
-      // All characters done, check if we won
+    if (!hasActiveCharacters && gameState.gameStatus === 'running' && !hasInFlightProjectile) {
+      // All characters done and no projectiles still flying — decide outcome now.
       if (checkVictoryConditions(gameState)) {
         gameState.gameStatus = 'victory';
       } else {
@@ -2731,6 +2741,13 @@ function resolveProjectiles(gameState: GameState): void {
     // and are just waiting for the visual system to consume the result
     if (proj.hitResult) continue;
 
+    // Skip projectiles that hit a wall / ran out of range — they've been
+    // logically terminated and are just waiting for the visual system to
+    // deactivate them. Without this skip, the projectile's `logicalTileIndex`
+    // would keep advancing on subsequent turns, letting bolts "teleport"
+    // past walls and hit entities beyond.
+    if (proj.pendingDeactivation) continue;
+
     // Skip reflected projectiles — their full path and collisions were resolved
     // at reflect time. Re-processing would reset the visual and cause duplication.
     if (proj.reflected) continue;
@@ -3174,7 +3191,13 @@ function resolveProjectiles(gameState: GameState): void {
           shouldRemove = true;
         }
       } else if (hitSomething || hitWall) {
-        const lastDist = turnTiles.length > 0 ? startTile + turnTiles.length - 1 : startTile;
+        let lastDist = turnTiles.length > 0 ? startTile + turnTiles.length - 1 : startTile;
+        // On wall hit, the wall tile was pushed into turnTiles for visual
+        // purposes — but the logical stop is the tile *before* the wall, so
+        // subtract it back out. Otherwise logicalTileIndex ends up past the
+        // wall, and if the projectile were reprocessed (pre-pendingDeactivation
+        // skip) it would continue from the other side.
+        if (hitWall) lastDist -= 2;
         proj.logicalTileIndex = lastDist;
       }
 

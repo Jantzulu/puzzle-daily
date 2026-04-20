@@ -71,7 +71,7 @@
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
         "spawnTurn": 1,
-        "logicalTileIndex": 3,
+        "logicalTileIndex": 1,
         "tilePath": [
           {
             "x": 0,
@@ -91,7 +91,7 @@
   },
   {
     "turn": 2,
-    "gameStatus": "victory",
+    "gameStatus": "defeat",
     "score": 0,
     "characters": [
       {
@@ -111,7 +111,7 @@
         "x": 4,
         "y": 0,
         "facing": "south",
-        "currentHealth": 0,
+        "currentHealth": 3,
         "dead": false
       }
     ],
@@ -133,7 +133,7 @@
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
         "spawnTurn": 1,
-        "logicalTileIndex": 5,
+        "logicalTileIndex": 1,
         "tilePath": [
           {
             "x": 0,
@@ -145,9 +145,6 @@
           }
         ],
         "hitEntityIds": [],
-        "hitEnemyIndices": [
-          0
-        ],
         "bounceCount": 0,
         "damage": 3,
         "range": 5

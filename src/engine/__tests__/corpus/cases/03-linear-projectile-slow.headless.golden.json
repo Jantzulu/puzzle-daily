@@ -99,7 +99,7 @@
   },
   {
     "turn": 2,
-    "gameStatus": "defeat",
+    "gameStatus": "running",
     "score": 0,
     "characters": [
       {
@@ -166,5 +166,34 @@
         "range": 3
       }
     ]
+  },
+  {
+    "turn": 3,
+    "gameStatus": "victory",
+    "score": 0,
+    "characters": [
+      {
+        "characterId": "hero-caster",
+        "x": 0,
+        "y": 0,
+        "facing": "east",
+        "currentHealth": 10,
+        "dead": false,
+        "active": false,
+        "actionIndex": 1
+      }
+    ],
+    "enemies": [
+      {
+        "enemyId": "goblin-weak",
+        "x": 3,
+        "y": 0,
+        "facing": "south",
+        "currentHealth": 0,
+        "dead": true
+      }
+    ],
+    "collectibles": [],
+    "projectiles": []
   }
 ]
