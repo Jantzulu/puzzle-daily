@@ -1986,7 +1986,7 @@ export function resetGameState(gameState: GameState, originalPuzzle: Puzzle): Ga
 // PROJECTILE & PARTICLE UPDATES (Phase 2)
 // ==========================================
 
-import type { Projectile, ParticleEffect } from '../types/game';
+import type { ParticleEffect } from '../types/game';
 import { TileType } from '../types/game';
 
 // ==========================================
