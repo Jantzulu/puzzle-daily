@@ -2721,6 +2721,73 @@ function processCollectibleDurations(gameState: GameState): void {
 }
 
 /**
+ * Headless counterpart to `resolveReflectedPath`. Walks the reflected
+ * projectile's straight-line trajectory, applies damage (via applyEntityHit
+ * in 'headless' mode) to the first entity the bolt can hit, records timeline
+ * events, updates proj.x/y/logicalTileIndex. Returns true if the projectile
+ * should be removed after the reflected walk finishes.
+ *
+ * Extracted from two identical inline blocks inside updateProjectilesHeadless
+ * (one for enemy-fired reflections, one for character-fired). Phase E2 will
+ * merge this with `resolveReflectedPath` via a mode parameter.
+ */
+function resolveReflectedPathHeadless(
+  proj: Projectile, gameState: GameState, canPierce: boolean,
+): boolean {
+  const { dx: rDx, dy: rDy } = getDirectionOffset(proj.direction);
+  const reflRange = proj.attackData.range ?? 5;
+  const { targetsEnemies: rTE, targetsCharacters: rTC } = getEffectiveTeams(proj);
+  let rFinalDist = 0;
+  let shouldRemove = false;
+
+  for (let rDist = 1; rDist <= reflRange; rDist++) {
+    const rx = Math.floor(proj.startX + rDx * rDist);
+    const ry = Math.floor(proj.startY + rDy * rDist);
+    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
+      rFinalDist = rDist - 1;
+      shouldRemove = true;
+      break;
+    }
+    const rTile = gameState.puzzle.tiles[ry]?.[rx];
+    if (!rTile || rTile.type === TileTypeEnum.WALL) {
+      recordProjectileEvent(gameState, { type: 'wall_hit', projId: proj.id, x: rx, y: ry });
+      rFinalDist = rDist;
+      shouldRemove = true;
+      break;
+    }
+    rFinalDist = rDist;
+    if (rTE) {
+      const rHitEnemy = findEntityAtTile(rx, ry, gameState, proj, true, true);
+      if (rHitEnemy) {
+        applyEntityHit(rHitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
+        recordProjectileEvent(gameState, {
+          type: 'hit', projId: proj.id, x: rx, y: ry,
+          targetEntityId: (rHitEnemy as PlacedEnemy).enemyId, targetIsEnemy: true,
+          damage: proj.attackData.damage,
+        });
+        if (!canPierce) { shouldRemove = true; break; }
+      }
+    } else if (rTC) {
+      const rHitChar = findEntityAtTile(rx, ry, gameState, proj, false, true);
+      if (rHitChar) {
+        applyEntityHit(rHitChar as PlacedCharacter, false, proj, gameState, 'headless');
+        recordProjectileEvent(gameState, {
+          type: 'hit', projId: proj.id, x: rx, y: ry,
+          targetEntityId: (rHitChar as PlacedCharacter).characterId, targetIsEnemy: false,
+          damage: proj.attackData.damage,
+        });
+        if (!canPierce) { shouldRemove = true; break; }
+      }
+    }
+    if (rDist === reflRange) shouldRemove = true;
+  }
+  proj.x = proj.startX + rDx * rFinalDist;
+  proj.y = proj.startY + rDy * rFinalDist;
+  proj.logicalTileIndex = rFinalDist;
+  return shouldRemove;
+}
+
+/**
  * Deterministic turn-based projectile resolution for non-headless mode.
  * Mirrors updateProjectilesHeadless for game logic (damage, effects, death)
  * but stores visual metadata (tilePath, hitResult) instead of removing projectiles,
@@ -3449,57 +3516,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                   reflectAtTileIndex: proj.reflectAtTileIndex,
                   combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
                 });
-                // Resolve reflected path in headless mode (replaces resolveReflectedPath which uses 'visual' mode)
-                {
-                  const { dx: rDx, dy: rDy } = getDirectionOffset(proj.direction);
-                  const reflRange = proj.attackData.range ?? 5;
-                  const { targetsEnemies: rTE, targetsCharacters: rTC } = getEffectiveTeams(proj);
-                  let rFinalDist = 0;
-                  for (let rDist = 1; rDist <= reflRange; rDist++) {
-                    const rx = Math.floor(proj.startX + rDx * rDist);
-                    const ry = Math.floor(proj.startY + rDy * rDist);
-                    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
-                      rFinalDist = rDist - 1;
-                      shouldRemove = true;
-                      break;
-                    }
-                    const rTile = gameState.puzzle.tiles[ry]?.[rx];
-                    if (!rTile || rTile.type === TileTypeEnum.WALL) {
-                      recordProjectileEvent(gameState, { type: 'wall_hit', projId: proj.id, x: rx, y: ry });
-                      rFinalDist = rDist;
-                      shouldRemove = true;
-                      break;
-                    }
-                    rFinalDist = rDist;
-                    if (rTE) {
-                      const rHitEnemy = findEntityAtTile(rx, ry, gameState, proj, true, true);
-                      if (rHitEnemy) {
-                        applyEntityHit(rHitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
-                        recordProjectileEvent(gameState, {
-                          type: 'hit', projId: proj.id, x: rx, y: ry,
-                          targetEntityId: (rHitEnemy as PlacedEnemy).enemyId, targetIsEnemy: true,
-                          damage: proj.attackData.damage,
-                        });
-                        if (!canPierce) { shouldRemove = true; break; }
-                      }
-                    } else if (rTC) {
-                      const rHitChar = findEntityAtTile(rx, ry, gameState, proj, false, true);
-                      if (rHitChar) {
-                        applyEntityHit(rHitChar as PlacedCharacter, false, proj, gameState, 'headless');
-                        recordProjectileEvent(gameState, {
-                          type: 'hit', projId: proj.id, x: rx, y: ry,
-                          targetEntityId: (rHitChar as PlacedCharacter).characterId, targetIsEnemy: false,
-                          damage: proj.attackData.damage,
-                        });
-                        if (!canPierce) { shouldRemove = true; break; }
-                      }
-                    }
-                    if (rDist === reflRange) shouldRemove = true;
-                  }
-                  proj.x = proj.startX + rDx * rFinalDist;
-                  proj.y = proj.startY + rDy * rFinalDist;
-                  proj.logicalTileIndex = rFinalDist;
-                }
+                shouldRemove = resolveReflectedPathHeadless(proj, gameState, canPierce) || shouldRemove;
                 break;
               }
               recordEnemyHit(proj, hitEnemy as PlacedEnemy, gameState.puzzle.enemies);
@@ -3549,57 +3566,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
                   reflectAtTileIndex: proj.reflectAtTileIndex,
                   combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
                 });
-                // Resolve reflected path in headless mode (replaces resolveReflectedPath which uses 'visual' mode)
-                {
-                  const { dx: rDx, dy: rDy } = getDirectionOffset(proj.direction);
-                  const reflRange = proj.attackData.range ?? 5;
-                  const { targetsEnemies: rTE, targetsCharacters: rTC } = getEffectiveTeams(proj);
-                  let rFinalDist = 0;
-                  for (let rDist = 1; rDist <= reflRange; rDist++) {
-                    const rx = Math.floor(proj.startX + rDx * rDist);
-                    const ry = Math.floor(proj.startY + rDy * rDist);
-                    if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
-                      rFinalDist = rDist - 1;
-                      shouldRemove = true;
-                      break;
-                    }
-                    const rTile = gameState.puzzle.tiles[ry]?.[rx];
-                    if (!rTile || rTile.type === TileTypeEnum.WALL) {
-                      recordProjectileEvent(gameState, { type: 'wall_hit', projId: proj.id, x: rx, y: ry });
-                      rFinalDist = rDist;
-                      shouldRemove = true;
-                      break;
-                    }
-                    rFinalDist = rDist;
-                    if (rTE) {
-                      const rHitEnemy = findEntityAtTile(rx, ry, gameState, proj, true, true);
-                      if (rHitEnemy) {
-                        applyEntityHit(rHitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
-                        recordProjectileEvent(gameState, {
-                          type: 'hit', projId: proj.id, x: rx, y: ry,
-                          targetEntityId: (rHitEnemy as PlacedEnemy).enemyId, targetIsEnemy: true,
-                          damage: proj.attackData.damage,
-                        });
-                        if (!canPierce) { shouldRemove = true; break; }
-                      }
-                    } else if (rTC) {
-                      const rHitChar = findEntityAtTile(rx, ry, gameState, proj, false, true);
-                      if (rHitChar) {
-                        applyEntityHit(rHitChar as PlacedCharacter, false, proj, gameState, 'headless');
-                        recordProjectileEvent(gameState, {
-                          type: 'hit', projId: proj.id, x: rx, y: ry,
-                          targetEntityId: (rHitChar as PlacedCharacter).characterId, targetIsEnemy: false,
-                          damage: proj.attackData.damage,
-                        });
-                        if (!canPierce) { shouldRemove = true; break; }
-                      }
-                    }
-                    if (rDist === reflRange) shouldRemove = true;
-                  }
-                  proj.x = proj.startX + rDx * rFinalDist;
-                  proj.y = proj.startY + rDy * rFinalDist;
-                  proj.logicalTileIndex = rFinalDist;
-                }
+                shouldRemove = resolveReflectedPathHeadless(proj, gameState, canPierce) || shouldRemove;
                 break;
               }
               hitEntityIds.push((hitChar as PlacedCharacter).characterId);
