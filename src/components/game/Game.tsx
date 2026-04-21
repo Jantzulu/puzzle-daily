@@ -1173,18 +1173,18 @@ export const Game: React.FC = () => {
 
       // If this is the end turn, set hitResult so the visual system knows when to stop
       if (life.end && turnIndex === life.endTurn) {
+        // hitTileIndex: use recorded value, or compute from tilePath (last tile before or at hit position)
+        let hitIdx = life.end.hitTileIndex;
+        if (hitIdx === undefined && proj.tilePath && proj.tilePath.length > 0) {
+          const hitX = Math.floor(life.end.x);
+          const hitY = Math.floor(life.end.y);
+          hitIdx = proj.tilePath.findIndex(t => t.x === hitX && t.y === hitY);
+          if (hitIdx === -1) hitIdx = proj.tilePath.length - 1;
+        }
+        const resolvedHitIdx = hitIdx ?? (proj.tilePath ? proj.tilePath.length - 1 : 0);
         if (life.end.type === 'hit') {
-          // hitTileIndex: use recorded value, or compute from tilePath (last tile before or at hit position)
-          let hitIdx = life.end.hitTileIndex;
-          if (hitIdx === undefined && proj.tilePath && proj.tilePath.length > 0) {
-            // Find the tile in the path closest to the hit position
-            const hitX = Math.floor(life.end.x);
-            const hitY = Math.floor(life.end.y);
-            hitIdx = proj.tilePath.findIndex(t => t.x === hitX && t.y === hitY);
-            if (hitIdx === -1) hitIdx = proj.tilePath.length - 1;
-          }
           proj.hitResult = {
-            hitTileIndex: hitIdx ?? (proj.tilePath ? proj.tilePath.length - 1 : 0),
+            hitTileIndex: resolvedHitIdx,
             deactivate: true,
             vfxSprite: life.end.hitVfxSprite,
             vfxX: life.end.x,
@@ -1195,7 +1195,7 @@ export const Game: React.FC = () => {
           // deactivate at end of tilePath). Unified with the hit path above
           // so the visual loop only has one "logic done" signal to consume.
           proj.hitResult = {
-            hitTileIndex: hitIdx ?? (proj.tilePath ? proj.tilePath.length - 1 : 0),
+            hitTileIndex: resolvedHitIdx,
             deactivate: true,
           };
         }
