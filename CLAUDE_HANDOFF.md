@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 17, 2026
+Last Updated: April 20, 2026
 
 ## Project Overview
 
@@ -49,13 +49,23 @@ The projectile system was extensively refactored for determinism. Here is how it
 - Homing straight-line projectiles use `homingVisualStartX/Y/Time` for smooth interpolation from spawn to target, independent of `resolveProjectiles`.
 - Reflected projectiles use a combined approach+reflect `tilePath` with `reflectAtTileIndex` for tint switching. `reflectProjectile()` clears `homingVisualStartX/Y/Time` so reflected projectiles use tile-by-tile animation.
 - `visualTileIndex` is calculated from time (`elapsed / tileTransitTime`), NOT from a stored `currentTileIndex`. This avoids deep-copy mutation issues.
-- `pendingDeactivation` flag replaces `active = false` for end-of-range, letting the visual system control deactivation timing.
+- `hitResult` is the unified "logic done, waiting for visual" signal — whether a hit landed, a throw/place item landed, or the projectile simply ran out of range / hit a wall. The pre-Phase-D `pendingDeactivation` flag is gone; range-exhaustion sets a minimal `hitResult = { hitTileIndex: end, deactivate: true }` with no VFX/death fields.
 - `pendingProjectileDeath` defers entity death until the projectile visual arrives. `visualHealth` defers HP bar changes similarly.
+- `resolveProjectiles` and `updateProjectilesHeadless` share the same underlying collision walkers (`walkNonHomingTick`, `walkReflectedPath`, `walkReflectedPathOnTiles`, `walkHomingReflectedPath` via homing-style tiles). Each emits a step log (travel / wall / hit / reflect); each mode's wrapper translates steps to bridge-field writes (real) or timeline events (headless). Drift between solver and live game is now structurally impossible in these paths — Phase E's goal.
+- Pierce dedup for enemies tracks by **array index** (`hitEnemyIndices`), not enemyId string — required because real puzzles commonly place multiple instances of the same enemy type.
+- Reflected homing bolts route back to the caster using the projectile's **own homing path style** (straight/grid via `getTilesAlongLine`, pathfinding via `findPathBFS`). The reflected-leg walk uses the shared `walkReflectedPathOnTiles` helper with a precomputed tile path. Reflected hits override the normal `isHostileHit` check — reflected projectiles are always hostile (reflect only fires on damage spells).
 
-**Known issues / pending work:**
+**Known issues / pending work (post April 20, 2026 session):**
 - Slow homing projectiles (speed 1-2) have visual issues - they do not smoothly track moving targets. The straight-line interpolation was designed for fast projectiles. Attempts to fix (per-frame following, cumulative distance) broke fast projectiles. The slow homing fix needs a separate visual path that does not affect fast projectiles.
 - Replays show projectiles via an event timeline system (`projectileTimeline` in Game.tsx). Events are recorded during headless replay generation. `buildReplayProjectiles()` reconstructs projectile visuals from events. Step-by-step replay works with animation + freeze. Some edge cases remain with slow projectiles in replays.
-- The projectile system has technical debt: multiple overlapping flags (`pendingDeactivation`, `pendingProjectileDeath`, `hitResult`, `visualHealth`), duplicated collision logic between `resolveProjectiles` and `updateProjectilesHeadless`, and the visual system still mutates `proj.x/y` and `proj.currentTileIndex` on game state objects (deep copy captures these).
+- **Wall bouncing (`bounceOffWalls`) was never actually implemented** — fields configured in spell editor, copied to Projectile, but no collision code consumes them. See spawn task.
+- **Homing trigger range + disappearing visuals bug** — triggers with range > spell range still fire; projectile visuals disappear mid-flight. See spawn task.
+- Projectile system still has remaining technical debt, but substantially reduced vs pre-April-20:
+  - ✅ `pendingDeactivation` unified with `hitResult` (Phase D-a, commit `4f9076d`).
+  - ✅ Collision logic deduplicated between `resolveProjectiles` and `updateProjectilesHeadless` via shared `walkNonHomingTick` / `walkReflectedPath` / `walkReflectedPathOnTiles` helpers (Phase E1/E2/E3, commits `0c88664`/`26fabcb`/`8ece3e5`).
+  - ✅ `visualPastReflectPoint` moved to AnimatedGameBoard's visual-state side-table (Phase C-1, commit `48f8549`).
+  - ⏳ Remaining visual fields still on Projectile: `x`, `y`, `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time`. Phase C-2 and C-3 below.
+  - ⏳ Entity-owned deferred-visual pair (`pendingProjectileDeath` + `visualHealth` on PlacedCharacter/PlacedEnemy) still split across the entity objects. Phase D-b below.
 
 ### Reflect Status Effect
 
@@ -165,46 +175,123 @@ The Reflect status effect bounces incoming projectiles back:
 
 ## Pending Tasks
 
-### Tracked refactors (see docs/ for detailed plans)
+### Next session — start here
 
-1. **Projectile system refactor — Phases C, D, E** (pending; C attempt reverted 2026-04-19).
-   Plan: [docs/projectile-refactor-plan.md](docs/projectile-refactor-plan.md).
-   Phases A (ProjectileVisualState type introduced, commit `45fdf9d`) and B (movement branch extraction, commit `af55a53`) shipped April 2026.
+1. **Phase C-2: migrate `proj.x` and `proj.y` to the visual-state side-table.** The biggest remaining Phase C slice. See the **Phase C progress** section below for exact context (attempt 1 was reverted, attempt 2's Phase C-1 shipped 2026-04-20).
 
-   **Phase C attempt 1 (2026-04-19) — reverted.** The plan doc specifies: *"Add a non-serialized `Map<string, ProjectileVisualState>` to `AnimatedGameBoard` component state (or to a ref — not to `GameState`)."* The attempt deviated from this. Instead of a component-scoped ref, it used a **module-level singleton map** — motivated by wanting to avoid prop-drilling through simulation.ts, actions.ts, Game.tsx, and AnimatedGameBoard (visual fields are written in 5 places).
+   **What's already set up (Phase C-1, commit `48f8549`):**
+   - `AnimatedGameBoard.tsx` has a `projectileVisualStateRef = useRef<Map<string, ProjectileVisualState>>(new Map())`.
+   - `updateProjectiles(gameState, visualState)` accepts the map and deletes entries for projectiles removed this frame.
+   - Visual-update helpers (`updateStraightLineHomingVisual`, `updateGridHomingVisual`, `updateTileBasedVisual`, `updateLegacyNoPathVisual`) return `ProjectileMovementResult` with optional `pastReflectPoint: boolean`; the caller writes that into the map.
+   - Pattern is proven end-to-end — the `visualPastReflectPoint` field is completely off Projectile, goldens unchanged.
 
-   That deviation was the root problem. The singleton's lack of ownership boundaries caused:
-   - `initializeGameState` had no natural way to know "is this a new puzzle or a mid-game reset?" — it called `resetAllVisualStates()` which wiped the global map. With 20+ call sites (game load, reset, retry, solver, replay, editor test modes, victory/defeat handlers), some fired mid-turn and killed live projectiles' visual-state entries. Projectiles then rendered at the default `(0, 0)` after a synthetic `setVisualState` call in the per-frame sync step.
-   - The replay system creates projectiles outside the normal spawn path; those bypassed `initVisualState` and hit a required-field assertion that crashed the app.
-   - The per-frame "sync struct → map" scaffolding added for the migration couldn't cleanly distinguish "logical position after resolveProjectiles" from "visual interpolation value," so I had to keep teasing apart which fields to sync. Each fix moved the bug.
-   - The straight-line anchor-reset logic (separate bug, latent pre-Phase-C) snapped visuals near the target on each turn boundary. Discovered via the diag tooling I added for Phase C. A per-frame seek fix for that was shipped mid-Phase-C but got reverted with the rest.
+   **What to do for C-2:**
+   - Survey all reads of `proj.x` / `proj.y` across `src/engine/simulation.ts`, `src/engine/actions.ts` (spawn only), `src/components/game/Game.tsx`, and `src/components/game/AnimatedGameBoard.tsx`. **This is the key step.** Each read is either:
+     - **Logical** — code that wants the projectile's current LOGICAL tile position (e.g. turn-boundary collision checks). These must switch to computing position from `proj.startX/startY + direction * logicalTileIndex` (already what some code does) or from the `tilePath[logicalTileIndex]`. **This is the bug class Phase C exists to fix — the old code sometimes read the mutating visual `x/y` when it wanted logical position.** Be ruthless here.
+     - **Visual** — code that wants the interpolated position (rendering, VFX spawn points, homing distance checks). These read from the side-table.
+   - Write sites: the four visual-update helpers currently `return { newX, newY, ... }` and the caller does `proj.x = newX; proj.y = newY;`. Replace with `visualState.set(proj.id, { ...existing, x: newX, y: newY })`.
+   - Remove `x`/`y` from the `Projectile` type. They live only in `ProjectileVisualState` (already declared in `types/game.ts`).
+   - `reflectProjectile` writes `proj.x = reflector.x; proj.y = reflector.y;` (line ~312). That's a logical position reset (the logical origin for the reflected leg), so it's fine as-is — or migrate to writing both logical and visual origins separately for clarity.
+   - **Corpus is the safety net.** `npm test` must stay green at 235 passing throughout. Any golden change = stop and investigate.
 
-   **Learnings — for attempt 2 and future refactors:**
-   - **The plan's "map inside AnimatedGameBoard" choice had a real reason.** React component lifecycle gives the side-table natural ownership boundaries: one board instance = one map, unmount clears it, no cross-game bleed. The singleton workaround *looked* simpler (no prop-drilling) but cost more than it saved. **Don't deviate from the plan's architectural choices without strong evidence they're wrong; "avoids some prop-drilling" is weak evidence.**
-   - **Mid-turn resets are a real threat.** Anything that lives outside `GameState` needs to survive `initializeGameState` being called from 20+ code paths, some reentrantly. The React-scoped ref dodges this entirely.
-   - **Build the golden-test corpus first** (plan §4 Phase E precondition). This was explicitly on the plan; skipping it meant regressions were caught by play-testing, which is slow and non-deterministic. Synthetic corpus is fine — the goal is locking in current deterministic logical behavior.
+   **What to beware of (this is the refactor that got reverted in attempt 1):**
+   - **Don't deviate from the ref-based architecture.** Attempt 1 used a module-level singleton and it was the root of the revert. The retro below explains why.
+   - **Mid-turn resets:** `initializeGameState` is called from 20+ places. The React-scoped ref is already the right container (unmount clears it). Don't add any "reset visual state" code in simulation.ts.
+   - **Deep copies:** `setGameState(prev => JSON.parse(JSON.stringify(prev)))` captures everything on Projectile. Once `x`/`y` are off, the deep copy can't capture stale visual coordinates — that's the whole win. If any logical code still reads them post-migration, you'll see a TS error (good).
+   - **Replay reconstruction** (`Game.tsx:buildReplayProjectiles` area) builds Projectile objects from timeline events. It currently sets `proj.x/y` when creating these; after C-2 that would move to seeding the visual map too. Check this path.
 
-   **Concrete starting points for attempt 2:**
-   - Use `useRef<Map<string, ProjectileVisualState>>(new Map())` inside `AnimatedGameBoard`. Accept the prop-drilling (or pass the ref-current down through the visual helpers as a parameter).
-   - Logic-to-visual signals (`reflectProjectile` resets, retarget anchor clears) should be **return values or explicit event objects from `resolveProjectiles`**, not writes into the side-table. That keeps the side-table visual-only.
-   - **Straight-line homing fix is a separate, low-risk visual-only change.** The fix (per-frame seek: visual reads current position, steps `speed * dt` toward target each frame) is independent of the side-table refactor. Can ship it on its own before Phase C attempt 2 if desired.
+   **Estimate:** 1 focused session. Probably ~30–50 callsite edits plus the structural signature changes.
 
-   - **Phase D**: collapse the 6 overlapping deferred-state flags (`pendingDeactivation`, `pendingProjectileDeath`, `hitResult`, `visualHealth`, `pendingReflectVfx`, `visualPastReflectPoint`) into a coherent state machine. Scoped variant: consolidate just the reflect triad (`reflectAtTileIndex`, `pendingReflectVfx`, `visualPastReflectPoint`) as a ~20-callsite mini-D if full D is too big.
-   - **Phase E** (highest determinism value): de-duplicate `updateProjectilesHeadless` (solver) and `resolveProjectiles` (real game) collision logic into a shared helper. Prevents solver/game drift. Requires a golden-test corpus of saved puzzles first.
+2. **Phase C-3: migrate remaining visual anchors.** After x/y, also move `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time` off Projectile via the same pattern. Each is smaller than x/y. Can land as one commit or three small ones.
 
-2. ~~**`puzzleGenerator.ts` Math.random audit**~~ — **Done 2026-04-17**. Re-verified: only `GeneratorDialog.tsx` → `MapEditor.tsx` (editor-only). No runtime path. Output is persisted as a puzzle file and played deterministically. See [docs/audit-summary.md](docs/audit-summary.md) section 1. Precondition: if any future feature invokes the generator at runtime, switch to a seeded PRNG first.
+3. **Phase D-b (optional): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Consider deferring until after C-3 when the visual side of projectiles is cleaner.
 
-### One-off tasks
+### Open spawn tasks (deferred bugs / features)
 
-3. **Slow homing projectile visuals** — speed 1-2 homing spells do not visually track moving targets well. Needs a separate visual approach for slow homing that does not break fast projectile behavior. Best tackled AFTER projectile Phase C (gives a cleaner place for a new visual code path).
-4. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
-5. ~~**Sentry environment variables**~~ — **Done 2026-04-18**. `VITE_SENTRY_DSN` and `VITE_SENTRY_ENVIRONMENT` set on both Netlify sites; client at [`sentry.ts`](src/lib/sentry.ts) no-ops without DSN, so nothing to verify code-side. Redeploy each site if env vars were added after the last build (Vite injects at build time).
-6. ~~**Run `007_player_roles.sql` and `010_silent_completion_rate_limit.sql` migrations** against Supabase.~~ — **Done 2026-04-19.** Both deployed.
-7. ~~**POST error on puzzle completion**~~ — **Done 2026-04-18**. Not a schema mismatch. Root cause: the `check_completion_rate_limit` trigger from migration 005 `RAISE EXCEPTION`s on the same (player, puzzle) inserting within 10s, which fires for legitimate fast-retry players. Fix: client swallows `P0001` rate-limit errors in `submitCompletion` ([`statsService.ts:118`](src/services/statsService.ts)); migration `010_silent_completion_rate_limit.sql` converts the trigger to silently `RETURN NULL`. Migration deployed 2026-04-19.
+4. **Implement wall bouncing for LINEAR projectiles.** Feature never implemented; `bounceOffWalls`, `maxBounces`, `bounceBehavior`, `bounceTurnDegrees` are configured in the spell editor and copied to Projectile but no collision code consumes them. Corpus case `14-linear-bounce-walls` currently locks in the buggy behavior (bolt freezes at pre-wall tile) — when implemented, regenerate that golden. Implementation hook: `walkNonHomingTick` in simulation.ts. On wall hit, check `proj.bounceOffWalls && bounceCount < maxBounces`, compute new direction per `bounceBehavior`, increment `bounceCount`, reset `proj.startX/Y` to pre-wall tile, continue walk. Emit a `bounce` step in the step log so callers can build Z-shaped tilePaths (real) and record timeline events (headless). Respect `reflectProjectile`'s disable at line 255. Medium complexity.
+
+5. **Fix: homing trigger range bypasses spell range + projectile visuals disappear.** User-reported bug from 2026-04-20 session. When an entity has a trigger like "enemy in range: 8" that fires a homing spell with smaller `attackData.range` (e.g. 3), the spell still hits the enemy at distance 8 — should either gate firing or self-terminate mid-flight. Additionally, projectile sprite disappears during flight. Two distinct symptoms, same scenario. Likely culprits: range-enforcement in `resolveProjectiles` homing branch (around `remainingRange <= 0` check), trigger-fired spell spawn path possibly bypassing range validation, and the visual loop may be setting pendingDeactivation with a sprite state that doesn't render. Consider adding a corpus case to reproduce before fixing.
+
+### One-off tasks (pre-existing)
+
+6. **Slow homing projectile visuals** — speed 1-2 homing spells do not visually track moving targets well. Needs a separate visual approach for slow homing that does not break fast projectile behavior. Best tackled AFTER projectile Phase C (gives a cleaner place for a new visual code path).
+
+7. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
+
+### Done (keep for context)
+
+- ~~**`puzzleGenerator.ts` Math.random audit**~~ — **Done 2026-04-17**. Re-verified: only `GeneratorDialog.tsx` → `MapEditor.tsx` (editor-only). No runtime path. Precondition: if any future feature invokes the generator at runtime, switch to a seeded PRNG first.
+- ~~**Sentry environment variables**~~ — **Done 2026-04-18**.
+- ~~**Run `007_player_roles.sql` and `010_silent_completion_rate_limit.sql` migrations** against Supabase.~~ — **Done 2026-04-19.**
+- ~~**POST error on puzzle completion**~~ — **Done 2026-04-18**.
+- ~~**Remove legacy `ATTACK_FORWARD` / `ATTACK_RANGE` / `ATTACK_AOE` actions**~~ — **Done 2026-04-20** (commit `072e820`). All attacks now go through `ActionType.SPELL` + SpellAsset. `Character.attackDamage` / `Enemy.attackDamage` removed as they had no remaining callers.
+- ~~**Fix: pierce fails on enemies sharing enemyId**~~ — **Done 2026-04-20** (commit `024090a`). Dedup now uses array index via `hitEnemyIndices`.
+- ~~**Fix: bolt hits through wall**~~ — **Done 2026-04-20** (commit `9285021`). `lastDist` formula on wall hit corrected + `pendingDeactivation` skip prevents bolts from advancing past walls on subsequent turns.
+- ~~**Fix: game declares defeat while projectiles still in flight**~~ — **Done 2026-04-20** (commit `9285021`). `hasInFlightProjectile` check gates defeat conditions.
+- ~~**Fix: reflected homing projectile freezes / doesn't damage caster**~~ — **Done 2026-04-20** (commit `b7959f2`). Homing reflected bolts now route back to caster using homing path style; `isHostileHit` accounts for reflection.
+
+### Phase C progress (the big refactor — attempt 2 in progress)
+
+Plan: [docs/projectile-refactor-plan.md](docs/projectile-refactor-plan.md). The goal is to move all VISUAL-annotated fields off `Projectile` into a `Map<string, ProjectileVisualState>` owned by `AnimatedGameBoard` so deep copies of `GameState` can't capture visual mutations.
+
+| Phase | Status | Commit | Notes |
+|---|---|---|---|
+| A | ✅ Shipped April 2026 | `45fdf9d` | `ProjectileVisualState` type declared. |
+| B | ✅ Shipped April 2026 | `af55a53` | Movement branches extracted into helpers. |
+| **C-1** | ✅ Shipped 2026-04-20 | `48f8549` | `visualPastReflectPoint` moved to side-table. Scaffolding + pattern established. |
+| **C-2** | ⏳ Next | — | Migrate `proj.x` and `proj.y`. See "Next session — start here" above for detailed playbook. |
+| **C-3** | ⏳ Pending | — | Migrate `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time`. |
+
+**Corpus safety net:** `src/engine/__tests__/corpus/` has 21 cases × 2 modes (real + headless) = 42 goldens. Tests run in <1s. Every logical projectile behavior you might break is locked in. `npm test` is the check. `UPDATE_GOLDENS=1 npm test -- corpus` regenerates when behavior intentionally changes.
+
+**Phase C attempt 1 retro (2026-04-19) — READ THIS BEFORE ATTEMPTING C-2.**
+
+The plan doc specifies: *"Add a non-serialized `Map<string, ProjectileVisualState>` to `AnimatedGameBoard` component state (or to a ref — not to `GameState`)."* The attempt deviated from this. Instead of a component-scoped ref, it used a **module-level singleton map** — motivated by wanting to avoid prop-drilling through simulation.ts, actions.ts, Game.tsx, and AnimatedGameBoard (visual fields are written in 5 places).
+
+That deviation was the root problem. The singleton's lack of ownership boundaries caused:
+- `initializeGameState` had no natural way to know "is this a new puzzle or a mid-game reset?" — it called `resetAllVisualStates()` which wiped the global map. With 20+ call sites (game load, reset, retry, solver, replay, editor test modes, victory/defeat handlers), some fired mid-turn and killed live projectiles' visual-state entries. Projectiles then rendered at the default `(0, 0)` after a synthetic `setVisualState` call in the per-frame sync step.
+- The replay system creates projectiles outside the normal spawn path; those bypassed `initVisualState` and hit a required-field assertion that crashed the app.
+- The per-frame "sync struct → map" scaffolding added for the migration couldn't cleanly distinguish "logical position after resolveProjectiles" from "visual interpolation value," so fixes kept moving the bug.
+- The straight-line anchor-reset logic (separate bug, latent pre-Phase-C) snapped visuals near the target on each turn boundary. Discovered via diag tooling added for Phase C. Per-frame seek fix was shipped mid-attempt but got reverted with the rest.
+
+**Learnings to apply for C-2 and beyond:**
+- **The plan's "map inside AnimatedGameBoard" choice has a real reason.** React component lifecycle gives the side-table natural ownership boundaries: one board instance = one map, unmount clears it, no cross-game bleed. **Don't deviate from the plan's architectural choices without strong evidence they're wrong; "avoids some prop-drilling" is weak evidence.** Phase C-1 accepted the prop-drilling — pass `projectileVisualStateRef.current` into `getHomingTargetGlow`, `drawProjectile`, and `updateProjectiles`. Same pattern for C-2.
+- **Mid-turn resets are a real threat.** Anything outside `GameState` needs to survive `initializeGameState` being called from 20+ code paths, some reentrantly. The React-scoped ref dodges this entirely. **Don't add "reset visual state" code in simulation.ts** — the ref's lifecycle is owned by the component.
+- **Corpus first.** Attempt 1 didn't have it; attempt 2 (in progress) does. Every C-2 step: run `npm test`, expect 235 passing with 42 goldens unchanged. Pure refactors shouldn't change any golden.
+- **Logic-to-visual signals flow as return values.** The visual helpers return `ProjectileMovementResult` which now includes `pastReflectPoint?: boolean`. For C-2, the helpers already return `newX, newY` — that's the signal. The caller writes to the map. Simulation code does NOT write to the map directly.
+- **Straight-line homing fix is a separate, low-risk visual-only change.** Can ship independently. Low priority.
 
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 20, 2026 session — big one)
+
+Fourteen commits. Phase E landed complete, Phase D started, Phase C attempt 2 kicked off (C-1 done), five real bug fixes, one legacy-code removal. Tests: 235 passing throughout, 42 corpus goldens locked in, no unit-test regressions.
+
+**Test infrastructure (previous session, landed this window):**
+- Golden-test corpus shipped (commit `961bca1`). `src/engine/__tests__/corpus/` with 21 cases exercising every projectile path — LINEAR fast/slow, three homing path styles, reflect × homing variants, pierce (same + distinct enemyIds), bounce, two-heroes simultaneous cast. 42 goldens (real + headless per case).
+
+**Bug fixes:**
+- `Refactor: remove legacy ATTACK_FORWARD / ATTACK_RANGE / ATTACK_AOE actions` (commit `072e820`). All attacks go through the spell system now. `Character.attackDamage` and `Enemy.attackDamage` fields removed; `archer.json` deleted (only consumer). ~188 lines removed.
+- `Fix: pierce now hits all enemies sharing an enemyId` (commit `024090a`). Dedup switched to array-index via `hitEnemyIndices` (field existed for this case but wasn't populated). Affects real-world puzzles since same-id enemy stacks are common. Fifteen corpus goldens updated to reflect the new tracking format.
+- `Fix: projectile wall-stop + don't defeat while bolts are in flight` (commit `9285021`). Two bugs, one commit. `logicalTileIndex` no longer advances past the wall tile on wall hits; defeat check gates on `hasInFlightProjectile` so slow bolts fired on last-active turn can still land.
+- `Fix: reflected homing projectile tracks back to and damages caster` (commit `b7959f2`). Two sub-bugs: reflected straight-line walk went wrong direction for homing (now uses homing path style), and `isHostileHit` misclassified reflected hits as heals (now ORs `proj.reflected`). Real and headless produce byte-identical final state for these cases — **beyond** Phase E's outcome-parity target.
+
+**Phase E (complete):**
+- `Refactor (Phase E1): extract resolveReflectedPathHeadless helper` (commit `0c88664`). Intra-function dedup — two identical ~50-line inline blocks in `updateProjectilesHeadless` extracted.
+- `Refactor (Phase E2): merge reflect-path walk between real and headless` (commit `26fabcb`). `walkReflectedPath` + thin wrappers `resolveReflectedPath` (real) and `resolveReflectedPathHeadless` (headless). Step-log pattern introduced: helper emits travel/wall/hit steps; each mode's wrapper translates.
+- `Refactor (Phase E3): merge non-homing tile loop between real and headless` (commit `8ece3e5`). Biggest slice. `walkNonHomingTick` is now the shared walker; both functions are thin step-log consumers. Drift between solver and live game is structurally impossible in these paths.
+
+**Phase D:**
+- `Refactor (Phase D-a): fold pendingDeactivation into hitResult` (commit `4f9076d`). Two bridge flags unified into one. All range-end deactivations now go through `hitResult = { hitTileIndex, deactivate: true }`. Pure refactor, 0 golden changes.
+
+**Phase C attempt 2 (in progress — see Phase C progress section):**
+- `Refactor (Phase C-1): migrate visualPastReflectPoint to side-table` (commit `48f8549`). First field migrated off Projectile. Pattern established: `useRef<Map>` in AnimatedGameBoard, helpers signal via return values, callers write to map, rendering reads from map. C-2 (x/y) and C-3 (anchors) follow the same pattern.
+
+**Open follow-up spawn tasks** (chips still available in spawn-task list):
+- Implement wall bouncing feature (never implemented, not a bug)
+- Fix homing-trigger-range + disappearing projectile visuals (user-reported mid-session)
 
 ### Recently completed (April 19, 2026 session)
 
