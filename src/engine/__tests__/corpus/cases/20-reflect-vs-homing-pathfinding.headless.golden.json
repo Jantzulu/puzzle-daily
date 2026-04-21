@@ -119,7 +119,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 2
@@ -159,7 +159,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 3
@@ -199,7 +199,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 4
@@ -239,7 +239,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 5
@@ -269,7 +269,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": false,
         "actionIndex": 5

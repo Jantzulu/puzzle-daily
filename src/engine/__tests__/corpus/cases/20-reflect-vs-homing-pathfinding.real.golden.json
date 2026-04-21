@@ -49,7 +49,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 1
@@ -122,14 +122,24 @@
           },
           {
             "x": 3,
-            "y": 0
+            "y": 1
           },
           {
             "x": 2,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 0,
             "y": 0
           }
         ],
-        "hitEntityIds": [],
+        "hitEntityIds": [
+          "hero-caster"
+        ],
         "hitEnemyIndices": [
           0
         ],
@@ -149,7 +159,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 2
@@ -222,14 +232,24 @@
           },
           {
             "x": 3,
-            "y": 0
+            "y": 1
           },
           {
             "x": 2,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 0,
             "y": 0
           }
         ],
-        "hitEntityIds": [],
+        "hitEntityIds": [
+          "hero-caster"
+        ],
         "hitEnemyIndices": [
           0
         ],
@@ -249,7 +269,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 3
@@ -322,14 +342,24 @@
           },
           {
             "x": 3,
-            "y": 0
+            "y": 1
           },
           {
             "x": 2,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 0,
             "y": 0
           }
         ],
-        "hitEntityIds": [],
+        "hitEntityIds": [
+          "hero-caster"
+        ],
         "hitEnemyIndices": [
           0
         ],
@@ -349,7 +379,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 4
@@ -422,14 +452,24 @@
           },
           {
             "x": 3,
-            "y": 0
+            "y": 1
           },
           {
             "x": 2,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 0,
             "y": 0
           }
         ],
-        "hitEntityIds": [],
+        "hitEntityIds": [
+          "hero-caster"
+        ],
         "hitEnemyIndices": [
           0
         ],
@@ -449,7 +489,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": true,
         "actionIndex": 5
@@ -512,14 +552,24 @@
           },
           {
             "x": 3,
-            "y": 0
+            "y": 1
           },
           {
             "x": 2,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 0,
             "y": 0
           }
         ],
-        "hitEntityIds": [],
+        "hitEntityIds": [
+          "hero-caster"
+        ],
         "hitEnemyIndices": [
           0
         ],
@@ -539,7 +589,7 @@
         "x": 0,
         "y": 0,
         "facing": "east",
-        "currentHealth": 10,
+        "currentHealth": 7,
         "dead": false,
         "active": false,
         "actionIndex": 5
@@ -602,14 +652,24 @@
           },
           {
             "x": 3,
-            "y": 0
+            "y": 1
           },
           {
             "x": 2,
+            "y": 2
+          },
+          {
+            "x": 1,
+            "y": 1
+          },
+          {
+            "x": 0,
             "y": 0
           }
         ],
-        "hitEntityIds": [],
+        "hitEntityIds": [
+          "hero-caster"
+        ],
         "hitEnemyIndices": [
           0
         ],

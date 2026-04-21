@@ -2790,8 +2790,31 @@ type ReflectedStep =
 function walkReflectedPath(
   proj: Projectile, gameState: GameState, canPierce: boolean, mode: HitMode,
 ): { steps: ReflectedStep[]; lastDist: number; reflectedHit: boolean; stoppedAtRangeEnd: boolean } {
+  // Straight-line reflected flight (non-homing reflect). Compute tiles along
+  // the projectile's current direction for its full range, then delegate the
+  // per-tile collision work to walkReflectedPathOnTiles.
   const { dx, dy } = getDirectionOffset(proj.direction);
   const range = proj.attackData.range ?? 5;
+  const tiles: Array<{ x: number; y: number }> = [];
+  for (let rDist = 1; rDist <= range; rDist++) {
+    tiles.push({ x: Math.floor(proj.startX + dx * rDist), y: Math.floor(proj.startY + dy * rDist) });
+  }
+  return walkReflectedPathOnTiles(proj, tiles, gameState, canPierce, mode);
+}
+
+/**
+ * Pure-logic walk along an arbitrary precomputed tile path (used by both
+ * straight-line reflected flight via walkReflectedPath and homing reflected
+ * flight where the reflected trajectory routes toward the original caster).
+ *
+ * Emits `travel`, `wall`, and `hit` steps exactly like walkReflectedPath does
+ * so the same mode-wrappers (resolveReflectedPath / resolveReflectedPathHeadless)
+ * can consume the log without caring how the tiles were computed.
+ */
+function walkReflectedPathOnTiles(
+  proj: Projectile, tiles: Array<{ x: number; y: number }>,
+  gameState: GameState, canPierce: boolean, mode: HitMode,
+): { steps: ReflectedStep[]; lastDist: number; reflectedHit: boolean; stoppedAtRangeEnd: boolean } {
   const { targetsEnemies } = getEffectiveTeams(proj);
   const isHealingProjectile = proj.attackData.healing !== undefined;
 
@@ -2800,22 +2823,22 @@ function walkReflectedPath(
   let reflectedHit = false;
   let stoppedAtRangeEnd = false;
 
-  for (let rDist = 1; rDist <= range; rDist++) {
-    const rx = Math.floor(proj.startX + dx * rDist);
-    const ry = Math.floor(proj.startY + dy * rDist);
+  for (let i = 0; i < tiles.length; i++) {
+    const dist = i + 1;
+    const { x: rx, y: ry } = tiles[i];
 
     if (!isInBounds(rx, ry, gameState.puzzle.width, gameState.puzzle.height)) {
-      lastDist = rDist - 1;
+      lastDist = dist - 1;
       break;
     }
     const rTile = gameState.puzzle.tiles[ry]?.[rx];
     if (!rTile || rTile.type === TileTypeEnum.WALL) {
-      steps.push({ type: 'wall', x: rx, y: ry, dist: rDist });
-      lastDist = rDist;
+      steps.push({ type: 'wall', x: rx, y: ry, dist });
+      lastDist = dist;
       break;
     }
-    steps.push({ type: 'travel', x: rx, y: ry, dist: rDist });
-    lastDist = rDist;
+    steps.push({ type: 'travel', x: rx, y: ry, dist });
+    lastDist = dist;
 
     if (!isHealingProjectile) {
       const hitTarget = findEntityAtTile(rx, ry, gameState, proj, targetsEnemies, true);
@@ -2831,13 +2854,13 @@ function walkReflectedPath(
         const hitResult = applyEntityHit(hitTarget, targetIsEnemy, proj, gameState, mode);
         // reflected won't happen here (proj is already reflected)
 
-        steps.push({ type: 'hit', x: rx, y: ry, dist: rDist, target: hitTarget, targetIsEnemy, hitResult });
+        steps.push({ type: 'hit', x: rx, y: ry, dist, target: hitTarget, targetIsEnemy, hitResult });
         reflectedHit = true;
         if (!canPierce) break;
       }
     }
 
-    if (rDist === range) stoppedAtRangeEnd = true;
+    if (i === tiles.length - 1) stoppedAtRangeEnd = true;
   }
 
   return { steps, lastDist, reflectedHit, stoppedAtRangeEnd };
@@ -3086,7 +3109,12 @@ function resolveProjectiles(gameState: GameState): void {
           let deferredDeathIsEnemy: boolean | undefined;
           let deferredDeathIndex: number | undefined;
 
-          const isHostileHit = (proj.sourceCharacterId && proj.targetIsEnemy) ||
+          // Reflected projectiles are always treated as hostile hits — the
+          // reflector bounced a damage-only bolt back and targetIsEnemy was
+          // flipped to point at the ORIGINAL caster's team. Without this
+          // override, the flipped flag makes the check misclassify the hit as
+          // a heal on an ally (see Task 5 retro).
+          const isHostileHit = proj.reflected || (proj.sourceCharacterId && proj.targetIsEnemy) ||
                                (proj.sourceEnemyId && !proj.targetIsEnemy);
 
           if (isHostileHit) {
@@ -3100,15 +3128,51 @@ function resolveProjectiles(gameState: GameState): void {
               targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
               proj, gameState, 'visual');
             if (hitResult.reflected) {
-              // Build visual path: approach to reflector + reflected path back
+              // Build visual path: approach to reflector + reflected path back.
+              // The reflected leg uses the SAME homing path style as the approach
+              // (straight/grid → line, pathfinding → BFS) so the bolt routes
+              // back to the caster instead of flying straight off into the void.
               const approachStartX = preReflectStartX;
               const approachStartY = preReflectStartY;
               const approachTiles = proj.homingPathStyle === 'pathfinding'
                 ? findPathBFS(approachStartX, approachStartY, hitX, hitY, gameState)
                 : getTilesAlongLine(approachStartX, approachStartY, hitX, hitY);
 
-              const { reflectedTiles, reflectedHit } = resolveReflectedPath(
-                proj, approachTiles, gameState, !!proj.attackData.projectilePierces);
+              // reflectProjectile set proj.startX/Y to the reflector and
+              // proj.targetX/Y to the caster; compute the reflected leg along
+              // that new homing trajectory.
+              const reflectorX = proj.startX;
+              const reflectorY = proj.startY;
+              const casterX = proj.targetX;
+              const casterY = proj.targetY;
+              let reflectedInputTiles = proj.homingPathStyle === 'pathfinding'
+                ? findPathBFS(reflectorX, reflectorY, casterX, casterY, gameState)
+                : getTilesAlongLine(reflectorX, reflectorY, casterX, casterY);
+              // Drop the reflector tile — it was already the end of approachTiles.
+              if (reflectedInputTiles[0]?.x === reflectorX && reflectedInputTiles[0]?.y === reflectorY) {
+                reflectedInputTiles = reflectedInputTiles.slice(1);
+              }
+
+              const walk = walkReflectedPathOnTiles(
+                proj, reflectedInputTiles, gameState, !!proj.attackData.projectilePierces, 'visual');
+              const reflectedTiles: Array<{ x: number; y: number }> = [];
+              for (const step of walk.steps) {
+                if (step.type === 'travel' || step.type === 'wall') {
+                  reflectedTiles.push({ x: step.x, y: step.y });
+                } else if (step.type === 'hit') {
+                  const combinedSoFar = [...approachTiles, ...reflectedTiles];
+                  proj.hitResult = {
+                    hitTileIndex: combinedSoFar.length - 1,
+                    deactivate: true,
+                    vfxSprite: proj.attackData.hitEffectSprite,
+                    vfxX: step.target.x, vfxY: step.target.y,
+                    deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
+                    deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
+                    deferredDeathIndex: step.hitResult.deferredDeathIndex,
+                  };
+                }
+              }
+              const reflectedHit = walk.reflectedHit;
 
               const combinedPath = [...approachTiles, ...reflectedTiles];
               proj.tilePath = combinedPath;
@@ -3437,7 +3501,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance <= tilesPerTurn) {
-          const isHostileHit = (proj.sourceCharacterId && proj.targetIsEnemy) ||
+          // Reflected projectiles always count as hostile — the reflect flipped
+          // targetIsEnemy but the bolt is still damage-only. Without the override
+          // the solver misclassifies reflected hits as heals (mirror of the fix
+          // in resolveProjectiles' homing branch above).
+          const isHostileHit = proj.reflected || (proj.sourceCharacterId && proj.targetIsEnemy) ||
                                (proj.sourceEnemyId && !proj.targetIsEnemy);
 
           if (isHostileHit) {
