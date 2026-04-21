@@ -3114,10 +3114,19 @@ function resolveProjectiles(gameState: GameState): void {
         const dy = targetEntity.y - proj.logicalY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        // Range check — homing projectiles should respect their range
+        // Range check — homing projectiles should respect their range.
+        // Measure from the LOGICAL spawn anchor (proj.startX/Y), not the
+        // visual anchor (homingVisualStartX/Y). The straight-line homing
+        // branch below re-anchors the visual fields to the current position
+        // each turn as a slow-projectile interpolation tweak — using the
+        // visual anchor here made totalDistanceTraveled always ~0, so the
+        // range gate never fired and bolts with short spell range could hit
+        // targets far outside their reach. proj.startX/Y is stable across
+        // turns (only rewritten by reflectProjectile, which intentionally
+        // restarts the range budget from the reflector's position).
         const totalDistanceTraveled = Math.sqrt(
-          Math.pow(proj.logicalX - (proj.homingVisualStartX ?? proj.startX), 2) +
-          Math.pow(proj.logicalY - (proj.homingVisualStartY ?? proj.startY), 2)
+          Math.pow(proj.logicalX - proj.startX, 2) +
+          Math.pow(proj.logicalY - proj.startY, 2)
         );
         const remainingRange = Math.max(0, range - totalDistanceTraveled);
         if (remainingRange <= 0) {

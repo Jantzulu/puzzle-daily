@@ -52,6 +52,7 @@ import { linearPierceDistinctIdsCase } from './corpus/cases/18-linear-pierce-dis
 import { reflectVsHomingGridCase } from './corpus/cases/19-reflect-vs-homing-grid';
 import { reflectVsHomingPathfindingCase } from './corpus/cases/20-reflect-vs-homing-pathfinding';
 import { twoHeroesSimultaneousCastCase } from './corpus/cases/21-two-heroes-simultaneous-cast';
+import { homingStraightRangeShortCase } from './corpus/cases/22-homing-straight-range-short';
 
 const CASES: CorpusCase[] = [
   meleeAttackCase,
@@ -75,6 +76,7 @@ const CASES: CorpusCase[] = [
   reflectVsHomingGridCase,
   reflectVsHomingPathfindingCase,
   twoHeroesSimultaneousCastCase,
+  homingStraightRangeShortCase,
 ];
 
 const CASES_DIR = path.resolve(__dirname, 'corpus', 'cases');
