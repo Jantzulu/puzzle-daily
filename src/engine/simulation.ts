@@ -2700,7 +2700,18 @@ type NonHomingStep =
   | { kind: 'travel'; x: number; y: number; dist: number }
   | { kind: 'hostile_hit'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean; hitResult: EntityHitResult; pierceStop: boolean }
   | { kind: 'healing_hit'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean; vfxSprite: any; pierceStop: boolean }
-  | { kind: 'reflect'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean };
+  | { kind: 'reflect'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean }
+  /**
+   * Wall bounce (restored 2026-04-20, previously dropped in the March
+   * deterministic refactor). `atX/Y` is the pre-wall tile the bolt is
+   * bouncing FROM (last valid traversed tile). `wallX/Y` is the wall that
+   * was blocked — the bolt does NOT enter this tile. `newDirection` is the
+   * post-bounce direction. The walker has already mutated
+   * `proj.direction` / `proj.startX/Y` / `proj.logicalTileIndex = 0` /
+   * `proj.bounceCount++` before emitting this step; callers just need
+   * to record / visualize it.
+   */
+  | { kind: 'bounce'; atX: number; atY: number; wallX: number; wallY: number; newDirection: Direction };
 
 interface NonHomingWalkResult {
   steps: NonHomingStep[];
@@ -2709,6 +2720,93 @@ interface NonHomingWalkResult {
   endedAtBounds: boolean;
   endedAtReflect: boolean;
   endedAtPierceStop: boolean;
+  bounced: boolean;
+  /** Final logical position after the walk (last traversed tile). */
+  endX: number;
+  endY: number;
+  /**
+   * Final `proj.logicalTileIndex` value — tiles traveled in the current
+   * (post-last-bounce) segment. Callers write this to proj.logicalTileIndex
+   * to continue tracking range budget into the next turn.
+   */
+  endDist: number;
+}
+
+/**
+ * Compute the post-bounce direction + offset for a projectile that has hit a
+ * wall. Returns null for unsupported behaviors (e.g. 'random', which would
+ * require a seeded PRNG to stay deterministic and is not yet wired up).
+ *
+ * For 'reflect' on diagonal moves, determines which axis is blocked by
+ * probing the two neighboring tiles — if the horizontal neighbor is a wall,
+ * flip dx; if vertical, flip dy. Matches the original pre-refactor
+ * implementation (commit `8b049df`).
+ */
+function computeBounceDirection(
+  proj: Projectile,
+  dx: number,
+  dy: number,
+  preX: number,
+  preY: number,
+  wallX: number,
+  wallY: number,
+  gameState: GameState,
+): { direction: Direction; dx: number; dy: number } | null {
+  const behavior = proj.bounceBehavior || 'reflect';
+  const turnDegrees = proj.bounceTurnDegrees ?? 90;
+
+  let newDx = dx;
+  let newDy = dy;
+
+  switch (behavior) {
+    case 'reflect': {
+      if (dx !== 0 && dy !== 0) {
+        // Diagonal — probe neighbors to see which axis is blocked.
+        const horizontalBlocked = isTileBlocked(preX + dx, preY, gameState);
+        const verticalBlocked = isTileBlocked(preX, preY + dy, gameState);
+        if (horizontalBlocked && !verticalBlocked) newDx = -dx;
+        else if (verticalBlocked && !horizontalBlocked) newDy = -dy;
+        else { newDx = -dx; newDy = -dy; }
+      } else if (dx !== 0) {
+        newDx = -dx;
+      } else {
+        newDy = -dy;
+      }
+      break;
+    }
+    case 'turn_around': {
+      newDx = -dx;
+      newDy = -dy;
+      break;
+    }
+    case 'turn_right': {
+      const newDir = turnRight(proj.direction, turnDegrees);
+      const off = getDirectionOffset(newDir);
+      newDx = off.dx;
+      newDy = off.dy;
+      break;
+    }
+    case 'turn_left': {
+      const newDir = turnLeft(proj.direction, turnDegrees);
+      const off = getDirectionOffset(newDir);
+      newDx = off.dx;
+      newDy = off.dy;
+      break;
+    }
+    case 'random':
+      // Non-deterministic — would need a seeded PRNG. Not supported yet.
+      return null;
+  }
+
+  // No-op bounces (same direction) would infinite-loop the walker; reject.
+  if (newDx === dx && newDy === dy) return null;
+
+  // Translate offset back to Direction enum via calculateDirectionTo from origin.
+  const newDirection = calculateDirectionTo(0, 0, newDx, newDy);
+  // Suppress unused-var lint for wallX/wallY — they're part of the API signature
+  // so future bounce behaviors can use them; current ones only need pre-wall pos.
+  void wallX; void wallY;
+  return { direction: newDirection, dx: newDx, dy: newDy };
 }
 
 function walkNonHomingTick(
@@ -2718,11 +2816,10 @@ function walkNonHomingTick(
   tilesPerTurn: number,
   range: number,
 ): NonHomingWalkResult {
-  const { dx, dy } = getDirectionOffset(proj.direction);
+  let { dx, dy } = getDirectionOffset(proj.direction);
   const canPierce = proj.attackData.projectilePierces === true;
   const isHealingProjectile = proj.attackData.healing !== undefined;
-  const startTile = (proj.logicalTileIndex ?? 0) + 1;
-  const endTile = Math.min(startTile + tilesPerTurn - 1, range);
+  const maxBouncesAllowed = proj.maxBounces ?? 3;
 
   if (!proj.hitEntityIds) proj.hitEntityIds = [];
 
@@ -2732,37 +2829,86 @@ function walkNonHomingTick(
   let endedAtBounds = false;
   let endedAtReflect = false;
   let endedAtPierceStop = false;
+  let bounced = false;
 
-  for (let dist = startTile; dist <= endTile; dist++) {
+  // `segDist` is the tile index within the current segment (relative to
+  // proj.startX/Y). On bounce, proj.startX/Y is rewritten to the pre-wall
+  // tile and segDist resets to 1. `tilesUsedThisTurn` is the turn budget
+  // that persists across bounces (a bouncing bolt still only travels
+  // tilesPerTurn tiles total per turn).
+  let segDist = (proj.logicalTileIndex ?? 0) + 1;
+  let tilesUsedThisTurn = 0;
+
+  // Track final end position so the caller can update proj.logicalX/Y and
+  // logicalTileIndex without needing to inspect turnTiles or assume a
+  // straight-line trajectory.
+  let endX = Math.floor(proj.startX + dx * (proj.logicalTileIndex ?? 0));
+  let endY = Math.floor(proj.startY + dy * (proj.logicalTileIndex ?? 0));
+  let endDist = proj.logicalTileIndex ?? 0;
+
+  while (tilesUsedThisTurn < tilesPerTurn && segDist <= range) {
     if (hitSomething && !canPierce) {
       endedAtPierceStop = true;
       break;
     }
 
-    const checkX = Math.floor(proj.startX + dx * dist);
-    const checkY = Math.floor(proj.startY + dy * dist);
+    const checkX = Math.floor(proj.startX + dx * segDist);
+    const checkY = Math.floor(proj.startY + dy * segDist);
 
     if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
       endedAtBounds = true;
-      steps.push({ kind: 'bounds_exit', dist });
+      steps.push({ kind: 'bounds_exit', dist: segDist });
       break;
     }
 
     const tile = gameState.puzzle.tiles[checkY]?.[checkX];
     if (!tile || tile.type === TileTypeEnum.WALL) {
+      // Wall hit. If bounce is configured and we haven't exhausted the
+      // bounce budget, redirect and continue walking from the pre-wall tile.
+      const canBounce = !!proj.bounceOffWalls && (proj.bounceCount ?? 0) < maxBouncesAllowed;
+      if (canBounce) {
+        const preX = Math.floor(proj.startX + dx * (segDist - 1));
+        const preY = Math.floor(proj.startY + dy * (segDist - 1));
+        const newDir = computeBounceDirection(proj, dx, dy, preX, preY, checkX, checkY, gameState);
+        if (newDir !== null) {
+          steps.push({
+            kind: 'bounce',
+            atX: preX, atY: preY,
+            wallX: checkX, wallY: checkY,
+            newDirection: newDir.direction,
+          });
+          proj.bounceCount = (proj.bounceCount ?? 0) + 1;
+          proj.direction = newDir.direction;
+          proj.startX = preX;
+          proj.startY = preY;
+          proj.logicalTileIndex = 0;
+          dx = newDir.dx;
+          dy = newDir.dy;
+          segDist = 1;
+          bounced = true;
+          // tilesUsedThisTurn persists — bounces don't refund the turn budget.
+          continue;
+        }
+        // computeBounceDirection returned null (unsupported behavior) —
+        // fall through to regular wall hit.
+      }
       if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
         triggerAOEExplosion(checkX, checkY, proj.attackData,
           proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
       }
       endedAtWall = true;
-      steps.push({ kind: 'wall', x: checkX, y: checkY, dist });
+      steps.push({ kind: 'wall', x: checkX, y: checkY, dist: segDist });
       break;
     }
 
-    steps.push({ kind: 'travel', x: checkX, y: checkY, dist });
+    steps.push({ kind: 'travel', x: checkX, y: checkY, dist: segDist });
+    endX = checkX;
+    endY = checkY;
+    endDist = segDist;
+    tilesUsedThisTurn++;
 
     // THROW_PLACE projectiles pass through entities — no collision checks this tile.
-    if (proj.throwPlaceConfig) continue;
+    if (proj.throwPlaceConfig) { segDist++; continue; }
 
     const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
 
@@ -2775,7 +2921,7 @@ function walkNonHomingTick(
           const vfxSprite = applyHealingHit(hitAlly, false, proj, gameState, true);
           hitSomething = true;
           steps.push({
-            kind: 'healing_hit', x: checkX, y: checkY, dist,
+            kind: 'healing_hit', x: checkX, y: checkY, dist: segDist,
             target: hitAlly, targetIsEnemy: false, vfxSprite, pierceStop: !canPierce,
           });
         }
@@ -2785,13 +2931,13 @@ function walkNonHomingTick(
           const entityHitResult = applyEntityHit(hitEnemy, true, proj, gameState, mode);
           if (entityHitResult.reflected) {
             endedAtReflect = true;
-            steps.push({ kind: 'reflect', x: checkX, y: checkY, dist, target: hitEnemy, targetIsEnemy: true });
+            steps.push({ kind: 'reflect', x: checkX, y: checkY, dist: segDist, target: hitEnemy, targetIsEnemy: true });
             break;
           }
           recordEnemyHit(proj, hitEnemy, gameState.puzzle.enemies);
           hitSomething = true;
           steps.push({
-            kind: 'hostile_hit', x: checkX, y: checkY, dist,
+            kind: 'hostile_hit', x: checkX, y: checkY, dist: segDist,
             target: hitEnemy, targetIsEnemy: true, hitResult: entityHitResult, pierceStop: !canPierce,
           });
         }
@@ -2809,7 +2955,7 @@ function walkNonHomingTick(
           hitSomething = true;
           const vfxSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
           steps.push({
-            kind: 'healing_hit', x: checkX, y: checkY, dist,
+            kind: 'healing_hit', x: checkX, y: checkY, dist: segDist,
             target: hitAllyEnemy, targetIsEnemy: true, vfxSprite, pierceStop: !canPierce,
           });
         }
@@ -2819,21 +2965,23 @@ function walkNonHomingTick(
           const entityHitResult = applyEntityHit(hitChar, false, proj, gameState, mode);
           if (entityHitResult.reflected) {
             endedAtReflect = true;
-            steps.push({ kind: 'reflect', x: checkX, y: checkY, dist, target: hitChar, targetIsEnemy: false });
+            steps.push({ kind: 'reflect', x: checkX, y: checkY, dist: segDist, target: hitChar, targetIsEnemy: false });
             break;
           }
           proj.hitEntityIds.push(hitChar.characterId);
           hitSomething = true;
           steps.push({
-            kind: 'hostile_hit', x: checkX, y: checkY, dist,
+            kind: 'hostile_hit', x: checkX, y: checkY, dist: segDist,
             target: hitChar, targetIsEnemy: false, hitResult: entityHitResult, pierceStop: !canPierce,
           });
         }
       }
     }
+
+    segDist++;
   }
 
-  return { steps, hitSomething, endedAtWall, endedAtBounds, endedAtReflect, endedAtPierceStop };
+  return { steps, hitSomething, endedAtWall, endedAtBounds, endedAtReflect, endedAtPierceStop, bounced, endX, endY, endDist };
 }
 
 /**
@@ -3435,17 +3583,20 @@ function resolveProjectiles(gameState: GameState): void {
 
       // Update projectile position if still active
       if (!shouldRemove && !hitWall) {
-        const newDist = Math.min(endTile, range);
-        proj.logicalX = proj.startX + dx * newDist;
-        proj.logicalY = proj.startY + dy * newDist;
-        proj.logicalTileIndex = newDist;
+        // Use the walker's authoritative endDist — for bouncing projectiles
+        // this is the tile count within the post-last-bounce segment (walker
+        // resets logicalTileIndex to 0 on each bounce). The old
+        // `newDist = Math.min(endTile, range)` formula assumed a straight-line
+        // trajectory from proj.startX/Y along the pre-walk direction and
+        // doesn't hold after a bounce.
+        proj.logicalTileIndex = walk.endDist;
 
-        if (newDist >= range) {
+        if (walk.endDist >= range) {
           if (!hitSomething && proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            const finalX = Math.floor(proj.startX + dx * range);
-            const finalY = Math.floor(proj.startY + dy * range);
-            if (isInBounds(finalX, finalY, gameState.puzzle.width, gameState.puzzle.height)) {
-              triggerAOEExplosion(finalX, finalY, proj.attackData,
+            // AOE at range end — fire at the actual final position (walker's
+            // endX/endY), not along the original straight line.
+            if (isInBounds(walk.endX, walk.endY, gameState.puzzle.width, gameState.puzzle.height)) {
+              triggerAOEExplosion(walk.endX, walk.endY, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             }
           }
@@ -3465,6 +3616,16 @@ function resolveProjectiles(gameState: GameState): void {
       if (turnTiles.length > 0) {
         proj.logicalX = turnTiles[turnTiles.length - 1].x;
         proj.logicalY = turnTiles[turnTiles.length - 1].y;
+      }
+
+      // For bouncing projectiles, install the traversed turnTiles as the
+      // visual tilePath so updateTileBasedVisual animates the bolt through
+      // its bounced trajectory. Non-bouncing projectiles still use the
+      // spawn-time tilePath from actions.ts.
+      if (walk.bounced) {
+        proj.tilePath = [...turnTiles];
+        proj.currentTileIndex = 0;
+        proj.tileEntryTime = Date.now();
       }
     }
 
@@ -3655,6 +3816,12 @@ function updateProjectilesHeadless(gameState: GameState): void {
           recordProjectileEvent(gameState, {
             type: 'wall_hit', projId: proj.id, x: step.x, y: step.y,
           });
+        } else if (step.kind === 'bounce') {
+          // Record as wall_hit for replay purposes — visuals get a "bounced
+          // off this wall" marker without introducing a new event type.
+          recordProjectileEvent(gameState, {
+            type: 'wall_hit', projId: proj.id, x: step.wallX, y: step.wallY,
+          });
         } else if (step.kind === 'hostile_hit') {
           recordProjectileEvent(gameState, {
             type: 'hit', projId: proj.id, x: step.x, y: step.y,
@@ -3693,19 +3860,18 @@ function updateProjectilesHeadless(gameState: GameState): void {
         shouldRemove = true;
       }
 
-      // Update projectile position if it's still active
+      // Update projectile position if it's still active. Use the walker's
+      // authoritative endX/endY/endDist — these correctly reflect post-bounce
+      // state for bouncing projectiles.
       if (!reflectHandled && !shouldRemove && !hitWall) {
-        const newDist = Math.min(endTile, range);
-        proj.logicalX = proj.startX + dx * newDist;
-        proj.logicalY = proj.startY + dy * newDist;
-        proj.logicalTileIndex = newDist;
+        proj.logicalX = walk.endX;
+        proj.logicalY = walk.endY;
+        proj.logicalTileIndex = walk.endDist;
 
-        if (newDist >= range) {
+        if (walk.endDist >= range) {
           if (!hitSomething && proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            const finalX = Math.floor(proj.startX + dx * range);
-            const finalY = Math.floor(proj.startY + dy * range);
-            if (isInBounds(finalX, finalY, gameState.puzzle.width, gameState.puzzle.height)) {
-              triggerAOEExplosion(finalX, finalY, proj.attackData,
+            if (isInBounds(walk.endX, walk.endY, gameState.puzzle.width, gameState.puzzle.height)) {
+              triggerAOEExplosion(walk.endX, walk.endY, proj.attackData,
                 proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
             }
           }
