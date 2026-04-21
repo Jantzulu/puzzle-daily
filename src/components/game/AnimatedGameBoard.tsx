@@ -1160,7 +1160,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Draw projectiles (Phase 2 - between tiles and entities)
       if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
         gameState.activeProjectiles.forEach(projectile => {
-          drawProjectile(ctx, projectile, imageCache.current, now, projectileVisualStateRef.current);
+          drawProjectile(ctx, projectile, imageCache.current, now, projectileVisualStateRef.current, replayFrozen);
         });
       }
 
@@ -3792,22 +3792,22 @@ function drawProjectile(
   imageCache: Map<string, HTMLImageElement>,
   now: number,
   visualState: Map<string, ProjectileVisualState>,
+  replayFrozen: boolean = false,
 ) {
   if (!projectile.active) return;
 
   // Phase C-2: visual position lives in the side-table. Fall back to the
   // logical position when no entry has been seeded yet (first draw before
-  // updateProjectiles runs, or right after a replay step reset). Also fall
-  // back when the side-table entry is stale — specifically, when logical has
-  // moved more than a tile away from the visual (replay seek / step-back /
-  // snapshot-reseed, where updateProjectiles is frozen and can't refresh vs).
-  // Legitimate per-frame drift is <<0.1 tile; a 1-tile threshold is safe.
+  // updateProjectiles runs), or whenever we're frozen in replay: during
+  // replay seek / step-back / pause, updateProjectiles doesn't run to refresh
+  // the side-table, so vs can be stale at a position logical has since moved
+  // away from. During animation, vs is always fresh (updateProjectiles ran
+  // this frame) and should be preferred — it carries the fractional mid-tile
+  // interpolation that logical doesn't express.
   const vs = visualState.get(projectile.id);
-  const stale = vs
-    ? Math.abs(vs.x - projectile.logicalX) > 1 || Math.abs(vs.y - projectile.logicalY) > 1
-    : false;
-  const visualX = !vs || stale ? projectile.logicalX : vs.x;
-  const visualY = !vs || stale ? projectile.logicalY : vs.y;
+  const useLogical = !vs || replayFrozen;
+  const visualX = useLogical ? projectile.logicalX : vs.x;
+  const visualY = useLogical ? projectile.logicalY : vs.y;
 
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
   const px = visualX * TILE_SIZE + TILE_SIZE / 2;
