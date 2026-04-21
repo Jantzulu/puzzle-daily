@@ -944,8 +944,9 @@ export interface Projectile {
    */
   hitResult?: ProjectileHitResult;
   pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // BRIDGE — deferred reflect VFX
-  /** VISUAL — set once when visual crosses reflect point (Phase C: moves to ProjectileVisualState). */
-  visualPastReflectPoint?: boolean;
+  // Phase C: visualPastReflectPoint moved out of Projectile into the side-table
+  // owned by AnimatedGameBoard (see projectileVisualStateRef). It lives on
+  // ProjectileVisualState now so deep copies of GameState can't capture it.
 
   // -------- Throw/Place (LOGICAL) — carries item placement data through projectile flight --------
   throwPlaceConfig?: ThrowPlaceConfig;

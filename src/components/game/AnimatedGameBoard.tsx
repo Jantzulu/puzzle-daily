@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations */
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle, PuzzleSkin } from '../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle, PuzzleSkin } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
@@ -647,6 +647,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Track lift-off animations for unplaced characters
   const [liftOffAnimations, setLiftOffAnimations] = useState<LiftOffAnimation[]>([]);
   const prevGameStatusRef = useRef(gameState.gameStatus);
+  // Phase C side-table: keeps purely-visual projectile state (e.g.
+  // `visualPastReflectPoint`) out of Projectile / GameState so deep copies
+  // can't capture it. One board instance = one map; React unmount clears it,
+  // so there's no cross-game bleed. See docs/projectile-refactor-plan.md §4.
+  const projectileVisualStateRef = useRef<Map<string, ProjectileVisualState>>(new Map());
   // Track entities that have completed spawn animation (don't re-trigger on re-render)
   const spawnedCharactersRef = useRef<Set<string>>(new Set());
   const spawnedEnemiesRef = useRef<Set<number>>(new Set());
@@ -1102,7 +1107,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Skip during replay freeze — projectiles and particles should be static
       const deadCountBefore = gameState.puzzle.enemies.filter(e => e.dead).length;
       if (!replayFrozen) {
-        updateProjectiles(gameState);
+        updateProjectiles(gameState, projectileVisualStateRef.current);
         updateParticles(gameState);
       }
       const deadCountAfter = gameState.puzzle.enemies.filter(e => e.dead).length;
@@ -1155,7 +1160,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Draw projectiles (Phase 2 - between tiles and entities)
       if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
         gameState.activeProjectiles.forEach(projectile => {
-          drawProjectile(ctx, projectile, imageCache.current, now);
+          drawProjectile(ctx, projectile, imageCache.current, now, projectileVisualStateRef.current);
         });
       }
 
@@ -1223,7 +1228,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const anim = enemyPositionsRef.current.get(index);
           const deathAnim = enemyDeathAnimations.get(index);
           const spawnAnim = enemySpawnAnimations.get(index);
-          const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true);
+          const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current);
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1282,7 +1287,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // Get spawn animation - keyed by characterId + position
           const spawnKey = `${character.characterId}:${character.x},${character.y}`;
           const spawnAnim = characterSpawnAnimations.get(spawnKey);
-          const charGlow = getHomingTargetGlow(gameState, character.characterId, false);
+          const charGlow = getHomingTargetGlow(gameState, character.characterId, false, projectileVisualStateRef.current);
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -2768,7 +2773,10 @@ function getSpriteTopY(sprite: import('../../utils/assetStorage').CustomSprite |
 
 // Helper to draw health bar above entity
 /** Check if an entity is targeted by an active straight-line homing projectile. Returns glow color or undefined. */
-function getHomingTargetGlow(gameState: GameState, entityId: string, isEnemy: boolean): string | undefined {
+function getHomingTargetGlow(
+  gameState: GameState, entityId: string, isEnemy: boolean,
+  visualState: Map<string, ProjectileVisualState>,
+): string | undefined {
   if (!gameState.activeProjectiles) return undefined;
   for (const proj of gameState.activeProjectiles) {
     if (!proj.active || !proj.isHoming || proj.homingPathStyle !== 'straight') continue;
@@ -2777,7 +2785,8 @@ function getHomingTargetGlow(gameState: GameState, entityId: string, isEnemy: bo
       return proj.attackData.healing !== undefined ? '#4ade80' : '#ef4444';
     }
     // For reflected projectiles still in approach phase, glow the original target (the reflector)
-    if (proj.reflected && !proj.visualPastReflectPoint) {
+    const pastReflectPoint = !!visualState.get(proj.id)?.visualPastReflectPoint;
+    if (proj.reflected && !pastReflectPoint) {
       // The reflector is the opposite team's entity stored in hitEntityIds[0]
       const reflectorId = proj.hitEntityIds?.[0];
       if (reflectorId === entityId && !isEnemy !== !proj.targetIsEnemy) {
@@ -3777,7 +3786,13 @@ function drawStar(ctx: CanvasRenderingContext2D, cx: number, cy: number, spikes:
  * Draw a projectile - uses fractional coordinates for smooth movement
  * Supports: basic shapes, static images/GIFs, and animated sprite sheets
  */
-function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, imageCache: Map<string, HTMLImageElement>, now: number) {
+function drawProjectile(
+  ctx: CanvasRenderingContext2D,
+  projectile: Projectile,
+  imageCache: Map<string, HTMLImageElement>,
+  now: number,
+  visualState: Map<string, ProjectileVisualState>,
+) {
   if (!projectile.active) return;
 
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
@@ -3791,7 +3806,7 @@ function drawProjectile(ctx: CanvasRenderingContext2D, projectile: Projectile, i
   const scale = projectile.attackData.projectileScale ?? 1;
 
   // Check if the visual has passed the reflect point (tint only applies after reflect)
-  const pastReflectPoint = projectile.reflected && !!projectile.visualPastReflectPoint;
+  const pastReflectPoint = projectile.reflected && !!visualState.get(projectile.id)?.visualPastReflectPoint;
 
   // If reflected with an override sprite, use that instead of the original
   if (pastReflectPoint && projectile.reflectOverrideSprite?.spriteData) {

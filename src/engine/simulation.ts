@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations, prefer-const */
-import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle, Projectile, SpriteReference, ProjectileEvent } from '../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, ParallelActionTracker, StatusEffectInstance, SpellTemplate, SpellAsset, PlacedCollectible, CharacterAction, Puzzle, Projectile, ProjectileVisualState, SpriteReference, ProjectileEvent } from '../types/game';
 import { ActionType, Direction, StatusEffectType, TileType as TileTypeEnum } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
@@ -2030,6 +2030,13 @@ interface ProjectileMovementResult {
   newX: number;
   newY: number;
   reachedTarget: boolean;
+  /**
+   * Phase C migration: when the visual crosses the reflect pivot in a
+   * two-segment straight-line reflected path, helpers signal that here
+   * rather than mutating `proj.visualPastReflectPoint`. The caller
+   * (updateProjectiles) writes to the visual-state side-table.
+   */
+  pastReflectPoint?: boolean;
 }
 
 /**
@@ -2123,6 +2130,7 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
   let newX: number;
   let newY: number;
   let reachedTarget = false;
+  let pastReflectPoint = false;
 
   if (proj.homingPathStyle === 'straight' && tilePath.length >= 2 && !proj.reflected) {
     // STRAIGHT-LINE: smooth interpolation from first to last tile
@@ -2158,7 +2166,7 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
       newX = lastTile.x;
       newY = lastTile.y;
       reachedTarget = true;
-      proj.visualPastReflectPoint = true;
+      pastReflectPoint = true;
     } else if (elapsed < approachTime) {
       // Segment 1: straight line from start to pivot (reflect point)
       const segProgress = elapsed / approachTime;
@@ -2173,8 +2181,9 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
       newX = pivotTile.x + (lastTile.x - pivotTile.x) * segProgress;
       newY = pivotTile.y + (lastTile.y - pivotTile.y) * segProgress;
       proj.direction = calculateDirectionTo(pivotTile.x, pivotTile.y, lastTile.x, lastTile.y);
-      // Mark as past reflect point (stable, never toggles back)
-      proj.visualPastReflectPoint = true;
+      // Signal past reflect point (stable, never toggles back — caller ORs
+      // this into the side-table entry).
+      pastReflectPoint = true;
     }
   } else if (visualTileIndex >= tilePath.length - 1) {
     reachedTarget = true;
@@ -2216,7 +2225,7 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     }
   }
 
-  return { newX, newY, reachedTarget };
+  return { newX, newY, reachedTarget, pastReflectPoint };
 }
 
 /**
@@ -2260,7 +2269,20 @@ function updateLegacyNoPathVisual(proj: Projectile, now: number): ProjectileMove
  * All damage/effects are already resolved by resolveProjectiles() during executeTurn.
  * This function only handles position interpolation and consuming pre-resolved hitResults.
  */
-export function updateProjectiles(gameState: GameState): void {
+/**
+ * Per-frame visual update for active projectiles. Consumes BRIDGE fields
+ * (hitResult, pendingReflectVfx) and updates interpolated position.
+ *
+ * Phase C: visual-only state (currently `visualPastReflectPoint`) lives in a
+ * side-table owned by AnimatedGameBoard as a React ref. This function takes
+ * the map as a parameter so visual state can be read back on the next frame
+ * without needing to live on Projectile (and therefore without ending up in
+ * GameState deep copies, which was the pre-Phase-C bug class).
+ */
+export function updateProjectiles(
+  gameState: GameState,
+  visualState?: Map<string, ProjectileVisualState>,
+): void {
   if (!gameState.activeProjectiles || gameState.activeProjectiles.length === 0) {
     return;
   }
@@ -2292,8 +2314,20 @@ export function updateProjectiles(gameState: GameState): void {
     proj.x = newX;
     proj.y = newY;
 
+    // Phase C: propagate the "past reflect point" signal into the visual-state
+    // side-table. Stable — once set, stays set for this projectile.
+    if (result.pastReflectPoint && visualState) {
+      let vs = visualState.get(proj.id);
+      if (!vs) {
+        vs = { x: newX, y: newY, startTime: proj.startTime };
+        visualState.set(proj.id, vs);
+      }
+      vs.visualPastReflectPoint = true;
+    }
+    const pastReflectPoint = !!visualState?.get(proj.id)?.visualPastReflectPoint;
+
     // Spawn deferred reflect VFX when visual reaches the reflect point
-    if (proj.pendingReflectVfx && proj.visualPastReflectPoint) {
+    if (proj.pendingReflectVfx && pastReflectPoint) {
       const vfx = proj.pendingReflectVfx;
       spawnParticleEffect(vfx.x, vfx.y, vfx.sprite, vfx.duration, gameState);
       proj.pendingReflectVfx = undefined; // Only spawn once
@@ -2348,6 +2382,11 @@ export function updateProjectiles(gameState: GameState): void {
   gameState.activeProjectiles = gameState.activeProjectiles.filter(
     p => !projectilesToRemove.includes(p.id)
   );
+
+  // Phase C: clean up the side-table so it doesn't leak across games.
+  if (visualState) {
+    for (const id of projectilesToRemove) visualState.delete(id);
+  }
 }
 
 /**
