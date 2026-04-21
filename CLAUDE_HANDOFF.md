@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 20, 2026
+Last Updated: April 20, 2026 (late session)
 
 ## Project Overview
 
@@ -64,7 +64,8 @@ The projectile system was extensively refactored for determinism. Here is how it
   - ✅ `pendingDeactivation` unified with `hitResult` (Phase D-a, commit `4f9076d`).
   - ✅ Collision logic deduplicated between `resolveProjectiles` and `updateProjectilesHeadless` via shared `walkNonHomingTick` / `walkReflectedPath` / `walkReflectedPathOnTiles` helpers (Phase E1/E2/E3, commits `0c88664`/`26fabcb`/`8ece3e5`).
   - ✅ `visualPastReflectPoint` moved to AnimatedGameBoard's visual-state side-table (Phase C-1, commit `48f8549`).
-  - ⏳ Remaining visual fields still on Projectile: `x`, `y`, `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time`. Phase C-2 and C-3 below.
+  - ✅ `x`/`y` removed from Projectile; visual position lives in the side-table, logical position in new `logicalX`/`logicalY` fields (Phase C-2, commit `ab45367`).
+  - ⏳ Remaining visual fields still on Projectile: `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time`. Phase C-3 below.
   - ⏳ Entity-owned deferred-visual pair (`pendingProjectileDeath` + `visualHealth` on PlacedCharacter/PlacedEnemy) still split across the entity objects. Phase D-b below.
 
 ### Reflect Status Effect
@@ -177,34 +178,27 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Next session — start here
 
-1. **Phase C-2: migrate `proj.x` and `proj.y` to the visual-state side-table.** The biggest remaining Phase C slice. See the **Phase C progress** section below for exact context (attempt 1 was reverted, attempt 2's Phase C-1 shipped 2026-04-20).
+1. **Phase C-3: migrate remaining visual anchors.** `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time` all still live on `Projectile`. Move them off the same way C-2 moved `x`/`y`: helpers read them via params (or from the side-table entry), write them to the side-table, then remove from the type. Each is smaller than x/y — can land as one commit or three small ones.
 
-   **What's already set up (Phase C-1, commit `48f8549`):**
-   - `AnimatedGameBoard.tsx` has a `projectileVisualStateRef = useRef<Map<string, ProjectileVisualState>>(new Map())`.
-   - `updateProjectiles(gameState, visualState)` accepts the map and deletes entries for projectiles removed this frame.
-   - Visual-update helpers (`updateStraightLineHomingVisual`, `updateGridHomingVisual`, `updateTileBasedVisual`, `updateLegacyNoPathVisual`) return `ProjectileMovementResult` with optional `pastReflectPoint: boolean`; the caller writes that into the map.
-   - Pattern is proven end-to-end — the `visualPastReflectPoint` field is completely off Projectile, goldens unchanged.
+   **Pattern established by C-1 and C-2 (both green on main):**
+   - `AnimatedGameBoard.tsx` has `projectileVisualStateRef = useRef<Map<string, ProjectileVisualState>>(new Map())`.
+   - `updateProjectiles(gameState, visualState)` seeds the entry on first sight from `proj.logicalX/Y` (and `proj.startTime` etc. as C-3 adds them), reads/writes per-frame, deletes on projectile removal.
+   - `drawProjectile` and `getHomingTargetGlow` read from the map, fall back to logical-side Projectile fields when entry is missing.
+   - Logical reads in `resolveProjectiles` / `updateProjectilesHeadless` / `reflectProjectile` continue to use Projectile fields directly (never touch the visual map — the map lives outside GameState and is React-scoped).
 
-   **What to do for C-2:**
-   - Survey all reads of `proj.x` / `proj.y` across `src/engine/simulation.ts`, `src/engine/actions.ts` (spawn only), `src/components/game/Game.tsx`, and `src/components/game/AnimatedGameBoard.tsx`. **This is the key step.** Each read is either:
-     - **Logical** — code that wants the projectile's current LOGICAL tile position (e.g. turn-boundary collision checks). These must switch to computing position from `proj.startX/startY + direction * logicalTileIndex` (already what some code does) or from the `tilePath[logicalTileIndex]`. **This is the bug class Phase C exists to fix — the old code sometimes read the mutating visual `x/y` when it wanted logical position.** Be ruthless here.
-     - **Visual** — code that wants the interpolated position (rendering, VFX spawn points, homing distance checks). These read from the side-table.
-   - Write sites: the four visual-update helpers currently `return { newX, newY, ... }` and the caller does `proj.x = newX; proj.y = newY;`. Replace with `visualState.set(proj.id, { ...existing, x: newX, y: newY })`.
-   - Remove `x`/`y` from the `Projectile` type. They live only in `ProjectileVisualState` (already declared in `types/game.ts`).
-   - `reflectProjectile` writes `proj.x = reflector.x; proj.y = reflector.y;` (line ~312). That's a logical position reset (the logical origin for the reflected leg), so it's fine as-is — or migrate to writing both logical and visual origins separately for clarity.
-   - **Corpus is the safety net.** `npm test` must stay green at 235 passing throughout. Any golden change = stop and investigate.
+   **C-3 specifics:**
+   - `startTime` — wall-clock anchor, read by `updateStraightLineHomingVisual`, `updateTileBasedVisual`, `updateLegacyNoPathVisual`, and by `updateProjectiles`' side-table seed (already references it). Move to visualState; visual helpers take `startTime` as a param or read from the seeded entry.
+   - `currentTileIndex` — written by `updateTileBasedVisual` (visual) AND by `resolveProjectiles` / `updateProjectilesHeadless` / `reflectProjectile` (logical reset to 0 on new tilePath). This field is DUAL-ROLE like `x`/`y` was. Same playbook: add a LOGICAL `currentTileIndex` kept as-is (it's already on Projectile and logical-safe since turn-boundary writes dominate), and move the visual write off. Simplest: `updateTileBasedVisual` currently writes `proj.currentTileIndex = visualTileIndex` for hitResult timing — that write is read by `updateProjectiles`' hit-consumption at line ~2337. Migrate that consumption to use the computed tile index returned from the helper instead.
+   - `tileEntryTime` — wall-clock anchor for tile-to-tile animation. Written by resolveProjectiles each turn (logical-ish — it syncs visual timing to turn boundaries). Read by `updateTileBasedVisual`. Candidate for dual-field split or just live-with-it: timestamp writes from resolveProjectiles are effectively `Date.now()` at turn-tick, arguably a BRIDGE role not pure VISUAL. Decide based on what shakes out when you do `startTime` and `currentTileIndex`.
+   - `homingVisualStartX/Y/Time` — pure VISUAL anchor for straight-line homing. Set at spawn in actions.ts and rewritten each turn by resolveProjectiles (line ~3301). That second write is the wrinkle — resolveProjectiles is logical-only, but it's updating a visual anchor. The April-20 fix that added the per-turn reset was deliberate ("slow projectiles interpolate from their actual logical position instead of the original spawn point"). Could keep as BRIDGE-like: resolveProjectiles computes the anchor, writes into the visual map. OR keep on Projectile and just tolerate it. Whatever — but document the choice.
 
-   **What to beware of (this is the refactor that got reverted in attempt 1):**
-   - **Don't deviate from the ref-based architecture.** Attempt 1 used a module-level singleton and it was the root of the revert. The retro below explains why.
-   - **Mid-turn resets:** `initializeGameState` is called from 20+ places. The React-scoped ref is already the right container (unmount clears it). Don't add any "reset visual state" code in simulation.ts.
-   - **Deep copies:** `setGameState(prev => JSON.parse(JSON.stringify(prev)))` captures everything on Projectile. Once `x`/`y` are off, the deep copy can't capture stale visual coordinates — that's the whole win. If any logical code still reads them post-migration, you'll see a TS error (good).
-   - **Replay reconstruction** (`Game.tsx:buildReplayProjectiles` area) builds Projectile objects from timeline events. It currently sets `proj.x/y` when creating these; after C-2 that would move to seeding the visual map too. Check this path.
+   **Corpus is the safety net.** `npm test` must stay green at 235 / 42 goldens throughout. Any golden change = stop and investigate.
 
-   **Estimate:** 1 focused session. Probably ~30–50 callsite edits plus the structural signature changes.
+   **Estimate:** 1 focused session, probably shorter than C-2 since the pattern is now exercised twice.
 
-2. **Phase C-3: migrate remaining visual anchors.** After x/y, also move `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time` off Projectile via the same pattern. Each is smaller than x/y. Can land as one commit or three small ones.
+2. **Phase D-b (optional): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Consider deferring until after C-3 when the visual side of projectiles is cleaner.
 
-3. **Phase D-b (optional): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Consider deferring until after C-3 when the visual side of projectiles is cleaner.
+3. **Replay visual-state reseed quirk (minor, deferred).** After Phase C-2, if a replay step-reset creates a new `Projectile` object with the same `id` as a previously rendered one, `projectileVisualStateRef` may still hold the old entry's `x/y` from the previous frame. `drawProjectile` falls back to `proj.logicalX/Y` only when the entry is MISSING, not when it's stale. One-frame visual artifact before `updateProjectiles` overwrites it. Fix options: (a) have Game.tsx replay handlers call a ref-exposed `resetVisualState(id)` on AnimatedGameBoard, (b) reseed when `|logicalX - vs.x| > N` as a heuristic, (c) tolerate it. Low priority — not observed as a gameplay bug, flagged for the visuals-polish pass.
 
 ### Open spawn tasks (deferred bugs / features)
 
@@ -239,8 +233,8 @@ Plan: [docs/projectile-refactor-plan.md](docs/projectile-refactor-plan.md). The 
 | A | ✅ Shipped April 2026 | `45fdf9d` | `ProjectileVisualState` type declared. |
 | B | ✅ Shipped April 2026 | `af55a53` | Movement branches extracted into helpers. |
 | **C-1** | ✅ Shipped 2026-04-20 | `48f8549` | `visualPastReflectPoint` moved to side-table. Scaffolding + pattern established. |
-| **C-2** | ⏳ Next | — | Migrate `proj.x` and `proj.y`. See "Next session — start here" above for detailed playbook. |
-| **C-3** | ⏳ Pending | — | Migrate `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time`. |
+| **C-2** | ✅ Shipped 2026-04-20 | `ab45367` | `x`/`y` removed from Projectile. New `logicalX`/`logicalY` fields hold the authoritative turn-boundary position; visual interpolation lives in the side-table entry. ~30 callsite edits across simulation.ts / Game.tsx / actions.ts / AnimatedGameBoard.tsx / types/game.ts. 235 tests / 42 goldens unchanged. |
+| **C-3** | ⏳ Next | — | Migrate `startTime`, `currentTileIndex`, `tileEntryTime`, `homingVisualStartX/Y/Time`. See "Next session — start here" above for detailed playbook. |
 
 **Corpus safety net:** `src/engine/__tests__/corpus/` has 21 cases × 2 modes (real + headless) = 42 goldens. Tests run in <1s. Every logical projectile behavior you might break is locked in. `npm test` is the check. `UPDATE_GOLDENS=1 npm test -- corpus` regenerates when behavior intentionally changes.
 
@@ -264,6 +258,10 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 20, 2026 — late session, Phase C-2)
+
+- `Refactor (Phase C-2): migrate projectile x/y to side-table` (commit `ab45367`). Removed `x` and `y` from the `Projectile` type entirely. Added `logicalX`/`logicalY` for turn-boundary authoritative position; visual interpolation now lives in the `projectileVisualStateRef` map owned by AnimatedGameBoard. Four sub-steps with tests between each: (1) add fields + seed at spawn + shadow-write at logical sites + switch logical reads, (2) remove shadow writes from logical paths, (3) route visual writes/reads through the side-table — `updateGridHomingVisual` takes currentX/Y as params, `drawProjectile` reads from map with `logicalX/Y` fallback, (4) delete `x`/`y` from the type. Corpus 235 / 42 unchanged; tsc diff is line-number shifts only. Classification insight that shaped the approach: `proj.x/y` was dual-role (logical at turn boundary, visual during flight); homing position isn't derivable from `startX + dx * logicalTileIndex` so needed a dedicated logical field.
 
 ### Recently completed (April 20, 2026 session — big one)
 
