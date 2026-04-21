@@ -519,7 +519,9 @@ export const Game: React.FC = () => {
           setReplayPlaying(false);
           return prev;
         }
-        setGameState(copySnapshotForPlayback(history[next], history, next));
+        const copy = copySnapshotForPlayback(history[next], history, next);
+        resetReplayProjectilesToTurnStart(copy);
+        setGameState(copy);
         return next;
       });
     }, intervalMs);
@@ -1237,6 +1239,28 @@ export const Game: React.FC = () => {
     return copy;
   };
 
+  // Reset each projectile in a replay snapshot to its start-of-turn position so
+  // animation plays forward through the turn. Without this, buildReplayProjectiles
+  // seeds currentTileIndex at end-of-turn, and updateProjectiles' hit-consumption
+  // (currentTileIdx >= hitResult.hitTileIndex) fires on the very first frame for
+  // any projectile whose endTurn == this turn — deactivating it before it
+  // renders. Used by playback, seek, and step handlers.
+  const resetReplayProjectilesToTurnStart = (copy: GameState) => {
+    if (!copy.activeProjectiles) return;
+    const nowMs = Date.now();
+    for (const proj of copy.activeProjectiles) {
+      if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
+        const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
+        proj.currentTileIndex = startIdx;
+        proj.logicalX = proj.tilePath[startIdx].x;
+        proj.logicalY = proj.tilePath[startIdx].y;
+        const tileTransitMs = 800 / (proj.speed || 4);
+        proj.tileEntryTime = nowMs - (startIdx * tileTransitMs);
+        proj.startTime = nowMs - (startIdx * tileTransitMs);
+      }
+    }
+  };
+
   const handleReplayStepForward = useCallback(() => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
@@ -1245,23 +1269,8 @@ export const Game: React.FC = () => {
 
     setReplayTurnIndex(prev => {
       const next = Math.min(prev + 1, history.length - 1);
-      // Set projectiles at their START position for this turn (so they animate from there)
       const copy = copySnapshotForPlayback(history[next], history, next);
-      // Reset projectile positions to START of this turn (end of previous turn)
-      // so animation plays from where they left off, not from tile 0
-      if (copy.activeProjectiles) {
-        for (const proj of copy.activeProjectiles) {
-          if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
-            const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
-            proj.currentTileIndex = startIdx;
-            proj.logicalX = proj.tilePath[startIdx].x;
-            proj.logicalY = proj.tilePath[startIdx].y;
-            // Offset tileEntryTime so visual starts at startIdx
-            const tileTransitMs = 800 / (proj.speed || 4);
-            proj.tileEntryTime = Date.now() - (startIdx * tileTransitMs);
-          }
-        }
-      }
+      resetReplayProjectilesToTurnStart(copy);
       setGameState(copy);
       return next;
     });
@@ -1284,21 +1293,8 @@ export const Game: React.FC = () => {
 
     setReplayTurnIndex(prev => {
       const next = Math.max(prev - 1, 0);
-      // Show the previous turn's state and animate it playing out
       const copy = copySnapshotForPlayback(history[next], history, next);
-      // Reset projectile positions to START of this turn (end of previous turn)
-      if (copy.activeProjectiles) {
-        for (const proj of copy.activeProjectiles) {
-          if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
-            const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
-            proj.currentTileIndex = startIdx;
-            proj.logicalX = proj.tilePath[startIdx].x;
-            proj.logicalY = proj.tilePath[startIdx].y;
-            const tileTransitMs = 800 / (proj.speed || 4);
-            proj.tileEntryTime = Date.now() - (startIdx * tileTransitMs);
-          }
-        }
-      }
+      resetReplayProjectilesToTurnStart(copy);
       setGameState(copy);
       return next;
     });
@@ -1316,7 +1312,9 @@ export const Game: React.FC = () => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
     const clamped = Math.max(0, Math.min(turn, history.length - 1));
-    setGameState(copySnapshotForPlayback(history[clamped], history, clamped));
+    const copy = copySnapshotForPlayback(history[clamped], history, clamped);
+    resetReplayProjectilesToTurnStart(copy);
+    setGameState(copy);
     setReplayTurnIndex(clamped);
   }, []);
 
