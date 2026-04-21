@@ -863,13 +863,20 @@ export interface Projectile {
   id: string;                   // Unique instance ID
   attackData: CustomAttack;     // Attack definition
 
-  // -------- Position (mixed: spawn/target are LOGICAL, x/y are VISUAL) --------
-  /** VISUAL — current interpolated X (Phase C: moves to ProjectileVisualState). */
-  x: number;
-  /** VISUAL — current interpolated Y (Phase C: moves to ProjectileVisualState). */
-  y: number;
+  // -------- Position (all LOGICAL; visual interpolation lives in ProjectileVisualState) --------
   startX: number;               // Original spawn X (LOGICAL)
   startY: number;               // Original spawn Y (LOGICAL)
+  /**
+   * LOGICAL — current authoritative tile position, written at turn boundaries
+   * by resolveProjectiles / updateProjectilesHeadless / reflectProjectile.
+   * This is the value engine code reads when it wants "where is the projectile
+   * now?" Phase C-2 migrated the previous visual `x`/`y` fields off this type
+   * into the `Map<string, ProjectileVisualState>` owned by AnimatedGameBoard,
+   * so deep copies of GameState can no longer capture mid-flight visual state.
+   */
+  logicalX: number;
+  /** LOGICAL — see logicalX. */
+  logicalY: number;
   targetX: number;              // Destination X (LOGICAL)
   targetY: number;              // Destination Y (LOGICAL)
 

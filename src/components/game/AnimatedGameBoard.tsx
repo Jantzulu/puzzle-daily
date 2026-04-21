@@ -3795,9 +3795,16 @@ function drawProjectile(
 ) {
   if (!projectile.active) return;
 
+  // Phase C-2: visual position lives in the side-table. Fall back to the
+  // logical position when no entry has been seeded yet (first draw before
+  // updateProjectiles runs, or right after a replay step reset).
+  const vs = visualState.get(projectile.id);
+  const visualX = vs?.x ?? projectile.logicalX;
+  const visualY = vs?.y ?? projectile.logicalY;
+
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
-  const px = projectile.x * TILE_SIZE + TILE_SIZE / 2;
-  const py = projectile.y * TILE_SIZE + TILE_SIZE / 2;
+  const px = visualX * TILE_SIZE + TILE_SIZE / 2;
+  const py = visualY * TILE_SIZE + TILE_SIZE / 2;
 
   // Calculate rotation and mirroring based on direction
   const rotationConfig = getRotationForDirection(projectile.direction);

@@ -1135,8 +1135,8 @@ export const Game: React.FC = () => {
       const proj: Projectile = {
         id: spawn.projId,
         active: true,
-        x: posAtTurn.x,
-        y: posAtTurn.y,
+        logicalX: posAtTurn.x,
+        logicalY: posAtTurn.y,
         startX: spawn.x,
         startY: spawn.y,
         targetX: tilePath?.[tilePath.length - 1]?.x ?? spawn.x,
@@ -1201,11 +1201,13 @@ export const Game: React.FC = () => {
         }
       }
 
-      // Set x/y from tilePath so projectile renders at correct position when frozen (stepping)
+      // Set logical position from tilePath so projectile renders at correct
+      // position when frozen (stepping). drawProjectile falls back to
+      // logicalX/Y when the visual-state side-table has no entry for this id.
       if (proj.tilePath && proj.tilePath.length > 0) {
         const tileIdx = Math.min(proj.currentTileIndex ?? 0, proj.tilePath.length - 1);
-        proj.x = proj.tilePath[tileIdx].x;
-        proj.y = proj.tilePath[tileIdx].y;
+        proj.logicalX = proj.tilePath[tileIdx].x;
+        proj.logicalY = proj.tilePath[tileIdx].y;
       }
 
       replayProjectiles.push(proj);
@@ -1252,8 +1254,8 @@ export const Game: React.FC = () => {
           if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
             const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
             proj.currentTileIndex = startIdx;
-            proj.x = proj.tilePath[startIdx].x;
-            proj.y = proj.tilePath[startIdx].y;
+            proj.logicalX = proj.tilePath[startIdx].x;
+            proj.logicalY = proj.tilePath[startIdx].y;
             // Offset tileEntryTime so visual starts at startIdx
             const tileTransitMs = 800 / (proj.speed || 4);
             proj.tileEntryTime = Date.now() - (startIdx * tileTransitMs);
@@ -1290,8 +1292,8 @@ export const Game: React.FC = () => {
           if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
             const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
             proj.currentTileIndex = startIdx;
-            proj.x = proj.tilePath[startIdx].x;
-            proj.y = proj.tilePath[startIdx].y;
+            proj.logicalX = proj.tilePath[startIdx].x;
+            proj.logicalY = proj.tilePath[startIdx].y;
             const tileTransitMs = 800 / (proj.speed || 4);
             proj.tileEntryTime = Date.now() - (startIdx * tileTransitMs);
           }

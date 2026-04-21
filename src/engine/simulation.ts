@@ -78,7 +78,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
 
   for (const tile of tiles) {
     // Skip the starting tile
-    if (tile.x === Math.floor(proj.x) && tile.y === Math.floor(proj.y)) continue;
+    if (tile.x === Math.floor(proj.logicalX) && tile.y === Math.floor(proj.logicalY)) continue;
 
     if (effectivelyCharFired) {
       // Check for enemy hits — dedup by array index (hitEnemyIndices), not
@@ -309,8 +309,8 @@ function reflectProjectile(
   const startY = Math.floor(reflector.y);
   const range = proj.attackData.range ?? 5;
 
-  proj.x = startX;
-  proj.y = startY;
+  proj.logicalX = startX;
+  proj.logicalY = startY;
   proj.startX = startX;
   proj.startY = startY;
   if (!proj.isHoming) {
@@ -2019,12 +2019,13 @@ import { TileType } from '../types/game';
 // ==========================================
 // Each helper is a verbatim extraction of a movement branch previously nested
 // in updateProjectiles(). Same math, same side effects on
-// proj.direction / proj.visualPastReflectPoint / proj.currentTileIndex.
+// proj.direction / proj.currentTileIndex.
 // No behavior change — only code organization. See
 // docs/projectile-refactor-plan.md Phase B.
 //
-// Each returns { newX, newY, reachedTarget }; updateProjectiles applies
-// proj.x = newX, proj.y = newY and runs shared bridge-field consumption.
+// Each returns { newX, newY, reachedTarget }; updateProjectiles writes the
+// visual position into the ProjectileVisualState side-table (Phase C-2) and
+// runs shared bridge-field consumption.
 
 interface ProjectileMovementResult {
   newX: number;
@@ -2045,7 +2046,7 @@ interface ProjectileMovementResult {
  */
 function updateStraightLineHomingVisual(proj: Projectile, now: number): ProjectileMovementResult {
   const startX = proj.homingVisualStartX!;
-  const startY = proj.homingVisualStartY ?? proj.y;
+  const startY = proj.homingVisualStartY ?? proj.logicalY;
   const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
   const speedTilesPerSecond = (proj.speed || 4) / 0.8;
   const totalDist = Math.sqrt(Math.pow(proj.targetX - startX, 2) + Math.pow(proj.targetY - startY, 2));
@@ -2068,10 +2069,17 @@ function updateStraightLineHomingVisual(proj: Projectile, now: number): Projecti
 /**
  * GRID HOMING (no tilePath): move toward current target from current position.
  * Active when: proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)
+ *
+ * Phase C-2: `currentX`/`currentY` are read from the visual-state side-table
+ * by the caller — no longer from `proj.x/y`, which is migrating out.
  */
-function updateGridHomingVisual(proj: Projectile): ProjectileMovementResult {
-  const dx = proj.targetX - proj.x;
-  const dy = proj.targetY - proj.y;
+function updateGridHomingVisual(
+  proj: Projectile,
+  currentX: number,
+  currentY: number,
+): ProjectileMovementResult {
+  const dx = proj.targetX - currentX;
+  const dy = proj.targetY - currentY;
   const distanceToTarget = Math.sqrt(dx * dx + dy * dy);
 
   const frameTime = 0.016; // 16ms in seconds
@@ -2089,13 +2097,13 @@ function updateGridHomingVisual(proj: Projectile): ProjectileMovementResult {
   } else {
     const normalizedDx = dx / distanceToTarget;
     const normalizedDy = dy / distanceToTarget;
-    newX = proj.x + normalizedDx * moveDistance;
-    newY = proj.y + normalizedDy * moveDistance;
+    newX = currentX + normalizedDx * moveDistance;
+    newY = currentY + normalizedDy * moveDistance;
   }
 
   // Update direction for sprite rotation
   if (dx !== 0 || dy !== 0) {
-    proj.direction = calculateDirectionTo(proj.x, proj.y, proj.targetX, proj.targetY);
+    proj.direction = calculateDirectionTo(currentX, currentY, proj.targetX, proj.targetY);
   }
 
   return { newX, newY, reachedTarget };
@@ -2296,13 +2304,23 @@ export function updateProjectiles(
       continue;
     }
 
+    // Phase C-2: visual position lives in the side-table. Seed an entry on
+    // first sight of a projectile, anchored to its current logical position.
+    let vs = visualState?.get(proj.id);
+    if (visualState && !vs) {
+      vs = { x: proj.logicalX, y: proj.logicalY, startTime: proj.startTime };
+      visualState.set(proj.id, vs);
+    }
+    const currentX = vs?.x ?? proj.logicalX;
+    const currentY = vs?.y ?? proj.logicalY;
+
     // Dispatch to the appropriate movement branch. Same conditions as before
     // the Phase B extraction — behavior is identical.
     let result: ProjectileMovementResult;
     if (proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
       result = updateStraightLineHomingVisual(proj, now);
     } else if (proj.isHoming && !(proj.tilePath && proj.tilePath.length > 0)) {
-      result = updateGridHomingVisual(proj);
+      result = updateGridHomingVisual(proj, currentX, currentY);
     } else if (proj.tilePath && proj.tilePath.length > 0) {
       result = updateTileBasedVisual(proj, now);
     } else {
@@ -2310,21 +2328,18 @@ export function updateProjectiles(
     }
     const { newX, newY, reachedTarget } = result;
 
-    // Update position
-    proj.x = newX;
-    proj.y = newY;
+    // Write interpolated visual position to the side-table (Phase C-2).
+    if (vs) {
+      vs.x = newX;
+      vs.y = newY;
+    }
 
     // Phase C: propagate the "past reflect point" signal into the visual-state
     // side-table. Stable — once set, stays set for this projectile.
-    if (result.pastReflectPoint && visualState) {
-      let vs = visualState.get(proj.id);
-      if (!vs) {
-        vs = { x: newX, y: newY, startTime: proj.startTime };
-        visualState.set(proj.id, vs);
-      }
+    if (result.pastReflectPoint && vs) {
       vs.visualPastReflectPoint = true;
     }
-    const pastReflectPoint = !!visualState?.get(proj.id)?.visualPastReflectPoint;
+    const pastReflectPoint = !!vs?.visualPastReflectPoint;
 
     // Spawn deferred reflect VFX when visual reaches the reflect point
     if (proj.pendingReflectVfx && pastReflectPoint) {
@@ -3013,8 +3028,8 @@ function resolveReflectedPathHeadless(
   }
 
   const { dx, dy } = getDirectionOffset(proj.direction);
-  proj.x = proj.startX + dx * walk.lastDist;
-  proj.y = proj.startY + dy * walk.lastDist;
+  proj.logicalX = proj.startX + dx * walk.lastDist;
+  proj.logicalY = proj.startY + dy * walk.lastDist;
   proj.logicalTileIndex = walk.lastDist;
 
   // Out-of-bounds (no step recorded at all) is also a stop condition.
@@ -3076,22 +3091,22 @@ function resolveProjectiles(gameState: GameState): void {
       }
 
       if (targetEntity) {
-        const dx = targetEntity.x - proj.x;
-        const dy = targetEntity.y - proj.y;
+        const dx = targetEntity.x - proj.logicalX;
+        const dy = targetEntity.y - proj.logicalY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Range check — homing projectiles should respect their range
         const totalDistanceTraveled = Math.sqrt(
-          Math.pow(proj.x - (proj.homingVisualStartX ?? proj.startX), 2) +
-          Math.pow(proj.y - (proj.homingVisualStartY ?? proj.startY), 2)
+          Math.pow(proj.logicalX - (proj.homingVisualStartX ?? proj.startX), 2) +
+          Math.pow(proj.logicalY - (proj.homingVisualStartY ?? proj.startY), 2)
         );
         const remainingRange = Math.max(0, range - totalDistanceTraveled);
         if (remainingRange <= 0) {
           // Out of range — deactivate. Clear homing visual state so tile-based branch handles it.
-          const vStartX = proj.homingVisualStartX ?? proj.x;
-          const vStartY = proj.homingVisualStartY ?? proj.y;
-          const endPath = getTilesAlongLine(vStartX, vStartY, proj.x, proj.y);
-          proj.tilePath = endPath.length > 0 ? endPath : [{ x: Math.floor(proj.x), y: Math.floor(proj.y) }];
+          const vStartX = proj.homingVisualStartX ?? proj.logicalX;
+          const vStartY = proj.homingVisualStartY ?? proj.logicalY;
+          const endPath = getTilesAlongLine(vStartX, vStartY, proj.logicalX, proj.logicalY);
+          proj.tilePath = endPath.length > 0 ? endPath : [{ x: Math.floor(proj.logicalX), y: Math.floor(proj.logicalY) }];
           proj.currentTileIndex = 0;
           proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
           proj.hitResult = { hitTileIndex: proj.tilePath.length - 1, deactivate: true };
@@ -3106,12 +3121,12 @@ function resolveProjectiles(gameState: GameState): void {
         // the straight-line wall block here — otherwise the pathfinder never
         // gets a chance to run.
         if (!proj.homingIgnoreWalls && proj.homingPathStyle !== 'pathfinding') {
-          const pathTiles = getTilesAlongLine(proj.x, proj.y, targetEntity.x, targetEntity.y);
+          const pathTiles = getTilesAlongLine(proj.logicalX, proj.logicalY, targetEntity.x, targetEntity.y);
           let wallBlocked = false;
           for (const tile of pathTiles) {
-            if (tile.x === Math.floor(proj.x) && tile.y === Math.floor(proj.y)) continue;
+            if (tile.x === Math.floor(proj.logicalX) && tile.y === Math.floor(proj.logicalY)) continue;
             if (isTileBlocked(tile.x, tile.y, gameState)) {
-              const wallPath = getTilesAlongLine(proj.homingVisualStartX ?? proj.x, proj.homingVisualStartY ?? proj.y, tile.x, tile.y);
+              const wallPath = getTilesAlongLine(proj.homingVisualStartX ?? proj.logicalX, proj.homingVisualStartY ?? proj.logicalY, tile.x, tile.y);
               if (wallPath.length > 1) wallPath.pop();
               proj.tilePath = wallPath;
               proj.currentTileIndex = 0;
@@ -3150,9 +3165,9 @@ function resolveProjectiles(gameState: GameState): void {
           if (isHostileHit) {
             const targetIsEnemy = !!proj.targetIsEnemy;
             // Save pre-reflect position BEFORE applyEntityHit (which calls reflectProjectile
-            // and overwrites proj.x/y and clears homingVisualStartX)
-            const preReflectStartX = proj.homingVisualStartX ?? proj.x;
-            const preReflectStartY = proj.homingVisualStartY ?? proj.y;
+            // and overwrites proj.logicalX/logicalY and clears homingVisualStartX)
+            const preReflectStartX = proj.homingVisualStartX ?? proj.logicalX;
+            const preReflectStartY = proj.homingVisualStartY ?? proj.logicalY;
             const preReflectStartTime = proj.homingVisualStartTime;
             const hitResult = applyEntityHit(
               targetEntity as (PlacedCharacter | PlacedEnemy), targetIsEnemy,
@@ -3219,8 +3234,8 @@ function resolveProjectiles(gameState: GameState): void {
               }
 
               if (combinedPath.length > 0) {
-                proj.x = combinedPath[combinedPath.length - 1].x;
-                proj.y = combinedPath[combinedPath.length - 1].y;
+                proj.logicalX = combinedPath[combinedPath.length - 1].x;
+                proj.logicalY = combinedPath[combinedPath.length - 1].y;
               }
               continue;
             }
@@ -3237,8 +3252,8 @@ function resolveProjectiles(gameState: GameState): void {
           }
 
           // Build tile path for visual
-          const vStartX = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartX ?? proj.x) : proj.x;
-          const vStartY = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartY ?? proj.y) : proj.y;
+          const vStartX = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartX ?? proj.logicalX) : proj.logicalX;
+          const vStartY = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartY ?? proj.logicalY) : proj.logicalY;
           const turnTiles = proj.homingPathStyle === 'pathfinding'
             ? findPathBFS(vStartX, vStartY, hitX, hitY, gameState)
             : getTilesAlongLine(vStartX, vStartY, hitX, hitY);
@@ -3257,8 +3272,8 @@ function resolveProjectiles(gameState: GameState): void {
             deferredDeathIsEnemy,
             deferredDeathIndex,
           };
-          proj.x = turnTiles[turnTiles.length - 1].x;
-          proj.y = turnTiles[turnTiles.length - 1].y;
+          proj.logicalX = turnTiles[turnTiles.length - 1].x;
+          proj.logicalY = turnTiles[turnTiles.length - 1].y;
         } else {
           // Move toward target but don't reach it yet
           let turnTiles: Array<{x: number; y: number}>;
@@ -3267,7 +3282,7 @@ function resolveProjectiles(gameState: GameState): void {
 
           if (proj.homingPathStyle === 'pathfinding') {
             const clampedTiles = Math.min(tilesPerTurn, Math.floor(remainingRange));
-            const fullPath = findPathBFS(proj.x, proj.y, targetEntity.x, targetEntity.y, gameState);
+            const fullPath = findPathBFS(proj.logicalX, proj.logicalY, targetEntity.x, targetEntity.y, gameState);
             turnTiles = fullPath.slice(0, clampedTiles + 1);
             const lastTile = turnTiles[turnTiles.length - 1];
             newX = lastTile.x;
@@ -3275,9 +3290,9 @@ function resolveProjectiles(gameState: GameState): void {
           } else {
             const clampedMove = Math.min(tilesPerTurn, remainingRange);
             const moveRatio = clampedMove / distance;
-            newX = proj.x + dx * moveRatio;
-            newY = proj.y + dy * moveRatio;
-            turnTiles = getTilesAlongLine(proj.x, proj.y, newX, newY);
+            newX = proj.logicalX + dx * moveRatio;
+            newY = proj.logicalY + dy * moveRatio;
+            turnTiles = getTilesAlongLine(proj.logicalX, proj.logicalY, newX, newY);
           }
 
           if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
@@ -3287,8 +3302,8 @@ function resolveProjectiles(gameState: GameState): void {
           proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
-          proj.x = newX;
-          proj.y = newY;
+          proj.logicalX = newX;
+          proj.logicalY = newY;
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
           // Update visual start to current position each turn so slow projectiles (speed 1-2)
@@ -3378,8 +3393,8 @@ function resolveProjectiles(gameState: GameState): void {
           }
 
           if (combinedPath.length > 0) {
-            proj.x = combinedPath[combinedPath.length - 1].x;
-            proj.y = combinedPath[combinedPath.length - 1].y;
+            proj.logicalX = combinedPath[combinedPath.length - 1].x;
+            proj.logicalY = combinedPath[combinedPath.length - 1].y;
           }
         }
       }
@@ -3393,8 +3408,8 @@ function resolveProjectiles(gameState: GameState): void {
       // Update projectile position if still active
       if (!shouldRemove && !hitWall) {
         const newDist = Math.min(endTile, range);
-        proj.x = proj.startX + dx * newDist;
-        proj.y = proj.startY + dy * newDist;
+        proj.logicalX = proj.startX + dx * newDist;
+        proj.logicalY = proj.startY + dy * newDist;
         proj.logicalTileIndex = newDist;
 
         if (newDist >= range) {
@@ -3420,8 +3435,8 @@ function resolveProjectiles(gameState: GameState): void {
       }
 
       if (turnTiles.length > 0) {
-        proj.x = turnTiles[turnTiles.length - 1].x;
-        proj.y = turnTiles[turnTiles.length - 1].y;
+        proj.logicalX = turnTiles[turnTiles.length - 1].x;
+        proj.logicalY = turnTiles[turnTiles.length - 1].y;
       }
     }
 
@@ -3528,8 +3543,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
       }
 
       if (targetEntity) {
-        const dx = targetEntity.x - proj.x;
-        const dy = targetEntity.y - proj.y;
+        const dx = targetEntity.x - proj.logicalX;
+        const dy = targetEntity.y - proj.logicalY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         if (distance <= tilesPerTurn) {
@@ -3584,8 +3599,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
           shouldRemove = true;
         } else {
           const moveRatio = tilesPerTurn / distance;
-          proj.x += dx * moveRatio;
-          proj.y += dy * moveRatio;
+          proj.logicalX += dx * moveRatio;
+          proj.logicalY += dy * moveRatio;
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
         }
@@ -3653,8 +3668,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
       // Update projectile position if it's still active
       if (!reflectHandled && !shouldRemove && !hitWall) {
         const newDist = Math.min(endTile, range);
-        proj.x = proj.startX + dx * newDist;
-        proj.y = proj.startY + dy * newDist;
+        proj.logicalX = proj.startX + dx * newDist;
+        proj.logicalY = proj.startY + dy * newDist;
         proj.logicalTileIndex = newDist;
 
         if (newDist >= range) {
@@ -3673,8 +3688,8 @@ function updateProjectilesHeadless(gameState: GameState): void {
 
     // THROW_PLACE: place item when headless projectile reaches destination
     if (shouldRemove && proj.throwPlaceConfig) {
-      const placeX = Math.floor(proj.x);
-      const placeY = Math.floor(proj.y);
+      const placeX = Math.floor(proj.logicalX);
+      const placeY = Math.floor(proj.logicalY);
       // Verify it's a valid tile (not wall, in bounds)
       if (isInBounds(placeX, placeY, gameState.puzzle.width, gameState.puzzle.height)) {
         const placeTile = gameState.puzzle.tiles[placeY]?.[placeX];
@@ -3693,7 +3708,7 @@ function updateProjectilesHeadless(gameState: GameState): void {
           recordProjectileEvent(gameState, {
             type: 'deactivate',
             projId: proj.id,
-            x: proj.x, y: proj.y,
+            x: proj.logicalX, y: proj.logicalY,
           });
         }
       }

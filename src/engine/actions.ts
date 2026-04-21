@@ -1777,8 +1777,8 @@ function spawnProjectile(
   const projectile: Projectile = {
     id: `proj_${Date.now()}_${Math.random()}`,
     attackData,
-    x: character.x,
-    y: character.y,
+    logicalX: character.x,
+    logicalY: character.y,
     startX: character.x,
     startY: character.y,
     targetX,
