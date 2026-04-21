@@ -1239,12 +1239,17 @@ export const Game: React.FC = () => {
     return copy;
   };
 
-  // Reset each projectile in a replay snapshot to its start-of-turn position so
-  // animation plays forward through the turn. Without this, buildReplayProjectiles
-  // seeds currentTileIndex at end-of-turn, and updateProjectiles' hit-consumption
-  // (currentTileIdx >= hitResult.hitTileIndex) fires on the very first frame for
-  // any projectile whose endTurn == this turn — deactivating it before it
-  // renders. Used by playback, seek, and step handlers.
+  // Reset each projectile's VISUAL anchors to its start-of-turn position so
+  // the per-frame animation plays forward through the turn. Without this,
+  // buildReplayProjectiles seeds currentTileIndex at end-of-turn, and
+  // updateProjectiles' hit-consumption (currentTileIdx >= hitResult.hitTileIndex)
+  // fires on the very first frame for any projectile whose endTurn == this
+  // turn — deactivating it before it renders.
+  //
+  // logicalX/Y is intentionally NOT reset. buildReplayProjectiles already sets
+  // it to the turn-END position, which is what the frozen state (after the
+  // animation window closes) needs to render. Overwriting to turn-start would
+  // cause a visible snap-back once replayFrozen flips on.
   const resetReplayProjectilesToTurnStart = (copy: GameState) => {
     if (!copy.activeProjectiles) return;
     const nowMs = Date.now();
@@ -1252,8 +1257,6 @@ export const Game: React.FC = () => {
       if (proj.tilePath && proj.tilePath.length > 0 && (proj as any)._turnStartTileIndex !== undefined) {
         const startIdx = Math.min((proj as any)._turnStartTileIndex, proj.tilePath.length - 1);
         proj.currentTileIndex = startIdx;
-        proj.logicalX = proj.tilePath[startIdx].x;
-        proj.logicalY = proj.tilePath[startIdx].y;
         const tileTransitMs = 800 / (proj.speed || 4);
         proj.tileEntryTime = nowMs - (startIdx * tileTransitMs);
         proj.startTime = nowMs - (startIdx * tileTransitMs);
