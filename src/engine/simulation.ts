@@ -1774,7 +1774,7 @@ export function executeTurn(gameState: GameState): GameState {
     // declare defeat yet — a slow bolt fired on the last active turn still
     // deserves a chance to land.
     const hasInFlightProjectile = (gameState.activeProjectiles ?? []).some(
-      (p) => p.active && !p.hitResult && !p.pendingDeactivation,
+      (p) => p.active && !p.hitResult,
     );
 
     // Check if we've exceeded the turn limit
@@ -2341,12 +2341,6 @@ export function updateProjectiles(gameState: GameState): void {
       }
       proj.hitResult = undefined;
       continue;
-    }
-
-    // Deactivate at end of tile path when projectile has reached max range
-    if (reachedTarget && proj.pendingDeactivation) {
-      proj.active = false;
-      projectilesToRemove.push(proj.id);
     }
   }
 
@@ -3008,15 +3002,12 @@ function resolveProjectiles(gameState: GameState): void {
     }
 
     // Skip projectiles that already have a hitResult — they've been resolved
-    // and are just waiting for the visual system to consume the result
+    // and are just waiting for the visual system to consume the result.
+    // (Pre Phase-D this was two separate checks: hitResult handled "hit
+    // landed, waiting for VFX" while pendingDeactivation handled "no hit,
+    // waiting for end-of-path deactivation." Now both use hitResult with
+    // deactivate=true, so a single check covers both.)
     if (proj.hitResult) continue;
-
-    // Skip projectiles that hit a wall / ran out of range — they've been
-    // logically terminated and are just waiting for the visual system to
-    // deactivate them. Without this skip, the projectile's `logicalTileIndex`
-    // would keep advancing on subsequent turns, letting bolts "teleport"
-    // past walls and hit entities beyond.
-    if (proj.pendingDeactivation) continue;
 
     // Skip reflected projectiles — their full path and collisions were resolved
     // at reflect time. Re-processing would reset the visual and cause duplication.
@@ -3418,12 +3409,14 @@ function resolveProjectiles(gameState: GameState): void {
       }
     }
 
-    if (shouldRemove) {
-      if (proj.hitResult) {
-        // Entity was hit or item placed — visual system will deactivate when animation reaches hitTileIndex
-      } else {
-        proj.pendingDeactivation = true;
-      }
+    if (shouldRemove && !proj.hitResult) {
+      // No hit occurred (range exhausted / wall / out of bounds). Tell the
+      // visual loop to deactivate at the end of the current tilePath by
+      // setting a minimal hitResult (no vfx, no deferred death — just
+      // deactivate). Unified with the existing hit path so the visual loop
+      // only has one "logic done" signal to consume.
+      const endTileIndex = proj.tilePath && proj.tilePath.length > 0 ? proj.tilePath.length - 1 : 0;
+      proj.hitResult = { hitTileIndex: endTileIndex, deactivate: true };
     }
   }
 

@@ -931,8 +931,18 @@ export interface Projectile {
   spawnTurn?: number;           // LOGICAL — gameState.currentTurn when spawned
   logicalTileIndex?: number;    // LOGICAL — Deterministic total tiles traversed (incremented by speed each turn)
   reflectAtTileIndex?: number;  // BRIDGE — logic sets the reflect tile; visual applies tint after this
-  hitResult?: ProjectileHitResult; // BRIDGE — logic decides the hit; visual applies damage/VFX when sprite arrives
-  pendingDeactivation?: boolean; // BRIDGE — logic marks end-of-range; visual deactivates when sprite reaches path end
+  /**
+   * BRIDGE — logic decides the outcome of this projectile's flight; visual
+   * consumes when the sprite reaches `hitTileIndex` (or earlier for
+   * straight-line homing). Used for three cases, distinguished by which
+   * optional fields are populated:
+   *   1. Entity hit: `vfxSprite`/`vfxX`/`vfxY` + optional `deferredDeath*`.
+   *   2. Throw/place landing: `placeCollectibleConfig`.
+   *   3. Pure deactivation (wall / range exhaustion): only `hitTileIndex`
+   *      + `deactivate: true`. Replaces the separate pendingDeactivation
+   *      flag that existed pre-Phase-D.
+   */
+  hitResult?: ProjectileHitResult;
   pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // BRIDGE — deferred reflect VFX
   /** VISUAL — set once when visual crosses reflect point (Phase C: moves to ProjectileVisualState). */
   visualPastReflectPoint?: boolean;

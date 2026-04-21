@@ -1191,8 +1191,13 @@ export const Game: React.FC = () => {
             vfxY: life.end.y,
           };
         } else {
-          // wall_hit or deactivate
-          proj.pendingDeactivation = true;
+          // wall_hit or deactivate (no VFX / no deferred death — just
+          // deactivate at end of tilePath). Unified with the hit path above
+          // so the visual loop only has one "logic done" signal to consume.
+          proj.hitResult = {
+            hitTileIndex: hitIdx ?? (proj.tilePath ? proj.tilePath.length - 1 : 0),
+            deactivate: true,
+          };
         }
       }
 
