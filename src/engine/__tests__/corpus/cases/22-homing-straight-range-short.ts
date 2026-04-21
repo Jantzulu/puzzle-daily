@@ -1,26 +1,29 @@
 /**
  * Case 22: homing bolt with SPELL RANGE SHORTER than target distance.
  *
- * Regression test for the "homing trigger range bypasses spell range" bug
- * (CLAUDE_HANDOFF.md → "Fix: homing trigger range bypasses spell range +
- * projectile visuals disappear"). Root cause: straight-line homing re-anchors
- * `homingVisualStartX/Y` to the current logical position each turn as a
- * visual-interpolation tweak for slow projectiles, but `resolveProjectiles`'
- * homing range check was measuring `totalDistanceTraveled` from that same
- * anchor — so after turn 1, the measured distance is always 0 and the range
- * gate never fires.
+ * Regression test for the "homing trigger range bypasses spell range" bug.
+ * Two distinct fixes live under this one case:
  *
- * Hero at (0,0), enemy at (7,0). Spell range is 3 (max). The bolt cannot
- * possibly reach the enemy. Expected: bolt deactivates after exhausting
- * its range (takes 1 turn at speed=4 to hit range), enemy's HP stays full.
+ * 1. `resolveProjectiles`' homing range check used to measure
+ *    `totalDistanceTraveled` from `homingVisualStartX/Y` — which
+ *    re-anchors each turn for slow-projectile visual interpolation — so
+ *    the measured distance was always ~0 and the range gate never fired.
+ *    Fixed by measuring from the stable `proj.startX/Y` anchor.
  *
- * Before the fix: the bolt flies indefinitely and hits the enemy on turn 2.
- * After the fix: the bolt deactivates, enemy HP = 3 at game end.
+ * 2. Once the range gate worked logically, the VISUAL for out-of-range
+ *    bolts showed "projectiles appearing at random locations" because the
+ *    straight-line homing visual interpolates to the target over
+ *    `dist/speed` seconds — for a 7-tile target at speed 4 that's 1.4s
+ *    vs the 0.8s turn. Visual reached ~57% of target in 800ms while
+ *    logical was capped by range at ~43%; the turn-boundary anchor reset
+ *    then snapped the sprite backward to the logical position. Fixed by
+ *    downgrading out-of-range homing bolts to non-homing at spawn —
+ *    targetX/Y gets capped to the spell's max-range point in the target's
+ *    direction, and the bolt flies a plain straight line there.
  *
- * The hero uses auto-targeting with no explicit autoTargetRange (0 =
- * unlimited) to mirror the real-world scenario — trigger fires on an enemy
- * outside the spell's range, spell acquires it as a homing target, then
- * relies on `resolveProjectiles` to terminate the flight.
+ * Hero at (0,0), enemy at (7,0). Spell range = 3. The bolt cannot reach
+ * the enemy. Expected: bolt spawns as a non-homing straight shot toward
+ * a max-range point, flies 3 tiles east, deactivates. Enemy HP stays 3.
  */
 import {
   clearAllRegistries,

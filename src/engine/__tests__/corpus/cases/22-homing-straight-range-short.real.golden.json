@@ -59,21 +59,19 @@
         "id": "proj-0",
         "startX": 0,
         "startY": 0,
-        "targetX": 7,
+        "targetX": 3,
         "targetY": 0,
         "direction": "east",
         "speed": 4,
         "active": true,
         "spellAssetId": "short-range-homing",
         "sourceCharacterId": "hero-caster",
-        "isHoming": true,
+        "isHoming": false,
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
-        "targetEntityId": "goblin-weak",
-        "targetIsEnemy": true,
         "spawnTurn": 1,
-        "logicalTileIndex": 0,
+        "logicalTileIndex": 3,
         "tilePath": [
           {
             "x": 0,
@@ -92,6 +90,7 @@
             "y": 0
           }
         ],
+        "hitEntityIds": [],
         "bounceCount": 0,
         "damage": 3,
         "range": 3
@@ -130,27 +129,38 @@
         "id": "proj-0",
         "startX": 0,
         "startY": 0,
-        "targetX": 7,
+        "targetX": 3,
         "targetY": 0,
         "direction": "east",
         "speed": 4,
         "active": true,
         "spellAssetId": "short-range-homing",
         "sourceCharacterId": "hero-caster",
-        "isHoming": true,
+        "isHoming": false,
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
-        "targetEntityId": "goblin-weak",
-        "targetIsEnemy": true,
         "spawnTurn": 1,
-        "logicalTileIndex": 0,
+        "logicalTileIndex": 3,
         "tilePath": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
           {
             "x": 3,
             "y": 0
           }
         ],
+        "hitEntityIds": [],
         "bounceCount": 0,
         "damage": 3,
         "range": 3
@@ -189,27 +199,38 @@
         "id": "proj-0",
         "startX": 0,
         "startY": 0,
-        "targetX": 7,
+        "targetX": 3,
         "targetY": 0,
         "direction": "east",
         "speed": 4,
         "active": true,
         "spellAssetId": "short-range-homing",
         "sourceCharacterId": "hero-caster",
-        "isHoming": true,
+        "isHoming": false,
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
-        "targetEntityId": "goblin-weak",
-        "targetIsEnemy": true,
         "spawnTurn": 1,
-        "logicalTileIndex": 0,
+        "logicalTileIndex": 3,
         "tilePath": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
           {
             "x": 3,
             "y": 0
           }
         ],
+        "hitEntityIds": [],
         "bounceCount": 0,
         "damage": 3,
         "range": 3
@@ -248,27 +269,38 @@
         "id": "proj-0",
         "startX": 0,
         "startY": 0,
-        "targetX": 7,
+        "targetX": 3,
         "targetY": 0,
         "direction": "east",
         "speed": 4,
         "active": true,
         "spellAssetId": "short-range-homing",
         "sourceCharacterId": "hero-caster",
-        "isHoming": true,
+        "isHoming": false,
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
-        "targetEntityId": "goblin-weak",
-        "targetIsEnemy": true,
         "spawnTurn": 1,
-        "logicalTileIndex": 0,
+        "logicalTileIndex": 3,
         "tilePath": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
           {
             "x": 3,
             "y": 0
           }
         ],
+        "hitEntityIds": [],
         "bounceCount": 0,
         "damage": 3,
         "range": 3
@@ -307,27 +339,38 @@
         "id": "proj-0",
         "startX": 0,
         "startY": 0,
-        "targetX": 7,
+        "targetX": 3,
         "targetY": 0,
         "direction": "east",
         "speed": 4,
         "active": true,
         "spellAssetId": "short-range-homing",
         "sourceCharacterId": "hero-caster",
-        "isHoming": true,
+        "isHoming": false,
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
-        "targetEntityId": "goblin-weak",
-        "targetIsEnemy": true,
         "spawnTurn": 1,
-        "logicalTileIndex": 0,
+        "logicalTileIndex": 3,
         "tilePath": [
+          {
+            "x": 0,
+            "y": 0
+          },
+          {
+            "x": 1,
+            "y": 0
+          },
+          {
+            "x": 2,
+            "y": 0
+          },
           {
             "x": 3,
             "y": 0
           }
         ],
+        "hitEntityIds": [],
         "bounceCount": 0,
         "damage": 3,
         "range": 3

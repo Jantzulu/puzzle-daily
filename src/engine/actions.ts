@@ -1718,27 +1718,51 @@ function spawnProjectile(
   const range = attackData.range || 10; // Default max range
   const speed = attackData.projectileSpeed || 4; // Tiles per turn
 
+  // If the homing target is beyond the spell's range, downgrade to a
+  // non-homing straight bolt aimed at the max-range point in the target's
+  // direction. Reason: the straight-line homing visual interpolates from
+  // current position to target over `dist / speed` seconds — for targets
+  // much farther than one turn's travel, the visual overshoots the logical
+  // per-turn position, and `resolveProjectiles`' turn-boundary anchor reset
+  // snaps it backward to the logical position. Multiple out-of-range bolts
+  // each snap by different amounts, producing a "projectiles appearing at
+  // random locations" visual. The logical range gate still works correctly
+  // either way (no damage), but treating these as non-homing avoids the
+  // visual snap entirely.
+  let effectiveHomingTarget = homingTarget;
 
   // Calculate target position
   let targetX: number;
   let targetY: number;
 
   // For homing projectiles, set initial target to the actual target entity's position
-  if (homingTarget) {
+  if (effectiveHomingTarget) {
     let targetEntity: { x: number; y: number } | undefined;
-    if (homingTarget.targetIsEnemy) {
-      targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === homingTarget.targetEntityId);
+    if (effectiveHomingTarget.targetIsEnemy) {
+      targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === effectiveHomingTarget!.targetEntityId);
     } else {
-      targetEntity = gameState.placedCharacters.find(c => c.characterId === homingTarget.targetEntityId);
+      targetEntity = gameState.placedCharacters.find(c => c.characterId === effectiveHomingTarget!.targetEntityId);
     }
     if (targetEntity) {
       targetX = targetEntity.x;
       targetY = targetEntity.y;
+
+      // Downgrade to non-homing if target is out of spell range.
+      const distToTarget = Math.sqrt(
+        Math.pow(targetX - character.x, 2) + Math.pow(targetY - character.y, 2)
+      );
+      if (distToTarget > range && distToTarget > 0) {
+        const scale = range / distToTarget;
+        targetX = character.x + (targetX - character.x) * scale;
+        targetY = character.y + (targetY - character.y) * scale;
+        effectiveHomingTarget = undefined;
+      }
     } else {
       // Fallback to max range in facing direction if target not found
       const { dx, dy } = getDirectionOffset(character.facing);
       targetX = character.x + dx * range;
       targetY = character.y + dy * range;
+      effectiveHomingTarget = undefined;
     }
   } else {
     // Non-homing: use snapped compass direction × range for clean straight-line paths
@@ -1760,7 +1784,7 @@ function spawnProjectile(
   // For non-homing projectiles, this path is fixed at creation time
   // Stop path before walls so projectiles never visually enter wall tiles
   let tilePath: Array<{ x: number; y: number }> | undefined;
-  if (!homingTarget) {
+  if (!effectiveHomingTarget) {
     const rawPath = computeTilePath(character.x, character.y, targetX, targetY);
     const validPath: Array<{ x: number; y: number }> = [];
     for (const tile of rawPath) {
@@ -1773,7 +1797,10 @@ function spawnProjectile(
     tilePath = validPath.length > 0 ? validPath : [{ x: Math.floor(character.x), y: Math.floor(character.y) }];
   }
 
-  // Create projectile
+  // Create projectile. Use effectiveHomingTarget rather than the raw
+  // homingTarget so out-of-range bolts spawn as non-homing — the homing
+  // flag + visual-anchor fields must be left off, otherwise
+  // updateStraightLineHomingVisual would still engage on frame 0.
   const projectile: Projectile = {
     id: `proj_${Date.now()}_${Math.random()}`,
     attackData,
@@ -1788,15 +1815,15 @@ function spawnProjectile(
     active: true,
     startTime: Date.now(),
     // Homing behavior
-    isHoming: !!homingTarget,
+    isHoming: !!effectiveHomingTarget,
     homingPathStyle: attackData.homingPathStyle || 'straight',
     homingIgnoreWalls: attackData.homingIgnoreWalls ?? true,
     homingHitAlongPath: attackData.homingHitAlongPath || false,
-    homingVisualStartX: character.x,
-    homingVisualStartY: character.y,
-    homingVisualStartTime: Date.now(),
-    targetEntityId: homingTarget?.targetEntityId,
-    targetIsEnemy: homingTarget?.targetIsEnemy,
+    homingVisualStartX: effectiveHomingTarget ? character.x : undefined,
+    homingVisualStartY: effectiveHomingTarget ? character.y : undefined,
+    homingVisualStartTime: effectiveHomingTarget ? Date.now() : undefined,
+    targetEntityId: effectiveHomingTarget?.targetEntityId,
+    targetIsEnemy: effectiveHomingTarget?.targetIsEnemy,
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
     sourceEnemyIndex: sourceEnemyIndex !== undefined && sourceEnemyIndex >= 0 ? sourceEnemyIndex : undefined,
