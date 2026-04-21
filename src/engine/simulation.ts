@@ -2015,17 +2015,17 @@ import type { ParticleEffect } from '../types/game';
 import { TileType } from '../types/game';
 
 // ==========================================
-// PROJECTILE VISUAL UPDATE HELPERS (Phase B of projectile refactor)
+// PROJECTILE VISUAL UPDATE HELPERS (Phase B + C of projectile refactor)
 // ==========================================
-// Each helper is a verbatim extraction of a movement branch previously nested
-// in updateProjectiles(). Same math, same side effects on
-// proj.direction / proj.currentTileIndex.
-// No behavior change — only code organization. See
-// docs/projectile-refactor-plan.md Phase B.
+// Each helper is a movement branch extracted from updateProjectiles() in
+// Phase B. Phase C-2/C-3 made them pure w.r.t. visual state: they compute
+// positions and tile progress and return them through
+// ProjectileMovementResult; the caller writes to the visual-state side-table.
+// The only write each helper still makes to `proj` is `proj.direction` for
+// sprite rotation (a logical field — writing from visual code is a pre-
+// existing quirk tolerated to avoid over-scoping Phase C).
 //
-// Each returns { newX, newY, reachedTarget }; updateProjectiles writes the
-// visual position into the ProjectileVisualState side-table (Phase C-2) and
-// runs shared bridge-field consumption.
+// See docs/projectile-refactor-plan.md.
 
 interface ProjectileMovementResult {
   newX: number;
@@ -2038,6 +2038,14 @@ interface ProjectileMovementResult {
    * (updateProjectiles) writes to the visual-state side-table.
    */
   pastReflectPoint?: boolean;
+  /**
+   * Phase C-3: visual progress through tilePath. Helpers compute and return
+   * this rather than writing `proj.currentTileIndex` per-frame — that was the
+   * last remaining per-frame visual mutation captured by GameState deep
+   * copies. The caller uses it for hitResult-timing checks and (optionally)
+   * mirrors it into the visual-state side-table.
+   */
+  visualTileIndex?: number;
 }
 
 /**
@@ -2118,9 +2126,10 @@ function updateGridHomingVisual(
  * Active when: proj.tilePath && proj.tilePath.length > 0
  * (and not already handled by straight-line homing branch above)
  *
- * Don't mutate currentTileIndex or tileEntryTime mid-interpolation — they
- * get deep-copied into game state and would cause resolveProjectiles to see
- * stale visual state.
+ * Phase C-3: this helper is pure — it does not mutate proj.currentTileIndex
+ * or proj.tileEntryTime. Visual progress flows out via the result's
+ * `visualTileIndex`; the caller mirrors it into the side-table. Prevents
+ * deep-copies of GameState from capturing stale per-frame visual state.
  */
 function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovementResult {
   const tilePath = proj.tilePath!;
@@ -2207,19 +2216,20 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     newY = currentTile.y + (nextTile.y - currentTile.y) * tileProgress;
   }
 
-  // Store visual tile index for hitResult consumption
-  // For two-segment straight-line reflects, estimate tile index from position
+  // Compute visual tile index for hitResult consumption. Phase C-3: return
+  // through the result rather than mutating `proj.currentTileIndex` per-frame.
+  // For two-segment straight-line reflects, estimate tile index from position.
+  let emittedTileIndex: number;
   if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined) {
-    // Map current position to nearest tile in the combined path
     let bestIdx = 0;
     let bestDist = Infinity;
     for (let ti = 0; ti < tilePath.length; ti++) {
       const td = Math.abs(tilePath[ti].x - newX) + Math.abs(tilePath[ti].y - newY);
       if (td < bestDist) { bestDist = td; bestIdx = ti; }
     }
-    proj.currentTileIndex = bestIdx;
+    emittedTileIndex = bestIdx;
   } else {
-    proj.currentTileIndex = visualTileIndex;
+    emittedTileIndex = visualTileIndex;
   }
 
   // Update direction for sprite rotation
@@ -2233,7 +2243,7 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     }
   }
 
-  return { newX, newY, reachedTarget, pastReflectPoint };
+  return { newX, newY, reachedTarget, pastReflectPoint, visualTileIndex: emittedTileIndex };
 }
 
 /**
@@ -2334,6 +2344,13 @@ export function updateProjectiles(
       vs.y = newY;
     }
 
+    // Phase C-3: mirror the helper-computed visual tile index into the
+    // side-table. updateTileBasedVisual no longer mutates proj.currentTileIndex
+    // per-frame — that was the last mutation captured by GameState deep copies.
+    if (result.visualTileIndex !== undefined && vs) {
+      vs.currentTileIndex = result.visualTileIndex;
+    }
+
     // Phase C: propagate the "past reflect point" signal into the visual-state
     // side-table. Stable — once set, stays set for this projectile.
     if (result.pastReflectPoint && vs) {
@@ -2348,8 +2365,10 @@ export function updateProjectiles(
       proj.pendingReflectVfx = undefined; // Only spawn once
     }
 
-    // Consume pre-resolved hit results from resolveProjectiles
-    const currentTileIdx = proj.currentTileIndex ?? 0;
+    // Consume pre-resolved hit results from resolveProjectiles. Prefer the
+    // side-table's visual index (Phase C-3); fall back to the logical field
+    // for branches without tilePath (which don't emit visualTileIndex).
+    const currentTileIdx = vs?.currentTileIndex ?? proj.currentTileIndex ?? 0;
     const straightLineReached = proj.homingPathStyle === 'straight' && reachedTarget;
     if (proj.hitResult && (currentTileIdx >= proj.hitResult.hitTileIndex || straightLineReached)) {
       // Spawn hit VFX

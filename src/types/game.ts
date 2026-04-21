@@ -818,28 +818,23 @@ export interface CustomAttack {
  * `JSON.parse(JSON.stringify(gameState))` (the deep-copy turn snapshot) can
  * never capture wall-clock-timing noise.
  *
- * ⚠️ Phase A (current): this interface is declared but not yet used at any
- * callsite. The fields still live on `Projectile` to keep Phase A purely
- * additive. Phase C will introduce a `Map<string, ProjectileVisualState>` in
- * AnimatedGameBoard and remove the corresponding fields from `Projectile`.
+ * Status (Phase C-3 complete): `x`, `y`, `currentTileIndex`, and
+ * `visualPastReflectPoint` are the live per-frame visual state and are
+ * authoritative here (not on Projectile). `startTime`, `tileEntryTime`, and
+ * `homingVisualStart*` were reclassified BRIDGE — they are only written at
+ * turn boundaries (spawn + reflect), so they remain on Projectile where
+ * logic can set them and the visual loop can read them; deep copies of
+ * GameState capture the correct turn-boundary value.
  */
 export interface ProjectileVisualState {
   /** Current visual X position (can be fractional, updated per-frame). */
   x: number;
   /** Current visual Y position (can be fractional, updated per-frame). */
   y: number;
-  /** Wall-clock spawn time — anchor for all visual interpolation. */
+  /** Wall-clock spawn time — anchor for interpolation. Seeded from Projectile.startTime. */
   startTime: number;
-  /** Visual progress through tilePath. Distinct from Projectile.logicalTileIndex. */
+  /** Visual progress through tilePath. Authoritative — not on Projectile (Phase C-3). */
   currentTileIndex?: number;
-  /** Wall-clock time when visual entered the current tile (for tile-to-tile animation). */
-  tileEntryTime?: number;
-  /** For straight-line homing: anchor X (never changes after spawn). */
-  homingVisualStartX?: number;
-  /** For straight-line homing: anchor Y (never changes after spawn). */
-  homingVisualStartY?: number;
-  /** For straight-line homing: anchor timestamp (never changes after spawn). */
-  homingVisualStartTime?: number;
   /** Set once when visual crosses reflect point. Stable — never toggles back. */
   visualPastReflectPoint?: boolean;
 }
@@ -886,7 +881,14 @@ export interface Projectile {
 
   // -------- State --------
   active: boolean;              // LOGICAL
-  /** VISUAL — wall-clock spawn time, anchor for visual interpolation (Phase C: moves). */
+  /**
+   * BRIDGE — wall-clock spawn time. Written by logic at spawn and rewritten
+   * by `reflectProjectile` on reflect. Read by the visual loop as the anchor
+   * for interpolation. Only mutated at turn boundaries (never per-frame), so
+   * deep copies of GameState capture the correct value. Phase C-3: kept on
+   * Projectile rather than moving to the side-table — reclassified BRIDGE
+   * after confirming no per-frame writes exist.
+   */
   startTime: number;
 
   // -------- Bounce behavior (LOGICAL) --------
@@ -902,16 +904,20 @@ export interface Projectile {
   sourceEnemyIndex?: number;    // Array index of source enemy (for duplicate ID handling in reflect)
   spellAssetId?: string;        // For status effect application on hit
 
-  // -------- Homing (mixed: config + target are LOGICAL, visual anchors are VISUAL) --------
+  // -------- Homing (mixed: config + target are LOGICAL, visual anchors are BRIDGE) --------
   isHoming?: boolean;           // LOGICAL — If true, projectile chases target entity
   homingPathStyle?: 'grid' | 'straight'; // LOGICAL — Visual: 'grid' follows tiles, 'straight' flies direct
   homingIgnoreWalls?: boolean;  // LOGICAL — If true, passes through walls (default: true)
   homingHitAlongPath?: boolean; // LOGICAL — If true, grid homing hits entities along path
-  /** VISUAL — straight-line homing anchor X (Phase C: moves to ProjectileVisualState). */
+  /** BRIDGE — straight-line homing anchor X. Written by logic at spawn and
+   *  re-anchored by resolveProjectiles each turn so slow projectiles
+   *  interpolate from their current logical position. Only mutated at turn
+   *  boundaries; deep copies capture the correct value. Phase C-3: kept on
+   *  Projectile, reclassified BRIDGE. */
   homingVisualStartX?: number;
-  /** VISUAL — straight-line homing anchor Y (Phase C: moves to ProjectileVisualState). */
+  /** BRIDGE — straight-line homing anchor Y. See homingVisualStartX. */
   homingVisualStartY?: number;
-  /** VISUAL — straight-line homing anchor timestamp (Phase C: moves to ProjectileVisualState). */
+  /** BRIDGE — straight-line homing anchor timestamp. See homingVisualStartX. */
   homingVisualStartTime?: number;
   targetEntityId?: string;      // LOGICAL — ID of entity being tracked
   targetIsEnemy?: boolean;      // LOGICAL — true = target is enemy, false = target is character
@@ -920,12 +926,25 @@ export interface Projectile {
   hitEntityIds?: string[];      // IDs of entities already hit by this projectile
   hitEnemyIndices?: number[];   // Array indices of enemies hit (for duplicate ID handling)
 
-  // -------- Tile-based movement (LOGICAL path + VISUAL progress) --------
+  // -------- Tile-based movement (LOGICAL path + BRIDGE progress) --------
   /** LOGICAL — pre-computed at spawn, deterministic. */
   tilePath?: Array<{ x: number; y: number }>;
-  /** VISUAL — current index in tilePath (Phase C: moves to ProjectileVisualState). */
+  /**
+   * LOGICAL — tile progress as of the last turn boundary. Reset to 0 by
+   * logical paths (resolveProjectiles / updateProjectilesHeadless /
+   * reflectProjectile) when a new tilePath is installed. Phase C-3: the
+   * per-frame visual write is gone — visual progress now lives in
+   * `ProjectileVisualState.currentTileIndex` owned by AnimatedGameBoard.
+   * The visual loop mirrors its computed per-frame index into the side-table
+   * and reads it back for hitResult-timing checks.
+   */
   currentTileIndex?: number;
-  /** VISUAL — wall-clock time when visual entered current tile (Phase C: moves). */
+  /**
+   * BRIDGE — wall-clock time when the visual should treat the current tile
+   * as having started. Written by logic (spawn + resolveProjectiles each
+   * turn) to anchor tile-to-tile interpolation to turn boundaries. Only
+   * mutated at turn boundaries; deep copies capture the correct value.
+   */
   tileEntryTime?: number;
 
   // -------- Reflect status (LOGICAL) --------
