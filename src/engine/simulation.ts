@@ -2615,6 +2615,161 @@ function applyHealingHit(
  * Returns the reflected tiles array and whether any entity was hit.
  */
 /**
+ * Pure-logic walk of a single turn of a non-homing projectile's trajectory.
+ * Iterates tile by tile from the current logical position up to the range
+ * cap, handling bounds, walls, healing + hostile hits, pierce dedup, and
+ * reflect detection. Side effects that must happen inline (applyEntityHit,
+ * applyHealingHit, recordEnemyHit, triggerAOEExplosion) happen in the
+ * requested `mode`; everything else (timeline events, bridge fields,
+ * turnTiles/tilePath) is the caller's responsibility.
+ *
+ * The output `steps` array is what the real and headless callers translate
+ * into their mode-specific bookkeeping. This is the same pattern
+ * `walkReflectedPath` uses for reflect-walks (Phase E2).
+ */
+type NonHomingStep =
+  | { kind: 'bounds_exit'; dist: number }
+  | { kind: 'wall'; x: number; y: number; dist: number }
+  | { kind: 'travel'; x: number; y: number; dist: number }
+  | { kind: 'hostile_hit'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean; hitResult: EntityHitResult; pierceStop: boolean }
+  | { kind: 'healing_hit'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean; vfxSprite: any; pierceStop: boolean }
+  | { kind: 'reflect'; x: number; y: number; dist: number; target: PlacedCharacter | PlacedEnemy; targetIsEnemy: boolean };
+
+interface NonHomingWalkResult {
+  steps: NonHomingStep[];
+  hitSomething: boolean;
+  endedAtWall: boolean;
+  endedAtBounds: boolean;
+  endedAtReflect: boolean;
+  endedAtPierceStop: boolean;
+}
+
+function walkNonHomingTick(
+  proj: Projectile,
+  gameState: GameState,
+  mode: HitMode,
+  tilesPerTurn: number,
+  range: number,
+): NonHomingWalkResult {
+  const { dx, dy } = getDirectionOffset(proj.direction);
+  const canPierce = proj.attackData.projectilePierces === true;
+  const isHealingProjectile = proj.attackData.healing !== undefined;
+  const startTile = (proj.logicalTileIndex ?? 0) + 1;
+  const endTile = Math.min(startTile + tilesPerTurn - 1, range);
+
+  if (!proj.hitEntityIds) proj.hitEntityIds = [];
+
+  const steps: NonHomingStep[] = [];
+  let hitSomething = false;
+  let endedAtWall = false;
+  let endedAtBounds = false;
+  let endedAtReflect = false;
+  let endedAtPierceStop = false;
+
+  for (let dist = startTile; dist <= endTile; dist++) {
+    if (hitSomething && !canPierce) {
+      endedAtPierceStop = true;
+      break;
+    }
+
+    const checkX = Math.floor(proj.startX + dx * dist);
+    const checkY = Math.floor(proj.startY + dy * dist);
+
+    if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
+      endedAtBounds = true;
+      steps.push({ kind: 'bounds_exit', dist });
+      break;
+    }
+
+    const tile = gameState.puzzle.tiles[checkY]?.[checkX];
+    if (!tile || tile.type === TileTypeEnum.WALL) {
+      if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+        triggerAOEExplosion(checkX, checkY, proj.attackData,
+          proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+      }
+      endedAtWall = true;
+      steps.push({ kind: 'wall', x: checkX, y: checkY, dist });
+      break;
+    }
+
+    steps.push({ kind: 'travel', x: checkX, y: checkY, dist });
+
+    // THROW_PLACE projectiles pass through entities — no collision checks this tile.
+    if (proj.throwPlaceConfig) continue;
+
+    const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
+
+    if (targetsEnemies) {
+      if (isHealingProjectile) {
+        // charFired healing targets allied characters.
+        const hitAlly = findHealTargetAtTile(checkX, checkY, gameState, proj, false) as PlacedCharacter | null;
+        if (hitAlly) {
+          proj.hitEntityIds.push(hitAlly.characterId);
+          const vfxSprite = applyHealingHit(hitAlly, false, proj, gameState, true);
+          hitSomething = true;
+          steps.push({
+            kind: 'healing_hit', x: checkX, y: checkY, dist,
+            target: hitAlly, targetIsEnemy: false, vfxSprite, pierceStop: !canPierce,
+          });
+        }
+      } else {
+        const hitEnemy = findEntityAtTile(checkX, checkY, gameState, proj, true, true) as PlacedEnemy | null;
+        if (hitEnemy) {
+          const entityHitResult = applyEntityHit(hitEnemy, true, proj, gameState, mode);
+          if (entityHitResult.reflected) {
+            endedAtReflect = true;
+            steps.push({ kind: 'reflect', x: checkX, y: checkY, dist, target: hitEnemy, targetIsEnemy: true });
+            break;
+          }
+          recordEnemyHit(proj, hitEnemy, gameState.puzzle.enemies);
+          hitSomething = true;
+          steps.push({
+            kind: 'hostile_hit', x: checkX, y: checkY, dist,
+            target: hitEnemy, targetIsEnemy: true, hitResult: entityHitResult, pierceStop: !canPierce,
+          });
+        }
+      }
+    } else if (targetsCharacters) {
+      if (isHealingProjectile) {
+        // enemyFired healing targets allied enemies. Applied inline (no applyHealingHit helper call).
+        const hitAllyEnemy = findHealTargetAtTile(checkX, checkY, gameState, proj, true) as PlacedEnemy | null;
+        if (hitAllyEnemy) {
+          recordEnemyHit(proj, hitAllyEnemy, gameState.puzzle.enemies);
+          const healing = proj.attackData.healing ?? 0;
+          const enemyData = getEnemy(hitAllyEnemy.enemyId);
+          const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
+          hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
+          hitSomething = true;
+          const vfxSprite = proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite;
+          steps.push({
+            kind: 'healing_hit', x: checkX, y: checkY, dist,
+            target: hitAllyEnemy, targetIsEnemy: true, vfxSprite, pierceStop: !canPierce,
+          });
+        }
+      } else {
+        const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, true) as PlacedCharacter | null;
+        if (hitChar) {
+          const entityHitResult = applyEntityHit(hitChar, false, proj, gameState, mode);
+          if (entityHitResult.reflected) {
+            endedAtReflect = true;
+            steps.push({ kind: 'reflect', x: checkX, y: checkY, dist, target: hitChar, targetIsEnemy: false });
+            break;
+          }
+          proj.hitEntityIds.push(hitChar.characterId);
+          hitSomething = true;
+          steps.push({
+            kind: 'hostile_hit', x: checkX, y: checkY, dist,
+            target: hitChar, targetIsEnemy: false, hitResult: entityHitResult, pierceStop: !canPierce,
+          });
+        }
+      }
+    }
+  }
+
+  return { steps, hitSomething, endedAtWall, endedAtBounds, endedAtReflect, endedAtPierceStop };
+}
+
+/**
  * Pure-logic walk of the reflected projectile's trajectory. Iterates tile by
  * tile in the direction `proj` is now heading (post-reflect), stopping at
  * out-of-bounds, wall, or the configured range. Calls `applyEntityHit` in the
@@ -3054,212 +3209,89 @@ function resolveProjectiles(gameState: GameState): void {
         shouldRemove = true;
       }
     } else {
-      // === NON-HOMING PROJECTILES ===
+      // === NON-HOMING PROJECTILES (real mode) ===
+      // Shared collision walk returns a step log; this branch translates it
+      // into the visual/bridge bookkeeping (turnTiles, proj.hitResult,
+      // tilePath, reflectAtTileIndex, logicalTileIndex).
       const { dx, dy } = getDirectionOffset(proj.direction);
       const canPierce = proj.attackData.projectilePierces === true;
-
-      if (!proj.hitEntityIds) proj.hitEntityIds = [];
-      const hitEntityIds = proj.hitEntityIds;
-
       const startTile = (proj.logicalTileIndex ?? 0) + 1;
       const endTile = Math.min(startTile + tilesPerTurn - 1, range);
       logicalEndTile = endTile;
-      let hitWall = false;
-      let reflectedThisTurn = false;
 
       const turnTiles: Array<{ x: number; y: number }> = [];
       const currentLogicalDist = proj.logicalTileIndex ?? 0;
       turnTiles.push({
         x: Math.floor(proj.startX + dx * currentLogicalDist),
-        y: Math.floor(proj.startY + dy * currentLogicalDist)
+        y: Math.floor(proj.startY + dy * currentLogicalDist),
       });
 
-      for (let dist = startTile; dist <= endTile; dist++) {
-        if (hitSomething && !canPierce) {
-          shouldRemove = true;
-          break;
-        }
+      const walk = walkNonHomingTick(proj, gameState, 'visual', tilesPerTurn, range);
+      hitSomething = walk.hitSomething;
+      const hitWall = walk.endedAtWall;
+      let reflectedThisTurn = false;
 
-        const checkX = Math.floor(proj.startX + dx * dist);
-        const checkY = Math.floor(proj.startY + dy * dist);
-
-        // Check bounds
-        if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
-          shouldRemove = true;
-          break;
-        }
-
-        // Check wall/void
-        const tile = gameState.puzzle.tiles[checkY]?.[checkX];
-        const isOutOfBounds = !isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height);
-        if (!tile || tile.type === TileTypeEnum.WALL || isOutOfBounds) {
-          if (tile?.type === TileTypeEnum.WALL || isOutOfBounds) {
-            turnTiles.push({ x: checkX, y: checkY });
+      for (const step of walk.steps) {
+        if (step.kind === 'bounds_exit') {
+          // nothing added to turnTiles
+        } else if (step.kind === 'wall') {
+          turnTiles.push({ x: step.x, y: step.y });
+        } else if (step.kind === 'travel') {
+          turnTiles.push({ x: step.x, y: step.y });
+        } else if (step.kind === 'hostile_hit') {
+          if (step.pierceStop) {
+            proj.hitResult = {
+              hitTileIndex: step.dist,
+              deactivate: true,
+              vfxSprite: step.hitResult.vfxSprite,
+              vfxX: step.target.x,
+              vfxY: step.target.y,
+              deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
+              deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
+              deferredDeathIndex: step.hitResult.deferredDeathIndex,
+            };
           }
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(checkX, checkY, proj.attackData,
-              proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
+        } else if (step.kind === 'healing_hit') {
+          if (step.pierceStop) {
+            proj.hitResult = {
+              hitTileIndex: step.dist,
+              deactivate: true,
+              vfxSprite: step.vfxSprite,
+              vfxX: step.target.x,
+              vfxY: step.target.y,
+            };
           }
-          hitWall = true;
-          shouldRemove = true;
-          break;
-        }
+        } else if (step.kind === 'reflect') {
+          // Reflect happened. Resolve the reflected walk and build the
+          // combined approach+reflect tilePath for the visual system.
+          reflectedThisTurn = true;
+          const approachTiles = [...turnTiles];
+          const { reflectedTiles, reflectedHit } = resolveReflectedPath(
+            proj, approachTiles, gameState, canPierce);
 
-        turnTiles.push({ x: checkX, y: checkY });
+          const combinedPath = [...approachTiles, ...reflectedTiles];
+          proj.tilePath = combinedPath;
+          proj.currentTileIndex = 0;
+          proj.tileEntryTime = Date.now();
+          proj.reflectAtTileIndex = approachTiles.length - 1;
+          proj.logicalTileIndex = 0;
 
-        // THROW_PLACE projectiles pass through entities — skip all collision checks
-        if (proj.throwPlaceConfig) {
-          if (dist === endTile) {
-            // Reached end of travel range this turn — will be handled below
+          if (!reflectedHit) {
+            proj.hitResult = {
+              hitTileIndex: combinedPath.length - 1,
+              deactivate: true,
+            };
           }
-          continue;
-        }
 
-        const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
-
-        if (targetsEnemies) {
-          if (isHealingProjectile) {
-            // charFired healing targets allies (characters)
-            const hitAlly = findHealTargetAtTile(checkX, checkY, gameState, proj, false);
-            if (hitAlly) {
-              hitEntityIds.push((hitAlly as PlacedCharacter).characterId);
-              const vfxSprite = applyHealingHit(hitAlly as PlacedCharacter, false, proj, gameState, true);
-              hitSomething = true;
-              if (!canPierce) {
-                shouldRemove = true;
-                proj.hitResult = {
-                  hitTileIndex: dist,
-                  deactivate: true,
-                  vfxSprite,
-                  vfxX: hitAlly.x,
-                  vfxY: hitAlly.y,
-                };
-              }
-            }
-          } else {
-            const hitEnemy = findEntityAtTile(checkX, checkY, gameState, proj, true, true);
-            if (hitEnemy) {
-              const hitResult = applyEntityHit(hitEnemy as PlacedEnemy, true, proj, gameState, 'visual');
-              if (hitResult.reflected) {
-                // Reflect happened — resolve reflected path
-                reflectedThisTurn = true;
-                const approachTiles = [...turnTiles];
-                const { reflectedTiles, reflectedHit } = resolveReflectedPath(
-                  proj, approachTiles, gameState, canPierce);
-
-                const combinedPath = [...approachTiles, ...reflectedTiles];
-                proj.tilePath = combinedPath;
-                proj.currentTileIndex = 0;
-                proj.tileEntryTime = Date.now();
-                proj.reflectAtTileIndex = approachTiles.length - 1;
-                proj.logicalTileIndex = 0;
-
-                if (!reflectedHit) {
-                  proj.hitResult = {
-                    hitTileIndex: combinedPath.length - 1,
-                    deactivate: true,
-                  };
-                }
-
-                if (combinedPath.length > 0) {
-                  proj.x = combinedPath[combinedPath.length - 1].x;
-                  proj.y = combinedPath[combinedPath.length - 1].y;
-                }
-                break;
-              }
-
-              recordEnemyHit(proj, hitEnemy as PlacedEnemy, gameState.puzzle.enemies);
-              hitSomething = true;
-              if (!canPierce) {
-                shouldRemove = true;
-                proj.hitResult = {
-                  hitTileIndex: dist,
-                  deactivate: true,
-                  vfxSprite: hitResult.vfxSprite,
-                  vfxX: hitEnemy.x,
-                  vfxY: hitEnemy.y,
-                  deferredDeathEntityId: hitResult.deferredDeathEntityId,
-                  deferredDeathIsEnemy: hitResult.deferredDeathIsEnemy,
-                  deferredDeathIndex: hitResult.deferredDeathIndex,
-                };
-              }
-            }
+          if (combinedPath.length > 0) {
+            proj.x = combinedPath[combinedPath.length - 1].x;
+            proj.y = combinedPath[combinedPath.length - 1].y;
           }
-        } else if (targetsCharacters) {
-          if (isHealingProjectile) {
-            // enemyFired healing targets allies (enemies)
-            const hitAllyEnemy = findHealTargetAtTile(checkX, checkY, gameState, proj, true);
-            if (hitAllyEnemy) {
-              recordEnemyHit(proj, hitAllyEnemy as PlacedEnemy, gameState.puzzle.enemies);
-              const healing = proj.attackData.healing ?? 0;
-              const enemyData = getEnemy((hitAllyEnemy as PlacedEnemy).enemyId);
-              const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
-              hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
-              hitSomething = true;
-              if (!canPierce) {
-                shouldRemove = true;
-                proj.hitResult = {
-                  hitTileIndex: dist,
-                  deactivate: true,
-                  vfxSprite: proj.attackData.healingEffectSprite || proj.attackData.hitEffectSprite,
-                  vfxX: hitAllyEnemy.x,
-                  vfxY: hitAllyEnemy.y,
-                };
-              }
-            }
-          } else {
-            const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, true);
-            if (hitChar) {
-              const hitResult = applyEntityHit(hitChar as PlacedCharacter, false, proj, gameState, 'visual');
-              if (hitResult.reflected) {
-                reflectedThisTurn = true;
-                const approachTiles = [...turnTiles];
-                const { reflectedTiles, reflectedHit } = resolveReflectedPath(
-                  proj, approachTiles, gameState, canPierce);
-
-                const combinedPath = [...approachTiles, ...reflectedTiles];
-                proj.tilePath = combinedPath;
-                proj.currentTileIndex = 0;
-                proj.tileEntryTime = Date.now();
-                proj.reflectAtTileIndex = approachTiles.length - 1;
-                proj.logicalTileIndex = 0;
-
-                if (!reflectedHit) {
-                  proj.hitResult = {
-                    hitTileIndex: combinedPath.length - 1,
-                    deactivate: true,
-                  };
-                }
-
-                if (combinedPath.length > 0) {
-                  proj.x = combinedPath[combinedPath.length - 1].x;
-                  proj.y = combinedPath[combinedPath.length - 1].y;
-                }
-                break;
-              }
-
-              hitEntityIds.push((hitChar as PlacedCharacter).characterId);
-              hitSomething = true;
-              if (!canPierce) {
-                shouldRemove = true;
-                proj.hitResult = {
-                  hitTileIndex: dist,
-                  deactivate: true,
-                  vfxSprite: hitResult.vfxSprite,
-                  vfxX: hitChar.x,
-                  vfxY: hitChar.y,
-                  deferredDeathEntityId: hitResult.deferredDeathEntityId,
-                  deferredDeathIsEnemy: hitResult.deferredDeathIsEnemy,
-                };
-              }
-            }
-          }
-        }
-
-        if (dist === endTile) {
-          // Reached end of this turn's travel
         }
       }
+
+      shouldRemove = walk.endedAtBounds || walk.endedAtWall || walk.endedAtPierceStop
+        || walk.steps.some(s => (s.kind === 'hostile_hit' || s.kind === 'healing_hit') && s.pierceStop);
 
       // Skip position/tilePath updates if reflected (already handled above)
       if (reflectedThisTurn) continue;
@@ -3461,157 +3493,65 @@ function updateProjectilesHeadless(gameState: GameState): void {
         shouldRemove = true;
       }
     } else {
-      // === NON-HOMING PROJECTILES ===
+      // === NON-HOMING PROJECTILES (headless mode) ===
+      // Shared collision walk returns a step log; this branch translates it
+      // into timeline events (wall_hit / hit / reflect) and flips shouldRemove
+      // based on wall/bounds/pierce/range-end outcomes.
       const { dx, dy } = getDirectionOffset(proj.direction);
       const canPierce = proj.attackData.projectilePierces === true;
-
-      if (!proj.hitEntityIds) proj.hitEntityIds = [];
-      const hitEntityIds = proj.hitEntityIds;
-
       const startTile = (proj.logicalTileIndex ?? 0) + 1;
       const endTile = Math.min(startTile + tilesPerTurn - 1, range);
-      let hitWall = false;
 
-      for (let dist = startTile; dist <= endTile; dist++) {
-        if (hitSomething && !canPierce) {
-          shouldRemove = true;
-          break;
-        }
+      const walk = walkNonHomingTick(proj, gameState, 'headless', tilesPerTurn, range);
+      hitSomething = walk.hitSomething;
+      const hitWall = walk.endedAtWall;
+      let reflectHandled = false;
 
-        const checkX = Math.floor(proj.startX + dx * dist);
-        const checkY = Math.floor(proj.startY + dy * dist);
-
-        if (!isInBounds(checkX, checkY, gameState.puzzle.width, gameState.puzzle.height)) {
-          shouldRemove = true;
-          break;
-        }
-
-        const tile = gameState.puzzle.tiles[checkY]?.[checkX];
-        if (!tile || tile.type === TileTypeEnum.WALL) {
-          if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
-            triggerAOEExplosion(checkX, checkY, proj.attackData,
-              proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
-          }
-          hitWall = true;
-          shouldRemove = true;
-          // Record wall_hit event
+      for (const step of walk.steps) {
+        if (step.kind === 'wall') {
           recordProjectileEvent(gameState, {
-            type: 'wall_hit',
-            projId: proj.id,
-            x: checkX, y: checkY,
+            type: 'wall_hit', projId: proj.id, x: step.x, y: step.y,
           });
-          break;
-        }
-
-        // THROW_PLACE projectiles pass through entities in headless mode too
-        if (proj.throwPlaceConfig) {
-          continue;
-        }
-
-        const { targetsEnemies, targetsCharacters } = getEffectiveTeams(proj);
-
-        if (targetsEnemies) {
-          if (isHealingProjectile) {
-            const hitAlly = findHealTargetAtTile(checkX, checkY, gameState, proj, false);
-            if (hitAlly) {
-              hitEntityIds.push((hitAlly as PlacedCharacter).characterId);
-              applyHealingHit(hitAlly as PlacedCharacter, false, proj, gameState, true);
-              hitSomething = true;
-              if (!canPierce) shouldRemove = true;
-              recordProjectileEvent(gameState, {
-                type: 'hit',
-                projId: proj.id,
-                x: checkX, y: checkY,
-                targetEntityId: (hitAlly as PlacedCharacter).characterId,
-                targetIsEnemy: false,
-              });
-            }
-          } else {
-            const hitEnemy = findEntityAtTile(checkX, checkY, gameState, proj, true, true);
-            if (hitEnemy) {
-              const hitResult = applyEntityHit(hitEnemy as PlacedEnemy, true, proj, gameState, 'headless');
-              if (hitResult.reflected) {
-                recordProjectileEvent(gameState, {
-                  type: 'reflect',
-                  projId: proj.id,
-                  x: checkX, y: checkY,
-                  reflected: true,
-                  reflectTintColor: proj.reflectTintColor,
-                  reflectOverrideSprite: proj.reflectOverrideSprite,
-                  reflectAtTileIndex: proj.reflectAtTileIndex,
-                  combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
-                });
-                shouldRemove = resolveReflectedPathHeadless(proj, gameState, canPierce) || shouldRemove;
-                break;
-              }
-              recordEnemyHit(proj, hitEnemy as PlacedEnemy, gameState.puzzle.enemies);
-              hitSomething = true;
-              if (!canPierce) shouldRemove = true;
-              recordProjectileEvent(gameState, {
-                type: 'hit',
-                projId: proj.id,
-                x: checkX, y: checkY,
-                targetEntityId: (hitEnemy as PlacedEnemy).enemyId,
-                targetIsEnemy: true,
-                damage: proj.attackData.damage,
-              });
-            }
-          }
-        } else if (targetsCharacters) {
-          if (isHealingProjectile) {
-            const hitAllyEnemy = findHealTargetAtTile(checkX, checkY, gameState, proj, true);
-            if (hitAllyEnemy) {
-              recordEnemyHit(proj, hitAllyEnemy as PlacedEnemy, gameState.puzzle.enemies);
-              const healing = proj.attackData.healing ?? 0;
-              const enemyData = getEnemy((hitAllyEnemy as PlacedEnemy).enemyId);
-              const maxHealth = enemyData?.health ?? hitAllyEnemy.currentHealth;
-              hitAllyEnemy.currentHealth = Math.min(hitAllyEnemy.currentHealth + healing, maxHealth);
-              hitSomething = true;
-              if (!canPierce) shouldRemove = true;
-              recordProjectileEvent(gameState, {
-                type: 'hit',
-                projId: proj.id,
-                x: checkX, y: checkY,
-                targetEntityId: (hitAllyEnemy as PlacedEnemy).enemyId,
-                targetIsEnemy: true,
-              });
-            }
-          } else {
-            const hitChar = findEntityAtTile(checkX, checkY, gameState, proj, false, true);
-            if (hitChar) {
-              const hitResult = applyEntityHit(hitChar as PlacedCharacter, false, proj, gameState, 'headless');
-              if (hitResult.reflected) {
-                recordProjectileEvent(gameState, {
-                  type: 'reflect',
-                  projId: proj.id,
-                  x: checkX, y: checkY,
-                  reflected: true,
-                  reflectTintColor: proj.reflectTintColor,
-                  reflectOverrideSprite: proj.reflectOverrideSprite,
-                  reflectAtTileIndex: proj.reflectAtTileIndex,
-                  combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
-                });
-                shouldRemove = resolveReflectedPathHeadless(proj, gameState, canPierce) || shouldRemove;
-                break;
-              }
-              hitEntityIds.push((hitChar as PlacedCharacter).characterId);
-              hitSomething = true;
-              if (!canPierce) shouldRemove = true;
-              recordProjectileEvent(gameState, {
-                type: 'hit',
-                projId: proj.id,
-                x: checkX, y: checkY,
-                targetEntityId: (hitChar as PlacedCharacter).characterId,
-                targetIsEnemy: false,
-                damage: proj.attackData.damage,
-              });
-            }
-          }
+        } else if (step.kind === 'hostile_hit') {
+          recordProjectileEvent(gameState, {
+            type: 'hit', projId: proj.id, x: step.x, y: step.y,
+            targetEntityId: step.targetIsEnemy
+              ? (step.target as PlacedEnemy).enemyId
+              : (step.target as PlacedCharacter).characterId,
+            targetIsEnemy: step.targetIsEnemy,
+            damage: proj.attackData.damage,
+          });
+        } else if (step.kind === 'healing_hit') {
+          recordProjectileEvent(gameState, {
+            type: 'hit', projId: proj.id, x: step.x, y: step.y,
+            targetEntityId: step.targetIsEnemy
+              ? (step.target as PlacedEnemy).enemyId
+              : (step.target as PlacedCharacter).characterId,
+            targetIsEnemy: step.targetIsEnemy,
+          });
+        } else if (step.kind === 'reflect') {
+          recordProjectileEvent(gameState, {
+            type: 'reflect',
+            projId: proj.id,
+            x: step.x, y: step.y,
+            reflected: true,
+            reflectTintColor: proj.reflectTintColor,
+            reflectOverrideSprite: proj.reflectOverrideSprite,
+            reflectAtTileIndex: proj.reflectAtTileIndex,
+            combinedPath: proj.tilePath ? [...proj.tilePath] : undefined,
+          });
+          shouldRemove = resolveReflectedPathHeadless(proj, gameState, canPierce) || shouldRemove;
+          reflectHandled = true;
         }
       }
 
+      if (walk.endedAtBounds || walk.endedAtWall || walk.endedAtPierceStop) shouldRemove = true;
+      if (walk.steps.some(s => (s.kind === 'hostile_hit' || s.kind === 'healing_hit') && s.pierceStop)) {
+        shouldRemove = true;
+      }
+
       // Update projectile position if it's still active
-      if (!shouldRemove && !hitWall) {
+      if (!reflectHandled && !shouldRemove && !hitWall) {
         const newDist = Math.min(endTile, range);
         proj.x = proj.startX + dx * newDist;
         proj.y = proj.startY + dy * newDist;
