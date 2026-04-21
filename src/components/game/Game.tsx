@@ -1275,17 +1275,21 @@ export const Game: React.FC = () => {
       return next;
     });
 
-    // Allow animation to play, then freeze. Duration accounts for slow projectiles.
-    // Base is one turn interval (800ms), but slow projectiles need longer
-    // (speed 2 = 400ms/tile, speed 1 = 800ms/tile)
-    const minSpeed = Math.min(4, ...((gameState.activeProjectiles || []).map(p => p.speed || 4)));
-    const stepDuration = Math.max(800, Math.ceil(800 / Math.max(1, minSpeed) * 4));
+    // Animate for exactly one turn interval (matches auto-play cadence) then
+    // freeze. A longer window would let updateTileBasedVisual advance
+    // visualTileIndex past this turn's end position, making slow projectiles
+    // appear to land on the wrong turn.
     setReplayStepAnimating(true);
     replayStepTimerRef.current = setTimeout(() => {
       setReplayStepAnimating(false);
-    }, stepDuration);
+    }, TURN_INTERVAL_MS);
   }, []);
 
+  // Step-back and seek skip the per-turn-start reset: they jump straight to
+  // each turn's end-of-turn state (what buildReplayProjectiles already
+  // computes) instead of re-animating that turn's motion. Matches typical
+  // media-scrubber UX and keeps the visual arrival turn consistent with
+  // auto-play for all projectile speeds.
   const handleReplayStepBack = useCallback(() => {
     setReplayPlaying(false);
     const history = turnHistoryRef.current;
@@ -1294,28 +1298,22 @@ export const Game: React.FC = () => {
     setReplayTurnIndex(prev => {
       const next = Math.max(prev - 1, 0);
       const copy = copySnapshotForPlayback(history[next], history, next);
-      resetReplayProjectilesToTurnStart(copy);
       setGameState(copy);
       return next;
     });
 
-    // Animate for one turn interval then freeze
-    const minSpeed = Math.min(4, ...((gameState.activeProjectiles || []).map(p => p.speed || 4)));
-    const stepDuration = Math.max(800, Math.ceil(800 / Math.max(1, minSpeed) * 4));
-    setReplayStepAnimating(true);
-    replayStepTimerRef.current = setTimeout(() => {
-      setReplayStepAnimating(false);
-    }, stepDuration);
-  }, [gameState]);
+    setReplayStepAnimating(false);
+  }, []);
 
   const handleReplaySeek = useCallback((turn: number) => {
     setReplayPlaying(false);
+    if (replayStepTimerRef.current) clearTimeout(replayStepTimerRef.current);
     const history = turnHistoryRef.current;
     const clamped = Math.max(0, Math.min(turn, history.length - 1));
     const copy = copySnapshotForPlayback(history[clamped], history, clamped);
-    resetReplayProjectilesToTurnStart(copy);
     setGameState(copy);
     setReplayTurnIndex(clamped);
+    setReplayStepAnimating(false);
   }, []);
 
   const handleReplaySpeedChange = useCallback((speed: number) => {

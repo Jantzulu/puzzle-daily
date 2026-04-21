@@ -3797,10 +3797,17 @@ function drawProjectile(
 
   // Phase C-2: visual position lives in the side-table. Fall back to the
   // logical position when no entry has been seeded yet (first draw before
-  // updateProjectiles runs, or right after a replay step reset).
+  // updateProjectiles runs, or right after a replay step reset). Also fall
+  // back when the side-table entry is stale — specifically, when logical has
+  // moved more than a tile away from the visual (replay seek / step-back /
+  // snapshot-reseed, where updateProjectiles is frozen and can't refresh vs).
+  // Legitimate per-frame drift is <<0.1 tile; a 1-tile threshold is safe.
   const vs = visualState.get(projectile.id);
-  const visualX = vs?.x ?? projectile.logicalX;
-  const visualY = vs?.y ?? projectile.logicalY;
+  const stale = vs
+    ? Math.abs(vs.x - projectile.logicalX) > 1 || Math.abs(vs.y - projectile.logicalY) > 1
+    : false;
+  const visualX = !vs || stale ? projectile.logicalX : vs.x;
+  const visualY = !vs || stale ? projectile.logicalY : vs.y;
 
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
   const px = visualX * TILE_SIZE + TILE_SIZE / 2;
