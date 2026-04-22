@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 20, 2026 (late session)
+Last Updated: April 21, 2026 (late session — replay + homing overhaul)
 
 ## Project Overview
 
@@ -178,9 +178,17 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Next session — start here
 
-The big fires are out as of 2026-04-20 (late evening). Phase C is done, wall bounce restored, homing range + replay visibility + out-of-range visual all fixed. No known gameplay bugs are open. Pick whatever motivates you — nothing below is load-bearing.
+Coming out of a long 2026-04-21 session that was entirely a deep playtest pass. Replays are solid. Homing projectiles (straight/grid) and duplicate-enemyId targeting were rebuilt from the ground up. All known gameplay bugs the playtest surfaced are closed.
 
-1. **Play-test pass.** Try the scenarios that drove today's fixes — replays (auto-play + step + seek), homing spells with trigger-range > spell-range, bouncy-bolt spells (reflect / turn_around / turn_left / turn_right), wall bounces with `maxBounces > 1`. If any corner case still looks off, flag it and we'll add a corpus case.
+**Remaining playtest coverage** (paused so we could commit):
+- **Homing — pathfinding style** (straight + grid were tested this session; pathfinding was not)
+- **Reflect + homing** (quick smoke test)
+- **Projectile edge cases** — pierce on duplicate-enemyId enemies (should work now that targeting and dedup both use array index, but verify), bolt-through-wall regression, defeat-while-in-flight regression
+- **Regression sweep** — melee, MELEE_CONE, redirect spells, throw/place, status effects (reflect tint, stealth, steadfast)
+
+**Debug infrastructure**: `HOMING_DEBUG` flag in `simulation.ts:14` (exported). Flip to `true` to re-enable the trace logs we used this session — spawn, resolve, visual-tile, hit-consume, death-mutations, win-check, non-homing-resolve. All gated on this one flag. Leave it off for normal play; it's loud.
+
+1. **Continue the playtest from where we paused** — items above. Same format as this session: run a scenario, paste logs if weird, we debug.
 
 2. **Feature work.** [feature-roadmap.md](feature-roadmap.md) or any new feature idea. The handoff's "pending — not yet started" list from in-progress memory mentioned: Replay System (done), Hints, Analytics, Sandbox Mode.
 
@@ -246,6 +254,42 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 21, 2026 — playtest pass: replay + homing + duplicates)
+
+Long playtest session. Touched four largely-independent bug classes, closed all known issues, verified on live gameplay. All tests green throughout (237 passing, 44 corpus goldens, regenerated 4 times for intentional behavior changes).
+
+**Replay UX (first half of session).**
+- **Step-forward over-animated by 4× for slow bolts.** `stepDuration = 800/speed * 4` (= 3200ms at speed 1) let `updateTileBasedVisual` advance `visualTileIndex` 4 tiles instead of 1, so slow projectiles visually landed on an earlier turn than they logically hit. Auto-play used `TURN_INTERVAL_MS` (one turn) and was correct. Fixed step-forward to use `TURN_INTERVAL_MS` too — now auto-play, step-forward, and the bolt's logical arrival turn all agree. ([Game.tsx:1285](puzzle-game/src/components/game/Game.tsx:1285))
+- **Step-back replayed the turn's animation.** Step-back called `resetReplayProjectilesToTurnStart` and started a new animation window, which (a) repeated the turn's motion and (b) inherited the same 4× over-animation bug. Changed step-back and seek to *skip* the per-turn-start reset and the animation window entirely — they jump straight to each turn's end-of-turn state (what `buildReplayProjectiles` already computes) and freeze. Matches media-scrubber UX. ([Game.tsx:1294](puzzle-game/src/components/game/Game.tsx:1294))
+- **Frozen-replay projectiles rendered at stale visual-state positions.** `updateProjectiles` doesn't run while `replayFrozen=true`, so the side-table can't refresh. `drawProjectile` preferred `vs.x/y` over `proj.logicalX/Y` even when stale. Added a `replayFrozen` param to `drawProjectile`: when frozen, always read from `logicalX/Y`; when animating, trust `vs` since `updateProjectiles` keeps it fresh. ([AnimatedGameBoard.tsx:3801](puzzle-game/src/components/game/AnimatedGameBoard.tsx:3801))
+- **Step-forward snap-back when frozen kicked in.** `resetReplayProjectilesToTurnStart` overwrote `logicalX/Y` back to the turn-*start* position so the animation could play forward. Once the window closed, `drawProjectile` (now in frozen mode) read the turn-start logical and snapped the bolt back. Removed the `logicalX/Y` overwrite — `buildReplayProjectiles` already sets it to the turn-*end* position, which is what frozen state should show. ([Game.tsx:1242](puzzle-game/src/components/game/Game.tsx:1242))
+
+**Straight-line homing visual (second half of session).**
+- **Bolts "appeared near target" on spawn with slow projectiles.** Cause: the MOVE TOWARD branch re-anchored `homingVisualStartX/Y` to the post-turn logical position on *every* turn, including the spawn turn. Since `resolveProjectiles` runs in the same `executeTurn` as `spawnProjectile` with no frames between, the spawn-turn re-anchor wiped `visStart=caster` before any frame rendered. Skip the re-anchor on the spawn turn (`proj.spawnTurn === gameState.currentTurn`). Subsequent-turn re-anchoring still happens for slow-projectile moving-target support. ([simulation.ts:3523](puzzle-game/src/engine/simulation.ts:3523))
+- **Moving-target bolts trailed by a tile.** REACHED TARGET branch wasn't updating `proj.targetX/Y` to the hit point, so `updateStraightLineHomingVisual` kept interpolating toward the spawn-time target position. Added the target update. ([simulation.ts:3548](puzzle-game/src/engine/simulation.ts:3548))
+- **Jitter at turn boundaries on moving-target chases.** Re-anchoring `visStart` to `newLogical` caused the visual to snap from its current interpolated position to logical. Changed the re-anchor to set `visStart` to the *current visual position* via a new `currentStraightLineHomingVisualPos` helper — the new trajectory continues smoothly from where the bolt actually is. Applied to both MOVE TOWARD and REACHED TARGET. Critical ordering: compute visual position *before* mutating `targetX/Y`, since the helper uses current target to reconstruct position. ([simulation.ts:2080](puzzle-game/src/engine/simulation.ts:2080))
+
+**Grid-homing visual.**
+- **Freeze at end of each turn for speed ≥ 2.** `tileTransitTime = 1/speedTilesPerSecond` (constant per-tile duration) combined with Chebyshev-stepped `getTilesAlongLine` paths (diagonal steps cover less tile-count than Euclidean distance) meant the animation completed before the turn did. For homing bolts whose `tilePath` is rebuilt per-turn, pace the whole path to exactly one turn interval (800ms) instead: `tileTransitTime = 0.8 / (tilePath.length - 1)` when `proj.isHoming`. Non-homing tilePaths are full-flight, keep per-tile pacing. ([simulation.ts:2195](puzzle-game/src/engine/simulation.ts:2195))
+- **Projectile jumped back 1 tile at each turn boundary.** `getTilesAlongLine` uses `Math.round` for the end tile but `safeFloor` for the start tile. Turn N ends at `Math.round(logical)` but turn N+1 starts at `safeFloor(logical)` — for any fractional logical with `>= 0.5` component, these differ by 1. Rounded the logical coords when building the start of the new tilePath. Applied to both MOVE TOWARD and REACHED TARGET branches for grid and pathfinding homing. ([simulation.ts:3451, 3560](puzzle-game/src/engine/simulation.ts:3451))
+
+**Duplicate-enemyId targeting (the big one).**
+- **Heroes targeted by placement order, not proximity.** Root cause: several sites looked up the homing target by `.find(e => e.enemyId === id)`, which always returns the first enemy in array order when duplicates exist. `findNearestEnemies` correctly picked the closest instance, but `spawnProjectile` and `resolveProjectiles` both overrode to enemies[0]. Added `targetEnemyIndex` to `HomingTarget` and `Projectile`; populated it throughout (findNearestEnemies tracks the original array index, HomingTarget carries it through `executeSpellInDirection` to `spawnProjectile`, stored on Projectile, preferred by `resolveProjectiles` and `spawnProjectile` lookups over the `.find()` fallback).
+- **`findNearestEnemies` and `findNearestCharacters` didn't filter `pendingProjectileDeath`.** A second bolt fired the same turn as the killing shot would pick the pending-death entity as target; then `resolveProjectiles` (which *does* exclude pendingDeath) would fall back to `.find()` and redirect the bolt to a different instance mid-flight. Added the filter to both functions. ([actions.ts:3071, 3155](puzzle-game/src/engine/actions.ts:3071))
+- **Win declared with an enemy visibly alive + bolts stuck forever on same "dead" target.** Coupled bug with subtle cause: for downgraded non-homing bolts, `walkNonHomingTick` walks in `proj.direction` (= `character.facing`) while `tilePath` was built by `computeTilePath(caster, clampedTarget)`. These trajectories diverge. When the walker hit an enemy at a logical tile index beyond tilePath's length, `hitResult.hitTileIndex` exceeded `tilePath.length - 1`. Visual check `currentTileIdx >= hitTileIndex` never fired → bolt lived forever, enemy stuck in `pendingProjectileDeath`. `checkVictoryConditions` treats pendingDeath as dead, so the game declared victory with a visually-alive enemy. Two fixes applied:
+  - Clamp `hitTileIndex` to `tilePath.length - 1` in hostile_hit and healing_hit steps (safety net). ([simulation.ts:3765](puzzle-game/src/engine/simulation.ts:3765))
+  - **Root fix**: align downgraded bolt target with `character.facing × range` instead of scaling toward the unreachable target. Now walker and tilePath follow the same trajectory, VFX at walker's hit tile matches visual endpoint, no mismatch possible. Nice emergent behavior: downgraded bolts become opportunistic linear attacks that can still hit enemies who walk into their path. ([actions.ts:1757](puzzle-game/src/engine/actions.ts:1757))
+- **Healthbar homing-target glow issues.**
+  - Previously restricted to `homingPathStyle === 'straight'` — grid and pathfinding bolts never glowed. Removed the style check. ([AnimatedGameBoard.tsx:2782](puzzle-game/src/components/game/AnimatedGameBoard.tsx:2782))
+  - Matched by `targetEntityId` only, so all same-id duplicate enemies lit up together. Added an optional `enemyIndex` param; when both `proj.targetEnemyIndex` and `enemyIndex` are defined, require exact match.
+  - Downgraded bolts (`isHoming=false`) didn't glow even though the cast was intentionally homing. Preserve `targetEntityId`/`targetIsEnemy`/`targetEnemyIndex` on the projectile from the `homingTarget` param regardless of downgrade; glow gates on `proj.targetEntityId` instead of `proj.isHoming` (still only true for originally-homing casts since non-homing spells never pass `homingTarget`).
+
+**Other.**
+- Replay visual-state reseed quirk (listed as pending in prior handoff) is effectively resolved by the frozen-state drawProjectile change — when frozen reads `logicalX/Y` directly, stale `vs` entries don't matter.
+- Infinite-crawl fix for slow homing bolts chasing moving targets — changed out-of-range threshold from `remainingRange <= 0` to `remainingRange < 0.5`. Without this, a bolt's Euclidean `traveled` grows asymptotically as it closes on a target whose path bends, leaving tiny fractions of remainingRange; clampedMove rounds to the same tile each turn and the bolt freezes visually forever. ([simulation.ts:3416](puzzle-game/src/engine/simulation.ts:3416))
+
+**Debug infrastructure left in place.** `HOMING_DEBUG` flag in `simulation.ts:14` (exported). All the diagnostic logs from this session are gated on it — `[HOMING-SPAWN]`, `[HOMING-TARGET]`, `[HOMING-RESOLVE]`, `[PROJ-VISUAL-TILE]`, `[PROJ-HIT-CONSUME]`, `[PROJ-NONHOMING-RESOLVE]`, `[DEATH-MUT]`, `[WIN-CHECK]`. Flip to `true` next time a projectile regression needs tracing.
 
 ### Recently completed (April 20, 2026 — late-evening session, projectile bug sweep)
 

@@ -199,7 +199,7 @@
         "startX": 0,
         "startY": 0,
         "targetX": 4,
-        "targetY": 2,
+        "targetY": 3,
         "direction": "east",
         "speed": 2,
         "active": true,

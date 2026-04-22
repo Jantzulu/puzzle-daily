@@ -70,6 +70,8 @@
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
+        "targetEntityId": "goblin-weak",
+        "targetIsEnemy": true,
         "spawnTurn": 1,
         "logicalTileIndex": 3,
         "tilePath": [
@@ -140,6 +142,8 @@
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
+        "targetEntityId": "goblin-weak",
+        "targetIsEnemy": true,
         "spawnTurn": 1,
         "logicalTileIndex": 3,
         "tilePath": [
@@ -210,6 +214,8 @@
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
+        "targetEntityId": "goblin-weak",
+        "targetIsEnemy": true,
         "spawnTurn": 1,
         "logicalTileIndex": 3,
         "tilePath": [
@@ -280,6 +286,8 @@
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
+        "targetEntityId": "goblin-weak",
+        "targetIsEnemy": true,
         "spawnTurn": 1,
         "logicalTileIndex": 3,
         "tilePath": [
@@ -350,6 +358,8 @@
         "homingPathStyle": "straight",
         "homingIgnoreWalls": true,
         "homingHitAlongPath": false,
+        "targetEntityId": "goblin-weak",
+        "targetIsEnemy": true,
         "spawnTurn": 1,
         "logicalTileIndex": 3,
         "tilePath": [

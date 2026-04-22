@@ -7,6 +7,14 @@ import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
 import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind } from './utils';
 
+// Debug flag for projectile tracing: flip to true to enable detailed logs
+// covering spawn, per-turn resolve events, per-frame visual interpolation,
+// hit consumption, death mutations, and victory checks. Used during the
+// April 2026 homing/duplicate-enemyId investigation — left in place so the
+// same diagnostic trail is one edit away next time a projectile regression
+// surfaces. Search for HOMING_DEBUG to find all gated sites.
+export const HOMING_DEBUG = false;
+
 /**
  * BFS pathfinding: find shortest path from start to target avoiding walls.
  * Returns array of tile positions, or empty array if no path exists.
@@ -101,6 +109,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
         if (hitEnemy.dead) {
           hitEnemy.dead = false;
           hitEnemy.pendingProjectileDeath = true;
+          if (HOMING_DEBUG) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
         }
         if (!proj.attackData.projectilePierces) break;
       }
@@ -564,6 +573,11 @@ function markEntityAsDead(
 
   // Now mark as dead
   entity.dead = true;
+  if (HOMING_DEBUG) {
+    const isEnemy = 'enemyId' in entity;
+    const id = isEnemy ? (entity as PlacedEnemy).enemyId : (entity as PlacedCharacter).characterId;
+    console.log(`[DEATH-MUT ${isEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${entity.x},${entity.y}) → dead (from applyEntityDeath/triggers)`);
+  }
 }
 
 /**
@@ -1831,6 +1845,14 @@ export function checkVictoryConditions(gameState: GameState): boolean {
     switch (condition.type) {
       case 'defeat_all_enemies':
         const allEnemiesDead = gameState.puzzle.enemies.every((e) => e.dead || e.pendingProjectileDeath);
+        if (HOMING_DEBUG) {
+          // Dump full enemy state when the defeat_all_enemies check runs, so
+          // we can see if win fires with anything non-dead.
+          const states = gameState.puzzle.enemies.map((e, i) =>
+            `[${i}]${e.enemyId.slice(-6)}@(${e.x},${e.y}) dead=${e.dead} pending=${e.pendingProjectileDeath} hp=${e.currentHealth}/${e.visualHealth ?? '-'}`
+          ).join(' | ');
+          console.log(`[WIN-CHECK defeat_all_enemies] turn=${gameState.currentTurn} allDead=${allEnemiesDead} enemies: ${states}`);
+        }
         if (!allEnemiesDead) return false;
         break;
 
@@ -2049,6 +2071,32 @@ interface ProjectileMovementResult {
 }
 
 /**
+ * Compute the current straight-line-homing visual position using the same
+ * formula `updateStraightLineHomingVisual` uses per-frame. Used by
+ * resolveProjectiles to preserve visual continuity when re-anchoring: if we
+ * re-anchor `homingVisualStartX/Y` to `logicalX/Y` for a moving target, the
+ * visual snaps because it had been interpolating toward the OLD target along
+ * a different line. Re-anchoring to the CURRENT visual position instead makes
+ * the new trajectory continue smoothly from where the bolt actually appears.
+ */
+function currentStraightLineHomingVisualPos(proj: Projectile, now: number): { x: number; y: number } {
+  if (proj.homingPathStyle !== 'straight' || proj.homingVisualStartX === undefined) {
+    return { x: proj.logicalX, y: proj.logicalY };
+  }
+  const startX = proj.homingVisualStartX;
+  const startY = proj.homingVisualStartY ?? proj.logicalY;
+  const elapsed = (now - (proj.homingVisualStartTime ?? proj.startTime)) / 1000;
+  const speedTilesPerSecond = (proj.speed || 4) / 0.8;
+  const totalDist = Math.sqrt(Math.pow(proj.targetX - startX, 2) + Math.pow(proj.targetY - startY, 2));
+  const totalTime = Math.max(0.1, totalDist / speedTilesPerSecond);
+  const progress = Math.min(elapsed / totalTime, 1);
+  return {
+    x: startX + (proj.targetX - startX) * progress,
+    y: startY + (proj.targetY - startY) * progress,
+  };
+}
+
+/**
  * STRAIGHT-LINE HOMING: smooth interpolation from original start to target.
  * Active when: proj.isHoming && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined
  */
@@ -2069,6 +2117,26 @@ function updateStraightLineHomingVisual(proj: Projectile, now: number): Projecti
   const sdy = proj.targetY - startY;
   if (sdx !== 0 || sdy !== 0) {
     proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
+  }
+
+  if (HOMING_DEBUG) {
+    // Log sparsely: first frame, last frame, and every ~5th frame in between
+    const pid = proj.id.slice(-6);
+    const visualStateKey = `${pid}_lastProgress`;
+    const lastProgress = (proj as any)._debugLastProgress ?? -1;
+    const shouldLog = lastProgress < 0 || progress >= 1 || Math.abs(progress - lastProgress) > 0.1;
+    if (shouldLog) {
+      (proj as any)._debugLastProgress = progress;
+      console.log(
+        `[HOMING-VISUAL ${pid}] t=${elapsed.toFixed(3)}s ` +
+        `anchor=(${startX.toFixed(2)},${startY.toFixed(2)}) ` +
+        `target=(${proj.targetX.toFixed(2)},${proj.targetY.toFixed(2)}) ` +
+        `logical=(${proj.logicalX.toFixed(2)},${proj.logicalY.toFixed(2)}) ` +
+        `totalDist=${totalDist.toFixed(2)} totalTime=${totalTime.toFixed(2)}s ` +
+        `progress=${progress.toFixed(3)} visual=(${newX.toFixed(2)},${newY.toFixed(2)}) ` +
+        `reached=${reachedTarget}`
+      );
+    }
   }
 
   return { newX, newY, reachedTarget };
@@ -2136,7 +2204,18 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
   const spawnTime = proj.tileEntryTime ?? proj.startTime;
   const elapsed = (now - spawnTime) / 1000; // seconds since spawn
   const speedTilesPerSecond = (proj.speed || 4) / 0.8;
-  const tileTransitTime = 1 / speedTilesPerSecond;
+  // Homing projectiles have a per-turn tilePath rebuilt by resolveProjectiles.
+  // The path is Chebyshev-stepped by getTilesAlongLine, so a diagonal move of
+  // `speed` Euclidean tiles produces fewer tile steps than `speed`. Using the
+  // fixed per-tile transit time (0.8s/speed) would finish the path before the
+  // turn ends and leave the bolt visibly frozen. Pace the whole path to
+  // exactly one turn (800ms) instead.
+  //
+  // Non-homing bolts have a full-flight tilePath from spawn; keep per-tile
+  // pacing so travel time matches speed across the entire flight.
+  const tileTransitTime = proj.isHoming && tilePath.length > 1
+    ? 0.8 / (tilePath.length - 1)
+    : 1 / speedTilesPerSecond;
 
   // Calculate which tile we should be on based purely on elapsed time
   const visualTileIndex = Math.min(
@@ -2240,6 +2319,19 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     const dy = lastTile.y - firstTile.y;
     if (dx !== 0 || dy !== 0) {
       proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, lastTile.x, lastTile.y);
+    }
+  }
+
+  if (HOMING_DEBUG) {
+    const pid = proj.id.slice(-6);
+    const lastLogged = (proj as any)._debugLastTileIdx ?? -999;
+    if (emittedTileIndex !== lastLogged || reachedTarget) {
+      (proj as any)._debugLastTileIdx = emittedTileIndex;
+      console.log(
+        `[PROJ-VISUAL-TILE ${pid}] homing=${proj.isHoming} style=${proj.homingPathStyle ?? 'n/a'} t=${elapsed.toFixed(3)}s ` +
+        `tilePath.len=${tilePath.length} tileTransit=${tileTransitTime.toFixed(3)}s ` +
+        `visualTileIdx=${emittedTileIndex} visual=(${newX.toFixed(2)},${newY.toFixed(2)}) reached=${reachedTarget}`
+      );
     }
   }
 
@@ -2371,6 +2463,15 @@ export function updateProjectiles(
     const currentTileIdx = vs?.currentTileIndex ?? proj.currentTileIndex ?? 0;
     const straightLineReached = proj.homingPathStyle === 'straight' && reachedTarget;
     if (proj.hitResult && (currentTileIdx >= proj.hitResult.hitTileIndex || straightLineReached)) {
+      if (HOMING_DEBUG) {
+        console.log(
+          `[PROJ-HIT-CONSUME ${proj.id.slice(-6)}] homing=${proj.isHoming} style=${proj.homingPathStyle ?? 'n/a'} ` +
+          `hitTile=${proj.hitResult.hitTileIndex} currentTileIdx=${currentTileIdx} ` +
+          `vfx=(${proj.hitResult.vfxX},${proj.hitResult.vfxY}) ` +
+          `deferredDeath=${proj.hitResult.deferredDeathEntityId?.slice(-6) ?? 'none'} ` +
+          `idx=${proj.hitResult.deferredDeathIndex ?? '-'} deactivate=${proj.hitResult.deactivate}`
+        );
+      }
       // Spawn hit VFX
       if (proj.hitResult.vfxSprite && proj.hitResult.vfxX !== undefined && proj.hitResult.vfxY !== undefined) {
         spawnParticleEffect(proj.hitResult.vfxX, proj.hitResult.vfxY, proj.hitResult.vfxSprite,
@@ -2388,6 +2489,7 @@ export function updateProjectiles(
             if (enemy.pendingProjectileDeath) {
               enemy.dead = true;
               enemy.pendingProjectileDeath = false;
+              if (HOMING_DEBUG) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${proj.id.slice(-6)} hit visual arrival)`);
               handleEntityDeathDrop(enemy, true, gameState);
             }
           }
@@ -2398,6 +2500,7 @@ export function updateProjectiles(
             if (char.pendingProjectileDeath) {
               char.dead = true;
               char.pendingProjectileDeath = false;
+              if (HOMING_DEBUG) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${proj.id.slice(-6)})`);
               handleEntityDeathDrop(char, false, gameState);
             }
           }
@@ -2602,6 +2705,10 @@ function applyEntityHit(
       if (mode === 'visual') {
         target.dead = false;
         target.pendingProjectileDeath = true;
+        if (HOMING_DEBUG) {
+          const id = targetIsEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId;
+          console.log(`[DEATH-MUT ${targetIsEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${target.x},${target.y}) → pendingDeath (from applyEntityHit, proj=${proj.id.slice(-6)} dmg=${damage})`);
+        }
       } else {
         handleEntityDeathDrop(target, targetIsEnemy, gameState);
       }
@@ -3250,8 +3357,29 @@ function resolveProjectiles(gameState: GameState): void {
           const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
           if (!enemy.dead && !enemy.pendingProjectileDeath) targetEntity = enemy;
         }
+        // Prefer the array-index lookup when available so duplicate enemyIds
+        // resolve to the specific instance findNearestEnemies actually picked.
+        // Without this, .find(enemyId) returns the first placement-order match
+        // regardless of which instance is closest.
+        let resolveMode: 'reflected-src' | 'index' | 'find-fallback' | 'none' = targetEntity ? 'reflected-src' : 'none';
+        if (!targetEntity && proj.targetEnemyIndex !== undefined) {
+          const enemy = gameState.puzzle.enemies[proj.targetEnemyIndex];
+          if (enemy && enemy.enemyId === proj.targetEntityId && !enemy.dead && !enemy.pendingProjectileDeath) {
+            targetEntity = enemy;
+            resolveMode = 'index';
+          }
+        }
         if (!targetEntity) {
           targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead && !e.pendingProjectileDeath);
+          if (targetEntity) resolveMode = 'find-fallback';
+        }
+        if (HOMING_DEBUG && proj.isHoming) {
+          const foundIdx = targetEntity ? gameState.puzzle.enemies.indexOf(targetEntity as PlacedEnemy) : -1;
+          console.log(
+            `[HOMING-TARGET ${proj.id.slice(-6)}] turn=${gameState.currentTurn} resolve=${resolveMode} ` +
+            `targetEntityId=${proj.targetEntityId} targetEnemyIndex=${proj.targetEnemyIndex} ` +
+            `found=enemies[${foundIdx}]${targetEntity ? `@(${(targetEntity as any).x},${(targetEntity as any).y}) enemyId=${(targetEntity as PlacedEnemy).enemyId}` : 'NONE'}`
+          );
         }
       } else {
         targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead && !c.pendingProjectileDeath);
@@ -3277,7 +3405,24 @@ function resolveProjectiles(gameState: GameState): void {
           Math.pow(proj.logicalY - proj.startY, 2)
         );
         const remainingRange = Math.max(0, range - totalDistanceTraveled);
-        if (remainingRange <= 0) {
+        if (HOMING_DEBUG && proj.homingPathStyle === 'straight') {
+          console.log(
+            `[HOMING-RESOLVE ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+            `distToTarget=${distance.toFixed(2)} range=${range} ` +
+            `traveled=${totalDistanceTraveled.toFixed(2)} remaining=${remainingRange.toFixed(2)} ` +
+            `tilesPerTurn=${tilesPerTurn} ` +
+            `logical=(${proj.logicalX.toFixed(2)},${proj.logicalY.toFixed(2)}) ` +
+            `target=(${targetEntity.x.toFixed(2)},${targetEntity.y.toFixed(2)}) ` +
+            `visStart=(${proj.homingVisualStartX?.toFixed(2)},${proj.homingVisualStartY?.toFixed(2)})`
+          );
+        }
+        // Threshold 0.5 (not 0) to catch the "infinite crawl" case: when a
+        // bolt chases a moving target whose path bends, the Euclidean
+        // traveled distance grows asymptotically slowly as the bolt closes
+        // in, leaving tiny fractions of remainingRange. clampedMove rounds
+        // to the same tile each turn and the visual freezes forever. Treat
+        // sub-half-tile range as exhausted.
+        if (remainingRange < 0.5) {
           // Out of range — deactivate. Clear homing visual state so tile-based branch handles it.
           const vStartX = proj.homingVisualStartX ?? proj.logicalX;
           const vStartY = proj.homingVisualStartY ?? proj.logicalY;
@@ -3289,6 +3434,7 @@ function resolveProjectiles(gameState: GameState): void {
           proj.homingVisualStartX = undefined;
           proj.homingVisualStartY = undefined;
           proj.homingVisualStartTime = undefined;
+          if (HOMING_DEBUG) console.log(`[HOMING-RESOLVE ${proj.id.slice(-6)}] → OUT OF RANGE, cleared visual anchor, set tilePath`);
           continue;
         }
 
@@ -3427,9 +3573,18 @@ function resolveProjectiles(gameState: GameState): void {
               proj, gameState, true);
           }
 
-          // Build tile path for visual
-          const vStartX = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartX ?? proj.logicalX) : proj.logicalX;
-          const vStartY = proj.homingPathStyle === 'straight' ? (proj.homingVisualStartY ?? proj.logicalY) : proj.logicalY;
+          // Build tile path for visual. For non-straight homing, round the
+          // logical position when picking the start tile so the new tilePath
+          // begins at the same tile where the previous turn's tilePath ended
+          // (getTilesAlongLine rounds the END tile but floors the START tile;
+          // without matching on round, the bolt jumps back one tile whenever
+          // fractional logical has a >=0.5 component).
+          const vStartX = proj.homingPathStyle === 'straight'
+            ? (proj.homingVisualStartX ?? proj.logicalX)
+            : Math.round(proj.logicalX);
+          const vStartY = proj.homingPathStyle === 'straight'
+            ? (proj.homingVisualStartY ?? proj.logicalY)
+            : Math.round(proj.logicalY);
           const turnTiles = proj.homingPathStyle === 'pathfinding'
             ? findPathBFS(vStartX, vStartY, hitX, hitY, gameState)
             : getTilesAlongLine(vStartX, vStartY, hitX, hitY);
@@ -3450,15 +3605,53 @@ function resolveProjectiles(gameState: GameState): void {
           };
           proj.logicalX = turnTiles[turnTiles.length - 1].x;
           proj.logicalY = turnTiles[turnTiles.length - 1].y;
+          // Update targetX/Y to the current hit point. If the target moved
+          // since spawn, updateStraightLineHomingVisual needs to interpolate
+          // toward the CURRENT position, not the stale spawn-time position —
+          // otherwise the bolt visually flies to where the entity was on the
+          // previous turn, even though the hit registers at its current tile.
+          //
+          // If the target actually changed, also re-anchor visStart to the
+          // current visual position. Otherwise, keeping the old visStart with
+          // a new target changes the interpolation line and the bolt snaps to
+          // a different position at the same elapsed time. Anchoring to the
+          // current visual position keeps the bolt where it is and lets it
+          // continue smoothly toward the new target.
+          const prevTargetX = proj.targetX;
+          const prevTargetY = proj.targetY;
+          const tgtChanged = prevTargetX !== hitX || prevTargetY !== hitY;
+          if (tgtChanged && proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
+            const visPos = currentStraightLineHomingVisualPos(proj, Date.now());
+            proj.homingVisualStartX = visPos.x;
+            proj.homingVisualStartY = visPos.y;
+            proj.homingVisualStartTime = Date.now();
+          }
+          proj.targetX = hitX;
+          proj.targetY = hitY;
+          if (HOMING_DEBUG && proj.isHoming) {
+            const tgtChanged = prevTargetX !== hitX || prevTargetY !== hitY;
+            const pathStr = turnTiles.map(t => `(${t.x},${t.y})`).join('→');
+            console.log(
+              `[HOMING-RESOLVE ${proj.id.slice(-6)}] → REACHED TARGET style=${proj.homingPathStyle} hitTile=${turnTiles.length - 1}, ` +
+              `tilePath=${pathStr}, logical→(${proj.logicalX},${proj.logicalY}), ` +
+              `visStart=(${proj.homingVisualStartX?.toFixed(2)},${proj.homingVisualStartY?.toFixed(2)}), ` +
+              `target ${tgtChanged ? `${prevTargetX.toFixed(2)},${prevTargetY.toFixed(2)}→${hitX.toFixed(2)},${hitY.toFixed(2)}` : `unchanged=(${hitX.toFixed(2)},${hitY.toFixed(2)})`}`
+            );
+          }
         } else {
           // Move toward target but don't reach it yet
           let turnTiles: Array<{x: number; y: number}>;
           let newX: number;
           let newY: number;
 
+          // Round the logical start when building the path so the new
+          // tilePath begins at the same tile where the previous turn's
+          // visual ended. See the REACHED TARGET branch for full reasoning.
+          const pathStartX = Math.round(proj.logicalX);
+          const pathStartY = Math.round(proj.logicalY);
           if (proj.homingPathStyle === 'pathfinding') {
             const clampedTiles = Math.min(tilesPerTurn, Math.floor(remainingRange));
-            const fullPath = findPathBFS(proj.logicalX, proj.logicalY, targetEntity.x, targetEntity.y, gameState);
+            const fullPath = findPathBFS(pathStartX, pathStartY, targetEntity.x, targetEntity.y, gameState);
             turnTiles = fullPath.slice(0, clampedTiles + 1);
             const lastTile = turnTiles[turnTiles.length - 1];
             newX = lastTile.x;
@@ -3468,7 +3661,7 @@ function resolveProjectiles(gameState: GameState): void {
             const moveRatio = clampedMove / distance;
             newX = proj.logicalX + dx * moveRatio;
             newY = proj.logicalY + dy * moveRatio;
-            turnTiles = getTilesAlongLine(proj.logicalX, proj.logicalY, newX, newY);
+            turnTiles = getTilesAlongLine(pathStartX, pathStartY, newX, newY);
           }
 
           if (proj.homingHitAlongPath && (proj.homingPathStyle === 'grid' || proj.homingPathStyle === 'pathfinding')) {
@@ -3480,14 +3673,42 @@ function resolveProjectiles(gameState: GameState): void {
           proj.tileEntryTime = Date.now();
           proj.logicalX = newX;
           proj.logicalY = newY;
+          // Re-anchor the visual each turn so slow projectiles (speed 1-2)
+          // don't interpolate from the stale original spawn point forever.
+          // SKIP on the spawn turn: resolveProjectiles runs in the same
+          // executeTurn as spawnProjectile with no frames in between, so
+          // re-anchoring there would overwrite visStart=caster before any
+          // spawn-turn visual motion could render.
+          //
+          // Anchor to the CURRENT VISUAL POSITION, not newLogical. For a
+          // stationary target they're the same, but for a moving target the
+          // visual was tracking toward the OLD target while logical advanced
+          // toward the NEW target — anchoring to newLogical would snap the
+          // bolt. Anchoring to current visual keeps continuity.
+          //
+          // CRITICAL ORDER: compute the visual position BEFORE mutating
+          // targetX/Y. The helper uses proj.targetX/Y to reconstruct the
+          // current interpolation — if we've already written the new target,
+          // the helper computes the position for the NEW trajectory, not
+          // where the bolt actually is, and the re-anchor misses by a lot.
+          const isSpawnTurn = proj.spawnTurn === gameState.currentTurn;
+          let reanchorTo: { x: number; y: number } | undefined;
+          if (proj.homingPathStyle === 'straight' && !isSpawnTurn) {
+            reanchorTo = currentStraightLineHomingVisualPos(proj, Date.now());
+            proj.homingVisualStartX = reanchorTo.x;
+            proj.homingVisualStartY = reanchorTo.y;
+            proj.homingVisualStartTime = Date.now();
+          }
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
-          // Update visual start to current position each turn so slow projectiles (speed 1-2)
-          // interpolate from their actual logical position instead of the original spawn point
-          if (proj.homingPathStyle === 'straight') {
-            proj.homingVisualStartX = newX;
-            proj.homingVisualStartY = newY;
-            proj.homingVisualStartTime = Date.now();
+          if (HOMING_DEBUG && proj.isHoming) {
+            const pathStr = turnTiles.map(t => `(${t.x},${t.y})`).join('→');
+            console.log(
+              `[HOMING-RESOLVE ${proj.id.slice(-6)}] → MOVE TOWARD style=${proj.homingPathStyle} newLogical=(${newX.toFixed(2)},${newY.toFixed(2)}), ` +
+              `tilePath=${pathStr}, ` +
+              `${isSpawnTurn ? 'SPAWN TURN — visStart preserved' : proj.homingPathStyle === 'straight' ? `re-anchored visStart=(${reanchorTo!.x.toFixed(2)},${reanchorTo!.y.toFixed(2)})` : 'non-straight: no visStart change'}, ` +
+              `target→(${proj.targetX.toFixed(2)},${proj.targetY.toFixed(2)})`
+            );
           }
         }
       } else {
@@ -3516,6 +3737,24 @@ function resolveProjectiles(gameState: GameState): void {
       const hitWall = walk.endedAtWall;
       let reflectedThisTurn = false;
 
+      if (HOMING_DEBUG) {
+        const stepsSummary = walk.steps.map(s => {
+          if (s.kind === 'hostile_hit') return `hostile_hit@(${s.target.x},${s.target.y}) pierce=${s.pierceStop}`;
+          if (s.kind === 'healing_hit') return `healing_hit@(${s.target.x},${s.target.y})`;
+          if (s.kind === 'wall') return `wall@(${s.x},${s.y})`;
+          if (s.kind === 'bounds_exit') return `bounds_exit`;
+          if (s.kind === 'reflect') return `reflect`;
+          if (s.kind === 'travel') return `travel@(${s.x},${s.y})`;
+          return s.kind;
+        }).join(' / ');
+        console.log(
+          `[PROJ-NONHOMING-RESOLVE ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+          `logicalTileIdx=${proj.logicalTileIndex} range=${range} tilesPerTurn=${tilesPerTurn} ` +
+          `startXY=(${proj.startX.toFixed(2)},${proj.startY.toFixed(2)}) dir=${proj.direction} ` +
+          `steps: ${stepsSummary || '(none)'}`
+        );
+      }
+
       for (const step of walk.steps) {
         if (step.kind === 'bounds_exit') {
           // nothing added to turnTiles
@@ -3525,8 +3764,17 @@ function resolveProjectiles(gameState: GameState): void {
           turnTiles.push({ x: step.x, y: step.y });
         } else if (step.kind === 'hostile_hit') {
           if (step.pierceStop) {
+            // Clamp hitTileIndex to tilePath bounds. For downgraded non-
+            // homing bolts, walker moves in proj.direction while tilePath
+            // points at the clamped target — these can diverge, and if the
+            // walker hits an enemy past tilePath's end, step.dist exceeds
+            // tilePath.length-1. The visual check
+            // `currentTileIdx >= hitTileIndex` would never fire and the
+            // bolt/entity would be stuck (entity pendingDeath forever,
+            // bolt visually persisting indefinitely).
+            const maxHitIdx = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
             proj.hitResult = {
-              hitTileIndex: step.dist,
+              hitTileIndex: Math.min(step.dist, maxHitIdx),
               deactivate: true,
               vfxSprite: step.hitResult.vfxSprite,
               vfxX: step.target.x,
@@ -3538,8 +3786,9 @@ function resolveProjectiles(gameState: GameState): void {
           }
         } else if (step.kind === 'healing_hit') {
           if (step.pierceStop) {
+            const maxHitIdx = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
             proj.hitResult = {
-              hitTileIndex: step.dist,
+              hitTileIndex: Math.min(step.dist, maxHitIdx),
               deactivate: true,
               vfxSprite: step.vfxSprite,
               vfxX: step.target.x,
@@ -3721,6 +3970,13 @@ function updateProjectilesHeadless(gameState: GameState): void {
         if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
           const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
           if (!enemy.dead) { targetEntity = enemy; targetEntityId = enemy.enemyId; targetIsEnemyFlag = true; }
+        }
+        // Prefer array-index lookup to disambiguate duplicate enemyIds.
+        if (!targetEntity && proj.targetEnemyIndex !== undefined) {
+          const enemy = gameState.puzzle.enemies[proj.targetEnemyIndex];
+          if (enemy && enemy.enemyId === proj.targetEntityId && !enemy.dead) {
+            targetEntity = enemy; targetEntityId = enemy.enemyId; targetIsEnemyFlag = true;
+          }
         }
         if (!targetEntity) {
           const enemy = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead);

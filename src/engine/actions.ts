@@ -32,7 +32,7 @@ import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind } from './utils';
 import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
-import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus } from './simulation';
+import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, HOMING_DEBUG } from './simulation';
 import { wakeFromSleep } from './simulation';
 
 // ── Trait helpers ────────────────────────────────────────────────────────────
@@ -1343,6 +1343,8 @@ function executeSpell(
     direction: Direction;
     targetEntityId: string;
     targetIsEnemy: boolean;
+    /** Array index of target enemy — disambiguates duplicate enemyIds. */
+    targetEnemyIndex?: number;
   }
   let homingTargets: HomingTarget[] | undefined;
 
@@ -1382,6 +1384,7 @@ function executeSpell(
           direction: target.direction,
           targetEntityId: target.enemy.enemyId,
           targetIsEnemy: true,
+          targetEnemyIndex: target.enemyIndex,
         }));
       }
     } else {
@@ -1404,7 +1407,7 @@ function executeSpell(
         if (nearestEnemies.length > 0) {
           castDirections = nearestEnemies.map(t => t.direction);
           if (action.homing) {
-            homingTargets = nearestEnemies.map(t => ({ direction: t.direction, targetEntityId: t.enemy.enemyId, targetIsEnemy: true }));
+            homingTargets = nearestEnemies.map(t => ({ direction: t.direction, targetEntityId: t.enemy.enemyId, targetIsEnemy: true, targetEnemyIndex: t.enemyIndex }));
           }
         } else {
           return;
@@ -1498,7 +1501,7 @@ function executeSpellInDirection(
   spell: SpellAsset,
   direction: Direction,
   gameState: GameState,
-  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean },
+  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean; targetEnemyIndex?: number },
   homingPathStyle?: 'grid' | 'straight',
   homingIgnoreWalls?: boolean,
   homingHitAlongPath?: boolean
@@ -1709,7 +1712,7 @@ function spawnProjectile(
   attackData: CustomAttack,
   gameState: GameState,
   spell?: SpellAsset,
-  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean }
+  homingTarget?: { targetEntityId: string; targetIsEnemy: boolean; targetEnemyIndex?: number }
 ): void {
   if (!gameState.activeProjectiles) {
     gameState.activeProjectiles = [];
@@ -1739,7 +1742,22 @@ function spawnProjectile(
   if (effectiveHomingTarget) {
     let targetEntity: { x: number; y: number } | undefined;
     if (effectiveHomingTarget.targetIsEnemy) {
-      targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === effectiveHomingTarget!.targetEntityId);
+      // Prefer array-index lookup so duplicate enemyIds resolve to the
+      // specific instance findNearestEnemies actually picked. Without this,
+      // .find(enemyId) returns the first placement-order match, which makes
+      // the bolt aim at (and downgrade against) a different enemy than the
+      // one intended — the critical bug that caused wrong-target firing,
+      // spurious downgrades, and winning-with-enemies-alive.
+      const idx = effectiveHomingTarget.targetEnemyIndex;
+      if (idx !== undefined) {
+        const indexed = gameState.puzzle.enemies[idx];
+        if (indexed && indexed.enemyId === effectiveHomingTarget.targetEntityId && !indexed.dead) {
+          targetEntity = indexed;
+        }
+      }
+      if (!targetEntity) {
+        targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === effectiveHomingTarget!.targetEntityId && !e.dead);
+      }
     } else {
       targetEntity = gameState.placedCharacters.find(c => c.characterId === effectiveHomingTarget!.targetEntityId);
     }
@@ -1752,9 +1770,19 @@ function spawnProjectile(
         Math.pow(targetX - character.x, 2) + Math.pow(targetY - character.y, 2)
       );
       if (distToTarget > range && distToTarget > 0) {
-        const scale = range / distToTarget;
-        targetX = character.x + (targetX - character.x) * scale;
-        targetY = character.y + (targetY - character.y) * scale;
+        // Use character.facing × range rather than scaling toward the
+        // unreachable target. Rationale: the projectile is non-homing from
+        // here on and walkNonHomingTick moves in proj.direction
+        // (= character.facing). If we clamp target in the target's direction,
+        // tilePath (computed from caster to target) and the walker diverge
+        // whenever facing doesn't match the target direction — the bolt hits
+        // enemies at positions beyond tilePath's end, the VFX fires at the
+        // walker's hit tile while the visual sits at tilePath's end, and
+        // impact doesn't line up with the projectile. Aligning target with
+        // facing keeps both paths in sync.
+        const { dx: fDx, dy: fDy } = getDirectionOffset(character.facing);
+        targetX = character.x + fDx * range;
+        targetY = character.y + fDy * range;
         effectiveHomingTarget = undefined;
       }
     } else {
@@ -1822,8 +1850,15 @@ function spawnProjectile(
     homingVisualStartX: effectiveHomingTarget ? character.x : undefined,
     homingVisualStartY: effectiveHomingTarget ? character.y : undefined,
     homingVisualStartTime: effectiveHomingTarget ? Date.now() : undefined,
-    targetEntityId: effectiveHomingTarget?.targetEntityId,
-    targetIsEnemy: effectiveHomingTarget?.targetIsEnemy,
+    // Preserve the originally-selected target even when downgraded. The
+    // homing branch in resolveProjectiles is gated on proj.isHoming (so
+    // downgraded bolts skip it), but the health-bar glow uses targetEntityId
+    // to indicate "this entity is the intended target" — the indicator
+    // should still appear for downgraded shots since the caster did aim at
+    // that specific enemy.
+    targetEntityId: effectiveHomingTarget?.targetEntityId ?? homingTarget?.targetEntityId,
+    targetIsEnemy: effectiveHomingTarget?.targetIsEnemy ?? homingTarget?.targetIsEnemy,
+    targetEnemyIndex: effectiveHomingTarget?.targetEnemyIndex ?? homingTarget?.targetEnemyIndex,
     sourceCharacterId: isEnemy ? undefined : character.characterId,
     sourceEnemyId: isEnemy ? character.characterId : undefined,
     sourceEnemyIndex: sourceEnemyIndex !== undefined && sourceEnemyIndex >= 0 ? sourceEnemyIndex : undefined,
@@ -1845,6 +1880,38 @@ function spawnProjectile(
   };
 
   gameState.activeProjectiles.push(projectile);
+
+  // Optional spawn-time dump (gated on HOMING_DEBUG in simulation.ts).
+  // Logs homing bolts AND homing-that-got-downgraded (the action intended a
+  // homing cast, but spawnProjectile flipped it to non-homing because the
+  // target was out of spell range). See simulation.ts for the flag.
+  if (HOMING_DEBUG && (projectile.isHoming || !!homingTarget)) {
+    const pid = projectile.id.slice(-6);
+    // Resolve the initially-selected target for logging
+    let initialTargetStr = 'none';
+    if (homingTarget) {
+      if (homingTarget.targetIsEnemy && homingTarget.targetEnemyIndex !== undefined) {
+        const e = gameState.puzzle.enemies[homingTarget.targetEnemyIndex];
+        initialTargetStr = `enemies[${homingTarget.targetEnemyIndex}]${e ? `@(${e.x},${e.y}) id=${e.enemyId.slice(-6)} dead=${e.dead} pending=${e.pendingProjectileDeath}` : 'MISSING'}`;
+      } else if (homingTarget.targetIsEnemy) {
+        initialTargetStr = `enemy id=${homingTarget.targetEntityId.slice(-6)} (no index)`;
+      } else {
+        initialTargetStr = `char id=${homingTarget.targetEntityId.slice(-6)}`;
+      }
+    }
+    // eslint-disable-next-line no-console
+    console.log(
+      `[HOMING-SPAWN ${pid}] style=${projectile.homingPathStyle ?? 'n/a'} ` +
+      `caster=(${character.x.toFixed(2)},${character.y.toFixed(2)}) ` +
+      `target=(${targetX.toFixed(2)},${targetY.toFixed(2)}) ` +
+      `spellRange=${range} speed=${speed} ` +
+      `homing=${!!effectiveHomingTarget} downgraded=${!effectiveHomingTarget && !!homingTarget} ` +
+      `initialTarget=${initialTargetStr} ` +
+      `visStart=(${projectile.homingVisualStartX?.toFixed(2)},${projectile.homingVisualStartY?.toFixed(2)}) ` +
+      `logical=(${projectile.logicalX.toFixed(2)},${projectile.logicalY.toFixed(2)}) ` +
+      `spawnTurn=${projectile.spawnTurn}`
+    );
+  }
 
   // Spawn cast effect if configured
   if (attackData.castEffectSprite) {
@@ -3019,7 +3086,7 @@ function findNearestEnemies(
   maxTargets: number = 1,
   mode: 'omnidirectional' | 'cardinal' | 'diagonal' = 'omnidirectional',
   maxRange: number = 0  // 0 = unlimited
-): Array<{ enemy: any; direction: Direction; distance: number }> {
+): Array<{ enemy: any; direction: Direction; distance: number; enemyIndex: number }> {
   // Determine structural team and whether charm inverts it
   const casterIsEnemy = 'enemyId' in character;
   const casterIsCharmed = isEntityCharmed(character);
@@ -3028,23 +3095,37 @@ function findNearestEnemies(
   // XNOR: target-enemies-array iff casterIsEnemy === casterIsCharmed.
   const targetEnemiesArray = casterIsCharmed ? casterIsEnemy : !casterIsEnemy;
 
-  // Build candidate list from the correct array
+  // Build candidate list from the correct array, tracking the original array
+  // index so the caller can disambiguate duplicate enemyIds downstream.
   // Stealth guard uses structural casterIsEnemy: charmed chars still lack enemy-detection abilities
-  let livingTargets: Array<PlacedCharacter | PlacedEnemy>;
+  let livingTargets: Array<{ entity: PlacedCharacter | PlacedEnemy; enemyIndex: number }>;
   if (targetEnemiesArray) {
-    livingTargets = gameState.puzzle.enemies.filter(e => {
-      if (e.dead) return false;
-      if (e.enemyId === character.characterId) return false;
-      if (!casterIsEnemy && isEntityStealthed(e)) return false;
-      return true;
-    });
+    livingTargets = gameState.puzzle.enemies
+      .map((e, i) => ({ entity: e as PlacedCharacter | PlacedEnemy, enemyIndex: i }))
+      .filter(({ entity: e }) => {
+        if (e.dead) return false;
+        // Exclude pendingProjectileDeath: the entity is logically dead — a
+        // hit has resolved but the visual hasn't caught up. Without this
+        // filter, a second homing spell fired the same turn would pick this
+        // entity as its target, then resolveProjectiles' target lookup (which
+        // does exclude pendingDeath) falls back to .find() by enemyId and
+        // returns a different instance sharing the same id. The bolt then
+        // redirects to that instance mid-flight.
+        if ((e as any).pendingProjectileDeath) return false;
+        if ((e as PlacedEnemy).enemyId === character.characterId) return false;
+        if (!casterIsEnemy && isEntityStealthed(e)) return false;
+        return true;
+      });
   } else {
-    livingTargets = gameState.placedCharacters.filter(c => {
-      if (c.dead) return false;
-      if (c.characterId === character.characterId) return false;
-      if (casterIsEnemy && isEntityStealthed(c)) return false;
-      return true;
-    });
+    livingTargets = gameState.placedCharacters
+      .map(c => ({ entity: c as PlacedCharacter | PlacedEnemy, enemyIndex: -1 }))
+      .filter(({ entity: c }) => {
+        if (c.dead) return false;
+        if ((c as any).pendingProjectileDeath) return false;
+        if ((c as PlacedCharacter).characterId === character.characterId) return false;
+        if (casterIsEnemy && isEntityStealthed(c)) return false;
+        return true;
+      });
   }
 
   // Cardinal directions: N, S, E, W
@@ -3054,8 +3135,9 @@ function findNearestEnemies(
   const diagonalDirections: Direction[] = [Direction.NORTHEAST, Direction.SOUTHEAST, Direction.SOUTHWEST, Direction.NORTHWEST];
 
   // Calculate distance and direction to each target (property named 'enemy' for caller compatibility)
-  const enemiesWithDistance = livingTargets.map(enemy => ({
+  const enemiesWithDistance = livingTargets.map(({ entity: enemy, enemyIndex }) => ({
     enemy,
+    enemyIndex,
     distance: calculateDistance(character.x, character.y, enemy.x, enemy.y),
     direction: calculateDirectionTo(character.x, character.y, enemy.x, enemy.y),
   }));
@@ -3099,17 +3181,21 @@ function findNearestCharacters(
   // Charmed entities heal/buff their structural opposite team; uncharmed target their own team
   const alliesAreEnemies = casterIsCharmed ? !casterIsEnemy : casterIsEnemy;
 
-  // Build candidate list from the correct array
+  // Build candidate list from the correct array. Exclude pendingProjectileDeath
+  // entities — they're logically dead, awaiting visual confirmation. See
+  // findNearestEnemies for full reasoning.
   let livingTargets: Array<PlacedCharacter | PlacedEnemy>;
   if (alliesAreEnemies) {
     livingTargets = gameState.puzzle.enemies.filter(e => {
       if (e.dead) return false;
+      if ((e as any).pendingProjectileDeath) return false;
       if (e.enemyId === entity.characterId) return false;
       return true;
     });
   } else {
     livingTargets = gameState.placedCharacters.filter(c => {
       if (c.dead) return false;
+      if ((c as any).pendingProjectileDeath) return false;
       if (c.characterId === entity.characterId) return false;
       if (casterIsEnemy && isEntityStealthed(c)) return false;
       return true;

@@ -1228,7 +1228,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const anim = enemyPositionsRef.current.get(index);
           const deathAnim = enemyDeathAnimations.get(index);
           const spawnAnim = enemySpawnAnimations.get(index);
-          const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current);
+          const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current, index);
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -2776,12 +2776,28 @@ function getSpriteTopY(sprite: import('../../utils/assetStorage').CustomSprite |
 function getHomingTargetGlow(
   gameState: GameState, entityId: string, isEnemy: boolean,
   visualState: Map<string, ProjectileVisualState>,
+  enemyIndex?: number,
 ): string | undefined {
   if (!gameState.activeProjectiles) return undefined;
   for (const proj of gameState.activeProjectiles) {
-    if (!proj.active || !proj.isHoming || proj.homingPathStyle !== 'straight') continue;
-    // Current target match (non-reflected, or reflected post-pivot)
-    if (proj.targetEntityId === entityId && proj.targetIsEnemy === isEnemy) {
+    // Glow applies to all homing styles (straight / grid / pathfinding) AND
+    // to bolts that were intended-homing but got downgraded to non-homing at
+    // spawn (target was out of range). targetEntityId is only populated when
+    // homingTarget was passed to spawnProjectile — i.e. the cast was
+    // originally a homing cast — so using it as the glow trigger covers both
+    // homing and downgraded-homing cases without lighting up plain linear
+    // spells that never had a target.
+    if (!proj.active) continue;
+    if (!proj.targetEntityId) continue;
+    // Current target match (non-reflected, or reflected post-pivot).
+    // For enemies, match by array index when available to disambiguate
+    // duplicates sharing the same enemyId. Without this, all enemies of the
+    // same id would glow together even when only one is actually targeted.
+    const idMatches = proj.targetEntityId === entityId && proj.targetIsEnemy === isEnemy;
+    if (idMatches) {
+      if (isEnemy && proj.targetEnemyIndex !== undefined && enemyIndex !== undefined) {
+        if (proj.targetEnemyIndex !== enemyIndex) continue;
+      }
       return proj.attackData.healing !== undefined ? '#4ade80' : '#ef4444';
     }
     // For reflected projectiles still in approach phase, glow the original target (the reflector)

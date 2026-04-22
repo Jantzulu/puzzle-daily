@@ -921,6 +921,15 @@ export interface Projectile {
   homingVisualStartTime?: number;
   targetEntityId?: string;      // LOGICAL — ID of entity being tracked
   targetIsEnemy?: boolean;      // LOGICAL — true = target is enemy, false = target is character
+  /**
+   * LOGICAL — array index of target enemy when targetIsEnemy is true. Required
+   * to disambiguate homing targets when multiple enemies share the same
+   * enemyId (duplicate placements). Without this, resolveProjectiles' lookup
+   * by enemyId returns the first match in placement order regardless of which
+   * instance findNearestEnemies actually selected. Same pattern as
+   * sourceEnemyIndex / hitEnemyIndices.
+   */
+  targetEnemyIndex?: number;
 
   // -------- Piercing tracking (LOGICAL) --------
   hitEntityIds?: string[];      // IDs of entities already hit by this projectile
