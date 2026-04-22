@@ -5,7 +5,7 @@ import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { initializeGameState, executeTurn, checkVictoryConditions } from '../../engine/simulation';
+import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebugSilenced, findPathBFS, getTilesAlongLine } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
@@ -129,7 +129,7 @@ export const Game: React.FC = () => {
   const turnHistoryRef = useRef<GameState[]>([]);
   const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
   const projectileTimelineRef = useRef<ProjectileEvent[]>([]);
-  const projectileLifetimesRef = useRef<Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; spawnTurn: number; endTurn: number }>>(new Map());
+  const projectileLifetimesRef = useRef<Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>>(new Map());
 
   // Bug report system
   const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
@@ -193,6 +193,13 @@ export const Game: React.FC = () => {
   useEffect(() => {
     playBackgroundMusic(currentPuzzle.backgroundMusicId);
   }, [currentPuzzle.id, currentPuzzle.backgroundMusicId]);
+
+  // Silence HOMING_DEBUG console logs once the game is no longer running so
+  // the post-outcome console stays copyable while lingering bolts animate.
+  // Re-enable on status return to 'running' (new game / retry).
+  useEffect(() => {
+    setHomingDebugSilenced(gameState.gameStatus !== 'running' && gameState.gameStatus !== 'setup');
+  }, [gameState.gameStatus]);
 
   // Preload sprite assets in the background when puzzle changes
   // This ensures all directional sprites, animation frames, etc. are cached
@@ -970,16 +977,19 @@ export const Game: React.FC = () => {
     projectileTimelineRef.current = timeline;
 
     // Build per-turn active projectile lifetimes from timeline
-    const lifetimes = new Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; spawnTurn: number; endTurn: number }>();
+    const lifetimes = new Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>();
     for (const event of timeline) {
       if (event.type === 'spawn') {
-        lifetimes.set(event.projId, { spawn: event, spawnTurn: event.turn, endTurn: 9999 });
+        lifetimes.set(event.projId, { spawn: event, homingMoves: [], spawnTurn: event.turn, endTurn: 9999 });
       } else if (event.type === 'reflect') {
         const life = lifetimes.get(event.projId);
         if (life) life.reflect = event;
       } else if (event.type === 'hit' || event.type === 'wall_hit' || event.type === 'deactivate') {
         const life = lifetimes.get(event.projId);
         if (life) { life.end = event; life.endTurn = event.turn; }
+      } else if (event.type === 'homing_move') {
+        const life = lifetimes.get(event.projId);
+        if (life) life.homingMoves.push(event);
       }
     }
     projectileLifetimesRef.current = lifetimes;
@@ -1102,37 +1112,95 @@ export const Game: React.FC = () => {
       if (turnIndex < life.spawnTurn || turnIndex > life.endTurn) continue;
 
       const spawn = life.spawn;
-
-      // Compute tilePath if not recorded (common for homing in headless mode)
-      let tilePath = spawn.tilePath ? [...spawn.tilePath] : undefined;
-      if (!tilePath || tilePath.length === 0) {
-        // Use hit/end position as the destination
-        const endEvent = life.end;
-        if (endEvent) {
-          tilePath = computeReplayPath(spawn.x, spawn.y, endEvent.x, endEvent.y);
-        }
-      }
-
-      // Calculate how far the projectile should be at this turn
-      // +1 because the spawn turn itself is the first turn of travel
-      const turnsOfTravel = turnIndex - life.spawnTurn + 1;
       const speed = spawn.speed || 4;
-      const tilesAtEndOfTurn = turnsOfTravel * speed;
-      const tilesAtStartOfTurn = (turnsOfTravel - 1) * speed; // where it was at end of previous turn
-      const maxTileIdx = tilePath ? tilePath.length - 1 : 0;
-      let turnTileIndex = Math.min(tilesAtEndOfTurn, maxTileIdx);
-      let turnStartTileIndex = Math.min(tilesAtStartOfTurn, maxTileIdx);
+      const isHomingBolt = !!spawn.isHoming;
 
-      // For hits on the end turn, cap at the hit position
-      if (life.end && turnIndex === life.endTurn) {
-        if (life.end.type === 'hit' && life.end.hitTileIndex !== undefined) {
-          turnTileIndex = Math.min(life.end.hitTileIndex, maxTileIdx);
+      let tilePath: Array<{ x: number; y: number }> | undefined;
+      let turnTileIndex: number;
+      let turnStartTileIndex: number;
+      let posAtTurn: { x: number; y: number };
+
+      if (isHomingBolt) {
+        // Homing replay: build a per-turn segment tilePath using the recorded
+        // homing_move events (one per turn). Live gameplay rebuilds tilePath
+        // each turn; replay mirrors that so speed, pathfinding-vs-grid-vs-
+        // straight, and per-turn step animation all match the real flight.
+        const turnsSinceSpawn = turnIndex - life.spawnTurn; // 0 = spawn turn
+
+        // Position at end of (turnIndex - 1): previous turn's homing_move, or
+        // spawn pos if this IS the spawn turn.
+        const prevPos = turnsSinceSpawn === 0
+          ? { x: spawn.x, y: spawn.y }
+          : (life.homingMoves[turnsSinceSpawn - 1]
+              ? { x: life.homingMoves[turnsSinceSpawn - 1].x, y: life.homingMoves[turnsSinceSpawn - 1].y }
+              : { x: spawn.x, y: spawn.y });
+
+        // Position at end of turnIndex: on endTurn use end event's position
+        // (so tilePath ends exactly at hit/deactivate location); otherwise use
+        // this turn's homing_move.
+        const thisPos = turnIndex === life.endTurn && life.end
+          ? { x: life.end.x, y: life.end.y }
+          : (life.homingMoves[turnsSinceSpawn]
+              ? { x: life.homingMoves[turnsSinceSpawn].x, y: life.homingMoves[turnsSinceSpawn].y }
+              : prevPos);
+
+        // Build segment tilePath using the style the engine used.
+        const style = spawn.homingPathStyle || 'straight';
+        if (style === 'pathfinding') {
+          tilePath = findPathBFS(Math.round(prevPos.x), Math.round(prevPos.y),
+                                 Math.round(thisPos.x), Math.round(thisPos.y), gameState);
         } else {
-          turnTileIndex = maxTileIdx;
+          // 'grid' and 'straight' both use tile-along-line for replay; the
+          // difference in live gameplay is in visual interpolation, not path.
+          tilePath = getTilesAlongLine(prevPos.x, prevPos.y, thisPos.x, thisPos.y);
         }
-      }
+        if (!tilePath || tilePath.length === 0) {
+          tilePath = [{ x: Math.round(prevPos.x), y: Math.round(prevPos.y) }];
+        }
 
-      const posAtTurn = tilePath?.[turnTileIndex] ?? { x: spawn.x, y: spawn.y };
+        turnStartTileIndex = 0;
+        turnTileIndex = tilePath.length - 1;
+        posAtTurn = tilePath[turnTileIndex];
+
+        // REPLAY-DIFF log — mirrors the [RDIFF REAL] one-liners from
+        // simulation.ts so real vs replay can be diffed directly. If a bolt's
+        // reconstructed segment diverges from what the engine emitted, the
+        // pos/tilePath/style values here won't match the REAL event stream.
+        const pathStr = tilePath.map(t => `(${t.x},${t.y})`).join('→');
+        console.log(
+          `[RDIFF REPLAY] turn=${turnIndex} proj=${spawn.projId.slice(-6)} ` +
+          `style=${spawn.homingPathStyle} speed=${speed} ` +
+          `prev=(${prevPos.x.toFixed(2)},${prevPos.y.toFixed(2)}) ` +
+          `this=(${thisPos.x.toFixed(2)},${thisPos.y.toFixed(2)}) ` +
+          `tilePath=${pathStr} logical=(${posAtTurn.x},${posAtTurn.y})`
+        );
+      } else {
+        // Non-homing: existing stitched-path behavior (full flight in spawn's tilePath).
+        tilePath = spawn.tilePath ? [...spawn.tilePath] : undefined;
+        if (!tilePath || tilePath.length === 0) {
+          const endEvent = life.end;
+          if (endEvent) {
+            tilePath = computeReplayPath(spawn.x, spawn.y, endEvent.x, endEvent.y);
+          }
+        }
+
+        const turnsOfTravel = turnIndex - life.spawnTurn + 1;
+        const tilesAtEndOfTurn = turnsOfTravel * speed;
+        const tilesAtStartOfTurn = (turnsOfTravel - 1) * speed;
+        const maxTileIdx = tilePath ? tilePath.length - 1 : 0;
+        turnTileIndex = Math.min(tilesAtEndOfTurn, maxTileIdx);
+        turnStartTileIndex = Math.min(tilesAtStartOfTurn, maxTileIdx);
+
+        if (life.end && turnIndex === life.endTurn) {
+          if (life.end.type === 'hit' && life.end.hitTileIndex !== undefined) {
+            turnTileIndex = Math.min(life.end.hitTileIndex, maxTileIdx);
+          } else {
+            turnTileIndex = maxTileIdx;
+          }
+        }
+
+        posAtTurn = tilePath?.[turnTileIndex] ?? { x: spawn.x, y: spawn.y };
+      }
 
       const proj: Projectile = {
         id: spawn.projId,

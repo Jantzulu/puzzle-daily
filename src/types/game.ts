@@ -324,7 +324,7 @@ export interface PlacedEnemy {
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
-  visualHealth?: number; // Visual HP for health bar — syncs with projectile arrival, not turn boundary
+  pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
 }
 
 export interface PlacedObject {
@@ -586,7 +586,7 @@ export interface PlacedCharacter {
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions for redirect spells (set during setup)
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
-  visualHealth?: number; // Visual HP for health bar — syncs with projectile arrival, not turn boundary
+  pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
@@ -862,6 +862,17 @@ export interface Projectile {
   startX: number;               // Original spawn X (LOGICAL)
   startY: number;               // Original spawn Y (LOGICAL)
   /**
+   * LOGICAL — cumulative Euclidean path length the projectile has traveled,
+   * accumulated from per-turn movement segments. Homing bolts chasing moving
+   * targets take curved paths, so Euclidean displacement from spawn can
+   * *decrease* as the bolt curves — which made the old `sqrt((logical-start)^2)`
+   * range budget effectively reset, letting bolts travel far beyond their
+   * nominal range. Tracking cumulative path length is monotonic: each turn
+   * adds the segment length to this counter, range is consumed consistently.
+   * Reset on reflect (new range budget from the reflector's position).
+   */
+  pathTraveled?: number;
+  /**
    * LOGICAL — current authoritative tile position, written at turn boundaries
    * by resolveProjectiles / updateProjectilesHeadless / reflectProjectile.
    * This is the value engine code reads when it wants "where is the projectile
@@ -1001,7 +1012,7 @@ export interface Projectile {
 export interface ProjectileEvent {
   turn: number;           // Which turn this event occurs
   projId: string;         // Unique projectile ID
-  type: 'spawn' | 'hit' | 'reflect' | 'deactivate' | 'wall_hit';
+  type: 'spawn' | 'hit' | 'reflect' | 'deactivate' | 'wall_hit' | 'homing_move';
 
   // Position
   x: number;
@@ -1068,6 +1079,7 @@ export interface ProjectileHitResult {
   deferredDeathIsEnemy?: boolean; // Whether the deferred entity is an enemy
   deferredDeathIndex?: number;    // Array index for duplicate enemies
   placeCollectibleConfig?: ThrowPlaceConfig; // Throw/Place: place item when visual arrives
+  damage?: number;                // Damage applied logically at hit time; consumed by visual arrival to decrement pendingVisualDamage on the target.
 }
 
 /**

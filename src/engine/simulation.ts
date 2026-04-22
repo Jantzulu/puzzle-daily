@@ -13,13 +13,24 @@ import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirection
 // April 2026 homing/duplicate-enemyId investigation — left in place so the
 // same diagnostic trail is one edit away next time a projectile regression
 // surfaces. Search for HOMING_DEBUG to find all gated sites.
-export const HOMING_DEBUG = false;
+//
+// `_homingDebugSilenced` lets the UI layer silence logs without flipping the
+// base flag — e.g. after victory/defeat so the console stays copyable while
+// lingering projectiles finish animating.
+export const HOMING_DEBUG = true;
+let _homingDebugSilenced = false;
+export function setHomingDebugSilenced(silenced: boolean): void {
+  _homingDebugSilenced = silenced;
+}
+export function isHomingDebug(): boolean {
+  return HOMING_DEBUG && !_homingDebugSilenced;
+}
 
 /**
  * BFS pathfinding: find shortest path from start to target avoiding walls.
  * Returns array of tile positions, or empty array if no path exists.
  */
-function findPathBFS(
+export function findPathBFS(
   startX: number, startY: number,
   targetX: number, targetY: number,
   gameState: GameState
@@ -104,12 +115,19 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
         const baseDmg = proj.attackData.damage ?? 0;
         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing);
         const damage = isCrit ? baseDmg * 2 : baseDmg;
-        hitEnemy.visualHealth = hitEnemy.currentHealth;
+        if (isHomingDebug()) {
+          console.log(
+            `[PATH-HIT ${proj.id.slice(-6)}] (along-path) enemy=${hitEnemy.enemyId.slice(-6)}[idx=${hitEnemyIndex}]@(${tile.x},${tile.y}) ` +
+            `baseDmg=${baseDmg} isCrit=${isCrit} finalDmg=${damage} ` +
+            `hpBefore=${hitEnemy.currentHealth} pendingVisDmg=${hitEnemy.pendingVisualDamage ?? 0}→${(hitEnemy.pendingVisualDamage ?? 0) + damage}`
+          );
+        }
+        hitEnemy.pendingVisualDamage = (hitEnemy.pendingVisualDamage ?? 0) + damage;
         applyDamageToEntityNoDeflect(hitEnemy, damage, gameState);
         if (hitEnemy.dead) {
           hitEnemy.dead = false;
           hitEnemy.pendingProjectileDeath = true;
-          if (HOMING_DEBUG) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
+          if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
         }
         if (!proj.attackData.projectilePierces) break;
       }
@@ -126,7 +144,14 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
         const baseDmg = proj.attackData.damage ?? 0;
         const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitChar.facing);
         const damage = isCrit ? baseDmg * 2 : baseDmg;
-        hitChar.visualHealth = hitChar.currentHealth;
+        if (isHomingDebug()) {
+          console.log(
+            `[PATH-HIT ${proj.id.slice(-6)}] (along-path) char=${hitChar.characterId.slice(-6)}@(${tile.x},${tile.y}) ` +
+            `baseDmg=${baseDmg} isCrit=${isCrit} finalDmg=${damage} ` +
+            `hpBefore=${hitChar.currentHealth} pendingVisDmg=${hitChar.pendingVisualDamage ?? 0}→${(hitChar.pendingVisualDamage ?? 0) + damage}`
+          );
+        }
+        hitChar.pendingVisualDamage = (hitChar.pendingVisualDamage ?? 0) + damage;
         applyDamageToEntityNoDeflect(hitChar, damage, gameState);
         if (hitChar.dead) {
           hitChar.dead = false;
@@ -322,6 +347,9 @@ function reflectProjectile(
   proj.logicalY = startY;
   proj.startX = startX;
   proj.startY = startY;
+  // Reset cumulative path length — reflected bolts get a fresh range budget
+  // from the reflector's position (matches original 8b049df semantics).
+  proj.pathTraveled = 0;
   if (!proj.isHoming) {
     proj.targetX = startX + offset.dx * range;
     proj.targetY = startY + offset.dy * range;
@@ -428,7 +456,7 @@ function safeFloor(n: number): number {
  * Uses simple tile stepping based on start/end tile coordinates
  * For a diagonal from (11,2) to (13,0), we want: (11,2) -> (12,1) -> (13,0)
  */
-function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Array<{x: number, y: number}> {
+export function getTilesAlongLine(x0: number, y0: number, x1: number, y1: number): Array<{x: number, y: number}> {
   const tiles: Array<{x: number, y: number}> = [];
   const seen = new Set<string>();
 
@@ -573,7 +601,7 @@ function markEntityAsDead(
 
   // Now mark as dead
   entity.dead = true;
-  if (HOMING_DEBUG) {
+  if (isHomingDebug()) {
     const isEnemy = 'enemyId' in entity;
     const id = isEnemy ? (entity as PlacedEnemy).enemyId : (entity as PlacedCharacter).characterId;
     console.log(`[DEATH-MUT ${isEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${entity.x},${entity.y}) → dead (from applyEntityDeath/triggers)`);
@@ -1845,11 +1873,11 @@ export function checkVictoryConditions(gameState: GameState): boolean {
     switch (condition.type) {
       case 'defeat_all_enemies':
         const allEnemiesDead = gameState.puzzle.enemies.every((e) => e.dead || e.pendingProjectileDeath);
-        if (HOMING_DEBUG) {
+        if (isHomingDebug()) {
           // Dump full enemy state when the defeat_all_enemies check runs, so
           // we can see if win fires with anything non-dead.
           const states = gameState.puzzle.enemies.map((e, i) =>
-            `[${i}]${e.enemyId.slice(-6)}@(${e.x},${e.y}) dead=${e.dead} pending=${e.pendingProjectileDeath} hp=${e.currentHealth}/${e.visualHealth ?? '-'}`
+            `[${i}]${e.enemyId.slice(-6)}@(${e.x},${e.y}) dead=${e.dead} pending=${e.pendingProjectileDeath} hp=${e.currentHealth}+${e.pendingVisualDamage ?? 0}`
           ).join(' | ');
           console.log(`[WIN-CHECK defeat_all_enemies] turn=${gameState.currentTurn} allDead=${allEnemiesDead} enemies: ${states}`);
         }
@@ -2119,7 +2147,7 @@ function updateStraightLineHomingVisual(proj: Projectile, now: number): Projecti
     proj.direction = calculateDirectionTo(startX, startY, proj.targetX, proj.targetY);
   }
 
-  if (HOMING_DEBUG) {
+  if (isHomingDebug()) {
     // Log sparsely: first frame, last frame, and every ~5th frame in between
     const pid = proj.id.slice(-6);
     const visualStateKey = `${pid}_lastProgress`;
@@ -2217,8 +2245,13 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     ? 0.8 / (tilePath.length - 1)
     : 1 / speedTilesPerSecond;
 
-  // Calculate which tile we should be on based purely on elapsed time
-  const visualTileIndex = Math.min(
+  // Calculate which tile we should be on based purely on elapsed time.
+  // STRAIGHT-LINE branch overrides this to match its Euclidean-based
+  // progress — per-tile pacing and Euclidean interpolation complete at
+  // different times for diagonal paths (tile count < Euclidean distance),
+  // and consuming hitResult based on tile-pacing while the visual is still
+  // mid-flight spawns VFX at the target with the bolt visibly short.
+  let visualTileIndex = Math.min(
     Math.floor(elapsed / tileTransitTime),
     tilePath.length - 1
   );
@@ -2240,6 +2273,13 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     newX = firstTile.x + (lastTile.x - firstTile.x) * progress;
     newY = firstTile.y + (lastTile.y - firstTile.y) * progress;
     if (progress >= 1) reachedTarget = true;
+    // Derive visualTileIndex from interp progress so hit-consume timing
+    // matches the bolt's actual visual position (Math.floor so the final
+    // index is reached exactly when progress=1.0, i.e. visually at target).
+    visualTileIndex = Math.min(
+      Math.floor(progress * (tilePath.length - 1)),
+      tilePath.length - 1
+    );
   } else if (proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined && tilePath.length >= 2) {
     // TWO-SEGMENT STRAIGHT-LINE: approach straight to reflect point, then straight back
     const pivotIdx = proj.reflectAtTileIndex;
@@ -2322,7 +2362,7 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     }
   }
 
-  if (HOMING_DEBUG) {
+  if (isHomingDebug()) {
     const pid = proj.id.slice(-6);
     const lastLogged = (proj as any)._debugLastTileIdx ?? -999;
     if (emittedTileIndex !== lastLogged || reachedTarget) {
@@ -2462,8 +2502,29 @@ export function updateProjectiles(
     // for branches without tilePath (which don't emit visualTileIndex).
     const currentTileIdx = vs?.currentTileIndex ?? proj.currentTileIndex ?? 0;
     const straightLineReached = proj.homingPathStyle === 'straight' && reachedTarget;
+
+    // Watchdog: hitResult set but consumption not firing. Log once ~1 turn
+    // past expected arrival so stale hitResults (the suspected cause of the
+    // "missed damage that catches up next hit" bug) are visible.
+    if (isHomingDebug() && proj.hitResult && currentTileIdx < proj.hitResult.hitTileIndex && !straightLineReached) {
+      const elapsedMs = now - (proj.tileEntryTime ?? proj.startTime ?? now);
+      const pathLen = proj.tilePath?.length ?? 0;
+      // Expected max: 1 turn = 800ms for homing, or (pathLen * 1000/speed) for non-homing.
+      const expectedMs = proj.isHoming ? 800 : Math.max(800, pathLen * 250);
+      if (elapsedMs > expectedMs + 400 && !(proj as { _stuckLogged?: boolean })._stuckLogged) {
+        console.log(
+          `[HIT-CONSUME-MISS ${proj.id.slice(-6)}] homing=${proj.isHoming} style=${proj.homingPathStyle ?? 'n/a'} ` +
+          `currentTileIdx=${currentTileIdx} hitTile=${proj.hitResult.hitTileIndex} pathLen=${pathLen} ` +
+          `elapsed=${elapsedMs.toFixed(0)}ms expected=${expectedMs}ms ` +
+          `deferredDeath=${proj.hitResult.deferredDeathEntityId?.slice(-6) ?? 'none'} ` +
+          `— hitResult stuck, pendingVisualDamage will NOT decrement for this hit`
+        );
+        (proj as { _stuckLogged?: boolean })._stuckLogged = true;
+      }
+    }
+
     if (proj.hitResult && (currentTileIdx >= proj.hitResult.hitTileIndex || straightLineReached)) {
-      if (HOMING_DEBUG) {
+      if (isHomingDebug()) {
         console.log(
           `[PROJ-HIT-CONSUME ${proj.id.slice(-6)}] homing=${proj.isHoming} style=${proj.homingPathStyle ?? 'n/a'} ` +
           `hitTile=${proj.hitResult.hitTileIndex} currentTileIdx=${currentTileIdx} ` +
@@ -2477,30 +2538,50 @@ export function updateProjectiles(
         spawnParticleEffect(proj.hitResult.vfxX, proj.hitResult.vfxY, proj.hitResult.vfxSprite,
           proj.attackData.effectDuration || 300, gameState);
       }
-      // Trigger deferred death — now set entity.dead = true so AnimatedGameBoard plays death animation
-      // Also clear visualHealth so health bar shows actual HP now that projectile arrived
+      // Trigger deferred death — now set entity.dead = true so AnimatedGameBoard plays death animation.
+      // Also decrement pendingVisualDamage by this hit's damage so the bar drops by exactly 1 hit.
+      // With multi-bolt overlap, each arrival decrements independently (no more stale captures).
       if (proj.hitResult.deferredDeathEntityId) {
+        const hitDmg = proj.hitResult.damage ?? 0;
         if (proj.hitResult.deferredDeathIsEnemy) {
           const enemy = proj.hitResult.deferredDeathIndex !== undefined
             ? gameState.puzzle.enemies[proj.hitResult.deferredDeathIndex]
             : gameState.puzzle.enemies.find(e => e.enemyId === proj.hitResult!.deferredDeathEntityId);
           if (enemy) {
-            enemy.visualHealth = undefined;
+            const priorPending = enemy.pendingVisualDamage ?? 0;
+            const newPending = Math.max(0, priorPending - hitDmg);
+            enemy.pendingVisualDamage = newPending > 0 ? newPending : undefined;
+            if (isHomingDebug()) {
+              console.log(
+                `[VDMG-DECREMENT ${proj.id.slice(-6)}] enemy=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) ` +
+                `pendingVisDmg=${priorPending}→${enemy.pendingVisualDamage ?? 0} hitDmg=${hitDmg}; bar now shows ${enemy.currentHealth + (enemy.pendingVisualDamage ?? 0)}`
+              );
+            }
             if (enemy.pendingProjectileDeath) {
               enemy.dead = true;
               enemy.pendingProjectileDeath = false;
-              if (HOMING_DEBUG) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${proj.id.slice(-6)} hit visual arrival)`);
+              enemy.pendingVisualDamage = undefined;
+              if (isHomingDebug()) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${proj.id.slice(-6)} hit visual arrival)`);
               handleEntityDeathDrop(enemy, true, gameState);
             }
           }
         } else {
           const char = gameState.placedCharacters.find(c => c.characterId === proj.hitResult!.deferredDeathEntityId);
           if (char) {
-            char.visualHealth = undefined;
+            const priorPending = char.pendingVisualDamage ?? 0;
+            const newPending = Math.max(0, priorPending - hitDmg);
+            char.pendingVisualDamage = newPending > 0 ? newPending : undefined;
+            if (isHomingDebug()) {
+              console.log(
+                `[VDMG-DECREMENT ${proj.id.slice(-6)}] char=${char.characterId.slice(-6)}@(${char.x},${char.y}) ` +
+                `pendingVisDmg=${priorPending}→${char.pendingVisualDamage ?? 0} hitDmg=${hitDmg}; bar now shows ${char.currentHealth + (char.pendingVisualDamage ?? 0)}`
+              );
+            }
             if (char.pendingProjectileDeath) {
               char.dead = true;
               char.pendingProjectileDeath = false;
-              if (HOMING_DEBUG) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${proj.id.slice(-6)})`);
+              char.pendingVisualDamage = undefined;
+              if (isHomingDebug()) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${proj.id.slice(-6)})`);
               handleEntityDeathDrop(char, false, gameState);
             }
           }
@@ -2646,6 +2727,7 @@ interface EntityHitResult {
   deferredDeathEntityId?: string;
   deferredDeathIsEnemy?: boolean;
   deferredDeathIndex?: number;
+  damageApplied?: number; // For pendingVisualDamage bookkeeping on visual arrival
 }
 
 /**
@@ -2660,14 +2742,26 @@ function applyEntityHit(
   gameState: GameState,
   mode: HitMode
 ): EntityHitResult {
+  const tgtId = targetIsEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId;
+  const tgtIdx = targetIsEnemy ? gameState.puzzle.enemies.indexOf(target as PlacedEnemy) : -1;
+  if (isHomingDebug()) {
+    console.log(
+      `[APPLY-HIT ENTRY ${proj.id.slice(-6)}] → tgt=${tgtId.slice(-6)}${targetIsEnemy ? `[idx=${tgtIdx}]` : ''}@(${target.x},${target.y}) ` +
+      `mode=${mode} homing=${proj.isHoming} reflected=${proj.reflected ?? false} ` +
+      `hp=${target.currentHealth} pendingVisDmg=${target.pendingVisualDamage ?? 0} pendingDeath=${target.pendingProjectileDeath ?? false}`
+    );
+  }
+
   // 1. Reflect check
   if (hasReflect(target) && !proj.reflected && canReflectDirection(target, proj.direction)) {
+    if (isHomingDebug()) console.log(`[APPLY-HIT ${proj.id.slice(-6)}] → REFLECT branch`);
     reflectProjectile(proj, target, gameState, Date.now());
     return { reflected: true };
   }
 
   // 2. AOE explosion
   if (proj.attackData.projectileBeforeAOE && proj.attackData.aoeRadius) {
+    if (isHomingDebug()) console.log(`[APPLY-HIT ${proj.id.slice(-6)}] → AOE branch`);
     triggerAOEExplosion(target.x, target.y, proj.attackData,
       proj.sourceCharacterId, proj.sourceEnemyId, gameState, proj.spellAssetId);
     return { reflected: false };
@@ -2675,6 +2769,7 @@ function applyEntityHit(
 
   // 3. Redirect
   if (proj.attackData.isRedirect) {
+    if (isHomingDebug()) console.log(`[APPLY-HIT ${proj.id.slice(-6)}] → REDIRECT branch (no damage, no pendingVisualDamage capture)`);
     if (!isSteadfast(target)) applyRedirect(target, proj.attackData, proj.direction);
     if (mode === 'headless') {
       const hs = proj.attackData.hitEffectSprite;
@@ -2688,8 +2783,16 @@ function applyEntityHit(
   const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, target.facing);
   const damage = isCrit ? baseDmg * 2 : baseDmg;
 
+  const hpBeforeDeflect = target.currentHealth;
   const wasDeflected = applyProjectileDamageWithDeflect(
     target, damage, proj.sourceCharacterId, proj.sourceEnemyId, gameState);
+  if (isHomingDebug()) {
+    console.log(
+      `[APPLY-HIT ${proj.id.slice(-6)}] → DAMAGE branch tgt=${tgtId.slice(-6)} ` +
+      `baseDmg=${baseDmg} isCrit=${isCrit} finalDmg=${damage} ` +
+      `hpBeforeDeflect=${hpBeforeDeflect} hpAfterDeflect=${target.currentHealth} wasDeflected=${wasDeflected}`
+    );
+  }
 
   let deferredDeathEntityId: string | undefined;
   let deferredDeathIsEnemy: boolean | undefined;
@@ -2698,14 +2801,21 @@ function applyEntityHit(
   if (!wasDeflected) {
     // 5. Death handling — mode-specific
     if (mode === 'visual') {
-      target.visualHealth = target.currentHealth;
+      const priorPending = target.pendingVisualDamage ?? 0;
+      target.pendingVisualDamage = priorPending + damage;
+      if (isHomingDebug()) {
+        console.log(
+          `[VDMG-CAPTURE ${proj.id.slice(-6)}] tgt=${tgtId.slice(-6)} ` +
+          `pendingVisDmg=${priorPending}→${target.pendingVisualDamage} (hp ${target.currentHealth}→${target.currentHealth - damage}, bar stays at ${target.currentHealth + priorPending})`
+        );
+      }
     }
     applyDamageToEntityNoDeflect(target, damage, gameState);
     if (target.dead) {
       if (mode === 'visual') {
         target.dead = false;
         target.pendingProjectileDeath = true;
-        if (HOMING_DEBUG) {
+        if (isHomingDebug()) {
           const id = targetIsEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId;
           console.log(`[DEATH-MUT ${targetIsEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${target.x},${target.y}) → pendingDeath (from applyEntityHit, proj=${proj.id.slice(-6)} dmg=${damage})`);
         }
@@ -2740,7 +2850,7 @@ function applyEntityHit(
   const vfxSprite = isCrit && proj.attackData.criticalHitEffectSprite
     ? proj.attackData.criticalHitEffectSprite : proj.attackData.hitEffectSprite;
 
-  return { reflected: false, vfxSprite, deferredDeathEntityId, deferredDeathIsEnemy, deferredDeathIndex };
+  return { reflected: false, vfxSprite, deferredDeathEntityId, deferredDeathIsEnemy, deferredDeathIndex, damageApplied: wasDeflected ? 0 : damage };
 }
 
 /**
@@ -3217,6 +3327,7 @@ function resolveReflectedPath(
         deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
         deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
         deferredDeathIndex: step.hitResult.deferredDeathIndex,
+        damage: step.hitResult.damageApplied ?? 0,
       };
     }
   }
@@ -3230,6 +3341,24 @@ function resolveReflectedPath(
 function recordProjectileEvent(gameState: GameState, event: Omit<ProjectileEvent, 'turn'>) {
   if (!gameState.projectileTimeline) return;
   gameState.projectileTimeline.push({ ...event, turn: gameState.currentTurn });
+  // REPLAY-DIFF log: fires once per recorded event with a compact single-
+  // line summary. The same projId+turn+type+pos should appear in replay's
+  // reconstruction — if it doesn't, that's where real and replay diverge.
+  if (isHomingDebug()) {
+    const pathStr = event.tilePath ? event.tilePath.map(t => `(${t.x},${t.y})`).join('→') : '';
+    const extra = [
+      event.isHoming !== undefined ? `homing=${event.isHoming}` : '',
+      event.homingPathStyle ? `style=${event.homingPathStyle}` : '',
+      event.speed !== undefined ? `speed=${event.speed}` : '',
+      pathStr ? `tilePath=${pathStr}` : '',
+      event.hitTileIndex !== undefined ? `hitTileIdx=${event.hitTileIndex}` : '',
+    ].filter(Boolean).join(' ');
+    console.log(
+      `[RDIFF REAL] turn=${gameState.currentTurn} proj=${event.projId.slice(-6)} ` +
+      `type=${event.type} pos=(${event.x.toFixed(2)},${event.y.toFixed(2)})` +
+      (extra ? ` ${extra}` : '')
+    );
+  }
 }
 
 /**
@@ -3373,7 +3502,7 @@ function resolveProjectiles(gameState: GameState): void {
           targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead && !e.pendingProjectileDeath);
           if (targetEntity) resolveMode = 'find-fallback';
         }
-        if (HOMING_DEBUG && proj.isHoming) {
+        if (isHomingDebug() && proj.isHoming) {
           const foundIdx = targetEntity ? gameState.puzzle.enemies.indexOf(targetEntity as PlacedEnemy) : -1;
           console.log(
             `[HOMING-TARGET ${proj.id.slice(-6)}] turn=${gameState.currentTurn} resolve=${resolveMode} ` +
@@ -3391,23 +3520,17 @@ function resolveProjectiles(gameState: GameState): void {
         const distance = Math.sqrt(dx * dx + dy * dy);
 
         // Range check — homing projectiles should respect their range.
-        // Measure from the LOGICAL spawn anchor (proj.startX/Y), not the
-        // visual anchor (homingVisualStartX/Y). The straight-line homing
-        // branch below re-anchors the visual fields to the current position
-        // each turn as a slow-projectile interpolation tweak — using the
-        // visual anchor here made totalDistanceTraveled always ~0, so the
-        // range gate never fired and bolts with short spell range could hit
-        // targets far outside their reach. proj.startX/Y is stable across
-        // turns (only rewritten by reflectProjectile, which intentionally
-        // restarts the range budget from the reflector's position).
-        const totalDistanceTraveled = Math.sqrt(
-          Math.pow(proj.logicalX - proj.startX, 2) +
-          Math.pow(proj.logicalY - proj.startY, 2)
-        );
+        // Use cumulative path length (proj.pathTraveled), not Euclidean
+        // displacement from spawn. A bolt chasing a moving target curves,
+        // and the straight-line distance from spawn can *decrease* as the
+        // bolt curves around — which would reset the range budget. Each
+        // turn's MOVE TOWARD / REACHED TARGET below adds its segment length
+        // to proj.pathTraveled so the counter is monotonic.
+        const totalDistanceTraveled = proj.pathTraveled ?? 0;
         const remainingRange = Math.max(0, range - totalDistanceTraveled);
-        if (HOMING_DEBUG && proj.homingPathStyle === 'straight') {
+        if (isHomingDebug()) {
           console.log(
-            `[HOMING-RESOLVE ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+            `[HOMING-RESOLVE ${proj.id.slice(-6)}] style=${proj.homingPathStyle} turn=${gameState.currentTurn} ` +
             `distToTarget=${distance.toFixed(2)} range=${range} ` +
             `traveled=${totalDistanceTraveled.toFixed(2)} remaining=${remainingRange.toFixed(2)} ` +
             `tilesPerTurn=${tilesPerTurn} ` +
@@ -3422,19 +3545,55 @@ function resolveProjectiles(gameState: GameState): void {
         // in, leaving tiny fractions of remainingRange. clampedMove rounds
         // to the same tile each turn and the visual freezes forever. Treat
         // sub-half-tile range as exhausted.
-        if (remainingRange < 0.5) {
-          // Out of range — deactivate. Clear homing visual state so tile-based branch handles it.
-          const vStartX = proj.homingVisualStartX ?? proj.logicalX;
-          const vStartY = proj.homingVisualStartY ?? proj.logicalY;
-          const endPath = getTilesAlongLine(vStartX, vStartY, proj.logicalX, proj.logicalY);
-          proj.tilePath = endPath.length > 0 ? endPath : [{ x: Math.floor(proj.logicalX), y: Math.floor(proj.logicalY) }];
+        // Pathfinding moves in whole-tile BFS steps and can't advance
+        // fractionally — if we can't afford a full tile's worth of movement,
+        // treat as out of range. Otherwise the bolt stalls: it fails the
+        // < 0.5 gate (remainingRange ~0.5-1.0), takes MOVE TOWARD, but
+        // Math.floor(remainingRange) = 0 produces a 1-tile tilePath containing
+        // only the start position, so logical never advances and hitResult is
+        // never set. Bolt lingers indefinitely at max-reach tile.
+        const pathfindingCantAdvance = proj.homingPathStyle === 'pathfinding' && remainingRange < 1;
+        if (remainingRange < 0.5 || pathfindingCantAdvance) {
+          // Out of range — fizzle. To avoid a visual stutter (bolt visibly
+          // snapping backward/forward over the fizzle animation), freeze the
+          // bolt at its CURRENT visual position and consume immediately.
+          //
+          // Previously OUT OF RANGE built a tile-based tilePath and let the
+          // animation play over ~0.8-0.9s, which caused:
+          //   1. A backward snap on first frame (from straight-line interp
+          //      position to tile-based interp position at the same elapsed).
+          //   2. A forward trip to the final tile.
+          //   3. Consume/deactivate.
+          //
+          // New behavior: compute current straight-line visual position, set
+          // logical/homingVisualStart/target all to that point, set a trivial
+          // 1-tile tilePath with hitTileIndex=0 so consume fires on the very
+          // next frame. Bolt disappears cleanly from its last visual position.
+          let freezeX = proj.logicalX;
+          let freezeY = proj.logicalY;
+          if (proj.homingPathStyle === 'straight' && proj.homingVisualStartX !== undefined) {
+            const visPos = currentStraightLineHomingVisualPos(proj, Date.now());
+            freezeX = visPos.x;
+            freezeY = visPos.y;
+          }
+          proj.logicalX = freezeX;
+          proj.logicalY = freezeY;
+          proj.homingVisualStartX = freezeX;
+          proj.homingVisualStartY = freezeY;
+          proj.homingVisualStartTime = Date.now();
+          proj.targetX = freezeX;
+          proj.targetY = freezeY;
+          proj.tilePath = [{ x: Math.round(freezeX), y: Math.round(freezeY) }];
           proj.currentTileIndex = 0;
-          proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
-          proj.hitResult = { hitTileIndex: proj.tilePath.length - 1, deactivate: true };
-          proj.homingVisualStartX = undefined;
-          proj.homingVisualStartY = undefined;
-          proj.homingVisualStartTime = undefined;
-          if (HOMING_DEBUG) console.log(`[HOMING-RESOLVE ${proj.id.slice(-6)}] → OUT OF RANGE, cleared visual anchor, set tilePath`);
+          proj.tileEntryTime = Date.now();
+          proj.hitResult = { hitTileIndex: 0, deactivate: true, damage: 0 };
+          if (isHomingDebug()) {
+            console.log(
+              `[HOMING-RESOLVE ${proj.id.slice(-6)}] → OUT OF RANGE style=${proj.homingPathStyle} ` +
+              `frozen at (${freezeX.toFixed(2)},${freezeY.toFixed(2)}) speed=${proj.speed} ` +
+              `(immediate consume, no fizzle animation)`
+            );
+          }
           continue;
         }
 
@@ -3467,7 +3626,23 @@ function resolveProjectiles(gameState: GameState): void {
         // Clamp effective reach to remaining range
         const effectiveReach = Math.min(tilesPerTurn, remainingRange);
 
-        if (distance <= effectiveReach) {
+        // Pathfinding can reach the target within this turn's tile budget even
+        // when Euclidean `distance > effectiveReach` — the BFS path wraps
+        // around walls but may still be short enough in step count to arrive.
+        // Without this check, MOVE TOWARD would move logical to the target
+        // tile without registering the hit; next turn's REACHED TARGET fires
+        // with a degenerate 1-tile tilePath and the player sees the bolt
+        // "touch" the enemy with no effect, then a delayed "pop" hit VFX.
+        let pathfindingReachesThisTurn = false;
+        if (proj.homingPathStyle === 'pathfinding') {
+          const psx = Math.round(proj.logicalX);
+          const psy = Math.round(proj.logicalY);
+          const bfsPath = findPathBFS(psx, psy, targetEntity.x, targetEntity.y, gameState);
+          const tileBudget = Math.min(tilesPerTurn, Math.floor(remainingRange));
+          pathfindingReachesThisTurn = bfsPath.length > 0 && bfsPath.length - 1 <= tileBudget;
+        }
+
+        if (distance <= effectiveReach || pathfindingReachesThisTurn) {
           // Reached target — determine if hostile or healing
           const hitX = targetEntity.x;
           const hitY = targetEntity.y;
@@ -3475,6 +3650,7 @@ function resolveProjectiles(gameState: GameState): void {
           let deferredDeathEntityId: string | undefined;
           let deferredDeathIsEnemy: boolean | undefined;
           let deferredDeathIndex: number | undefined;
+          let damageForHit = 0;
 
           // Reflected projectiles are always treated as hostile hits — the
           // reflector bounced a damage-only bolt back and targetIsEnemy was
@@ -3536,6 +3712,7 @@ function resolveProjectiles(gameState: GameState): void {
                     deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
                     deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
                     deferredDeathIndex: step.hitResult.deferredDeathIndex,
+                    damage: step.hitResult.damageApplied ?? 0,
                   };
                 }
               }
@@ -3565,6 +3742,7 @@ function resolveProjectiles(gameState: GameState): void {
             deferredDeathEntityId = hitResult.deferredDeathEntityId;
             deferredDeathIsEnemy = hitResult.deferredDeathIsEnemy;
             deferredDeathIndex = hitResult.deferredDeathIndex;
+            damageForHit = hitResult.damageApplied ?? 0;
           } else {
             // Friendly homing heal/buff
             const targetIsEnemy = !!(proj.sourceEnemyId && proj.targetIsEnemy);
@@ -3602,9 +3780,24 @@ function resolveProjectiles(gameState: GameState): void {
             deferredDeathEntityId,
             deferredDeathIsEnemy,
             deferredDeathIndex,
+            damage: damageForHit,
           };
+          // Accumulate cumulative path length for the range gate (see
+          // pathTraveled field doc on Projectile). Segment = distance from
+          // pre-move logical to hit point.
+          const reachSegment = Math.sqrt(
+            Math.pow(turnTiles[turnTiles.length - 1].x - proj.logicalX, 2) +
+            Math.pow(turnTiles[turnTiles.length - 1].y - proj.logicalY, 2)
+          );
+          proj.pathTraveled = (proj.pathTraveled ?? 0) + reachSegment;
           proj.logicalX = turnTiles[turnTiles.length - 1].x;
           proj.logicalY = turnTiles[turnTiles.length - 1].y;
+          // Record per-turn homing position for replay reconstruction.
+          recordProjectileEvent(gameState, {
+            type: 'homing_move',
+            projId: proj.id,
+            x: proj.logicalX, y: proj.logicalY,
+          });
           // Update targetX/Y to the current hit point. If the target moved
           // since spawn, updateStraightLineHomingVisual needs to interpolate
           // toward the CURRENT position, not the stale spawn-time position —
@@ -3628,7 +3821,7 @@ function resolveProjectiles(gameState: GameState): void {
           }
           proj.targetX = hitX;
           proj.targetY = hitY;
-          if (HOMING_DEBUG && proj.isHoming) {
+          if (isHomingDebug() && proj.isHoming) {
             const tgtChanged = prevTargetX !== hitX || prevTargetY !== hitY;
             const pathStr = turnTiles.map(t => `(${t.x},${t.y})`).join('→');
             console.log(
@@ -3671,8 +3864,25 @@ function resolveProjectiles(gameState: GameState): void {
           proj.tilePath = turnTiles;
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
+          // Accumulate cumulative path length for the range gate (see
+          // pathTraveled field doc on Projectile). Segment = distance from
+          // pre-move logical to post-move logical.
+          const moveSegment = Math.sqrt(
+            Math.pow(newX - proj.logicalX, 2) +
+            Math.pow(newY - proj.logicalY, 2)
+          );
+          proj.pathTraveled = (proj.pathTraveled ?? 0) + moveSegment;
           proj.logicalX = newX;
           proj.logicalY = newY;
+          // Record per-turn homing position so replay can reconstruct the
+          // actual turn-by-turn path (pathfinding routes around walls, grid
+          // steps, etc.) rather than a straight-line reconstruction. Spawn
+          // event's tilePath only captures the FIRST turn's segment.
+          recordProjectileEvent(gameState, {
+            type: 'homing_move',
+            projId: proj.id,
+            x: newX, y: newY,
+          });
           // Re-anchor the visual each turn so slow projectiles (speed 1-2)
           // don't interpolate from the stale original spawn point forever.
           // SKIP on the spawn turn: resolveProjectiles runs in the same
@@ -3701,7 +3911,7 @@ function resolveProjectiles(gameState: GameState): void {
           }
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
-          if (HOMING_DEBUG && proj.isHoming) {
+          if (isHomingDebug() && proj.isHoming) {
             const pathStr = turnTiles.map(t => `(${t.x},${t.y})`).join('→');
             console.log(
               `[HOMING-RESOLVE ${proj.id.slice(-6)}] → MOVE TOWARD style=${proj.homingPathStyle} newLogical=(${newX.toFixed(2)},${newY.toFixed(2)}), ` +
@@ -3737,7 +3947,7 @@ function resolveProjectiles(gameState: GameState): void {
       const hitWall = walk.endedAtWall;
       let reflectedThisTurn = false;
 
-      if (HOMING_DEBUG) {
+      if (isHomingDebug()) {
         const stepsSummary = walk.steps.map(s => {
           if (s.kind === 'hostile_hit') return `hostile_hit@(${s.target.x},${s.target.y}) pierce=${s.pierceStop}`;
           if (s.kind === 'healing_hit') return `healing_hit@(${s.target.x},${s.target.y})`;
@@ -3782,6 +3992,7 @@ function resolveProjectiles(gameState: GameState): void {
               deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
               deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
               deferredDeathIndex: step.hitResult.deferredDeathIndex,
+              damage: step.hitResult.damageApplied ?? 0,
             };
           }
         } else if (step.kind === 'healing_hit') {
@@ -3992,7 +4203,25 @@ function updateProjectilesHeadless(gameState: GameState): void {
         const dy = targetEntity.y - proj.logicalY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
-        if (distance <= tilesPerTurn) {
+        // Pathfinding: if the BFS partial reaches target within this turn's
+        // budget, treat as REACHED — mirrors the real-mode fix so solver and
+        // live game agree on timing. Without this, real kills on turn N and
+        // headless on turn N+1 for pathfinding paths that step-count shorter
+        // than Euclidean distance.
+        let pathfindingReachesThisTurn = false;
+        let pathfindingPartialPath: Array<{ x: number; y: number }> | undefined;
+        if (proj.homingPathStyle === 'pathfinding') {
+          const psx = Math.round(proj.logicalX);
+          const psy = Math.round(proj.logicalY);
+          const bfsPath = findPathBFS(psx, psy, targetEntity.x, targetEntity.y, gameState);
+          if (bfsPath.length > 0 && bfsPath.length - 1 <= tilesPerTurn) {
+            pathfindingReachesThisTurn = true;
+          } else if (bfsPath.length > 0) {
+            pathfindingPartialPath = bfsPath.slice(0, tilesPerTurn + 1);
+          }
+        }
+
+        if (distance <= tilesPerTurn || pathfindingReachesThisTurn) {
           // Reflected projectiles always count as hostile — the reflect flipped
           // targetIsEnemy but the bolt is still damage-only. Without the override
           // the solver misclassifies reflected hits as heals (mirror of the fix
@@ -4042,12 +4271,28 @@ function updateProjectilesHeadless(gameState: GameState): void {
             });
           }
           shouldRemove = true;
+        } else if (pathfindingPartialPath) {
+          const lastTile = pathfindingPartialPath[pathfindingPartialPath.length - 1];
+          proj.logicalX = lastTile.x;
+          proj.logicalY = lastTile.y;
+          proj.targetX = targetEntity.x;
+          proj.targetY = targetEntity.y;
+          recordProjectileEvent(gameState, {
+            type: 'homing_move',
+            projId: proj.id,
+            x: proj.logicalX, y: proj.logicalY,
+          });
         } else {
           const moveRatio = tilesPerTurn / distance;
           proj.logicalX += dx * moveRatio;
           proj.logicalY += dy * moveRatio;
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
+          recordProjectileEvent(gameState, {
+            type: 'homing_move',
+            projId: proj.id,
+            x: proj.logicalX, y: proj.logicalY,
+          });
         }
       } else {
         shouldRemove = true;

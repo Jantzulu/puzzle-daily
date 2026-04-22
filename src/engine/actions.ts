@@ -32,7 +32,7 @@ import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind } from './utils';
 import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
-import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, HOMING_DEBUG } from './simulation';
+import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
 import { wakeFromSleep } from './simulation';
 
 // ── Trait helpers ────────────────────────────────────────────────────────────
@@ -1348,12 +1348,19 @@ function executeSpell(
   }
   let homingTargets: HomingTarget[] | undefined;
 
+  // Auto-target range fallback: if unset, inherit from the trigger's
+  // eventRange. This matches the user's mental model — "trigger at range N"
+  // implies "target enemies within range N." Without this inheritance, the
+  // trigger fires based on a close enemy but auto-target can pick a far enemy
+  // beyond spell range, producing a downgrade to a non-homing bolt.
+  const autoTargetRangeFallback = action.autoTargetRange || action.trigger?.eventRange || 0;
+
   // Check for auto-targeting (enemies targeting characters OR characters targeting enemies)
   if (action.autoTargetNearestCharacter) {
     // Used by enemies to target characters
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
-    const maxRange = action.autoTargetRange || 0;  // 0 = unlimited
+    const maxRange = autoTargetRangeFallback;
     const nearestCharacters = findNearestCharacters(character, gameState, maxTargets, targetMode, maxRange);
 
     if (nearestCharacters.length > 0) {
@@ -1373,7 +1380,7 @@ function executeSpell(
     // Used by characters to target enemies
     const maxTargets = action.maxTargets || 1;
     const targetMode = action.autoTargetMode || 'omnidirectional';
-    const maxRange = action.autoTargetRange || 0;  // 0 = unlimited
+    const maxRange = autoTargetRangeFallback;
     const nearestEnemies = findNearestEnemies(character, gameState, maxTargets, targetMode, maxRange);
 
     if (nearestEnemies.length > 0) {
@@ -1397,7 +1404,7 @@ function executeSpell(
       const casterIsCharmed = isEntityCharmed(character);
       const maxTargets = action.maxTargets || 1;
       const targetMode = action.autoTargetMode || 'omnidirectional';
-      const maxRange = action.autoTargetRange || 0;
+      const maxRange = autoTargetRangeFallback;
       // 'hostile' targets enemies, 'friendly' targets allies — inverted when charmed
       const wantsEnemies = casterIsCharmed
         ? statusAsset.targetingIntent === 'friendly'
@@ -1885,7 +1892,7 @@ function spawnProjectile(
   // Logs homing bolts AND homing-that-got-downgraded (the action intended a
   // homing cast, but spawnProjectile flipped it to non-homing because the
   // target was out of spell range). See simulation.ts for the flag.
-  if (HOMING_DEBUG && (projectile.isHoming || !!homingTarget)) {
+  if (isHomingDebug() && (projectile.isHoming || !!homingTarget)) {
     const pid = projectile.id.slice(-6);
     // Resolve the initially-selected target for logging
     let initialTargetStr = 'none';
@@ -3541,7 +3548,7 @@ export function checkTriggerCondition(
     case 'enemy_adjacent':
       // Check if any enemy is within 1 tile (adjacent, including diagonals) (stealthed enemies are invisible)
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead || isEntityStealthed(enemy)) return false;
+        if (enemy.dead || enemy.pendingProjectileDeath || isEntityStealthed(enemy)) return false;
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
@@ -3550,7 +3557,7 @@ export function checkTriggerCondition(
       // Check if any enemy is within specified range (stealthed enemies are invisible)
       const enemyRange = eventRange || 3; // Default to 3 if not specified
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead || isEntityStealthed(enemy)) return false;
+        if (enemy.dead || enemy.pendingProjectileDeath || isEntityStealthed(enemy)) return false;
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= enemyRange;
       });
@@ -3558,7 +3565,7 @@ export function checkTriggerCondition(
     case 'contact_with_enemy':
       // Check if character is on the same tile as an enemy (stealthed enemies are invisible)
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead || isEntityStealthed(enemy)) return false;
+        if (enemy.dead || enemy.pendingProjectileDeath || isEntityStealthed(enemy)) return false;
         return enemy.x === character.x && enemy.y === character.y;
       });
 
@@ -3566,7 +3573,7 @@ export function checkTriggerCondition(
       // Check if any character is within 1 tile (adjacent, including diagonals)
       // Used by enemies to detect nearby characters (stealthed characters are invisible)
       return gameState.placedCharacters.some(char => {
-        if (char.dead || isEntityStealthed(char)) return false;
+        if (char.dead || char.pendingProjectileDeath || isEntityStealthed(char)) return false;
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
@@ -3576,7 +3583,7 @@ export function checkTriggerCondition(
       // Used by enemies to detect characters at a distance (stealthed characters are invisible)
       const charRange = eventRange || 3; // Default to 3 if not specified
       return gameState.placedCharacters.some(char => {
-        if (char.dead || isEntityStealthed(char)) return false;
+        if (char.dead || char.pendingProjectileDeath || isEntityStealthed(char)) return false;
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= charRange;
       });
@@ -3585,7 +3592,7 @@ export function checkTriggerCondition(
       // Check if entity is on the same tile as a character
       // Used by enemies to detect characters in melee range (stealthed characters are invisible)
       return gameState.placedCharacters.some(char => {
-        if (char.dead || isEntityStealthed(char)) return false;
+        if (char.dead || char.pendingProjectileDeath || isEntityStealthed(char)) return false;
         return char.x === character.x && char.y === character.y;
       });
 
