@@ -2474,6 +2474,13 @@ export function updateProjectiles(
     if (vs) {
       vs.x = newX;
       vs.y = newY;
+      // Stamp the turn so drawProjectile knows this entry is fresh for the
+      // current turn. During replay, a paused mid-flight projectile keeps its
+      // vs entry at the CURRENT turn — drawProjectile reads it. After a
+      // replay seek/step, the new turn's logical has changed but the vs
+      // entry still holds the previous turn's position; the turn mismatch
+      // tells drawProjectile to fall back to logicalX/Y.
+      vs.lastUpdateTurn = gameState.currentTurn;
     }
 
     // Phase C-3: mirror the helper-computed visual tile index into the
@@ -3315,8 +3322,14 @@ function resolveReflectedPath(
   const walk = walkReflectedPath(proj, gameState, canPierce, 'visual');
   const reflectedTiles: Array<{ x: number; y: number }> = [];
   for (const step of walk.steps) {
-    if (step.type === 'travel' || step.type === 'wall') {
+    if (step.type === 'travel') {
       reflectedTiles.push({ x: step.x, y: step.y });
+    } else if (step.type === 'wall') {
+      reflectedTiles.push({ x: step.x, y: step.y });
+      // Replay end event for a reflected bolt stopped at a wall.
+      recordProjectileEvent(gameState, {
+        type: 'wall_hit', projId: proj.id, x: step.x, y: step.y,
+      });
     } else if (step.type === 'hit') {
       const combinedSoFar = [...approachTiles, ...reflectedTiles];
       proj.hitResult = {
@@ -3329,6 +3342,19 @@ function resolveReflectedPath(
         deferredDeathIndex: step.hitResult.deferredDeathIndex,
         damage: step.hitResult.damageApplied ?? 0,
       };
+      // Replay hit event — parity with non-homing hostile_hit.
+      recordProjectileEvent(gameState, {
+        type: 'hit',
+        projId: proj.id,
+        x: step.target.x, y: step.target.y,
+        targetEntityId: step.targetIsEnemy
+          ? (step.target as PlacedEnemy).enemyId
+          : (step.target as PlacedCharacter).characterId,
+        targetIsEnemy: step.targetIsEnemy,
+        hitTileIndex: combinedSoFar.length - 1,
+        hitVfxSprite: proj.attackData.hitEffectSprite,
+        damage: step.hitResult.damageApplied ?? 0,
+      });
     }
   }
   return { reflectedTiles, reflectedHit: walk.reflectedHit };
@@ -3456,6 +3482,30 @@ function resolveProjectiles(gameState: GameState): void {
     if (!proj.active) {
       projectilesToRemove.push(proj.id);
       continue;
+    }
+
+    // Record spawn event on first encounter. Mirrors the same block in
+    // updateProjectilesHeadless so the real-play replay has the spawn events
+    // buildReplayProjectiles needs to create a lifetime per projectile.
+    // Placed BEFORE the hitResult skip so a bolt that range-gates immediately
+    // still gets its spawn recorded (followed by the deactivate at the gate).
+    if (gameState.projectileTimeline && !proj._recorded) {
+      recordProjectileEvent(gameState, {
+        type: 'spawn',
+        projId: proj.id,
+        x: proj.startX, y: proj.startY,
+        tilePath: proj.tilePath ? [...proj.tilePath] : undefined,
+        direction: proj.direction,
+        speed: proj.speed,
+        sourceEntityId: proj.sourceCharacterId || proj.sourceEnemyId,
+        sourceIsEnemy: !!proj.sourceEnemyId,
+        isHoming: proj.isHoming,
+        homingPathStyle: proj.homingPathStyle,
+        spellAssetId: proj.spellAssetId,
+        attackData: proj.attackData,
+        projectileScale: proj.attackData.projectileScale,
+      });
+      proj._recorded = true;
     }
 
     // Skip projectiles that already have a hitResult — they've been resolved
@@ -3587,6 +3637,16 @@ function resolveProjectiles(gameState: GameState): void {
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
           proj.hitResult = { hitTileIndex: 0, deactivate: true, damage: 0 };
+          // Replay needs an end event for this lifetime. OUT OF RANGE is a
+          // deactivate (no hit, no wall) — matches headless' range-gate emission.
+          // targetX/Y = the frozen position so replay's interp sits there
+          // instead of aiming at a tile center (fixes one-frame snap glitch).
+          recordProjectileEvent(gameState, {
+            type: 'deactivate',
+            projId: proj.id,
+            x: freezeX, y: freezeY,
+            targetX: freezeX, targetY: freezeY,
+          });
           if (isHomingDebug()) {
             console.log(
               `[HOMING-RESOLVE ${proj.id.slice(-6)}] → OUT OF RANGE style=${proj.homingPathStyle} ` +
@@ -3613,6 +3673,12 @@ function resolveProjectiles(gameState: GameState): void {
               proj.currentTileIndex = 0;
               proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
               proj.hitResult = { hitTileIndex: wallPath.length - 1, deactivate: true };
+              // Replay end event — homing bolt stopped at a wall.
+              recordProjectileEvent(gameState, {
+                type: 'wall_hit',
+                projId: proj.id,
+                x: tile.x, y: tile.y,
+              });
               proj.homingVisualStartX = undefined;
               proj.homingVisualStartY = undefined;
               proj.homingVisualStartTime = undefined;
@@ -3725,11 +3791,47 @@ function resolveProjectiles(gameState: GameState): void {
                 ? (preReflectStartTime ?? Date.now()) : Date.now();
               proj.reflectAtTileIndex = approachTiles.length - 1;
 
+              // Replay reflect event — must be emitted AFTER combinedPath +
+              // reflectAtTileIndex are finalized since buildReplayProjectiles
+              // consumes both to position the bolt's tint swap correctly.
+              recordProjectileEvent(gameState, {
+                type: 'reflect',
+                projId: proj.id,
+                x: hitX, y: hitY,
+                reflected: true,
+                reflectTintColor: proj.reflectTintColor,
+                reflectOverrideSprite: proj.reflectOverrideSprite,
+                reflectAtTileIndex: proj.reflectAtTileIndex,
+                combinedPath: [...combinedPath],
+              });
+
               if (!reflectedHit) {
                 proj.hitResult = {
                   hitTileIndex: combinedPath.length - 1,
                   deactivate: true,
                 };
+                // No hit on return leg — the reflected bolt fizzled. Emit a
+                // deactivate as the end event so the replay lifetime closes.
+                recordProjectileEvent(gameState, {
+                  type: 'deactivate',
+                  projId: proj.id,
+                  x: combinedPath[combinedPath.length - 1]?.x ?? hitX,
+                  y: combinedPath[combinedPath.length - 1]?.y ?? hitY,
+                });
+              } else {
+                // Reflected bolt hit a target. Emit the hit event now so the
+                // lifetime's end turn is set (and buildReplayProjectiles can
+                // pick up the hit VFX). The inner hit-step above already set
+                // proj.hitResult; mirror those fields into the event.
+                recordProjectileEvent(gameState, {
+                  type: 'hit',
+                  projId: proj.id,
+                  x: proj.hitResult?.vfxX ?? hitX,
+                  y: proj.hitResult?.vfxY ?? hitY,
+                  hitTileIndex: proj.hitResult?.hitTileIndex ?? (combinedPath.length - 1),
+                  hitVfxSprite: proj.hitResult?.vfxSprite,
+                  damage: proj.hitResult?.damage ?? 0,
+                });
               }
 
               if (combinedPath.length > 0) {
@@ -3782,6 +3884,19 @@ function resolveProjectiles(gameState: GameState): void {
             deferredDeathIndex,
             damage: damageForHit,
           };
+          // Replay end event — homing bolt reached target. Emitted even for
+          // heal hits so the lifetime has an end turn.
+          recordProjectileEvent(gameState, {
+            type: 'hit',
+            projId: proj.id,
+            x: hitX, y: hitY,
+            targetEntityId: proj.targetEntityId,
+            targetIsEnemy: !!proj.targetIsEnemy,
+            hitTileIndex: turnTiles.length - 1,
+            hitVfxSprite: vfxSprite,
+            damage: damageForHit,
+            targetX: hitX, targetY: hitY,
+          });
           // Accumulate cumulative path length for the range gate (see
           // pathTraveled field doc on Projectile). Segment = distance from
           // pre-move logical to hit point.
@@ -3793,10 +3908,13 @@ function resolveProjectiles(gameState: GameState): void {
           proj.logicalX = turnTiles[turnTiles.length - 1].x;
           proj.logicalY = turnTiles[turnTiles.length - 1].y;
           // Record per-turn homing position for replay reconstruction.
+          // targetX/Y = the hit point, so replay's straight-line interp
+          // aims at the same spot the engine did (fractional-accurate).
           recordProjectileEvent(gameState, {
             type: 'homing_move',
             projId: proj.id,
             x: proj.logicalX, y: proj.logicalY,
+            targetX: hitX, targetY: hitY,
           });
           // Update targetX/Y to the current hit point. If the target moved
           // since spawn, updateStraightLineHomingVisual needs to interpolate
@@ -3878,10 +3996,12 @@ function resolveProjectiles(gameState: GameState): void {
           // actual turn-by-turn path (pathfinding routes around walls, grid
           // steps, etc.) rather than a straight-line reconstruction. Spawn
           // event's tilePath only captures the FIRST turn's segment.
+          // targetX/Y = where the engine's interp was aiming (fractional).
           recordProjectileEvent(gameState, {
             type: 'homing_move',
             projId: proj.id,
             x: newX, y: newY,
+            targetX: targetEntity.x, targetY: targetEntity.y,
           });
           // Re-anchor the visual each turn so slow projectiles (speed 1-2)
           // don't interpolate from the stale original spawn point forever.
@@ -3970,9 +4090,29 @@ function resolveProjectiles(gameState: GameState): void {
           // nothing added to turnTiles
         } else if (step.kind === 'wall') {
           turnTiles.push({ x: step.x, y: step.y });
+          // Replay end event — non-homing bolt stopped at a wall.
+          recordProjectileEvent(gameState, {
+            type: 'wall_hit', projId: proj.id, x: step.x, y: step.y,
+          });
         } else if (step.kind === 'travel') {
           turnTiles.push({ x: step.x, y: step.y });
         } else if (step.kind === 'hostile_hit') {
+          // Replay hit event — emitted for every pierce target, not just the
+          // pierce-stop. (Pierce-through hits along the path need events too
+          // so the replay's damage VFX timing matches the live game.)
+          const maxHitIdxForEvent = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
+          recordProjectileEvent(gameState, {
+            type: 'hit',
+            projId: proj.id,
+            x: step.target.x, y: step.target.y,
+            targetEntityId: step.targetIsEnemy
+              ? (step.target as PlacedEnemy).enemyId
+              : (step.target as PlacedCharacter).characterId,
+            targetIsEnemy: step.targetIsEnemy,
+            hitTileIndex: Math.min(step.dist, maxHitIdxForEvent),
+            hitVfxSprite: step.hitResult.vfxSprite,
+            damage: step.hitResult.damageApplied ?? 0,
+          });
           if (step.pierceStop) {
             // Clamp hitTileIndex to tilePath bounds. For downgraded non-
             // homing bolts, walker moves in proj.direction while tilePath
@@ -3996,6 +4136,19 @@ function resolveProjectiles(gameState: GameState): void {
             };
           }
         } else if (step.kind === 'healing_hit') {
+          // Replay hit event for heals too — parity with hostile_hit.
+          const maxHitIdxForEvent = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
+          recordProjectileEvent(gameState, {
+            type: 'hit',
+            projId: proj.id,
+            x: step.target.x, y: step.target.y,
+            targetEntityId: step.targetIsEnemy
+              ? (step.target as PlacedEnemy).enemyId
+              : (step.target as PlacedCharacter).characterId,
+            targetIsEnemy: step.targetIsEnemy,
+            hitTileIndex: Math.min(step.dist, maxHitIdxForEvent),
+            hitVfxSprite: step.vfxSprite,
+          });
           if (step.pierceStop) {
             const maxHitIdx = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
             proj.hitResult = {
@@ -4021,12 +4174,37 @@ function resolveProjectiles(gameState: GameState): void {
           proj.reflectAtTileIndex = approachTiles.length - 1;
           proj.logicalTileIndex = 0;
 
+          // Replay reflect event — emitted after combinedPath / reflectAtTileIndex
+          // are finalized. Position is the reflector's tile (end of approach leg).
+          const reflectorTile = approachTiles[approachTiles.length - 1] ?? { x: proj.logicalX, y: proj.logicalY };
+          recordProjectileEvent(gameState, {
+            type: 'reflect',
+            projId: proj.id,
+            x: reflectorTile.x, y: reflectorTile.y,
+            reflected: true,
+            reflectTintColor: proj.reflectTintColor,
+            reflectOverrideSprite: proj.reflectOverrideSprite,
+            reflectAtTileIndex: proj.reflectAtTileIndex,
+            combinedPath: [...combinedPath],
+          });
+
           if (!reflectedHit) {
             proj.hitResult = {
               hitTileIndex: combinedPath.length - 1,
               deactivate: true,
             };
+            // Reflected leg fizzled without hitting — emit deactivate as
+            // the lifetime's end event.
+            const endTile = combinedPath[combinedPath.length - 1] ?? reflectorTile;
+            recordProjectileEvent(gameState, {
+              type: 'deactivate',
+              projId: proj.id,
+              x: endTile.x, y: endTile.y,
+            });
           }
+          // If reflectedHit is true, resolveReflectedPath set proj.hitResult
+          // with a hit. We emit the hit event from resolveReflectedPath itself
+          // (below) so both real and headless paths stay in sync.
 
           if (combinedPath.length > 0) {
             proj.logicalX = combinedPath[combinedPath.length - 1].x;
@@ -4109,6 +4287,12 @@ function resolveProjectiles(gameState: GameState): void {
           deactivate: true,
           placeCollectibleConfig: proj.throwPlaceConfig,
         };
+        // Replay end event — throw/place bolt landed an item on the tile.
+        recordProjectileEvent(gameState, {
+          type: 'deactivate',
+          projId: proj.id,
+          x: placeTile.x, y: placeTile.y,
+        });
       }
     }
 
@@ -4120,6 +4304,27 @@ function resolveProjectiles(gameState: GameState): void {
       // only has one "logic done" signal to consume.
       const endTileIndex = proj.tilePath && proj.tilePath.length > 0 ? proj.tilePath.length - 1 : 0;
       proj.hitResult = { hitTileIndex: endTileIndex, deactivate: true };
+      // Replay end event — the walker hit wall/bounds without a hit/reflect
+      // emission. `wall` steps already emit wall_hit events, but the
+      // bounds-exit and pure range-exhausted cases reach here with no
+      // emitted end event. Guard against double-recording by checking if
+      // any end event was already emitted this turn for this projectile.
+      if (gameState.projectileTimeline) {
+        const alreadyEnded = gameState.projectileTimeline.some(e =>
+          e.projId === proj.id && e.turn === gameState.currentTurn &&
+          (e.type === 'hit' || e.type === 'wall_hit' || e.type === 'deactivate' || e.type === 'reflect')
+        );
+        if (!alreadyEnded) {
+          const endTile = proj.tilePath && proj.tilePath.length > 0
+            ? proj.tilePath[proj.tilePath.length - 1]
+            : { x: proj.logicalX, y: proj.logicalY };
+          recordProjectileEvent(gameState, {
+            type: 'deactivate',
+            projId: proj.id,
+            x: endTile.x, y: endTile.y,
+          });
+        }
+      }
     }
   }
 
@@ -4203,6 +4408,24 @@ function updateProjectilesHeadless(gameState: GameState): void {
         const dy = targetEntity.y - proj.logicalY;
         const distance = Math.sqrt(dx * dx + dy * dy);
 
+        // Range gate — mirror resolveProjectiles homing range check so
+        // headless (replay/solver) agrees with real on which bolts fizzle vs.
+        // hit. Without this, OUT OF RANGE bolts in real mode keep hunting in
+        // headless until they hit, and replay shows hits that never happened.
+        const pathTraveledSoFar = proj.pathTraveled ?? 0;
+        const remainingRange = Math.max(0, range - pathTraveledSoFar);
+        const pathfindingCantAdvance = proj.homingPathStyle === 'pathfinding' && remainingRange < 1;
+        if (remainingRange < 0.5 || pathfindingCantAdvance) {
+          recordProjectileEvent(gameState, {
+            type: 'deactivate',
+            projId: proj.id,
+            x: proj.logicalX, y: proj.logicalY,
+          });
+          proj.active = false;
+          projectilesToRemove.push(proj.id);
+          continue;
+        }
+
         // Pathfinding: if the BFS partial reaches target within this turn's
         // budget, treat as REACHED — mirrors the real-mode fix so solver and
         // live game agree on timing. Without this, real kills on turn N and
@@ -4214,14 +4437,20 @@ function updateProjectilesHeadless(gameState: GameState): void {
           const psx = Math.round(proj.logicalX);
           const psy = Math.round(proj.logicalY);
           const bfsPath = findPathBFS(psx, psy, targetEntity.x, targetEntity.y, gameState);
-          if (bfsPath.length > 0 && bfsPath.length - 1 <= tilesPerTurn) {
+          const tileBudget = Math.min(tilesPerTurn, Math.floor(remainingRange));
+          if (bfsPath.length > 0 && bfsPath.length - 1 <= tileBudget) {
             pathfindingReachesThisTurn = true;
           } else if (bfsPath.length > 0) {
-            pathfindingPartialPath = bfsPath.slice(0, tilesPerTurn + 1);
+            pathfindingPartialPath = bfsPath.slice(0, tileBudget + 1);
           }
         }
 
-        if (distance <= tilesPerTurn || pathfindingReachesThisTurn) {
+        // effectiveReach clamps per-turn movement by remaining range so the
+        // last turn of a fizzling bolt moves only what's left in its budget
+        // (matches real-mode). tilesPerTurn alone would overshoot.
+        const effectiveReach = Math.min(tilesPerTurn, remainingRange);
+
+        if (distance <= effectiveReach || pathfindingReachesThisTurn) {
           // Reflected projectiles always count as hostile — the reflect flipped
           // targetIsEnemy but the bolt is still damage-only. Without the override
           // the solver misclassifies reflected hits as heals (mirror of the fix
@@ -4273,6 +4502,11 @@ function updateProjectilesHeadless(gameState: GameState): void {
           shouldRemove = true;
         } else if (pathfindingPartialPath) {
           const lastTile = pathfindingPartialPath[pathfindingPartialPath.length - 1];
+          const segLen = Math.sqrt(
+            Math.pow(lastTile.x - proj.logicalX, 2) +
+            Math.pow(lastTile.y - proj.logicalY, 2)
+          );
+          proj.pathTraveled = (proj.pathTraveled ?? 0) + segLen;
           proj.logicalX = lastTile.x;
           proj.logicalY = lastTile.y;
           proj.targetX = targetEntity.x;
@@ -4283,9 +4517,19 @@ function updateProjectilesHeadless(gameState: GameState): void {
             x: proj.logicalX, y: proj.logicalY,
           });
         } else {
-          const moveRatio = tilesPerTurn / distance;
-          proj.logicalX += dx * moveRatio;
-          proj.logicalY += dy * moveRatio;
+          // Clamp per-turn motion to effectiveReach (remaining range) so the
+          // final turn of a fizzling bolt stops exactly at its range budget.
+          const clampedMove = Math.min(tilesPerTurn, remainingRange);
+          const moveRatio = clampedMove / distance;
+          const newX = proj.logicalX + dx * moveRatio;
+          const newY = proj.logicalY + dy * moveRatio;
+          const segLen = Math.sqrt(
+            Math.pow(newX - proj.logicalX, 2) +
+            Math.pow(newY - proj.logicalY, 2)
+          );
+          proj.pathTraveled = (proj.pathTraveled ?? 0) + segLen;
+          proj.logicalX = newX;
+          proj.logicalY = newY;
           proj.targetX = targetEntity.x;
           proj.targetY = targetEntity.y;
           recordProjectileEvent(gameState, {

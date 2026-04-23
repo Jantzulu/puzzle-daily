@@ -837,6 +837,13 @@ export interface ProjectileVisualState {
   currentTileIndex?: number;
   /** Set once when visual crosses reflect point. Stable — never toggles back. */
   visualPastReflectPoint?: boolean;
+  /**
+   * Turn number at which this entry was last written by updateProjectiles.
+   * Lets drawProjectile distinguish "fresh mid-flight position" (safe to
+   * render during replay pause) from "stale position left over from a
+   * previous turn" (must fall back to logical after replay seek/step).
+   */
+  lastUpdateTurn?: number;
 }
 
 /**
@@ -1045,6 +1052,14 @@ export interface ProjectileEvent {
   damage?: number;
   hitTileIndex?: number;
   hitVfxSprite?: SpriteReference;
+
+  // Homing trajectory target (where the engine was aiming this turn).
+  // Populated on `homing_move` / `hit` / `deactivate` (for range-exhausted
+  // freeze). Lets replay interpolate toward the same point the live game
+  // aimed at, rather than reconstructing from tilePath endpoints (which
+  // only captures whole tiles and loses the fractional target).
+  targetX?: number;
+  targetY?: number;
 }
 
 /** Timeline stored alongside turn history */

@@ -32,6 +32,25 @@ import type { TrackedRun } from '../../types/bugReport';
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
 
+// Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys.
+// Used for replay history snapshots (both live capture and headless re-sim fallback).
+function deepCopyGameState(state: GameState): GameState {
+  const copy = JSON.parse(JSON.stringify(state));
+  copy.tileStates = new Map();
+  if (state.tileStates) {
+    state.tileStates.forEach((value: any, key: string) => {
+      copy.tileStates.set(key, {
+        ...value,
+        damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined,
+      });
+    });
+  }
+  if (state.tilesBeingVacated) {
+    copy.tilesBeingVacated = new Set(state.tilesBeingVacated);
+  }
+  return copy;
+}
+
 export const Game: React.FC = () => {
   const officialPuzzles = getAllPuzzles();
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
@@ -375,6 +394,9 @@ export const Game: React.FC = () => {
       // aren't suppressed by React StrictMode's double-invoke of updater functions.
       let outcome: 'running' | 'victory' | 'defeat' = 'running';
       let outcomeTurns = 0;
+      // Capture the post-turn state for replay history. StrictMode calls the updater
+      // twice; only the final assignment (run 2) survives, matching React's kept state.
+      let capturedPostTurnState: GameState | null = null;
 
       setGameState((prevState) => {
         // Deep copy all mutable state to ensure React StrictMode double-invoke works correctly.
@@ -393,6 +415,7 @@ export const Game: React.FC = () => {
         }
 
         const newState = executeTurn(stateCopy);
+        capturedPostTurnState = newState;
 
         // Stop simulation if game ended (only in normal mode)
         // If there are pending projectile deaths, defer the game-over state
@@ -469,6 +492,16 @@ export const Game: React.FC = () => {
 
         return newState;
       });
+
+      // Capture the surviving post-turn state for replay (only in normal play — test modes
+      // don't drive the replay UI). Deep-copy so subsequent turns' mutations don't leak in.
+      if (capturedPostTurnState && testMode === 'none') {
+        const post = capturedPostTurnState as GameState;
+        turnHistoryRef.current.push(deepCopyGameState(post));
+        // Mirror the accumulated timeline; executeTurn copies the array forward each turn,
+        // so the latest state always holds the full event stream.
+        projectileTimelineRef.current = post.projectileTimeline ? [...post.projectileTimeline] : [];
+      }
 
       // Fire side effects (haptics, sounds) outside the state updater
       if (outcome === 'victory') {
@@ -732,7 +765,14 @@ export const Game: React.FC = () => {
 
     // Save snapshot of placed characters for Reset
     setPlayStartCharacters(JSON.parse(JSON.stringify(gameState.placedCharacters)));
-    setGameState((prev) => ({ ...prev, gameStatus: 'running' }));
+    // Seed live-capture refs so the real-play events and state snapshots drive the replay
+    // (instead of a separate headless re-simulation that diverges from what the player saw).
+    setGameState((prev) => {
+      const seeded: GameState = { ...prev, gameStatus: 'running', projectileTimeline: [] };
+      turnHistoryRef.current = [deepCopyGameState(seeded)];
+      projectileTimelineRef.current = [];
+      return seeded;
+    });
     setIsSimulating(true);
     attemptStartRef.current = Date.now();
     submittedRef.current = false;
@@ -905,35 +945,19 @@ export const Game: React.FC = () => {
     // Projectiles are resolved instantly — no visual animation in replay,
     // but behavior (who dies, when, where) is correct
     initialState.headlessMode = true;
-    // Initialize projectile timeline for recording events during replay generation
+    // Initialize projectile timeline for recording events during replay generation.
+    // (Kept as a fallback — the live capture path in handlePlay/runTurn is preferred
+    // and produces a replay that matches what the player actually saw.)
     initialState.projectileTimeline = [];
 
-    // Deep copy GameState while preserving Map/Set structures that JSON.stringify destroys
-    const deepCopyState = (state: GameState): GameState => {
-      const copy = JSON.parse(JSON.stringify(state));
-      copy.tileStates = new Map();
-      if (state.tileStates) {
-        state.tileStates.forEach((value: any, key: string) => {
-          copy.tileStates.set(key, {
-            ...value,
-            damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
-          });
-        });
-      }
-      if (state.tilesBeingVacated) {
-        copy.tilesBeingVacated = new Set(state.tilesBeingVacated);
-      }
-      return copy;
-    };
-
-    const history: GameState[] = [deepCopyState(initialState)];
+    const history: GameState[] = [deepCopyGameState(initialState)];
     let current = initialState;
 
     const maxIterations = (puzzleCopy.maxTurns || 200) + 10;
     for (let i = 0; i < maxIterations; i++) {
       if (current.gameStatus !== 'running') break;
 
-      const stateCopy = deepCopyState(current);
+      const stateCopy = deepCopyGameState(current);
       current = executeTurn(stateCopy);
 
       // Finalize pending projectile deaths — updateProjectiles doesn't run during
@@ -961,7 +985,7 @@ export const Game: React.FC = () => {
         }
       }
 
-      history.push(deepCopyState(current));
+      history.push(deepCopyGameState(current));
     }
 
     // Extract the projectile timeline from the final state
@@ -972,9 +996,23 @@ export const Game: React.FC = () => {
 
   // Enter replay mode
   const handleWatchReplay = useCallback(() => {
-    const { history, timeline } = generateTurnHistory();
-    turnHistoryRef.current = history;
-    projectileTimelineRef.current = timeline;
+    // Prefer live-captured history + timeline (matches exactly what the player saw).
+    // Fall back to re-simulating headless only if live capture is empty (e.g. the run
+    // started before this code path existed, or a code path we didn't hook).
+    let history: GameState[];
+    let timeline: ProjectileEvent[];
+    if (turnHistoryRef.current.length > 0) {
+      history = turnHistoryRef.current;
+      timeline = projectileTimelineRef.current;
+      console.log(`[REPLAY] Using live capture: ${history.length} snapshots, ${timeline.length} events`);
+    } else {
+      console.log('[REPLAY] No live capture — falling back to headless re-simulation');
+      const regen = generateTurnHistory();
+      history = regen.history;
+      timeline = regen.timeline;
+      turnHistoryRef.current = history;
+      projectileTimelineRef.current = timeline;
+    }
 
     // Build per-turn active projectile lifetimes from timeline
     const lifetimes = new Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>();
@@ -1119,6 +1157,11 @@ export const Game: React.FC = () => {
       let turnTileIndex: number;
       let turnStartTileIndex: number;
       let posAtTurn: { x: number; y: number };
+      // Hoisted out of the homing branch so the post-branch projectile
+      // construction can reference them (for straight-line visual anchors).
+      // Non-homing path leaves these at the spawn position.
+      let prevPos: { x: number; y: number } = { x: spawn.x, y: spawn.y };
+      let thisPos: { x: number; y: number } = { x: spawn.x, y: spawn.y };
 
       if (isHomingBolt) {
         // Homing replay: build a per-turn segment tilePath using the recorded
@@ -1129,7 +1172,7 @@ export const Game: React.FC = () => {
 
         // Position at end of (turnIndex - 1): previous turn's homing_move, or
         // spawn pos if this IS the spawn turn.
-        const prevPos = turnsSinceSpawn === 0
+        prevPos = turnsSinceSpawn === 0
           ? { x: spawn.x, y: spawn.y }
           : (life.homingMoves[turnsSinceSpawn - 1]
               ? { x: life.homingMoves[turnsSinceSpawn - 1].x, y: life.homingMoves[turnsSinceSpawn - 1].y }
@@ -1138,7 +1181,7 @@ export const Game: React.FC = () => {
         // Position at end of turnIndex: on endTurn use end event's position
         // (so tilePath ends exactly at hit/deactivate location); otherwise use
         // this turn's homing_move.
-        const thisPos = turnIndex === life.endTurn && life.end
+        thisPos = turnIndex === life.endTurn && life.end
           ? { x: life.end.x, y: life.end.y }
           : (life.homingMoves[turnsSinceSpawn]
               ? { x: life.homingMoves[turnsSinceSpawn].x, y: life.homingMoves[turnsSinceSpawn].y }
@@ -1146,7 +1189,16 @@ export const Game: React.FC = () => {
 
         // Build segment tilePath using the style the engine used.
         const style = spawn.homingPathStyle || 'straight';
-        if (style === 'pathfinding') {
+        // If prev ≈ this, the bolt didn't move this turn (e.g. OUT OF RANGE
+        // froze it). Use a single-tile path at the frozen position — avoids
+        // `getTilesAlongLine`'s floor/round asymmetry (start=floor, end=round)
+        // producing a 2-tile path spanning different integer tiles for the
+        // SAME fractional position, which would teleport the bolt to one of
+        // those tiles (often the enemy's cell → spurious "hit" in replay).
+        const noMove = Math.abs(prevPos.x - thisPos.x) < 0.01 && Math.abs(prevPos.y - thisPos.y) < 0.01;
+        if (noMove) {
+          tilePath = [{ x: Math.round(thisPos.x), y: Math.round(thisPos.y) }];
+        } else if (style === 'pathfinding') {
           tilePath = findPathBFS(Math.round(prevPos.x), Math.round(prevPos.y),
                                  Math.round(thisPos.x), Math.round(thisPos.y), gameState);
         } else {
@@ -1202,15 +1254,55 @@ export const Game: React.FC = () => {
         posAtTurn = tilePath?.[turnTileIndex] ?? { x: spawn.x, y: spawn.y };
       }
 
+      // For straight-line homing, live gameplay interpolates the bolt in
+      // fractional (Euclidean) space between prevPos and thisPos via
+      // `homingVisualStartX/Y` + `updateStraightLineHomingVisual`. The
+      // tilePath reconstructed above is only accurate at tile granularity —
+      // a move like (2.55, 1.11) → (1.74, 0.53) collapses to a single-tile
+      // path at (2, 1) and the replay bolt sits frozen on that tile for the
+      // whole turn instead of flowing diagonally.
+      //
+      // Setting the straight-line visual anchors on the replay projectile
+      // switches updateProjectiles to the same Euclidean path the live game
+      // uses, so replay motion matches what the player saw. tilePath still
+      // drives hit-consume timing via currentTileIndex >= hitTileIndex.
+      const isStraightHoming = isHomingBolt && (spawn.homingPathStyle === 'straight' || !spawn.homingPathStyle);
+
+      // Pick this turn's engine-recorded target (from homing_move / hit /
+      // deactivate). Using the recorded target preserves the fractional
+      // aim point the live game interpolated toward — e.g., turn 1 live has
+      // target=(5,5) (the enemy, 2 tiles away) while totalTime=1.6s; if we
+      // used tilePath endpoint (4,5) with totalTime=0.8s the bolt reaches
+      // its "target" mid-flight and re-anchors abruptly on turn 2.
+      // Matching the engine's target + distance makes replay speed/feel
+      // identical to the real run.
+      const turnsSinceSpawnForEvent = turnIndex - life.spawnTurn;
+      const endEventForTurn = turnIndex === life.endTurn ? life.end : undefined;
+      const homingMoveForTurn = life.homingMoves[turnsSinceSpawnForEvent];
+      const engineTargetX = endEventForTurn?.targetX ?? homingMoveForTurn?.targetX;
+      const engineTargetY = endEventForTurn?.targetY ?? homingMoveForTurn?.targetY;
+
+      // Straight-line homing: logical position should be the fractional
+      // turn-end position (what updateStraightLineHomingVisual interpolates
+      // to), not the tile-rounded posAtTurn. Without this, once the visual
+      // reaches target it falls back to logical = tile center and snaps
+      // (e.g., real freezes at (5.88, 6.97) but logical was rounded to (6, 7)).
+      const logicalX = isStraightHoming ? thisPos.x : posAtTurn.x;
+      const logicalY = isStraightHoming ? thisPos.y : posAtTurn.y;
+
       const proj: Projectile = {
         id: spawn.projId,
         active: true,
-        logicalX: posAtTurn.x,
-        logicalY: posAtTurn.y,
+        logicalX,
+        logicalY,
         startX: spawn.x,
         startY: spawn.y,
-        targetX: tilePath?.[tilePath.length - 1]?.x ?? spawn.x,
-        targetY: tilePath?.[tilePath.length - 1]?.y ?? spawn.y,
+        targetX: isStraightHoming
+          ? (engineTargetX ?? (turnIndex === life.endTurn && life.end ? life.end.x : thisPos.x))
+          : (tilePath?.[tilePath.length - 1]?.x ?? spawn.x),
+        targetY: isStraightHoming
+          ? (engineTargetY ?? (turnIndex === life.endTurn && life.end ? life.end.y : thisPos.y))
+          : (tilePath?.[tilePath.length - 1]?.y ?? spawn.y),
         direction: spawn.direction || Direction.SOUTH,
         speed,
         tilePath,
@@ -1228,6 +1320,14 @@ export const Game: React.FC = () => {
         spellAssetId: spawn.spellAssetId,
         bounceOffWalls: false,
         teamSwapped: false,
+        // Straight-line homing: route through Euclidean visual interp.
+        // Anchor at prevPos (fractional, turn-start) — target is the
+        // engine-recorded target (set above). updateStraightLineHomingVisual
+        // will animate from anchor → target over (dist/speed) seconds, at
+        // the same rate the live game used.
+        homingVisualStartX: isStraightHoming ? prevPos.x : undefined,
+        homingVisualStartY: isStraightHoming ? prevPos.y : undefined,
+        homingVisualStartTime: isStraightHoming ? now : undefined,
       };
 
       // Apply reflect visuals if the reflect happened on or before this turn
@@ -1271,14 +1371,15 @@ export const Game: React.FC = () => {
         }
       }
 
-      // Set logical position from tilePath so projectile renders at correct
-      // position when frozen (stepping). drawProjectile falls back to
-      // logicalX/Y when the visual-state side-table has no entry for this id.
-      if (proj.tilePath && proj.tilePath.length > 0) {
-        const tileIdx = Math.min(proj.currentTileIndex ?? 0, proj.tilePath.length - 1);
-        proj.logicalX = proj.tilePath[tileIdx].x;
-        proj.logicalY = proj.tilePath[tileIdx].y;
-      }
+      // (Previously an overwrite here pinned logicalX/Y to
+      // `tilePath[currentTileIndex]` so the frozen fallback in drawProjectile
+      // would show a tile-aligned position. That clobbered the fractional
+      // logicalX/Y we just set for straight-line homing — causing step-back
+      // to snap bolts to tile centers even when the live game had them at
+      // (4.93, 6.68) etc. The logical position we set above is already the
+      // correct turn-end location for every style: fractional for straight
+      // homing (thisPos from the engine event), tile-aligned for grid /
+      // pathfinding / non-homing (posAtTurn from the tile path).)
 
       replayProjectiles.push(proj);
     }

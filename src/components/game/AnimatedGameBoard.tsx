@@ -652,6 +652,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // can't capture it. One board instance = one map; React unmount clears it,
   // so there's no cross-game bleed. See docs/projectile-refactor-plan.md §4.
   const projectileVisualStateRef = useRef<Map<string, ProjectileVisualState>>(new Map());
+  // Track the last turn we rendered so replay step/seek can invalidate stale
+  // vs entries. When turn changes and we're frozen (updateProjectiles won't
+  // refresh vs), drawProjectile must fall back to projectile.logicalX/Y —
+  // deleting stale entries here makes `!vs` true on the next draw and the
+  // fallback kicks in reliably without depending on vs.lastUpdateTurn book-
+  // keeping alone (which can race with step handlers).
+  const prevRenderedTurnRef = useRef<number>(gameState.currentTurn);
   // Track entities that have completed spawn animation (don't re-trigger on re-render)
   const spawnedCharactersRef = useRef<Set<string>>(new Set());
   const spawnedEnemiesRef = useRef<Set<number>>(new Set());
@@ -1157,10 +1164,27 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         }
       });
 
-      // Draw projectiles (Phase 2 - between tiles and entities)
+      // Draw projectiles (Phase 2 - between tiles and entities).
+      // Replay seek/step invalidation: when the turn has changed since the
+      // previous draw AND we're frozen (updateProjectiles won't refresh vs),
+      // wipe vs entries whose lastUpdateTurn doesn't match. This forces
+      // drawProjectile to fall back to projectile.logicalX/Y (fractional,
+      // set by buildReplayProjectiles) for the new turn's snapshot. Without
+      // this, step-back from turn N to N-1 would keep showing turn-N's
+      // mid-flight position until an animation frame ran — and animation
+      // doesn't run while frozen, so the snap never resolved.
       if (gameState.activeProjectiles && gameState.activeProjectiles.length > 0) {
+        if (replayFrozen && prevRenderedTurnRef.current !== gameState.currentTurn) {
+          const curTurn = gameState.currentTurn;
+          projectileVisualStateRef.current.forEach((vs, id) => {
+            if (vs.lastUpdateTurn !== curTurn) {
+              projectileVisualStateRef.current.delete(id);
+            }
+          });
+        }
+        prevRenderedTurnRef.current = gameState.currentTurn;
         gameState.activeProjectiles.forEach(projectile => {
-          drawProjectile(ctx, projectile, imageCache.current, now, projectileVisualStateRef.current, replayFrozen);
+          drawProjectile(ctx, projectile, imageCache.current, now, projectileVisualStateRef.current, replayFrozen, gameState.currentTurn);
         });
       }
 
@@ -3809,21 +3833,26 @@ function drawProjectile(
   now: number,
   visualState: Map<string, ProjectileVisualState>,
   replayFrozen: boolean = false,
+  currentTurn: number = 0,
 ) {
   if (!projectile.active) return;
 
-  // Phase C-2: visual position lives in the side-table. Fall back to the
-  // logical position when no entry has been seeded yet (first draw before
-  // updateProjectiles runs), or whenever we're frozen in replay: during
-  // replay seek / step-back / pause, updateProjectiles doesn't run to refresh
-  // the side-table, so vs can be stale at a position logical has since moved
-  // away from. During animation, vs is always fresh (updateProjectiles ran
-  // this frame) and should be preferred — it carries the fractional mid-tile
-  // interpolation that logical doesn't express.
+  // Phase C-2: visual position lives in the side-table. Fall back to logical
+  // in two cases:
+  //   1. vs hasn't been seeded yet (first draw before updateProjectiles runs).
+  //   2. vs is stale — its lastUpdateTurn doesn't match the current turn.
+  //      This happens after a replay seek / step where the turn changed but
+  //      updateProjectiles hasn't run yet to refresh vs for the new turn.
+  //
+  // When paused mid-flight (replayFrozen=true but turn unchanged), vs IS
+  // fresh — it holds the last animated frame's fractional position. Prefer
+  // it so paused replay shows the bolt at its true mid-flight location
+  // instead of snapping to the turn-end logical position.
   const vs = visualState.get(projectile.id);
-  const useLogical = !vs || replayFrozen;
-  const visualX = useLogical ? projectile.logicalX : vs.x;
-  const visualY = useLogical ? projectile.logicalY : vs.y;
+  const vsFresh = !!vs && (vs.lastUpdateTurn === undefined || vs.lastUpdateTurn === currentTurn);
+  const useLogical = !vs || (replayFrozen && !vsFresh);
+  const visualX = useLogical ? projectile.logicalX : vs!.x;
+  const visualY = useLogical ? projectile.logicalY : vs!.y;
 
   // Convert tile coordinates to pixel coordinates (fractional for smooth movement)
   const px = visualX * TILE_SIZE + TILE_SIZE / 2;
