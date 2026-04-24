@@ -186,7 +186,8 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
   const effectivelyCharFired = proj.teamSwapped ? !!proj.sourceEnemyId : !!proj.sourceCharacterId;
   const effectivelyEnemyFired = proj.teamSwapped ? !!proj.sourceCharacterId : !!proj.sourceEnemyId;
 
-  for (const tile of tiles) {
+  for (let tileIdx = 0; tileIdx < tiles.length; tileIdx++) {
+    const tile = tiles[tileIdx];
     // Skip the starting tile
     if (tile.x === Math.floor(proj.logicalX) && tile.y === Math.floor(proj.logicalY)) continue;
 
@@ -225,6 +226,19 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           hitEnemy.diedOnTurn = gameState.currentTurn + 1;
           if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
         }
+        // Pierce pass-through — stage a decrement with this tile's index
+        // in the incoming `tiles` array, which is about to become
+        // proj.tilePath this turn. The decrement fires when the visual
+        // sprite reaches this tile (mid-turn), matching how other spells
+        // apply damage on visual contact.
+        if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
+        proj.pendingVisualDecrements.push({
+          targetEntityId: hitEnemy.enemyId,
+          targetIsEnemy: true,
+          targetIndex: hitEnemyIndex,
+          damage,
+          hitTileIndex: tileIdx,
+        });
         if (!proj.attackData.projectilePierces) break;
       }
     } else if (effectivelyEnemyFired) {
@@ -254,6 +268,13 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           hitChar.pendingProjectileDeath = true;
           hitChar.diedOnTurn = gameState.currentTurn + 1;
         }
+        if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
+        proj.pendingVisualDecrements.push({
+          targetEntityId: hitChar.characterId,
+          targetIsEnemy: false,
+          damage,
+          hitTileIndex: tileIdx,
+        });
         if (!proj.attackData.projectilePierces) break;
       }
     }
@@ -2625,6 +2646,27 @@ export function updateProjectiles(
     const currentTileIdx = vs?.currentTileIndex ?? proj.currentTileIndex ?? 0;
     const straightLineReached = proj.homingPathStyle === 'straight' && reachedTarget;
 
+    // Per-hit pierce pass-through consume. Each decrement fires when the
+    // visual sprite reaches its hitTileIndex — matching how other spells
+    // apply damage on visual contact. Decrements consumed here are
+    // removed from the list; any remaining (e.g. missed due to tilePath
+    // replacement) get swept up by the batch consume below on hitResult
+    // arrival.
+    if (proj.pendingVisualDecrements && proj.pendingVisualDecrements.length > 0) {
+      const remaining: typeof proj.pendingVisualDecrements = [];
+      for (const dec of proj.pendingVisualDecrements) {
+        if (currentTileIdx >= dec.hitTileIndex) {
+          commitDeferredVisualDamage(
+            gameState, proj.id,
+            dec.targetEntityId, dec.targetIsEnemy, dec.targetIndex, dec.damage,
+          );
+        } else {
+          remaining.push(dec);
+        }
+      }
+      proj.pendingVisualDecrements = remaining.length > 0 ? remaining : undefined;
+    }
+
     // Watchdog: hitResult set but consumption not firing. Log once ~1 turn
     // past expected arrival so stale hitResults (the suspected cause of the
     // "missed damage that catches up next hit" bug) are visible.
@@ -2664,50 +2706,27 @@ export function updateProjectiles(
       // Also decrement pendingVisualDamage by this hit's damage so the bar drops by exactly 1 hit.
       // With multi-bolt overlap, each arrival decrements independently (no more stale captures).
       if (proj.hitResult.deferredDeathEntityId) {
-        const hitDmg = proj.hitResult.damage ?? 0;
-        if (proj.hitResult.deferredDeathIsEnemy) {
-          const enemy = proj.hitResult.deferredDeathIndex !== undefined
-            ? gameState.puzzle.enemies[proj.hitResult.deferredDeathIndex]
-            : gameState.puzzle.enemies.find(e => e.enemyId === proj.hitResult!.deferredDeathEntityId);
-          if (enemy) {
-            const priorPending = enemy.pendingVisualDamage ?? 0;
-            const newPending = Math.max(0, priorPending - hitDmg);
-            enemy.pendingVisualDamage = newPending > 0 ? newPending : undefined;
-            if (isHomingDebug()) {
-              console.log(
-                `[VDMG-DECREMENT ${proj.id.slice(-6)}] enemy=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) ` +
-                `pendingVisDmg=${priorPending}→${enemy.pendingVisualDamage ?? 0} hitDmg=${hitDmg}; bar now shows ${enemy.currentHealth + (enemy.pendingVisualDamage ?? 0)}`
-              );
-            }
-            if (enemy.pendingProjectileDeath) {
-              enemy.dead = true;
-              enemy.pendingProjectileDeath = false;
-              enemy.pendingVisualDamage = undefined;
-              if (isHomingDebug()) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${proj.id.slice(-6)} hit visual arrival)`);
-              handleEntityDeathDrop(enemy, true, gameState);
-            }
-          }
-        } else {
-          const char = gameState.placedCharacters.find(c => c.characterId === proj.hitResult!.deferredDeathEntityId);
-          if (char) {
-            const priorPending = char.pendingVisualDamage ?? 0;
-            const newPending = Math.max(0, priorPending - hitDmg);
-            char.pendingVisualDamage = newPending > 0 ? newPending : undefined;
-            if (isHomingDebug()) {
-              console.log(
-                `[VDMG-DECREMENT ${proj.id.slice(-6)}] char=${char.characterId.slice(-6)}@(${char.x},${char.y}) ` +
-                `pendingVisDmg=${priorPending}→${char.pendingVisualDamage ?? 0} hitDmg=${hitDmg}; bar now shows ${char.currentHealth + (char.pendingVisualDamage ?? 0)}`
-              );
-            }
-            if (char.pendingProjectileDeath) {
-              char.dead = true;
-              char.pendingProjectileDeath = false;
-              char.pendingVisualDamage = undefined;
-              if (isHomingDebug()) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${proj.id.slice(-6)})`);
-              handleEntityDeathDrop(char, false, gameState);
-            }
-          }
+        commitDeferredVisualDamage(
+          gameState, proj.id,
+          proj.hitResult.deferredDeathEntityId,
+          proj.hitResult.deferredDeathIsEnemy ?? false,
+          proj.hitResult.deferredDeathIndex,
+          proj.hitResult.damage ?? 0,
+        );
+      }
+      // Pierce pass-through decrements — bolt pierced through these targets
+      // on prior turns (or earlier this turn before reaching its stop).
+      // Each entry drops that target's bar by its hit's damage and commits
+      // pendingProjectileDeath if the hit killed them. All fire at the same
+      // visual moment as the bolt's final landing.
+      if (proj.pendingVisualDecrements) {
+        for (const dec of proj.pendingVisualDecrements) {
+          commitDeferredVisualDamage(
+            gameState, proj.id,
+            dec.targetEntityId, dec.targetIsEnemy, dec.targetIndex, dec.damage,
+          );
         }
+        proj.pendingVisualDecrements = undefined;
       }
       if (proj.hitResult.deactivate) {
         proj.active = false;
@@ -2842,6 +2861,64 @@ function recordEnemyHit(proj: Projectile, enemy: PlacedEnemy, enemies: PlacedEne
 }
 
 type HitMode = 'visual' | 'headless';
+
+/**
+ * Commit a single deferred-visual-damage record on visual arrival:
+ * decrements pendingVisualDamage by `damage`, and if the entity is in
+ * pendingProjectileDeath, flips it to dead and fires the drop handler.
+ * Shared by the landing target (from hitResult.deferredDeath*) and every
+ * pierce pass-through (from proj.pendingVisualDecrements).
+ */
+function commitDeferredVisualDamage(
+  gameState: GameState,
+  projIdForLog: string,
+  entityId: string,
+  isEnemy: boolean,
+  index: number | undefined,
+  damage: number,
+): void {
+  if (isEnemy) {
+    const enemy = index !== undefined
+      ? gameState.puzzle.enemies[index]
+      : gameState.puzzle.enemies.find(e => e.enemyId === entityId);
+    if (!enemy) return;
+    const priorPending = enemy.pendingVisualDamage ?? 0;
+    const newPending = Math.max(0, priorPending - damage);
+    enemy.pendingVisualDamage = newPending > 0 ? newPending : undefined;
+    if (isHomingDebug()) {
+      console.log(
+        `[VDMG-DECREMENT ${projIdForLog.slice(-6)}] enemy=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) ` +
+        `pendingVisDmg=${priorPending}→${enemy.pendingVisualDamage ?? 0} hitDmg=${damage}; bar now shows ${enemy.currentHealth + (enemy.pendingVisualDamage ?? 0)}`
+      );
+    }
+    if (enemy.pendingProjectileDeath) {
+      enemy.dead = true;
+      enemy.pendingProjectileDeath = false;
+      enemy.pendingVisualDamage = undefined;
+      if (isHomingDebug()) console.log(`[DEATH-MUT enemy] id=${enemy.enemyId.slice(-6)}@(${enemy.x},${enemy.y}) → dead (deferred, from proj=${projIdForLog.slice(-6)} hit visual arrival)`);
+      handleEntityDeathDrop(enemy, true, gameState);
+    }
+  } else {
+    const char = gameState.placedCharacters.find(c => c.characterId === entityId);
+    if (!char) return;
+    const priorPending = char.pendingVisualDamage ?? 0;
+    const newPending = Math.max(0, priorPending - damage);
+    char.pendingVisualDamage = newPending > 0 ? newPending : undefined;
+    if (isHomingDebug()) {
+      console.log(
+        `[VDMG-DECREMENT ${projIdForLog.slice(-6)}] char=${char.characterId.slice(-6)}@(${char.x},${char.y}) ` +
+        `pendingVisDmg=${priorPending}→${char.pendingVisualDamage ?? 0} hitDmg=${damage}; bar now shows ${char.currentHealth + (char.pendingVisualDamage ?? 0)}`
+      );
+    }
+    if (char.pendingProjectileDeath) {
+      char.dead = true;
+      char.pendingProjectileDeath = false;
+      char.pendingVisualDamage = undefined;
+      if (isHomingDebug()) console.log(`[DEATH-MUT char] id=${char.characterId.slice(-6)}@(${char.x},${char.y}) → dead (deferred, from proj=${projIdForLog.slice(-6)})`);
+      handleEntityDeathDrop(char, false, gameState);
+    }
+  }
+}
 
 interface EntityHitResult {
   reflected: boolean;
@@ -3451,6 +3528,20 @@ function resolveReflectedPath(
         type: 'wall_hit', projId: proj.id, x: step.x, y: step.y,
       });
     } else if (step.type === 'hit') {
+      // Reflected piercing bolts hit multiple targets; `proj.hitResult` can
+      // only point at one (the bolt's final landing). Any earlier hit this
+      // walk already set becomes a pierce pass-through — stage its
+      // decrement (with its hitTileIndex) before we overwrite hitResult.
+      if (proj.hitResult?.deferredDeathEntityId && (proj.hitResult.damage ?? 0) > 0) {
+        if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
+        proj.pendingVisualDecrements.push({
+          targetEntityId: proj.hitResult.deferredDeathEntityId,
+          targetIsEnemy: proj.hitResult.deferredDeathIsEnemy ?? false,
+          targetIndex: proj.hitResult.deferredDeathIndex,
+          damage: proj.hitResult.damage,
+          hitTileIndex: proj.hitResult.hitTileIndex,
+        });
+      }
       const combinedSoFar = [...approachTiles, ...reflectedTiles];
       proj.hitResult = {
         hitTileIndex: combinedSoFar.length - 1,
@@ -4281,6 +4372,21 @@ function resolveProjectiles(gameState: GameState): void {
               deferredDeathIndex: step.hitResult.deferredDeathIndex,
               damage: step.hitResult.damageApplied ?? 0,
             };
+          } else if ((step.hitResult.damageApplied ?? 0) > 0 && step.hitResult.deferredDeathEntityId) {
+            // Pierce pass-through — bolt damaged this target but kept going.
+            // Stage the decrement with its tile index so it fires when the
+            // visual sprite crosses this target's tile (not at the bolt's
+            // final landing). Clamp like the pierce-stop above — if the
+            // walker moved past tilePath's end, index the last valid tile.
+            const maxHitIdx = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
+            if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
+            proj.pendingVisualDecrements.push({
+              targetEntityId: step.hitResult.deferredDeathEntityId,
+              targetIsEnemy: step.hitResult.deferredDeathIsEnemy ?? false,
+              targetIndex: step.hitResult.deferredDeathIndex,
+              damage: step.hitResult.damageApplied ?? 0,
+              hitTileIndex: Math.min(step.dist, maxHitIdx),
+            });
           }
         } else if (step.kind === 'healing_hit') {
           // Replay hit event for heals too — parity with hostile_hit.

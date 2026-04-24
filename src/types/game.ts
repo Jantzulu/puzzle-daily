@@ -1012,6 +1012,16 @@ export interface Projectile {
    *      flag that existed pre-Phase-D.
    */
   hitResult?: ProjectileHitResult;
+  /**
+   * BRIDGE — pierce pass-through decrements. Each entry fires independently
+   * when the bolt's visual crosses its `hitTileIndex`, matching how other
+   * spells decrement bars on visual contact. `deferredDeath*` on hitResult
+   * still carries the pierce-STOP entity (the bolt's final landing tile).
+   * Pass-through entries accumulate across turns until their hitTileIndex
+   * is reached; a batch-consume at hitResult time is a safety net for any
+   * entry not already consumed.
+   */
+  pendingVisualDecrements?: ProjectileVisualDecrement[];
   pendingReflectVfx?: { sprite: SpriteReference; x: number; y: number; duration: number; scale: number }; // BRIDGE — deferred reflect VFX
   // Phase C: visualPastReflectPoint moved out of Projectile into the side-table
   // owned by AnimatedGameBoard (see projectileVisualStateRef). It lives on
@@ -1102,6 +1112,24 @@ export interface ThrowPlaceConfig {
   gracePeriodTurns: number;                         // Turns of caster immunity (default 1)
   placerPermanentlyImmune: boolean;                 // Caster can never pick up (default false)
   sourceSpellId: string;                            // Reference to the spell for ItemsDisplay
+}
+
+/**
+ * A single visual-damage decrement owed to an entity that was hit by this
+ * projectile but is NOT the bolt's final landing point (i.e. a pierce
+ * pass-through). Consumed when the bolt's visual reaches `hitTileIndex` —
+ * same timing semantics as other spells: the bar drops the moment the
+ * projectile visually makes contact with the target. Commits
+ * pendingProjectileDeath → dead at the same moment if the hit killed the
+ * entity.
+ */
+export interface ProjectileVisualDecrement {
+  targetEntityId: string;
+  targetIsEnemy: boolean;
+  targetIndex?: number;
+  damage: number;
+  /** Index in proj.tilePath where the visual should fire this decrement. */
+  hitTileIndex: number;
 }
 
 /**
