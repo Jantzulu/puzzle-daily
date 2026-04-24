@@ -17,13 +17,83 @@ import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirection
 // `_homingDebugSilenced` lets the UI layer silence logs without flipping the
 // base flag — e.g. after victory/defeat so the console stays copyable while
 // lingering projectiles finish animating.
-export const HOMING_DEBUG = true;
+export const HOMING_DEBUG = false;
 let _homingDebugSilenced = false;
 export function setHomingDebugSilenced(silenced: boolean): void {
   _homingDebugSilenced = silenced;
 }
 export function isHomingDebug(): boolean {
   return HOMING_DEBUG && !_homingDebugSilenced;
+}
+
+/**
+ * Duration of the shrink-to-nothing despawn animation for projectiles that
+ * fizzle without landing on a target (out-of-range / wall hit). Exported
+ * so drawProjectile can compute the same scale multiplier against the
+ * same elapsed window. Front-loaded into the final portion of travel for
+ * cases that have a travel window.
+ */
+export const DESPAWN_SHRINK_MS = 250;
+
+/**
+ * Shorter lingering variant for bolts that lose their approach window —
+ * specifically, homing bolts whose target dies mid-flight from another
+ * bolt. These have no way to know in advance, so the shrink can't be
+ * front-loaded; it runs AS a linger post-consume. Half the main duration
+ * to minimize the wall-clock extension.
+ */
+export const TARGET_LOST_LINGER_MS = 125;
+
+/**
+ * Set `proj.despawning` if a freshly-set clean `hitResult` has insufficient
+ * travel window for the approach-shrink to cover visually. When consumeAtMs
+ * is less than DESPAWN_SHRINK_MS away from now, the approach path would
+ * flash scale 0 with no visible animation — switch to the lingering path
+ * instead. Called right after setting `proj.hitResult = { deactivate: true, ... }`.
+ *
+ * Skips the linger when the predictive shrink (in `drawProjectile`) already
+ * handled the animation during the prior turn's approach — otherwise the
+ * linger restarts from scale 1 and the user sees a "shrink → expand →
+ * shrink" pop. Specifically:
+ *   - Homing OUT OF RANGE: predictive fires when
+ *     `range - pathTraveled < 0.5` (or `< 1` for pathfinding). If those
+ *     conditions hold at this moment, predictive was running on the prior
+ *     turn's last 250ms; bolt is already at scale ~0.
+ *   - Non-homing endpoint fizzle: predictive fires on approach to tilePath
+ *     endpoint. If the visual is already AT the endpoint
+ *     (`elapsed >= (tilePath.length - 1) * tileTransitMs`), predictive
+ *     ran. Detect via elapsed vs endpoint time.
+ */
+export function maybeMarkLingerDespawn(proj: Projectile, hitTileIndex: number, now: number): void {
+  const tileTransitMs = proj.isHoming && proj.tilePath && proj.tilePath.length > 1
+    ? 800 / (proj.tilePath.length - 1)
+    : 800 / (proj.speed || 4);
+  const anchorMs = proj.tileEntryTime ?? proj.startTime ?? now;
+  const consumeAtMs = anchorMs + hitTileIndex * tileTransitMs;
+  if (consumeAtMs - now >= DESPAWN_SHRINK_MS) {
+    // Plenty of travel window left — approach-shrink will handle it.
+    return;
+  }
+
+  // Check if predictive shrink already covered the animation. If yes,
+  // skip the linger to avoid a scale-1 pop.
+  let predictiveCovered = false;
+  if (proj.isHoming) {
+    if (proj.attackData.range !== undefined && proj.pathTraveled !== undefined) {
+      const remaining = proj.attackData.range - proj.pathTraveled;
+      predictiveCovered =
+        remaining < 0.5 ||
+        (proj.homingPathStyle === 'pathfinding' && remaining < 1);
+    }
+  } else if (proj.tilePath && proj.tilePath.length > 0) {
+    const elapsed = now - anchorMs;
+    const endpointAtMs = (proj.tilePath.length - 1) * tileTransitMs;
+    predictiveCovered = elapsed >= endpointAtMs;
+  }
+  if (predictiveCovered) return;
+
+  proj.despawning = true;
+  proj.despawnStartTime = now;
 }
 
 /**
@@ -56,6 +126,18 @@ export function findPathBFS(
   while (queue.length > 0) {
     const current = queue.shift()!;
 
+    // Collect valid unvisited neighbors first, then enqueue them sorted by
+    // distance-to-target. All shortest paths are equivalent length on a
+    // uniform-cost grid, but BFS returns whichever is discovered first —
+    // and discovery order depends on enqueue order. Without the sort, the
+    // fixed N/NE/E/SE/S/SW/W/NW `dirs` order makes SW neighbors dequeue
+    // before W and NW, so bolts aiming NW pick up a (2,2) intermediate and
+    // visibly detour south before correcting. Sorting by target-distance
+    // gives BFS a greedy bias: neighbors closer to the target get explored
+    // first, so the returned path trends straight at the target. Still
+    // deterministic (stable sort + dist tie-break falls back to dirs order),
+    // still shortest, just visually direct.
+    const candidates: Array<{x: number; y: number; dist: number}> = [];
     for (const dir of dirs) {
       const nx = current.x + dir.dx;
       const ny = current.y + dir.dy;
@@ -70,12 +152,21 @@ export function findPathBFS(
       // Allow target tile even if it's technically blocked
       if (isWall && !(nx === tx && ny === ty)) continue;
 
+      const dx = nx - tx;
+      const dy = ny - ty;
+      candidates.push({x: nx, y: ny, dist: dx * dx + dy * dy});
+    }
+    candidates.sort((a, b) => a.dist - b.dist);
+
+    for (const c of candidates) {
+      const key = `${c.x},${c.y}`;
+      if (visited.has(key)) continue; // Another candidate may have beaten this one
       visited.add(key);
-      const newPath = [...current.path, {x: nx, y: ny}];
+      const newPath = [...current.path, {x: c.x, y: c.y}];
 
-      if (nx === tx && ny === ty) return newPath;
+      if (c.x === tx && c.y === ty) return newPath;
 
-      queue.push({x: nx, y: ny, path: newPath});
+      queue.push({x: c.x, y: c.y, path: newPath});
     }
   }
 
@@ -127,6 +218,11 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
         if (hitEnemy.dead) {
           hitEnemy.dead = false;
           hitEnemy.pendingProjectileDeath = true;
+          // Bump diedOnTurn to the turn the visual death will play
+          // (one turn later, since the bolt takes a turn to arrive).
+          // applyDamageToEntityNoDeflect stamped `currentTurn`; override
+          // now that we know this is a deferred death.
+          hitEnemy.diedOnTurn = gameState.currentTurn + 1;
           if (isHomingDebug()) console.log(`[DEATH-MUT enemy] idx=${hitEnemyIndex} id=${hitEnemy.enemyId.slice(-6)}@(${hitEnemy.x},${hitEnemy.y}) → pendingDeath (from checkEntityCollisions, proj=${proj.id.slice(-6)})`);
         }
         if (!proj.attackData.projectilePierces) break;
@@ -156,6 +252,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
         if (hitChar.dead) {
           hitChar.dead = false;
           hitChar.pendingProjectileDeath = true;
+          hitChar.diedOnTurn = gameState.currentTurn + 1;
         }
         if (!proj.attackData.projectilePierces) break;
       }
@@ -601,6 +698,9 @@ function markEntityAsDead(
 
   // Now mark as dead
   entity.dead = true;
+  if (entity.diedOnTurn === undefined) {
+    entity.diedOnTurn = gameState.currentTurn;
+  }
   if (isHomingDebug()) {
     const isEnemy = 'enemyId' in entity;
     const id = isEnemy ? (entity as PlacedEnemy).enemyId : (entity as PlacedCharacter).characterId;
@@ -2446,6 +2546,21 @@ export function updateProjectiles(
       continue;
     }
 
+    // Target-lost lingering despawn: skip movement/consume, render the
+    // shrinking sprite for TARGET_LOST_LINGER_MS, then flip inactive and
+    // remove. `despawning` was set at hitResult-creation time for bolts
+    // whose approach-shrink had no travel window (e.g. homing bolt whose
+    // target just died from another bolt). Bolts with a full approach
+    // window leave `despawning` false and remove instantly at consume.
+    if (proj.despawning && proj.despawnStartTime !== undefined) {
+      const elapsed = now - proj.despawnStartTime;
+      if (elapsed >= TARGET_LOST_LINGER_MS) {
+        proj.active = false;
+        projectilesToRemove.push(proj.id);
+      }
+      continue;
+    }
+
     // Phase C-2: visual position lives in the side-table. Seed an entry on
     // first sight of a projectile, anchored to its current logical position.
     let vs = visualState?.get(proj.id);
@@ -2822,6 +2937,11 @@ function applyEntityHit(
       if (mode === 'visual') {
         target.dead = false;
         target.pendingProjectileDeath = true;
+        // Bump diedOnTurn to the visual-death turn (one turn later, when
+        // the projectile visual arrives). applyDamageToEntityNoDeflect
+        // stamped `currentTurn` for the immediate-death case; override
+        // now that we know this is deferred.
+        target.diedOnTurn = gameState.currentTurn + 1;
         if (isHomingDebug()) {
           const id = targetIsEnemy ? (target as PlacedEnemy).enemyId : (target as PlacedCharacter).characterId;
           console.log(`[DEATH-MUT ${targetIsEnemy ? 'enemy' : 'char'}] id=${id.slice(-6)}@(${target.x},${target.y}) → pendingDeath (from applyEntityHit, proj=${proj.id.slice(-6)} dmg=${damage})`);
@@ -3342,7 +3462,9 @@ function resolveReflectedPath(
         deferredDeathIndex: step.hitResult.deferredDeathIndex,
         damage: step.hitResult.damageApplied ?? 0,
       };
-      // Replay hit event — parity with non-homing hostile_hit.
+      // Replay hit event — parity with non-homing hostile_hit. deferredDeath
+      // fields carry through so replay can commit the pendingDeath → dead
+      // transition on visual arrival.
       recordProjectileEvent(gameState, {
         type: 'hit',
         projId: proj.id,
@@ -3354,6 +3476,9 @@ function resolveReflectedPath(
         hitTileIndex: combinedSoFar.length - 1,
         hitVfxSprite: proj.attackData.hitEffectSprite,
         damage: step.hitResult.damageApplied ?? 0,
+        deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
+        deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
+        deferredDeathIndex: step.hitResult.deferredDeathIndex,
       });
     }
   }
@@ -3637,6 +3762,7 @@ function resolveProjectiles(gameState: GameState): void {
           proj.currentTileIndex = 0;
           proj.tileEntryTime = Date.now();
           proj.hitResult = { hitTileIndex: 0, deactivate: true, damage: 0 };
+          maybeMarkLingerDespawn(proj, 0, Date.now());
           // Replay needs an end event for this lifetime. OUT OF RANGE is a
           // deactivate (no hit, no wall) — matches headless' range-gate emission.
           // targetX/Y = the frozen position so replay's interp sits there
@@ -3673,6 +3799,7 @@ function resolveProjectiles(gameState: GameState): void {
               proj.currentTileIndex = 0;
               proj.tileEntryTime = proj.homingVisualStartTime ?? Date.now();
               proj.hitResult = { hitTileIndex: wallPath.length - 1, deactivate: true };
+              maybeMarkLingerDespawn(proj, wallPath.length - 1, Date.now());
               // Replay end event — homing bolt stopped at a wall.
               recordProjectileEvent(gameState, {
                 type: 'wall_hit',
@@ -3810,6 +3937,7 @@ function resolveProjectiles(gameState: GameState): void {
                   hitTileIndex: combinedPath.length - 1,
                   deactivate: true,
                 };
+                maybeMarkLingerDespawn(proj, combinedPath.length - 1, Date.now());
                 // No hit on return leg — the reflected bolt fizzled. Emit a
                 // deactivate as the end event so the replay lifetime closes.
                 recordProjectileEvent(gameState, {
@@ -3885,7 +4013,10 @@ function resolveProjectiles(gameState: GameState): void {
             damage: damageForHit,
           };
           // Replay end event — homing bolt reached target. Emitted even for
-          // heal hits so the lifetime has an end turn.
+          // heal hits so the lifetime has an end turn. Carry deferredDeath
+          // fields so replay's hitResult can drive the pendingDeath → dead
+          // commit on visual arrival (otherwise the last kill's enemy stays
+          // pendingDeath forever in replay).
           recordProjectileEvent(gameState, {
             type: 'hit',
             projId: proj.id,
@@ -3896,6 +4027,9 @@ function resolveProjectiles(gameState: GameState): void {
             hitVfxSprite: vfxSprite,
             damage: damageForHit,
             targetX: hitX, targetY: hitY,
+            deferredDeathEntityId,
+            deferredDeathIsEnemy,
+            deferredDeathIndex,
           });
           // Accumulate cumulative path length for the range gate (see
           // pathTraveled field doc on Projectile). Segment = distance from
@@ -3967,6 +4101,14 @@ function resolveProjectiles(gameState: GameState): void {
             const lastTile = turnTiles[turnTiles.length - 1];
             newX = lastTile.x;
             newY = lastTile.y;
+            if (isHomingDebug()) {
+              const pathStr = fullPath.map(t => `(${t.x},${t.y})`).join('→');
+              console.log(
+                `[PATHFIND-HOMING ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+                `from=(${pathStartX},${pathStartY}) to=(${targetEntity.x},${targetEntity.y}) ` +
+                `fullPath=${pathStr} clampedTiles=${clampedTiles} turnEnd=(${newX},${newY})`
+              );
+            }
           } else {
             const clampedMove = Math.min(tilesPerTurn, remainingRange);
             const moveRatio = clampedMove / distance;
@@ -4100,6 +4242,8 @@ function resolveProjectiles(gameState: GameState): void {
           // Replay hit event — emitted for every pierce target, not just the
           // pierce-stop. (Pierce-through hits along the path need events too
           // so the replay's damage VFX timing matches the live game.)
+          // deferredDeath fields carry through so replay can commit
+          // pendingDeath → dead on visual arrival.
           const maxHitIdxForEvent = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
           recordProjectileEvent(gameState, {
             type: 'hit',
@@ -4112,6 +4256,9 @@ function resolveProjectiles(gameState: GameState): void {
             hitTileIndex: Math.min(step.dist, maxHitIdxForEvent),
             hitVfxSprite: step.hitResult.vfxSprite,
             damage: step.hitResult.damageApplied ?? 0,
+            deferredDeathEntityId: step.hitResult.deferredDeathEntityId,
+            deferredDeathIsEnemy: step.hitResult.deferredDeathIsEnemy,
+            deferredDeathIndex: step.hitResult.deferredDeathIndex,
           });
           if (step.pierceStop) {
             // Clamp hitTileIndex to tilePath bounds. For downgraded non-
@@ -4304,6 +4451,7 @@ function resolveProjectiles(gameState: GameState): void {
       // only has one "logic done" signal to consume.
       const endTileIndex = proj.tilePath && proj.tilePath.length > 0 ? proj.tilePath.length - 1 : 0;
       proj.hitResult = { hitTileIndex: endTileIndex, deactivate: true };
+      maybeMarkLingerDespawn(proj, endTileIndex, Date.now());
       // Replay end event — the walker hit wall/bounds without a hit/reflect
       // emission. `wall` steps already emit wall_hit events, but the
       // bounds-exit and pure range-exhausted cases reach here with no

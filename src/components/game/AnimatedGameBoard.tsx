@@ -9,7 +9,7 @@ import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, Custom
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
 import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
-import { updateProjectiles, updateParticles, executeParallelActions } from '../../engine/simulation';
+import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 
@@ -3862,7 +3862,95 @@ function drawProjectile(
   const rotationConfig = getRotationForDirection(projectile.direction);
 
   // Get projectile scale factor
-  const scale = projectile.attackData.projectileScale ?? 1;
+  let scale = projectile.attackData.projectileScale ?? 1;
+
+  // Shrink-to-nothing animation for projectiles that will fizzle without
+  // landing on a target. Front-loaded into the final DESPAWN_SHRINK_MS of
+  // travel so the sprite is already at scale 0 when the consume fires —
+  // no extra wall-clock lingering past normal flight duration. Two paths
+  // feed into the same shrink math via a shared `consumeAtMs`:
+  //   1. Engine-signalled: `hitResult.deactivate` with no hit VFX / no
+  //      deferred death / no item placement. Covers non-homing bolts that
+  //      hit a wall, run out of range, or exit bounds.
+  //   2. Predicted: homing bolt whose cumulative `pathTraveled` has used
+  //      up its `range` budget — next turn's `resolveProjectiles` will
+  //      decide OUT OF RANGE and consume instantly (no travel window on
+  //      that turn to shrink into). So we shrink during THIS turn's
+  //      final approach instead. Thresholds match the engine's fizzle
+  //      check (`remaining < 0.5`, or `< 1` for pathfinding which can't
+  //      advance fractionally).
+  let consumeAtMs: number | null = null;
+  // Match updateTileBasedVisual's per-tile pacing: homing paces the whole
+  // tilePath over 800ms (one turn); non-homing uses per-tile speed.
+  const tileTransitMs = projectile.isHoming && projectile.tilePath && projectile.tilePath.length > 1
+    ? 800 / (projectile.tilePath.length - 1)
+    : 800 / (projectile.speed || 4);
+  const anchorMs = projectile.tileEntryTime ?? projectile.startTime ?? now;
+
+  // Target-lost lingering takes priority when set. Approach-shrink never
+  // ran for these (bolt had no travel window between hitResult-set and
+  // consume), so we simulate the same shrink curve starting at
+  // despawnStartTime. Shorter duration (TARGET_LOST_LINGER_MS) to
+  // minimize the wall-clock extension for this already-exceptional case.
+  if (projectile.despawning && projectile.despawnStartTime !== undefined) {
+    const elapsed = now - projectile.despawnStartTime;
+    const progress = Math.min(1, Math.max(0, elapsed / TARGET_LOST_LINGER_MS));
+    const shrinkFactor = 1 - (progress * progress * progress);
+    if (shrinkFactor <= 0.01) return;
+    scale *= shrinkFactor;
+  } else if (
+    projectile.hitResult?.deactivate &&
+    !projectile.hitResult.vfxSprite &&
+    !projectile.hitResult.deferredDeathEntityId &&
+    !projectile.hitResult.placeCollectibleConfig
+  ) {
+    // Engine-signalled clean deactivate (wall hit mid-flight, etc.).
+    consumeAtMs = anchorMs + projectile.hitResult.hitTileIndex * tileTransitMs;
+  } else if (!projectile.hitResult && projectile.tilePath && projectile.tilePath.length > 0) {
+    // Predictive: bolt is approaching its tilePath endpoint with no hit
+    // signal from the engine yet. Two sub-cases gated differently:
+    //   - Homing: the engine rebuilds tilePath each turn, so the endpoint
+    //     only represents "this turn's target tile," not the fizzle point.
+    //     Gate on the actual range threshold the engine uses
+    //     (`remaining < 0.5`, or `< 1` for pathfinding) so we only
+    //     shrink when the NEXT turn's `resolveProjectiles` will decide
+    //     OUT OF RANGE and consume instantly (no travel window on that
+    //     turn to shrink into).
+    //   - Non-homing: tilePath is the full spawn-clamped flight — it
+    //     already ends at the last in-bounds, pre-wall, within-range
+    //     tile. Reaching the endpoint always precedes a fizzle; if a
+    //     target were there, this turn's walker would have set
+    //     hitResult with vfxSprite already. So fire unconditionally.
+    let willFizzle = false;
+    if (projectile.isHoming) {
+      if (
+        projectile.attackData.range !== undefined &&
+        projectile.pathTraveled !== undefined
+      ) {
+        const remaining = projectile.attackData.range - projectile.pathTraveled;
+        willFizzle =
+          remaining < 0.5 ||
+          (projectile.homingPathStyle === 'pathfinding' && remaining < 1);
+      }
+    } else {
+      willFizzle = true;
+    }
+    if (willFizzle) {
+      const endpointTileIdx = projectile.tilePath.length - 1;
+      consumeAtMs = anchorMs + endpointTileIdx * tileTransitMs;
+    }
+  }
+
+  if (consumeAtMs !== null) {
+    const timeUntilConsume = consumeAtMs - now;
+    if (timeUntilConsume <= DESPAWN_SHRINK_MS) {
+      const progress = Math.min(1, Math.max(0, 1 - timeUntilConsume / DESPAWN_SHRINK_MS));
+      // Ease-in cubic — stays near full size briefly, then accelerates down.
+      const shrinkFactor = 1 - (progress * progress * progress);
+      if (shrinkFactor <= 0.01) return;
+      scale *= shrinkFactor;
+    }
+  }
 
   // Check if the visual has passed the reflect point (tint only applies after reflect)
   const pastReflectPoint = projectile.reflected && !!visualState.get(projectile.id)?.visualPastReflectPoint;
@@ -3947,7 +4035,7 @@ function drawProjectile(
       ctx.fill();
       ctx.restore();
     } else {
-      drawDefaultProjectile(ctx, px, py);
+      drawDefaultProjectile(ctx, px, py, scale);
     }
   }
 }
@@ -3982,20 +4070,20 @@ function getRotationForDirection(direction: Direction): { rotation: number; mirr
 /**
  * Draw default projectile (simple colored circle/arrow)
  */
-function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: number) {
+function drawDefaultProjectile(ctx: CanvasRenderingContext2D, px: number, py: number, scale: number = 1) {
   // Draw glowing projectile
   ctx.save();
 
   // Outer glow
   ctx.fillStyle = 'rgba(255, 200, 100, 0.3)';
   ctx.beginPath();
-  ctx.arc(px, py, 8, 0, Math.PI * 2);
+  ctx.arc(px, py, 8 * scale, 0, Math.PI * 2);
   ctx.fill();
 
   // Inner core
   ctx.fillStyle = '#ffaa00';
   ctx.beginPath();
-  ctx.arc(px, py, 4, 0, Math.PI * 2);
+  ctx.arc(px, py, 4 * scale, 0, Math.PI * 2);
   ctx.fill();
 
   ctx.restore();

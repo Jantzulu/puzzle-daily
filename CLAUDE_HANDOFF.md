@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 23, 2026 (replay event-capture rewrite — lives on real-play events instead of re-simulation)
+Last Updated: April 23, 2026 (grid/pathfinding homing replay parity, BFS tie-break fix, movement-blocker determinism, projectile despawn shrink animation)
 
 ## Project Overview
 
@@ -178,44 +178,31 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Next session — start here
 
-**2026-04-23 session shipped the big replay parity rewrite** ("option 2: record real-play events"). Replay now consumes events captured during the live game, not a parallel headless re-simulation. For **straight-line homing**, replay motion matches the live game (same IDs, same hits at same turns, same fractional positions at turn boundaries, same Euclidean interp between turns). Paused/step-forward/step-back all preserve the true fractional visual position. User confirmed "linear homing looks perfect" — but **grid and pathfinding homing styles are still untested**.
+**2026-04-23 session (second) closed out the projectile visual polish + cleanup pass.** Grid and pathfinding homing replay are confirmed clean. BFS now greedily biases neighbors toward the target (no more SW detours when aiming NW). Movement-blocker determinism race from the deferred `pendingDeath → dead` commit is fixed via a `diedOnTurn` stamp. Projectiles that fizzle (wall, out-of-range, target-lost) now shrink-to-nothing instead of vanishing instantly, in both live and replay.
+
+**`HOMING_DEBUG` is now `false`** by default. Flip at [simulation.ts:20](src/engine/simulation.ts#L20) if you need traces. `[RDIFF REPLAY]`, `[REPLAY] Timeline/Events/SPAWN/HIT` are now also gated on this flag.
 
 **Start here — highest priority:**
 
-1. **Playtest grid and pathfinding homing in replay.** Build a puzzle or use an existing one with `homingPathStyle: 'grid'` and `homingPathStyle: 'pathfinding'` bolts. Verify:
-   - Real-run IDs match replay IDs in `[RDIFF REAL]` / `[RDIFF REPLAY]` logs.
-   - Hit turns / targets match.
-   - Projectile motion during replay matches the live game's animation (enable `HOMING_DEBUG = true` in `simulation.ts:14` for trace logs).
-   - Pause / step-forward / step-back show the correct position.
+1. **PINNED — Pierce + healthbar bug.** (Unchanged, still unfixed.) When a piercing non-homing bolt goes through multiple enemies, `applyEntityHit` runs on each and increments `pendingVisualDamage`, but `proj.hitResult` is set only for the pierce-**stop** target. So only the final target's `pendingVisualDamage` gets decremented on visual arrival. All pierced-through targets' bars stay elevated forever. Fix direction: `ProjectileHitResult` needs a **list** of visual decrements (`visualDecrements?: Array<{targetEntityId, targetIsEnemy, targetIndex?, damage}>`), iterated at consume. For `deferredDeath*` keep the existing single-target fields — pierce doesn't change which entity the projectile visually lands at. Location: pierce handling in `walkNonHomingTick` (simulation.ts) and pierce-stop hitResult construction in non-homing branch of `resolveProjectiles`.
 
-   **Known design choice for non-straight homing:** replay uses tile-based interpolation (`getTilesAlongLine` for grid, `findPathBFS` for pathfinding) — same as the live game does for those styles. So grid/pathfinding bolts sit on integer tiles at turn boundaries in both. That's correct — no fractional-space interpolation like straight-homing has. If they look wrong in replay, the divergence is elsewhere (probably tilePath reconstruction or event stream).
-
-   **Key mechanisms** if you need to debug:
-   - **`buildReplayProjectiles` in `Game.tsx`** — rebuilds projectiles for each replay turn. For homing, reads `homingMoves` / `hit` / `deactivate` events to reconstruct position per turn. Calls `findPathBFS` or `getTilesAlongLine` for the per-turn tilePath based on style.
-   - **Event-emission sites in `simulation.ts`** — every `recordProjectileEvent` call in `resolveProjectiles` is paired with one in `updateProjectilesHeadless`. Grid/pathfinding homing uses `walkNonHomingTick` for non-homing and goes through the homing MOVE TOWARD / REACHED TARGET branches for homing. Check `[RDIFF REAL]` logs match what `[RDIFF REPLAY]` reconstructs — mismatches point at whichever side missed/miscounted an event.
-   - **`resolveProjectiles` pathfinding branch** — if the BFS path diverges between real-play and replay, check `findPathBFS` determinism (it's BFS so it should be fully deterministic given the same start/end/walls).
-
-2. **Known pre-existing divergence sources** (ruled out or minor):
-   - **StrictMode dev-mode drift.** React.StrictMode double-invokes `setGameState` updaters in dev. Each run calls `Date.now()`, so timing fields (`homingVisualStartTime`, `startTime`, `tileEntryTime`) diverge between runs by ~1ms. Only the second run's state is kept; the first run's `recordProjectileEvent` calls are made against a discarded `stateCopy` so they don't pollute the live timeline. Results in duplicate `[RDIFF REAL]` logs for the same event with slightly different timing — dev artifact only, disappears in production. If you see `anchor=(4.00,5.00)` in one log and `anchor=(4.01,5.00)` in the next, that's this.
-   - **Replay shows bolts reaching tile centers at some turn boundaries.** This is CORRECT for turns where the engine's `logicalX/Y` happens to be tile-integer (e.g., the spawn turn of a straight-homing bolt often moves exactly 1 tile — ends at (4, 5) not (4.xx, 5.xx)). Not a bug.
-
-3. **PINNED — Pierce + healthbar bug.** (Unchanged from previous handoff.) When a piercing non-homing bolt goes through multiple enemies, `applyEntityHit` runs on each and increments `pendingVisualDamage`, but `proj.hitResult` is set only for the pierce-**stop** target. So only the final target's `pendingVisualDamage` gets decremented on visual arrival. All pierced-through targets' bars stay elevated forever. Fix direction: `ProjectileHitResult` needs a **list** of visual decrements (`visualDecrements?: Array<{targetEntityId, targetIsEnemy, targetIndex?, damage}>`), iterated at consume. For `deferredDeath*` keep the existing single-target fields — pierce doesn't change which entity the projectile visually lands at. Location: pierce handling in `walkNonHomingTick` (simulation.ts) and pierce-stop hitResult construction in non-homing branch of `resolveProjectiles`.
-
-4. **Remaining playtest coverage** (still paused):
+2. **Remaining playtest coverage** (still paused):
    - **Reflect + homing** (quick smoke test)
    - **Projectile edge cases** — pierce on duplicate-enemyId enemies, bolt-through-wall regression, defeat-while-in-flight regression
    - **Regression sweep** — melee, MELEE_CONE, redirect spells, throw/place, status effects (reflect tint, stealth, steadfast)
 
-5. **Feature work.** [feature-roadmap.md](feature-roadmap.md) or any new feature idea. Replay System is substantively done.
+3. **Known pre-existing divergence sources** (ruled out or minor):
+   - **StrictMode dev-mode drift.** React.StrictMode double-invokes `setGameState` updaters in dev. Each run calls `Date.now()`, so timing fields diverge between runs by ~1ms. Only the second run's state is kept. Dev artifact only, disappears in production.
+   - **Replay shows bolts reaching tile centers at some turn boundaries.** CORRECT — for turns where the engine's `logicalX/Y` happens to be tile-integer (e.g., spawn turn of straight-homing often moves exactly 1 tile). Not a bug.
 
-**Debug infrastructure**: `HOMING_DEBUG` flag in `simulation.ts:14`. Silenceable via `setHomingDebugSilenced(true)` / `isHomingDebug()`. Game.tsx wires a useEffect that silences when `gameStatus !== 'playing'` so end-of-game flush doesn't flood the console. Flip the flag to `true` to re-enable trace logs. Relevant log tags:
-- `[RDIFF REAL]` — fires from `recordProjectileEvent` in simulation.ts on every event the live engine emits. Now populated during real play (previously empty — the guard only allowed emission when `projectileTimeline` was set, which used to be headless-only).
-- `[RDIFF REPLAY]` — fires from `buildReplayProjectiles` in Game.tsx on every segment the replay reconstructs. Compare side-by-side with `[RDIFF REAL]` for the same turn + projId to spot divergences.
-- `[HOMING-RESOLVE]`, `[HOMING-VISUAL]`, `[HOMING-TARGET]`, `[PROJ-VISUAL-TILE]`, `[PROJ-HIT-CONSUME]`, `[PATHFIND-HOMING-*]` — detailed per-frame traces.
+4. **Feature work.** [feature-roadmap.md](feature-roadmap.md) or any new feature idea. Replay System + movement determinism + projectile visuals are substantively done.
 
-6. **Phase D-b (optional refactor): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Lower priority; consider only if a concrete bug motivates it.
+5. **Phase D-b (optional refactor): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Lower priority; consider only if a concrete bug motivates it.
 
-7. **Replay visual-state reseed quirk (now largely resolved).** Previously: `projectileVisualStateRef` held stale `x/y` after replay step-reset. Fixed this session via `lastUpdateTurn` on `ProjectileVisualState` + explicit vs-map invalidation on turn-change-while-frozen in `AnimatedGameBoard`'s animate loop. If you see new vs-staleness bugs, check those two mechanisms.
+**Debug tags when `HOMING_DEBUG = true`:**
+- `[RDIFF REAL]` / `[RDIFF REPLAY]` — per-event logs for real vs replay diffing.
+- `[HOMING-SPAWN]`, `[HOMING-RESOLVE]`, `[HOMING-TARGET]`, `[PROJ-VISUAL-TILE]`, `[PROJ-HIT-CONSUME]`, `[VDMG-CAPTURE]`, `[VDMG-DECREMENT]`, `[DEATH-MUT]`, `[WIN-CHECK]`, `[PATHFIND-HOMING]`, `[APPLY-HIT]` — detailed traces.
+- `[REPLAY] Timeline/Events`, `[REPLAY SPAWN]`, `[REPLAY HIT]` — replay reconstruction diagnostics.
 
 ### Open spawn tasks (deferred bugs / features)
 
@@ -275,6 +262,52 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 23, 2026 — second session: homing replay parity, BFS fix, movement determinism, projectile despawn shrink, log cleanup)
+
+Long iterative session, all changes verified live by user. Covers: grid/pathfinding homing replay parity (confirmed clean by user), BFS direction-bias fix, deferred-death commit fixes for replay, movement-blocker determinism race, projectile fizzle shrink animation in both live and replay. Ended with `HOMING_DEBUG` flipped back to `false` and all chatty replay logs gated on the same flag.
+
+**Grid / pathfinding homing replay — tilePath reconstruction fix.**
+Grid replay was producing a different `tilePath` than the real engine for per-turn segments because `buildReplayProjectiles` was passing *fractional* `prev` coords to `getTilesAlongLine`, which uses `safeFloor(start)` / `round(end)`. For fractional start coords with `.5+` components, that produced an extra leading tile (e.g. real `(5,6)→(5,7)` became replay `(4,5)→(5,6)→(5,7)` → 3 tiles, `tileTransit = 0.4s`) or collapsed to a single-tile path via the `noMove` guard when both floor/round landed on the same tile (→ bolt frozen for the turn). Real engine avoids this by rebuilding from `Math.round(logical)` each turn. Fix: round the `prev` start coords before calling `getTilesAlongLine` / `findPathBFS` in the per-turn segment construction. ([Game.tsx](puzzle-game/src/components/game/Game.tsx) grid/pathfinding branch of `buildReplayProjectiles`.)
+
+**Final-turn enemy death not committing in replay.**
+The final kill's enemy stayed pendingDeath forever in replay because the `hit` event schema didn't carry `deferredDeath*`, so `buildReplayProjectiles` built a `hitResult` that deactivated the bolt but never decremented `pendingVisualDamage` / committed `dead=true`. Fix: (1) added `deferredDeathEntityId`, `deferredDeathIsEnemy`, `deferredDeathIndex` to `ProjectileEvent`; (2) populated them at the three relevant `hit` emission sites in `simulation.ts` (homing REACHED TARGET at ~3889, non-homing hostile_hit at ~4104, reflected via `walkReflectedPath` at ~3346); (3) forwarded onto replay's `hitResult` in `buildReplayProjectiles`.
+
+**Dead → alive → dead death-animation stutter in replay.**
+Snapshots are captured at end of each turn's `executeTurn`, BEFORE deferred-death visual commits fire in that turn's animation window. So a snapshot for turn N has entities killed on turn M<N still showing as `pendingDeath`. Advancing replay to turn N revived them briefly (snapshot-loaded pendingDeath → alive sprite) until the bolt's visual commit re-fired and killed them again. Fix in `copySnapshotForPlayback`: walk `projectileLifetimesRef` and for every `hit` event with `deferredDeath*` on a turn strictly before `index`, force `dead=true, pendingProjectileDeath=false, pendingVisualDamage=0, currentHealth=0` on the loaded copy. Current-turn hits are left alone so the turn's visual commit still runs and fires the death animation at the right moment.
+
+**BFS tie-break: `findPathBFS` now sorts neighbors by squared distance to target.**
+Previously the fixed `dirs` order (N/NE/E/SE/S/SW/W/NW) meant SW neighbors dequeued before W and NW. For NW-trending targets, BFS discovered `(1,1)` via `(2,2)` before via `(2,1)`, so bolts took visibly-wrong southern detours. Since all shortest paths on a uniform-cost grid are equivalent length, reordering by target-distance before enqueueing changes *which* shortest path gets returned (trending straight at the target) without changing length. Still deterministic (stable sort + dist tie-break falls back to dirs order). ([simulation.ts](puzzle-game/src/engine/simulation.ts) `findPathBFS`.)
+
+**Movement-blocker determinism race — `diedOnTurn` stamp + `isFreshlyDead` gate.**
+User caught a determinism violation: the second enemy to die sometimes progressed an extra tile before dying, nondeterministically. Root cause: the deferred `pendingDeath → dead` commit fires in the animation loop, and depending on whether it lands before or after the next `executeTurn` boundary, the commit-blocked vs. corpse-passable state of the tile differs. Enemy AI movement sees a different blocker configuration and picks different tiles.
+
+Fix: stamp `diedOnTurn = gameState.currentTurn` at every site that sets `entity.dead = true` (once, using `if (diedOnTurn === undefined)` so it survives the pending→dead→pending flip path). Added `isFreshlyDead(entity, currentTurn)` helper — returns true when `dead && currentTurn <= diedOnTurn`. `diedOnTurn` semantics = "turn the visual death plays":
+- Immediate deaths stamp `currentTurn` (visual plays same turn).
+- Deferred (projectile-pending) deaths override to `currentTurn + 1` at the pending-set sites (visual plays next turn when the bolt arrives).
+
+Uniform rule: tile blocks through `diedOnTurn`, walkable the turn after. Matches user's mental model ("tile state during death turn persists, changes at start of next turn"). Movement blocker in `actions.ts` checks `isFreshlyDead` in the `deadEnemy` branch (returns `updatedChar` before corpse wall/halt/walkable rules) and in a symmetric freshly-dead character guard.
+
+**Projectile despawn shrink animation (wall, OOR, target-lost).**
+Projectiles that fizzle without landing on a target now shrink-to-nothing instead of vanishing instantly. Three paths feed into the same scale math:
+- **Wall hit mid-flight**: engine signals `hitResult.deactivate` with no vfx/death/item → `drawProjectile` front-loads shrink during the final `DESPAWN_SHRINK_MS` (250ms) of travel using `consumeAtMs = anchor + hitTileIndex * tileTransitMs`.
+- **Homing OUT OF RANGE** (next-turn fizzle decided at turn boundary with no travel window that turn): predictive shrink fires on the *prior* turn's last 250ms when `remaining < 0.5` (or `< 1` for pathfinding), same threshold the engine uses.
+- **Non-homing range/bounds fizzle**: same predictive, fires unconditionally when approaching the tilePath endpoint (tilePath is the spawn-clamped flight, so reaching the endpoint always precedes a fizzle).
+- **Homing target-lost mid-flight** (another bolt kills the target): can't predict — targetDeath is an external event. These use `despawning=true` linger for a shorter `TARGET_LOST_LINGER_MS` (125ms) post-consume to show a visible shrink without excessive wall-clock extension. `maybeMarkLingerDespawn` helper internally detects "predictive already covered" cases and skips the linger to avoid a scale-1 pop.
+
+New fields on `Projectile`: `despawning`, `despawnStartTime`. New constants: `DESPAWN_SHRINK_MS`, `TARGET_LOST_LINGER_MS`. Helper: `maybeMarkLingerDespawn(proj, hitTileIndex, now)` called at every clean-deactivate `hitResult` site (4 sites in `simulation.ts`, 1 in `buildReplayProjectiles` for replay parity). Also fixed `drawDefaultProjectile` to accept + use `scale` (previously hardcoded 8/4 radii — shrink was invisible for bolts without custom sprites).
+
+**Replay predictive shrink — `pathTraveled` reconstruction.**
+Replay bolts had `pathTraveled` undefined, so the homing OOR predictive never fired. Fixed `buildReplayProjectiles` to reconstruct cumulative `pathTraveled` by summing Euclidean distances across `life.homingMoves` segments. Count = `turnIndex - life.spawnTurn + 1` (engine updates `pathTraveled` during turn K's `resolveProjectiles` before animation, so animation-time value includes turn K's move).
+
+**Log cleanup.** Flipped `HOMING_DEBUG = false`. Also gated the following previously-unconditional logs on `isHomingDebug()`: `[RDIFF REPLAY]`, `[REPLAY] Timeline`, `[REPLAY] Events`, `[REPLAY SPAWN]`, `[REPLAY HIT]`. Kept `[REPLAY] Using live capture` as an unguarded informational log.
+
+**Files touched this session:**
+- `src/types/game.ts` — `ProjectileEvent.deferredDeath*`, `PlacedEnemy.diedOnTurn` + `PlacedCharacter.diedOnTurn`, `Projectile.despawning` + `despawnStartTime`.
+- `src/engine/simulation.ts` — `findPathBFS` neighbor sort, `diedOnTurn` stamping at 2 `entity.dead = true` sites (`applyDamageToEntity`, `applyDamageToEntityNoDeflect`, plus `applyEntityDeath`) and 3 pending-set sites (override to +1), `DESPAWN_SHRINK_MS`, `TARGET_LOST_LINGER_MS`, `maybeMarkLingerDespawn` helper + calls at 4 clean-deactivate sites, top-of-loop despawning handling in `updateProjectiles`, `HOMING_DEBUG = false`.
+- `src/engine/actions.ts` — `isFreshlyDead` helper, fresh-dead guards in the shared movement blocker (enemy + character paths).
+- `src/components/game/Game.tsx` — replay `deferredDeath*` forwarding in `buildReplayProjectiles`, past-death commit application in `copySnapshotForPlayback`, `pathTraveled` reconstruction, `maybeMarkLingerDespawn` call on replay clean-deactivate, `isHomingDebug()` gating on replay logs.
+- `src/components/game/AnimatedGameBoard.tsx` — shrink block in `drawProjectile` (3 branches: despawning linger → approach-shrink from hitResult → predictive), `drawDefaultProjectile(scale)` parameter.
 
 ### Recently completed (April 23, 2026 — replay event-capture rewrite: replay now lives off real-play events)
 

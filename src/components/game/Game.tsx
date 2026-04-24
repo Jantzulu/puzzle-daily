@@ -5,7 +5,7 @@ import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebugSilenced, findPathBFS, getTilesAlongLine } from '../../engine/simulation';
+import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebugSilenced, findPathBFS, getTilesAlongLine, isHomingDebug, maybeMarkLingerDespawn } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
@@ -1032,16 +1032,18 @@ export const Game: React.FC = () => {
     }
     projectileLifetimesRef.current = lifetimes;
 
-    console.log(`[REPLAY] Timeline: ${timeline.length} events, ${lifetimes.size} projectile lifetimes`);
-    if (timeline.length > 0) {
-      console.log(`[REPLAY] Events:`, timeline.map(e => `T${e.turn}:${e.type}(${e.projId?.slice(-6)})`).join(', '));
-      // Detail on spawns
-      timeline.filter(e => e.type === 'spawn').forEach(e => {
-        console.log(`[REPLAY SPAWN] ${e.projId?.slice(-6)} tilePath=${e.tilePath?.length || 0} tiles, pos=(${e.x},${e.y}), homing=${e.isHoming}`);
-      });
-      timeline.filter(e => e.type === 'hit').forEach(e => {
-        console.log(`[REPLAY HIT] ${e.projId?.slice(-6)} hitTileIdx=${e.hitTileIndex} target=${e.targetEntityId?.slice(-6)} pos=(${e.x},${e.y})`);
-      });
+    if (isHomingDebug()) {
+      console.log(`[REPLAY] Timeline: ${timeline.length} events, ${lifetimes.size} projectile lifetimes`);
+      if (timeline.length > 0) {
+        console.log(`[REPLAY] Events:`, timeline.map(e => `T${e.turn}:${e.type}(${e.projId?.slice(-6)})`).join(', '));
+        // Detail on spawns
+        timeline.filter(e => e.type === 'spawn').forEach(e => {
+          console.log(`[REPLAY SPAWN] ${e.projId?.slice(-6)} tilePath=${e.tilePath?.length || 0} tiles, pos=(${e.x},${e.y}), homing=${e.isHoming}`);
+        });
+        timeline.filter(e => e.type === 'hit').forEach(e => {
+          console.log(`[REPLAY HIT] ${e.projId?.slice(-6)} hitTileIdx=${e.hitTileIndex} target=${e.targetEntityId?.slice(-6)} pos=(${e.x},${e.y})`);
+        });
+      }
     }
 
     // Compute notable events per turn for timeline markers
@@ -1204,7 +1206,16 @@ export const Game: React.FC = () => {
         } else {
           // 'grid' and 'straight' both use tile-along-line for replay; the
           // difference in live gameplay is in visual interpolation, not path.
-          tilePath = getTilesAlongLine(prevPos.x, prevPos.y, thisPos.x, thisPos.y);
+          // Round inputs to match resolveProjectiles, which rebuilds tilePath
+          // each turn from Math.round(logical) (simulation.ts:3451, 3560).
+          // Passing fractional coords would use getTilesAlongLine's
+          // floor(start)/round(end) asymmetry → extra leading tile vs. real
+          // play (e.g. real (5,6)→(5,7) becomes replay (4,5)→(5,6)→(5,7))
+          // which also skews tileTransit pacing via 0.8/(len-1).
+          tilePath = getTilesAlongLine(
+            Math.round(prevPos.x), Math.round(prevPos.y),
+            Math.round(thisPos.x), Math.round(thisPos.y)
+          );
         }
         if (!tilePath || tilePath.length === 0) {
           tilePath = [{ x: Math.round(prevPos.x), y: Math.round(prevPos.y) }];
@@ -1218,14 +1229,17 @@ export const Game: React.FC = () => {
         // simulation.ts so real vs replay can be diffed directly. If a bolt's
         // reconstructed segment diverges from what the engine emitted, the
         // pos/tilePath/style values here won't match the REAL event stream.
-        const pathStr = tilePath.map(t => `(${t.x},${t.y})`).join('→');
-        console.log(
-          `[RDIFF REPLAY] turn=${turnIndex} proj=${spawn.projId.slice(-6)} ` +
-          `style=${spawn.homingPathStyle} speed=${speed} ` +
-          `prev=(${prevPos.x.toFixed(2)},${prevPos.y.toFixed(2)}) ` +
-          `this=(${thisPos.x.toFixed(2)},${thisPos.y.toFixed(2)}) ` +
-          `tilePath=${pathStr} logical=(${posAtTurn.x},${posAtTurn.y})`
-        );
+        // Gated on the same HOMING_DEBUG flag as the RDIFF REAL emitter.
+        if (isHomingDebug()) {
+          const pathStr = tilePath.map(t => `(${t.x},${t.y})`).join('→');
+          console.log(
+            `[RDIFF REPLAY] turn=${turnIndex} proj=${spawn.projId.slice(-6)} ` +
+            `style=${spawn.homingPathStyle} speed=${speed} ` +
+            `prev=(${prevPos.x.toFixed(2)},${prevPos.y.toFixed(2)}) ` +
+            `this=(${thisPos.x.toFixed(2)},${thisPos.y.toFixed(2)}) ` +
+            `tilePath=${pathStr} logical=(${posAtTurn.x},${posAtTurn.y})`
+          );
+        }
       } else {
         // Non-homing: existing stitched-path behavior (full flight in spawn's tilePath).
         tilePath = spawn.tilePath ? [...spawn.tilePath] : undefined;
@@ -1290,6 +1304,33 @@ export const Game: React.FC = () => {
       const logicalX = isStraightHoming ? thisPos.x : posAtTurn.x;
       const logicalY = isStraightHoming ? thisPos.y : posAtTurn.y;
 
+      // Reconstruct cumulative `pathTraveled` up to this turn by summing
+      // segment Euclidean distances from the homing_move events. Needed
+      // so the drawProjectile predictive shrink (`range - pathTraveled <
+      // threshold` for OUT OF RANGE) can fire in replay — without it,
+      // pathTraveled stays undefined on the replay projectile and the
+      // predictive branch is skipped.
+      //
+      // Count = moves EMITTED through end of turn K's resolveProjectiles
+      // (inclusive of turn K's own MOVE TOWARD, since real-play engine
+      // runs that before animation begins). For spawnTurn = S, turnIndex
+      // = K: that's (K - S + 1) moves. Clamp to homingMoves.length for
+      // the fizzle turn (which has no MOVE TOWARD event of its own).
+      let pathTraveled: number | undefined;
+      if (isHomingBolt) {
+        pathTraveled = 0;
+        let prevSeg = { x: spawn.x, y: spawn.y };
+        const movesSoFar = turnIndex - life.spawnTurn + 1;
+        const segCount = Math.min(movesSoFar, life.homingMoves.length);
+        for (let i = 0; i < segCount; i++) {
+          const move = life.homingMoves[i];
+          const dx = move.x - prevSeg.x;
+          const dy = move.y - prevSeg.y;
+          pathTraveled += Math.sqrt(dx * dx + dy * dy);
+          prevSeg = { x: move.x, y: move.y };
+        }
+      }
+
       const proj: Projectile = {
         id: spawn.projId,
         active: true,
@@ -1320,6 +1361,7 @@ export const Game: React.FC = () => {
         spellAssetId: spawn.spellAssetId,
         bounceOffWalls: false,
         teamSwapped: false,
+        pathTraveled,
         // Straight-line homing: route through Euclidean visual interp.
         // Anchor at prevPos (fractional, turn-start) — target is the
         // engine-recorded target (set above). updateStraightLineHomingVisual
@@ -1353,12 +1395,21 @@ export const Game: React.FC = () => {
         }
         const resolvedHitIdx = hitIdx ?? (proj.tilePath ? proj.tilePath.length - 1 : 0);
         if (life.end.type === 'hit') {
+          // Forward deferredDeath* and damage from the event so replay's
+          // visual consume path decrements pendingVisualDamage and commits
+          // pendingDeath → dead, matching real play. Without these, the
+          // final turn's kill leaves the enemy pendingDeath forever in
+          // replay with a full healthbar.
           proj.hitResult = {
             hitTileIndex: resolvedHitIdx,
             deactivate: true,
             vfxSprite: life.end.hitVfxSprite,
             vfxX: life.end.x,
             vfxY: life.end.y,
+            deferredDeathEntityId: life.end.deferredDeathEntityId,
+            deferredDeathIsEnemy: life.end.deferredDeathIsEnemy,
+            deferredDeathIndex: life.end.deferredDeathIndex,
+            damage: life.end.damage,
           };
         } else {
           // wall_hit or deactivate (no VFX / no deferred death — just
@@ -1368,6 +1419,12 @@ export const Game: React.FC = () => {
             hitTileIndex: resolvedHitIdx,
             deactivate: true,
           };
+          // Mirror the real-play path: if the approach-shrink would have
+          // had no travel window (target-lost mid-flight), switch on the
+          // lingering despawn so replay shows the 125ms shrink. For cases
+          // predictive already covered (OOR, non-homing endpoint), the
+          // helper internally skips the linger to avoid a scale-1 pop.
+          maybeMarkLingerDespawn(proj, resolvedHitIdx, Date.now());
         }
       }
 
@@ -1405,6 +1462,54 @@ export const Game: React.FC = () => {
     // Replace snapshot projectiles with replay-generated ones (correct positions and timing)
     const replayProjectiles = buildReplayProjectiles(index);
     copy.activeProjectiles = replayProjectiles; // Replace entirely — snapshot projectiles are stale
+
+    // Apply past deferred-death commits to the snapshot. Snapshots are
+    // captured at end-of-executeTurn in real play, BEFORE the animation loop
+    // fires deferred-death visual commits for that turn's hits. So a
+    // snapshot for turn N has entities that were killed on turn M < N still
+    // as pendingDeath (because the real-play commit happened during turn M's
+    // animation window, after the snapshot for turn M+1 was already locked).
+    //
+    // Without this, advancing replay to turn N "revives" entities: replay
+    // committed them to dead during turn M's visual playback, then turn N's
+    // snapshot loads them as pendingDeath → alive sprite — then the bolt's
+    // visual commit re-fires in the new frame → dead sprite again. That's
+    // the dead → alive → dead stutter the user saw.
+    //
+    // Rule: for any `hit` event with deferredDeath* on a turn STRICTLY
+    // BEFORE this snapshot's turn, the commit has visually fired by now.
+    // Force the target dead in the copy. Turn-of-hit events are left alone
+    // so the current turn's visual commit still runs and fires the death
+    // animation at the right moment.
+    const lifetimes = projectileLifetimesRef.current;
+    for (const [, life] of lifetimes) {
+      const end = life.end;
+      if (!end || end.type !== 'hit') continue;
+      if (end.turn >= index) continue; // Current turn or future — handle via live visual commit
+      if (!end.deferredDeathEntityId) continue;
+      if (end.deferredDeathIsEnemy) {
+        const idx = end.deferredDeathIndex;
+        if (idx === undefined) continue;
+        const e = copy.puzzle?.enemies?.[idx];
+        if (e && e.enemyId === end.deferredDeathEntityId && !e.dead) {
+          e.dead = true;
+          e.pendingProjectileDeath = false;
+          e.pendingVisualDamage = 0;
+          e.currentHealth = 0;
+        }
+      } else {
+        const c = copy.placedCharacters?.find(
+          (pc: any) => pc.characterId === end.deferredDeathEntityId
+        );
+        if (c && !c.dead) {
+          c.dead = true;
+          c.pendingProjectileDeath = false;
+          c.pendingVisualDamage = 0;
+          c.currentHealth = 0;
+        }
+      }
+    }
+
     return copy;
   };
 

@@ -325,6 +325,7 @@ export interface PlacedEnemy {
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
   pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
+  diedOnTurn?: number; // Turn when this entity died logically (damage took HP to 0). Stamped once at first death, survives pending→dead→pending flips. Movement blockers treat `dead && currentTurn <= diedOnTurn + 1` as still-occupying so the tile stays blocked through the next turn's action phase — prevents the determinism race where the deferred pending→dead visual commit can flip tile passability between runs depending on animation frame timing.
 }
 
 export interface PlacedObject {
@@ -587,6 +588,7 @@ export interface PlacedCharacter {
   spellDirectionOverrides?: Record<string, Direction>; // User-chosen directions for redirect spells (set during setup)
   pendingProjectileDeath?: boolean; // Deferred death: entity is logically dead but waiting for projectile visual to arrive
   pendingVisualDamage?: number; // Sum of damage from hits that have landed logically but haven't reached visually yet. Bar displays currentHealth + pendingVisualDamage, so each visual arrival drops the bar by exactly that hit's damage.
+  diedOnTurn?: number; // See PlacedEnemy.diedOnTurn — deterministic death-turn stamp used by movement blockers to keep tile occupied through the next turn.
 }
 
 export type GameStatus = 'setup' | 'running' | 'victory' | 'defeat';
@@ -900,6 +902,20 @@ export interface Projectile {
   // -------- State --------
   active: boolean;              // LOGICAL
   /**
+   * VISUAL — set when a clean-deactivate `hitResult` fires on a frame where
+   * the approach-shrink had no travel window to run (e.g. a homing bolt
+   * whose target just died mid-flight). The draw loop renders a
+   * shorter-than-standard lingering shrink from this moment, and the
+   * update loop keeps the bolt active until `TARGET_LOST_LINGER_MS`
+   * elapses, then removes. For cases where approach-shrink did run
+   * (wall hit mid-flight, range exhausted on prior turn), `despawning`
+   * stays false and the bolt removes immediately at consume — no
+   * extra lingering.
+   */
+  despawning?: boolean;
+  /** VISUAL — wall-clock time when lingering shrink started. */
+  despawnStartTime?: number;
+  /**
    * BRIDGE — wall-clock spawn time. Written by logic at spawn and rewritten
    * by `reflectProjectile` on reflect. Read by the visual loop as the anchor
    * for interpolation. Only mutated at turn boundaries (never per-frame), so
@@ -1052,6 +1068,14 @@ export interface ProjectileEvent {
   damage?: number;
   hitTileIndex?: number;
   hitVfxSprite?: SpriteReference;
+  // Deferred-death fields — mirror ProjectileHitResult so replay can
+  // reconstruct the full hitResult on the replay projectile. Without these,
+  // buildReplayProjectiles builds a hitResult that deactivates the bolt but
+  // never decrements pendingVisualDamage / commits pendingDeath → dead, so
+  // the final turn's kill shows as a still-alive enemy with an elevated bar.
+  deferredDeathEntityId?: string;
+  deferredDeathIsEnemy?: boolean;
+  deferredDeathIndex?: number;
 
   // Homing trajectory target (where the engine was aiming this turn).
   // Populated on `homing_move` / `hit` / `deactivate` (for range-exhausted

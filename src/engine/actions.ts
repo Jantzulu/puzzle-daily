@@ -314,6 +314,29 @@ export function isTileActive(tile: Tile, gameState: GameState): boolean {
 }
 
 /**
+ * True during the turn on which the entity's visual death plays.
+ * `diedOnTurn` is stamped to represent that turn directly:
+ *   - Immediate deaths stamp `currentTurn` (visual plays same turn).
+ *   - Deferred (projectile-pending) deaths stamp `currentTurn + 1` (visual
+ *     plays next turn when the bolt arrives).
+ * So the uniform rule is: block while `currentTurn === diedOnTurn`, and
+ * let the tile free up the turn after. Movement blockers use this to
+ * defeat the race where the deferred pending→dead visual commit can land
+ * on different sides of executeTurn between runs — both paths converge
+ * on "tile blocked during the visual-death turn" regardless of which
+ * side of the race won, because either pending (not yet committed) or
+ * fresh-dead (committed) blocks.
+ */
+export function isFreshlyDead(
+  entity: PlacedCharacter | PlacedEnemy,
+  currentTurn: number
+): boolean {
+  return !!entity.dead &&
+         entity.diedOnTurn !== undefined &&
+         currentTurn <= entity.diedOnTurn;
+}
+
+/**
  * Check if a tile blocks movement, considering:
  * - Static TileType.WALL
  * - Custom tile baseType === 'wall' (with cadence awareness)
@@ -901,6 +924,15 @@ function moveCharacter(
       (e) => e.x === newX && e.y === newY && e.dead
     );
     if (deadEnemy) {
+      // Freshly-dead enemies (died this turn or last turn) keep blocking the
+      // tile regardless of corpse wall/halt traits. Keeps tile occupancy
+      // deterministic across the deferred pending→dead visual commit race:
+      // both "commit before executeTurn" and "commit after" now see a
+      // blocked tile during the next turn's action phase.
+      if (isFreshlyDead(deadEnemy, gameState.currentTurn)) {
+        return updatedChar;
+      }
+
       const enemyData = getEnemy(deadEnemy.enemyId);
 
       // Check if dead enemy behaves like a wall (triggers wall collision behaviors)
@@ -933,6 +965,16 @@ function moveCharacter(
         return updatedChar;
       }
       // Dead enemies without wall/halt traits can be walked over
+    }
+
+    // Symmetric freshly-dead check for characters (characters can also be
+    // racing pending→dead visual commits if hit by enemy projectiles).
+    const freshlyDeadChar = gameState.placedCharacters.find(
+      (c) => c.x === newX && c.y === newY && c !== updatedChar &&
+             isFreshlyDead(c, gameState.currentTurn)
+    );
+    if (freshlyDeadChar) {
+      return updatedChar;
     }
 
     // Check for living enemy at target position
@@ -2699,6 +2741,16 @@ export function applyDamageToEntity(
     };
     executeDeathTriggers(entityForTriggers, gameState);
     target.dead = true;
+    // Stamp logical death turn once. Survives the pending→dead→pending
+    // flip in applyEntityHit (visual mode sets dead=false right after),
+    // so movement blockers can use it to keep the tile occupied through
+    // the next turn's action phase — defeating the race where the
+    // deferred pending→dead visual commit lands on different sides of
+    // executeTurn between runs (making the tile flip between
+    // "blocking" and "walkable corpse" non-deterministically).
+    if (target.diedOnTurn === undefined) {
+      target.diedOnTurn = gameState.currentTurn;
+    }
   }
 }
 
@@ -2763,6 +2815,16 @@ export function applyDamageToEntityNoDeflect(
     };
     executeDeathTriggers(entityForTriggers, gameState);
     target.dead = true;
+    // Stamp logical death turn once. Survives the pending→dead→pending
+    // flip in applyEntityHit (visual mode sets dead=false right after),
+    // so movement blockers can use it to keep the tile occupied through
+    // the next turn's action phase — defeating the race where the
+    // deferred pending→dead visual commit lands on different sides of
+    // executeTurn between runs (making the tile flip between
+    // "blocking" and "walkable corpse" non-deterministically).
+    if (target.diedOnTurn === undefined) {
+      target.diedOnTurn = gameState.currentTurn;
+    }
   }
 }
 
