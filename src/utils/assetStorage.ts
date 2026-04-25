@@ -61,6 +61,17 @@ const OBJECT_STORAGE_KEY = 'custom_objects';
 const HIDDEN_ASSETS_KEY = 'hidden_official_assets';
 const PENDING_ASSET_DELETIONS_KEY = 'pending_asset_deletions';
 
+// In-memory caches for hot-path stores. Reading + JSON.parsing localStorage
+// per draw call (per entity, per object, per status effect, per frame at 60fps)
+// is one of the largest mobile-Safari stalls in the renderer. Each cache is
+// invalidated whenever its store is written. Reads return a shallow clone so
+// callers keep the prior "fresh array per call" semantics — mutations to the
+// returned array don't pollute the cache.
+let charactersCache: CustomCharacter[] | null = null;
+let enemiesCache: CustomEnemy[] | null = null;
+let objectsCache: CustomObject[] | null = null;
+let statusEffectsCache: StatusEffectAsset[] | null = null;
+
 // ============ PENDING DELETIONS TRACKING ============
 // Tracks assets deleted locally so they can be synced to cloud on next push
 
@@ -461,18 +472,26 @@ export const saveCharacter = (character: CustomCharacter): boolean => {
   }
 
   const success = safeLocalStorageSet(CHARACTER_STORAGE_KEY, JSON.stringify(characters));
-  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'character', asset_id: character.id, asset_name: character.name });
+  if (success) {
+    charactersCache = null;
+    logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'character', asset_id: character.id, asset_name: character.name });
+  }
   return success;
 };
 
 export const getCustomCharacters = (): CustomCharacter[] => {
+  if (charactersCache !== null) return charactersCache.slice();
   const stored = localStorage.getItem(CHARACTER_STORAGE_KEY);
-  if (!stored) return [];
-
+  if (!stored) {
+    charactersCache = [];
+    return [];
+  }
   try {
-    return JSON.parse(stored);
+    charactersCache = JSON.parse(stored);
+    return charactersCache!.slice();
   } catch (e) {
     console.error('Failed to parse custom characters:', e);
+    charactersCache = [];
     return [];
   }
 };
@@ -483,6 +502,7 @@ export const deleteCharacter = (characterId: string): void => {
   const char = characters.find(c => c.id === characterId);
   const filtered = characters.filter(c => c.id !== characterId);
   localStorage.setItem(CHARACTER_STORAGE_KEY, JSON.stringify(filtered));
+  charactersCache = null;
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(characterId, 'character');
@@ -512,18 +532,26 @@ export const saveEnemy = (enemy: CustomEnemy): boolean => {
   }
 
   const success = safeLocalStorageSet(ENEMY_STORAGE_KEY, JSON.stringify(enemies));
-  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'enemy', asset_id: enemy.id, asset_name: enemy.name });
+  if (success) {
+    enemiesCache = null;
+    logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'enemy', asset_id: enemy.id, asset_name: enemy.name });
+  }
   return success;
 };
 
 export const getCustomEnemies = (): CustomEnemy[] => {
+  if (enemiesCache !== null) return enemiesCache.slice();
   const stored = localStorage.getItem(ENEMY_STORAGE_KEY);
-  if (!stored) return [];
-
+  if (!stored) {
+    enemiesCache = [];
+    return [];
+  }
   try {
-    return JSON.parse(stored);
+    enemiesCache = JSON.parse(stored);
+    return enemiesCache!.slice();
   } catch (e) {
     console.error('Failed to parse custom enemies:', e);
+    enemiesCache = [];
     return [];
   }
 };
@@ -534,6 +562,7 @@ export const deleteEnemy = (enemyId: string): void => {
   const enemy = enemies.find(e => e.id === enemyId);
   const filtered = enemies.filter(e => e.id !== enemyId);
   localStorage.setItem(ENEMY_STORAGE_KEY, JSON.stringify(filtered));
+  enemiesCache = null;
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(enemyId, 'enemy');
@@ -821,7 +850,10 @@ export const saveStatusEffectAsset = (effect: StatusEffectAsset): boolean => {
   }
 
   const success = safeLocalStorageSet(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(effects));
-  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'status_effect', asset_id: effect.id, asset_name: effect.name });
+  if (success) {
+    statusEffectsCache = null;
+    logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'status_effect', asset_id: effect.id, asset_name: effect.name });
+  }
   return success;
 };
 
@@ -829,12 +861,18 @@ export const saveStatusEffectAsset = (effect: StatusEffectAsset): boolean => {
  * Get only custom (user-created) status effects
  */
 const getCustomStatusEffects = (): StatusEffectAsset[] => {
+  if (statusEffectsCache !== null) return statusEffectsCache.slice();
   try {
     const stored = localStorage.getItem(STATUS_EFFECT_STORAGE_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored);
+    if (!stored) {
+      statusEffectsCache = [];
+      return [];
+    }
+    statusEffectsCache = JSON.parse(stored);
+    return statusEffectsCache!.slice();
   } catch (e) {
     console.error('Failed to load custom status effects:', e);
+    statusEffectsCache = [];
     return [];
   }
 };
@@ -849,6 +887,7 @@ export const deleteStatusEffectAsset = (effectId: string): void => {
   const effect = effects.find(e => e.id === effectId);
   const filtered = effects.filter(e => e.id !== effectId);
   localStorage.setItem(STATUS_EFFECT_STORAGE_KEY, JSON.stringify(filtered));
+  statusEffectsCache = null;
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(effectId, 'status_effect');
@@ -998,18 +1037,26 @@ export const saveObject = (object: CustomObject): boolean => {
   }
 
   const success = safeLocalStorageSet(OBJECT_STORAGE_KEY, JSON.stringify(objects));
-  if (success) logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'object', asset_id: object.id, asset_name: object.name });
+  if (success) {
+    objectsCache = null;
+    logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'object', asset_id: object.id, asset_name: object.name });
+  }
   return success;
 };
 
 export const getCustomObjects = (): CustomObject[] => {
+  if (objectsCache !== null) return objectsCache.slice();
   const stored = localStorage.getItem(OBJECT_STORAGE_KEY);
-  if (!stored) return [];
-
+  if (!stored) {
+    objectsCache = [];
+    return [];
+  }
   try {
-    return JSON.parse(stored);
+    objectsCache = JSON.parse(stored);
+    return objectsCache!.slice();
   } catch (e) {
     console.error('Failed to parse custom objects:', e);
+    objectsCache = [];
     return [];
   }
 };
@@ -1019,6 +1066,7 @@ export const deleteObject = (objectId: string): void => {
   const obj = objects.find(o => o.id === objectId);
   const filtered = objects.filter(o => o.id !== objectId);
   localStorage.setItem(OBJECT_STORAGE_KEY, JSON.stringify(filtered));
+  objectsCache = null;
 
   // Track deletion for cloud sync
   addPendingAssetDeletion(objectId, 'object');
