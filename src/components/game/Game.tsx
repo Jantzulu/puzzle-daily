@@ -1522,6 +1522,14 @@ export const Game: React.FC = () => {
     // Applies to BOTH the bolt's final landing (life.end) and any pierce
     // pass-through hits (life.pierceHits) — pierce-through can kill the
     // enemy too, and that death's commit needs the same past-turn fix-up.
+    //
+    // CRITICAL: only force dead if the snapshot has `pendingProjectileDeath`
+    // set. `deferredDeathEntityId` on the event is misleadingly named — it's
+    // set on every damaging hit, not just kills. A 1-damage hit on a 50-HP
+    // enemy would trigger this path with deferredDeathEntityId populated,
+    // but pendingProjectileDeath would be false (entity didn't die). The
+    // pendingProjectileDeath check filters genuine deferred kills from
+    // pass-through damage.
     const applyPastDeathCommit = (event: ProjectileEvent) => {
       if (event.type !== 'hit') return;
       if (event.turn >= index) return;
@@ -1530,7 +1538,7 @@ export const Game: React.FC = () => {
         const idx = event.deferredDeathIndex;
         if (idx === undefined) return;
         const e = copy.puzzle?.enemies?.[idx];
-        if (e && e.enemyId === event.deferredDeathEntityId && !e.dead) {
+        if (e && e.enemyId === event.deferredDeathEntityId && !e.dead && e.pendingProjectileDeath) {
           e.dead = true;
           e.pendingProjectileDeath = false;
           e.pendingVisualDamage = 0;
@@ -1540,7 +1548,7 @@ export const Game: React.FC = () => {
         const c = copy.placedCharacters?.find(
           (pc: any) => pc.characterId === event.deferredDeathEntityId
         );
-        if (c && !c.dead) {
+        if (c && !c.dead && c.pendingProjectileDeath) {
           c.dead = true;
           c.pendingProjectileDeath = false;
           c.pendingVisualDamage = 0;
