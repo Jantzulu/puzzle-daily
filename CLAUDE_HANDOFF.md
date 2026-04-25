@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 23, 2026 (grid/pathfinding homing replay parity, BFS tie-break fix, movement-blocker determinism, projectile despawn shrink animation)
+Last Updated: April 24, 2026 (pierce healthbar fix end-to-end + replay parity, per-segment sprite rotation for bouncing/reflected/pathfinding bolts)
 
 ## Project Overview
 
@@ -178,47 +178,47 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Next session — start here
 
-**2026-04-23 session (second) closed out the projectile visual polish + cleanup pass.** Grid and pathfinding homing replay are confirmed clean. BFS now greedily biases neighbors toward the target (no more SW detours when aiming NW). Movement-blocker determinism race from the deferred `pendingDeath → dead` commit is fixed via a `diedOnTurn` stamp. Projectiles that fizzle (wall, out-of-range, target-lost) now shrink-to-nothing instead of vanishing instantly, in both live and replay.
+**2026-04-24 session closed out the pinned pierce + healthbar bug end-to-end** — live, replay, per-hit timing, partial-damage-no-kill cases, cross-turn replay decrement loss — plus per-segment sprite rotation polish for bouncing / reflected / pathfinding bolts. See "Recently completed" below.
 
-**`HOMING_DEBUG` is now `false`** by default. Flip at [simulation.ts:20](src/engine/simulation.ts#L20) if you need traces. `[RDIFF REPLAY]`, `[REPLAY] Timeline/Events/SPAWN/HIT` are now also gated on this flag.
+**`HOMING_DEBUG` and `PIERCE_DEBUG` are both `false`** by default. Flip at [simulation.ts:20](src/engine/simulation.ts#L20) (HOMING_DEBUG) or [simulation.ts:34](src/engine/simulation.ts#L34) (PIERCE_DEBUG) if you need traces.
 
 **Start here — highest priority:**
 
-1. **PINNED — Pierce + healthbar bug.** (Unchanged, still unfixed.) When a piercing non-homing bolt goes through multiple enemies, `applyEntityHit` runs on each and increments `pendingVisualDamage`, but `proj.hitResult` is set only for the pierce-**stop** target. So only the final target's `pendingVisualDamage` gets decremented on visual arrival. All pierced-through targets' bars stay elevated forever. Fix direction: `ProjectileHitResult` needs a **list** of visual decrements (`visualDecrements?: Array<{targetEntityId, targetIsEnemy, targetIndex?, damage}>`), iterated at consume. For `deferredDeath*` keep the existing single-target fields — pierce doesn't change which entity the projectile visually lands at. Location: pierce handling in `walkNonHomingTick` (simulation.ts) and pierce-stop hitResult construction in non-homing branch of `resolveProjectiles`.
-
-2. **Remaining playtest coverage** (still paused):
+1. **Remaining playtest coverage** (still paused):
    - **Reflect + homing** (quick smoke test)
-   - **Projectile edge cases** — pierce on duplicate-enemyId enemies, bolt-through-wall regression, defeat-while-in-flight regression
+   - **Projectile edge cases** — pierce on duplicate-enemyId enemies (touched today, looks good), bolt-through-wall regression, defeat-while-in-flight regression
    - **Regression sweep** — melee, MELEE_CONE, redirect spells, throw/place, status effects (reflect tint, stealth, steadfast)
 
-3. **Known pre-existing divergence sources** (ruled out or minor):
+2. **Known pre-existing divergence sources** (ruled out or minor):
    - **StrictMode dev-mode drift.** React.StrictMode double-invokes `setGameState` updaters in dev. Each run calls `Date.now()`, so timing fields diverge between runs by ~1ms. Only the second run's state is kept. Dev artifact only, disappears in production.
    - **Replay shows bolts reaching tile centers at some turn boundaries.** CORRECT — for turns where the engine's `logicalX/Y` happens to be tile-integer (e.g., spawn turn of straight-homing often moves exactly 1 tile). Not a bug.
 
-4. **Feature work.** [feature-roadmap.md](feature-roadmap.md) or any new feature idea. Replay System + movement determinism + projectile visuals are substantively done.
+3. **Feature work.** [feature-roadmap.md](feature-roadmap.md) or any new feature idea. Replay System + movement determinism + projectile visuals + pierce are substantively done.
 
-5. **Phase D-b (optional refactor): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Lower priority; consider only if a concrete bug motivates it.
+4. **Phase D-b (optional refactor): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Lower priority; consider only if a concrete bug motivates it.
 
 **Debug tags when `HOMING_DEBUG = true`:**
 - `[RDIFF REAL]` / `[RDIFF REPLAY]` — per-event logs for real vs replay diffing.
 - `[HOMING-SPAWN]`, `[HOMING-RESOLVE]`, `[HOMING-TARGET]`, `[PROJ-VISUAL-TILE]`, `[PROJ-HIT-CONSUME]`, `[VDMG-CAPTURE]`, `[VDMG-DECREMENT]`, `[DEATH-MUT]`, `[WIN-CHECK]`, `[PATHFIND-HOMING]`, `[APPLY-HIT]` — detailed traces.
 - `[REPLAY] Timeline/Events`, `[REPLAY SPAWN]`, `[REPLAY HIT]` — replay reconstruction diagnostics.
 
+**Debug tags when `PIERCE_DEBUG = true`:**
+- `[PIERCE-CAPTURE-LINEAR]` / `[PIERCE-CAPTURE-HOMING]` — staging in resolveProjectiles / checkHomingPathForHits.
+- `[PIERCE-DISPLACE]` — replay aggregator pushing a shadowed hit to pierceHits.
+- `[PIERCE-POPULATE]` — buildReplayProjectiles populating pendingVisualDecrements.
+- `[PIERCE-CONSUME]` — per-frame consume loop (FIRING / waiting).
+
 ### Open spawn tasks (deferred bugs / features)
 
 4. **Wall bounce: `random` behavior.** `reflect`, `turn_around`, `turn_left`, `turn_right` are deterministic and implemented. `random` needs a seeded PRNG to keep determinism — not yet wired up. `computeBounceDirection` returns null for it, which falls through to a regular wall hit. When adding random, seed from `proj.id` + `proj.bounceCount` or similar so replays stay identical.
 
-5. **Wall bounce: visual direction rotation.** `updateTileBasedVisual` rotates the projectile sprite from first-tile-to-last-tile of tilePath. For a Z-shaped bounced path this gives an averaged angle rather than the per-segment direction. Low-priority polish — pre-existing compromise for reflects too.
-
 ### One-off tasks (pre-existing)
 
-6. **Slow homing projectile visuals** — speed 1-2 homing spells do not visually track moving targets well. Needs a separate visual approach for slow homing that does not break fast projectile behavior. Best tackled AFTER projectile Phase C (gives a cleaner place for a new visual code path).
+5. **Replay projectile polish** — minor edge cases (melee VFX timing, etc.). Slow projectile replay is now in good shape after the multi-session projectile work.
 
-7. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
+6. **Homing + along-path + pierce: REACHED TARGET turn skips along-path hits.** `checkHomingPathForHits` only runs in the MOVE TOWARD branch, not REACHED TARGET. If the bolt reaches its main target on the same turn it would have pierced through other enemies along the path, those enemies don't get hit. Pre-existing structural gap in how the homing branches are split. Fix likely involves running `checkHomingPathForHits` (with a slice of `tilesToTarget`) in the REACHED TARGET branch too.
 
-8. **Homing + along-path + pierce: REACHED TARGET turn skips along-path hits.** `checkHomingPathForHits` only runs in the MOVE TOWARD branch, not REACHED TARGET. If the bolt reaches its main target on the same turn it would have pierced through other enemies along the path, those enemies don't get hit. Pre-existing structural gap in how the homing branches are split. Fix likely involves running `checkHomingPathForHits` (with a slice of `tilesToTarget`) in the REACHED TARGET branch too.
-
-9. **Homing + along-path + pierce: stale `hitTileIndex` if animation lags past turn boundary.** `pendingVisualDecrements` populated in `checkHomingPathForHits` carry `hitTileIndex` valid for the current turn's tilePath. Homing tilePath is replaced each turn, so any decrement not consumed during this turn's animation window would fire at the wrong tile (or be swept by the batch-consume safety net at landing). In normal play this should not happen — animations are sized to fit `TURN_INTERVAL_MS`. Mitigation if it ever surfaces: force-fire any leftover `pendingVisualDecrements` at the moment `proj.tilePath` is replaced in the homing MOVE TOWARD branch (~5 lines). Standard linear pierce confirmed clean visually 2026-04-24, so this is preventative only.
+7. **Homing + along-path + pierce: stale `hitTileIndex` if animation lags past turn boundary.** `pendingVisualDecrements` populated in `checkHomingPathForHits` carry `hitTileIndex` valid for the current turn's tilePath. Homing tilePath is replaced each turn, so any decrement not consumed during this turn's animation window would fire at the wrong tile (or be swept by the batch-consume safety net at landing). In normal play this should not happen — animations are sized to fit `TURN_INTERVAL_MS`. Mitigation if it ever surfaces: force-fire any leftover `pendingVisualDecrements` at the moment `proj.tilePath` is replaced in the homing MOVE TOWARD branch (~5 lines). Standard linear pierce confirmed clean visually 2026-04-24, so this is preventative only.
 
 ### Done (keep for context)
 
@@ -231,6 +231,9 @@ The Reflect status effect bounces incoming projectiles back:
 - ~~**Fix: bolt hits through wall**~~ — **Done 2026-04-20** (commit `9285021`). `lastDist` formula on wall hit corrected + `pendingDeactivation` skip prevents bolts from advancing past walls on subsequent turns.
 - ~~**Fix: game declares defeat while projectiles still in flight**~~ — **Done 2026-04-20** (commit `9285021`). `hasInFlightProjectile` check gates defeat conditions.
 - ~~**Fix: reflected homing projectile freezes / doesn't damage caster**~~ — **Done 2026-04-20** (commit `b7959f2`). Homing reflected bolts now route back to caster using homing path style; `isHostileHit` accounts for reflection.
+- ~~**PINNED — Pierce + healthbar bug**~~ — **Done 2026-04-24** (commits `364c6be`, `2619e8f`, `b8cd78d`, `d33ea3b`). Per-hit visual decrements via `ProjectileVisualDecrement` accumulated on the projectile; consumed per-frame as the bolt's visual crosses each pierced target's tile. Fixed at three sites: non-homing `walkNonHomingTick`, homing along-path `checkHomingPathForHits`, reflected pierce in `resolveReflectedPath`. Replay parity via `pierceHits` on the lifetime aggregator. Past-turn snapshot fix-up only commits dead when `pendingProjectileDeath` is set (avoids force-killing partial-damage targets in replay). Cross-turn replay decrement loss fixed by including all pierceHits (not per-turn filtered) in non-homing replay reconstruction.
+- ~~**Wall bounce: visual direction rotation**~~ — **Done 2026-04-24** (commit `145cce5`). `updateTileBasedVisual` now rotates the projectile sprite per-segment (`tilePath[visualTileIndex] → tilePath[visualTileIndex+1]`) instead of first-to-last averaged. Affects bouncing, reflected non-homing, and homing pathfinding/grid bolts. The two-segment straight-homing reflected branch keeps its own explicit per-segment direction (Euclidean-phase based), more accurate than time-based visualTileIndex.
+- ~~**Slow homing projectile visuals**~~ — **Resolved during projectile polish work (April 2026)**. Original symptom (slow bolts not tracking moving targets, disappearing visuals, etc.) was a downstream effect of multiple bugs: stale spawn-anchored interp (fixed by per-turn re-anchor to current visual), broken range gate measuring from re-anchored start (fixed by `pathTraveled` cumulative + measure from stable `startX/Y`), no shrink on fizzle (fixed by despawn shrink + linger). No separate visual code path was ultimately needed.
 
 ### Phase C progress (the big refactor — attempt 2 in progress)
 
@@ -266,6 +269,31 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 24, 2026 — pierce healthbar end-to-end + per-segment sprite rotation)
+
+User-driven session, every change verified live and pushed in sequence. Closed the long-pinned pierce + healthbar bug across both live and replay, then a sprite rotation polish pass on top.
+
+**Pierce + healthbar — live (commit `364c6be`).**
+Added `ProjectileVisualDecrement` type (entity + damage + `hitTileIndex`) and `pendingVisualDecrements?: []` field on Projectile. Each pierce pass-through stages an entry at three sites: non-homing `walkNonHomingTick` (in resolveProjectiles step processing), homing along-path `checkHomingPathForHits`, and reflected pierce in `resolveReflectedPath`. Extracted `commitDeferredVisualDamage` helper (decrement + death-commit) — used by both the existing `hitResult.deferredDeath*` path and the new pendingVisualDecrements iteration. Per-frame consume in `updateProjectiles` fires each entry when the bolt's visual sprite crosses its tile (matching how single-hit spells apply damage on visual contact). Stale corpus goldens for cases 17 + 20 regenerated to match the BFS fix (independent issue, surfaced during this work). 235 tests + 2 regenerated goldens = 237 passing.
+
+**Pierce + healthbar — replay parity (commit `2619e8f`).**
+`checkHomingPathForHits` now emits `hit` events for every along-path pierce (was silent). Lifetime aggregator gained `pierceHits: ProjectileEvent[]` — when a new end-event displaces a previous `hit`, the displaced one was a pass-through; push to pierceHits. `buildReplayProjectiles` populates pendingVisualDecrements from this turn's pierceHits, which feeds the same per-frame consume. `copySnapshotForPlayback` past-death-commit logic extracted to a helper, applied to both `life.end` and each entry in `life.pierceHits`.
+
+**Replay over-kill regression fix (commit `b8cd78d`).**
+`applyPastDeathCommit` was force-killing any past-turn target with a `deferredDeathEntityId` event — but that field is set on every damaging hit, not just kills. A 1-damage pierce on a 50-HP enemy would commit dead in subsequent-turn replay snapshots. Same latent bug existed for single-hit non-killing bolts. Fix: also require `pendingProjectileDeath` in the snapshot. Genuine deferred kills satisfy this; partial-damage hits don't.
+
+**Cross-turn replay decrement loss (commit `d33ea3b`).**
+Diagnosed via temporary `PIERCE_DEBUG` traces. Live projectile persists across turns — `pendingVisualDecrements` accumulates and decrements fire as `currentTileIdx` reaches each, even slightly after the next executeTurn. Replay projectile is REBUILT each turn — when filtered by `e.turn === turnIndex`, prior turns' unconsumed decrements were lost on rebuild. Bars appeared to "drop" only because the next snapshot already had live-decremented values (delayed-feel mismatch). Fix: for non-homing (stable spawn-time tilePath), include ALL pierceHits in every replay turn's pendingVisualDecrements. Per-frame consume safely no-ops on entities whose `pendingVisualDamage` is already 0 (`Math.max(0, 0 - dmg)`). For homing (per-turn tilePath), keep the per-turn filter — stale indices would mis-fire. PIERCE_DEBUG flipped back to false after diagnosis.
+
+**Per-segment sprite rotation (commit `145cce5`).**
+`updateTileBasedVisual` was rotating the projectile sprite from `tilePath[0]` to `tilePath[length-1]` — averaged angle for any path with direction changes. Bouncing (Z-shaped), reflected non-homing, and homing pathfinding/grid bolts all visibly tilted relative to their actual heading. Now per-segment: `tilePath[visualTileIndex] → tilePath[visualTileIndex+1]`, with fallback to last segment at the final tile. Skip the override for the two-segment straight-homing reflected branch — that branch already sets direction explicitly per Euclidean phase, more accurate than time-based visualTileIndex (which can drift on diagonal segments).
+
+**Files touched this session:**
+- `src/types/game.ts` — `ProjectileVisualDecrement` type + `pendingVisualDecrements?` field on Projectile.
+- `src/engine/simulation.ts` — `commitDeferredVisualDamage` helper, accumulation at 3 pierce sites, per-frame consume in `updateProjectiles`, `checkHomingPathForHits` event emission, per-segment sprite rotation (with two-segment-reflect skip), `PIERCE_DEBUG` flag + traces.
+- `src/components/game/Game.tsx` — lifetime struct gains `pierceHits`, aggregator captures displaced hits, `buildReplayProjectiles` populates pendingVisualDecrements (all-pierceHits for non-homing, per-turn for homing), `copySnapshotForPlayback` extracted helper + walks pierceHits, `pendingProjectileDeath` guard on past-death commit.
+- `src/engine/__tests__/corpus/cases/17-homing-pathfinding-moving-target.real.golden.json` + `20-reflect-vs-homing-pathfinding.real.golden.json` — regenerated to match the BFS fix from prior session.
 
 ### Recently completed (April 23, 2026 — second session: homing replay parity, BFS fix, movement determinism, projectile despawn shrink, log cleanup)
 
