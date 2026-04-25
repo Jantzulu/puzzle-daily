@@ -2598,7 +2598,7 @@ function drawEnemy(
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
-    drawHealthBar(ctx, px, py, enemy.currentHealth + (enemy.pendingVisualDamage ?? 0), maxHealth, enemy.enemyId, 'enemy', enemy.x, enemy.y, enemy.statusEffects, now, isBoss, enemySpriteTop, homingGlowColor);
+    drawHealthBar(ctx, px, py, enemy.currentHealth + (enemy.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'enemy', enemy.statusEffects, now, isBoss, enemySpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (enemyData) {
@@ -2702,10 +2702,14 @@ function getGhostStatusEffects(
   return ghosts;
 }
 
-// Helper to get unique key for entity health tracking
-// Uses entity type, ID, and logical position to create a unique key per placed entity instance
-function getHealthBarKey(entityId: string, entityType: 'enemy' | 'character', logicalX: number, logicalY: number): string {
-  return `${entityType}:${entityId}:${logicalX},${logicalY}`;
+// Helper to get unique key for entity health tracking.
+// Keyed by entity type + array index — stable across position changes (so a moving
+// entity's animation state carries with it) and unique across same-id duplicates
+// (since each instance has a distinct index in placedCharacters / puzzle.enemies).
+// Position-based keys would let the lerp pick up stale displayHealth from a prior
+// occupant whenever an entity stepped onto a previously-used tile.
+function getHealthBarKey(entityType: 'enemy' | 'character', instanceIndex: number): string {
+  return `${entityType}:${instanceIndex}`;
 }
 
 // Cache for boss icon image
@@ -2850,10 +2854,8 @@ function drawHealthBar(
   py: number,
   currentHealth: number,
   maxHealth: number,
-  entityId: string,
+  instanceIndex: number,
   entityType: 'enemy' | 'character',
-  logicalX: number,
-  logicalY: number,
   statusEffects?: StatusEffectInstance[],
   now: number = Date.now(),
   isBoss: boolean = false,
@@ -2903,8 +2905,9 @@ function drawHealthBar(
   ctx.fillStyle = '#141414';
   ctx.fillRect(startX, startY, barWidth, barHeight);
 
-  // Track health changes for flash effects - use entity ID and logical position for unique tracking
-  const key = getHealthBarKey(entityId, entityType, logicalX, logicalY);
+  // Track health changes for flash effects - keyed by stable instance index so the
+  // animation state moves with the entity instead of being looked up by tile.
+  const key = getHealthBarKey(entityType, instanceIndex);
   let state = healthBarState.get(key);
 
   if (!state) {
@@ -3446,7 +3449,7 @@ function drawCharacter(
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
-    drawHealthBar(ctx, px, py, character.currentHealth + (character.pendingVisualDamage ?? 0), maxHealth, character.characterId, 'character', character.x, character.y, character.statusEffects, now, false, charSpriteTop, homingGlowColor);
+    drawHealthBar(ctx, px, py, character.currentHealth + (character.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'character', character.statusEffects, now, false, charSpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (charData) {
