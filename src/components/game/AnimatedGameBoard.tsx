@@ -1280,7 +1280,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
@@ -1297,7 +1297,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
@@ -1339,7 +1339,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
               if (elapsed < MOVE_DURATION) {
                 // Phase 1: Animate walking TO the teleport tile
                 const moveProgress = Math.min(1, elapsed / MOVE_DURATION);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (teleportTileX - anim.fromX) * eased;
                 const renderY = anim.fromY + (teleportTileY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
@@ -1356,7 +1356,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
-                const eased = easeInOutQuad(moveProgress);
+                const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
