@@ -67,6 +67,11 @@ const DROP_PLACE_OFFSET = 0.4; // tiles above final position (subtle)
 const ITEM_SPAWN_DURATION = 400; // ms for collectible scale-up animation (thrown/placed items)
 const ITEM_DESPAWN_DURATION = 400; // ms for collectible scale-down animation (duration expiry)
 
+// Cap device pixel ratio to limit canvas backbuffer size on high-DPI mobile (e.g.
+// iPhone 15 Pro DPR=3 = 9x fragment cost vs DPR=1). DPR=2 is what most retina
+// desktops use anyway, and `image-rendering: pixelated` cleans up the upscale.
+const MAX_DPR = 2;
+
 const COLORS = {
   empty: '#2a2a2a',
   wall: '#4a4a4a',
@@ -1050,8 +1055,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Get device pixel ratio for high-DPI rendering
-      const dpr = window.devicePixelRatio || 1;
+      // Get device pixel ratio for high-DPI rendering (capped — see MAX_DPR)
+      const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
 
       // Calculate the puzzle scale factor (must match the scale calculation in render)
       const borderStyleForScale = gameState.puzzle.borderConfig?.style || 'none';
@@ -1547,7 +1552,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   }
 
   // Get device pixel ratio for crisp rendering on high-DPI displays (e.g., Retina, mobile)
-  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1;
+  // Capped at MAX_DPR to limit fragment cost on phones with DPR=3 (iPhone Pro etc.)
+  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, MAX_DPR) : 1;
 
   // Quantize scale so each tile = integer physical pixels (prevents sub-pixel warping on mobile)
   const rawEffectiveScale = scale * dpr;
