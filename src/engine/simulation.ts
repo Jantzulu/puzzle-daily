@@ -26,6 +26,13 @@ export function isHomingDebug(): boolean {
   return HOMING_DEBUG && !_homingDebugSilenced;
 }
 
+// Pierce-specific diagnostic flag. Lets us trace pierce-through hits
+// (capture → consume) without enabling HOMING_DEBUG's firehose. Look for
+// [PIERCE-CAPTURE-LINEAR], [PIERCE-CAPTURE-HOMING], [PIERCE-CONSUME],
+// [PIERCE-DISPLACE], [PIERCE-POPULATE] in the console.
+export const PIERCE_DEBUG = false;
+export function isPierceDebug(): boolean { return PIERCE_DEBUG; }
+
 /**
  * Duration of the shrink-to-nothing despawn animation for projectiles that
  * fizzle without landing on a target (out-of-range / wall hit). Exported
@@ -239,6 +246,13 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           damage,
           hitTileIndex: tileIdx,
         });
+        if (isPierceDebug()) {
+          console.log(
+            `[PIERCE-CAPTURE-HOMING ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+            `enemy=${hitEnemy.enemyId.slice(-6)}[idx=${hitEnemyIndex}]@(${tile.x},${tile.y}) ` +
+            `tileIdx=${tileIdx} tilesLen=${tiles.length} damage=${damage} now=${Date.now()}`
+          );
+        }
         // Replay event — emit a `hit` for every pierce target along the
         // path. The replay aggregator distinguishes pierce-through from
         // pierce-stop by which event ends up "shadowed" by a later end
@@ -293,6 +307,13 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           damage,
           hitTileIndex: tileIdx,
         });
+        if (isPierceDebug()) {
+          console.log(
+            `[PIERCE-CAPTURE-HOMING ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+            `char=${hitChar.characterId.slice(-6)}@(${tile.x},${tile.y}) ` +
+            `tileIdx=${tileIdx} tilesLen=${tiles.length} damage=${damage} now=${Date.now()}`
+          );
+        }
         // Replay event — see corresponding emission in the enemy branch.
         recordProjectileEvent(gameState, {
           type: 'hit',
@@ -2686,7 +2707,17 @@ export function updateProjectiles(
     if (proj.pendingVisualDecrements && proj.pendingVisualDecrements.length > 0) {
       const remaining: typeof proj.pendingVisualDecrements = [];
       for (const dec of proj.pendingVisualDecrements) {
-        if (currentTileIdx >= dec.hitTileIndex) {
+        const ready = currentTileIdx >= dec.hitTileIndex;
+        if (isPierceDebug()) {
+          console.log(
+            `[PIERCE-CONSUME ${proj.id.slice(-6)}] target=${dec.targetEntityId.slice(-6)} ` +
+            `currentTileIdx=${currentTileIdx} hitTileIndex=${dec.hitTileIndex} ` +
+            `tilePathLen=${proj.tilePath?.length ?? 'none'} tileEntryTime=${proj.tileEntryTime ?? 'unset'} ` +
+            `elapsed=${proj.tileEntryTime !== undefined ? (now - proj.tileEntryTime).toFixed(0) : 'n/a'}ms ` +
+            `${ready ? 'FIRING' : 'waiting'}`
+          );
+        }
+        if (ready) {
           commitDeferredVisualDamage(
             gameState, proj.id,
             dec.targetEntityId, dec.targetIsEnemy, dec.targetIndex, dec.damage,
@@ -4410,14 +4441,23 @@ function resolveProjectiles(gameState: GameState): void {
             // final landing). Clamp like the pierce-stop above — if the
             // walker moved past tilePath's end, index the last valid tile.
             const maxHitIdx = proj.tilePath ? proj.tilePath.length - 1 : step.dist;
+            const clampedHitTileIdx = Math.min(step.dist, maxHitIdx);
             if (!proj.pendingVisualDecrements) proj.pendingVisualDecrements = [];
             proj.pendingVisualDecrements.push({
               targetEntityId: step.hitResult.deferredDeathEntityId,
               targetIsEnemy: step.hitResult.deferredDeathIsEnemy ?? false,
               targetIndex: step.hitResult.deferredDeathIndex,
               damage: step.hitResult.damageApplied ?? 0,
-              hitTileIndex: Math.min(step.dist, maxHitIdx),
+              hitTileIndex: clampedHitTileIdx,
             });
+            if (isPierceDebug()) {
+              console.log(
+                `[PIERCE-CAPTURE-LINEAR ${proj.id.slice(-6)}] turn=${gameState.currentTurn} ` +
+                `target=${step.hitResult.deferredDeathEntityId.slice(-6)} step.dist=${step.dist} ` +
+                `clampedHitTileIdx=${clampedHitTileIdx} tilePathLen=${proj.tilePath?.length ?? 'none'} ` +
+                `damage=${step.hitResult.damageApplied ?? 0} tileEntryTime=${proj.tileEntryTime ?? 'unset'} now=${Date.now()}`
+              );
+            }
           }
         } else if (step.kind === 'healing_hit') {
           // Replay hit event for heals too — parity with hostile_hit.

@@ -5,7 +5,7 @@ import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebugSilenced, findPathBFS, getTilesAlongLine, isHomingDebug, maybeMarkLingerDespawn } from '../../engine/simulation';
+import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebugSilenced, findPathBFS, getTilesAlongLine, isHomingDebug, isPierceDebug, maybeMarkLingerDespawn } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
@@ -1034,6 +1034,14 @@ export const Game: React.FC = () => {
           // bolts can pass through enemies and end at a wall or range cap.)
           if (life.end && life.end.type === 'hit') {
             life.pierceHits.push(life.end);
+            if (isPierceDebug()) {
+              console.log(
+                `[PIERCE-DISPLACE ${event.projId.slice(-6)}] turn=${event.turn} ` +
+                `displaced=hit@(${life.end.x},${life.end.y}) hitTileIdx=${life.end.hitTileIndex} ` +
+                `target=${life.end.targetEntityId?.slice(-6)} damage=${life.end.damage} ` +
+                `→pierceHits.length=${life.pierceHits.length}; new end=${event.type}@(${event.x},${event.y})`
+              );
+            }
           }
           life.end = event;
           life.endTurn = event.turn;
@@ -1472,6 +1480,16 @@ export const Game: React.FC = () => {
             damage: e.damage!,
             hitTileIndex: e.hitTileIndex!,
           }));
+          if (isPierceDebug()) {
+            console.log(
+              `[PIERCE-POPULATE ${proj.id.slice(-6)}] turnIndex=${turnIndex} ` +
+              `entries=${proj.pendingVisualDecrements.length} ` +
+              `tilePathLen=${proj.tilePath?.length ?? 'none'} ` +
+              `currentTileIndex=${proj.currentTileIndex} ` +
+              `tileEntryTime=${proj.tileEntryTime} now=${now} ` +
+              `decrements=${proj.pendingVisualDecrements.map(d => `${d.targetEntityId.slice(-6)}@hitTileIdx=${d.hitTileIndex}/dmg=${d.damage}`).join(', ')}`
+            );
+          }
         }
       }
 
