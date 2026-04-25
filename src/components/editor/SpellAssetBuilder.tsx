@@ -2018,7 +2018,6 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       <option value="turn_around">Turn Around (180°)</option>
                       <option value="turn_left">Turn Left</option>
                       <option value="turn_right">Turn Right</option>
-                      <option value="random">Random direction</option>
                     </select>
                     <p className="text-xs text-stone-400 mt-1">How the projectile changes direction when hitting a wall</p>
                   </div>

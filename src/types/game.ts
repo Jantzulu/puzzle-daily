@@ -1224,8 +1224,7 @@ export type BounceBehavior =
   | 'reflect'          // Physically realistic reflection (mirror angle)
   | 'turn_around'      // Go back the direction it came from (180°)
   | 'turn_left'        // Turn 90° counter-clockwise
-  | 'turn_right'       // Turn 90° clockwise
-  | 'random';          // Pick a random valid direction
+  | 'turn_right';      // Turn 90° clockwise
 
 /**
  * Spell asset definition - reusable attack configuration

@@ -3233,8 +3233,7 @@ interface NonHomingWalkResult {
 
 /**
  * Compute the post-bounce direction + offset for a projectile that has hit a
- * wall. Returns null for unsupported behaviors (e.g. 'random', which would
- * require a seeded PRNG to stay deterministic and is not yet wired up).
+ * wall. Returns null when the bounce would be a no-op (same direction).
  *
  * For 'reflect' on diagonal moves, determines which axis is blocked by
  * probing the two neighboring tiles — if the horizontal neighbor is a wall,
@@ -3292,9 +3291,6 @@ function computeBounceDirection(
       newDy = off.dy;
       break;
     }
-    case 'random':
-      // Non-deterministic — would need a seeded PRNG. Not supported yet.
-      return null;
   }
 
   // No-op bounces (same direction) would infinite-loop the walker; reject.
