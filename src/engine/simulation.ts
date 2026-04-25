@@ -30,7 +30,7 @@ export function isHomingDebug(): boolean {
 // (capture → consume) without enabling HOMING_DEBUG's firehose. Look for
 // [PIERCE-CAPTURE-LINEAR], [PIERCE-CAPTURE-HOMING], [PIERCE-CONSUME],
 // [PIERCE-DISPLACE], [PIERCE-POPULATE] in the console.
-export const PIERCE_DEBUG = true;
+export const PIERCE_DEBUG = false;
 export function isPierceDebug(): boolean { return PIERCE_DEBUG; }
 
 /**

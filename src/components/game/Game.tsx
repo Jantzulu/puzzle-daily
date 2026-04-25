@@ -1459,19 +1459,35 @@ export const Game: React.FC = () => {
       // homing (thisPos from the engine event), tile-aligned for grid /
       // pathfinding / non-homing (posAtTurn from the tile path).)
 
-      // Pierce pass-through decrements — populate from this turn's pierceHits
-      // so replay's per-frame consume in updateProjectiles fires bar drops
-      // as the bolt visually crosses each pierced target. hitTileIndex on
-      // the event was recorded against the live engine's tilePath; replay's
-      // tilePath for this turn matches (same construction), so the index
-      // applies directly.
+      // Pierce pass-through decrements — populate from ALL pierceHits in this
+      // bolt's lifetime, not just this turn's. The replay projectile is
+      // REBUILT each turn (vs live where it persists), so prior turns'
+      // unconsumed decrements would otherwise be lost. Including all
+      // decrements is safe: commitDeferredVisualDamage decrements with
+      // Math.max(0, prior - damage), so re-firing on an entity whose
+      // pendingVisualDamage is already 0 (because live decremented it
+      // during the prior turn's animation) is a harmless no-op. For
+      // entities still elevated in the snapshot (live animation lagged or
+      // this is the most recent turn's hit), the decrement fires correctly
+      // when the visual crosses its tile.
+      //
+      // hitTileIndex on the event was recorded against the live engine's
+      // tilePath; replay's tilePath matches (same construction for non-
+      // homing; per-turn for homing — see filter below).
       if (life.pierceHits.length > 0) {
-        const turnHits = life.pierceHits.filter(e =>
-          e.turn === turnIndex &&
+        const allHits = life.pierceHits.filter(e =>
           e.deferredDeathEntityId !== undefined &&
           (e.damage ?? 0) > 0 &&
           e.hitTileIndex !== undefined
         );
+        // For HOMING bolts, tilePath is replaced each turn (per-turn segment),
+        // so hitTileIndex from prior turns no longer maps to current tilePath.
+        // Restrict to this turn's hits for homing. Non-homing tilePath is
+        // stable across the bolt's life (set at spawn), so all-turn inclusion
+        // works.
+        const turnHits = isHomingBolt
+          ? allHits.filter(e => e.turn === turnIndex)
+          : allHits;
         if (turnHits.length > 0) {
           proj.pendingVisualDecrements = turnHits.map(e => ({
             targetEntityId: e.deferredDeathEntityId!,
@@ -1484,6 +1500,7 @@ export const Game: React.FC = () => {
             console.log(
               `[PIERCE-POPULATE ${proj.id.slice(-6)}] turnIndex=${turnIndex} ` +
               `entries=${proj.pendingVisualDecrements.length} ` +
+              `(homing=${isHomingBolt} ${isHomingBolt ? 'this-turn-only' : 'all-turns'}) ` +
               `tilePathLen=${proj.tilePath?.length ?? 'none'} ` +
               `currentTileIndex=${proj.currentTileIndex} ` +
               `tileEntryTime=${proj.tileEntryTime} now=${now} ` +
