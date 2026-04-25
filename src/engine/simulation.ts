@@ -2524,14 +2524,30 @@ function updateTileBasedVisual(proj: Projectile, now: number): ProjectileMovemen
     emittedTileIndex = visualTileIndex;
   }
 
-  // Update direction for sprite rotation
-  if (tilePath.length >= 2) {
-    const firstTile = tilePath[0];
-    const lastTile = tilePath[tilePath.length - 1];
-    const dx = lastTile.x - firstTile.x;
-    const dy = lastTile.y - firstTile.y;
+  // Update direction for sprite rotation — per-segment, so bouncing /
+  // reflected bolts rotate to face their actual current heading rather than
+  // an averaged first-to-last angle. Pick the segment containing the bolt's
+  // current visual position: usually [visualTileIndex → visualTileIndex+1],
+  // but at the final tile (no "next") fall back to the last completed
+  // segment [length-2 → length-1] so the sprite holds the final heading.
+  //
+  // SKIP for the two-segment-reflected straight-homing branch: that branch
+  // already sets proj.direction per-segment based on the actual Euclidean
+  // phase (approach vs reflected leg), which is more accurate than our
+  // time-based visualTileIndex lookup. visualTileIndex assumes 1 tile per
+  // tileTransit, but the two-segment animation uses approach/reflect times
+  // scaled by Euclidean distances — they drift for diagonal segments.
+  const isTwoSegmentReflect =
+    proj.homingPathStyle === 'straight' && proj.reflected && proj.reflectAtTileIndex !== undefined && tilePath.length >= 2;
+  if (tilePath.length >= 2 && !isTwoSegmentReflect) {
+    const segStart = Math.min(visualTileIndex, tilePath.length - 2);
+    const segEnd = segStart + 1;
+    const fromTile = tilePath[segStart];
+    const toTile = tilePath[segEnd];
+    const dx = toTile.x - fromTile.x;
+    const dy = toTile.y - fromTile.y;
     if (dx !== 0 || dy !== 0) {
-      proj.direction = calculateDirectionTo(firstTile.x, firstTile.y, lastTile.x, lastTile.y);
+      proj.direction = calculateDirectionTo(fromTile.x, fromTile.y, toTile.x, toTile.y);
     }
   }
 
