@@ -216,6 +216,10 @@ The Reflect status effect bounces incoming projectiles back:
 
 7. **Replay projectile polish** — edge cases with slow projectiles, melee VFX timing.
 
+8. **Homing + along-path + pierce: REACHED TARGET turn skips along-path hits.** `checkHomingPathForHits` only runs in the MOVE TOWARD branch, not REACHED TARGET. If the bolt reaches its main target on the same turn it would have pierced through other enemies along the path, those enemies don't get hit. Pre-existing structural gap in how the homing branches are split. Fix likely involves running `checkHomingPathForHits` (with a slice of `tilesToTarget`) in the REACHED TARGET branch too.
+
+9. **Homing + along-path + pierce: stale `hitTileIndex` if animation lags past turn boundary.** `pendingVisualDecrements` populated in `checkHomingPathForHits` carry `hitTileIndex` valid for the current turn's tilePath. Homing tilePath is replaced each turn, so any decrement not consumed during this turn's animation window would fire at the wrong tile (or be swept by the batch-consume safety net at landing). In normal play this should not happen — animations are sized to fit `TURN_INTERVAL_MS`. Mitigation if it ever surfaces: force-fire any leftover `pendingVisualDecrements` at the moment `proj.tilePath` is replaced in the homing MOVE TOWARD branch (~5 lines). Standard linear pierce confirmed clean visually 2026-04-24, so this is preventative only.
+
 ### Done (keep for context)
 
 - ~~**`puzzleGenerator.ts` Math.random audit**~~ — **Done 2026-04-17**. Re-verified: only `GeneratorDialog.tsx` → `MapEditor.tsx` (editor-only). No runtime path. Precondition: if any future feature invokes the generator at runtime, switch to a seeded PRNG first.

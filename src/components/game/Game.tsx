@@ -148,7 +148,7 @@ export const Game: React.FC = () => {
   const turnHistoryRef = useRef<GameState[]>([]);
   const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
   const projectileTimelineRef = useRef<ProjectileEvent[]>([]);
-  const projectileLifetimesRef = useRef<Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>>(new Map());
+  const projectileLifetimesRef = useRef<Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; pierceHits: ProjectileEvent[]; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>>(new Map());
 
   // Bug report system
   const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
@@ -1014,17 +1014,30 @@ export const Game: React.FC = () => {
       projectileTimelineRef.current = timeline;
     }
 
-    // Build per-turn active projectile lifetimes from timeline
-    const lifetimes = new Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>();
+    // Build per-turn active projectile lifetimes from timeline.
+    // pierceHits collects `hit` events that get shadowed by a later end
+    // event for the same projId — those are the pass-through hits of a
+    // pierce bolt (the bolt didn't stop there). The current `life.end` is
+    // always the bolt's true final landing (last end event).
+    const lifetimes = new Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; pierceHits: ProjectileEvent[]; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>();
     for (const event of timeline) {
       if (event.type === 'spawn') {
-        lifetimes.set(event.projId, { spawn: event, homingMoves: [], spawnTurn: event.turn, endTurn: 9999 });
+        lifetimes.set(event.projId, { spawn: event, pierceHits: [], homingMoves: [], spawnTurn: event.turn, endTurn: 9999 });
       } else if (event.type === 'reflect') {
         const life = lifetimes.get(event.projId);
         if (life) life.reflect = event;
       } else if (event.type === 'hit' || event.type === 'wall_hit' || event.type === 'deactivate') {
         const life = lifetimes.get(event.projId);
-        if (life) { life.end = event; life.endTurn = event.turn; }
+        if (life) {
+          // If a previous `hit` is being displaced, it was a pierce-through.
+          // (wall_hit / deactivate displacing a hit also pushes it — pierce
+          // bolts can pass through enemies and end at a wall or range cap.)
+          if (life.end && life.end.type === 'hit') {
+            life.pierceHits.push(life.end);
+          }
+          life.end = event;
+          life.endTurn = event.turn;
+        }
       } else if (event.type === 'homing_move') {
         const life = lifetimes.get(event.projId);
         if (life) life.homingMoves.push(event);
@@ -1438,6 +1451,30 @@ export const Game: React.FC = () => {
       // homing (thisPos from the engine event), tile-aligned for grid /
       // pathfinding / non-homing (posAtTurn from the tile path).)
 
+      // Pierce pass-through decrements — populate from this turn's pierceHits
+      // so replay's per-frame consume in updateProjectiles fires bar drops
+      // as the bolt visually crosses each pierced target. hitTileIndex on
+      // the event was recorded against the live engine's tilePath; replay's
+      // tilePath for this turn matches (same construction), so the index
+      // applies directly.
+      if (life.pierceHits.length > 0) {
+        const turnHits = life.pierceHits.filter(e =>
+          e.turn === turnIndex &&
+          e.deferredDeathEntityId !== undefined &&
+          (e.damage ?? 0) > 0 &&
+          e.hitTileIndex !== undefined
+        );
+        if (turnHits.length > 0) {
+          proj.pendingVisualDecrements = turnHits.map(e => ({
+            targetEntityId: e.deferredDeathEntityId!,
+            targetIsEnemy: e.deferredDeathIsEnemy ?? false,
+            targetIndex: e.deferredDeathIndex,
+            damage: e.damage!,
+            hitTileIndex: e.hitTileIndex!,
+          }));
+        }
+      }
+
       replayProjectiles.push(proj);
     }
 
@@ -1481,17 +1518,19 @@ export const Game: React.FC = () => {
     // Force the target dead in the copy. Turn-of-hit events are left alone
     // so the current turn's visual commit still runs and fires the death
     // animation at the right moment.
-    const lifetimes = projectileLifetimesRef.current;
-    for (const [, life] of lifetimes) {
-      const end = life.end;
-      if (!end || end.type !== 'hit') continue;
-      if (end.turn >= index) continue; // Current turn or future — handle via live visual commit
-      if (!end.deferredDeathEntityId) continue;
-      if (end.deferredDeathIsEnemy) {
-        const idx = end.deferredDeathIndex;
-        if (idx === undefined) continue;
+    //
+    // Applies to BOTH the bolt's final landing (life.end) and any pierce
+    // pass-through hits (life.pierceHits) — pierce-through can kill the
+    // enemy too, and that death's commit needs the same past-turn fix-up.
+    const applyPastDeathCommit = (event: ProjectileEvent) => {
+      if (event.type !== 'hit') return;
+      if (event.turn >= index) return;
+      if (!event.deferredDeathEntityId) return;
+      if (event.deferredDeathIsEnemy) {
+        const idx = event.deferredDeathIndex;
+        if (idx === undefined) return;
         const e = copy.puzzle?.enemies?.[idx];
-        if (e && e.enemyId === end.deferredDeathEntityId && !e.dead) {
+        if (e && e.enemyId === event.deferredDeathEntityId && !e.dead) {
           e.dead = true;
           e.pendingProjectileDeath = false;
           e.pendingVisualDamage = 0;
@@ -1499,7 +1538,7 @@ export const Game: React.FC = () => {
         }
       } else {
         const c = copy.placedCharacters?.find(
-          (pc: any) => pc.characterId === end.deferredDeathEntityId
+          (pc: any) => pc.characterId === event.deferredDeathEntityId
         );
         if (c && !c.dead) {
           c.dead = true;
@@ -1508,6 +1547,12 @@ export const Game: React.FC = () => {
           c.currentHealth = 0;
         }
       }
+    };
+
+    const lifetimes = projectileLifetimesRef.current;
+    for (const [, life] of lifetimes) {
+      if (life.end) applyPastDeathCommit(life.end);
+      for (const ph of life.pierceHits) applyPastDeathCommit(ph);
     }
 
     return copy;

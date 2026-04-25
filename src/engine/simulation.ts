@@ -239,6 +239,24 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           damage,
           hitTileIndex: tileIdx,
         });
+        // Replay event — emit a `hit` for every pierce target along the
+        // path. The replay aggregator distinguishes pierce-through from
+        // pierce-stop by which event ends up "shadowed" by a later end
+        // event for the same projId. deferredDeath* lets replay commit
+        // pendingDeath → dead at the right moment.
+        recordProjectileEvent(gameState, {
+          type: 'hit',
+          projId: proj.id,
+          x: tile.x, y: tile.y,
+          targetEntityId: hitEnemy.enemyId,
+          targetIsEnemy: true,
+          hitTileIndex: tileIdx,
+          hitVfxSprite: proj.attackData.hitEffectSprite,
+          damage,
+          deferredDeathEntityId: hitEnemy.enemyId,
+          deferredDeathIsEnemy: true,
+          deferredDeathIndex: hitEnemyIndex,
+        });
         if (!proj.attackData.projectilePierces) break;
       }
     } else if (effectivelyEnemyFired) {
@@ -274,6 +292,19 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
           targetIsEnemy: false,
           damage,
           hitTileIndex: tileIdx,
+        });
+        // Replay event — see corresponding emission in the enemy branch.
+        recordProjectileEvent(gameState, {
+          type: 'hit',
+          projId: proj.id,
+          x: tile.x, y: tile.y,
+          targetEntityId: hitChar.characterId,
+          targetIsEnemy: false,
+          hitTileIndex: tileIdx,
+          hitVfxSprite: proj.attackData.hitEffectSprite,
+          damage,
+          deferredDeathEntityId: hitChar.characterId,
+          deferredDeathIsEnemy: false,
         });
         if (!proj.attackData.projectilePierces) break;
       }
