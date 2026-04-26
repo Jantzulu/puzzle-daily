@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any, no-case-declarations */
-import React, { useRef, useEffect, useState, useCallback } from 'react';
+import React, { useRef, useEffect, useMemo, useState, useCallback } from 'react';
 import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVisualState, ParticleEffect, BorderConfig, CharacterAction, EnemyBehavior, TileSprites, ActivationSpriteConfig, StatusEffectInstance, PersistentAreaEffect, Puzzle, PuzzleSkin } from '../../types/game';
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
@@ -669,7 +669,13 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const spawnedEnemiesRef = useRef<Set<number>>(new Set());
 
   // Track tile activations (e.g., teleport tile effects)
-  const [tileActivations, setTileActivations] = useState<TileActivation[]>([]);
+  // Tile activation effects (e.g. teleport sparkle) — kept in a ref instead of
+  // React state because (1) only the rAF draw loop reads them, no other render
+  // path; and (2) the previous `setTileActivations` call from inside rAF caused
+  // mid-frame React reconciliation, which then re-ran the animate useEffect
+  // (it was in the deps array). With a ref, the loop reads the latest value
+  // each frame without involving React's render cycle.
+  const tileActivationsRef = useRef<TileActivation[]>([]);
 
   // Fade-in animation when puzzle changes
   const [fadeKey, setFadeKey] = useState(0);
@@ -828,7 +834,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     characterPositionsRef.current = newPositions;
     setCharacterPositions(newPositions);
     if (newActivations.length > 0) {
-      setTileActivations(prev => [...prev, ...newActivations]);
+      tileActivationsRef.current = [...tileActivationsRef.current, ...newActivations];
     }
 
     // Clean up spawn keys for characters that were removed (unplaced)
@@ -967,7 +973,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     enemyPositionsRef.current = newPositions;
     setEnemyPositions(newPositions);
     if (newActivations.length > 0) {
-      setTileActivations(prev => [...prev, ...newActivations]);
+      tileActivationsRef.current = [...tileActivationsRef.current, ...newActivations];
     }
     prevEnemiesRef.current = [...gameState.puzzle.enemies];
   }, [gameState.puzzle.enemies]);
@@ -1045,6 +1051,68 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       setEnemyDeathAnimations(newDeathAnimations);
     }
   }, [gameState.puzzle.enemies]);
+
+  // Memoize placedObjects layered into below_entities / above_entities arrays.
+  // The animate loop runs at 60fps and was running both filter+sort+forEach
+  // chains plus a loadObject() lookup per object every frame. placedObjects
+  // changes rarely (load time + editor edits), so we cache the split until
+  // the array reference changes. Single per-turn rebuild beats per-frame.
+  const placedObjects = gameState.puzzle.placedObjects;
+  const placedObjectsBelow = useMemo(() => {
+    if (!placedObjects) return [];
+    return placedObjects
+      .filter(obj => {
+        const objData = loadObject(obj.objectId);
+        return !objData?.renderLayer || objData.renderLayer === 'below_entities';
+      })
+      .sort((a, b) => a.y - b.y);
+  }, [placedObjects]);
+  const placedObjectsAbove = useMemo(() => {
+    if (!placedObjects) return [];
+    return placedObjects
+      .filter(obj => {
+        const objData = loadObject(obj.objectId);
+        return objData?.renderLayer === 'above_entities';
+      })
+      .sort((a, b) => a.y - b.y);
+  }, [placedObjects]);
+
+  // Memoize the entity render queue. Entity definitions only change at turn
+  // boundaries (when setGameState deep-clones), so per-frame rebuild +
+  // getEnemy/getCharacter lookups + sort are wasted work — collapse to one
+  // build per turn (when placedCharacters / enemies array references swap).
+  interface RenderableEntity {
+    type: 'enemy' | 'character';
+    index: number;
+    isGhost: boolean;
+    entity: PlacedEnemy | PlacedCharacter;
+  }
+  const renderQueue = useMemo(() => {
+    const queue: RenderableEntity[] = [];
+    gameState.puzzle.enemies.forEach((enemy, idx) => {
+      const enemyData = getEnemy(enemy.enemyId);
+      queue.push({
+        type: 'enemy',
+        index: idx,
+        isGhost: enemyData?.canOverlapEntities || false,
+        entity: enemy,
+      });
+    });
+    gameState.placedCharacters.forEach((character, idx) => {
+      const charData = getCharacter(character.characterId);
+      queue.push({
+        type: 'character',
+        index: idx,
+        isGhost: charData?.canOverlapEntities || false,
+        entity: character,
+      });
+    });
+    queue.sort((a, b) => {
+      if (a.isGhost === b.isGhost) return 0;
+      return a.isGhost ? 1 : -1;
+    });
+    return queue;
+  }, [gameState.puzzle.enemies, gameState.placedCharacters]);
 
   // Animation loop
   useEffect(() => {
@@ -1143,18 +1211,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
 
       // Draw objects below entities (sorted by y for proper layering)
-      if (gameState.puzzle.placedObjects) {
-        const belowObjects = gameState.puzzle.placedObjects
-          .filter(obj => {
-            const objData = loadObject(obj.objectId);
-            return !objData?.renderLayer || objData.renderLayer === 'below_entities';
-          })
-          .sort((a, b) => a.y - b.y);
-
-        belowObjects.forEach(obj => {
-          drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
-        });
-      }
+      placedObjectsBelow.forEach(obj => {
+        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
+      });
 
       // Use Date.now() for everything - particles, projectiles, collectibles, and entity
       // rendering all use Date.now() for their startTime values
@@ -1210,46 +1269,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // Determine if game has started (for sprite selection)
       const gameStarted = gameState.gameStatus === 'running' || gameState.gameStatus === 'won' || gameState.gameStatus === 'lost';
 
-      // Collect all entities for z-ordered rendering
-      // Ghost entities (canOverlapEntities=true) render on top of normal entities
-      interface RenderableEntity {
-        type: 'enemy' | 'character';
-        index: number;
-        isGhost: boolean;
-        entity: PlacedEnemy | PlacedCharacter;
-      }
-
-      const renderQueue: RenderableEntity[] = [];
-
-      // Add enemies to render queue
-      gameState.puzzle.enemies.forEach((enemy, idx) => {
-        const enemyData = getEnemy(enemy.enemyId);
-        renderQueue.push({
-          type: 'enemy',
-          index: idx,
-          isGhost: enemyData?.canOverlapEntities || false,
-          entity: enemy,
-        });
-      });
-
-      // Add characters to render queue
-      gameState.placedCharacters.forEach((character, idx) => {
-        const charData = getCharacter(character.characterId);
-        renderQueue.push({
-          type: 'character',
-          index: idx,
-          isGhost: charData?.canOverlapEntities || false,
-          entity: character,
-        });
-      });
-
-      // Sort: non-ghosts first, then ghosts (ghosts render on top)
-      renderQueue.sort((a, b) => {
-        if (a.isGhost === b.isGhost) return 0;
-        return a.isGhost ? 1 : -1;
-      });
-
-      // Render all entities in z-order
+      // Render all entities in z-order. renderQueue is memoized at component
+      // scope (rebuilt only when entity arrays' references change at turn
+      // boundaries) — see useMemo above.
       renderQueue.forEach(({ type, index, entity }) => {
         if (type === 'enemy') {
           const enemy = entity as PlacedEnemy;
@@ -1427,10 +1449,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         setLiftOffAnimations(activeLiftOffs);
       }
 
-      // Draw tile activation effects (e.g., teleport activation sprites) ABOVE entities
-      // Filter out expired activations and draw active ones
+      // Draw tile activation effects (e.g., teleport activation sprites) ABOVE entities.
+      // Filter out expired activations as we draw — no setTimeout dance needed
+      // since this is a ref, not React state.
+      const tileActivations = tileActivationsRef.current;
       const activeActivations: TileActivation[] = [];
-      tileActivations.forEach(activation => {
+      for (const activation of tileActivations) {
         const durationMs = activation.activationSprite.durationMs || 800;
         const elapsed = now - activation.startTime;
         if (elapsed < durationMs) {
@@ -1445,35 +1469,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             now
           );
         }
-      });
-
-      // Clean up expired activations (do this outside the render loop to avoid state updates during render)
+      }
+      // Replace the ref with the live list once any activation has expired.
+      // Cheap O(n) scan that only allocates when something actually changed.
       if (activeActivations.length !== tileActivations.length) {
-        // Schedule cleanup for next frame
-        setTimeout(() => {
-          setTileActivations(prev => {
-            const currentTime = Date.now();
-            return prev.filter(a => {
-              const durationMs = a.activationSprite.durationMs || 800;
-              return currentTime - a.startTime < durationMs;
-            });
-          });
-        }, 0);
+        tileActivationsRef.current = activeActivations;
       }
 
       // Draw objects above entities (sorted by y for proper layering)
-      if (gameState.puzzle.placedObjects) {
-        const aboveObjects = gameState.puzzle.placedObjects
-          .filter(obj => {
-            const objData = loadObject(obj.objectId);
-            return objData?.renderLayer === 'above_entities';
-          })
-          .sort((a, b) => a.y - b.y);
-
-        aboveObjects.forEach(obj => {
-          drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
-        });
-      }
+      placedObjectsAbove.forEach(obj => {
+        drawPlacedObject(ctx, obj.objectId, obj.x, obj.y);
+      });
 
       // Restore context (undo translate offset)
       ctx.restore();
@@ -1496,7 +1502,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         cancelAnimationFrame(animationRef.current);
       }
     };
-  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, tileActivations, maxWidth, maxHeight, replayFrozen]);
+  }, [gameState, characterPositions, enemyPositions, characterDeathAnimations, enemyDeathAnimations, maxWidth, maxHeight, replayFrozen]);
 
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!onTileClick) return;
