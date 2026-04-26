@@ -1985,16 +1985,20 @@ export function executeTurn(gameState: GameState): GameState {
     // Are there projectiles still in flight that could still cause damage
     // or land hits this game? "In flight" = active AND not yet resolved
     // (hitResult means damage already applied awaiting visual; pendingDeactivation
-    // means logically terminated awaiting visual deactivation). If so, don't
-    // declare defeat yet — a slow bolt fired on the last active turn still
-    // deserves a chance to land.
+    // means logically terminated awaiting visual deactivation).
     const hasInFlightProjectile = (gameState.activeProjectiles ?? []).some(
       (p) => p.active && !p.hitResult,
     );
 
-    // Check if we've exceeded the turn limit
+    // Hard turn-limit: once we hit maxTurns, the game ends regardless of
+    // in-flight projectiles. A previous version gated this on
+    // `!hasInFlightProjectile` to give slow bolts a chance to land, but
+    // entities that auto-target or fire frequently can perpetually keep a
+    // bolt in flight, stalling the game indefinitely. Visuals continue
+    // animating after gameStatus flips, so any mid-flight bolt still lands
+    // on screen — only the logical game state freezes.
     const maxTurns = gameState.puzzle.maxTurns || 1000; // Default to 1000 if not specified
-    if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running' && !hasInFlightProjectile) {
+    if (gameState.currentTurn >= maxTurns && gameState.gameStatus === 'running') {
       gameState.gameStatus = 'defeat';
       return gameState;
     }
