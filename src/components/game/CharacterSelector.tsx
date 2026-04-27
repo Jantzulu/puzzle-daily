@@ -253,7 +253,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
 
           const isSelected = selectedCharacterId === charId;
           const isPlaced = placedCharacterIds.includes(charId);
-          const cannotSelect = disabled || isPlaced || (isAtMaxPlaced && !isSelected);
+          // Placed heroes are still clickable so the player can re-read their
+          // card info after placing them. Placement itself is blocked
+          // separately by Game.tsx's handleTileClick (alreadyPlaced check),
+          // so selecting a placed hero just opens the info area.
+          const cannotSelect = disabled || (isAtMaxPlaced && !isSelected && !isPlaced);
           const moveInfo = getMovementInfo(character.behavior);
 
           return (
@@ -261,10 +265,10 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
               key={charId}
               onClick={() => !cannotSelect && onSelectCharacter(isSelected ? null : charId)}
               className={`flex-1 flex flex-col items-center px-1 pt-1 pb-0.5 relative transition-colors ${
-                isPlaced
-                  ? 'opacity-50 cursor-not-allowed'
-                  : cannotSelect
+                cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
+                  : isPlaced
+                  ? `opacity-50 cursor-pointer ${isSelected ? 'bg-copper-900/15' : '[@media(hover:hover)]:hover:bg-stone-700/30'}`
                   : isSelected
                   ? 'bg-copper-900/15 cursor-pointer'
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
