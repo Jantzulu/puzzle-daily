@@ -22,6 +22,7 @@ import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../..
 import { WarningModal } from '../shared/WarningModal';
 import { preloadImagesEager } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
+import { getDailyState, lockDailyOutcome, updateDailyLives, type DailyStatus } from '../../utils/dailyState';
 import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
 import { submitCompletion } from '../../services/statsService';
@@ -51,7 +52,21 @@ function deepCopyGameState(state: GameState): GameState {
   return copy;
 }
 
-export const Game: React.FC = () => {
+export interface GameProps {
+  /**
+   * When true AND the puzzle has a `.date` set (i.e. it's a daily puzzle),
+   * this Game instance enforces Wordle-style daily-lock behavior:
+   *   - Lives persist across page reloads within the same day
+   *   - On victory or final defeat, the puzzle is locked until day rollover
+   *   - Reload while locked shows a "come back tomorrow" banner instead of
+   *     a playable setup
+   * The dev app intentionally omits this prop so editor playtest and "Play"
+   * route remain free to replay any number of times for testing.
+   */
+  enableDailyLock?: boolean;
+}
+
+export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
   const officialPuzzles = getAllPuzzles();
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
 
@@ -72,9 +87,32 @@ export const Game: React.FC = () => {
   // Pre-placement direction overrides: charId -> spellId -> direction
   const [pendingSpellDirectionOverrides, setPendingSpellDirectionOverrides] = useState<Record<string, Record<string, Direction>>>({});
 
-  // Lives system
-  const [livesRemaining, setLivesRemaining] = useState<number>(() => currentPuzzle.lives ?? 3);
-  const [showGameOver, setShowGameOver] = useState(false);
+  // Daily lock — only relevant when enableDailyLock and the puzzle has a date.
+  // We compute this once per puzzle and re-derive when the puzzle changes.
+  const initialDailyState = enableDailyLock && currentPuzzle.date
+    ? getDailyState(currentPuzzle.date)
+    : null;
+
+  // Lives system. Hydrate from persisted daily state if locked-mode is active
+  // and we have a stored value for today's puzzle; otherwise fall back to the
+  // puzzle's configured lives (or default 3).
+  const [livesRemaining, setLivesRemaining] = useState<number>(() => {
+    if (initialDailyState) return initialDailyState.livesRemaining;
+    return currentPuzzle.lives ?? 3;
+  });
+  // Daily-lock final outcome. null = not locked / in progress; 'won' or 'lost'
+  // = puzzle has been completed today, no further attempts allowed until day
+  // rollover. Always null in dev / non-daily contexts.
+  const [dailyLockStatus, setDailyLockStatus] = useState<DailyStatus | null>(() => {
+    if (initialDailyState && (initialDailyState.status === 'won' || initialDailyState.status === 'lost')) {
+      return initialDailyState.status;
+    }
+    return null;
+  });
+  const [showGameOver, setShowGameOver] = useState(() => {
+    // If we hydrated into a 'lost' lock, show the gameover overlay immediately.
+    return initialDailyState?.status === 'lost';
+  });
   const [spritesReady, setSpritesReady] = useState(false);
 
 
@@ -436,6 +474,13 @@ export const Game: React.FC = () => {
             const score = calculateScore(newState, livesRemaining, currentPuzzle.lives ?? 3);
             setPuzzleScore(score);
 
+            // Persist daily-lock outcome before any analytics so a subsequent
+            // reload immediately shows the locked state regardless of network.
+            if (enableDailyLock && currentPuzzle.date) {
+              lockDailyOutcome(currentPuzzle.date, 'won', livesRemaining);
+              setDailyLockStatus('won');
+            }
+
             // Submit analytics (fire-and-forget, only for scheduled/daily puzzles)
             if (currentPuzzle.date && !submittedRef.current) {
               submittedRef.current = true;
@@ -482,6 +527,18 @@ export const Game: React.FC = () => {
             if (!isUnlimitedLives) {
               const newLives = livesRemaining - 1;
               setLivesRemaining(newLives);
+
+              // Persist daily-lock state alongside lives changes. Final defeat
+              // (lives hit 0) locks as 'lost'; partial defeats just persist
+              // the decremented lives so a refresh can't restore them.
+              if (enableDailyLock && currentPuzzle.date) {
+                if (newLives <= 0) {
+                  lockDailyOutcome(currentPuzzle.date, 'lost', 0);
+                  setDailyLockStatus('lost');
+                } else {
+                  updateDailyLives(currentPuzzle.date, newLives);
+                }
+              }
 
               if (newLives <= 0) {
                 setShowGameOver(true);
@@ -758,6 +815,12 @@ export const Game: React.FC = () => {
   }, [gameState, livesRemaining, currentPuzzle.lives]);
 
   const handlePlay = () => {
+    // Daily-lock guard: if today's puzzle is already won or lost, block any
+    // further Play attempts. Defense-in-depth — the button is also visually
+    // suppressed via the daily-lock banner overlay.
+    if (dailyLockStatus) {
+      return;
+    }
     if (gameState.placedCharacters.length === 0) {
       setWarningModal({ isOpen: true, message: 'Place at least one hero on the board before starting!' });
       return;
@@ -847,8 +910,12 @@ export const Game: React.FC = () => {
     setSelectedCharacterId(null);
   }, [originalPuzzle, playStartCharacters]);
 
-  // Restart puzzle from game over (reset lives and go to setup)
+  // Restart puzzle from game over (reset lives and go to setup).
+  // Blocked when the daily lock is engaged — a 'lost' lock means the player
+  // has used up their attempts for the day; restart would defeat the point
+  // of the lock.
   const handleRestartPuzzle = () => {
+    if (dailyLockStatus) return;
     const resetPuzzle = JSON.parse(JSON.stringify(originalPuzzle));
     const resetState = initializeGameState(resetPuzzle);
     setGameState(resetState);
@@ -909,6 +976,16 @@ export const Game: React.FC = () => {
     if (!isUnlimitedLives) {
       const newLives = livesRemaining - 1;
       setLivesRemaining(newLives);
+
+      // Persist daily-lock state alongside lives changes (concede path).
+      if (enableDailyLock && currentPuzzle.date) {
+        if (newLives <= 0) {
+          lockDailyOutcome(currentPuzzle.date, 'lost', 0);
+          setDailyLockStatus('lost');
+        } else {
+          updateDailyLives(currentPuzzle.date, newLives);
+        }
+      }
 
       if (newLives <= 0) {
         // No lives left - show game over
@@ -1695,9 +1772,23 @@ export const Game: React.FC = () => {
       setGameState(initializeGameState(puzzle));
       setIsSimulating(false);
       setSelectedCharacterId(null);
-      // Reset lives for new puzzle (training arenas get unlimited)
-      setLivesRemaining(puzzle.isTraining ? 0 : (puzzle.lives ?? 3));
-      setShowGameOver(false);
+      // Re-hydrate from daily state if this puzzle is locked-eligible AND has
+      // an existing record for its date. Otherwise reset lives to puzzle
+      // defaults (training arenas get unlimited).
+      const persistedDaily = enableDailyLock && puzzle.date ? getDailyState(puzzle.date) : null;
+      if (persistedDaily) {
+        setLivesRemaining(persistedDaily.livesRemaining);
+        setDailyLockStatus(
+          persistedDaily.status === 'won' || persistedDaily.status === 'lost'
+            ? persistedDaily.status
+            : null
+        );
+        setShowGameOver(persistedDaily.status === 'lost');
+      } else {
+        setLivesRemaining(puzzle.isTraining ? 0 : (puzzle.lives ?? 3));
+        setDailyLockStatus(null);
+        setShowGameOver(false);
+      }
       setPlayStartCharacters([]);
       setPuzzleScore(null);
       setTrackedRuns([]);
@@ -2261,6 +2352,30 @@ export const Game: React.FC = () => {
                     <span className="font-medieval font-bold text-moss-200">{getRankName(puzzleScore.rank)}</span>
                     <span className="text-copper-300 font-bold">{puzzleScore.totalPoints.toLocaleString()} pts</span>
                   </button>
+                </div>
+              )}
+
+              {/* Daily-lock banner — persists across reloads within the same
+                  day. Shows whenever the player has completed today's puzzle
+                  (won or lost). Replaces the playable area on a fresh load
+                  since there's no in-session state to interact with. */}
+              {dailyLockStatus && !replayMode && (
+                <div className="absolute inset-x-0 top-2 flex justify-center z-10 pointer-events-none">
+                  <div className={`pointer-events-auto px-5 py-3 rounded-pixel-lg flex flex-col items-center gap-1 text-sm shadow-lg ${
+                    dailyLockStatus === 'won' ? 'victory-panel' : 'defeat-panel'
+                  }`}>
+                    <span className="text-2xl">
+                      {dailyLockStatus === 'won' ? '🏆' : '💀'}
+                    </span>
+                    <span className={`font-medieval font-bold ${
+                      dailyLockStatus === 'won' ? 'text-moss-200' : 'text-blood-200'
+                    }`}>
+                      {dailyLockStatus === 'won' ? "Today's Puzzle Complete" : "Today's Puzzle Failed"}
+                    </span>
+                    <span className="text-xs text-parchment-300/80">
+                      Come back tomorrow for a new challenge
+                    </span>
+                  </div>
                 </div>
               )}
             </div>

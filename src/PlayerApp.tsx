@@ -417,7 +417,7 @@ function PlayerApp() {
               </div>
             }>
               <Routes>
-                <Route path="/" element={<Game />} />
+                <Route path="/" element={<Game enableDailyLock={true} />} />
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/compendium" element={<Compendium />} />
                 <Route path="/training" element={<TrainingGrounds />} />
