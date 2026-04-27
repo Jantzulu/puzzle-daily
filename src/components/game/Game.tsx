@@ -109,10 +109,14 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
     }
     return null;
   });
-  const [showGameOver, setShowGameOver] = useState(() => {
-    // If we hydrated into a 'lost' lock, show the gameover overlay immediately.
-    return initialDailyState?.status === 'lost';
-  });
+  // showGameOver is for in-session display of the gameover modal only. On a
+  // fresh reload into a 'lost' daily-lock, we DON'T show the modal — the
+  // top-banner alone communicates the locked state. Otherwise the modal and
+  // the banner would render simultaneously (the original Phase-1 bug the
+  // user flagged). The modal flow is purely "this session, just lost lives,
+  // here's the result" — and gets a dismiss-to-pill flow below, mirroring
+  // victory.
+  const [showGameOver, setShowGameOver] = useState(false);
   const [spritesReady, setSpritesReady] = useState(false);
 
 
@@ -148,6 +152,13 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
 
   // Victory dismiss state — when true, shows collapsed banner instead of full overlay
   const [victoryDismissed, setVictoryDismissed] = useState(false);
+
+  // Defeat (gameover) dismiss state — parallel to victoryDismissed. The
+  // gameover overlay can be dismissed in-session, after which a collapsed
+  // pill stays at the top (matching victory). On reload into a locked
+  // 'lost' state, the daily-lock banner takes over the same role and the
+  // modal never renders.
+  const [defeatDismissed, setDefeatDismissed] = useState(false);
 
   // Overlay dismiss animation state
   const [dismissingOverlay, setDismissingOverlay] = useState(false);
@@ -928,6 +939,7 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
     setPuzzleScore(null);
     setDefeatReason(null);
     setVictoryDismissed(false);
+    setDefeatDismissed(false);
   };
 
   // Concede current attempt - lose a life and show defeat panel with buttons
@@ -1783,7 +1795,9 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
             ? persistedDaily.status
             : null
         );
-        setShowGameOver(persistedDaily.status === 'lost');
+        // Don't open the gameover modal on hydration — banner alone (see
+        // Game-Over Overlay render block) handles the locked-on-reload UI.
+        setShowGameOver(false);
       } else {
         setLivesRemaining(puzzle.isTraining ? 0 : (puzzle.lives ?? 3));
         setDailyLockStatus(null);
@@ -1792,6 +1806,8 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
       setPlayStartCharacters([]);
       setPuzzleScore(null);
       setTrackedRuns([]);
+      setVictoryDismissed(false);
+      setDefeatDismissed(false);
     }
   };
 
@@ -2105,23 +2121,37 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
                 </div>
               )}
 
-              {/* Game Over Overlay */}
-              {showGameOver && !replayMode && (
+              {/* Game Over Overlay — dismissible (matches Victory pattern) */}
+              {showGameOver && !defeatDismissed && !replayMode && (
                 <div
                   className={`absolute inset-0 flex items-center justify-center z-10 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                   style={{
                     backgroundColor: themeAssets.gameOverPanelOverlayBg || 'rgba(0, 0, 0, 0.8)',
                   }}
+                  onClick={() => dismissOverlay(() => setDefeatDismissed(true))}
                 >
                   <div
-                    className={`p-6 rounded-pixel-lg text-center max-w-[90%] ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
+                    className={`p-6 rounded-pixel-lg text-center max-w-[90%] relative ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
                       themeAssets.gameOverPanelBg ? '' : 'defeat-panel'
                     }`}
                     style={{
                       ...(themeAssets.gameOverPanelBg && { backgroundColor: themeAssets.gameOverPanelBg }),
                       ...(themeAssets.gameOverPanelBorder && { borderColor: themeAssets.gameOverPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
                     }}
+                    onClick={e => e.stopPropagation()}
                   >
+                    {/* Close (X) — mirror Victory's dismiss affordance */}
+                    <button
+                      onClick={() => dismissOverlay(() => setDefeatDismissed(true))}
+                      disabled={dismissingOverlay}
+                      className="absolute top-2 right-2 p-1 text-blood-400 hover:text-parchment-100 hover:bg-blood-700 rounded transition-colors"
+                      aria-label="Dismiss"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+
                     <div className="text-4xl mb-1 animate-icon-drop">{'\u2620\uFE0F'}</div>
                     <h2
                       className={`text-2xl md:text-3xl font-bold font-medieval ${
@@ -2152,6 +2182,7 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
                             Watch Replay
                           </button>
                         )}
+                        {!dailyLockStatus && (
                         <button
                           onClick={() => dismissOverlay(handleRestartPuzzle)}
                           disabled={dismissingOverlay}
@@ -2166,6 +2197,7 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
                         >
                           Try Again
                         </button>
+                        )}
                       </div>
                       {trackedRuns.length > 0 && (
                         <button
@@ -2355,11 +2387,29 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
                 </div>
               )}
 
-              {/* Daily-lock banner — persists across reloads within the same
-                  day. Shows whenever the player has completed today's puzzle
-                  (won or lost). Replaces the playable area on a fresh load
-                  since there's no in-session state to interact with. */}
-              {dailyLockStatus && !replayMode && (
+              {/* Defeat collapsed pill — parallel to the victory pill above.
+                  Shows after the player dismisses the gameover modal in-session
+                  so the result stays visible at the top of the page until they
+                  navigate away. Click to reopen the full modal. */}
+              {showGameOver && defeatDismissed && !replayMode && (
+                <div className="absolute inset-x-0 top-2 flex justify-center z-10 pointer-events-none">
+                  <button
+                    onClick={() => setDefeatDismissed(false)}
+                    className="pointer-events-auto defeat-panel px-4 py-2 rounded-pixel-lg flex items-center gap-2 text-sm cursor-pointer hover:brightness-110 transition-all shadow-lg"
+                  >
+                    <span className="text-lg">{'☠️'}</span>
+                    <span className="font-medieval font-bold text-blood-200">Defeated</span>
+                  </button>
+                </div>
+              )}
+
+              {/* Daily-lock banner — only renders on a fresh page load into a
+                  locked state (gameStatus still 'setup', no in-session play).
+                  In-session, the victory/defeat overlays + their collapsed
+                  pills above own the visible result UI; this banner would
+                  otherwise overlap. The lock state is also enforced
+                  programmatically in handlePlay / handleRestartPuzzle. */}
+              {dailyLockStatus && gameState.gameStatus === 'setup' && !replayMode && (
                 <div className="absolute inset-x-0 top-2 flex justify-center z-10 pointer-events-none">
                   <div className={`pointer-events-auto px-5 py-3 rounded-pixel-lg flex flex-col items-center gap-1 text-sm shadow-lg ${
                     dailyLockStatus === 'won' ? 'victory-panel' : 'defeat-panel'
