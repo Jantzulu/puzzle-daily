@@ -1,6 +1,22 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 24, 2026 (pierce healthbar fix end-to-end + replay parity, per-segment sprite rotation for bouncing/reflected/pathfinding bolts)
+Last Updated: April 27, 2026 (daily-puzzle lock + Phase 2 polish, perf cleanup pass, feature-backlog doc captured)
+
+## Doc Map — Where to Find What
+
+| Artifact | Location | Purpose |
+|---|---|---|
+| **Project status / handoff** | `CLAUDE_HANDOFF.md` (this file) | Architecture, conventions, pending tasks, recent session log. Read first when starting a new session. |
+| **Approved feature roadmap** | `~/.claude/projects/.../memory/feature-roadmap.md` (user memory) | Formally approved features, shipped + outstanding. Categorized by priority. The curated list. |
+| **Captured-in-the-wild backlog** | `docs/feature-backlog.md` | Raw ideas + bug observations as they come up, triaged into tiers (launch-blocking → launch-adjacent → post-launch). New items land here; graduate to roadmap when scoped. |
+| **Deferred plan: offscreen sprite cache** | `docs/offscreen-sprite-cache-plan.md` | The biggest perf lever still on the table. Documented but blocked on validation infra (dual-render diff harness). Pick up when mobile perf becomes a bottleneck. |
+| **Deferred plan: projectile refactor** | `docs/projectile-refactor-plan.md` | Phased plan for paying down projectile tech debt. Phases A–E shipped; Phase D-b (entity-owned deferred-visual pair) optional. |
+| **Won't-do: native-resolution rendering** | `docs/native-resolution-rendering-plan.md` | Phase 2 reverted; reasoning preserved so it's not reattempted naively. |
+| **Determinism / audit summary** | `docs/audit-summary.md` | Living roadmap of determinism + audit work. |
+| **Player app vision/architecture** | `docs/PLAYER_APP_VISION.md`, `docs/PLAYER_APP_ARCHITECTURE.md` | Player site separation reference. |
+| **Per-topic memory files** | `~/.claude/projects/.../memory/*.md` | Point-in-time observations and decisions (per-feature notes, user preferences, security practices). MEMORY.md is the index. |
+
+**How items flow:** `feature-backlog.md` items get triaged → graduated to `feature-roadmap.md` (or just done & crossed off) → notable session work logged at the bottom of this handoff under "Recently completed".
 
 ## Project Overview
 
