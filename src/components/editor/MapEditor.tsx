@@ -385,6 +385,11 @@ export const MapEditor: React.FC = () => {
   const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
   const [playStartCharacters, setPlayStartCharacters] = useState<PlacedCharacter[]>([]);
   const [showGameOver, setShowGameOver] = useState(false);
+  // Defeat (gameover) dismiss state — mirrors Game.tsx. Lets the dev close
+  // the gameover modal in playtest to inspect the board state behind it
+  // without having to restart. Reset to false at every reset site so a
+  // subsequent failed attempt re-shows the modal.
+  const [defeatDismissed, setDefeatDismissed] = useState(false);
   const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>(() => loadThemeAssets());
@@ -1859,6 +1864,7 @@ export const MapEditor: React.FC = () => {
     setIsSimulating(false);
     setLivesRemaining(puzzle.lives ?? 3);
     setShowGameOver(false);
+    setDefeatDismissed(false);
     setDefeatReason(null);
     setPuzzleScore(null);
     setPlayStartCharacters([]);
@@ -1880,6 +1886,7 @@ export const MapEditor: React.FC = () => {
     stopMusic(); // Stop music when exiting playtest
     setIsSimulating(false);
     setShowGameOver(false);
+    setDefeatDismissed(false);
     setDefeatReason(null);
     setShowConcedeConfirm(false);
     setPuzzleScore(null);
@@ -2096,6 +2103,7 @@ export const MapEditor: React.FC = () => {
     setGameState(resetState);
     setLivesRemaining(originalPlaytestPuzzle.lives ?? 3);
     setShowGameOver(false);
+    setDefeatDismissed(false);
     setIsSimulating(false);
     setSelectedCharacterId(null);
     setPlayStartCharacters([]);
@@ -2500,23 +2508,36 @@ export const MapEditor: React.FC = () => {
                   </div>
                 )}
 
-                {/* Game Over Overlay */}
-                {showGameOver && (
+                {/* Game Over Overlay — dismissible (mirrors Game.tsx pattern) */}
+                {showGameOver && !defeatDismissed && (
                   <div
                     className="absolute inset-0 flex items-center justify-center z-10"
                     style={{
                       backgroundColor: themeAssets.gameOverPanelOverlayBg || 'rgba(0, 0, 0, 0.8)',
                     }}
+                    onClick={() => setDefeatDismissed(true)}
                   >
                     <div
-                      className={`p-6 rounded-pixel-lg text-center max-w-[90%] ${
+                      className={`p-6 rounded-pixel-lg text-center max-w-[90%] relative ${
                         themeAssets.gameOverPanelBg ? '' : 'defeat-panel'
                       }`}
                       style={{
                         ...(themeAssets.gameOverPanelBg && { backgroundColor: themeAssets.gameOverPanelBg }),
                         ...(themeAssets.gameOverPanelBorder && { borderColor: themeAssets.gameOverPanelBorder, borderWidth: '2px', borderStyle: 'solid' }),
                       }}
+                      onClick={e => e.stopPropagation()}
                     >
+                      {/* Close (X) — lets the dev dismiss to inspect board state */}
+                      <button
+                        onClick={() => setDefeatDismissed(true)}
+                        className="absolute top-2 right-2 p-1 text-blood-400 hover:text-parchment-100 hover:bg-blood-700 rounded transition-colors"
+                        aria-label="Dismiss"
+                      >
+                        <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                      </button>
+
                       <h2
                         className={`text-2xl md:text-3xl font-bold font-medieval ${
                           themeAssets.gameOverPanelTitleText ? '' : 'text-blood-200 text-shadow-glow-blood'
@@ -2549,6 +2570,21 @@ export const MapEditor: React.FC = () => {
                         Try Again
                       </button>
                     </div>
+                  </div>
+                )}
+
+                {/* Defeat collapsed pill — shows after the dev dismisses the
+                    gameover modal in playtest, mirroring Game.tsx's pattern.
+                    Click to reopen the full modal. */}
+                {showGameOver && defeatDismissed && (
+                  <div className="absolute inset-x-0 top-2 flex justify-center z-10 pointer-events-none">
+                    <button
+                      onClick={() => setDefeatDismissed(false)}
+                      className="pointer-events-auto defeat-panel px-4 py-2 rounded-pixel-lg flex items-center gap-2 text-sm cursor-pointer hover:brightness-110 transition-all shadow-lg"
+                    >
+                      <span className="text-lg">{'☠️'}</span>
+                      <span className="font-medieval font-bold text-blood-200">Defeated</span>
+                    </button>
                   </div>
                 )}
               </div>
