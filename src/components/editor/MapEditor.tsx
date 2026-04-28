@@ -46,6 +46,8 @@ import { WarningModal } from '../shared/WarningModal';
 import GeneratorDialog from './GeneratorDialog';
 import { vibrate } from '../../utils/haptics';
 import { useIsMobile } from '../../hooks/useMediaQuery';
+import { BugReportModal } from '../game/BugReportModal';
+import type { TrackedRun } from '../../types/bugReport';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -390,6 +392,13 @@ export const MapEditor: React.FC = () => {
   // without having to restart. Reset to false at every reset site so a
   // subsequent failed attempt re-shows the modal.
   const [defeatDismissed, setDefeatDismissed] = useState(false);
+  // Bug-report run tracking — mirrors Game.tsx. Each completed playtest
+  // attempt (victory / defeat / concede) gets pushed onto trackedRuns so the
+  // dev can fire off a bug report for it from the overlay buttons. The ref
+  // is a per-attempt dedup guard so a single attempt can't double-track.
+  const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
+  const [showBugReport, setShowBugReport] = useState(false);
+  const runTrackedRef = useRef(false);
   const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
   const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>(() => loadThemeAssets());
@@ -1055,6 +1064,21 @@ export const MapEditor: React.FC = () => {
                 }, 3000);
               }
             }
+          }
+
+          // Track this completed attempt for bug reporting (dedup-guarded so
+          // each Play press maps to at most one tracked run).
+          if (!runTrackedRef.current) {
+            runTrackedRef.current = true;
+            const finalOutcome = newState.gameStatus as 'victory' | 'defeat';
+            const finalTurns = newState.currentTurn;
+            setTrackedRuns(prev => [...prev, {
+              id: crypto.randomUUID(),
+              placements: JSON.parse(JSON.stringify(playStartCharacters)),
+              outcome: finalOutcome,
+              turnsUsed: finalTurns,
+              timestamp: Date.now(),
+            }]);
           }
         }
 
@@ -1869,6 +1893,10 @@ export const MapEditor: React.FC = () => {
     setPuzzleScore(null);
     setPlayStartCharacters([]);
     setCombatLog([]);
+    // Bug-report runs are scoped to a single playtest session — clearing on
+    // entry means each entry to playtest starts with a fresh empty list.
+    setTrackedRuns([]);
+    runTrackedRef.current = false;
 
     // Start background music for playtest (puzzle-specific or global fallback)
     playBackgroundMusic(state.backgroundMusicId);
@@ -1891,6 +1919,9 @@ export const MapEditor: React.FC = () => {
     setShowConcedeConfirm(false);
     setPuzzleScore(null);
     setPlayStartCharacters([]);
+    setTrackedRuns([]);
+    setShowBugReport(false);
+    runTrackedRef.current = false;
     setLivesRemaining(3);
   };
 
@@ -1998,6 +2029,7 @@ export const MapEditor: React.FC = () => {
     setPlayStartCharacters(JSON.parse(JSON.stringify(gameState.placedCharacters)));
     setGameState((prev) => prev ? ({ ...prev, gameStatus: 'running' }) : null);
     setIsSimulating(true);
+    runTrackedRef.current = false;  // Per-attempt dedup; cleared at each new Play
     playGameSound('simulation_start');
   };
 
@@ -2028,6 +2060,7 @@ export const MapEditor: React.FC = () => {
     setSelectedCharacterId(null);
     setPuzzleScore(null);
     setCombatLog([]);
+    runTrackedRef.current = false;  // New attempt — re-arm dedup
   };
 
   const handleWipe = () => {
@@ -2093,6 +2126,7 @@ export const MapEditor: React.FC = () => {
     setGameState(resetState);
     setIsSimulating(false);
     setSelectedCharacterId(null);
+    runTrackedRef.current = false;  // New attempt — re-arm dedup
   }, [originalPlaytestPuzzle, playStartCharacters]);
 
   // Restart puzzle from game over (reset lives and go to setup)
@@ -2109,6 +2143,7 @@ export const MapEditor: React.FC = () => {
     setPlayStartCharacters([]);
     setPuzzleScore(null);
     setDefeatReason(null);
+    runTrackedRef.current = false;  // New attempt — re-arm dedup
   };
 
   // Concede current attempt - lose a life and return to setup
@@ -2117,6 +2152,19 @@ export const MapEditor: React.FC = () => {
     setShowConcedeConfirm(false);
     setIsSimulating(false);
     setDefeatReason('damage'); // Conceding counts as damage death
+
+    // Track this concede as a defeat run for bug reporting (dedup-guarded so
+    // a single Play+Concede produces exactly one tracked run).
+    if (!runTrackedRef.current && gameState) {
+      runTrackedRef.current = true;
+      setTrackedRuns(prev => [...prev, {
+        id: crypto.randomUUID(),
+        placements: JSON.parse(JSON.stringify(playStartCharacters)),
+        outcome: 'defeat',
+        turnsUsed: gameState.currentTurn,
+        timestamp: Date.now(),
+      }]);
+    }
 
     const puzzleLives = originalPlaytestPuzzle.lives ?? 3;
     const isUnlimitedLives = puzzleLives === 0;
@@ -2556,19 +2604,34 @@ export const MapEditor: React.FC = () => {
                       >
                         No lives remaining!
                       </p>
-                      <button
-                        onClick={handleRestartPlaytest}
-                        className={`mt-4 px-6 py-3 font-bold text-lg ${
-                          themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
-                        }`}
-                        style={{
-                          ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
-                          ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                          ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
-                        }}
-                      >
-                        Try Again
-                      </button>
+                      <div className="mt-4 flex flex-col items-center gap-2">
+                        <button
+                          onClick={handleRestartPlaytest}
+                          className={`px-6 py-3 font-bold text-lg ${
+                            themeAssets.gameOverPanelButtonBg ? 'rounded-pixel' : 'dungeon-btn-danger'
+                          }`}
+                          style={{
+                            ...(themeAssets.gameOverPanelButtonBg && { backgroundColor: themeAssets.gameOverPanelButtonBg }),
+                            ...(themeAssets.gameOverPanelButtonBorder && { borderColor: themeAssets.gameOverPanelButtonBorder, borderWidth: '2px', borderStyle: 'solid' }),
+                            ...(themeAssets.gameOverPanelButtonText && { color: themeAssets.gameOverPanelButtonText }),
+                          }}
+                        >
+                          Try Again
+                        </button>
+                        {trackedRuns.length > 0 && (
+                          <button
+                            onClick={() => setShowBugReport(true)}
+                            className="dungeon-btn px-1.5 py-1 text-xs flex items-center justify-center"
+                            title="Report Bug"
+                          >
+                            <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M8 2l1.88 1.88M14.12 3.88L16 2M9 7.13v-1a3.003 3.003 0 116 0v1" />
+                              <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 014-4h4a4 4 0 014 4v3c0 3.3-2.7 6-6 6z" />
+                              <path d="M12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M6 17l-4 1M17.47 9c1.93-.2 3.53-1.9 3.53-4M18 13h4M18 17l4 1" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 )}
@@ -2658,6 +2721,24 @@ export const MapEditor: React.FC = () => {
                         const quest = originalPlaytestPuzzle.sideQuests?.find(q => q.id === qid);
                         return quest?.title || qid;
                       }).join(', ')}
+                    </div>
+                  )}
+
+                  {/* Report Bug — file a bug report against any tracked run
+                      from this playtest session. Mirrors Game.tsx victory UI. */}
+                  {trackedRuns.length > 0 && (
+                    <div className="mt-3 flex justify-center">
+                      <button
+                        onClick={() => setShowBugReport(true)}
+                        className="dungeon-btn px-1.5 py-1 text-xs flex items-center justify-center"
+                        title="Report Bug"
+                      >
+                        <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M8 2l1.88 1.88M14.12 3.88L16 2M9 7.13v-1a3.003 3.003 0 116 0v1" />
+                          <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 014-4h4a4 4 0 014 4v3c0 3.3-2.7 6-6 6z" />
+                          <path d="M12 20v-9M6.53 9C4.6 8.8 3 7.1 3 5M6 13H2M6 17l-4 1M17.47 9c1.93-.2 3.53-1.9 3.53-4M18 13h4M18 17l4 1" />
+                        </svg>
+                      </button>
                     </div>
                   )}
                 </div>
@@ -5095,6 +5176,20 @@ export const MapEditor: React.FC = () => {
         customTileTypes={customTileTypes}
         availableCollectibles={allCollectibles}
       />
+
+      {/* Bug Report Modal — mirrors Game.tsx mounting. Uses the playtest
+          puzzle as the reportable target, scoped to runs the dev tracked
+          during the current playtest session. Only renders meaningfully
+          when there's at least one tracked run; isOpen gate handles the
+          rest. */}
+      {originalPlaytestPuzzle && (
+        <BugReportModal
+          isOpen={showBugReport}
+          onClose={() => setShowBugReport(false)}
+          puzzle={originalPlaytestPuzzle}
+          trackedRuns={trackedRuns}
+        />
+      )}
 
       {/* Keyboard Shortcuts Reference */}
       {showShortcuts && (
