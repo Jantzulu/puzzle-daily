@@ -50,26 +50,6 @@ import { BugReportModal } from '../game/BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { Game } from '../game/Game';
 
-/**
- * Phase 2a feature flag: when the URL has `?gameunify=1`, MapEditor's
- * playtest mode mounts the player-facing <Game/> component with the
- * in-progress puzzle, instead of running its own embedded game loop +
- * UI. Lets us verify the unified mount works in deployed Netlify
- * builds before Phase 3 strips the embedded loop unconditionally.
- *
- * Caveats while flag is on (Phase 2a only):
- *  - Combat-log sidebar and test-mode (enemies-only / heroes-only) are
- *    temporarily unavailable. Toggle the flag off to use them. Phase 3
- *    sorts out the right composition.
- *  - Game.tsx's defeat-dismiss + bug-report parity ports we shipped to
- *    MapEditor's embedded path remain wired for the OFF path; they're
- *    redundant with Game.tsx's own implementations in the ON path.
- */
-const useUnifiedGame = (): boolean => {
-  if (typeof window === 'undefined') return false;
-  return new URLSearchParams(window.location.search).has('gameunify');
-};
-
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
   if (!behavior) return [];
@@ -2393,20 +2373,26 @@ export const MapEditor: React.FC = () => {
 
   // Render playtest mode
   if (state.mode === 'playtest' && gameState) {
-    // Phase 2a: when the unified-game flag is set in the URL and we have a
-    // puzzle to play, short-circuit to the player-facing <Game/> component
-    // with the in-progress puzzle. The embedded loop below is bypassed
-    // entirely for this render. See useUnifiedGame() comment at the top
-    // of the file for caveats during this phase.
-    if (useUnifiedGame() && originalPlaytestPuzzle) {
+    // Phase 2: playtest now mounts the player-facing <Game/> component with
+    // the in-progress puzzle. Same UI the player sees, exactly. The embedded
+    // game loop + UI below this branch is dead code on this render — Phase 3
+    // strips it out.
+    //
+    // Temporarily missing in this path (until Phase 3 composes them back in):
+    //   - Combat-log sidebar
+    //   - Test-mode buttons (enemies-only / heroes-only)
+    // Both still live in the embedded path for now (defensive — if the
+    // unified mount has issues, reverting is one commit) but only the
+    // unified mount actually renders.
+    if (originalPlaytestPuzzle) {
       return (
         <Game
           // remount on puzzle id change so initial state re-seeds cleanly
           key={originalPlaytestPuzzle.id}
           puzzle={originalPlaytestPuzzle}
           onExitToEditor={handleBackToEditor}
-          // onTurnExecuted intentionally omitted for Phase 2a — combat log
-          // sidebar isn't composed here yet; Phase 3 sorts that out.
+          // onTurnExecuted intentionally omitted for Phase 2 — combat log
+          // sidebar composition is a Phase 3 concern.
         />
       );
     }
