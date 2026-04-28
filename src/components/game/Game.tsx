@@ -64,18 +64,56 @@ export interface GameProps {
    * route remain free to replay any number of times for testing.
    */
   enableDailyLock?: boolean;
+
+  /**
+   * Optional puzzle to load. When provided, this puzzle seeds the initial
+   * game state (and the reset-to-original baseline) instead of fetching
+   * `getTodaysPuzzle()`. Used by the editor to mount a Game instance with
+   * the in-progress level being playtested. The reference is captured at
+   * mount; pass a fresh `key` (e.g. the puzzle id) on the parent if you
+   * need to swap puzzles.
+   */
+  puzzle?: Puzzle;
+
+  /**
+   * Optional callback rendered as a "Back to Editor" button. When defined,
+   * Game shows the button in the top quest panel; clicking it invokes the
+   * callback. Player builds (PlayerApp) intentionally don't pass this, so
+   * the button never renders for players. The callback's presence is the
+   * feature gate — there's no separate "playtest mode" flag to misroute.
+   */
+  onExitToEditor?: () => void;
+
+  /**
+   * Optional turn-by-turn observer. Fires once after each turn the
+   * simulation loop completes, with the pre-turn and post-turn game states.
+   * Used by the editor to derive a combat-log sidebar (via `diffTurn`)
+   * without needing its own copy of the game loop. Player builds don't
+   * pass this — the callback never fires, no log code activates, no
+   * editor-only behavior reaches the player.
+   */
+  onTurnExecuted?: (prev: GameState, next: GameState) => void;
 }
 
-export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
+export const Game: React.FC<GameProps> = ({
+  enableDailyLock = false,
+  puzzle: puzzleProp,
+  onExitToEditor,
+  onTurnExecuted,
+}) => {
   const officialPuzzles = getAllPuzzles();
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
 
   // Combine official and saved puzzles
   const allPuzzles = [...officialPuzzles, ...savedPuzzles];
 
-  const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle>(() => getTodaysPuzzle());
+  // Initial puzzle source: caller-provided `puzzle` prop wins (editor playtest
+  // mounts with a specific in-progress puzzle); otherwise fall back to
+  // `getTodaysPuzzle()` (player + dev `/` route default behavior, unchanged).
+  // Captured once at mount — to swap puzzles, remount the component via key.
+  const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle>(() => puzzleProp ?? getTodaysPuzzle());
   // Store original puzzle for reset (deep copy to prevent mutation)
-  const [originalPuzzle, setOriginalPuzzle] = useState<Puzzle>(() => JSON.parse(JSON.stringify(getTodaysPuzzle())));
+  const [originalPuzzle, setOriginalPuzzle] = useState<Puzzle>(() => JSON.parse(JSON.stringify(puzzleProp ?? getTodaysPuzzle())));
   const [gameState, setGameState] = useState<GameState>(() => {
     return initializeGameState(currentPuzzle);
   });
@@ -443,11 +481,18 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
       // aren't suppressed by React StrictMode's double-invoke of updater functions.
       let outcome: 'running' | 'victory' | 'defeat' = 'running';
       let outcomeTurns = 0;
-      // Capture the post-turn state for replay history. StrictMode calls the updater
-      // twice; only the final assignment (run 2) survives, matching React's kept state.
+      // Capture pre + post turn states for replay history and the
+      // `onTurnExecuted` observer. StrictMode calls the updater twice; both
+      // invocations receive the same prevState and produce the same newState
+      // for our purposes, so capturing inside the updater is safe.
+      let capturedPreTurnState: GameState | null = null;
       let capturedPostTurnState: GameState | null = null;
 
       setGameState((prevState) => {
+        // Capture pre-turn state for the onTurnExecuted observer. Reference
+        // capture is fine: subscribers (e.g. the editor's combat-log derivation
+        // via diffTurn) only read, they don't mutate.
+        capturedPreTurnState = prevState;
         // Deep copy all mutable state to ensure React StrictMode double-invoke works correctly.
         // StrictMode calls the updater function twice with the same prevState to detect impure renders.
         // We need a complete deep copy so both runs are truly independent.
@@ -569,6 +614,15 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
         // Mirror the accumulated timeline; executeTurn copies the array forward each turn,
         // so the latest state always holds the full event stream.
         projectileTimelineRef.current = post.projectileTimeline ? [...post.projectileTimeline] : [];
+      }
+
+      // Notify external observers (editor's combat log, etc.). Fires once
+      // per real turn — StrictMode double-invocation of the setGameState
+      // updater doesn't fan out here because we fire after the updater
+      // returns. PlayerApp doesn't pass this callback, so no editor-only
+      // code path activates in player builds.
+      if (onTurnExecuted && capturedPreTurnState && capturedPostTurnState && testMode === 'none') {
+        onTurnExecuted(capturedPreTurnState as GameState, capturedPostTurnState as GameState);
       }
 
       // Fire side effects (haptics, sounds) outside the state updater
@@ -2023,6 +2077,20 @@ export const Game: React.FC<GameProps> = ({ enableDailyLock = false }) => {
                   </div>
                 )}
                 <div className="flex items-center justify-center gap-2 flex-wrap">
+                    {/* Back to Editor — only when caller (e.g. MapEditor playtest) provides
+                        the callback. Player builds never pass this, so the button doesn't render. */}
+                    {onExitToEditor && (
+                      <button
+                        onClick={onExitToEditor}
+                        className="dungeon-btn px-2.5 py-1 text-xs flex items-center gap-1 flex-shrink-0"
+                        title="Back to Editor"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        <span className="hidden md:inline">Editor</span>
+                      </button>
+                    )}
                     <HelpButton sectionId="game_general" />
                     <span key={shimmerKey} className="shimmer-container">
                       <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
