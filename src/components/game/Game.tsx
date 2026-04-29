@@ -719,6 +719,15 @@ export const Game: React.FC<GameProps> = ({
       if (gameState.gameStatus !== 'setup' || !spritesReady) {
         return;
       }
+      // Daily-lock guard: when today's puzzle is already won or lost the
+      // setup phase is read-only — clicking the board shouldn't place,
+      // remove, or otherwise mutate placement state. Hero cards remain
+      // clickable for re-reading info (handled by CharacterSelector). The
+      // Play button is also blocked at handlePlay; this is the parallel
+      // guard for board-click-driven placement.
+      if (dailyLockStatus) {
+        return;
+      }
 
       // Check if clicking on an already placed character to remove them
       const clickedCharacter = gameState.placedCharacters.find((c) => c.x === x && c.y === y);
