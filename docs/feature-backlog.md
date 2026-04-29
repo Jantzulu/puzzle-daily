@@ -42,15 +42,33 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ## Launch-adjacent
 
-- [ ] **Auto-target distance always inherits trigger range.** This was
-  discussed but may have fallen through. Need to verify whether it shipped
-  or whether the independent auto-target value is still settable. If still
-  separate, remove the independent control and have it always equal trigger
-  range. *Captured 2026-04-27.*
+- [x] **Auto-target distance always inherits trigger range.** **Done
+  2026-04-28** in commit `1f2f947` (with a small design adjustment from
+  the original framing). Final design: autoTargetRange UI control stays
+  available for ALL contexts (was character-only), and auto-seeds from
+  trigger.eventRange when an "in range" trigger event is selected. Dev
+  edits to autoTargetRange are sticky (explicit value wins over future
+  trigger.eventRange changes). RESURRECT path also picks up the
+  inheritance fallback at the engine level.
 
 - [ ] **Adjustable scale/position for objects in tile + preview.** Same UI
   pattern that already exists for entity sprite sheets. Mostly a port of
   the existing controls. *Captured 2026-04-27.*
+
+- [ ] **TypeScript error backlog squash.** As of 2026-04-28, `tsc --noEmit`
+  reports **267 errors across 41 files** in the player+editor build.
+  Mostly pre-existing tech debt that's been accumulated through quick
+  patches: missing exports (`SoundAsset`, `PuzzleSkin`, `SpellAsset`),
+  drift between types and usage (e.g. `subSteps`, `preventsAllActions`,
+  `processAtTurnStart` on `StatusEffectAsset`; `'collectible'` vs the
+  asset_type union; `Direction | undefined` vs `Direction`), comparisons
+  to legacy enum values that no longer exist, etc. None block runtime
+  (TS errors are compile-time only) but they erode signal-to-noise on
+  every build and made every commit in this session slightly harder to
+  verify ("is this error new?"). Worth a dedicated session: enumerate
+  the error categories, fix in batches by type, get the count to zero,
+  then enable stricter compile flags (`noUnusedLocals`,
+  `noUnusedParameters`) to keep it that way. *Captured 2026-04-28.*
 
 ## Post-launch features
 

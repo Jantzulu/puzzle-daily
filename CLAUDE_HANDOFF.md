@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 28, 2026 (playtest unification — MapEditor's playtest now mounts <Game/> directly via 3 new optional props; embedded game loop + UI stripped, ~1,486 lines removed)
+Last Updated: April 28, 2026 (playtest unification → daily-lock placement guard → auto-target inheritance → CUSTOM_ATTACK + Fire Mage removal → hero card visual cleanup)
 
 ## Doc Map — Where to Find What
 
@@ -194,7 +194,24 @@ The Reflect status effect bounces incoming projectiles back:
 
 ### Next session — start here
 
-**2026-04-24 session closed out the pinned pierce + healthbar bug end-to-end** — live, replay, per-hit timing, partial-damage-no-kill cases, cross-turn replay decrement loss — plus per-segment sprite rotation polish for bouncing / reflected / pathfinding bolts. See "Recently completed" below.
+**2026-04-28 session shipped a major architectural unification + a slew of cleanups.** Highlights:
+
+- **Playtest unification (5 commits, ~1,500 lines removed net).** MapEditor's playtest mode no longer runs its own embedded game loop — it mounts `<Game/>` directly with the in-progress puzzle. Game.tsx grew three optional escape-hatch props (`puzzle`, `onExitToEditor`, `onTurnExecuted`); MapEditor passes them when mounting playtest, PlayerApp doesn't (so player builds get zero editor-only chrome). Combat log returns as a floating button + modal in the quest panel (next to "Back to Editor"), driven by `onTurnExecuted` → `diffTurn` → modal. Future Game.tsx features automatically benefit playtest, no port tax.
+- **Daily-lock placement guard** — `handleTileClick` short-circuits when daily-lock is engaged so locked-out players can't place heroes (parallel to the existing `handlePlay` guard).
+- **Auto-target inheritance** — autoTargetRange now seeds from trigger.eventRange when an "in range" trigger event is selected, with sticky dev-override behavior. UI extended to all action contexts (was character-only). Resurrect engine path also picks up the inheritance fallback.
+- **CUSTOM_ATTACK + Fire Mage removed** — the legacy attack action type is gone from the enum, switch case, and editor UI; `archer-fireball.json` deleted; ~387 lines pruned across 11 files. `CustomAttack` survives only as the engine's internal projectile/melee data shape.
+- **Hero card visual cleanup** — placed-card click semantics (open info), unified copper backdrop between card and info area, removed the dark `bg-black/40` sprite overlay entirely (now just the ✓ checkmark).
+
+See "Recently completed" below for full commit list with rationale and links.
+
+**`HOMING_DEBUG` and `PIERCE_DEBUG` are both `false`** by default. Flip at [simulation.ts:20](src/engine/simulation.ts#L20) (HOMING_DEBUG) or [simulation.ts:34](src/engine/simulation.ts#L34) (PIERCE_DEBUG) if you need traces.
+
+**Backlog status as of 2026-04-28:**
+- Launch-blocking: empty
+- Launch-adjacent: object scale/position controls + a TypeScript error squash (267 errors across 41 files, all pre-existing)
+- Post-launch features: full queue waiting (summon, necromancy, allies, multi-tile melee stitching, breakable container, projectile linger, user-input spell variants, Noble marker, dev badge)
+
+**Older pending tasks (still relevant):**
 
 **`HOMING_DEBUG` and `PIERCE_DEBUG` are both `false`** by default. Flip at [simulation.ts:20](src/engine/simulation.ts#L20) (HOMING_DEBUG) or [simulation.ts:34](src/engine/simulation.ts#L34) (PIERCE_DEBUG) if you need traces.
 
@@ -285,6 +302,33 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 28, 2026 — playtest unification + cleanups)
+
+Long iterative session, all changes verified by user on Netlify deployment. Major architectural change closing out tech debt around editor/playtest divergence, plus a series of follow-up cleanups.
+
+**Playtest unification — `<Game/>` mounted inside MapEditor (5 commits).**
+The editor's playtest had been growing as a parallel mini-game implementation alongside Game.tsx (~5,755-line MapEditor). Each new feature on Game.tsx (replay, bug-report, daily-lock-style modals, defeat-dismiss) had a creeping porting tax on MapEditor to keep playtest at parity. Resolution: stop porting, unify.
+- Phase 1 ([95a0351](https://github.com/Jantzulu/puzzle-daily/commit/95a0351)) — Game.tsx grew three optional props: `puzzle?`, `onExitToEditor?`, `onTurnExecuted?`. All purely additive; PlayerApp + dev `/` callers preserve identical behavior.
+- Phase 2 ([78ace1d](https://github.com/Jantzulu/puzzle-daily/commit/78ace1d), [9c4e2a6](https://github.com/Jantzulu/puzzle-daily/commit/9c4e2a6)) — MapEditor's playtest branch mounts `<Game puzzle={...} onExitToEditor={handleBackToEditor} />` instead of running its own loop. Started behind a `?gameunify=1` flag, then flipped default-on once verified.
+- Phase 3 ([9c037e5](https://github.com/Jantzulu/puzzle-daily/commit/9c037e5)) — stripped the embedded game loop UI (~800-line JSX block) + the simulation `setInterval` useEffect (~125 lines). Net `-935`/`+14`.
+- Phase 4 ([a2ed7f7](https://github.com/Jantzulu/puzzle-daily/commit/a2ed7f7)) — pruned orphaned state (gameState/setGameState, isSimulating, livesRemaining, puzzleScore, defeatDismissed, trackedRuns, runTrackedRef, testMode, themeAssets/subscribe, etc.), orphaned handlers (handleTileClick/Play/Pause/Reset/Wipe/ShowSolution/Restart/Concede/AutoReset/Step/TestEnemies/TestCharacters/ProjectileKill, renderLivesHearts), and orphan imports. Net `-551`/`+27`.
+- Phase 5 ([a036380](https://github.com/Jantzulu/puzzle-daily/commit/a036380), [2e2b8a5](https://github.com/Jantzulu/puzzle-daily/commit/2e2b8a5)) — combat log re-introduced as a "📜 Log" floating button in Game's quest panel (next to Back to Editor) opening a modal in MapEditor. Wired via `onTurnExecuted` → `diffTurn(prev, next)` → `combatLog` state → modal render. Editor-only — PlayerApp doesn't pass the callback so it never activates.
+
+**Defensive guards on the daily lock ([abc20eb](https://github.com/Jantzulu/puzzle-daily/commit/abc20eb)).** Locked-out players could still place/remove heroes on the board because `handleTileClick` wasn't gated on `dailyLockStatus`. Same `if (dailyLockStatus) return;` short-circuit pattern as the existing handlePlay guard. Hero cards remain clickable for re-reading info (per the placed-card flow shipped earlier).
+
+**Auto-target inheritance ([1f2f947](https://github.com/Jantzulu/puzzle-daily/commit/1f2f947)).** Final design after a clarifying back-and-forth: autoTargetRange UI control extended to all action contexts (was character-only); auto-seeds from trigger.eventRange when an "in range" trigger event is selected; sticky dev override (explicit autoTargetRange wins over future trigger.eventRange changes once dev has set it). Resurrect engine path also picks up the `autoTargetRange || trigger?.eventRange || 0` fallback at line 3554.
+
+**CUSTOM_ATTACK + Fire Mage removal ([d56d63c](https://github.com/Jantzulu/puzzle-daily/commit/d56d63c)).** The last remaining legacy attack-system entry point. `archer-fireball.json` (Fire Mage) deleted, `ActionType.CUSTOM_ATTACK` enum entry gone, `customAttack/customAttackId` fields removed from `CharacterAction`, `executeCustomAttack` function gone, `AttackEditor.tsx` deleted (174 lines), MapEditor + Tooltips + CharacterEditor + helpers test fixtures cleaned up. Storage helpers (`saveCustomAttack/getCustomAttacks/deleteCustomAttack/loadCustomAttack`) removed (~50 lines from assetStorage.ts). Net `-387`/`+15` across 11 files. `CustomAttack` type itself stays — engine still uses it as the internal data structure for projectile/melee runtime parameters.
+
+**Hero card visual cleanup ([0d69788](https://github.com/Jantzulu/puzzle-daily/commit/0d69788), [4ab4415](https://github.com/Jantzulu/puzzle-daily/commit/4ab4415), [f3d8faa](https://github.com/Jantzulu/puzzle-daily/commit/f3d8faa)).** Iterative tightening based on user playtest feedback:
+- Placed hero cards now clickable for re-reading info (previously fully blocked).
+- Selected placed-card backdrop unified with info area (`bg-copper-900/15` on both, mirroring the enemy display's `bg-blood-900/15` pattern).
+- The `bg-black/40` sprite-overlay dim removed entirely for placed cards — the dark rectangle behind sprites was visually distracting and the outer card's `opacity-50` (when not selected) carries the "this hero is placed" signal sufficiently. The ✓ checkmark stays as the explicit "placed" indicator.
+
+**Documentation + memory hygiene** — feature-backlog.md updated; CLAUDE_HANDOFF.md got a doc-map section ([37e6baa](https://github.com/Jantzulu/puzzle-daily/commit/37e6baa)) describing where each artifact lives; stale memory files (pierce-healthbar bug, wall-bounce history) refreshed to reflect current state.
+
+**Captured tech-debt note for future session.** `tsc --noEmit` reports **267 errors across 41 files** — pre-existing tech debt around missing exports, type drift (e.g. `subSteps`, `preventsAllActions`, `processAtTurnStart` on `StatusEffectAsset`), comparisons to legacy enum values, etc. Filtered as "not from my changes" throughout this session, but worth a dedicated error-squash session. Logged in `docs/feature-backlog.md` under launch-adjacent.
 
 ### Recently completed (April 24, 2026 — pierce healthbar end-to-end + per-segment sprite rotation)
 
