@@ -760,10 +760,6 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                                     <span className="text-stone-400">Stacking:</span>{' '}
                                     <span className="text-parchment-100 font-semibold capitalize">{effectAsset.stackingBehavior}</span>
                                   </div>
-                                  <div className="bg-stone-800 rounded px-2 py-1">
-                                    <span className="text-stone-400">Processes:</span>{' '}
-                                    <span className="text-parchment-100 font-semibold">{effectAsset.processAtTurnStart ? 'Turn Start' : 'Turn End'}</span>
-                                  </div>
                                 </div>
 
                                 {/* Special flags */}

@@ -7,7 +7,7 @@ import {
   type CustomTileType,
   type CustomCollectible,
 } from '../../utils/assetStorage';
-import type { StatusEffectAsset } from '../../types/game';
+import type { StatusEffectAsset, ActionStep } from '../../types/game';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { TileSpritePreview, StatusEffectIcon } from './EntryCards';
@@ -128,7 +128,7 @@ export const EnemyDetail: React.FC<{ enemy: CustomEnemy }> = ({ enemy }) => {
 
       {/* Action Steps — new format with fallback to legacy tooltipSteps */}
       {(() => {
-        const steps = enemy.actionSteps ?? enemy.tooltipSteps?.map(t => ({ text: t }));
+        const steps: ActionStep[] | undefined = enemy.actionSteps ?? enemy.tooltipSteps?.map(t => ({ text: t }));
         if (!steps || steps.length === 0) return null;
         return (
           <div className="compendium-detail-section">
@@ -176,10 +176,6 @@ export const EnemyDetail: React.FC<{ enemy: CustomEnemy }> = ({ enemy }) => {
 };
 
 export const StatusEffectDetail: React.FC<{ effect: StatusEffectAsset }> = ({ effect }) => {
-  const hasEffects = effect.preventsAllActions || effect.preventsMovement ||
-                     effect.preventsRanged || effect.preventsMelee ||
-                     effect.removedOnDamage || effect.processAtTurnStart;
-
   return (
     <div className="space-y-4">
       {/* Enchantment Icon Showcase */}
@@ -222,20 +218,6 @@ export const StatusEffectDetail: React.FC<{ effect: StatusEffectAsset }> = ({ ef
         </div>
       </div>
 
-      {/* Effects */}
-      {hasEffects && (
-        <div className="compendium-detail-section">
-          <h3>Effects</h3>
-          <ul className="space-y-1 text-sm" style={{ color: 'var(--text-primary)' }}>
-            {effect.preventsAllActions && <li>• Prevents all actions</li>}
-            {effect.preventsMovement && <li>• Prevents movement</li>}
-            {effect.preventsRanged && <li>• Prevents ranged attacks</li>}
-            {effect.preventsMelee && <li>• Prevents melee attacks</li>}
-            {effect.removedOnDamage && <li>• Removed when damaged</li>}
-            {effect.processAtTurnStart && <li>• Processes at turn start</li>}
-          </ul>
-        </div>
-      )}
     </div>
   );
 };
@@ -417,14 +399,14 @@ export const ItemDetail: React.FC<{ item: CustomCollectible }> = ({ item }) => {
   const getEffectDescription = (effect: CustomCollectible['effects'][0]) => {
     switch (effect.type) {
       case 'heal':
-        return `Heals ${effect.value || 1} health`;
+        return `Heals ${effect.amount ?? 1} health`;
       case 'damage':
-        return `Deals ${effect.value || 1} damage`;
+        return `Deals ${effect.amount ?? 1} damage`;
       case 'score':
-        return `Awards ${effect.value || 0} points`;
+        return `Awards ${effect.scoreValue ?? 0} points`;
       case 'status_effect':
         return 'Applies a status effect';
-      case 'key':
+      case 'win_key':
         return 'Key item';
       default:
         return effect.type;
