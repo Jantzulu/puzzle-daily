@@ -1,3 +1,4 @@
+/// <reference types="node" />
 /**
  * Golden-test corpus — locks in current deterministic engine behavior so
  * refactors (projectile Phase C/D/E) can prove they don't drift logical

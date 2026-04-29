@@ -166,7 +166,7 @@ export const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsse
 export const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> = ({ spell, children }) => {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -211,7 +211,7 @@ export const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNo
 export const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children: React.ReactNode }> = ({ actions, children }) => {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequence = formatActionSequence(actions);
 
   const handleMouseEnter = (e: React.MouseEvent) => {

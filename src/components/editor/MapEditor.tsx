@@ -10,9 +10,9 @@ import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject, type SoundAsset } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject } from '../../utils/assetStorage';
 import { preloadImages } from '../../utils/imageLoader';
-import type { PuzzleSkin } from '../../types/game';
+import type { PuzzleSkin, SoundAsset } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { TagInput, collectAllTags } from '../shared/TagInput';
@@ -94,7 +94,7 @@ const formatActionSequence = (behavior: CharacterAction[] | undefined): string[]
 const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> = ({ spell, children }) => {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();
@@ -139,7 +139,7 @@ const SpellTooltip: React.FC<{ spell: SpellAsset; children: React.ReactNode }> =
 const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children: React.ReactNode }> = ({ actions, children }) => {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const sequence = formatActionSequence(actions);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
@@ -190,7 +190,7 @@ const ActionTooltip: React.FC<{ actions: CharacterAction[] | undefined; children
 const ObjectTooltip: React.FC<{ object: CustomObject; children: React.ReactNode }> = ({ object, children }) => {
   const [show, setShow] = useState(false);
   const [position, setPosition] = useState({ x: 0, y: 0 });
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const handleMouseEnter = (e: React.MouseEvent) => {
     const rect = e.currentTarget.getBoundingClientRect();

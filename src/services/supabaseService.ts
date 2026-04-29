@@ -6,8 +6,8 @@ async function getCurrentUserId(): Promise<string | undefined> {
   const { data } = await supabase.auth.getUser();
   return data.user?.id;
 }
-import type { Puzzle } from '../types/game';
-import type { CustomTileType, CustomObject, PuzzleSkin, SpellAsset } from '../utils/assetStorage';
+import type { Puzzle, PuzzleSkin, SpellAsset } from '../types/game';
+import type { CustomTileType, CustomObject } from '../utils/assetStorage';
 import type { EnemyWithSprite } from '../data/enemies';
 import type { CharacterWithSprite } from '../data/characters';
 
