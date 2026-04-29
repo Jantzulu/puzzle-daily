@@ -24,17 +24,21 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
 
 ## Launch-blocking
 
-- [ ] **Playtest page parity with Play.** Many features added to the player-
-  facing "Play" route over the past months (replay system, etc.) didn't
-  backfill into the editor's playtest mode. Creators need playtest to be a
-  1:1 environment + dev tools, otherwise level design quality drifts and
-  bug reports reference behaviors that don't reproduce in editor. Scope:
-  enumerate the missing features, port each. *Captured 2026-04-27.*
+- [x] **Playtest page parity with Play.** ~~Many features added to the
+  player-facing "Play" route over the past months (replay system, etc.)
+  didn't backfill into the editor's playtest mode.~~ **Done 2026-04-28**
+  via unification rather than porting. Game.tsx grew three optional
+  props (`puzzle`, `onExitToEditor`, `onTurnExecuted` — commit
+  `95a0351`). MapEditor's playtest now mounts `<Game/>` with the
+  in-progress puzzle (`9c4e2a6`). Embedded game loop + UI stripped
+  (`9c037e5`, `-935` lines). Orphaned state/handlers cleaned up
+  (`a2ed7f7`, `-551` lines). Future Game.tsx features automatically
+  benefit playtest with no porting tax. Combat-log sidebar deferred
+  to a small follow-up via the `onTurnExecuted` callback.
 
-- [ ] **Click already-placed units to re-read their info.** Currently the
-  card for a placed hero can't be opened — to re-read what a hero does
-  mid-puzzle the player has to unplace and re-place them. Should be a small
-  fix in the card-click handler. *Captured 2026-04-27.*
+- [x] **Click already-placed units to re-read their info.** **Done
+  2026-04-27** in commit `0d69788` — removed `isPlaced` from the
+  click-blocker so clicking a placed hero card opens the info area.
 
 ## Launch-adjacent
 

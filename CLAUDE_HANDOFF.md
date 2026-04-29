@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 27, 2026 (daily-puzzle lock + Phase 2 polish, perf cleanup pass, feature-backlog doc captured)
+Last Updated: April 28, 2026 (playtest unification — MapEditor's playtest now mounts <Game/> directly via 3 new optional props; embedded game loop + UI stripped, ~1,486 lines removed)
 
 ## Doc Map — Where to Find What
 
