@@ -268,6 +268,13 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                 cannotSelect
                   ? 'opacity-40 cursor-not-allowed'
                   : isPlaced
+                  // Placed cards: opacity-50 dims them. When selected, also
+                  // tint with bg-copper-900/15 so the card and the expanded
+                  // info area below it (which uses the same tint) read as
+                  // one unified surface — matching the enemy display's
+                  // bg-blood-900/15 pattern. The bg-black/40 sprite overlay
+                  // is dropped when selected (see overlay block below) so
+                  // the dark rectangle doesn't fight the copper tint.
                   ? `opacity-50 cursor-pointer ${isSelected ? 'bg-copper-900/15' : '[@media(hover:hover)]:hover:bg-stone-700/30'}`
                   : isSelected
                   ? 'bg-copper-900/15 cursor-pointer'
@@ -287,7 +294,14 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
                 />
                 {isPlaced && (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-pixel">
+                  // bg-black/40 is the "this hero is placed, currently
+                  // unavailable to place again" dim. When the card is
+                  // selected (the dev opened it to re-read info), drop the
+                  // dim so it stops fighting the copper tint of the unified
+                  // selected backdrop — checkmark still rendered.
+                  <div className={`absolute inset-0 flex items-center justify-center rounded-pixel ${
+                    isSelected ? '' : 'bg-black/40'
+                  }`}>
                     <span className="text-copper-400 text-base">✓</span>
                   </div>
                 )}
