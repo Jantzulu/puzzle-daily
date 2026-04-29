@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from '../shared/Toast';
 import { useSearchParams } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType, GameState } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
 import { getAllEnemies, getEnemy } from '../../data/enemies';
@@ -34,6 +34,7 @@ import GeneratorDialog from './GeneratorDialog';
 import { vibrate } from '../../utils/haptics';
 import { useIsMobile } from '../../hooks/useMediaQuery';
 import { Game } from '../game/Game';
+import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/combatLog';
 
 // Helper to get all spells from character/enemy behavior
 const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => {
@@ -368,6 +369,18 @@ export const MapEditor: React.FC = () => {
   // MapEditor only needs `originalPlaytestPuzzle` to pass into <Game/> as the
   // `puzzle` prop and to gate the playtest render branch.
   const [originalPlaytestPuzzle, setOriginalPlaytestPuzzle] = useState<Puzzle | null>(null);
+
+  // Combat log — editor-only dev tool. Populated via Game.tsx's onTurnExecuted
+  // callback during playtest; surfaced via a floating "📜" button that
+  // overlays the playtest viewport (no sidebar — log is opt-in to view).
+  const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
+  const [showCombatLog, setShowCombatLog] = useState(false);
+  const handleTurnExecuted = useCallback((prev: GameState, next: GameState) => {
+    const entries = diffTurn(prev, next);
+    if (entries.length > 0) {
+      setCombatLog(log => [...log, ...entries]);
+    }
+  }, []);
 
   // Library state
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
@@ -1686,6 +1699,10 @@ export const MapEditor: React.FC = () => {
     setOriginalPlaytestPuzzle(JSON.parse(JSON.stringify(puzzle)));
     setState(prev => ({ ...prev, mode: 'playtest' }));
 
+    // Combat log scoped to a single playtest session.
+    setCombatLog([]);
+    setShowCombatLog(false);
+
     // Start background music for playtest (puzzle-specific or global fallback)
     playBackgroundMusic(state.backgroundMusicId);
 
@@ -1697,6 +1714,7 @@ export const MapEditor: React.FC = () => {
   const handleBackToEditor = () => {
     setState(prev => ({ ...prev, mode: 'edit' }));
     setOriginalPlaytestPuzzle(null);
+    setShowCombatLog(false);
     stopMusic(); // Stop music when exiting playtest
   };
 
@@ -1734,20 +1752,112 @@ export const MapEditor: React.FC = () => {
 
   // Render playtest mode
   if (state.mode === 'playtest') {
-    // Phase 3: playtest unconditionally mounts the player-facing <Game/>
-    // component with the in-progress puzzle. Same UI the player sees,
-    // exactly. The embedded game loop + UI that used to live in this
-    // branch is now gone (see commits 9c4e2a6 default-on + Phase 3 strip).
-    // Combat-log sidebar will be re-added in a follow-up via Game.tsx
-    // onTurnExecuted callback.
+    // Playtest mounts the player-facing <Game/> component with the in-progress
+    // puzzle. Game owns the entire playtest UI; we just overlay editor-only
+    // chrome (combat-log button + modal) on top. PlayerApp doesn't pass these
+    // hooks so players never see them.
     if (!originalPlaytestPuzzle) return null;
     return (
-      <Game
-        // remount on puzzle id change so initial state re-seeds cleanly
-        key={originalPlaytestPuzzle.id}
-        puzzle={originalPlaytestPuzzle}
-        onExitToEditor={handleBackToEditor}
-      />
+      <>
+        <Game
+          // remount on puzzle id change so initial state re-seeds cleanly
+          key={originalPlaytestPuzzle.id}
+          puzzle={originalPlaytestPuzzle}
+          onExitToEditor={handleBackToEditor}
+          onTurnExecuted={handleTurnExecuted}
+        />
+
+        {/* Combat-log toggle — small fixed-position button in the bottom-
+            right of the viewport. Clicking opens a modal with the captured
+            log entries. Editor-only; Game.tsx never sees this. */}
+        <button
+          onClick={() => setShowCombatLog(true)}
+          className="fixed bottom-4 right-4 z-40 dungeon-btn px-3 py-2 text-sm flex items-center gap-2 shadow-lg"
+          title="View combat log"
+        >
+          <span className="text-base">📜</span>
+          <span className="hidden md:inline font-medium">Log</span>
+          {combatLog.length > 0 && (
+            <span className="bg-copper-600 text-parchment-100 text-[10px] font-bold rounded-full px-1.5 min-w-[18px] text-center">
+              {combatLog.length}
+            </span>
+          )}
+        </button>
+
+        {/* Combat-log modal. Click outside (the backdrop) or the X button to
+            dismiss. The modal is full-screen overlay so it reads cleanly on
+            both desktop and mobile. */}
+        {showCombatLog && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70"
+            onClick={() => setShowCombatLog(false)}
+          >
+            <div
+              className="bg-stone-900 border-2 border-stone-600 rounded-pixel-lg max-w-2xl w-full max-h-[80vh] flex flex-col shadow-2xl"
+              onClick={e => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between px-4 py-3 border-b border-stone-700 flex-shrink-0">
+                <h2 className="text-lg font-bold font-medieval text-copper-300 flex items-center gap-2">
+                  <span>📜</span>
+                  <span>Combat Log</span>
+                  <span className="text-xs text-stone-400 font-normal">
+                    ({combatLog.length} {combatLog.length === 1 ? 'entry' : 'entries'})
+                  </span>
+                </h2>
+                <button
+                  onClick={() => setShowCombatLog(false)}
+                  className="p-1 text-stone-400 hover:text-parchment-100 hover:bg-stone-700 rounded transition-colors"
+                  aria-label="Close"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-1 text-sm">
+                {combatLog.length === 0 ? (
+                  <div className="text-stone-500 italic text-center py-8">
+                    No combat events yet — start playing to see turn-by-turn details.
+                  </div>
+                ) : (
+                  combatLog.map((entry, i) => {
+                    const prevEntry = i > 0 ? combatLog[i - 1] : null;
+                    const showTurnHeader = !prevEntry || prevEntry.turn !== entry.turn;
+                    const colorClass = logTypeStyles[entry.type] ?? 'text-stone-300';
+                    return (
+                      <React.Fragment key={i}>
+                        {showTurnHeader && (
+                          <div className="text-xs font-bold text-copper-400 uppercase tracking-wider mt-2 mb-1 pb-0.5 border-b border-stone-700">
+                            Turn {entry.turn}
+                          </div>
+                        )}
+                        <div className="flex items-start gap-2 px-2 py-0.5 rounded">
+                          <span className="flex-shrink-0">{entry.icon}</span>
+                          <span className={`${colorClass} flex-1 break-words`}>
+                            {entry.text}
+                          </span>
+                        </div>
+                      </React.Fragment>
+                    );
+                  })
+                )}
+              </div>
+
+              <div className="px-4 py-2 border-t border-stone-700 flex-shrink-0 flex justify-between items-center text-xs text-stone-500">
+                <span>Combat log is editor-only (not visible to players).</span>
+                <button
+                  onClick={() => setCombatLog([])}
+                  disabled={combatLog.length === 0}
+                  className="text-stone-400 hover:text-parchment-100 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  Clear
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
     );
   }
 
