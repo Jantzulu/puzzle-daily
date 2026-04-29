@@ -1,29 +1,17 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { toast } from '../shared/Toast';
 import { useSearchParams } from 'react-router-dom';
-import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, GameState, PlacedCharacter, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType, PuzzleScore } from '../../types/game';
+import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, WinCondition, WinConditionType, BorderConfig, CharacterAction, SpellAsset, SideQuest, SideQuestType } from '../../types/game';
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
 import { getAllEnemies, getEnemy } from '../../data/enemies';
 import { drawSprite } from './SpriteEditor';
-import { initializeGameState, executeTurn } from '../../engine/simulation';
-import { ResponsiveGameBoard } from '../game/AnimatedGameBoard';
-import { CharacterSelector } from '../game/CharacterSelector';
-import { EnemyDisplay } from '../game/EnemyDisplay';
-import { StatusEffectsDisplay } from '../game/StatusEffectsDisplay';
-import { SpecialTilesDisplay } from '../game/SpecialTilesDisplay';
-import { ItemsDisplay } from '../game/ItemsDisplay';
-import { HelpButton } from '../game/HelpOverlay';
-import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
-import { calculateScore, getRankEmoji, getRankName } from '../../engine/scoring';
+import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, loadEnemy, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject, type SoundAsset } from '../../utils/assetStorage';
-import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject, type SoundAsset } from '../../utils/assetStorage';
 import { preloadImages } from '../../utils/imageLoader';
-import { checkVictoryConditions } from '../../engine/simulation';
-import { checkSideQuests } from '../../engine/scoring';
 import type { PuzzleSkin } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -41,13 +29,10 @@ import { subscribeToSpriteImageLoads } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets } from './FolderDropdown';
 import { PuzzleLibraryModal } from './PuzzleLibraryModal';
 import { solvePuzzleAsync, quickValidate, type SolverResult } from '../../engine/puzzleSolver';
-import { diffTurn, logTypeStyles, type CombatLogEntry } from '../../engine/combatLog';
 import { WarningModal } from '../shared/WarningModal';
 import GeneratorDialog from './GeneratorDialog';
 import { vibrate } from '../../utils/haptics';
 import { useIsMobile } from '../../hooks/useMediaQuery';
-import { BugReportModal } from '../game/BugReportModal';
-import type { TrackedRun } from '../../types/bugReport';
 import { Game } from '../game/Game';
 
 // Helper to get all spells from character/enemy behavior
@@ -378,41 +363,11 @@ export const MapEditor: React.FC = () => {
     return createDefaultEditorState();
   });
 
-  // Playtest state
-  const [gameState, setGameState] = useState<GameState | null>(null);
+  // Playtest state — only the pieces MapEditor itself reaches for. <Game/>
+  // owns the actual playtest gameState / lives / score / character placement;
+  // MapEditor only needs `originalPlaytestPuzzle` to pass into <Game/> as the
+  // `puzzle` prop and to gate the playtest render branch.
   const [originalPlaytestPuzzle, setOriginalPlaytestPuzzle] = useState<Puzzle | null>(null);
-  const [selectedCharacterId, setSelectedCharacterId] = useState<string | null>(null);
-  const [isSimulating, setIsSimulating] = useState(false);
-  const [pendingSpellDirectionOverrides, setPendingSpellDirectionOverrides] = useState<Record<string, Record<string, Direction>>>({});
-  const [livesRemaining, setLivesRemaining] = useState<number>(3);
-  const [puzzleScore, setPuzzleScore] = useState<PuzzleScore | null>(null);
-  const [playStartCharacters, setPlayStartCharacters] = useState<PlacedCharacter[]>([]);
-  const [showGameOver, setShowGameOver] = useState(false);
-  // Defeat (gameover) dismiss state — mirrors Game.tsx. Lets the dev close
-  // the gameover modal in playtest to inspect the board state behind it
-  // without having to restart. Reset to false at every reset site so a
-  // subsequent failed attempt re-shows the modal.
-  const [defeatDismissed, setDefeatDismissed] = useState(false);
-  // Bug-report run tracking — mirrors Game.tsx. Each completed playtest
-  // attempt (victory / defeat / concede) gets pushed onto trackedRuns so the
-  // dev can fire off a bug report for it from the overlay buttons. The ref
-  // is a per-attempt dedup guard so a single attempt can't double-track.
-  const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
-  const [showBugReport, setShowBugReport] = useState(false);
-  const runTrackedRef = useRef(false);
-  const [defeatReason, setDefeatReason] = useState<'damage' | 'turns' | null>(null);
-  const [showConcedeConfirm, setShowConcedeConfirm] = useState(false);
-  const [themeAssets, setThemeAssets] = useState<ThemeAssets>(() => loadThemeAssets());
-
-  // Test mode state
-  type TestMode = 'none' | 'enemies' | 'characters';
-  const [testMode, setTestMode] = useState<TestMode>('none');
-  const [testTurnsRemaining, setTestTurnsRemaining] = useState(0);
-  const testSnapshotRef = useRef<{
-    characters: PlacedCharacter[];
-    enemies: PlacedEnemy[];
-    puzzle: Puzzle;
-  } | null>(null);
 
   // Library state
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
@@ -459,33 +414,14 @@ export const MapEditor: React.FC = () => {
   // Keyboard shortcuts reference overlay
   const [showShortcuts, setShowShortcuts] = useState(false);
 
-  // Combat log state
-  const [combatLog, setCombatLog] = useState<CombatLogEntry[]>([]);
-  const [showCombatLog, setShowCombatLog] = useState(false);
-  const [showDevTools, setShowDevTools] = useState(true);
+  // Editor panel toggle state (toolbar collapse/expand).
   const [toolsPanelOpen, setToolsPanelOpen] = useState(true);
   const [actionsPanelOpen, setActionsPanelOpen] = useState(true);
   const [puzzleInfoPanelOpen, setPuzzleInfoPanelOpen] = useState(true);
-  const combatLogEndRef = useRef<HTMLDivElement>(null);
-  const playtestBoardRef = useRef<HTMLDivElement>(null);
-  /** Wraps executeTurn to capture combat log diffs. Call inside setGameState callbacks. */
-  const executeTurnWithLog = useCallback((stateCopy: GameState): GameState => {
-    const before = JSON.parse(JSON.stringify(stateCopy));
-    // Restore Maps/Sets on the before snapshot for diffing
-    before.tileStates = new Map();
-    const newState = executeTurn(stateCopy);
-    const entries = diffTurn(before, newState);
-    if (entries.length > 0) {
-      // Use setTimeout to batch the state update outside the setGameState callback
-      setTimeout(() => setCombatLog(prev => [...prev, ...entries]), 0);
-    }
-    return newState;
-  }, []);
-
-  // Auto-scroll combat log to bottom when new entries appear
-  useEffect(() => {
-    combatLogEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [combatLog.length]);
+  // Combat log state + helpers will be re-introduced in Phase 5 (data plumbing
+  // via <Game/> onTurnExecuted callback + a sidebar layout). Removed here so
+  // the file stays clean while that's in flight; bring back as a small focused
+  // commit alongside the sidebar render.
 
   // Local input state for grid size (allows typing without immediate validation)
   const [widthInput, setWidthInput] = useState(String(state.gridWidth));
@@ -848,14 +784,6 @@ export const MapEditor: React.FC = () => {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [state.mode]);
-
-  // Subscribe to theme asset changes
-  useEffect(() => {
-    const unsubscribe = subscribeToThemeAssets((assets) => {
-      setThemeAssets(assets);
-    });
-    return unsubscribe;
-  }, []);
 
   // Preload sprite assets when entering playtest mode
   useEffect(() => {
@@ -1754,24 +1682,9 @@ export const MapEditor: React.FC = () => {
       parTurns: state.parTurns,
     };
 
-    // Store deep copy of original puzzle for reset
+    // Store deep copy of original puzzle for reset; <Game/> renders against this.
     setOriginalPlaytestPuzzle(JSON.parse(JSON.stringify(puzzle)));
-
     setState(prev => ({ ...prev, mode: 'playtest' }));
-    setGameState(initializeGameState(puzzle));
-    setSelectedCharacterId(null);
-    setIsSimulating(false);
-    setLivesRemaining(puzzle.lives ?? 3);
-    setShowGameOver(false);
-    setDefeatDismissed(false);
-    setDefeatReason(null);
-    setPuzzleScore(null);
-    setPlayStartCharacters([]);
-    setCombatLog([]);
-    // Bug-report runs are scoped to a single playtest session — clearing on
-    // entry means each entry to playtest starts with a fresh empty list.
-    setTrackedRuns([]);
-    runTrackedRef.current = false;
 
     // Start background music for playtest (puzzle-specific or global fallback)
     playBackgroundMusic(state.backgroundMusicId);
@@ -1783,467 +1696,41 @@ export const MapEditor: React.FC = () => {
 
   const handleBackToEditor = () => {
     setState(prev => ({ ...prev, mode: 'edit' }));
-    setGameState(null);
     setOriginalPlaytestPuzzle(null);
-    setSelectedCharacterId(null);
     stopMusic(); // Stop music when exiting playtest
-    setIsSimulating(false);
-    setShowGameOver(false);
-    setDefeatDismissed(false);
-    setDefeatReason(null);
-    setShowConcedeConfirm(false);
-    setPuzzleScore(null);
-    setPlayStartCharacters([]);
-    setTrackedRuns([]);
-    setShowBugReport(false);
-    runTrackedRef.current = false;
-    setLivesRemaining(3);
   };
 
-  const handleTileClick = (x: number, y: number) => {
-    if (!gameState || gameState.gameStatus !== 'setup') {
-      return;
-    }
+  // Phase 3 strip removed: handleTileClick, handlePlay, handlePause,
+  // handleReset, handleWipe, handleShowSolution, handleAutoResetPlaytest,
+  // handleRestartPlaytest, handleConcedePlaytest, handleProjectileKill,
+  // handleStep, handleTestEnemies, handleTestCharacters, renderLivesHearts.
+  // All belonged to the embedded playtest UI; <Game/> handles their
+  // responsibilities now. Test-mode (enemies-only / heroes-only) is
+  // intentionally not yet ported — see feature-backlog if missed.
 
-    // Check if clicking on an already placed character to remove them
-    const clickedCharacter = gameState.placedCharacters.find((c) => c.x === x && c.y === y);
-    if (clickedCharacter) {
-      // Remove the clicked character
-      setGameState((prev) => prev ? ({
-        ...prev,
-        placedCharacters: prev.placedCharacters.filter((c) => c.x !== x || c.y !== y),
-      }) : null);
-      playGameSound('character_removed');
-      return;
-    }
-
-    // Need a selected character to place
-    if (!selectedCharacterId) {
-      return;
-    }
-
-    const tile = gameState.puzzle.tiles[y]?.[x];
-    if (!tile) {
-      playGameSound('error');
-      return;
-    }
-
-    // Check if custom tile prevents placement
-    if (tile.customTileTypeId) {
-      const customTileType = loadTileType(tile.customTileTypeId);
-      if (customTileType?.preventPlacement) {
-        playGameSound('error');
-        return;
-      }
-    }
-
-    // Check if any collectible on this tile prevents placement
-    const collectiblesAtPosition = gameState.puzzle.collectibles.filter(
-      c => c.x === x && c.y === y && !c.collected
-    );
-    for (const placed of collectiblesAtPosition) {
-      if (placed.collectibleId) {
-        const collectible = loadCollectible(placed.collectibleId);
-        if (collectible?.preventPlacement) {
-          playGameSound('error');
-          return;
-        }
-      }
-    }
-
-    const tileHasEnemy = gameState.puzzle.enemies.some((e) => e.x === x && e.y === y && !e.dead);
-    if (tileHasEnemy) {
-      playGameSound('error');
-      return;
-    }
-
-    // Check if this character type is already placed (only one of each allowed)
-    const alreadyPlaced = gameState.placedCharacters.some((c) => c.characterId === selectedCharacterId);
-    if (alreadyPlaced) {
-      playGameSound('error');
-      return;
-    }
-
-    // Check if at max placeable characters
-    const maxPlaceable = gameState.puzzle.maxPlaceableCharacters ?? gameState.puzzle.maxCharacters;
-    if (gameState.placedCharacters.length >= maxPlaceable) {
-      playGameSound('error');
-      return;
-    }
-
-    const charData = getCharacter(selectedCharacterId);
-    if (!charData) return;
-
-    const pendingOverrides = pendingSpellDirectionOverrides[selectedCharacterId];
-    const newCharacter: PlacedCharacter = {
-      characterId: selectedCharacterId,
-      x,
-      y,
-      facing: charData.defaultFacing,
-      currentHealth: charData.health,
-      actionIndex: 0,
-      active: true,
-      dead: false,
-      ...(pendingOverrides && { spellDirectionOverrides: pendingOverrides }),
-    };
-
-    setGameState((prev) => prev ? ({
-      ...prev,
-      placedCharacters: [...prev.placedCharacters, newCharacter],
-    }) : null);
-    playGameSound('character_placed');
-  };
-
-  const handlePlay = () => {
-    if (!gameState || gameState.placedCharacters.length === 0) {
-      setWarningModal({ isOpen: true, message: 'Place at least one hero on the board before starting!' });
-      return;
-    }
-
-    // Save snapshot of placed characters for Reset
-    setPlayStartCharacters(JSON.parse(JSON.stringify(gameState.placedCharacters)));
-    setGameState((prev) => prev ? ({ ...prev, gameStatus: 'running' }) : null);
-    setIsSimulating(true);
-    runTrackedRef.current = false;  // Per-attempt dedup; cleared at each new Play
-    playGameSound('simulation_start');
-  };
-
-  const handlePause = () => {
-    setIsSimulating(false);
-    playGameSound('simulation_stop');
-  };
-
-  const handleReset = () => {
-    if (!gameState || !originalPlaytestPuzzle) return;
-    // Reset using the original puzzle, not the mutated one from gameState
-    const resetPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    const resetState = initializeGameState(resetPuzzle);
-    // Restore the placed characters from when Play was pressed, resetting their state
-    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
-      const charData = getCharacter(char.characterId);
-      return {
-        ...char,
-        actionIndex: 0,
-        currentHealth: charData ? charData.health : char.currentHealth,
-        dead: false,
-        active: true,
-      };
-    });
-    resetState.gameStatus = playStartCharacters.length > 0 ? 'running' : 'setup';
-    setGameState(resetState);
-    setIsSimulating(false);
-    setSelectedCharacterId(null);
-    setPuzzleScore(null);
-    setCombatLog([]);
-    runTrackedRef.current = false;  // New attempt — re-arm dedup
-  };
-
-  const handleWipe = () => {
-    if (!originalPlaytestPuzzle) return;
-    // Wipe: restore enemy positions but remove all characters (go back to setup)
-    const wipedPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    const wipedState = initializeGameState(wipedPuzzle);
-    wipedState.placedCharacters = []; // Remove all characters
-    wipedState.gameStatus = 'setup'; // Back to setup mode
-    setGameState(wipedState);
-    setIsSimulating(false);
-    setSelectedCharacterId(null);
-    setPuzzleScore(null);
-  };
-
-  // Show solution from validation - auto-places characters according to solver's solution
-  const handleShowSolution = () => {
-    if (!gameState || !validationResult?.solutionFound || gameState.gameStatus !== 'setup') return;
-
-    const newPlacedCharacters: PlacedCharacter[] = [];
-    for (const placement of validationResult.solutionFound.placements) {
-      const charData = getCharacter(placement.characterId);
-      if (!charData) continue;
-
-      newPlacedCharacters.push({
-        characterId: placement.characterId,
-        x: placement.x,
-        y: placement.y,
-        facing: placement.facing,
-        currentHealth: charData.health,
-        actionIndex: 0,
-        active: true,
-        dead: false,
-        ...(placement.spellDirectionOverrides ? { spellDirectionOverrides: placement.spellDirectionOverrides } : {}),
-      });
-    }
-
-    setGameState((prev) => prev ? ({
-      ...prev,
-      placedCharacters: newPlacedCharacters,
-    }) : null);
-    playGameSound('character_placed');
-  };
-
-  // Auto-reset after defeat (keeps characters, returns to setup/placement phase)
-  const handleAutoResetPlaytest = useCallback(() => {
-    if (!originalPlaytestPuzzle) return;
-    const resetPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    const resetState = initializeGameState(resetPuzzle);
-    // Restore the placed characters from when Play was pressed, resetting their state
-    resetState.placedCharacters = JSON.parse(JSON.stringify(playStartCharacters)).map((char: PlacedCharacter) => {
-      const charData = getCharacter(char.characterId);
-      return {
-        ...char,
-        actionIndex: 0,
-        currentHealth: charData ? charData.health : char.currentHealth,
-        dead: false,
-        active: true,
-      };
-    });
-    // Return to setup phase so player can adjust character placement
-    resetState.gameStatus = 'setup';
-    setGameState(resetState);
-    setIsSimulating(false);
-    setSelectedCharacterId(null);
-    runTrackedRef.current = false;  // New attempt — re-arm dedup
-  }, [originalPlaytestPuzzle, playStartCharacters]);
-
-  // Restart puzzle from game over (reset lives and go to setup)
-  const handleRestartPlaytest = () => {
-    if (!originalPlaytestPuzzle) return;
-    const resetPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    const resetState = initializeGameState(resetPuzzle);
-    setGameState(resetState);
-    setLivesRemaining(originalPlaytestPuzzle.lives ?? 3);
-    setShowGameOver(false);
-    setDefeatDismissed(false);
-    setIsSimulating(false);
-    setSelectedCharacterId(null);
-    setPlayStartCharacters([]);
-    setPuzzleScore(null);
-    setDefeatReason(null);
-    runTrackedRef.current = false;  // New attempt — re-arm dedup
-  };
-
-  // Concede current attempt - lose a life and return to setup
-  const handleConcedePlaytest = () => {
-    if (!originalPlaytestPuzzle) return;
-    setShowConcedeConfirm(false);
-    setIsSimulating(false);
-    setDefeatReason('damage'); // Conceding counts as damage death
-
-    // Track this concede as a defeat run for bug reporting (dedup-guarded so
-    // a single Play+Concede produces exactly one tracked run).
-    if (!runTrackedRef.current && gameState) {
-      runTrackedRef.current = true;
-      setTrackedRuns(prev => [...prev, {
-        id: crypto.randomUUID(),
-        placements: JSON.parse(JSON.stringify(playStartCharacters)),
-        outcome: 'defeat',
-        turnsUsed: gameState.currentTurn,
-        timestamp: Date.now(),
-      }]);
-    }
-
-    const puzzleLives = originalPlaytestPuzzle.lives ?? 3;
-    const isUnlimitedLives = puzzleLives === 0;
-
-    playGameSound('defeat');
-
-    if (!isUnlimitedLives) {
-      const newLives = livesRemaining - 1;
-      setLivesRemaining(newLives);
-
-      if (newLives <= 0) {
-        // No lives left - show game over
-        setShowGameOver(true);
-        playDefeatMusic();
-      } else {
-        // Life lost - play sound and reset
-        playGameSound('life_lost');
-        handleAutoResetPlaytest();
-      }
-    } else {
-      // Unlimited lives - just reset
-      handleAutoResetPlaytest();
-    }
-  };
-
-  // Called from AnimatedGameBoard when a projectile kills an enemy
-  const handleProjectileKill = useCallback(() => {
-    if (!gameState || gameState.gameStatus !== 'running' || !originalPlaytestPuzzle) return;
-
-    // Check if victory conditions are now met
-    if (checkVictoryConditions(gameState)) {
-      // Victory! Stop simulation and trigger victory handling
-      setIsSimulating(false);
-      setGameState(prev => prev ? { ...prev, gameStatus: 'victory' } : null);
-      playGameSound('victory');
-      playVictoryMusic();
-      // Calculate and store score
-      const score = calculateScore(gameState, livesRemaining, originalPlaytestPuzzle.lives ?? 3);
-      setPuzzleScore(score);
-    }
-  }, [gameState, livesRemaining, originalPlaytestPuzzle]);
-
-  const handleStep = () => {
-    if (!gameState) return;
-
-    if (gameState.gameStatus === 'setup') {
-      setGameState((prev) => prev ? ({ ...prev, gameStatus: 'running' }) : null);
-    }
-
-    if (gameState.gameStatus === 'running') {
-      setGameState((prevState) => {
-        if (!prevState) return null;
-        const stateCopy = JSON.parse(JSON.stringify(prevState));
-        stateCopy.tileStates = new Map();
-        if (prevState.tileStates) {
-          prevState.tileStates.forEach((value, key) => {
-            stateCopy.tileStates.set(key, {
-              ...value,
-              damagedEntities: value.damagedEntities ? new Set(value.damagedEntities) : undefined
-            });
-          });
-        }
-        return executeTurnWithLog(stateCopy);
-      });
-    }
-  };
-
-  const handleTestEnemies = () => {
-    if (!gameState || !originalPlaytestPuzzle) return;
-
-    // Save current state snapshot
-    testSnapshotRef.current = {
-      characters: JSON.parse(JSON.stringify(gameState.placedCharacters)),
-      enemies: JSON.parse(JSON.stringify(originalPlaytestPuzzle.enemies)),
-      puzzle: JSON.parse(JSON.stringify(originalPlaytestPuzzle)),
-    };
-
-    // Create test state with no characters
-    const testPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    const testState = initializeGameState(testPuzzle);
-    testState.placedCharacters = []; // Remove all characters
-    testState.gameStatus = 'running';
-    testState.testMode = true; // Skip win/lose condition checks
-
-    setGameState(testState);
-    setTestMode('enemies');
-    setTestTurnsRemaining(5);
-    setIsSimulating(true);
-    setSelectedCharacterId(null);
-  };
-
-  const handleTestCharacters = () => {
-    if (!gameState || !originalPlaytestPuzzle) return;
-
-    if (gameState.placedCharacters.length === 0) {
-      setWarningModal({ isOpen: true, message: 'Place at least one hero to test!' });
-      return;
-    }
-
-    // Save current state snapshot
-    testSnapshotRef.current = {
-      characters: JSON.parse(JSON.stringify(gameState.placedCharacters)),
-      enemies: JSON.parse(JSON.stringify(originalPlaytestPuzzle.enemies)),
-      puzzle: JSON.parse(JSON.stringify(originalPlaytestPuzzle)),
-    };
-
-    // Create test state with no enemies
-    const testPuzzle = JSON.parse(JSON.stringify(originalPlaytestPuzzle));
-    testPuzzle.enemies = []; // Remove all enemies from puzzle
-    const testState = initializeGameState(testPuzzle);
-    // Restore placed characters
-    testState.placedCharacters = JSON.parse(JSON.stringify(gameState.placedCharacters)).map((char: PlacedCharacter) => {
-      const charData = getCharacter(char.characterId);
-      return {
-        ...char,
-        actionIndex: 0,
-        currentHealth: charData ? charData.health : char.currentHealth,
-        dead: false,
-        active: true,
-      };
-    });
-    testState.gameStatus = 'running';
-    testState.testMode = true; // Skip win/lose condition checks
-
-    setGameState(testState);
-    setTestMode('characters');
-    setTestTurnsRemaining(5);
-    setIsSimulating(true);
-    setSelectedCharacterId(null);
-  };
-
-  // Calculate canvas size with borders
+  // Canvas size + scale calc for the editor's edit-mode canvas. Was inline
+  // with the stripped renderLivesHearts block before — kept here because
+  // the edit-mode canvas still needs these.
   const hasBorder = state.skinId !== undefined && state.skinId !== '';
   const gridWidth = state.gridWidth * TILE_SIZE;
   const gridHeight = state.gridHeight * TILE_SIZE;
   const canvasWidth = hasBorder ? gridWidth + (SIDE_BORDER_SIZE * 2) : gridWidth;
   const canvasHeight = hasBorder ? gridHeight + (BORDER_SIZE * 2) : gridHeight;
 
-  // Calculate scale factor for editor canvas
-  // Constrain by MAX_DISPLAY_WIDTH_TILES and then by mobile container width
+  // Constrain by MAX_DISPLAY_WIDTH_TILES, then by mobile container width
   const maxDisplayGridWidth = MAX_DISPLAY_WIDTH_TILES * TILE_SIZE;
   const maxDisplayCanvasWidth = hasBorder ? maxDisplayGridWidth + (SIDE_BORDER_SIZE * 2) : maxDisplayGridWidth;
 
   let targetWidth = canvasWidth;
-
-  // Cap at max display width for very wide puzzles
   if (state.gridWidth > MAX_DISPLAY_WIDTH_TILES && targetWidth > maxDisplayCanvasWidth) {
     targetWidth = maxDisplayCanvasWidth;
   }
-
-  // Also cap at container width on mobile so the grid never overflows the screen
   if (editorMaxWidth && editorMaxWidth < targetWidth) {
     targetWidth = editorMaxWidth;
   }
-
   const editorScale = targetWidth / canvasWidth;
   const scaledCanvasWidth = targetWidth;
   const scaledCanvasHeight = canvasHeight * editorScale;
-
-  // Helper to render lives hearts (for playtest mode)
-  const renderLivesHearts = () => {
-    if (!originalPlaytestPuzzle) return null;
-    const puzzleLives = originalPlaytestPuzzle.lives ?? 3;
-    const isUnlimitedLives = puzzleLives === 0;
-
-    if (isUnlimitedLives) {
-      return <span className="text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
-    }
-
-    const hearts = [];
-    for (let i = 0; i < puzzleLives; i++) {
-      const isFilled = i < livesRemaining;
-      const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
-
-      if (customIcon) {
-        hearts.push(
-          <img
-            key={i}
-            src={customIcon}
-            alt={isFilled ? 'Life remaining' : 'Life lost'}
-            title={isFilled ? 'Life remaining' : 'Life lost'}
-            className="object-contain"
-            style={{
-              width: '14px',
-              height: '16px',
-              opacity: isFilled ? 1 : 0.4,
-              imageRendering: 'pixelated'
-            }}
-          />
-        );
-      } else {
-        hearts.push(
-          <span
-            key={i}
-            className={`text-sm ${isFilled ? 'heart-filled' : 'heart-empty'}`}
-            title={isFilled ? 'Life remaining' : 'Life lost'}
-          >
-            &#x2665;
-          </span>
-        );
-      }
-    }
-    return hearts;
-  };
 
   // Render playtest mode
   if (state.mode === 'playtest') {
@@ -4281,19 +3768,8 @@ export const MapEditor: React.FC = () => {
         availableCollectibles={allCollectibles}
       />
 
-      {/* Bug Report Modal — mirrors Game.tsx mounting. Uses the playtest
-          puzzle as the reportable target, scoped to runs the dev tracked
-          during the current playtest session. Only renders meaningfully
-          when there's at least one tracked run; isOpen gate handles the
-          rest. */}
-      {originalPlaytestPuzzle && (
-        <BugReportModal
-          isOpen={showBugReport}
-          onClose={() => setShowBugReport(false)}
-          puzzle={originalPlaytestPuzzle}
-          trackedRuns={trackedRuns}
-        />
-      )}
+      {/* Bug Report Modal: mounted by <Game/> during playtest now (Phase 3
+          unified the playtest mount). MapEditor itself no longer renders it. */}
 
       {/* Keyboard Shortcuts Reference */}
       {showShortcuts && (
