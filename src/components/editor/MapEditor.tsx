@@ -1765,24 +1765,8 @@ export const MapEditor: React.FC = () => {
           puzzle={originalPlaytestPuzzle}
           onExitToEditor={handleBackToEditor}
           onTurnExecuted={handleTurnExecuted}
+          onShowCombatLog={() => setShowCombatLog(true)}
         />
-
-        {/* Combat-log toggle — small fixed-position button in the bottom-
-            right of the viewport. Clicking opens a modal with the captured
-            log entries. Editor-only; Game.tsx never sees this. */}
-        <button
-          onClick={() => setShowCombatLog(true)}
-          className="fixed bottom-4 right-4 z-40 dungeon-btn px-3 py-2 text-sm flex items-center gap-2 shadow-lg"
-          title="View combat log"
-        >
-          <span className="text-base">📜</span>
-          <span className="hidden md:inline font-medium">Log</span>
-          {combatLog.length > 0 && (
-            <span className="bg-copper-600 text-parchment-100 text-[10px] font-bold rounded-full px-1.5 min-w-[18px] text-center">
-              {combatLog.length}
-            </span>
-          )}
-        </button>
 
         {/* Combat-log modal. Click outside (the backdrop) or the X button to
             dismiss. The modal is full-screen overlay so it reads cleanly on

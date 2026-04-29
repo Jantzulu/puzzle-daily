@@ -93,6 +93,16 @@ export interface GameProps {
    * editor-only behavior reaches the player.
    */
   onTurnExecuted?: (prev: GameState, next: GameState) => void;
+
+  /**
+   * Optional callback rendered as a "📜 Log" button in the quest panel,
+   * sitting next to the "Back to Editor" button when both are provided.
+   * The editor uses this to open its combat-log modal — the button lives
+   * in Game's chrome so it's positioned with the rest of the playtest
+   * controls instead of floating in a corner. PlayerApp doesn't pass
+   * this, so the button never renders for players.
+   */
+  onShowCombatLog?: () => void;
 }
 
 export const Game: React.FC<GameProps> = ({
@@ -100,6 +110,7 @@ export const Game: React.FC<GameProps> = ({
   puzzle: puzzleProp,
   onExitToEditor,
   onTurnExecuted,
+  onShowCombatLog,
 }) => {
   const officialPuzzles = getAllPuzzles();
   const [savedPuzzles, setSavedPuzzles] = useState<SavedPuzzle[]>(() => getSavedPuzzles());
@@ -2089,6 +2100,19 @@ export const Game: React.FC<GameProps> = ({
                           <path d="M19 12H5M12 19l-7-7 7-7" />
                         </svg>
                         <span className="hidden md:inline">Editor</span>
+                      </button>
+                    )}
+                    {/* Combat Log — editor-only, opens MapEditor's combat-log modal.
+                        Same feature-gate pattern as Back to Editor — caller-provided
+                        callback is the trigger; player builds don't pass it. */}
+                    {onShowCombatLog && (
+                      <button
+                        onClick={onShowCombatLog}
+                        className="dungeon-btn px-2.5 py-1 text-xs flex items-center gap-1 flex-shrink-0"
+                        title="View combat log"
+                      >
+                        <span className="text-sm leading-none">📜</span>
+                        <span className="hidden md:inline">Log</span>
                       </button>
                     )}
                     <HelpButton sectionId="game_general" />
