@@ -16,8 +16,6 @@ export const formatActionSequence = (behavior: CharacterAction[] | undefined): s
           if (spell) return `${num}. ${spell.name}`;
         }
         return `${num}. Cast Spell`;
-      case ActionType.CUSTOM_ATTACK:
-        return `${num}. ${action.customAttack?.name || 'Attack'}`;
       case ActionType.MOVE_FORWARD:
         return `${num}. Move Forward`;
       case ActionType.MOVE_BACKWARD:
@@ -104,9 +102,6 @@ export const summarizeBehavior = (behavior: CharacterAction[] | undefined): stri
           attacks.push('casts a spell');
         }
         break;
-      case ActionType.CUSTOM_ATTACK:
-        attacks.push(action.customAttack?.name || 'attacks');
-        break;
       case ActionType.WAIT:
         hasWait = true;
         break;
@@ -161,21 +156,6 @@ export const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsse
           spells.push(spell);
           seenIds.add(action.spellId);
         }
-      }
-    }
-    if (action.type === ActionType.CUSTOM_ATTACK && action.customAttack) {
-      const attack = action.customAttack;
-      if (!seenIds.has(attack.id)) {
-        spells.push({
-          id: attack.id,
-          name: attack.name,
-          description: `${attack.pattern} attack`,
-          templateType: attack.pattern === 'projectile' ? 'magic_linear' : 'melee',
-          damage: attack.damage,
-          range: attack.range,
-          thumbnailIcon: '',
-        } as SpellAsset);
-        seenIds.add(attack.id);
       }
     }
   }

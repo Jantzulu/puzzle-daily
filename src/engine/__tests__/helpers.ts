@@ -30,8 +30,6 @@ const collectibleRegistry = new Map<string, any>();
 const spellRegistry = new Map<string, any>();
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const statusEffectRegistry = new Map<string, any>();
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const customAttackRegistry = new Map<string, any>();
 
 export function registerTestCharacter(char: Character) {
   characterRegistry.set(char.id, char);
@@ -61,11 +59,6 @@ export function registerTestStatusEffect(id: string, def: any) {
   statusEffectRegistry.set(id, def);
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function registerTestCustomAttack(id: string, def: any) {
-  customAttackRegistry.set(id, def);
-}
-
 export function clearAllRegistries() {
   characterRegistry.clear();
   enemyRegistry.clear();
@@ -73,7 +66,6 @@ export function clearAllRegistries() {
   collectibleRegistry.clear();
   spellRegistry.clear();
   statusEffectRegistry.clear();
-  customAttackRegistry.clear();
 }
 
 // ==========================================
@@ -94,7 +86,6 @@ vi.mock('../../utils/assetStorage', () => ({
   loadCollectible: (id: string) => collectibleRegistry.get(id) ?? null,
   loadSpellAsset: (id: string) => spellRegistry.get(id) ?? null,
   loadStatusEffectAsset: (id: string) => statusEffectRegistry.get(id) ?? null,
-  loadCustomAttack: (id: string) => customAttackRegistry.get(id) ?? null,
   loadEnemy: (id: string) => enemyRegistry.get(id) ?? null,
   loadCharacter: (id: string) => characterRegistry.get(id) ?? null,
   isAssetHidden: () => false,

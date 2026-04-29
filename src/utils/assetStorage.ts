@@ -714,53 +714,11 @@ export const deleteCollectibleType = (collectibleId: string): void => {
   addPendingAssetDeletion(collectibleId, 'collectible_type');
 };
 
-// ==========================================
-// CUSTOM ATTACKS (Attack System - Phase 1)
-// ==========================================
-
-import type { CustomAttack } from '../types/game';
-
-const ATTACK_STORAGE_KEY = 'custom_attacks';
-
-export const saveCustomAttack = (attack: CustomAttack): void => {
-  const attacks = getCustomAttacks();
-
-  const existingIndex = attacks.findIndex(a => a.id === attack.id);
-  const isCreate = existingIndex < 0;
-  if (existingIndex >= 0) {
-    attacks[existingIndex] = attack;
-  } else {
-    attacks.push(attack);
-  }
-
-  localStorage.setItem(ATTACK_STORAGE_KEY, JSON.stringify(attacks));
-  logActivity({ action: isCreate ? 'create' : 'update', asset_type: 'attack', asset_id: attack.id, asset_name: attack.name });
-};
-
-export const getCustomAttacks = (): CustomAttack[] => {
-  try {
-    const stored = localStorage.getItem(ATTACK_STORAGE_KEY);
-    if (!stored) return [];
-    return JSON.parse(stored);
-  } catch (e) {
-    console.error('Failed to load custom attacks:', e);
-    return [];
-  }
-};
-
-export const deleteCustomAttack = (attackId: string): void => {
-  const attacks = getCustomAttacks();
-  const attack = attacks.find(a => a.id === attackId);
-  const filtered = attacks.filter(a => a.id !== attackId);
-  localStorage.setItem(ATTACK_STORAGE_KEY, JSON.stringify(filtered));
-
-  logActivity({ action: 'delete', asset_type: 'attack', asset_id: attackId, asset_name: attack?.name });
-};
-
-export const loadCustomAttack = (attackId: string): CustomAttack | null => {
-  const attacks = getCustomAttacks();
-  return attacks.find(a => a.id === attackId) || null;
-};
+// (Custom attack storage removed: ActionType.CUSTOM_ATTACK and the
+// associated save/load/delete helpers were the legacy entry point for
+// the pre-spell attack system. SpellAsset is now the only authoring
+// surface; CustomAttack survives only as the engine's internal data
+// structure for projectile/melee runtime parameters.)
 
 // ==========================================
 // SPELL ASSETS (New Spell System)

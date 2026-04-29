@@ -3,13 +3,12 @@ import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import { Direction, ActionType } from '../../types/game';
-import type { CharacterAction, CustomAttack } from '../../types/game';
+import type { CharacterAction } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
 import { saveCharacter, deleteCharacter, getFolders, getSoundAssets, getAllCollectibles, getStatusEffectAssets, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { getAllCharacters } from '../../data/characters';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
-import { AttackEditor } from './AttackEditor';
 import { SpellPicker } from './SpellPicker';
 import { StatusEffectPicker, TYPE_COLORS, getStatusEffectFlags } from './StatusEffectPicker';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -50,7 +49,6 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [editing, setEditing] = useState<CustomCharacter | null>(null);
   const [_isCreating, setIsCreating] = useState(false);
-  const [editingAttack, setEditingAttack] = useState<{ attack: CustomAttack; actionIndex: number } | null>(null);
   const [showSpellPicker, setShowSpellPicker] = useState<number | null>(null);
   const [showStatusEffectPicker, setShowStatusEffectPicker] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'behavior' | 'sprite'>('details');
@@ -925,22 +923,9 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
         />
       )}
 
-      {/* Attack Editor Modal */}
-      {editingAttack && editing && (
-        <AttackEditor
-          attack={editingAttack.attack}
-          onSave={(updatedAttack) => {
-            const newBehavior = [...editing.behavior];
-            newBehavior[editingAttack.actionIndex] = {
-              ...newBehavior[editingAttack.actionIndex],
-              customAttack: updatedAttack
-            };
-            updateBehaviorActions(newBehavior);
-            setEditingAttack(null);
-          }}
-          onCancel={() => setEditingAttack(null)}
-        />
-      )}
+      {/* AttackEditor mount removed: legacy custom-attack flow is gone — see
+          ActionType.CUSTOM_ATTACK removal commit. SpellAssetBuilder is the
+          replacement entry point for authoring attack-shaped behavior. */}
     </>
   );
 };

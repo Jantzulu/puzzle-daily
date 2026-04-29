@@ -148,10 +148,7 @@ export enum ActionType {
   TURN_AROUND = 'turn_around',
   FACE_DIRECTION = 'face_direction',
 
-  // Combat (Legacy - deprecated)
-  CUSTOM_ATTACK = 'custom_attack',  // Deprecated - use SPELL instead
-
-  // Combat (New spell system)
+  // Combat
   SPELL = 'spell',  // Execute spell from library
 
   // Conditional
@@ -198,11 +195,7 @@ export interface CharacterAction {
   trigger?: TriggerConfig;        // For parallel actions
   linkedToNext?: boolean;         // If true, the next sequential action executes on the same turn
 
-  // For CUSTOM_ATTACK action type (deprecated)
-  customAttackId?: string;      // Reference to saved CustomAttack
-  customAttack?: CustomAttack;  // Inline attack definition (added below in file)
-
-  // For SPELL action type (new system)
+  // For SPELL action type
   spellId?: string;             // Reference to spell in library
   directionOverride?: Direction[]; // Override spell's default directions (absolute)
   relativeDirectionOverride?: RelativeDirection[]; // Override with relative directions
@@ -1175,9 +1168,8 @@ export interface ParticleEffect {
  * Backwards compatible - existing actions still work
  */
 export interface CharacterActionExtended extends CharacterAction {
-  // For custom attack actions
-  customAttackId?: string;      // Reference to saved CustomAttack
-  customAttack?: CustomAttack;  // Inline attack definition
+  // Reserved for future per-action extensions; the legacy customAttack /
+  // customAttackId fields lived here previously and have been removed.
 }
 
 /**

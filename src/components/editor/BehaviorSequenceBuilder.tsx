@@ -5,9 +5,7 @@ import type { CharacterAction, ExecutionMode, TriggerConfig, RelativeDirection }
 import { loadSpellAsset, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { DirectionCompass } from './DirectionCompass';
 
-const ACTION_TYPES = Object.values(ActionType).filter(
-  type => type !== 'custom_attack'
-);
+const ACTION_TYPES = Object.values(ActionType);
 
 interface BehaviorSequenceBuilderProps {
   actions: CharacterAction[];

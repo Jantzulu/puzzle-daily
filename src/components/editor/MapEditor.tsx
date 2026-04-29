@@ -54,22 +54,6 @@ const getAllSpells = (behavior: CharacterAction[] | undefined): SpellAsset[] => 
         }
       }
     }
-    // Check for CUSTOM_ATTACK action type (inline attack definition - legacy)
-    if (action.type === ActionType.CUSTOM_ATTACK && action.customAttack) {
-      const attack = action.customAttack;
-      if (!seenIds.has(attack.id)) {
-        spells.push({
-          id: attack.id,
-          name: attack.name,
-          description: `${attack.pattern} attack`,
-          templateType: attack.pattern === 'projectile' ? 'magic_linear' : 'melee',
-          damage: attack.damage,
-          range: attack.range,
-          thumbnailIcon: '', // No thumbnail for inline attacks
-        } as SpellAsset);
-        seenIds.add(attack.id);
-      }
-    }
   }
   return spells;
 };
@@ -86,8 +70,6 @@ const formatActionSequence = (behavior: CharacterAction[] | undefined): string[]
           if (spell) return `${num}. ${spell.name}`;
         }
         return `${num}. Cast Spell`;
-      case ActionType.CUSTOM_ATTACK:
-        return `${num}. ${action.customAttack?.name || 'Attack'}`;
       case ActionType.MOVE_FORWARD:
         return `${num}. Move Forward`;
       case ActionType.MOVE_BACKWARD:

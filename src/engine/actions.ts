@@ -30,7 +30,7 @@ import {
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind } from './utils';
-import { loadCustomAttack, loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
+import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
 import { wakeFromSleep } from './simulation';
@@ -117,7 +117,6 @@ function normalizeActionType(type: string): ActionType {
     'TURN_RIGHT': ActionType.TURN_RIGHT,
     'TURN_AROUND': ActionType.TURN_AROUND,
     'FACE_DIRECTION': ActionType.FACE_DIRECTION,
-    'CUSTOM_ATTACK': ActionType.CUSTOM_ATTACK,
     'SPELL': ActionType.SPELL,
     'IF_WALL': ActionType.IF_WALL,
     'IF_ENEMY': ActionType.IF_ENEMY,
@@ -215,10 +214,6 @@ export function executeAction(
 
     case ActionType.REPEAT:
       // REPEAT is handled at the simulation level, not here
-      return updatedCharacter;
-
-    case ActionType.CUSTOM_ATTACK:
-      executeCustomAttack(updatedCharacter, action, gameState);
       return updatedCharacter;
 
     case ActionType.SPELL:
@@ -1220,52 +1215,6 @@ function handleIfWall(
 // ==========================================
 // CUSTOM ATTACK SYSTEM (Phase 2)
 // ==========================================
-
-/**
- * Execute a custom attack action
- */
-function executeCustomAttack(
-  character: PlacedCharacter,
-  action: CharacterAction,
-  gameState: GameState
-): void {
-  // Get attack data from action or load from storage
-  let attackData: CustomAttack | null = null;
-
-  if (action.customAttack) {
-    attackData = action.customAttack;
-  } else if (action.customAttackId) {
-    attackData = loadCustomAttack(action.customAttackId);
-  }
-
-  if (!attackData) {
-    console.warn('Custom attack data not found');
-    return;
-  }
-
-  // Execute based on attack pattern
-  switch (attackData.pattern) {
-    case AttackPattern.PROJECTILE:
-      spawnProjectile(character, attackData, gameState);
-      break;
-
-    case AttackPattern.MELEE:
-      // For custom attacks, meleeRange comes from attackData.range (defaults to 1)
-      executeMeleeAttack(character, attackData, gameState, attackData.range || 1);
-      break;
-
-    case AttackPattern.AOE_CIRCLE:
-      executeAOEAttack(character, attackData, character.facing, gameState);
-      break;
-
-    case AttackPattern.HEAL:
-      executeHeal(character, attackData, gameState);
-      break;
-
-    default:
-      console.warn(`Attack pattern not yet implemented: ${attackData.pattern}`);
-  }
-}
 
 /**
  * Convert relative direction to absolute direction based on current facing
