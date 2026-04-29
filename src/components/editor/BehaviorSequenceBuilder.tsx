@@ -558,7 +558,23 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                 <>
                   <select value={action.trigger.event || defaultEvent}
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, event: e.target.value as any } })}
+                    onChange={(e) => {
+                      // Switching event type: when the new event is "in range"
+                      // and the dev hasn't already set autoTargetRange, seed
+                      // autoTargetRange from the trigger's eventRange so the
+                      // two start in sync. Dev edits to autoTargetRange after
+                      // are sticky.
+                      const newEvent = e.target.value;
+                      const isInRange = newEvent === 'enemy_in_range' || newEvent === 'character_in_range';
+                      const eventRange = action.trigger?.eventRange ?? 2;
+                      const shouldSeed = isInRange && !action.autoTargetRange;
+                      onUpdate({
+                        ...action,
+                        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                        trigger: { ...action.trigger!, event: newEvent as any },
+                        ...(shouldSeed ? { autoTargetRange: eventRange } : {}),
+                      });
+                    }}
                     className="w-full px-2 py-1 bg-stone-600 rounded text-xs">
                     {eventOptions.map(opt => (
                       <option key={opt.value} value={opt.value}>{opt.label}</option>
@@ -569,7 +585,21 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                       <label className="text-xs text-stone-400">Range (tiles):</label>
                       <input type="number" min="1" max="10"
                         value={action.trigger.eventRange || 2}
-                        onChange={(e) => onUpdate({ ...action, trigger: { ...action.trigger!, eventRange: parseInt(e.target.value) || 2 } })}
+                        onChange={(e) => {
+                          // While autoTargetRange is "in sync" with eventRange
+                          // (either unset or equal to the previous eventRange),
+                          // keep them syncing as eventRange changes. Once dev
+                          // sets a different autoTargetRange explicitly, this
+                          // sync stops — their explicit value wins.
+                          const newRange = parseInt(e.target.value) || 2;
+                          const oldRange = action.trigger?.eventRange ?? 2;
+                          const isAutoSeeded = !action.autoTargetRange || action.autoTargetRange === oldRange;
+                          onUpdate({
+                            ...action,
+                            trigger: { ...action.trigger!, eventRange: newRange },
+                            ...(isAutoSeeded ? { autoTargetRange: newRange } : {}),
+                          });
+                        }}
                         className="w-16 px-2 py-1 bg-stone-600 rounded text-xs" />
                     </div>
                   )}
@@ -702,17 +732,19 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
                     onChange={(e) => onUpdate({ ...action, maxTargets: parseInt(e.target.value) || 1 })}
                     className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs" />
                 </label>
-                {/* Max range — character only */}
-                {context === 'character' && (
-                  <label className="flex items-center gap-2 text-xs ml-4">
-                    Max Range:
-                    <input type="number" min={0} max={20}
-                      value={action.autoTargetRange || 0}
-                      onChange={(e) => onUpdate({ ...action, autoTargetRange: parseInt(e.target.value) || 0 })}
-                      className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs" />
-                    <span className="text-stone-500">(0 = unlimited)</span>
-                  </label>
-                )}
+                {/* Max range — available for all contexts. Auto-seeds from
+                    the trigger's eventRange when an "in range" trigger event
+                    is selected (see trigger event onChange below); the dev
+                    can edit afterward, and the explicit value sticks even if
+                    eventRange later changes. */}
+                <label className="flex items-center gap-2 text-xs ml-4">
+                  Max Range:
+                  <input type="number" min={0} max={20}
+                    value={action.autoTargetRange || 0}
+                    onChange={(e) => onUpdate({ ...action, autoTargetRange: parseInt(e.target.value) || 0 })}
+                    className="w-12 px-1 py-0.5 bg-stone-700 border border-stone-600 rounded text-xs" />
+                  <span className="text-stone-500">(0 = unlimited)</span>
+                </label>
               </>
             )}
           </div>

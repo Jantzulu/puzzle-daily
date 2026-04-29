@@ -3548,10 +3548,15 @@ function executeResurrect(
   action: CharacterAction,
   gameState: GameState
 ): void {
-  // Find dead allies to resurrect
+  // Find dead allies to resurrect.
+  // Mirror the auto-target inheritance from the regular cast path:
+  // autoTargetRange wins when set; otherwise inherit the trigger's eventRange
+  // (so a "resurrect when ally dies in range N" trigger naturally also looks
+  // for dead allies within range N). Falls through to 0 (unlimited) when
+  // neither is configured — typical for purely interval-driven resurrects.
   const maxTargets = action.maxTargets || 1;
   const targetMode = action.autoTargetMode || 'omnidirectional';
-  const maxRange = action.autoTargetRange || 0;  // 0 = unlimited
+  const maxRange = action.autoTargetRange || action.trigger?.eventRange || 0;
   const nearestDeadAllies = findNearestDeadAllies(caster, gameState, maxTargets, targetMode, maxRange);
 
   if (nearestDeadAllies.length === 0) {
