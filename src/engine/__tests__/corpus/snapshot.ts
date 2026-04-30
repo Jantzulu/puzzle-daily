@@ -16,7 +16,7 @@
  * to stable per-run indices via an IdNormalizer so snapshots are reproducible
  * across runs.
  */
-import type { GameState, PlacedCharacter, PlacedEnemy, PlacedCollectible, Projectile, StatusEffect } from '../../../types/game';
+import type { GameState, PlacedCharacter, PlacedEnemy, PlacedCollectible, Projectile, StatusEffectInstance } from '../../../types/game';
 
 export class IdNormalizer {
   private map = new Map<string, string>();
@@ -122,7 +122,7 @@ export interface TurnSnapshot {
   projectiles: ProjectileSnapshot[];
 }
 
-function snapshotStatusEffect(se: StatusEffect, ids: IdNormalizer): StatusEffectSnapshot {
+function snapshotStatusEffect(se: StatusEffectInstance, ids: IdNormalizer): StatusEffectSnapshot {
   return {
     id: ids.normalize('se', se.id) ?? se.id,
     type: se.type,

@@ -146,7 +146,8 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       case 'item': {
         const seen = new Set<string>();
         return puzzle.collectibles
-          .filter(c => {
+          .filter((c): c is typeof c & { collectibleId: string } => {
+            if (!c.collectibleId) return false;
             if (seen.has(c.collectibleId)) return false;
             seen.add(c.collectibleId);
             return true;
