@@ -4127,7 +4127,7 @@ function drawSpriteConfig(
 // Shared sprite drawing function (can be used by game renderer too)
 // eslint-disable-next-line react-refresh/only-export-components
 export function drawSprite(
-  ctx: CanvasRenderingContext2D,
+  ctx: CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D,
   sprite: CustomSprite,
   centerX: number,
   centerY: number,

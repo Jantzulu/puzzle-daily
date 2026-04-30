@@ -1166,7 +1166,7 @@ export interface ParticleEffect {
   // Visual modifiers
   scale?: number;               // Size multiplier (can animate)
   alpha?: number;               // Opacity (for fade out)
-  rotation?: number;            // Rotation in radians
+  rotation?: Direction;         // Direction enum value used for rendering rotation lookup (see getRotationForDirection in AnimatedGameBoard)
 }
 
 /**

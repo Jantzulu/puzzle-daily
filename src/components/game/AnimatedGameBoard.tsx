@@ -637,7 +637,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const enemyPositionsRef = useRef<Map<number, CharacterPosition>>(new Map());
   const prevCharactersRef = useRef<PlacedCharacter[]>([]);
   const prevEnemiesRef = useRef<PlacedEnemy[]>([]);
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
 
   // Track death animations - keyed by entity ID (characterId or index)
   const [characterDeathAnimations, setCharacterDeathAnimations] = useState<Map<string, DeathAnimationState>>(new Map());
@@ -911,7 +911,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             toX: enemy.x,
             toY: enemy.y,
             startTime: now,
-            facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
+            facingDuringMove: (facingChanged ? enemy.facing : prevEnemy.facing) || Direction.SOUTH,
             teleported: true,
             teleportSourceX,
             teleportSourceY,
@@ -948,7 +948,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             toX: enemy.x,
             toY: enemy.y,
             startTime: now,
-            facingDuringMove: facingChanged ? enemy.facing : (prevEnemy.facing || Direction.SOUTH),
+            facingDuringMove: (facingChanged ? enemy.facing : prevEnemy.facing) || Direction.SOUTH,
             iceSlideDistance: enemy.iceSlideDistance,
           });
         }
@@ -961,7 +961,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           toX: enemy.x,
           toY: enemy.y,
           startTime: now,
-          facingDuringMove: enemy.facing, // Show new facing immediately
+          facingDuringMove: enemy.facing || Direction.SOUTH, // Show new facing immediately
         });
       } else if (existing && now - existing.startTime < ANIMATION_DURATION) {
         // Keep existing animation
@@ -1267,7 +1267,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       }
 
       // Determine if game has started (for sprite selection)
-      const gameStarted = gameState.gameStatus === 'running' || gameState.gameStatus === 'won' || gameState.gameStatus === 'lost';
+      const gameStarted = gameState.gameStatus === 'running' || gameState.gameStatus === 'victory' || gameState.gameStatus === 'defeat';
 
       // Render all entities in z-order. renderQueue is memoized at component
       // scope (rebuilt only when entity arrays' references change at turn
@@ -2936,8 +2936,7 @@ function drawHealthBar(
   }
 
   // Check if entity has a shield effect and get custom color
-  // Compare with both enum value and string to handle any type coercion issues from JSON parsing
-  const shieldEffect = statusEffects?.find(e => e.type === StatusEffectType.SHIELD || e.type === 'shield');
+  const shieldEffect = statusEffects?.find(e => e.type === StatusEffectType.SHIELD);
   const hasShield = !!shieldEffect;
 
   // Get custom shield color from the status effect asset, or use default cyan
@@ -3273,7 +3272,7 @@ function drawStatusEffectOverlays(
       // Static image - draw directly
       const imgData = spriteData.imageData || spriteData.idleImageData;
       const img = loadImage(imgData);
-      if (img.complete) {
+      if (isImageReady(img)) {
         ctx.drawImage(
           img,
           px,
@@ -4128,7 +4127,7 @@ function drawParticle(ctx: CanvasRenderingContext2D, particle: ParticleEffect, n
     // The rotation field stores the Direction enum value
     let rotationConfig: { rotation: number; mirror: boolean } | undefined;
     if (particle.rotation !== undefined) {
-      rotationConfig = getRotationForDirection(particle.rotation as Direction);
+      rotationConfig = getRotationForDirection(particle.rotation);
     }
 
     // Check for sprite sheet first (highest priority)

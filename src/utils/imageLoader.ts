@@ -135,7 +135,7 @@ export function retryImage(src: string): HTMLImageElement | null {
 /**
  * Check if an image is fully loaded and ready to draw.
  */
-export function isImageReady(img: HTMLImageElement | null): boolean {
+export function isImageReady(img: HTMLImageElement | null): img is HTMLImageElement {
   return img !== null && img.complete && img.naturalWidth > 0;
 }
 
