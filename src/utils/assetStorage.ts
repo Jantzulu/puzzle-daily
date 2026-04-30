@@ -441,6 +441,12 @@ export interface CustomObject {
 
   // Positioning
   anchorPoint: ObjectAnchorPoint; // Where sprite is anchored to tile
+  // Fine-grained transform applied on top of customSprite.size and anchorPoint.
+  // scale multiplies the rendered size (default 1.0); offsetX/Y shift the
+  // sprite within its tile in tile-fraction units (e.g. 0.25 = 1/4 tile).
+  scale?: number;
+  offsetX?: number;
+  offsetY?: number;
 
   // Collision
   collisionType: ObjectCollisionType;

@@ -465,6 +465,62 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
                 <option value="above_entities">Above Entities</option>
               </select>
             </div>
+            <div>
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="text-sm">Scale</label>
+                <span className="text-xs text-stone-400">{(editing.scale ?? 1).toFixed(2)}×</span>
+              </div>
+              <input
+                type="range"
+                min="0.25"
+                max="2"
+                step="0.05"
+                value={editing.scale ?? 1}
+                onChange={(e) => setEditing({ ...editing, scale: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+              <p className="text-xs text-stone-400 mt-1">Multiplies the rendered sprite size on top of the sprite&apos;s own size.</p>
+            </div>
+            <div>
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="text-sm">Offset X</label>
+                <span className="text-xs text-stone-400">{(editing.offsetX ?? 0).toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                min="-0.5"
+                max="0.5"
+                step="0.05"
+                value={editing.offsetX ?? 0}
+                onChange={(e) => setEditing({ ...editing, offsetX: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <div className="flex items-baseline justify-between mb-1">
+                <label className="text-sm">Offset Y</label>
+                <span className="text-xs text-stone-400">{(editing.offsetY ?? 0).toFixed(2)}</span>
+              </div>
+              <input
+                type="range"
+                min="-0.5"
+                max="0.5"
+                step="0.05"
+                value={editing.offsetY ?? 0}
+                onChange={(e) => setEditing({ ...editing, offsetY: parseFloat(e.target.value) })}
+                className="w-full"
+              />
+              <p className="text-xs text-stone-400 mt-1">Offsets are in tile-fraction units. Negative Y shifts up.</p>
+            </div>
+            {((editing.scale ?? 1) !== 1 || (editing.offsetX ?? 0) !== 0 || (editing.offsetY ?? 0) !== 0) && (
+              <button
+                type="button"
+                onClick={() => setEditing({ ...editing, scale: 1, offsetX: 0, offsetY: 0 })}
+                className="text-xs text-stone-400 hover:text-stone-200 underline"
+              >
+                Reset transform
+              </button>
+            )}
           </CollapsiblePanel>
 
           {/* Effects */}

@@ -4275,11 +4275,16 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   const px = x * TILE_SIZE;
   const py = y * TILE_SIZE;
 
-  // Get sprite size (default to 0.8 if not set)
-  const spriteSize = (objectData.customSprite?.size || 0.8) * TILE_SIZE;
+  const scale = objectData.scale ?? 1;
+  const offsetX = (objectData.offsetX ?? 0) * TILE_SIZE;
+  const offsetY = (objectData.offsetY ?? 0) * TILE_SIZE;
+  const renderTileSize = TILE_SIZE * scale;
 
-  // Calculate center position based on anchor point
-  const centerX = px + TILE_SIZE / 2;
+  // Get sprite size (default to 0.8 if not set), then apply object scale.
+  const spriteSize = (objectData.customSprite?.size || 0.8) * renderTileSize;
+
+  // Calculate center position based on anchor point, then apply offsets.
+  let centerX = px + TILE_SIZE / 2;
   let centerY = py + TILE_SIZE / 2;
 
   if (objectData.anchorPoint === 'bottom_center') {
@@ -4288,14 +4293,18 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
     centerY = py + TILE_SIZE / 2 - spriteSize / 2;
   }
 
+  centerX += offsetX;
+  centerY += offsetY;
+
   // Draw custom sprite if available
   if (objectData.customSprite) {
     // Use drawSprite which handles images, spritesheets, and shape fallbacks
-    drawSprite(ctx, objectData.customSprite, centerX, centerY, TILE_SIZE);
+    drawSprite(ctx, objectData.customSprite, centerX, centerY, renderTileSize);
   } else {
-    // Fallback: draw a simple brown square
+    // Fallback: draw a simple brown square (scaled, centered, with offsets applied)
+    const fallback = (TILE_SIZE / 2) * scale;
     ctx.fillStyle = '#8b4513';
-    ctx.fillRect(px + TILE_SIZE / 4, py + TILE_SIZE / 4, TILE_SIZE / 2, TILE_SIZE / 2);
+    ctx.fillRect(centerX - fallback / 2, centerY - fallback / 2, fallback, fallback);
   }
 }
 
