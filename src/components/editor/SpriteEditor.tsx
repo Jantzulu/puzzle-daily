@@ -3954,7 +3954,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
       <div>
         <label className="block text-sm font-bold mb-2">
-          Size: {(currentConfig.size * 100).toFixed(0)}%
+          Size: {((currentConfig.size ?? 0.6) * 100).toFixed(0)}%
         </label>
         <input
           type="range"

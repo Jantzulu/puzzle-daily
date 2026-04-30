@@ -235,7 +235,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       const spriteSheetSrc = resolveSpriteSheetSource(spriteSheet);
 
       // Priority: sprite sheet > static image > shapes
-      if (spriteSheetSrc) {
+      if (spriteSheetSrc && spriteSheet) {
         // Anchor/scale from spritesheet
         const sheetAx = spriteSheet.anchorX ?? 0.5;
         const sheetAy = spriteSheet.anchorY ?? 0.5;

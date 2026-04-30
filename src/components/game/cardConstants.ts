@@ -63,8 +63,8 @@ export const MIN_NATIVE_HEIGHT = 16;
 export function getSpriteNativeHeight(sprite?: CustomSprite): number {
   if (!sprite) return FALLBACK_NATIVE_HEIGHT;
 
-  const isDirectional = sprite.useDirectional && sprite.directionalSprites?.default;
-  const config = isDirectional ? sprite.directionalSprites!.default : sprite;
+  const directionalDefault = sprite.useDirectional ? sprite.directionalSprites?.default : undefined;
+  const config = directionalDefault ?? sprite;
 
   // 1. Explicit frameHeight from config
   const sheet = config.idleSpriteSheet;

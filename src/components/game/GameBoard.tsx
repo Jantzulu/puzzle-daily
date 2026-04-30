@@ -36,7 +36,7 @@ export const GameBoard: React.FC<GameBoardProps> = ({ gameState, onTileClick }) 
     for (let y = 0; y < gameState.puzzle.height; y++) {
       for (let x = 0; x < gameState.puzzle.width; x++) {
         const tile = gameState.puzzle.tiles[y][x];
-        drawTile(ctx, x, y, tile.type);
+        if (tile) drawTile(ctx, x, y, tile.type);
       }
     }
 
