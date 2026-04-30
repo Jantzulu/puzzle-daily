@@ -1030,7 +1030,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
         pendingTouchActionRef.current = null;
         // Undo the snapshot if it was already pushed
         if (isDrawingRef.current) {
-          history.undo();
+          history.undo(getSnapshot());
           isDrawingRef.current = false;
         }
       }
@@ -1200,7 +1200,8 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
           return;
         }
         history.push(getSnapshot());
-        const { mask, bounds } = result;
+        const { mask } = result;
+        let bounds = result.bounds;
 
         // Shift+click: merge with previous selection mask
         if (e.shiftKey && selection?.mask) {

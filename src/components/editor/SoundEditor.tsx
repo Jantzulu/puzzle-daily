@@ -321,8 +321,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
               <FolderDropdown
                 category="objects"
                 selectedFolderId={selectedFolderId}
-                onSelect={setSelectedFolderId}
-                showAllOption
+                onFolderSelect={setSelectedFolderId}
               />
             </div>
 
@@ -652,7 +651,7 @@ export const SoundEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 <InlineFolderPicker
                   category="objects"
                   currentFolderId={editing.folderId}
-                  onSelect={(folderId) => handleFolderChange(editing.id, folderId)}
+                  onFolderChange={(folderId) => handleFolderChange(editing.id, folderId)}
                 />
               </div>
             )}

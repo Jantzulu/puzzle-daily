@@ -78,7 +78,7 @@ export const BugReportReplay: React.FC<BugReportReplayProps> = ({ puzzle, placem
     const events = new Map<number, Set<LogEventType>>();
     for (let i = 1; i < hist.length; i++) {
       const changes = diffTurn(hist[i - 1], hist[i]);
-      const notable = changes.filter(e => e.type !== 'movement' && e.type !== 'no_events');
+      const notable = changes.filter(e => e.type !== 'move' && e.text !== 'No notable events');
       if (notable.length > 0) {
         events.set(i, new Set(notable.map(e => e.type)));
       }

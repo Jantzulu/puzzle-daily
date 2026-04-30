@@ -9,6 +9,7 @@ import type {
   PlacedEnemy,
   PlacedCollectible,
   Tile,
+  TileOrNull,
   TileType,
   WinCondition,
   Direction,
@@ -99,8 +100,6 @@ interface LayoutCandidate {
   enemies: PlacedEnemy[];
   collectibles: PlacedCollectible[];
 }
-
-type TileOrNull = Tile | null;
 
 // ==========================================
 // UTILITY FUNCTIONS
@@ -1062,6 +1061,7 @@ function placeCollectibles(
         collectibleId: config.collectibleId,
         x: pos.x,
         y: pos.y,
+        collected: false,
       });
       occupiedTiles.add(`${pos.x},${pos.y}`);
     }
@@ -1073,8 +1073,6 @@ function placeCollectibles(
 // ==========================================
 // TELEPORTER PLACEMENT HELPERS
 // ==========================================
-
-type TileOrNull = Tile | null;
 
 interface TileCoord {
   x: number;

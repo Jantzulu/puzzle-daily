@@ -497,7 +497,7 @@ export function saveThemeAssets(assets: ThemeAssets): { success: boolean; error?
 /**
  * Get a single theme asset
  */
-export function getThemeAsset(key: ThemeAssetKey): string | undefined {
+export function getThemeAsset<K extends ThemeAssetKey>(key: K): ThemeAssets[K] {
   const assets = loadThemeAssets();
   return assets[key];
 }
@@ -505,9 +505,9 @@ export function getThemeAsset(key: ThemeAssetKey): string | undefined {
 /**
  * Set a single theme asset
  */
-export function setThemeAsset(key: ThemeAssetKey, value: string | undefined): void {
+export function setThemeAsset<K extends ThemeAssetKey>(key: K, value: ThemeAssets[K]): void {
   const assets = loadThemeAssets();
-  if (value) {
+  if (value !== undefined && value !== '') {
     assets[key] = value;
   } else {
     delete assets[key];

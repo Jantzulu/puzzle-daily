@@ -26,7 +26,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
   const refreshEnemies = () => getAllEnemies().map(e => ({
     ...e,
     isCustom: true,
-    createdAt: e.createdAt || new Date().toISOString(),
+    createdAt: (e as { createdAt?: string }).createdAt || new Date().toISOString(),
     customSprite: e.customSprite
   } as CustomEnemy));
 
@@ -52,7 +52,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
     const enemy = enemies.find(e => e.id === id);
     if (enemy) {
       setSelectedId(id);
-      setEditing({ ...enemy, behavior: { ...enemy.behavior, pattern: [...(enemy.behavior?.pattern || [])] } });
+      setEditing({ ...enemy, behavior: { type: 'static', ...enemy.behavior, pattern: [...(enemy.behavior?.pattern || [])] } });
       setIsCreating(false);
     }
   };

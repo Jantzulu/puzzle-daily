@@ -5,7 +5,7 @@ import { initializeGameState, executeTurn } from './simulation';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { loadTileType, loadCollectible, loadSpellAsset, loadStatusEffectAsset } from '../utils/assetStorage';
-import type { Puzzle, PlacedCharacter, Direction, TileType } from '../types/game';
+import type { Puzzle, PlacedCharacter, Direction, TileType, GameStatus } from '../types/game';
 
 export interface SolverResult {
   solvable: boolean;
@@ -261,7 +261,7 @@ function simulatePuzzle(
 
   // Add placed characters
   gameState.placedCharacters = createPlacedCharacters(placements);
-  gameState.gameStatus = 'running';
+  gameState.gameStatus = 'running' as GameStatus;
 
   // Enable headless mode for instant projectile resolution
   gameState.headlessMode = true;
