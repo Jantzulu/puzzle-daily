@@ -51,9 +51,14 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   trigger.eventRange changes). RESURRECT path also picks up the
   inheritance fallback at the engine level.
 
-- [ ] **Adjustable scale/position for objects in tile + preview.** Same UI
-  pattern that already exists for entity sprite sheets. Mostly a port of
-  the existing controls. *Captured 2026-04-27.*
+- [x] **Adjustable scale/position for objects in tile + preview.** **Done
+  2026-04-30** in commits `506918d` (fields + sliders + render) and
+  `0e08b68` (live preview tile). Took the simpler "object-level fields"
+  approach (Option A) rather than surfacing per-state CustomSprite
+  controls — three new optional fields (`scale`, `offsetX`, `offsetY`) on
+  `CustomObject`, with sliders in the Positioning panel and a 120×120
+  preview tile that mirrors the exact renderer math. Defaults preserve
+  prior behavior exactly. User-validated end-to-end (placed in a puzzle).
 
 - [x] **TypeScript error backlog squash.** **Done 2026-04-30 to 2026-05-01**
   across 15 commits (`4ce2d7a` through `89fc990`). 267 → 0 errors. Tests
@@ -66,7 +71,13 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   CLAUDE_HANDOFF.md "Recently completed (April 30 – May 1, 2026 — TS
   error squash campaign)" for the full breakdown.
 
-- [ ] **Extract preloader helpers into shared module.** Surfaced during
+- [x] **Extract preloader helpers into shared module.** **Done 2026-04-30**
+  in commit `a1a07d2`. `collectPuzzleAssetUrls(puzzle)` extracted to
+  `src/utils/spritePreload.ts`. Game.tsx and MapEditor.tsx share the URL
+  walk; each call site keeps its own loader (`preloadImagesEager` vs
+  `preloadImages`). Latent missing-`skin.customTileSprites` gap in
+  MapEditor's old preloader closed in the unified function.
+- [ ] **(Original entry, kept for context):** Surfaced during
   the TS error squash campaign: MapEditor.tsx and Game.tsx had identical
   duplicated preloader logic, and identical duplicated bugs in it (5+
   wrong field names — spell.projectileSprite vs spell.sprites.projectile,

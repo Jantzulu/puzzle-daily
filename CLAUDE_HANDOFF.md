@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 30, 2026 (sprite preloader extraction + stale wall-bounce-random handoff entry cleared)
+Last Updated: April 30, 2026 (object scale/position controls shipped — launch-adjacent backlog now empty)
 
 ## Doc Map — Where to Find What
 
@@ -206,9 +206,9 @@ See "Recently completed" below for full commit list with rationale and links.
 
 **`HOMING_DEBUG` and `PIERCE_DEBUG` are both `false`** by default. Flip at [simulation.ts:20](src/engine/simulation.ts#L20) (HOMING_DEBUG) or [simulation.ts:34](src/engine/simulation.ts#L34) (PIERCE_DEBUG) if you need traces.
 
-**Backlog status as of 2026-05-01:**
+**Backlog status as of 2026-04-30 (evening):**
 - Launch-blocking: empty
-- Launch-adjacent: object scale/position controls. ~~TypeScript error squash~~ **DONE 2026-05-01**: 267 → 0 errors across 15 commits over two days. 25 real runtime bugs surfaced and fixed in the process. See "Recently completed (April 30 – May 1, 2026 — TS error squash campaign)" below.
+- Launch-adjacent: **empty.** ~~Object scale/position controls~~ **DONE 2026-04-30** (commits `506918d`, `0e08b68`): added `scale`/`offsetX`/`offsetY` to `CustomObject`, three sliders + Reset in ObjectEditor's Positioning panel, live preview tile mirroring exact renderer math. ~~TypeScript error squash~~ **DONE 2026-05-01**: 267 → 0 across 15 commits.
 - Post-launch features: full queue waiting (summon, necromancy, allies, multi-tile melee stitching, breakable container, projectile linger, user-input spell variants, Noble marker, dev badge)
 - ~~**Refactor opportunity surfaced by the campaign:** sprite preloader duplication~~ **DONE 2026-04-30**: extracted `collectPuzzleAssetUrls(puzzle)` into [src/utils/spritePreload.ts](src/utils/spritePreload.ts). Game.tsx and MapEditor.tsx now share the URL-collection walk; each call site keeps its own preload function (`preloadImagesEager` for Game.tsx with the ready-flag, `preloadImages` for MapEditor's lazy/idle queue). The unified function also fixes a latent bug where MapEditor's preloader was missing `skin.customTileSprites` — moot at runtime today (the mounted `<Game/>` covers it) but eliminates the drift surface entirely. Tests 237/237, corpus goldens unchanged.
 
@@ -303,6 +303,16 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 30, 2026 — object scale/position controls)
+
+Last launch-adjacent backlog item.
+
+- **`CustomObject.scale` / `offsetX` / `offsetY`** added (all optional). `drawPlacedObject` ([AnimatedGameBoard.tsx:3671](src/components/game/AnimatedGameBoard.tsx#L3671)) and `drawObject` ([MapEditor.tsx:4271](src/components/editor/MapEditor.tsx#L4271)) honor them: scale multiplies the `tileSize` passed to `drawSprite`, offsets shift `centerX/Y` after anchor-point math. Defaults preserve prior behavior exactly.
+- **ObjectEditor Positioning panel** gets three sliders (Scale 0.25–2×, Offset X/Y ±0.5 tile-fractions) and a Reset button when any value is non-default.
+- **Live preview tile** (120×120 with 32px overflow headroom) sits at the top of the Positioning panel. Mirrors the exact transform math from the renderers and re-renders on image loads via `subscribeToImageLoads`. User-validated end-to-end (placed in a puzzle).
+
+Commits: [`506918d`](https://github.com/Jantzulu/puzzle-daily/commit/506918d) (data + render + sliders), [`0e08b68`](https://github.com/Jantzulu/puzzle-daily/commit/0e08b68) (preview tile).
 
 ### Recently completed (April 30, 2026 — sprite preloader extraction + handoff cleanup)
 
