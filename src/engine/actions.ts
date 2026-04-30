@@ -1021,7 +1021,7 @@ function moveCharacter(
           const ourCurrentKey = `${Math.floor(updatedChar.x)},${Math.floor(updatedChar.y)}`;
 
           // Calculate where the other enemy would move to based on their facing
-          const otherOffset = getDirectionOffset(enemyAtTarget.facing);
+          const otherOffset = getDirectionOffset(enemyAtTarget.facing || Direction.SOUTH);
           const otherTargetX = Math.floor(enemyAtTarget.x + otherOffset.dx);
           const otherTargetY = Math.floor(enemyAtTarget.y + otherOffset.dy);
           const otherTargetKey = `${otherTargetX},${otherTargetY}`;
@@ -1500,7 +1500,7 @@ function executeSpellInDirection(
   direction: Direction,
   gameState: GameState,
   homingTarget?: { targetEntityId: string; targetIsEnemy: boolean; targetEnemyIndex?: number },
-  homingPathStyle?: 'grid' | 'straight',
+  homingPathStyle?: 'grid' | 'straight' | 'pathfinding',
   homingIgnoreWalls?: boolean,
   homingHitAlongPath?: boolean
 ): void {
@@ -1687,7 +1687,7 @@ function executeSpellInDirection(
         spawnProjectile(character, attackData, gameState, spell, homingTarget);
 
         // Attach throwPlaceConfig to the just-spawned projectile
-        const lastProj = gameState.activeProjectiles[gameState.activeProjectiles.length - 1];
+        const lastProj = gameState.activeProjectiles?.[gameState.activeProjectiles.length - 1];
         if (lastProj) {
           lastProj.throwPlaceConfig = throwConfig;
         }
@@ -1996,7 +1996,7 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing || Direction.SOUTH);
         applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
 
         // Apply status effect if spell has one configured
@@ -2055,7 +2055,7 @@ function executeMeleeAttack(
       );
 
       if (enemy) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing || Direction.SOUTH);
         applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
 
         // Apply status effect if spell has one configured
@@ -2177,7 +2177,7 @@ function executeConeAttack(
         e => e.x === target.x && e.y === target.y && !e.dead
       );
       if (enemy) {
-        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing);
+        const isCrit = attackData.backstabEnabled && isAttackFromBehind(character.facing, enemy.facing || Direction.SOUTH);
         applyDamageToEntity(enemy, isCrit ? damage * 2 : damage, gameState, character);
         if (spell && !enemy.dead) {
           applyStatusEffectFromSpell(enemy, spell, character.characterId, false, gameState.currentTurn);
@@ -2439,8 +2439,15 @@ function applySpellToSelf(
 
   // Apply healing to self
   if (spell.healing && spell.healing > 0) {
-    const maxHealth = character.health + character.damageTaken;
-    character.damageTaken = Math.max(0, character.damageTaken - spell.healing);
+    // Look up source's max health to clamp the heal. Mirrors the canonical
+    // pattern used in the projectile / RESURRECT / range-heal paths above.
+    const sourceMaxHealth = isEnemy
+      ? getEnemy((character as unknown as PlacedEnemy).enemyId)?.health
+      : getCharacter(character.characterId)?.health;
+    character.currentHealth = Math.min(
+      character.currentHealth + spell.healing,
+      sourceMaxHealth ?? character.currentHealth + spell.healing
+    );
 
     // Spawn healing visual effect
     if (spell.sprites.healingEffect || spell.sprites.damageEffect) {
@@ -2587,7 +2594,7 @@ function applyStatusEffectFromSpell(
 function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
   if (!entity.statusEffects) return false;
   return entity.statusEffects.some(
-    e => e.type === StatusEffectType.INVULNERABLE || e.type === 'invulnerable'
+    e => e.type === StatusEffectType.INVULNERABLE
   );
 }
 
@@ -2597,7 +2604,7 @@ function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
 function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
   if (!entity.statusEffects) return false;
   return entity.statusEffects.some(
-    e => e.type === StatusEffectType.STEADFAST || e.type === 'steadfast'
+    e => e.type === StatusEffectType.STEADFAST
   );
 }
 
@@ -2624,7 +2631,7 @@ export function applyDamageToEntity(
   // Check for deflect effect - reflects damage back to source
   if (source && target.statusEffects) {
     const hasDeflect = target.statusEffects.some(
-      e => e.type === StatusEffectType.DEFLECT || e.type === 'deflect'
+      e => e.type === StatusEffectType.DEFLECT
     );
 
     if (hasDeflect && remainingDamage > 0) {
@@ -2638,8 +2645,7 @@ export function applyDamageToEntity(
   // Check for shield effects and absorb damage
   if (target.statusEffects) {
     for (const effect of target.statusEffects) {
-      // Check both enum and string to handle JSON parsing type coercion
-      if ((effect.type === StatusEffectType.SHIELD || effect.type === 'shield') && remainingDamage > 0) {
+      if (effect.type === StatusEffectType.SHIELD && remainingDamage > 0) {
         const shieldAmount = effect.value ?? 0;
 
         if (shieldAmount <= 0) {
@@ -2661,7 +2667,7 @@ export function applyDamageToEntity(
 
     // Remove depleted shields
     target.statusEffects = target.statusEffects.filter(
-      e => !((e.type === StatusEffectType.SHIELD || e.type === 'shield') && e.duration <= 0 && (e.value ?? 0) <= 0)
+      e => !(e.type === StatusEffectType.SHIELD && e.duration <= 0 && (e.value ?? 0) <= 0)
     );
   }
 
@@ -2679,7 +2685,7 @@ export function applyDamageToEntity(
       characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
       x: target.x,
       y: target.y,
-      facing: target.facing || 'right',
+      facing: target.facing || Direction.EAST,
       currentHealth: target.currentHealth,
       actionIndex: (target as PlacedCharacter).actionIndex || (target as PlacedEnemy).actionIndex || 0,
       active: (target as PlacedCharacter).active ?? (target as PlacedEnemy).active ?? true,
@@ -2722,7 +2728,7 @@ export function applyDamageToEntityNoDeflect(
   // Check for shield effects and absorb damage
   if (target.statusEffects) {
     for (const effect of target.statusEffects) {
-      if ((effect.type === StatusEffectType.SHIELD || effect.type === 'shield') && remainingDamage > 0) {
+      if (effect.type === StatusEffectType.SHIELD && remainingDamage > 0) {
         const shieldAmount = effect.value ?? 0;
 
         if (shieldAmount <= 0) {
@@ -2739,7 +2745,7 @@ export function applyDamageToEntityNoDeflect(
     }
 
     target.statusEffects = target.statusEffects.filter(
-      e => !((e.type === StatusEffectType.SHIELD || e.type === 'shield') && e.duration <= 0 && (e.value ?? 0) <= 0)
+      e => !(e.type === StatusEffectType.SHIELD && e.duration <= 0 && (e.value ?? 0) <= 0)
     );
   }
 
@@ -2753,7 +2759,7 @@ export function applyDamageToEntityNoDeflect(
       characterId: (target as PlacedCharacter).characterId || (target as PlacedEnemy).enemyId,
       x: target.x,
       y: target.y,
-      facing: target.facing || 'right',
+      facing: target.facing || Direction.EAST,
       currentHealth: target.currentHealth,
       actionIndex: (target as PlacedCharacter).actionIndex || (target as PlacedEnemy).actionIndex || 0,
       active: (target as PlacedCharacter).active ?? (target as PlacedEnemy).active ?? true,
@@ -2956,10 +2962,10 @@ function applyCollectibleEffect(
       const angle = effect.redirectAngle || 90;
       switch (mode) {
         case 'clockwise':
-          entity.facing = turnRight(entity.facing, angle);
+          entity.facing = turnRight(entity.facing || Direction.SOUTH, angle);
           break;
         case 'counter_clockwise':
-          entity.facing = turnLeft(entity.facing, angle);
+          entity.facing = turnLeft(entity.facing || Direction.SOUTH, angle);
           break;
         case 'fixed':
           entity.facing = effect.redirectFixedDirection || Direction.NORTH;

@@ -29,9 +29,23 @@ export function getDirectionOffset(direction: Direction): { dx: number; dy: numb
 /**
  * Turn left (counter-clockwise)
  * @param direction - Current direction
- * @param degrees - 45 (one step), 90 (two steps), or 135 (three steps) (default: 90)
+ * @param degrees - 45 (one step), 90 (two steps), 135 (three steps), or 180 (about-face) (default: 90)
  */
-export function turnLeft(direction: Direction, degrees: 45 | 90 | 135 = 90): Direction {
+export function turnLeft(direction: Direction, degrees: 45 | 90 | 135 | 180 = 90): Direction {
+  if (degrees === 180) {
+    // 180-degree turn (opposite direction) — same for left and right
+    switch (direction) {
+      case Direction.NORTH: return Direction.SOUTH;
+      case Direction.NORTHEAST: return Direction.SOUTHWEST;
+      case Direction.EAST: return Direction.WEST;
+      case Direction.SOUTHEAST: return Direction.NORTHWEST;
+      case Direction.SOUTH: return Direction.NORTH;
+      case Direction.SOUTHWEST: return Direction.NORTHEAST;
+      case Direction.WEST: return Direction.EAST;
+      case Direction.NORTHWEST: return Direction.SOUTHEAST;
+      default: return direction;
+    }
+  }
   if (degrees === 45) {
     // 45-degree turn (1 step in 8-direction rotation)
     switch (direction) {
@@ -81,9 +95,23 @@ export function turnLeft(direction: Direction, degrees: 45 | 90 | 135 = 90): Dir
 /**
  * Turn right (clockwise)
  * @param direction - Current direction
- * @param degrees - 45 (one step), 90 (two steps), or 135 (three steps) (default: 90)
+ * @param degrees - 45 (one step), 90 (two steps), 135 (three steps), or 180 (about-face) (default: 90)
  */
-export function turnRight(direction: Direction, degrees: 45 | 90 | 135 = 90): Direction {
+export function turnRight(direction: Direction, degrees: 45 | 90 | 135 | 180 = 90): Direction {
+  if (degrees === 180) {
+    // 180-degree turn (opposite direction) — same for left and right
+    switch (direction) {
+      case Direction.NORTH: return Direction.SOUTH;
+      case Direction.NORTHEAST: return Direction.SOUTHWEST;
+      case Direction.EAST: return Direction.WEST;
+      case Direction.SOUTHEAST: return Direction.NORTHWEST;
+      case Direction.SOUTH: return Direction.NORTH;
+      case Direction.SOUTHWEST: return Direction.NORTHEAST;
+      case Direction.WEST: return Direction.EAST;
+      case Direction.NORTHWEST: return Direction.SOUTHEAST;
+      default: return direction;
+    }
+  }
   if (degrees === 45) {
     // 45-degree turn (1 step in 8-direction rotation)
     switch (direction) {
