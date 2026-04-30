@@ -249,6 +249,8 @@ export interface Character {
     durationOverride?: number; // Optional: override the default duration (0 or undefined = use default, -1 = permanent/infinite)
     valueOverride?: number;    // Optional: override the default value (damage/heal per turn)
   }>;
+
+  folderId?: string;  // Folder assignment for asset organization (Custom* subtypes carry this; declared here so *WithSprite types satisfy useFilteredAssets's constraint)
 }
 
 export interface Enemy {
@@ -289,6 +291,8 @@ export interface Enemy {
     durationOverride?: number; // Optional: override the default duration (0 or undefined = use default, -1 = permanent/infinite)
     valueOverride?: number;    // Optional: override the default value (damage/heal per turn)
   }>;
+
+  folderId?: string;  // Folder assignment for asset organization (Custom* subtypes carry this; declared here so *WithSprite types satisfy useFilteredAssets's constraint)
 }
 
 export interface EnemyBehavior {

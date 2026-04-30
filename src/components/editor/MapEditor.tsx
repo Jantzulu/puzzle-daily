@@ -339,6 +339,8 @@ export const MapEditor: React.FC = () => {
         // Ensure tags/description are always initialized
         tags: cached.tags || [],
         description: cached.description || '',
+        // Default isTraining for older cached state
+        isTraining: cached.isTraining ?? false,
         // Filter out references to deleted characters
         availableCharacters: (cached.availableCharacters || []).filter(id => getCharacter(id) != null),
       };
@@ -729,6 +731,12 @@ export const MapEditor: React.FC = () => {
         borderConfig: state.borderConfig,
         skinId: state.skinId,
         backgroundMusicId: state.backgroundMusicId,
+        parCharacters: state.parCharacters,
+        parTurns: state.parTurns,
+        sideQuests: state.sideQuests,
+        tags: state.tags,
+        description: state.description,
+        isTraining: state.isTraining,
         selectedTool: state.selectedTool,
       });
     }
@@ -790,11 +798,11 @@ export const MapEditor: React.FC = () => {
     const preloadSpellSprites = (spellId: string) => {
       const spell = loadSpellAsset(spellId);
       if (spell) {
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.projectileSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.aoeEffectSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.hitEffectSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.healingEffectSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.persistVisualSprite));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.projectile));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.aoeEffect));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.damageEffect));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.healingEffect));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.persistentArea));
       }
     };
 
@@ -851,8 +859,8 @@ export const MapEditor: React.FC = () => {
     }
 
     // Preload object sprites
-    if (originalPlaytestPuzzle.objects) {
-      for (const obj of originalPlaytestPuzzle.objects) {
+    if (originalPlaytestPuzzle.placedObjects) {
+      for (const obj of originalPlaytestPuzzle.placedObjects) {
         if (obj.objectId) {
           const objectData = loadObject(obj.objectId);
           if (objectData?.customSprite) {
@@ -867,16 +875,16 @@ export const MapEditor: React.FC = () => {
       const skin = loadPuzzleSkin(originalPlaytestPuzzle.skinId);
       if (skin) {
         if (skin.borderSprites) {
-          const borderKeys = ['topLeft', 'top', 'topRight', 'left', 'right', 'bottomLeft', 'bottom', 'bottomRight'] as const;
-          for (const key of borderKeys) {
-            if (skin.borderSprites[key]) urlsToPreload.push(skin.borderSprites[key]);
+          for (const url of Object.values(skin.borderSprites)) {
+            if (url) urlsToPreload.push(url);
           }
         }
         if (skin.tileSprites) {
-          const { floor, wall, void: voidSprite } = skin.tileSprites;
-          if (floor) urlsToPreload.push(floor);
+          const { empty, wall, void: voidSprite, goal } = skin.tileSprites;
+          if (empty) urlsToPreload.push(empty);
           if (wall) urlsToPreload.push(wall);
           if (voidSprite) urlsToPreload.push(voidSprite);
+          if (goal) urlsToPreload.push(goal);
         }
       }
     }
@@ -2790,7 +2798,7 @@ export const MapEditor: React.FC = () => {
                         In Review
                       </span>
                     )}
-                    {(publishStatus === 'draft' || publishStatus === null) && publishStatus !== 'checking' && (
+                    {(publishStatus === 'draft' || publishStatus === null) && (
                       <span className="px-2 py-0.5 text-xs rounded-full bg-stone-600/30 text-stone-400 border border-stone-500/30">
                         Draft
                       </span>
@@ -2864,7 +2872,6 @@ export const MapEditor: React.FC = () => {
                             setPublishStatus('approved');
                           }}
                           className="flex-1 px-3 py-1.5 text-sm bg-green-600 hover:bg-green-700 rounded font-medium"
-                          disabled={publishStatus === 'checking'}
                         >
                           🚀 Publish
                         </button>
@@ -3534,10 +3541,9 @@ export const MapEditor: React.FC = () => {
               next.tiles = prev.tiles.map(row =>
                 row.map(tile => {
                   if (!tile || typeof tile !== 'object') return tile;
-                  const tileAny = tile as Record<string, unknown>;
-                  const tileTypeId = (tileAny.customType as string) || tile.customTileTypeId;
+                  const tileTypeId = tile.customType || tile.customTileTypeId;
                   if (tileTypeId && badIds.has(tileTypeId)) {
-                    return { ...tile, customType: undefined, customTileTypeId: undefined } as typeof tile;
+                    return { ...tile, customType: undefined, customTileTypeId: undefined };
                   }
                   return tile;
                 })
@@ -4128,7 +4134,9 @@ function drawTile(ctx: CanvasRenderingContext2D, x: number, y: number, tile: Til
       ctx.strokeStyle = '#1a1a1a';
       ctx.lineWidth = 1;
       ctx.strokeRect(px + 0.5, py + 0.5, TILE_SIZE - 1, TILE_SIZE - 1);
-      drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+      if (customTileType) {
+        drawTileBehaviorIndicators(ctx, px, py, customTileType, tile);
+      }
       return;
     }
   }

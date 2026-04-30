@@ -34,6 +34,13 @@ export interface EditorPuzzleState {
   parTurns?: number;
   sideQuests: SideQuest[];
 
+  // Tags & description
+  tags?: string[];
+  description?: string;
+
+  // Training arena
+  isTraining?: boolean;
+
   // Editor state
   selectedTool: string;
 }
