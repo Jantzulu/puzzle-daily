@@ -198,9 +198,9 @@ export const TileCard: React.FC<CardProps & { tile: CustomTileType }> = ({ tile,
       </div>
       {hasVariations && (
         <div className="mt-1.5 pt-1.5 flex items-center gap-1 flex-wrap" style={{ borderTop: '1px solid var(--border-warm)' }}>
-          {tile.offStateSprite && (
+          {tile.offStateSprite && (tile.offStateSprite.idleImageData || tile.offStateSprite.imageData) && (
             <TileSpritePreview
-              src={tile.offStateSprite.idleImageData || tile.offStateSprite.imageData}
+              src={(tile.offStateSprite.idleImageData || tile.offStateSprite.imageData)!}
               title="Off State"
               size={22}
             />

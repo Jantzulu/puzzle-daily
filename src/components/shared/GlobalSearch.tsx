@@ -155,7 +155,7 @@ function loadAllAssets(): SearchResult[] {
       icon: '🔊',
       route: '/settings',
       tab: 'sounds',
-      subtitle: s.category,
+      subtitle: s.description,
     });
   }
 

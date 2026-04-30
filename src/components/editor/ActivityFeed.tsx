@@ -158,7 +158,7 @@ export const ActivityFeed: React.FC = () => {
                     {formatAction(record)}
                   </span>
                 </div>
-                {record.details && (record.details as Record<string, unknown>).notes && (
+                {!!(record.details && (record.details as Record<string, unknown>).notes) && (
                   <div className="text-[10px] text-stone-500 italic mt-0.5 truncate">
                     "{String((record.details as Record<string, unknown>).notes)}"
                   </div>

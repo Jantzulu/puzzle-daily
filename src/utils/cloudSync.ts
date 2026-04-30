@@ -711,7 +711,7 @@ export async function pullFromCloud(): Promise<{ success: boolean; errors: strin
               for (const section of helpData.sections) {
                 const saved = saveHelpSection(section);
                 if (!saved) {
-                  errors.push(`Storage full - failed to save help section: ${section.sectionId}`);
+                  errors.push(`Storage full - failed to save help section: ${section.id}`);
                 }
               }
               console.log(`[CloudSync] Imported ${helpData.sections.length} help sections`);

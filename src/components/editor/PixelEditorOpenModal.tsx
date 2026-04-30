@@ -58,7 +58,7 @@ export const PixelEditorOpenModal: React.FC<PixelEditorOpenModalProps> = ({
             projectUrl: projectFile.url,
             projectPath: projectFile.path,
             pngUrl: pngFile?.url,
-            pngPath: pngFile?.path || null,
+            pngPath: pngFile?.path,
             date: projectFile.createdAt || '',
           });
         }

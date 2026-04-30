@@ -92,6 +92,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
         createdAt: new Date().toISOString(),
       },
       anchorPoint: 'center',
+      collisionType: 'none',
       effects: [],
       renderLayer: 'below_entities',
       castsShadow: false,

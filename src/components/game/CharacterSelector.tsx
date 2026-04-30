@@ -486,7 +486,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                       key={d.value}
                       onClick={(e) => {
                         e.stopPropagation();
-                        onSpellDirectionOverride(selectedCharacterId, spell.id, d.value);
+                        if (selectedCharacterId) onSpellDirectionOverride?.(selectedCharacterId, spell.id, d.value);
                       }}
                       className={`w-[17px] h-[17px] rounded-sm transition-colors flex items-center justify-center ${
                         currentDir === d.value

@@ -11,7 +11,8 @@ import {
   type EnemyConfig,
   type CollectibleConfig,
 } from '../../engine/puzzleGenerator';
-import type { Puzzle, WinCondition, CustomTileType } from '../../types/game';
+import type { Puzzle, WinCondition } from '../../types/game';
+import type { CustomTileType } from '../../utils/assetStorage';
 import type { CharacterWithSprite } from '../../data/characters';
 import type { EnemyWithSprite } from '../../data/enemies';
 import type { CustomCollectible } from '../../utils/assetStorage';

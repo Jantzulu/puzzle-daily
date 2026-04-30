@@ -47,7 +47,7 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [previewMode, setPreviewMode] = useState<'default' | 'triggered'>('default');
-  const animationRef = useRef<number>();
+  const animationRef = useRef<number | undefined>(undefined);
   // Trigger re-render when background images load
   const [renderTrigger, setRenderTrigger] = useState(0);
 

@@ -117,6 +117,7 @@ export interface Tile {
   y: number;
   type: TileType;
   customTileTypeId?: string;  // Reference to CustomTileType
+  customType?: string;        // Legacy alias for customTileTypeId — older saved puzzles still carry this. Read fallback: customType ?? customTileTypeId.
   teleportGroupId?: string;   // Which teleport group this tile belongs to
   triggerGroupId?: string;    // For pressure plate trigger groups - tiles with same ID toggle together
   content?: TileContent;

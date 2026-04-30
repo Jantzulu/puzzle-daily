@@ -296,7 +296,7 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
             <label className="text-xs text-stone-400">Direction:</label>
             <select
               value={action.faceDirection ?? Direction.NORTH}
-              onChange={(e) => onUpdate({ ...action, faceDirection: Number(e.target.value) as Direction })}
+              onChange={(e) => onUpdate({ ...action, faceDirection: e.target.value as Direction })}
               className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
             >
               {Object.entries(Direction).filter(([k]) => isNaN(Number(k))).map(([name, val]) => (
