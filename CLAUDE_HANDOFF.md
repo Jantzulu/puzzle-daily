@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: May 1, 2026 (TS error squash campaign: 267 → 0 across 15 commits over two days; 25 real runtime bugs surfaced and fixed)
+Last Updated: April 30, 2026 (sprite preloader extraction + stale wall-bounce-random handoff entry cleared)
 
 ## Doc Map — Where to Find What
 
@@ -210,7 +210,7 @@ See "Recently completed" below for full commit list with rationale and links.
 - Launch-blocking: empty
 - Launch-adjacent: object scale/position controls. ~~TypeScript error squash~~ **DONE 2026-05-01**: 267 → 0 errors across 15 commits over two days. 25 real runtime bugs surfaced and fixed in the process. See "Recently completed (April 30 – May 1, 2026 — TS error squash campaign)" below.
 - Post-launch features: full queue waiting (summon, necromancy, allies, multi-tile melee stitching, breakable container, projectile linger, user-input spell variants, Noble marker, dev badge)
-- **Refactor opportunity surfaced by the campaign:** the sprite preloader logic in MapEditor.tsx and Game.tsx is duplicated. Both had the same set of broken field-name reads (spell.projectileSprite vs spell.sprites.projectile, currentPuzzle.objects vs placedObjects, the wrong border-key list) — the bug had been silently duplicated when Game.tsx was originally split out. Extracting `preloadPuzzleAssets(puzzle)` into a shared `src/utils/spritePreload.ts` would prevent future drift. Not blocking; flagged for whenever the next preload-related change comes through.
+- ~~**Refactor opportunity surfaced by the campaign:** sprite preloader duplication~~ **DONE 2026-04-30**: extracted `collectPuzzleAssetUrls(puzzle)` into [src/utils/spritePreload.ts](src/utils/spritePreload.ts). Game.tsx and MapEditor.tsx now share the URL-collection walk; each call site keeps its own preload function (`preloadImagesEager` for Game.tsx with the ready-flag, `preloadImages` for MapEditor's lazy/idle queue). The unified function also fixes a latent bug where MapEditor's preloader was missing `skin.customTileSprites` — moot at runtime today (the mounted `<Game/>` covers it) but eliminates the drift surface entirely. Tests 237/237, corpus goldens unchanged.
 
 **Older pending tasks (still relevant):**
 
@@ -244,7 +244,7 @@ See "Recently completed" below for full commit list with rationale and links.
 
 ### Open spawn tasks (deferred bugs / features)
 
-4. **Wall bounce: `random` behavior.** `reflect`, `turn_around`, `turn_left`, `turn_right` are deterministic and implemented. `random` needs a seeded PRNG to keep determinism — not yet wired up. `computeBounceDirection` returns null for it, which falls through to a regular wall hit. When adding random, seed from `proj.id` + `proj.bounceCount` or similar so replays stay identical.
+_(none currently)_
 
 ### One-off tasks (pre-existing)
 
@@ -303,6 +303,15 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 30, 2026 — sprite preloader extraction + handoff cleanup)
+
+Small post-squash refactor closing out the duplication that surfaced during the TypeScript campaign.
+
+- **`collectPuzzleAssetUrls(puzzle)` extracted** to [src/utils/spritePreload.ts](src/utils/spritePreload.ts). Game.tsx and MapEditor.tsx now share the URL-gathering walk (characters/enemies/spell sprites/custom tiles/collectibles/objects/skin sprites). Each call site keeps its own loader: Game.tsx still uses `preloadImagesEager` with the `setSpritesReady(true)` ready-flag; MapEditor.tsx still uses `preloadImages` (lazy/idle). Latent missing case in MapEditor's old preloader (`skin.customTileSprites`) is now picked up by the unified function — moot at runtime today since playtest mounts `<Game/>` and Game.tsx's preloader covers it, but the drift surface is gone.
+- **Stale handoff entry removed:** "Wall bounce: `random` behavior" was listed as an open task but the `random` mode was actually removed entirely on 2026-04-27 (commit `46e26a2`) as a determinism decision. `BounceBehavior` is now `reflect | turn_around | turn_left | turn_right` only.
+
+Tests 237/237, corpus 44 goldens unchanged.
 
 ### Recently completed (April 30 – May 1, 2026 — TS error squash campaign)
 

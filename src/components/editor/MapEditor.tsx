@@ -10,7 +10,8 @@ import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
 import { writeAutoSave, readAutoSave, clearAutoSave, AUTOSAVE_INTERVAL_MS, type AutoSaveData } from '../../utils/autoSave';
-import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, extractSpriteImageUrls, extractSpriteReferenceUrls, resolveImageSource, type CustomObject } from '../../utils/assetStorage';
+import { getAllPuzzleSkins, loadPuzzleSkin, getCustomTileTypes, loadTileType, loadSpellAsset, getAllObjects, loadObject, getAllCollectibles, loadCollectible, getSoundAssets, resolveImageSource, type CustomObject } from '../../utils/assetStorage';
+import { collectPuzzleAssetUrls } from '../../utils/spritePreload';
 import { preloadImages } from '../../utils/imageLoader';
 import type { PuzzleSkin, SoundAsset } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
@@ -788,107 +789,13 @@ export const MapEditor: React.FC = () => {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [state.mode]);
 
-  // Preload sprite assets when entering playtest mode
+  // Preload sprite assets when entering playtest mode. The mounted <Game/>
+  // also runs an eager preload; this kick-starts the lazy queue early so
+  // anything not in the eager set still warms up while playtest sets up.
   useEffect(() => {
     if (state.mode !== 'playtest' || !originalPlaytestPuzzle) return;
 
-    const urlsToPreload: string[] = [];
-
-    // Helper to preload spell sprites
-    const preloadSpellSprites = (spellId: string) => {
-      const spell = loadSpellAsset(spellId);
-      if (spell) {
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.projectile));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.aoeEffect));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.damageEffect));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.healingEffect));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.persistentArea));
-      }
-    };
-
-    // Preload character sprites
-    for (const charId of originalPlaytestPuzzle.availableCharacters) {
-      const charData = getCharacter(charId);
-      if (charData?.customSprite) {
-        urlsToPreload.push(...extractSpriteImageUrls(charData.customSprite));
-      }
-      if (charData?.behavior) {
-        for (const action of charData.behavior) {
-          if (action.spellId) preloadSpellSprites(action.spellId);
-        }
-      }
-    }
-
-    // Preload enemy sprites
-    for (const enemy of originalPlaytestPuzzle.enemies) {
-      const enemyData = getEnemy(enemy.enemyId);
-      if (enemyData?.customSprite) {
-        urlsToPreload.push(...extractSpriteImageUrls(enemyData.customSprite));
-      }
-      const pattern = enemyData?.behavior?.pattern;
-      if (pattern) {
-        for (const action of pattern) {
-          if (action.spellId) preloadSpellSprites(action.spellId);
-        }
-      }
-    }
-
-    // Preload custom tile sprites
-    for (const row of originalPlaytestPuzzle.tiles) {
-      for (const tile of row) {
-        if (tile?.customType) {
-          const tileData = loadTileType(tile.customType);
-          if (tileData?.customSprite) {
-            urlsToPreload.push(...extractSpriteImageUrls(tileData.customSprite));
-          }
-          if (tileData?.offStateSprite) {
-            urlsToPreload.push(...extractSpriteImageUrls(tileData.offStateSprite));
-          }
-        }
-      }
-    }
-
-    // Preload collectible sprites
-    for (const collectible of originalPlaytestPuzzle.collectibles) {
-      if (collectible.collectibleId) {
-        const collectibleData = loadCollectible(collectible.collectibleId);
-        if (collectibleData?.customSprite) {
-          urlsToPreload.push(...extractSpriteImageUrls(collectibleData.customSprite));
-        }
-      }
-    }
-
-    // Preload object sprites
-    if (originalPlaytestPuzzle.placedObjects) {
-      for (const obj of originalPlaytestPuzzle.placedObjects) {
-        if (obj.objectId) {
-          const objectData = loadObject(obj.objectId);
-          if (objectData?.customSprite) {
-            urlsToPreload.push(...extractSpriteImageUrls(objectData.customSprite));
-          }
-        }
-      }
-    }
-
-    // Preload skin sprites
-    if (originalPlaytestPuzzle.skinId) {
-      const skin = loadPuzzleSkin(originalPlaytestPuzzle.skinId);
-      if (skin) {
-        if (skin.borderSprites) {
-          for (const url of Object.values(skin.borderSprites)) {
-            if (url) urlsToPreload.push(url);
-          }
-        }
-        if (skin.tileSprites) {
-          const { empty, wall, void: voidSprite, goal } = skin.tileSprites;
-          if (empty) urlsToPreload.push(empty);
-          if (wall) urlsToPreload.push(wall);
-          if (voidSprite) urlsToPreload.push(voidSprite);
-          if (goal) urlsToPreload.push(goal);
-        }
-      }
-    }
-
+    const urlsToPreload = collectPuzzleAssetUrls(originalPlaytestPuzzle);
     if (urlsToPreload.length > 0) {
       preloadImages(urlsToPreload);
     }
