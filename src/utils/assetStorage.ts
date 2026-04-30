@@ -77,7 +77,7 @@ let statusEffectsCache: StatusEffectAsset[] | null = null;
 
 export interface PendingDeletion {
   id: string;
-  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'sound';
+  type: 'tile_type' | 'enemy' | 'character' | 'object' | 'skin' | 'spell' | 'status_effect' | 'folder' | 'collectible_type' | 'collectible' | 'sound';
   deletedAt: string;
 }
 
