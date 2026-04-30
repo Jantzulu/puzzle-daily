@@ -172,6 +172,7 @@ export const TrainingGrounds: React.FC = () => {
         x, y,
         facing: charData.defaultFacing,
         currentHealth: charData.health,
+        maxHealth: charData.health,
         actionIndex: 0,
         active: true,
         dead: false,

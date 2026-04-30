@@ -569,6 +569,7 @@ export interface PlacedCharacter {
   y: number;
   facing: Direction;
   currentHealth: number;
+  maxHealth?: number;  // Stamped at placement from the source Character.health, so the no_damage_taken quest can compare against the original max regardless of mid-puzzle Character asset edits.
   actionIndex: number;
   active: boolean;
   dead: boolean;

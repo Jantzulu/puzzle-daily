@@ -212,7 +212,7 @@ export const renameFolder = (folderId: string, newName: string): void => {
 export type SpriteDirection = 'n' | 'ne' | 'e' | 'se' | 's' | 'sw' | 'w' | 'nw' | 'default';
 
 export interface DirectionalSpriteConfig {
-  shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond';
+  shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;
   secondaryColor?: string;
   size?: number; // 0-1 scale
@@ -274,7 +274,7 @@ export interface CustomSprite {
   type: 'simple' | 'directional' | 'image';
 
   // Simple rendering (single sprite for all directions)
-  shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond';
+  shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;
   secondaryColor?: string;
   size?: number; // 0-1 scale

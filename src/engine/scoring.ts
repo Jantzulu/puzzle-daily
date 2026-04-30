@@ -121,9 +121,14 @@ function isSideQuestCompleted(
       return gameState.puzzle.collectibles.every(c => c.collected);
 
     case 'no_damage_taken':
-      // All characters must be at max health
+      // All characters must be at full health. maxHealth is stamped at hero
+      // placement (Game.tsx) — was a real bug where the field didn't exist
+      // on PlacedCharacter, making `currentHealth === maxHealth` always
+      // `=== undefined` (always false). Quest never completed. Fixed
+      // 2026-05-01 by adding the field to PlacedCharacter and stamping at
+      // placement.
       return gameState.placedCharacters.every(c =>
-        c.currentHealth === c.maxHealth
+        c.maxHealth !== undefined && c.currentHealth === c.maxHealth
       );
 
     case 'use_specific_character':

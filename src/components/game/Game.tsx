@@ -819,6 +819,7 @@ export const Game: React.FC<GameProps> = ({
         y,
         facing: charData.defaultFacing,
         currentHealth: charData.health,
+        maxHealth: charData.health,
         actionIndex: 0,
         active: true,
         dead: false,
@@ -948,6 +949,7 @@ export const Game: React.FC<GameProps> = ({
         ...char,
         actionIndex: 0,
         currentHealth: charData ? charData.health : char.currentHealth,
+        maxHealth: charData ? charData.health : char.maxHealth,
         dead: false,
         active: true,
       };
@@ -986,6 +988,7 @@ export const Game: React.FC<GameProps> = ({
         ...char,
         actionIndex: 0,
         currentHealth: charData ? charData.health : char.currentHealth,
+        maxHealth: charData ? charData.health : char.maxHealth,
         dead: false,
         active: true,
       };
@@ -1101,6 +1104,7 @@ export const Game: React.FC<GameProps> = ({
         ...char,
         actionIndex: 0,
         currentHealth: charData ? charData.health : char.currentHealth,
+        maxHealth: charData ? charData.health : char.maxHealth,
         dead: false,
         active: true,
       };
@@ -1958,6 +1962,7 @@ export const Game: React.FC<GameProps> = ({
         ...char,
         actionIndex: 0,
         currentHealth: charData ? charData.health : char.currentHealth,
+        maxHealth: charData ? charData.health : char.maxHealth,
         dead: false,
         active: true,
       };

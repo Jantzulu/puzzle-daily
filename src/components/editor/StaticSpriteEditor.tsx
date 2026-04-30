@@ -959,6 +959,22 @@ function drawShape(
       break;
     }
 
+    case 'hexagon': {
+      const radius = size / 2;
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * i) / 3 - Math.PI / 6;
+        const x = centerX + Math.cos(angle) * radius;
+        const y = centerY + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      break;
+    }
+
     default:
       ctx.fillRect(centerX - size / 2, centerY - size / 2, size, size);
       ctx.strokeRect(centerX - size / 2, centerY - size / 2, size, size);

@@ -4111,6 +4111,19 @@ function drawSpriteConfig(
       ctx.fill();
       break;
 
+    case 'hexagon':
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * i) / 3 - Math.PI / 6;
+        const hx = centerX + Math.cos(angle) * radius;
+        const hy = centerY + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
+
     default:
       ctx.beginPath();
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
@@ -4263,6 +4276,19 @@ export function drawSprite(
       ctx.lineTo(centerX + radius, centerY);
       ctx.lineTo(centerX, centerY + radius);
       ctx.lineTo(centerX - radius, centerY);
+      ctx.closePath();
+      ctx.fill();
+      break;
+
+    case 'hexagon':
+      ctx.beginPath();
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * i) / 3 - Math.PI / 6;
+        const hx = centerX + Math.cos(angle) * radius;
+        const hy = centerY + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
       ctx.closePath();
       ctx.fill();
       break;

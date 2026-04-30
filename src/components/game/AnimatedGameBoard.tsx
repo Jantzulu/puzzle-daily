@@ -3235,6 +3235,17 @@ function drawEffectShape(
       ctx.closePath();
       ctx.fill();
       break;
+    case 'hexagon':
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * i) / 3 - Math.PI / 6;
+        const hx = centerX + Math.cos(angle) * radius;
+        const hy = centerY + Math.sin(angle) * radius;
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      ctx.fill();
+      break;
     default:
       ctx.arc(centerX, centerY, radius, 0, Math.PI * 2);
       ctx.fill();
@@ -3775,6 +3786,18 @@ function drawShape(
       ctx.lineTo(px - size * 1.5, py);
       ctx.closePath();
       break;
+    case 'hexagon': {
+      const hexR = size * 1.5;
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * i) / 3 - Math.PI / 6;
+        const hx = px + Math.cos(angle) * hexR;
+        const hy = py + Math.sin(angle) * hexR;
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      break;
+    }
   }
 
   ctx.fill();
@@ -3806,6 +3829,18 @@ function drawShape(
       ctx.lineTo(px - size * 0.7, py);
       ctx.closePath();
       break;
+    case 'hexagon': {
+      const hexR = size * 0.7;
+      for (let i = 0; i < 6; i++) {
+        const angle = (Math.PI * i) / 3 - Math.PI / 6;
+        const hx = px + Math.cos(angle) * hexR;
+        const hy = py + Math.sin(angle) * hexR;
+        if (i === 0) ctx.moveTo(hx, hy);
+        else ctx.lineTo(hx, hy);
+      }
+      ctx.closePath();
+      break;
+    }
   }
 
   ctx.fill();

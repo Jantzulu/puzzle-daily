@@ -196,6 +196,7 @@ function createPlacedCharacters(placements: CharacterPlacement[]): PlacedCharact
       y: p.y,
       facing: p.facing,
       currentHealth: charData?.health || 1,
+      maxHealth: charData?.health || 1,
       actionIndex: 0,
       active: true,
       dead: false,
