@@ -1,11 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint } from '../../utils/assetStorage';
 import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../utils/assetStorage';
+import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
+import { drawSprite } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
 import { useBulkSelect, BulkActionBar, bulkDelete, bulkMoveToFolder, bulkExport, bulkImport } from './BulkActions';
 import { RichTextEditor } from './RichTextEditor';
@@ -38,6 +40,74 @@ const getEffectIcon = (type: ObjectEffectConfig['type']): string => {
     case 'teleport': return '🌀';
     default: return '?';
   }
+};
+
+// Live preview tile that mirrors the renderer math from drawPlacedObject /
+// drawObject so the user sees scale/offset/anchor changes immediately.
+const PREVIEW_TILE_SIZE = 120;
+const PREVIEW_PADDING = 32; // headroom around the tile so overflow is visible
+const PREVIEW_CANVAS = PREVIEW_TILE_SIZE + PREVIEW_PADDING * 2;
+
+const ObjectTransformPreview: React.FC<{ obj: CustomObject }> = ({ obj }) => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [imageTick, setImageTick] = useState(0);
+
+  // Re-render whenever any image finishes loading so async sprites appear.
+  useEffect(() => subscribeToImageLoads(() => setImageTick(t => t + 1)), []);
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    ctx.clearRect(0, 0, PREVIEW_CANVAS, PREVIEW_CANVAS);
+
+    // Draw a single tile so users can see how the sprite sits inside (or
+    // overflows) tile bounds.
+    const tileX = PREVIEW_PADDING;
+    const tileY = PREVIEW_PADDING;
+    ctx.fillStyle = '#3a342c';
+    ctx.fillRect(tileX, tileY, PREVIEW_TILE_SIZE, PREVIEW_TILE_SIZE);
+    ctx.strokeStyle = '#6b5d44';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(tileX + 0.5, tileY + 0.5, PREVIEW_TILE_SIZE - 1, PREVIEW_TILE_SIZE - 1);
+
+    // Mirror drawObject / drawPlacedObject transform math.
+    const scale = obj.scale ?? 1;
+    const offsetX = (obj.offsetX ?? 0) * PREVIEW_TILE_SIZE;
+    const offsetY = (obj.offsetY ?? 0) * PREVIEW_TILE_SIZE;
+    const renderTileSize = PREVIEW_TILE_SIZE * scale;
+    const spriteSize = (obj.customSprite?.size || 0.8) * renderTileSize;
+
+    let centerX = tileX + PREVIEW_TILE_SIZE / 2;
+    let centerY = tileY + PREVIEW_TILE_SIZE / 2;
+    if (obj.anchorPoint === 'bottom_center') {
+      centerY = tileY + PREVIEW_TILE_SIZE / 2 - spriteSize / 2;
+    }
+    centerX += offsetX;
+    centerY += offsetY;
+
+    if (obj.customSprite) {
+      drawSprite(ctx, obj.customSprite, centerX, centerY, renderTileSize);
+    } else {
+      const fallback = (PREVIEW_TILE_SIZE / 2) * scale;
+      ctx.fillStyle = '#8b4513';
+      ctx.fillRect(centerX - fallback / 2, centerY - fallback / 2, fallback, fallback);
+    }
+  }, [obj.scale, obj.offsetX, obj.offsetY, obj.anchorPoint, obj.customSprite, imageTick]);
+
+  return (
+    <div className="flex justify-center">
+      <canvas
+        ref={canvasRef}
+        width={PREVIEW_CANVAS}
+        height={PREVIEW_CANVAS}
+        className="rounded border border-stone-700"
+        style={{ imageRendering: 'pixelated' }}
+      />
+    </div>
+  );
 };
 
 export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSelectedId }) => {
@@ -439,6 +509,7 @@ export const ObjectEditor: React.FC<{ initialSelectedId?: string }> = ({ initial
 
           {/* Positioning */}
           <CollapsiblePanel title="Positioning" className="space-y-3">
+            <ObjectTransformPreview obj={editing} />
             <div>
               <label className="block text-sm mb-1">Anchor Point</label>
               <select
