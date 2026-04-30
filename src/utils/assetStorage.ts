@@ -1142,7 +1142,8 @@ export type HelpSectionId =
   | 'special_tiles'
   | 'characters'
   | 'game_general'
-  | 'redirect_spell';
+  | 'redirect_spell'
+  | 'side_quests';
 
 // Help content for a single section
 export interface HelpContent {
@@ -1200,6 +1201,12 @@ const defaultHelpContent: HelpContentStorage = {
       id: 'redirect_spell',
       title: 'Redirect Spell',
       content: '<p>This hero has a <strong>Redirect</strong> spell whose direction you choose.</p><ul><li>Use the compass to pick which direction the spell will redirect targets</li><li>You can change the direction before or after placing the hero</li><li>The chosen direction is shown on the hero card during the simulation</li></ul>',
+      updatedAt: new Date().toISOString(),
+    },
+    {
+      id: 'side_quests',
+      title: 'Side Quests',
+      content: '<p>Side Quests are optional objectives that award bonus points when completed alongside the main goal.</p><ul><li>Each completed side quest adds to your final score</li><li>Quests track conditions like collecting all items, taking no damage, or using specific characters</li><li>Completed quests are highlighted during play</li></ul>',
       updatedAt: new Date().toISOString(),
     },
   ],

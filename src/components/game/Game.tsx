@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore, ProjectileEvent, Projectile } from '../../types/game';
+import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore, ProjectileEvent, Projectile, CustomAttack } from '../../types/game';
 import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
@@ -328,11 +328,11 @@ export const Game: React.FC<GameProps> = ({
     const preloadSpellSprites = (spellId: string) => {
       const spell = loadSpellAsset(spellId);
       if (spell) {
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.projectileSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.aoeEffectSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.hitEffectSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.healingEffectSprite));
-        urlsToPreload.push(...extractSpriteReferenceUrls(spell.persistVisualSprite));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.projectile));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.aoeEffect));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.damageEffect));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.healingEffect));
+        urlsToPreload.push(...extractSpriteReferenceUrls(spell.sprites.persistentArea));
       }
     };
 
@@ -395,8 +395,8 @@ export const Game: React.FC<GameProps> = ({
     }
 
     // Preload object sprites
-    if (currentPuzzle.objects) {
-      for (const obj of currentPuzzle.objects) {
+    if (currentPuzzle.placedObjects) {
+      for (const obj of currentPuzzle.placedObjects) {
         if (obj.objectId) {
           const objectData = loadObject(obj.objectId);
           if (objectData?.customSprite) {
@@ -412,18 +412,17 @@ export const Game: React.FC<GameProps> = ({
       if (skin) {
         // Border sprites
         if (skin.borderSprites) {
-          const borderSprites = skin.borderSprites;
-          const borderKeys = ['topLeft', 'top', 'topRight', 'left', 'right', 'bottomLeft', 'bottom', 'bottomRight'] as const;
-          for (const key of borderKeys) {
-            if (borderSprites[key]) urlsToPreload.push(borderSprites[key]);
+          for (const url of Object.values(skin.borderSprites)) {
+            if (url) urlsToPreload.push(url);
           }
         }
         // Tile sprites
         if (skin.tileSprites) {
-          const { floor, wall, void: voidSprite } = skin.tileSprites;
-          if (floor) urlsToPreload.push(floor);
+          const { empty, wall, void: voidSprite, goal } = skin.tileSprites;
+          if (empty) urlsToPreload.push(empty);
           if (wall) urlsToPreload.push(wall);
           if (voidSprite) urlsToPreload.push(voidSprite);
+          if (goal) urlsToPreload.push(goal);
         }
         // Custom tile sprites
         if (skin.customTileSprites) {
@@ -490,7 +489,10 @@ export const Game: React.FC<GameProps> = ({
 
       // Track outcome outside the state updater so side effects (haptics, sounds)
       // aren't suppressed by React StrictMode's double-invoke of updater functions.
-      let outcome: 'running' | 'victory' | 'defeat' = 'running';
+      // Cast at declaration so TS doesn't narrow to the literal 'running' — the
+      // setGameState callback below mutates this and TS doesn't propagate that
+      // mutation back through the closure boundary.
+      let outcome = 'running' as 'running' | 'victory' | 'defeat';
       let outcomeTurns = 0;
       // Capture pre + post turn states for replay history and the
       // `onTurnExecuted` observer. StrictMode calls the updater twice; both
@@ -663,10 +665,11 @@ export const Game: React.FC<GameProps> = ({
       // Track run for bug reporting (guard against duplicate tracking)
       if (outcome !== 'running' && !runTrackedRef.current) {
         runTrackedRef.current = true;
+        const finalOutcome = outcome as 'victory' | 'defeat';
         setTrackedRuns(prev => [...prev, {
           id: crypto.randomUUID(),
           placements: JSON.parse(JSON.stringify(playStartCharacters)),
-          outcome,
+          outcome: finalOutcome,
           turnsUsed: outcomeTurns,
           timestamp: Date.now(),
         }]);
@@ -1537,7 +1540,7 @@ export const Game: React.FC<GameProps> = ({
         startTime: now - (turnTileIndex * (800 / speed)),
         // Store start-of-turn tile index for step animation (so it starts from previous turn's end)
         _turnStartTileIndex: turnStartTileIndex,
-        attackData: spawn.attackData || { damage: 0, pattern: 'projectile' as any },
+        attackData: spawn.attackData || ({ id: 'replay-stub', name: 'replay-stub', damage: 0, pattern: 'projectile' as any } as CustomAttack),
         sourceCharacterId: spawn.sourceIsEnemy ? undefined : spawn.sourceEntityId,
         sourceEnemyId: spawn.sourceIsEnemy ? spawn.sourceEntityId : undefined,
         isHoming: spawn.isHoming,
@@ -2153,8 +2156,9 @@ export const Game: React.FC<GameProps> = ({
                           }
                           case 'collect_keys': {
                             const keyCount = gameState.puzzle.collectibles.filter(c => {
+                              if (!c.collectibleId) return false;
                               const collectible = loadCollectible(c.collectibleId);
-                              return collectible?.effect === 'win_key' && !c.collected;
+                              return collectible?.effects?.some(e => e.type === 'win_key') && !c.collected;
                             }).length;
                             return `Collect all Keys (${keyCount})`;
                           }

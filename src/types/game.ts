@@ -767,7 +767,7 @@ export interface CustomAttack {
   // Projectile behavior (for PROJECTILE pattern)
   projectileSpeed?: number;     // Tiles per turn (default: 4)
   projectilePierces?: boolean;  // Continue through enemies (default: false)
-  homingPathStyle?: 'grid' | 'straight'; // Visual: 'grid' follows tiles, 'straight' flies direct (default: straight)
+  homingPathStyle?: 'grid' | 'straight' | 'pathfinding'; // Visual path: 'grid' follows tiles, 'straight' flies direct, 'pathfinding' navigates around walls (default: straight)
   homingIgnoreWalls?: boolean;          // If true, homing passes through walls (default: true)
   homingHitAlongPath?: boolean;         // If true, grid homing hits entities along path
 
@@ -938,7 +938,7 @@ export interface Projectile {
 
   // -------- Homing (mixed: config + target are LOGICAL, visual anchors are BRIDGE) --------
   isHoming?: boolean;           // LOGICAL — If true, projectile chases target entity
-  homingPathStyle?: 'grid' | 'straight'; // LOGICAL — Visual: 'grid' follows tiles, 'straight' flies direct
+  homingPathStyle?: 'grid' | 'straight' | 'pathfinding'; // LOGICAL — Visual: 'grid' follows tiles, 'straight' flies direct, 'pathfinding' navigates around walls
   homingIgnoreWalls?: boolean;  // LOGICAL — If true, passes through walls (default: true)
   homingHitAlongPath?: boolean; // LOGICAL — If true, grid homing hits entities along path
   /** BRIDGE — straight-line homing anchor X. Written by logic at spawn and
@@ -1030,6 +1030,7 @@ export interface Projectile {
 
   // -------- Internal (not serialized) --------
   _recorded?: boolean;          // Timeline recording flag for replay
+  _turnStartTileIndex?: number; // Replay-only: tile index at start of turn so step-back/forward animations begin where the previous turn ended
 }
 
 // ==========================================
@@ -1056,7 +1057,7 @@ export interface ProjectileEvent {
   sourceEntityId?: string;
   sourceIsEnemy?: boolean;
   isHoming?: boolean;
-  homingPathStyle?: string;
+  homingPathStyle?: 'grid' | 'straight' | 'pathfinding';
 
   // Spell appearance
   spellAssetId?: string;       // For loading the projectile sprite
