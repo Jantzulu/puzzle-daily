@@ -55,20 +55,29 @@ do, complementary to [`feature-roadmap.md`](../../puzzle-game/feature-roadmap.md
   pattern that already exists for entity sprite sheets. Mostly a port of
   the existing controls. *Captured 2026-04-27.*
 
-- [ ] **TypeScript error backlog squash.** As of 2026-04-28, `tsc --noEmit`
-  reports **267 errors across 41 files** in the player+editor build.
-  Mostly pre-existing tech debt that's been accumulated through quick
-  patches: missing exports (`SoundAsset`, `PuzzleSkin`, `SpellAsset`),
-  drift between types and usage (e.g. `subSteps`, `preventsAllActions`,
-  `processAtTurnStart` on `StatusEffectAsset`; `'collectible'` vs the
-  asset_type union; `Direction | undefined` vs `Direction`), comparisons
-  to legacy enum values that no longer exist, etc. None block runtime
-  (TS errors are compile-time only) but they erode signal-to-noise on
-  every build and made every commit in this session slightly harder to
-  verify ("is this error new?"). Worth a dedicated session: enumerate
-  the error categories, fix in batches by type, get the count to zero,
-  then enable stricter compile flags (`noUnusedLocals`,
-  `noUnusedParameters`) to keep it that way. *Captured 2026-04-28.*
+- [x] **TypeScript error backlog squash.** **Done 2026-04-30 to 2026-05-01**
+  across 15 commits (`4ce2d7a` through `89fc990`). 267 → 0 errors. Tests
+  stayed at 237/237 throughout, 44 corpus goldens unchanged. Surfaced and
+  fixed 25 real runtime bugs in the process — most notably 4 sprite
+  preloaders that were complete no-ops, the tile direction-change angle
+  180 silently behaving like 90, applySpellToSelf healing never modifying
+  currentHealth, the no_damage_taken quest never completing, and the
+  long-flagged turnTiles scoping bug in resolveProjectiles. See
+  CLAUDE_HANDOFF.md "Recently completed (April 30 – May 1, 2026 — TS
+  error squash campaign)" for the full breakdown.
+
+- [ ] **Extract preloader helpers into shared module.** Surfaced during
+  the TS error squash campaign: MapEditor.tsx and Game.tsx had identical
+  duplicated preloader logic, and identical duplicated bugs in it (5+
+  wrong field names — spell.projectileSprite vs spell.sprites.projectile,
+  currentPuzzle.objects vs placedObjects, the wrong border-key list,
+  TileSprites.floor vs empty). The duplication clearly happened when
+  Game.tsx was originally split out from MapEditor and has been silently
+  drifting since. Extract `preloadPuzzleAssets(puzzle)` into
+  `src/utils/spritePreload.ts` so the two callers share one implementation
+  and can't drift again. Not blocking — both copies are now correct as of
+  the squash campaign. Do whenever the next preload-related change comes
+  through. *Captured 2026-05-01.*
 
 ## Post-launch features
 

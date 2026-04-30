@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 28, 2026 (playtest unification → daily-lock placement guard → auto-target inheritance → CUSTOM_ATTACK + Fire Mage removal → hero card visual cleanup)
+Last Updated: May 1, 2026 (TS error squash campaign: 267 → 0 across 15 commits over two days; 25 real runtime bugs surfaced and fixed)
 
 ## Doc Map — Where to Find What
 
@@ -206,10 +206,11 @@ See "Recently completed" below for full commit list with rationale and links.
 
 **`HOMING_DEBUG` and `PIERCE_DEBUG` are both `false`** by default. Flip at [simulation.ts:20](src/engine/simulation.ts#L20) (HOMING_DEBUG) or [simulation.ts:34](src/engine/simulation.ts#L34) (PIERCE_DEBUG) if you need traces.
 
-**Backlog status as of 2026-04-28:**
+**Backlog status as of 2026-05-01:**
 - Launch-blocking: empty
-- Launch-adjacent: object scale/position controls + a TypeScript error squash (267 errors across 41 files, all pre-existing)
+- Launch-adjacent: object scale/position controls. ~~TypeScript error squash~~ **DONE 2026-05-01**: 267 → 0 errors across 15 commits over two days. 25 real runtime bugs surfaced and fixed in the process. See "Recently completed (April 30 – May 1, 2026 — TS error squash campaign)" below.
 - Post-launch features: full queue waiting (summon, necromancy, allies, multi-tile melee stitching, breakable container, projectile linger, user-input spell variants, Noble marker, dev badge)
+- **Refactor opportunity surfaced by the campaign:** the sprite preloader logic in MapEditor.tsx and Game.tsx is duplicated. Both had the same set of broken field-name reads (spell.projectileSprite vs spell.sprites.projectile, currentPuzzle.objects vs placedObjects, the wrong border-key list) — the bug had been silently duplicated when Game.tsx was originally split out. Extracting `preloadPuzzleAssets(puzzle)` into a shared `src/utils/spritePreload.ts` would prevent future drift. Not blocking; flagged for whenever the next preload-related change comes through.
 
 **Older pending tasks (still relevant):**
 
@@ -302,6 +303,67 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 30 – May 1, 2026 — TS error squash campaign)
+
+Two-day campaign closing the entire backlog of pre-existing TypeScript errors. **267 → 0 across 15 commits.** Tests stayed at 237/237 throughout, 44 corpus goldens unchanged. Surfaced and fixed **25 real runtime bugs** along the way (tracked in commit messages). Approach was deliberately surgical per the no-bulk-edit rule on the four critical files (simulation, actions, Game, AnimatedGameBoard) — every change reviewed against runtime usage before applying.
+
+**Tier breakdown (all on `main`):**
+- A `4ce2d7a` — NodeJS namespace, missing exports, test globals (12 errors)
+- B `52c8678` — Compendium type drift + dead UI removal, including the "items always show fallback values" UI bug (23 errors)
+- C `6d4f51b` — Narrowing fixes in non-critical files (17 errors)
+- D-1 `ceb794a` — 1-error-file sweep (16 errors); fixed faceDirection NaN, missing collisionType, broken cloudSync error message
+- D-2 `1aecdc2` — 2-3-error files (18 errors); fixed PixelEditor magic-wand crash, BugReportReplay broken filter
+- D-3 `fcf1487` — TileTypeEditor + ThemeAssetsEditor (18 errors)
+- D-4 `47935b3` — BugReportModal + corpus snapshot type drift (13 errors)
+- D-5 `672626f` — MapEditor 41 → 0; surfaced 5 real preloader-no-op bugs + tab-switch data loss
+- D-6 `f34b73c` — DbAsset type widening + PendingDeletion variant (2 errors)
+- E-1 `7f20f3c` — Game.tsx 18 → 0; same 5 preloader bugs as MapEditor (duplicated when Game split out) + "Collect all Keys" counter always 0
+- E-2 `c810202` — AnimatedGameBoard.tsx 12 → 0; gameStarted false during victory/defeat → wrong sprites
+- E-3 `70cac8d` — actions.ts 25 → 0; **applySpellToSelf healing was completely broken** (read non-existent fields, never modified currentHealth); turnLeft/turnRight didn't support 180-degree rotation (silent fallthrough to 90)
+- E-4 `1541bfb` — simulation.ts 40 → 0; **closed the long-flagged turnTiles scoping bug** (throw_place projectiles would ReferenceError); trigger-group reset wrote to tileStates as plain object invisible to all Map consumers; preventPlacement guard never fired (read non-existent field)
+- E-5 `89fc990` — Last 2 deferred errors; no_damage_taken quest never completed (fixed by adding `maxHealth?: number` to PlacedCharacter and stamping at 8 placement sites); hexagon shape fully wired into all 6 renderers
+
+**Type-system improvements (additive only — backward-compatible):**
+- `Tile.customType` (legacy alias for customTileTypeId, used by older saved puzzles)
+- `Enemy.folderId` / `Character.folderId` (matched runtime; CustomEnemy/CustomCharacter already had it)
+- `PlacedCharacter.maxHealth` (now stamped at placement; fixes no_damage_taken quest)
+- `Projectile.homingPathStyle` widened to include `'pathfinding'` (engine had been comparing against this all along)
+- `Projectile._turnStartTileIndex` (replaces `as any` casts in Game.tsx replay code)
+- `ParticleEffect.rotation` corrected from `number` to `Direction`
+- `AssetCategory` includes `'status_effects'`
+- `HelpSectionId` includes `'side_quests'`
+- `DbAsset.type` widened to all 16 AssetType variants
+- `PendingDeletion.type` includes `'collectible'`
+- All `shape` unions include `'hexagon'`
+- `useFilteredAssets`'s constraint now satisfiable by EnemyWithSprite / CharacterWithSprite
+- `getThemeAsset`/`setThemeAsset` typed via generics so each call site infers the right value type from the key
+
+**Real bugs fixed (full list):**
+1. Compendium item display always showed fallback values (B)
+2. BehaviorSequenceBuilder faceDirection always wrote NaN (D-1)
+3. New objects missing required collisionType (D-1)
+4. cloudSync error message always read 'undefined' (D-1)
+5. PixelEditor shift+click magic-wand merge crashed (D-2)
+6. PixelEditor history.undo() called with wrong arity (D-2)
+7. BugReportReplay "notable events" filter completely broken (D-2)
+8. MapEditor spell sprite preloader was a no-op — 5 wrong field names (D-5)
+9. MapEditor object sprite preloader was a no-op (D-5)
+10. MapEditor border + tile + goal sprite preloader was a no-op (D-5)
+11. Editor state cache silently lost tags/description/sideQuests/par/isTraining on tab switch (D-5)
+12-14. Game.tsx had identical preloader-no-op bugs (E-1; the same code had been duplicated when Game.tsx was split out)
+15. Game.tsx "Collect all Keys" UI counter always showed 0 (E-1)
+16. AnimatedGameBoard gameStarted flag false during victory/defeat → wrong sprites (E-2)
+17. actions.ts applySpellToSelf healing completely broken (E-3)
+18. Tile direction-change angle:180 silently behaved like 90-degree (E-3)
+19-20. Death-trigger entity construction (×2 in actions.ts, ×1 in simulation.ts) used invalid 'right' Direction fallback
+21. Day 1 turnTiles scoping bug — throw_place projectiles would ReferenceError (E-4)
+22. Trigger-group reset wrote to tileStates as plain object (E-4)
+23. preventPlacement guard read non-existent Tile field (E-4)
+24. no_damage_taken quest never completed (E-5)
+25. Hexagon shape: 5 of 6 renderers fell back to circle (E-5)
+
+**Refactor opportunity surfaced:** sprite preloader code in MapEditor.tsx and Game.tsx was duplicated, and so were all 4 of the preloader bugs in it. Extract `preloadPuzzleAssets(puzzle)` into `src/utils/spritePreload.ts` (or similar) so the two callers share one implementation. Not blocking; do whenever the next preload-related change comes through. Tracked in `docs/feature-backlog.md`.
 
 ### Recently completed (April 28, 2026 — playtest unification + cleanups)
 
