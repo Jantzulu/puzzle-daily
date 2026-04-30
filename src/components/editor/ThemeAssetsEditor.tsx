@@ -20,7 +20,7 @@ import {
 } from '../../utils/themeAssets';
 
 // Default dungeon theme colors for reset functionality
-const DEFAULT_COLORS: Partial<ThemeAssets> = {
+const DEFAULT_COLORS: Partial<Record<ThemeAssetKey, string>> = {
   colorBgPrimary: '#0a0805',      // Page background (darkest)
   colorBgSecondary: '#2a2118',    // Panel background
   colorBgNavbar: '#3d3224',       // Navbar background
@@ -888,7 +888,7 @@ export const ThemeAssetsEditor: React.FC = () => {
         <ColorPicker
           key={key}
           assetKey={key}
-          value={assets[key]}
+          value={assets[key] as string | undefined}
           onChange={(value) => handleAssetChange(key, value)}
         />
       );
@@ -899,7 +899,7 @@ export const ThemeAssetsEditor: React.FC = () => {
         <StyleSelector
           key={key}
           assetKey={key}
-          value={assets[key]}
+          value={assets[key] as string | undefined}
           onChange={(value) => handleAssetChange(key, value)}
         />
       );
@@ -910,7 +910,7 @@ export const ThemeAssetsEditor: React.FC = () => {
         <ToggleSwitch
           key={key}
           assetKey={key}
-          value={assets[key]}
+          value={assets[key] as string | boolean | undefined}
           onChange={(value) => handleAssetChange(key, value)}
         />
       );
@@ -920,7 +920,7 @@ export const ThemeAssetsEditor: React.FC = () => {
       <AssetUpload
         key={key}
         assetKey={key}
-        value={assets[key]}
+        value={assets[key] as string | undefined}
         onChange={(value) => handleAssetChange(key, value)}
         onError={handleError}
       />

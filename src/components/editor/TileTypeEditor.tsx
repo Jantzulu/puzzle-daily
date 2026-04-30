@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
-import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, Direction, CadencePattern } from '../../types/game';
+import type { TileBehaviorType, TileBehaviorConfig, PressurePlateEffect, CadencePattern } from '../../types/game';
+import { Direction } from '../../types/game';
 import type { CustomTileType } from '../../utils/assetStorage';
 import { getCustomTileTypes, saveTileType, deleteTileType, getFolders } from '../../utils/assetStorage';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -37,14 +38,14 @@ const BEHAVIOR_OPTIONS: { type: TileBehaviorType; label: string; description: st
 
 // Direction options for direction_change behavior
 const DIRECTION_OPTIONS: { value: Direction; label: string }[] = [
-  { value: 'north', label: 'North' },
-  { value: 'northeast', label: 'Northeast' },
-  { value: 'east', label: 'East' },
-  { value: 'southeast', label: 'Southeast' },
-  { value: 'south', label: 'South' },
-  { value: 'southwest', label: 'Southwest' },
-  { value: 'west', label: 'West' },
-  { value: 'northwest', label: 'Northwest' },
+  { value: Direction.NORTH, label: 'North' },
+  { value: Direction.NORTHEAST, label: 'Northeast' },
+  { value: Direction.EAST, label: 'East' },
+  { value: Direction.SOUTHEAST, label: 'Southeast' },
+  { value: Direction.SOUTH, label: 'South' },
+  { value: Direction.SOUTHWEST, label: 'Southwest' },
+  { value: Direction.WEST, label: 'West' },
+  { value: Direction.NORTHWEST, label: 'Northwest' },
 ];
 
 // Teleport group labels (A-Z)
@@ -569,7 +570,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     } else if (type === 'teleport') {
       newBehavior.teleportGroupId = 'A';
     } else if (type === 'direction_change') {
-      newBehavior.newFacing = 'south';
+      newBehavior.newFacing = Direction.SOUTH;
     }
 
     setEditing({
@@ -598,7 +599,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
     const newBehavior: TileBehaviorConfig = { type };
     if (type === 'damage') newBehavior.damageAmount = 1;
     else if (type === 'teleport') newBehavior.teleportGroupId = 'A';
-    else if (type === 'direction_change') newBehavior.newFacing = 'south';
+    else if (type === 'direction_change') newBehavior.newFacing = Direction.SOUTH;
     else if (type === 'pressure_plate') newBehavior.pressurePlateEffects = [];
     setEditing({ ...editing, offStateBehaviors: [...(editing.offStateBehaviors || []), newBehavior] });
   };
