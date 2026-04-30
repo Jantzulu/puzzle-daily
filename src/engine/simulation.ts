@@ -5,7 +5,7 @@ import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
 import { executeAction, executeAOEAttack, evaluateTriggers, executeDeathTriggers, applyDamageToEntity, applyDamageToEntityNoDeflect, placeCollectibleFromSpell } from './actions';
 import { loadStatusEffectAsset, loadSpellAsset, loadCollectible, loadEnemy, loadCharacter, loadTileType } from '../utils/assetStorage';
-import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind } from './utils';
+import { turnLeft, turnRight, turnAround, getDirectionOffset, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
 
 // Debug flag for projectile tracing: flip to true to enable detailed logs
 // covering spawn, per-turn resolve events, per-frame visual interpolation,
@@ -203,7 +203,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
       // by enemyId, so multiple enemies sharing an enemyId all get hit by
       // pierce.
       const hitEnemyIndex = gameState.puzzle.enemies.findIndex(
-        (e, i) => !e.dead && !e.pendingProjectileDeath &&
+        (e, i) => isEntityFunctional(e) &&
              Math.floor(e.x) === tile.x && Math.floor(e.y) === tile.y &&
              !proj.hitEnemyIndices!.includes(i) &&
              e.enemyId !== proj.targetEntityId // Don't hit designated target along path
@@ -276,7 +276,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
     } else if (effectivelyEnemyFired) {
       // Check for character hits
       const hitChar = gameState.placedCharacters.find(
-        c => !c.dead && !c.pendingProjectileDeath &&
+        c => isEntityFunctional(c) &&
              Math.floor(c.x) === tile.x && Math.floor(c.y) === tile.y &&
              !proj.hitEntityIds!.includes(c.characterId) &&
              c.characterId !== proj.targetEntityId
@@ -1557,7 +1557,7 @@ export function executeTurn(gameState: GameState): GameState {
   // Pre-compute which tiles are being vacated by characters this turn (for train-like movement)
   gameState.tilesBeingVacated = new Set<string>();
   for (const character of gameState.placedCharacters) {
-    if (character.dead || character.pendingProjectileDeath || !character.active) continue;
+    if (!isEntityFunctional(character) || !character.active) continue;
     const charData = getCharacter(character.characterId);
     if (!charData) continue;
 
@@ -1596,7 +1596,7 @@ export function executeTurn(gameState: GameState): GameState {
     newCharacter.teleportFromY = undefined;
     newCharacter.iceSlideDistance = undefined;
 
-    if (!newCharacter.active || newCharacter.dead || newCharacter.pendingProjectileDeath) {
+    if (!newCharacter.active || !isEntityFunctional(newCharacter)) {
       newCharacters.push(newCharacter);
       continue;
     }
@@ -2043,7 +2043,7 @@ function checkGameConditions(gameState: GameState): void {
   }
 
   // Check if all characters are dead (including pending projectile deaths)
-  const allCharactersDead = gameState.placedCharacters.every((c) => c.dead || c.pendingProjectileDeath);
+  const allCharactersDead = gameState.placedCharacters.every(c => !isEntityFunctional(c));
   if (allCharactersDead && gameState.placedCharacters.length > 0) {
     gameState.gameStatus = 'defeat';
   }
@@ -2057,7 +2057,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
   for (const condition of gameState.puzzle.winConditions) {
     switch (condition.type) {
       case 'defeat_all_enemies':
-        const allEnemiesDead = gameState.puzzle.enemies.every((e) => e.dead || e.pendingProjectileDeath);
+        const allEnemiesDead = gameState.puzzle.enemies.every(e => !isEntityFunctional(e));
         if (isHomingDebug()) {
           // Dump full enemy state when the defeat_all_enemies check runs, so
           // we can see if win fires with anything non-dead.
@@ -2077,7 +2077,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         });
         // If there are no bosses, this condition is vacuously true
         if (bossEnemies.length > 0) {
-          const allBossesDead = bossEnemies.every(e => e.dead || e.pendingProjectileDeath);
+          const allBossesDead = bossEnemies.every(e => !isEntityFunctional(e));
           if (!allBossesDead) return false;
         }
         break;
@@ -2090,7 +2090,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
       case 'reach_goal':
         // Check if any character is on a goal tile
         const hasReachedGoal = gameState.placedCharacters.some((char) => {
-          if (char.dead || char.pendingProjectileDeath) return false;
+          if (!isEntityFunctional(char)) return false;
           const tile = gameState.puzzle.tiles[char.y]?.[char.x];
           return tile?.type === TileType.GOAL;
         });
@@ -2102,7 +2102,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
         const surviveTurns = condition.params?.turns ?? 10;
         if (gameState.currentTurn < surviveTurns) return false;
         // Also need at least one character alive
-        const hasAliveCharacter = gameState.placedCharacters.some((c) => !c.dead && !c.pendingProjectileDeath);
+        const hasAliveCharacter = gameState.placedCharacters.some(isEntityFunctional);
         if (!hasAliveCharacter) return false;
         break;
 
@@ -2123,7 +2123,7 @@ export function checkVictoryConditions(gameState: GameState): boolean {
       case 'characters_alive':
         // Must have at least X characters alive at the end
         const minAlive = condition.params?.characterCount ?? 1;
-        const aliveCount = gameState.placedCharacters.filter((c) => !c.dead && !c.pendingProjectileDeath).length;
+        const aliveCount = gameState.placedCharacters.filter(isEntityFunctional).length;
         if (aliveCount < minAlive) return false;
         break;
 
@@ -2162,7 +2162,7 @@ function checkDefeatConditions(gameState: GameState): boolean {
       case 'characters_alive':
         // Can't possibly have enough characters alive anymore
         const minAliveDefeat = condition.params?.characterCount ?? 1;
-        const aliveCountDefeat = gameState.placedCharacters.filter((c) => !c.dead && !c.pendingProjectileDeath).length;
+        const aliveCountDefeat = gameState.placedCharacters.filter(isEntityFunctional).length;
         if (aliveCountDefeat < minAliveDefeat) return true;
         break;
     }
@@ -3129,7 +3129,7 @@ function applyEntityHit(
 
   // 6. Status effect
   const deadCheck = mode === 'visual'
-    ? (target.dead || target.pendingProjectileDeath)
+    ? !isEntityFunctional(target)
     : target.dead;
   if (proj.spellAssetId && !deadCheck) {
     const sourceId = targetIsEnemy
@@ -3836,7 +3836,7 @@ function resolveProjectiles(gameState: GameState): void {
       if (proj.targetIsEnemy) {
         if (proj.reflected && proj.sourceEnemyIndex !== undefined && gameState.puzzle.enemies[proj.sourceEnemyIndex]) {
           const enemy = gameState.puzzle.enemies[proj.sourceEnemyIndex];
-          if (!enemy.dead && !enemy.pendingProjectileDeath) targetEntity = enemy;
+          if (isEntityFunctional(enemy)) targetEntity = enemy;
         }
         // Prefer the array-index lookup when available so duplicate enemyIds
         // resolve to the specific instance findNearestEnemies actually picked.
@@ -3845,13 +3845,13 @@ function resolveProjectiles(gameState: GameState): void {
         let resolveMode: 'reflected-src' | 'index' | 'find-fallback' | 'none' = targetEntity ? 'reflected-src' : 'none';
         if (!targetEntity && proj.targetEnemyIndex !== undefined) {
           const enemy = gameState.puzzle.enemies[proj.targetEnemyIndex];
-          if (enemy && enemy.enemyId === proj.targetEntityId && !enemy.dead && !enemy.pendingProjectileDeath) {
+          if (enemy && enemy.enemyId === proj.targetEntityId && isEntityFunctional(enemy)) {
             targetEntity = enemy;
             resolveMode = 'index';
           }
         }
         if (!targetEntity) {
-          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && !e.dead && !e.pendingProjectileDeath);
+          targetEntity = gameState.puzzle.enemies.find(e => e.enemyId === proj.targetEntityId && isEntityFunctional(e));
           if (targetEntity) resolveMode = 'find-fallback';
         }
         if (isHomingDebug() && proj.isHoming) {
@@ -3863,7 +3863,7 @@ function resolveProjectiles(gameState: GameState): void {
           );
         }
       } else {
-        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && !c.dead && !c.pendingProjectileDeath);
+        targetEntity = gameState.placedCharacters.find(c => c.characterId === proj.targetEntityId && isEntityFunctional(c));
       }
 
       if (targetEntity) {

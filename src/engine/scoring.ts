@@ -1,5 +1,6 @@
 // Scoring Engine - Calculates puzzle completion scores and rankings
 import type { GameState, PuzzleScore, SideQuest, RankTier } from '../types/game';
+import { isEntityFunctional } from './utils';
 
 // Scoring constants
 const BASE_POINTS = 1000;
@@ -153,7 +154,7 @@ function isSideQuestCompleted(
 
     case 'no_deaths':
       // No characters died during the puzzle
-      return gameState.placedCharacters.every(c => !c.dead && !c.pendingProjectileDeath);
+      return gameState.placedCharacters.every(isEntityFunctional);
 
     case 'custom':
       // Custom quests cannot be auto-checked

@@ -29,7 +29,7 @@ import {
 } from '../types/game';
 import { getCharacter } from '../data/characters';
 import { getEnemy } from '../data/enemies';
-import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind } from './utils';
+import { getDirectionOffset, turnLeft, turnRight, turnAround, isInBounds, calculateDistance, calculateDirectionTo, isAttackFromBehind, isEntityFunctional } from './utils';
 import { loadSpellAsset, loadTileType, loadStatusEffectAsset, loadCollectible } from '../utils/assetStorage';
 import type { CollectibleEffectConfig, PlacedCollectible } from '../types/game';
 import { canEntityAct, canEntityCastSpell, canEntityMove, hasHasteBonus, isHomingDebug } from './simulation';
@@ -3570,7 +3570,7 @@ export function checkTriggerCondition(
     case 'enemy_adjacent':
       // Check if any enemy is within 1 tile (adjacent, including diagonals) (stealthed enemies are invisible)
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead || enemy.pendingProjectileDeath || isEntityStealthed(enemy)) return false;
+        if (!isEntityFunctional(enemy) || isEntityStealthed(enemy)) return false;
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
@@ -3579,7 +3579,7 @@ export function checkTriggerCondition(
       // Check if any enemy is within specified range (stealthed enemies are invisible)
       const enemyRange = eventRange || 3; // Default to 3 if not specified
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead || enemy.pendingProjectileDeath || isEntityStealthed(enemy)) return false;
+        if (!isEntityFunctional(enemy) || isEntityStealthed(enemy)) return false;
         const distance = calculateDistance(character.x, character.y, enemy.x, enemy.y);
         return distance <= enemyRange;
       });
@@ -3587,7 +3587,7 @@ export function checkTriggerCondition(
     case 'contact_with_enemy':
       // Check if character is on the same tile as an enemy (stealthed enemies are invisible)
       return gameState.puzzle.enemies.some(enemy => {
-        if (enemy.dead || enemy.pendingProjectileDeath || isEntityStealthed(enemy)) return false;
+        if (!isEntityFunctional(enemy) || isEntityStealthed(enemy)) return false;
         return enemy.x === character.x && enemy.y === character.y;
       });
 
@@ -3595,7 +3595,7 @@ export function checkTriggerCondition(
       // Check if any character is within 1 tile (adjacent, including diagonals)
       // Used by enemies to detect nearby characters (stealthed characters are invisible)
       return gameState.placedCharacters.some(char => {
-        if (char.dead || char.pendingProjectileDeath || isEntityStealthed(char)) return false;
+        if (!isEntityFunctional(char) || isEntityStealthed(char)) return false;
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= 1.42; // sqrt(2) for diagonal adjacency
       });
@@ -3605,7 +3605,7 @@ export function checkTriggerCondition(
       // Used by enemies to detect characters at a distance (stealthed characters are invisible)
       const charRange = eventRange || 3; // Default to 3 if not specified
       return gameState.placedCharacters.some(char => {
-        if (char.dead || char.pendingProjectileDeath || isEntityStealthed(char)) return false;
+        if (!isEntityFunctional(char) || isEntityStealthed(char)) return false;
         const distance = calculateDistance(character.x, character.y, char.x, char.y);
         return distance <= charRange;
       });
@@ -3614,7 +3614,7 @@ export function checkTriggerCondition(
       // Check if entity is on the same tile as a character
       // Used by enemies to detect characters in melee range (stealthed characters are invisible)
       return gameState.placedCharacters.some(char => {
-        if (char.dead || char.pendingProjectileDeath || isEntityStealthed(char)) return false;
+        if (!isEntityFunctional(char) || isEntityStealthed(char)) return false;
         return char.x === character.x && char.y === character.y;
       });
 

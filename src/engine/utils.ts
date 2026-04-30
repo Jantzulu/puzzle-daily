@@ -1,6 +1,21 @@
 import { Direction } from '../types/game';
 
 /**
+ * True if an entity is "functional" for the current turn — alive and not
+ * already pending a deferred projectile death.
+ *
+ * `pendingProjectileDeath` is set when a hit lands logically but the
+ * projectile visual hasn't yet arrived; the entity should be skipped by
+ * targeting / movement / win-condition logic during that window so it
+ * doesn't act, get re-targeted, or hold up victory checks. Combining the
+ * two checks here keeps the rule in one place — adding a third condition
+ * later (e.g. petrified, banished) only requires touching this helper.
+ */
+export function isEntityFunctional(entity: { dead: boolean; pendingProjectileDeath?: boolean }): boolean {
+  return !entity.dead && !entity.pendingProjectileDeath;
+}
+
+/**
  * Get the offset (dx, dy) for a given direction
  */
 export function getDirectionOffset(direction: Direction): { dx: number; dy: number } {
