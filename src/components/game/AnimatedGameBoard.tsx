@@ -1434,7 +1434,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             offCtx.shadowBlur = 2;
             offCtx.shadowOffsetX = 1;
             offCtx.shadowOffsetY = 1;
-            drawSprite(offCtx, charData.customSprite, physTile / 2, physTile / 2, physTile - 8, undefined, false, now, false);
+            // OffscreenCanvas's 2D context is structurally compatible with the
+            // methods drawSprite uses, but TS sees the two ctx types as
+            // distinct — cast through unknown for the call.
+            drawSprite(offCtx as unknown as CanvasRenderingContext2D, charData.customSprite, physTile / 2, physTile / 2, physTile - 8, undefined, false, now, false);
             // Draw offscreen result with opacity onto main canvas
             const physPoint = transform.transformPoint(new DOMPoint(px + TILE_SIZE / 2, py + TILE_SIZE / 2));
             ctx.save();

@@ -212,7 +212,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
       if (hitEnemy) {
         proj.hitEnemyIndices!.push(hitEnemyIndex);
         const baseDmg = proj.attackData.damage ?? 0;
-        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing);
+        const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, hitEnemy.facing || Direction.SOUTH);
         const damage = isCrit ? baseDmg * 2 : baseDmg;
         if (isHomingDebug()) {
           console.log(
@@ -339,7 +339,7 @@ function checkHomingPathForHits(proj: Projectile, tiles: Array<{x: number; y: nu
 function hasDeflect(entity: PlacedCharacter | PlacedEnemy): boolean {
   if (!entity.statusEffects) return false;
   return entity.statusEffects.some(
-    e => e.type === StatusEffectType.DEFLECT || e.type === 'deflect'
+    e => e.type === StatusEffectType.DEFLECT
   );
 }
 
@@ -349,7 +349,7 @@ function hasDeflect(entity: PlacedCharacter | PlacedEnemy): boolean {
 function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
   if (!entity.statusEffects) return false;
   return entity.statusEffects.some(
-    e => e.type === StatusEffectType.INVULNERABLE || e.type === 'invulnerable'
+    e => e.type === StatusEffectType.INVULNERABLE
   );
 }
 
@@ -359,7 +359,7 @@ function isInvulnerable(entity: PlacedCharacter | PlacedEnemy): boolean {
 function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
   if (!entity.statusEffects) return false;
   return entity.statusEffects.some(
-    e => e.type === StatusEffectType.STEADFAST || e.type === 'steadfast'
+    e => e.type === StatusEffectType.STEADFAST
   );
 }
 
@@ -369,7 +369,7 @@ function isSteadfast(entity: PlacedCharacter | PlacedEnemy): boolean {
 function hasReflect(entity: PlacedCharacter | PlacedEnemy): boolean {
   if (!entity.statusEffects) return false;
   return entity.statusEffects.some(
-    e => e.type === StatusEffectType.REFLECT || e.type === 'reflect'
+    e => e.type === StatusEffectType.REFLECT
   );
 }
 
@@ -380,7 +380,7 @@ function hasReflect(entity: PlacedCharacter | PlacedEnemy): boolean {
 function canReflectDirection(entity: PlacedCharacter | PlacedEnemy, projectileDirection: Direction): boolean {
   if (!entity.statusEffects) return false;
   const reflectEffect = entity.statusEffects.find(
-    e => e.type === StatusEffectType.REFLECT || e.type === 'reflect'
+    e => e.type === StatusEffectType.REFLECT
   );
   if (!reflectEffect) return false;
   const asset = loadStatusEffectAsset(reflectEffect.statusAssetId);
@@ -419,7 +419,7 @@ function canReflectDirection(entity: PlacedCharacter | PlacedEnemy, projectileDi
 function getReflectVisuals(entity: PlacedCharacter | PlacedEnemy): { tintColor?: string; overrideSprite?: SpriteReference; impactSprite?: SpriteReference } {
   if (!entity.statusEffects) return {};
   const reflectEffect = entity.statusEffects.find(
-    e => e.type === StatusEffectType.REFLECT || e.type === 'reflect'
+    e => e.type === StatusEffectType.REFLECT
   );
   if (!reflectEffect) return {};
   const asset = loadStatusEffectAsset(reflectEffect.statusAssetId);
@@ -757,7 +757,7 @@ function markEntityAsDead(
     characterId: (entity as PlacedCharacter).characterId || (entity as PlacedEnemy).enemyId,
     x: entity.x,
     y: entity.y,
-    facing: entity.facing || 'right',
+    facing: entity.facing || Direction.EAST,
     currentHealth: entity.currentHealth,
     actionIndex: (entity as PlacedCharacter).actionIndex || 0,
     active: (entity as PlacedCharacter).active ?? (entity as PlacedEnemy).active ?? true,
@@ -1165,9 +1165,16 @@ function findDropPosition(
       return false;
     }
 
-    // Check if tile prevents placement
-    if (tile.preventPlacement) {
-      return false;
+    // Check if tile's custom type prevents placement (preventPlacement lives
+    // on the CustomTileType asset, not on the Tile runtime instance — was a
+    // real bug where this guard never fired because tile.preventPlacement
+    // was always undefined).
+    const tileTypeId = tile.customType || tile.customTileTypeId;
+    if (tileTypeId) {
+      const customTileType = loadTileType(tileTypeId);
+      if (customTileType?.preventPlacement) {
+        return false;
+      }
     }
 
     // Check if there's already an uncollected collectible at this position
@@ -1514,15 +1521,16 @@ function resetHeldTriggerGroups(gameState: GameState): void {
     for (let x = 0; x < row.length; x++) {
       const tile = row[x];
       if (tile && tile.triggerGroupId && heldTriggerGroups.has(tile.triggerGroupId)) {
-        // Get or create tile runtime state and set to 'off'
+        // Get or create tile runtime state and set to 'off'.
+        // tileStates is a Map<string, TileRuntimeState> — was a real bug
+        // where this block treated it as a plain object, so writes weren't
+        // visible to the Map.get/Map.forEach consumers elsewhere.
         if (!gameState.tileStates) {
-          gameState.tileStates = {};
+          gameState.tileStates = new Map();
         }
         const key = `${x},${y}`;
-        if (!gameState.tileStates[key]) {
-          gameState.tileStates[key] = {};
-        }
-        gameState.tileStates[key].overrideState = 'off';
+        const existing = gameState.tileStates.get(key) || {};
+        gameState.tileStates.set(key, { ...existing, overrideState: 'off' });
       }
     }
   }
@@ -1565,10 +1573,10 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Check if this is a movement action
     const actionType = currentAction.type;
-    if (actionType === ActionType.MOVE_FORWARD || actionType === 'MOVE_FORWARD' ||
-        actionType === ActionType.MOVE_BACKWARD || actionType === 'MOVE_BACKWARD' ||
-        actionType === ActionType.MOVE_LEFT || actionType === 'MOVE_LEFT' ||
-        actionType === ActionType.MOVE_RIGHT || actionType === 'MOVE_RIGHT') {
+    if (actionType === ActionType.MOVE_FORWARD ||
+        actionType === ActionType.MOVE_BACKWARD ||
+        actionType === ActionType.MOVE_LEFT ||
+        actionType === ActionType.MOVE_RIGHT) {
       // This character intends to move, so its current tile will be vacated
       gameState.tilesBeingVacated.add(`${Math.floor(character.x)},${Math.floor(character.y)}`);
     }
@@ -1623,7 +1631,7 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Handle REPEAT action - loop back to beginning AND execute first action
     // Check for both enum value and string key
-    if (currentAction.type === ActionType.REPEAT || currentAction.type === 'REPEAT') {
+    if (currentAction.type === ActionType.REPEAT) {
       // Reset to beginning
       newCharacter.actionIndex = 0;
 
@@ -1641,7 +1649,7 @@ export function executeTurn(gameState: GameState): GameState {
       // Execute the first sequential action (and any linked actions)
       if (firstSequentialIndex < charData.behavior.length) {
         const firstAction = charData.behavior[firstSequentialIndex];
-        if (firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
+        if (firstAction.type !== ActionType.REPEAT) {
           newCharacter.actionIndex = firstSequentialIndex;
           const updatedCharacter = executeAction(newCharacter, firstAction, gameState);
           Object.assign(newCharacter, updatedCharacter);
@@ -1720,10 +1728,10 @@ export function executeTurn(gameState: GameState): GameState {
 
     // Check if this is a movement action
     const actionType = currentAction.type;
-    if (actionType === ActionType.MOVE_FORWARD || actionType === 'MOVE_FORWARD' ||
-        actionType === ActionType.MOVE_BACKWARD || actionType === 'MOVE_BACKWARD' ||
-        actionType === ActionType.MOVE_LEFT || actionType === 'MOVE_LEFT' ||
-        actionType === ActionType.MOVE_RIGHT || actionType === 'MOVE_RIGHT') {
+    if (actionType === ActionType.MOVE_FORWARD ||
+        actionType === ActionType.MOVE_BACKWARD ||
+        actionType === ActionType.MOVE_LEFT ||
+        actionType === ActionType.MOVE_RIGHT) {
       // This enemy intends to move, so its current tile will be vacated
       gameState.tilesBeingVacated.add(`${Math.floor(enemy.x)},${Math.floor(enemy.y)}`);
     }
@@ -1836,7 +1844,7 @@ export function executeTurn(gameState: GameState): GameState {
     };
 
     // Handle REPEAT action - loop back to beginning AND execute first action
-    if (currentAction.type === ActionType.REPEAT || currentAction.type === 'REPEAT') {
+    if (currentAction.type === ActionType.REPEAT) {
       // Reset to beginning
       newEnemy.actionIndex = 0;
 
@@ -1854,7 +1862,7 @@ export function executeTurn(gameState: GameState): GameState {
       // Execute the first sequential action (and any linked actions)
       if (firstSequentialIndex < pattern.length) {
         const firstAction = pattern[firstSequentialIndex];
-        if (firstAction.type !== ActionType.REPEAT && firstAction.type !== 'REPEAT') {
+        if (firstAction.type !== ActionType.REPEAT) {
           newEnemy.actionIndex = firstSequentialIndex;
           executeEnemyAction(firstAction);
           executeEnemyLinkedChain();
@@ -3061,7 +3069,7 @@ function applyEntityHit(
 
   // 4. Damage calculation
   const baseDmg = proj.attackData.damage ?? 0;
-  const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, target.facing);
+  const isCrit = proj.attackData.backstabEnabled && isAttackFromBehind(proj.direction, target.facing || Direction.SOUTH);
   const damage = isCrit ? baseDmg * 2 : baseDmg;
 
   const hpBeforeDeflect = target.currentHealth;
@@ -3616,7 +3624,7 @@ function resolveReflectedPath(
           targetEntityId: proj.hitResult.deferredDeathEntityId,
           targetIsEnemy: proj.hitResult.deferredDeathIsEnemy ?? false,
           targetIndex: proj.hitResult.deferredDeathIndex,
-          damage: proj.hitResult.damage,
+          damage: proj.hitResult.damage ?? 0,
           hitTileIndex: proj.hitResult.hitTileIndex,
         });
       }
@@ -4607,23 +4615,30 @@ function resolveProjectiles(gameState: GameState): void {
       }
     }
 
-    // THROW_PLACE: place item when projectile reaches destination
-    if (shouldRemove && proj.throwPlaceConfig) {
+    // THROW_PLACE: place item when projectile reaches destination.
+    // Uses proj.tilePath (always populated — set at spawn or refreshed on
+    // bounce / reflect) instead of the turnTiles local, which is block-scoped
+    // to the non-homing branch and out of reach here. Was a real bug —
+    // throw/place projectiles fired from a homing path style (or any code
+    // path that exited the else block early) would have ReferenceError'd
+    // on `turnTiles`. Found via TS error squash on 2026-04-30.
+    const tilePath = proj.tilePath;
+    if (shouldRemove && proj.throwPlaceConfig && tilePath && tilePath.length > 0) {
       // Find the last valid (non-wall) tile to place the item
-      let placeTile = turnTiles.length > 0 ? turnTiles[turnTiles.length - 1] : null;
-      // If the last tile in turnTiles is a wall, use the one before it
+      let placeTile: { x: number; y: number } | null = tilePath[tilePath.length - 1];
+      // If the last tile in tilePath is a wall, use the one before it
       if (placeTile) {
         const placeTileData = gameState.puzzle.tiles[placeTile.y]?.[placeTile.x];
         if (!placeTileData || placeTileData.type === TileTypeEnum.WALL ||
             !isInBounds(placeTile.x, placeTile.y, gameState.puzzle.width, gameState.puzzle.height)) {
-          placeTile = turnTiles.length > 1 ? turnTiles[turnTiles.length - 2] : null;
+          placeTile = tilePath.length > 1 ? tilePath[tilePath.length - 2] : null;
         }
       }
 
       if (placeTile) {
         placeCollectibleFromSpell(placeTile.x, placeTile.y, proj.throwPlaceConfig, gameState);
         proj.hitResult = {
-          hitTileIndex: turnTiles.length - 1,
+          hitTileIndex: tilePath.length - 1,
           deactivate: true,
           placeCollectibleConfig: proj.throwPlaceConfig,
         };
@@ -5028,19 +5043,20 @@ export function updateParticles(gameState: GameState): void {
  * Returns the new direction for logging/effects
  */
 function applyRedirect(
-  entity: { facing: Direction },
+  entity: { facing?: Direction },
   attackData: { redirectMode?: string; redirectAngle?: number; redirectFixedDirection?: Direction },
   projectileDirection: Direction
 ): Direction {
   const mode = attackData.redirectMode || 'clockwise';
-  const angle = attackData.redirectAngle || 90;
+  const angle = (attackData.redirectAngle || 90) as 45 | 90 | 135 | 180;
+  const currentFacing = entity.facing || Direction.SOUTH;
 
   switch (mode) {
     case 'clockwise':
-      entity.facing = turnRight(entity.facing, angle);
+      entity.facing = turnRight(currentFacing, angle);
       break;
     case 'counter_clockwise':
-      entity.facing = turnLeft(entity.facing, angle);
+      entity.facing = turnLeft(currentFacing, angle);
       break;
     case 'face_projectile':
       // Face the direction the projectile is coming from
@@ -5054,7 +5070,7 @@ function applyRedirect(
       entity.facing = attackData.redirectFixedDirection || Direction.NORTH;
       break;
   }
-  return entity.facing;
+  return entity.facing || currentFacing;
 }
 
 function spawnParticleEffect(
