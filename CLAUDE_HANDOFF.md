@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 30, 2026 (object scale/position controls shipped — launch-adjacent backlog now empty)
+Last Updated: April 30, 2026 (Phase D-b lite refactor — isEntityFunctional helper shipped; full Phase D-b documented as not-recommended)
 
 ## Doc Map — Where to Find What
 
@@ -229,7 +229,7 @@ See "Recently completed" below for full commit list with rationale and links.
 
 3. **Feature work.** [feature-roadmap.md](feature-roadmap.md) or any new feature idea. Replay System + movement determinism + projectile visuals + pierce are substantively done.
 
-4. **Phase D-b (optional refactor): consolidate the entity-owned deferred-visual pair.** `pendingProjectileDeath` and `visualHealth` live on PlacedCharacter/PlacedEnemy and coordinate "entity is logically dead/damaged but visual hasn't caught up." They aren't purely bridge flags — `pendingProjectileDeath` is read elsewhere to skip dying entities for targeting — so this is a semantic change, not just a rename. Lower priority; consider only if a concrete bug motivates it.
+4. **Phase D-b (full refactor — NOT RECOMMENDED).** Original plan: move `pendingProjectileDeath` and `pendingVisualDamage` off `PlacedCharacter`/`PlacedEnemy` into a projectile-owned `ProjectileDeferred` record. Investigation 2026-04-30 concluded this is the wrong move — those fields are functioning as a cache/index (`hitResult.deferredDeathEntityId` is the source of truth; the entity-side flag is an O(1) lookup so 17+ call sites can ask "is this entity dying?" without scanning all projectiles). Moving the data forces every site to scan projectiles — performance-negative, no observable win. The verification step the plan wants ("pixel-identical replay regression test") doesn't exist either. **The lite version (consolidate the duplicated `dead || pendingProjectileDeath` predicate via `isEntityFunctional`) was shipped 2026-04-30** in commit `a70e3ab` — 21 call sites collapsed, future "third condition" only touches the helper. Full refactor remains unrecommended.
 
 **Debug tags when `HOMING_DEBUG = true`:**
 - `[RDIFF REAL]` / `[RDIFF REPLAY]` — per-event logs for real vs replay diffing.
@@ -303,6 +303,17 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (April 30, 2026 — Phase D-b lite: isEntityFunctional helper)
+
+Investigation of full Phase D-b concluded the move-to-projectile refactor is performance-negative (entity-side flags are caches, not redundancy) and unsupported by missing replay regression infra. Shipped the lite version instead.
+
+- **`isEntityFunctional(entity)`** added to [src/engine/utils.ts](src/engine/utils.ts) — returns `!entity.dead && !entity.pendingProjectileDeath`.
+- **21 call sites consolidated** across simulation.ts (15), actions.ts (6), and scoring.ts (1). Pure refactor, semantic-preserving. Tests 237/237, corpus 44 goldens unchanged.
+- Sites left inline deliberately: the two `excludePendingDeath`-parameterized `findEntityAt` sites in simulation.ts (~2907/2914), debug log strings, and the Game.tsx replay-snapshot fix-up sites (1629/1639) which check the *opposite* predicate (`!dead && pendingProjectileDeath` — confirming pending IS set).
+- Future-third-condition angle is the real upside: if a future spell adds a "petrified" or "banished" state that should be skipped by targeting/movement/win-checks, change one helper instead of 21 sites.
+
+Commit: [`a70e3ab`](https://github.com/Jantzulu/puzzle-daily/commit/a70e3ab).
 
 ### Recently completed (April 30, 2026 — object scale/position controls)
 
