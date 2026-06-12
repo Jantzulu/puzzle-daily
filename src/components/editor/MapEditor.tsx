@@ -5,7 +5,7 @@ import type { Puzzle, TileOrNull, PlacedEnemy, PlacedCollectible, PlacedObject, 
 import { TileType, Direction, ActionType } from '../../types/game';
 import { getAllCharacters, getCharacter } from '../../data/characters';
 import { getAllEnemies, getEnemy } from '../../data/enemies';
-import { drawSprite } from './SpriteEditor';
+import { drawSprite, getSpriteDrawHeight } from './SpriteEditor';
 import { playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { savePuzzle, getSavedPuzzles, deletePuzzle, loadPuzzle, type SavedPuzzle } from '../../utils/puzzleStorage';
 import { cacheEditorState, getCachedEditorState, clearCachedEditorState } from '../../utils/editorState';
@@ -4211,14 +4211,13 @@ function drawCollectibleInEditor(
 
   // If we have custom collectible data with a sprite, draw it
   if (collectibleData?.customSprite) {
-    const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
-
     // Calculate center position based on anchor point
     const centerX = px + TILE_SIZE / 2;
     let centerY = py + TILE_SIZE / 2;
 
     if (collectibleData.anchorPoint === 'bottom_center') {
-      centerY = py + TILE_SIZE / 2 - spriteSize / 2;
+      const spriteHeight = getSpriteDrawHeight(collectibleData.customSprite, TILE_SIZE);
+      centerY = py + TILE_SIZE / 2 - spriteHeight / 2;
     }
 
     // Draw the sprite (without animation/imageCache for editor simplicity)
@@ -4280,17 +4279,15 @@ function drawObject(ctx: CanvasRenderingContext2D, x: number, y: number, objectI
   const offsetY = (objectData.offsetY ?? 0) * TILE_SIZE;
   const renderTileSize = TILE_SIZE * scale;
 
-  // Get sprite size (default to 0.8 if not set), then apply object scale.
-  const spriteSize = (objectData.customSprite?.size || 0.8) * renderTileSize;
-
   // Calculate center position based on anchor point, then apply offsets.
   let centerX = px + TILE_SIZE / 2;
   let centerY = py + TILE_SIZE / 2;
 
-  if (objectData.anchorPoint === 'bottom_center') {
+  if (objectData.anchorPoint === 'bottom_center' && objectData.customSprite) {
     // For bottom_center: sprite's bottom edge aligns with tile's center
     // So sprite center is offset upward by half the sprite height
-    centerY = py + TILE_SIZE / 2 - spriteSize / 2;
+    const spriteHeight = getSpriteDrawHeight(objectData.customSprite, renderTileSize);
+    centerY = py + TILE_SIZE / 2 - spriteHeight / 2;
   }
 
   centerX += offsetX;

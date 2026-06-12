@@ -6,6 +6,7 @@ import type { CustomObject, CustomSprite, ObjectEffectConfig, ObjectAnchorPoint 
 import { saveObject, getCustomObjects, deleteObject, getFolders } from '../../utils/assetStorage';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
+import { getSpriteDrawHeight } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
 import { drawSprite } from './SpriteEditor';
 import { FolderDropdown, useFilteredAssets, InlineFolderPicker } from './FolderDropdown';
@@ -78,12 +79,12 @@ const ObjectTransformPreview: React.FC<{ obj: CustomObject }> = ({ obj }) => {
     const offsetX = (obj.offsetX ?? 0) * PREVIEW_TILE_SIZE;
     const offsetY = (obj.offsetY ?? 0) * PREVIEW_TILE_SIZE;
     const renderTileSize = PREVIEW_TILE_SIZE * scale;
-    const spriteSize = (obj.customSprite?.size || 0.8) * renderTileSize;
 
     let centerX = tileX + PREVIEW_TILE_SIZE / 2;
     let centerY = tileY + PREVIEW_TILE_SIZE / 2;
-    if (obj.anchorPoint === 'bottom_center') {
-      centerY = tileY + PREVIEW_TILE_SIZE / 2 - spriteSize / 2;
+    if (obj.anchorPoint === 'bottom_center' && obj.customSprite) {
+      const spriteHeight = getSpriteDrawHeight(obj.customSprite, renderTileSize);
+      centerY = tileY + PREVIEW_TILE_SIZE / 2 - spriteHeight / 2;
     }
     centerX += offsetX;
     centerY += offsetY;

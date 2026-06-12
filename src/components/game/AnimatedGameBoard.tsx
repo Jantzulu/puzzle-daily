@@ -4,7 +4,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVis
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads } from '../editor/SpriteEditor';
+import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads, getSpriteDrawHeight } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
 import { getThemeAsset } from '../../utils/themeAssets';
@@ -2805,13 +2805,11 @@ function loadBossIcon(): HTMLImageElement | null {
 // Helper to calculate the top Y of a rendered sprite (for healthbar positioning)
 function getSpriteTopY(sprite: import('../../utils/assetStorage').CustomSprite | undefined, py: number): number {
   if (!sprite) return py;
-  const spriteSize = (sprite.size || 0.6) * TILE_SIZE;
-  // Use idle scale as default (most common state), multiplied by universal scale
-  const scale = (sprite.idleScale ?? 1) * (sprite.universalScale ?? 1);
-  const maxSize = spriteSize * scale;
+  // Native-size rendering: idle frame height × zoom (see getSpriteDrawHeight)
+  const drawHeight = getSpriteDrawHeight(sprite, TILE_SIZE);
   // Assume center anchor (0.5) which is the default
   const centerY = py + TILE_SIZE / 2;
-  return centerY - maxSize / 2;
+  return centerY - drawHeight / 2;
 }
 
 // Helper to draw health bar above entity
@@ -3599,14 +3597,13 @@ function drawCollectible(
 
   // If we have custom collectible data with a sprite, draw it
   if (collectibleData?.customSprite) {
-    const spriteSize = (collectibleData.customSprite.size || 0.8) * TILE_SIZE;
-
     // Calculate center position based on anchor point, with bobbing
     const centerX = px + TILE_SIZE / 2;
     let centerY = py + TILE_SIZE / 2 + bobOffset;
 
     if (collectibleData.anchorPoint === 'bottom_center') {
-      centerY = py + TILE_SIZE / 2 - spriteSize / 2 + bobOffset;
+      const spriteHeight = getSpriteDrawHeight(collectibleData.customSprite, TILE_SIZE);
+      centerY = py + TILE_SIZE / 2 - spriteHeight / 2 + bobOffset;
     }
 
     // Draw the sprite (pixel-perfect in physical pixel space) with shadow
@@ -3680,17 +3677,15 @@ function drawPlacedObject(ctx: CanvasRenderingContext2D, objectId: string, x: nu
   const offsetY = (objectData.offsetY ?? 0) * TILE_SIZE;
   const renderTileSize = TILE_SIZE * scale;
 
-  // Get sprite size (default to 0.8 if not set), then apply object scale.
-  const spriteSize = (objectData.customSprite?.size || 0.8) * renderTileSize;
-
   // Calculate center position based on anchor point, then apply offsets.
   let centerX = px + TILE_SIZE / 2;
   let centerY = py + TILE_SIZE / 2;
 
-  if (objectData.anchorPoint === 'bottom_center') {
+  if (objectData.anchorPoint === 'bottom_center' && objectData.customSprite) {
     // For bottom_center: sprite's bottom edge aligns with tile's center
     // So sprite center is offset upward by half the sprite height
-    centerY = py + TILE_SIZE / 2 - spriteSize / 2;
+    const spriteHeight = getSpriteDrawHeight(objectData.customSprite, renderTileSize);
+    centerY = py + TILE_SIZE / 2 - spriteHeight / 2;
   }
 
   centerX += offsetX;

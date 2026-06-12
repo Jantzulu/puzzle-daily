@@ -9,6 +9,27 @@ import { MediaBrowseButton } from './MediaBrowseButton';
 // Preview type for character/enemy sprites (entities)
 const ENTITY_PREVIEW_TYPE: PreviewType = 'entity';
 
+// Tiles are 24×24 art pixels. Sprite images render at their NATIVE pixel
+// dimensions × (tileSize / ART_TILE_PX), centered on the tile — never scaled
+// to fit. One art pixel is therefore the same on-screen size for every sprite,
+// which is what keeps pixel density consistent across all board art.
+export const ART_TILE_PX = 24;
+
+// Warn when an upload is bigger than a 2-tile span — at native rendering a
+// scaled-up export would draw building-sized instead of being shrunk to fit.
+function warnIfOversizedUpload(dataUrl: string, label: string, isSheet: boolean = false) {
+  const img = new Image();
+  img.onload = () => {
+    const limit = ART_TILE_PX * 2;
+    // Sheet width includes all frames, so only height is meaningful pre-config
+    const tooBig = isSheet ? img.naturalHeight > limit : (img.naturalWidth > limit || img.naturalHeight > limit);
+    if (tooBig) {
+      toast.warning(`${label} is ${img.naturalWidth}×${img.naturalHeight}px. Sprites render at native pixel size (a tile is ${ART_TILE_PX}×${ART_TILE_PX}px), so this will span more than 2 tiles. If this is a scaled-up export, upload the original-resolution file instead.`);
+    }
+  };
+  img.src = dataUrl;
+}
+
 // Global image cache for GIF animation support
 const globalImageCache = new Map<string, HTMLImageElement>();
 
@@ -113,14 +134,12 @@ function drawSpriteSheet(
   sheet: import('../../utils/assetStorage').SpriteSheetConfig,
   centerX: number,
   centerY: number,
-  displayWidth: number,
-  displayHeight: number,
+  tileSize: number,
   now: number,
   anchorX: number = 0.5,
   anchorY: number = 0.5,
   offsetX: number = 0,
-  offsetY: number = 0,
-  scale: number = 1
+  offsetY: number = 0
 ): void {
   // Resolve image source from data or URL
   const imageSrc = sheet.imageData || sheet.imageUrl;
@@ -154,30 +173,18 @@ function drawSpriteSheet(
     state.lastFrameTime = now;
   }
 
-  // Calculate display dimensions preserving aspect ratio, applying per-asset scale
-  const frameAspectRatio = frameWidth / frameHeight;
-  let finalWidth = displayWidth * scale;
-  let finalHeight = displayHeight * scale;
-
-  if (frameAspectRatio > 1) {
-    // Frame is wider than tall
-    finalHeight = displayWidth * scale / frameAspectRatio;
-  } else {
-    // Frame is taller than wide
-    finalWidth = displayHeight * scale * frameAspectRatio;
-  }
-
-  // Round to nearest pixel for smooth scaling (integer-snap caused discrete jumps)
-  finalWidth = Math.round(finalWidth);
-  finalHeight = Math.round(finalHeight);
+  // Native-size rendering: frame dims × zoom; offsets are in art pixels
+  const zoom = tileSize / ART_TILE_PX;
+  const finalWidth = Math.round(frameWidth * zoom);
+  const finalHeight = Math.round(frameHeight * zoom);
 
   const sourceX = Math.round(state.currentFrame * frameWidth);
   const sw = Math.round(frameWidth);
   const sh = Math.round(frameHeight);
   const dw = finalWidth;
   const dh = finalHeight;
-  const dx = Math.round(centerX - finalWidth * anchorX + offsetX);
-  const dy = Math.round(centerY - finalHeight * anchorY + offsetY);
+  const dx = Math.round(centerX - finalWidth * anchorX + offsetX * zoom);
+  const dy = Math.round(centerY - finalHeight * anchorY + offsetY * zoom);
 
   try {
     ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
@@ -196,15 +203,13 @@ function drawSpriteSheetFromStartTime(
   sheet: import('../../utils/assetStorage').SpriteSheetConfig,
   centerX: number,
   centerY: number,
-  displayWidth: number,
-  displayHeight: number,
+  tileSize: number,
   startTime: number,
   now: number = Date.now(),
   anchorX: number = 0.5,
   anchorY: number = 0.5,
   offsetX: number = 0,
-  offsetY: number = 0,
-  scale: number = 1
+  offsetY: number = 0
 ): void {
   // Resolve image source from data or URL
   const imageSrc = sheet.imageData || sheet.imageUrl;
@@ -236,25 +241,19 @@ function drawSpriteSheetFromStartTime(
   // Ensure frame is within bounds
   currentFrame = Math.max(0, Math.min(currentFrame, sheet.frameCount - 1));
 
-  // Calculate display dimensions preserving aspect ratio, applying per-asset scale
-  const frameAspectRatio = frameWidth / frameHeight;
-  let finalWidth = displayWidth * scale;
-  let finalHeight = displayHeight * scale;
-
-  if (frameAspectRatio > 1) {
-    finalHeight = displayWidth * scale / frameAspectRatio;
-  } else {
-    finalWidth = displayHeight * scale * frameAspectRatio;
-  }
+  // Native-size rendering: frame dims × zoom; offsets are in art pixels
+  const zoom = tileSize / ART_TILE_PX;
+  const finalWidth = Math.round(frameWidth * zoom);
+  const finalHeight = Math.round(frameHeight * zoom);
 
   // Draw the current frame — round all coords to prevent sub-pixel warping of pixel art
   const sourceX = Math.round(currentFrame * frameWidth);
   const sw = Math.round(frameWidth);
   const sh = Math.round(frameHeight);
-  const dw = Math.round(finalWidth);
-  const dh = Math.round(finalHeight);
-  const dx = Math.round(centerX - finalWidth * anchorX + offsetX);
-  const dy = Math.round(centerY - finalHeight * anchorY + offsetY);
+  const dw = finalWidth;
+  const dh = finalHeight;
+  const dx = Math.round(centerX - finalWidth * anchorX + offsetX * zoom);
+  const dy = Math.round(centerY - finalHeight * anchorY + offsetY * zoom);
 
   try {
     ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
@@ -267,7 +266,6 @@ interface SpriteEditorProps {
   sprite: CustomSprite;
   onChange: (sprite: CustomSprite) => void;
   size?: number; // Preview size in pixels
-  allowOversized?: boolean; // Allow size > 100% (for enemies/objects that can exceed tile bounds)
 }
 
 const PREVIEW_SIZE = 96;
@@ -343,13 +341,15 @@ const AnchorPreview: React.FC<{
   anchorY: number;
   offsetX: number;
   offsetY: number;
-  spriteSize: number;
-  scale?: number;
   isSpriteSheet?: boolean;
   frameCount?: number;
-}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, spriteSize, scale = 1, isSpriteSheet, frameCount }) => {
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
   const previewSize = 80;
+  // Same zoom the board uses at default size (48px tiles / 24 art px = 2×).
+  // The dashed rect is one tile; overflow shows true on-board proportions.
+  const zoom = 2;
+  const tileRect = ART_TILE_PX * zoom;
 
   useEffect(() => {
     const canvas = previewRef.current;
@@ -367,10 +367,11 @@ const AnchorPreview: React.FC<{
     img.onload = () => {
       ctx.clearRect(0, 0, previewSize, previewSize);
 
-      // Draw tile boundary
+      // Draw tile boundary (one tile, centered)
+      const tileOrigin = (previewSize - tileRect) / 2;
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
       ctx.setLineDash([3, 3]);
-      ctx.strokeRect(1, 1, previewSize - 2, previewSize - 2);
+      ctx.strokeRect(tileOrigin + 0.5, tileOrigin + 0.5, tileRect - 1, tileRect - 1);
 
       // Draw center crosshair
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
@@ -383,34 +384,21 @@ const AnchorPreview: React.FC<{
       ctx.stroke();
       ctx.setLineDash([]);
 
-      // Calculate sprite dimensions
-      const maxSize = spriteSize * previewSize * scale;
-      // For sprite sheets, use first frame only
+      // Native-size rendering — for sprite sheets, use first frame only
       const srcWidth = isSpriteSheet && frameCount ? img.naturalWidth / frameCount : img.naturalWidth;
       const srcHeight = img.naturalHeight;
-      const aspectRatio = srcWidth / srcHeight;
-      let drawWidth = maxSize;
-      let drawHeight = maxSize;
-      if (aspectRatio > 1) {
-        drawHeight = maxSize / aspectRatio;
-      } else {
-        drawWidth = maxSize * aspectRatio;
-      }
+      const drawWidth = Math.round(srcWidth * zoom);
+      const drawHeight = Math.round(srcHeight * zoom);
 
-      // Scale offset proportionally to preview size
-      const offsetScale = previewSize / 64; // normalize to ~64px tile
-      const scaledOx = offsetX * offsetScale;
-      const scaledOy = offsetY * offsetScale;
-
-      // Draw first frame with anchor applied
-      const dx = previewSize / 2 - drawWidth * anchorX + scaledOx;
-      const dy = previewSize / 2 - drawHeight * anchorY + scaledOy;
+      // Draw first frame with anchor applied (offsets are art pixels)
+      const dx = Math.round(previewSize / 2 - drawWidth * anchorX + offsetX * zoom);
+      const dy = Math.round(previewSize / 2 - drawHeight * anchorY + offsetY * zoom);
       // Use pixelated rendering for crisp sprites
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(img, 0, 0, srcWidth, srcHeight, dx, dy, drawWidth, drawHeight);
     };
     img.src = imageSrc;
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, spriteSize, scale, isSpriteSheet, frameCount]);
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, tileRect]);
 
   return (
     <canvas
@@ -421,7 +409,7 @@ const AnchorPreview: React.FC<{
   );
 };
 
-export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE, allowOversized = false }) => {
+export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
   // Always use directional mode - 'default' direction serves as universal fallback
@@ -506,15 +494,22 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    // The preview shows one tile (dashed rect) centered in the canvas with a
+    // half-tile margin on each side so oversized sprites show their true
+    // on-board overflow. previewTileSize is the tileSize passed to the shared
+    // draw functions — zoom = previewTileSize / ART_TILE_PX.
+    const previewTileSize = canvas.width / 2;
+
     const renderPreview = () => {
       // Clear (background is handled by CSS on parent div)
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Draw tile boundary guide (dashed outline)
+      // Draw tile boundary guide (dashed outline, one tile centered)
+      const tileOrigin = (canvas.width - previewTileSize) / 2;
       ctx.save();
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
       ctx.setLineDash([4, 4]);
-      ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+      ctx.strokeRect(tileOrigin + 1, tileOrigin + 1, previewTileSize - 2, previewTileSize - 2);
       ctx.restore();
 
       // Draw center crosshair
@@ -529,22 +524,16 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       ctx.stroke();
       ctx.restore();
 
-      // Helper to draw an image with anchor/offset applied
+      // Helper to draw an image with anchor/offset applied (native size × zoom)
       const drawImageWithAnchor = (
         img: HTMLImageElement,
-        sizeScale: number,
         ax: number, ay: number, ox: number, oy: number
       ) => {
-        const maxSize = sizeScale * canvas.width;
-        const aspectRatio = img.width / img.height;
-        let drawWidth = maxSize;
-        let drawHeight = maxSize;
-        if (aspectRatio > 1) {
-          drawHeight = maxSize / aspectRatio;
-        } else {
-          drawWidth = maxSize * aspectRatio;
-        }
-        ctx.drawImage(img, canvas.width / 2 - drawWidth * ax + ox, canvas.height / 2 - drawHeight * ay + oy, drawWidth, drawHeight);
+        const zoom = previewTileSize / ART_TILE_PX;
+        const drawWidth = Math.round(img.width * zoom);
+        const drawHeight = Math.round(img.height * zoom);
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, Math.round(canvas.width / 2 - drawWidth * ax + ox * zoom), Math.round(canvas.height / 2 - drawHeight * ay + oy * zoom), drawWidth, drawHeight);
       };
 
       // Draw sprite based on mode
@@ -553,7 +542,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         if (dirSprite) {
           // Check for sprite sheet first
           if (dirSprite.idleSpriteSheet && (dirSprite.idleSpriteSheet.imageData || dirSprite.idleSpriteSheet.imageUrl)) {
-            drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
+            drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, previewTileSize);
           } else {
             // Check for image data OR URL
             const imageToShow = dirSprite.idleImageData || dirSprite.idleImageUrl || dirSprite.imageData || dirSprite.imageUrl;
@@ -566,10 +555,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               img.onload = () => {
                 ctx.clearRect(0, 0, canvas.width, canvas.height);
                 // Redraw guides
+                const tileOrigin = (canvas.width - previewTileSize) / 2;
                 ctx.save();
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
                 ctx.setLineDash([4, 4]);
-                ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+                ctx.strokeRect(tileOrigin + 1, tileOrigin + 1, previewTileSize - 2, previewTileSize - 2);
                 ctx.restore();
                 ctx.save();
                 ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
@@ -581,18 +571,18 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 ctx.lineTo(canvas.width, canvas.height / 2);
                 ctx.stroke();
                 ctx.restore();
-                drawImageWithAnchor(img, dirSprite.size || 0.6, ax, ay, ox, oy);
+                drawImageWithAnchor(img, ax, ay, ox, oy);
               };
               img.src = imageToShow;
             } else {
-              drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, canvas.width);
+              drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, previewTileSize);
             }
           }
         }
       } else {
         // Simple mode - check for sprite sheet first
         if (sprite.idleSpriteSheet && (sprite.idleSpriteSheet.imageData || sprite.idleSpriteSheet.imageUrl)) {
-          drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
+          drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, previewTileSize);
         } else {
           const simpleImageToShow = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
           if (simpleImageToShow) {
@@ -604,10 +594,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             img.onload = () => {
               ctx.clearRect(0, 0, canvas.width, canvas.height);
               // Redraw guides
+              const tileOrigin = (canvas.width - previewTileSize) / 2;
               ctx.save();
               ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
               ctx.setLineDash([4, 4]);
-              ctx.strokeRect(1, 1, canvas.width - 2, canvas.height - 2);
+              ctx.strokeRect(tileOrigin + 1, tileOrigin + 1, previewTileSize - 2, previewTileSize - 2);
               ctx.restore();
               ctx.save();
               ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
@@ -619,11 +610,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               ctx.lineTo(canvas.width, canvas.height / 2);
               ctx.stroke();
               ctx.restore();
-              drawImageWithAnchor(img, sprite.size || 0.6, ax, ay, ox, oy);
+              drawImageWithAnchor(img, ax, ay, ox, oy);
             };
             img.src = simpleImageToShow;
           } else {
-            drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, canvas.width);
+            drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, previewTileSize);
           }
         }
       }
@@ -753,10 +744,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
   // Per-state field groups for targeted copying
   const stateFields: Record<string, (keyof DirectionalSpriteConfig)[]> = {
-    idle: ['idleImageData', 'idleImageUrl', 'idleSpriteSheet', 'idleAnchorX', 'idleAnchorY', 'idleOffsetX', 'idleOffsetY', 'idleScale', 'imageData', 'imageUrl'],
-    moving: ['movingImageData', 'movingImageUrl', 'movingSpriteSheet', 'movingAnchorX', 'movingAnchorY', 'movingOffsetX', 'movingOffsetY', 'movingScale'],
-    death: ['deathImageData', 'deathImageUrl', 'deathSpriteSheet', 'deathAnchorX', 'deathAnchorY', 'deathOffsetX', 'deathOffsetY', 'deathScale'],
-    casting: ['castingImageData', 'castingImageUrl', 'castingSpriteSheet', 'castingAnchorX', 'castingAnchorY', 'castingOffsetX', 'castingOffsetY', 'castingScale'],
+    idle: ['idleImageData', 'idleImageUrl', 'idleSpriteSheet', 'idleAnchorX', 'idleAnchorY', 'idleOffsetX', 'idleOffsetY', 'imageData', 'imageUrl'],
+    moving: ['movingImageData', 'movingImageUrl', 'movingSpriteSheet', 'movingAnchorX', 'movingAnchorY', 'movingOffsetX', 'movingOffsetY'],
+    death: ['deathImageData', 'deathImageUrl', 'deathSpriteSheet', 'deathAnchorX', 'deathAnchorY', 'deathOffsetX', 'deathOffsetY'],
+    casting: ['castingImageData', 'castingImageUrl', 'castingSpriteSheet', 'castingAnchorX', 'castingAnchorY', 'castingOffsetX', 'castingOffsetY'],
   };
 
   const copyStateToAllDirections = (stateName: string) => {
@@ -821,6 +812,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const idleImageData = event.target?.result as string;
+      warnIfOversizedUpload(idleImageData, 'Idle image');
 
       if (spriteMode === 'directional') {
         const dirSprites = sprite.directionalSprites || {};
@@ -859,6 +851,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const movingImageData = event.target?.result as string;
+      warnIfOversizedUpload(movingImageData, 'Moving image');
 
       if (spriteMode === 'directional') {
         const dirSprites = sprite.directionalSprites || {};
@@ -1185,6 +1178,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const imageData = event.target?.result as string;
+      warnIfOversizedUpload(imageData, 'Sprite sheet', true);
 
       const spriteSheetConfig = {
         imageData,
@@ -1227,6 +1221,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const imageData = event.target?.result as string;
+      warnIfOversizedUpload(imageData, 'Sprite sheet', true);
 
       const spriteSheetConfig = {
         imageData,
@@ -1390,6 +1385,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const deathImageData = event.target?.result as string;
+      warnIfOversizedUpload(deathImageData, 'Death image');
 
       if (spriteMode === 'directional') {
         const dirSprites = sprite.directionalSprites || {};
@@ -1425,6 +1421,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const imageData = event.target?.result as string;
+      warnIfOversizedUpload(imageData, 'Sprite sheet', true);
 
       const spriteSheetConfig = {
         imageData,
@@ -1549,6 +1546,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const castingImageData = event.target?.result as string;
+      warnIfOversizedUpload(castingImageData, 'Casting image');
 
       if (spriteMode === 'directional') {
         const dirSprites = sprite.directionalSprites || {};
@@ -1584,6 +1582,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const imageData = event.target?.result as string;
+      warnIfOversizedUpload(imageData, 'Sprite sheet', true);
 
       const spriteSheetConfig = {
         imageData,
@@ -1708,6 +1707,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const spawnImageData = event.target?.result as string;
+      warnIfOversizedUpload(spawnImageData, 'Spawn image');
       onChange({
         ...sprite,
         spawnImageData,
@@ -1728,6 +1728,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     const reader = new FileReader();
     reader.onload = (event) => {
       const imageData = event.target?.result as string;
+      warnIfOversizedUpload(imageData, 'Sprite sheet', true);
 
       const spriteSheetConfig = {
         imageData,
@@ -1763,7 +1764,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   };
 
   const clearSpawnImage = () => {
-    const { spawnImageData: _spawnImageData, spawnImageUrl: _spawnImageUrl, spawnAnchorX: _spawnAnchorX, spawnAnchorY: _spawnAnchorY, spawnOffsetX: _spawnOffsetX, spawnOffsetY: _spawnOffsetY, spawnScale: _spawnScale, ...rest } = sprite;
+    const { spawnImageData: _spawnImageData, spawnImageUrl: _spawnImageUrl, spawnAnchorX: _spawnAnchorX, spawnAnchorY: _spawnAnchorY, spawnOffsetX: _spawnOffsetX, spawnOffsetY: _spawnOffsetY, ...rest } = sprite;
     onChange({ ...rest });
   };
 
@@ -1804,8 +1805,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     onOffsetChange: (field: 'offsetX' | 'offsetY', val: number) => void,
     previewImageSrc?: string,
     previewSpriteSheet?: import('../../utils/assetStorage').SpriteSheetConfig,
-    scaleValue: number = 1,
-    onScaleChange?: (val: number) => void,
   ) => {
     const anchorPoints: { label: string; x: number; y: number }[] = [
       { label: 'TL', x: 0, y: 0 }, { label: 'T', x: 0.5, y: 0 }, { label: 'TR', x: 1, y: 0 },
@@ -1847,8 +1846,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               anchorY={anchorY}
               offsetX={offsetX}
               offsetY={offsetY}
-              spriteSize={currentConfig.size || sprite.size || 0.6}
-              scale={scaleValue}
               isSpriteSheet={!!previewSpriteSheet}
               frameCount={previewSpriteSheet?.frameCount}
             />
@@ -1894,29 +1891,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
             />
           </div>
-          {onScaleChange && (
-            <div className="flex items-center gap-2">
-              <label className="text-[10px] text-stone-400 w-10">Scale</label>
-              <input
-                type="range"
-                min="0.25"
-                max="2"
-                step="0.05"
-                value={scaleValue}
-                onChange={(e) => onScaleChange(parseFloat(e.target.value))}
-                className="flex-1 h-3"
-              />
-              <input
-                type="number"
-                min="0.25"
-                max="2"
-                step="0.05"
-                value={scaleValue.toFixed(2)}
-                onChange={(e) => onScaleChange(Math.max(0.25, Math.min(2, parseFloat(e.target.value) || 1)))}
-                className="w-12 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
-              />
-            </div>
-          )}
         </div>
       </div>
     );
@@ -2406,64 +2380,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             </button>
           </div>
 
-          {/* UNIVERSAL SCALE — single multiplier applied to all states/directions equally */}
-          {(() => {
-            // Resolve idle sprite for preview (same sprite thumbnails use)
-            const defaultDir = sprite.directionalSprites?.default;
-            const uniPreviewSheet = defaultDir?.idleSpriteSheet || sprite.idleSpriteSheet;
-            const uniPreviewSrc = uniPreviewSheet
-              ? (uniPreviewSheet.imageData || uniPreviewSheet.imageUrl)
-              : defaultDir
-                ? (defaultDir.idleImageData || defaultDir.imageData || defaultDir.idleImageUrl || defaultDir.imageUrl)
-                : (sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl);
-            return (
-              <div className="bg-stone-800 p-3 rounded border border-stone-600">
-                <h3 className="text-sm font-bold text-copper-400 mb-2">Universal Scale</h3>
-                <div className="flex items-start gap-3">
-                  {uniPreviewSrc && (
-                    <AnchorPreview
-                      imageSrc={uniPreviewSrc}
-                      anchorX={0.5}
-                      anchorY={0.5}
-                      offsetX={0}
-                      offsetY={0}
-                      spriteSize={currentConfig.size || sprite.size || 0.6}
-                      scale={sprite.universalScale ?? 1}
-                      isSpriteSheet={!!uniPreviewSheet}
-                      frameCount={uniPreviewSheet?.frameCount}
-                    />
-                  )}
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="range"
-                        min="0.25"
-                        max="3"
-                        step="0.05"
-                        value={sprite.universalScale ?? 1}
-                        onChange={(e) => onChange({ ...sprite, universalScale: parseFloat(e.target.value) === 1 ? undefined : parseFloat(e.target.value) })}
-                        className="flex-1 h-3"
-                      />
-                      <input
-                        type="number"
-                        min="0.25"
-                        max="3"
-                        step="0.05"
-                        value={(sprite.universalScale ?? 1).toFixed(2)}
-                        onChange={(e) => {
-                          const val = Math.max(0.25, Math.min(3, parseFloat(e.target.value) || 1));
-                          onChange({ ...sprite, universalScale: val === 1 ? undefined : val });
-                        }}
-                        className="w-14 text-xs text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
-                      />
-                    </div>
-                    <p className="text-[10px] text-stone-500 mt-1">Scales all sprites equally. Use per-state scale below to match individual sprites first.</p>
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
           {/* IDLE & MOVING STATES */}
           <div className="bg-green-950 bg-opacity-30 p-4 rounded border-2 border-green-900">
             <div className="flex items-center justify-between mb-3">
@@ -2624,8 +2540,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleIdleSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.idleSpriteSheet,
-                    currentConfig.idleSpriteSheet?.scale ?? 1,
-                    (val) => handleIdleSpriteSheetConfigChange('scale', val === 1 ? undefined : val),
                   )}
                 </>
               )}
@@ -2732,12 +2646,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
                   currentConfig.idleImageData || currentConfig.imageData || currentConfig.idleImageUrl || currentConfig.imageUrl,
-                  undefined,
-                  currentConfig.idleScale ?? 1,
-                  (val) => {
-                    const dirSprites = sprite.directionalSprites || {};
-                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, idleScale: val === 1 ? undefined : val } } });
-                  },
                 )}
                 </>
               )}
@@ -2886,8 +2794,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleMovingSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.movingSpriteSheet,
-                    currentConfig.movingSpriteSheet?.scale ?? 1,
-                    (val) => handleMovingSpriteSheetConfigChange('scale', val === 1 ? undefined : val),
                   )}
                 </>
               )}
@@ -2994,12 +2900,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
                   currentConfig.movingImageData || currentConfig.movingImageUrl,
-                  undefined,
-                  currentConfig.movingScale ?? 1,
-                  (val) => {
-                    const dirSprites = sprite.directionalSprites || {};
-                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, movingScale: val === 1 ? undefined : val } } });
-                  },
                 )}
                 </>
               )}
@@ -3165,8 +3065,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleDeathSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.deathSpriteSheet,
-                    currentConfig.deathSpriteSheet?.scale ?? 1,
-                    (val) => handleDeathSpriteSheetConfigChange('scale', val === 1 ? undefined : val),
                   )}
                 </>
               )}
@@ -3273,12 +3171,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
                   currentConfig.deathImageData || currentConfig.deathImageUrl,
-                  undefined,
-                  currentConfig.deathScale ?? 1,
-                  (val) => {
-                    const dirSprites = sprite.directionalSprites || {};
-                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, deathScale: val === 1 ? undefined : val } } });
-                  },
                 )}
                 </>
               )}
@@ -3444,8 +3336,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleCastingSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.castingSpriteSheet,
-                    currentConfig.castingSpriteSheet?.scale ?? 1,
-                    (val) => handleCastingSpriteSheetConfigChange('scale', val === 1 ? undefined : val),
                   )}
                 </>
               )}
@@ -3552,12 +3442,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
                   },
                   currentConfig.castingImageData || currentConfig.castingImageUrl,
-                  undefined,
-                  currentConfig.castingScale ?? 1,
-                  (val) => {
-                    const dirSprites = sprite.directionalSprites || {};
-                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, castingScale: val === 1 ? undefined : val } } });
-                  },
                 )}
                 </>
               )}
@@ -3747,8 +3631,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   (field, val) => handleSpawnSpriteSheetConfigChange(field, val),
                   undefined,
                   sprite.spawnSpriteSheet,
-                  sprite.spawnSpriteSheet?.scale ?? 1,
-                  (val) => handleSpawnSpriteSheetConfigChange('scale', val === 1 ? undefined : val),
                 )}
               </>
             )}
@@ -3851,11 +3733,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                       onChange({ ...sprite, [key]: val });
                     },
                     sprite.spawnImageData || sprite.spawnImageUrl,
-                    undefined,
-                    sprite.spawnScale ?? 1,
-                    (val) => {
-                      onChange({ ...sprite, spawnScale: val === 1 ? undefined : val });
-                    },
                   )}
                 </>
               )}
@@ -3954,22 +3831,20 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
       <div>
         <label className="block text-sm font-bold mb-2">
-          Size: {((currentConfig.size ?? 0.6) * 100).toFixed(0)}%
+          Shape Size: {((currentConfig.size ?? 0.6) * 100).toFixed(0)}%
         </label>
         <input
           type="range"
           min="0.2"
-          max={allowOversized ? "2.0" : "1.0"}
+          max="1.0"
           step="0.05"
           value={currentConfig.size}
           onChange={(e) => handleSizeChange(parseFloat(e.target.value))}
           className="w-full"
         />
-        {allowOversized && (
-          <p className="text-xs text-stone-400 mt-1">
-            Values &gt;100% extend beyond tile bounds
-          </p>
-        )}
+        <p className="text-xs text-stone-400 mt-1">
+          Only affects the shape fallback. Images render at native pixel size (a tile is {ART_TILE_PX}×{ART_TILE_PX}px).
+        </p>
       </div>
 
       {/* Anchor Point & Offset are now per-spritesheet/per-image, shown near each upload area */}
@@ -3986,8 +3861,7 @@ function drawSpriteConfig(
   tileSize: number,
   isMoving: boolean = false,
   now: number = Date.now(),
-  isCasting: boolean = false,
-  universalScale: number = 1
+  isCasting: boolean = false
 ) {
   // Determine active state and resolve anchor from the appropriate source
   // For spritesheets: anchor lives on SpriteSheetConfig
@@ -4011,9 +3885,7 @@ function drawSpriteConfig(
     const ay = spriteSheet.anchorY ?? 0.5;
     const ox = spriteSheet.offsetX ?? 0;
     const oy = spriteSheet.offsetY ?? 0;
-    const sc = spriteSheet.scale ?? 1;
-    const maxSize = (config.size || 0.6) * tileSize * universalScale;
-    drawSpriteSheet(ctx, spriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy, sc);
+    drawSpriteSheet(ctx, spriteSheet, centerX, centerY, tileSize, now, ax, ay, ox, oy);
     return;
   }
 
@@ -4038,7 +3910,6 @@ function drawSpriteConfig(
     const ay = (imageState === 'moving' ? config.movingAnchorY : imageState === 'casting' ? config.castingAnchorY : config.idleAnchorY) ?? 0.5;
     const ox = (imageState === 'moving' ? config.movingOffsetX : imageState === 'casting' ? config.castingOffsetX : config.idleOffsetX) ?? 0;
     const oy = (imageState === 'moving' ? config.movingOffsetY : imageState === 'casting' ? config.castingOffsetY : config.idleOffsetY) ?? 0;
-    const imgScale = (imageState === 'moving' ? config.movingScale : imageState === 'casting' ? config.castingScale : config.idleScale) ?? 1;
 
     // Use cached image with load notification for GIF animation support
     const img = loadSpriteImage(imageToUse);
@@ -4046,24 +3917,16 @@ function drawSpriteConfig(
     // Draw the image - for GIFs, the browser handles animation automatically
     // We draw even if not fully loaded to ensure GIF animation starts properly
     try {
-      const maxSize = (config.size || 0.6) * tileSize * imgScale * universalScale;
-      let drawWidth = maxSize;
-      let drawHeight = maxSize;
-
-      // If image has loaded, preserve aspect ratio and snap to integer pixel multiples
+      // Native-size rendering: image dims × zoom; offsets are in art pixels
+      const zoom = tileSize / ART_TILE_PX;
+      let drawWidth = tileSize;
+      let drawHeight = tileSize;
       if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        const aspectRatio = img.naturalWidth / img.naturalHeight;
-        if (aspectRatio > 1) {
-          drawHeight = maxSize / aspectRatio;
-        } else {
-          drawWidth = maxSize * aspectRatio;
-        }
-        // Round to nearest pixel for smooth scaling
-        drawWidth = Math.round(drawWidth);
-        drawHeight = Math.round(drawHeight);
+        drawWidth = Math.round(img.naturalWidth * zoom);
+        drawHeight = Math.round(img.naturalHeight * zoom);
       }
 
-      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);
+      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox * zoom), Math.round(centerY - drawHeight * ay + oy * zoom), drawWidth, drawHeight);
     } catch {
       // Image not ready yet, will draw on next frame
     }
@@ -4157,12 +4020,10 @@ export function drawSprite(
     const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
 
     if (dirConfig) {
-      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now, isCasting, sprite.universalScale ?? 1);
+      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now, isCasting);
       return;
     }
   }
-
-  const uScale = sprite.universalScale ?? 1;
 
   // Priority: moving > casting > idle
   // Check for sprite sheet first (simple mode)
@@ -4179,9 +4040,7 @@ export function drawSprite(
     const ay = simpleSpriteSheet.anchorY ?? 0.5;
     const ox = simpleSpriteSheet.offsetX ?? 0;
     const oy = simpleSpriteSheet.offsetY ?? 0;
-    const sc = simpleSpriteSheet.scale ?? 1;
-    const maxSize = (sprite.size || 0.6) * tileSize * uScale;
-    drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, maxSize, maxSize, now, ax, ay, ox, oy, sc);
+    drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, tileSize, now, ax, ay, ox, oy);
     return;
   }
 
@@ -4206,7 +4065,6 @@ export function drawSprite(
     const ay = (imgState === 'moving' ? sprite.movingAnchorY : imgState === 'casting' ? sprite.castingAnchorY : sprite.idleAnchorY) ?? 0.5;
     const ox = (imgState === 'moving' ? sprite.movingOffsetX : imgState === 'casting' ? sprite.castingOffsetX : sprite.idleOffsetX) ?? 0;
     const oy = (imgState === 'moving' ? sprite.movingOffsetY : imgState === 'casting' ? sprite.castingOffsetY : sprite.idleOffsetY) ?? 0;
-    const imgScale = (imgState === 'moving' ? sprite.movingScale : imgState === 'casting' ? sprite.castingScale : sprite.idleScale) ?? 1;
 
     // Use cached image with load notification for GIF animation support
     const img = loadSpriteImage(spriteImageToUse);
@@ -4214,24 +4072,16 @@ export function drawSprite(
     // Draw the image - for GIFs, the browser handles animation automatically
     // We draw even if not fully loaded to ensure GIF animation starts properly
     try {
-      const maxSize = (sprite.size || 0.6) * tileSize * imgScale * uScale;
-      let drawWidth = maxSize;
-      let drawHeight = maxSize;
-
-      // If image has loaded, preserve aspect ratio and snap to integer pixel multiples
+      // Native-size rendering: image dims × zoom; offsets are in art pixels
+      const zoom = tileSize / ART_TILE_PX;
+      let drawWidth = tileSize;
+      let drawHeight = tileSize;
       if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-        const aspectRatio = img.naturalWidth / img.naturalHeight;
-        if (aspectRatio > 1) {
-          drawHeight = maxSize / aspectRatio;
-        } else {
-          drawWidth = maxSize * aspectRatio;
-        }
-        // Round to nearest pixel for smooth scaling
-        drawWidth = Math.round(drawWidth);
-        drawHeight = Math.round(drawHeight);
+        drawWidth = Math.round(img.naturalWidth * zoom);
+        drawHeight = Math.round(img.naturalHeight * zoom);
       }
 
-      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox), Math.round(centerY - drawHeight * ay + oy), drawWidth, drawHeight);
+      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox * zoom), Math.round(centerY - drawHeight * ay + oy * zoom), drawWidth, drawHeight);
     } catch {
       // Image not ready yet, will draw on next frame
     }
@@ -4362,8 +4212,6 @@ export function drawDeathSprite(
   direction?: Direction,
   startTime: number = Date.now()
 ): boolean {
-  const uScale = sprite.universalScale ?? 1;
-  const maxSize = (sprite.size || 0.6) * tileSize * uScale;
   const now = Date.now();
 
   // Check for directional death sprite first
@@ -4378,10 +4226,9 @@ export function drawDeathSprite(
         const day = dirConfig.deathSpriteSheet.anchorY ?? 0.5;
         const dox = dirConfig.deathSpriteSheet.offsetX ?? 0;
         const doy = dirConfig.deathSpriteSheet.offsetY ?? 0;
-        const dsc = dirConfig.deathSpriteSheet.scale ?? 1;
         // Force loop=false for death animations so they stop on final frame
         const deathSheet = { ...dirConfig.deathSpriteSheet, loop: false };
-        drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now, dax, day, dox, doy, dsc);
+        drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, tileSize, startTime, now, dax, day, dox, doy);
         return true;
       }
       // Check for death image
@@ -4390,8 +4237,7 @@ export function drawDeathSprite(
         const day = dirConfig.deathAnchorY ?? 0.5;
         const dox = dirConfig.deathOffsetX ?? 0;
         const doy = dirConfig.deathOffsetY ?? 0;
-        const dsc = dirConfig.deathScale ?? 1;
-        drawImage(ctx, dirConfig.deathImageData, centerX, centerY, maxSize * dsc, dax, day, dox, doy);
+        drawImage(ctx, dirConfig.deathImageData, centerX, centerY, tileSize, dax, day, dox, doy);
         return true;
       }
     }
@@ -4403,10 +4249,9 @@ export function drawDeathSprite(
     const ay = sprite.deathSpriteSheet.anchorY ?? 0.5;
     const ox = sprite.deathSpriteSheet.offsetX ?? 0;
     const oy = sprite.deathSpriteSheet.offsetY ?? 0;
-    const sc = sprite.deathSpriteSheet.scale ?? 1;
     // Force loop=false for death animations so they stop on final frame
     const deathSheet = { ...sprite.deathSpriteSheet, loop: false };
-    drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, maxSize, maxSize, startTime, now, ax, ay, ox, oy, sc);
+    drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, tileSize, startTime, now, ax, ay, ox, oy);
     return true;
   }
 
@@ -4416,8 +4261,7 @@ export function drawDeathSprite(
     const ay = sprite.deathAnchorY ?? 0.5;
     const ox = sprite.deathOffsetX ?? 0;
     const oy = sprite.deathOffsetY ?? 0;
-    const sc = sprite.deathScale ?? 1;
-    drawImage(ctx, sprite.deathImageData, centerX, centerY, maxSize * sc, ax, ay, ox, oy);
+    drawImage(ctx, sprite.deathImageData, centerX, centerY, tileSize, ax, ay, ox, oy);
     return true;
   }
 
@@ -4462,8 +4306,6 @@ export function drawSpawnSprite(
   tileSize: number,
   startTime: number = Date.now()
 ): boolean {
-  const uScale = sprite.universalScale ?? 1;
-  const maxSize = (sprite.size || 0.6) * tileSize * uScale;
   const now = Date.now();
 
   // Spawn animations are NOT directional - same animation regardless of facing
@@ -4474,7 +4316,6 @@ export function drawSpawnSprite(
     const ay = sprite.spawnSpriteSheet.anchorY ?? 0.5;
     const ox = sprite.spawnSpriteSheet.offsetX ?? 0;
     const oy = sprite.spawnSpriteSheet.offsetY ?? 0;
-    const sc = sprite.spawnSpriteSheet.scale ?? 1;
 
     // Use drawSpriteSheetFromStartTime for proper one-shot animation timing
     // Create a modified config with loop=false for spawn animations
@@ -4484,15 +4325,13 @@ export function drawSpawnSprite(
       spawnSheet,
       centerX,
       centerY,
-      maxSize,
-      maxSize,
+      tileSize,
       startTime,
       now,
       ax,
       ay,
       ox,
-      oy,
-      sc
+      oy
     );
     return true;
   }
@@ -4504,8 +4343,7 @@ export function drawSpawnSprite(
     const ay = sprite.spawnAnchorY ?? 0.5;
     const ox = sprite.spawnOffsetX ?? 0;
     const oy = sprite.spawnOffsetY ?? 0;
-    const sc = sprite.spawnScale ?? 1;
-    drawImage(ctx, spawnImageSrc, centerX, centerY, maxSize * sc, ax, ay, ox, oy);
+    drawImage(ctx, spawnImageSrc, centerX, centerY, tileSize, ax, ay, ox, oy);
     return true;
   }
 
@@ -4550,7 +4388,7 @@ function drawImage(
   imageData: string,
   centerX: number,
   centerY: number,
-  maxSize: number,
+  tileSize: number,
   anchorX: number = 0.5,
   anchorY: number = 0.5,
   offsetX: number = 0,
@@ -4559,20 +4397,50 @@ function drawImage(
   const img = loadSpriteImage(imageData);
 
   try {
-    let drawWidth = maxSize;
-    let drawHeight = maxSize;
-
+    // Native-size rendering: image dims × zoom; offsets are in art pixels
+    const zoom = tileSize / ART_TILE_PX;
+    let drawWidth = tileSize;
+    let drawHeight = tileSize;
     if (img.naturalWidth > 0 && img.naturalHeight > 0) {
-      const aspectRatio = img.naturalWidth / img.naturalHeight;
-      if (aspectRatio > 1) {
-        drawHeight = maxSize / aspectRatio;
-      } else {
-        drawWidth = maxSize * aspectRatio;
-      }
+      drawWidth = Math.round(img.naturalWidth * zoom);
+      drawHeight = Math.round(img.naturalHeight * zoom);
     }
 
-    ctx.drawImage(img, centerX - drawWidth * anchorX + offsetX, centerY - drawHeight * anchorY + offsetY, drawWidth, drawHeight);
+    ctx.drawImage(img, Math.round(centerX - drawWidth * anchorX + offsetX * zoom), Math.round(centerY - drawHeight * anchorY + offsetY * zoom), drawWidth, drawHeight);
   } catch {
     // Image not ready
   }
+}
+
+/**
+ * On-screen height of a sprite's idle frame under native-size rendering.
+ * Used for layout that depends on sprite height (health bar placement,
+ * bottom_center anchoring). Falls back to one tile when the image hasn't
+ * loaded yet or the sprite is a shape.
+ */
+// eslint-disable-next-line react-refresh/only-export-components
+export function getSpriteDrawHeight(sprite: CustomSprite, tileSize: number): number {
+  const zoom = tileSize / ART_TILE_PX;
+  const dirConfig = sprite.useDirectional ? sprite.directionalSprites?.default : undefined;
+
+  const sheet = dirConfig?.idleSpriteSheet || sprite.idleSpriteSheet;
+  const sheetSrc = sheet ? (sheet.imageData || sheet.imageUrl) : undefined;
+  if (sheet && sheetSrc) {
+    if (sheet.frameHeight) return Math.round(sheet.frameHeight * zoom);
+    const img = loadSpriteImage(sheetSrc);
+    if (img.naturalHeight > 0) return Math.round(img.naturalHeight * zoom);
+    return tileSize;
+  }
+
+  const imgSrc = dirConfig
+    ? (dirConfig.idleImageData || dirConfig.imageData || dirConfig.idleImageUrl || dirConfig.imageUrl)
+    : (sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl);
+  if (imgSrc) {
+    const img = loadSpriteImage(imgSrc);
+    if (img.naturalHeight > 0) return Math.round(img.naturalHeight * zoom);
+    return tileSize;
+  }
+
+  // Shape fallback — shapes still size by the legacy `size` fraction
+  return (sprite.size || 0.6) * tileSize;
 }

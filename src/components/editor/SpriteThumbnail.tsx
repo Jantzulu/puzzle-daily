@@ -119,14 +119,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
     ctx.imageSmoothingEnabled = false;
 
     let animationFrameId: number | null = null;
-    const uScale = sprite.universalScale ?? 1;
 
-    // Helper to draw sprite frame with anchor/offset/scale support
+    // Helper to draw sprite frame with anchor/offset support
     const drawSpriteFrame = (
       img: HTMLImageElement, frameIndex: number, frameCount: number,
       frameWidth: number, frameHeight: number,
-      ax: number = 0.5, ay: number = 0.5, ox: number = 0, oy: number = 0,
-      sc: number = 1
+      ax: number = 0.5, ay: number = 0.5, ox: number = 0, oy: number = 0
     ) => {
       ctx.clearRect(0, 0, canvasWidthCSS, canvasHeightCSS);
       const frameAspectRatio = frameWidth / frameHeight;
@@ -145,7 +143,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         // Uses height as the reference dimension (matches the original
         // square-canvas behavior exactly when width === height).
         const legacySize = canvasHeightCSS;
-        const maxSize = (sprite.size || 0.6) * legacySize * sc * uScale * spriteScale;
+        const maxSize = (sprite.size || 0.6) * legacySize * spriteScale;
         if (bottomAlign) {
           drawWidth = maxSize;
           drawHeight = maxSize;
@@ -201,8 +199,8 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
       // Determine what to render based on sprite mode
       let spriteSheet = null;
       let imageSrc: string | undefined = undefined;
-      // Anchor/offset/scale for idle image (spritesheets have anchor+scale built-in)
-      let imgAx = 0.5, imgAy = 0.5, imgOx = 0, imgOy = 0, imgScale = 1;
+      // Anchor/offset for idle image (spritesheets have anchor+offset built-in)
+      let imgAx = 0.5, imgAy = 0.5, imgOx = 0, imgOy = 0;
 
       if (sprite.useDirectional && sprite.directionalSprites?.default) {
         // Directional mode - use default direction
@@ -216,7 +214,6 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         imgAy = defaultConfig.idleAnchorY ?? 0.5;
         imgOx = defaultConfig.idleOffsetX ?? 0;
         imgOy = defaultConfig.idleOffsetY ?? 0;
-        imgScale = defaultConfig.idleScale ?? 1;
       } else {
         // Simple mode
         spriteSheet = sprite.idleSpriteSheet;
@@ -228,7 +225,6 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         imgAy = sprite.idleAnchorY ?? 0.5;
         imgOx = sprite.idleOffsetX ?? 0;
         imgOy = sprite.idleOffsetY ?? 0;
-        imgScale = sprite.idleScale ?? 1;
       }
 
       // Resolve sprite sheet source (supports both data and URL)
@@ -241,7 +237,6 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         const sheetAy = spriteSheet.anchorY ?? 0.5;
         const sheetOx = spriteSheet.offsetX ?? 0;
         const sheetOy = spriteSheet.offsetY ?? 0;
-        const sheetScale = spriteSheet.scale ?? 1;
 
         // Use centralized image loader with caching
         const img = loadImage(spriteSheetSrc);
@@ -266,7 +261,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
               lastFrameTime = now;
             }
 
-            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy, sheetScale);
+            drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, sheetAx, sheetAy, sheetOx, sheetOy);
             animationFrameId = requestAnimationFrame(animate);
           };
 
@@ -286,7 +281,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             drawHeight = img.height * pixelScale;
           } else {
             const legacySize = canvasHeightCSS;
-            const maxSize = (sprite.size || 0.6) * legacySize * imgScale * uScale * spriteScale;
+            const maxSize = (sprite.size || 0.6) * legacySize * spriteScale;
             if (bottomAlign) {
               drawWidth = maxSize;
               drawHeight = maxSize;

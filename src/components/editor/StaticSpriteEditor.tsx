@@ -3,6 +3,7 @@ import { toast } from '../shared/Toast';
 import type { CustomSprite, SpriteSheetConfig } from '../../utils/assetStorage';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads } from '../../utils/imageLoader';
+import { ART_TILE_PX } from './SpriteEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Preview type for static assets (tiles, items, enchantments)
@@ -108,24 +109,21 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
             lastFrameTime = timestamp;
           }
 
-          // Calculate display size
-          const maxSize = (sprite.size || 0.8) * canvas.width;
-          const aspectRatio = frameWidth / frameHeight;
-          let drawWidth = maxSize;
-          let drawHeight = maxSize;
-
-          if (aspectRatio > 1) {
-            drawHeight = maxSize / aspectRatio;
-          } else {
-            drawWidth = maxSize * aspectRatio;
-          }
+          // Native-size rendering: the dashed rect is one tile (half the
+          // canvas) so oversized sprites show their true on-board overflow
+          const previewTileSize = canvas.width / 2;
+          const zoom = previewTileSize / ART_TILE_PX;
+          const drawWidth = Math.round(frameWidth * zoom);
+          const drawHeight = Math.round(frameHeight * zoom);
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawTileGuide(ctx, canvas.width, previewTileSize);
+          ctx.imageSmoothingEnabled = false;
           ctx.drawImage(
             img,
             frameIndex * frameWidth, 0, frameWidth, frameHeight,
-            canvas.width / 2 - drawWidth / 2,
-            canvas.height / 2 - drawHeight / 2,
+            Math.round(canvas.width / 2 - drawWidth / 2),
+            Math.round(canvas.height / 2 - drawHeight / 2),
             drawWidth, drawHeight
           );
         };
@@ -135,22 +133,19 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         // Static image
         const img = new Image();
         img.onload = () => {
-          const maxSize = (sprite.size || 0.8) * canvas.width;
-          const aspectRatio = img.width / img.height;
-          let drawWidth = maxSize;
-          let drawHeight = maxSize;
-
-          if (aspectRatio > 1) {
-            drawHeight = maxSize / aspectRatio;
-          } else {
-            drawWidth = maxSize * aspectRatio;
-          }
+          // Native-size rendering (see spritesheet branch above)
+          const previewTileSize = canvas.width / 2;
+          const zoom = previewTileSize / ART_TILE_PX;
+          const drawWidth = Math.round(img.width * zoom);
+          const drawHeight = Math.round(img.height * zoom);
 
           ctx.clearRect(0, 0, canvas.width, canvas.height);
+          drawTileGuide(ctx, canvas.width, previewTileSize);
+          ctx.imageSmoothingEnabled = false;
           ctx.drawImage(
             img,
-            canvas.width / 2 - drawWidth / 2,
-            canvas.height / 2 - drawHeight / 2,
+            Math.round(canvas.width / 2 - drawWidth / 2),
+            Math.round(canvas.height / 2 - drawHeight / 2),
             drawWidth, drawHeight
           );
         };
@@ -864,25 +859,37 @@ export const StaticSpriteEditor: React.FC<StaticSpriteEditorProps> = ({
         </>
       )}
 
-      {/* Size */}
+      {/* Shape Size */}
       <div className="bg-stone-700 p-3 rounded">
-        <h4 className="text-sm font-bold mb-2">Size: {((sprite.size || 0.8) * 100).toFixed(0)}%</h4>
+        <h4 className="text-sm font-bold mb-2">Shape Size: {((sprite.size || 0.8) * 100).toFixed(0)}%</h4>
         <input
           type="range"
           min="0.3"
-          max="2.0"
+          max="1.0"
           step="0.05"
           value={sprite.size || 0.8}
           onChange={(e) => handleSizeChange(parseFloat(e.target.value))}
           className="w-full"
         />
         <p className="text-xs text-stone-400 mt-1">
-          Size relative to tile. Values &gt;100% extend beyond tile bounds.
+          Only affects the shape fallback. Images render at native pixel size (a tile is {ART_TILE_PX}×{ART_TILE_PX}px).
         </p>
       </div>
     </div>
   );
 };
+
+/**
+ * Draw a dashed one-tile boundary centered in the preview canvas
+ */
+function drawTileGuide(ctx: CanvasRenderingContext2D, canvasSize: number, tileSize: number) {
+  const origin = (canvasSize - tileSize) / 2;
+  ctx.save();
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+  ctx.setLineDash([3, 3]);
+  ctx.strokeRect(origin + 0.5, origin + 0.5, tileSize - 1, tileSize - 1);
+  ctx.restore();
+}
 
 /**
  * Draw a shape-based sprite

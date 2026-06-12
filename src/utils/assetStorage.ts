@@ -215,36 +215,33 @@ export interface DirectionalSpriteConfig {
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;
   secondaryColor?: string;
-  size?: number; // 0-1 scale
+  size?: number; // 0-1 of tile — SHAPE FALLBACK ONLY; images render at native pixel size
 
   // Idle state (not moving) - for this specific direction
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
   idleImageUrl?: string; // URL to idle image
   idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
-  // Anchor/scale for idle image (spritesheets have anchor+scale built-in)
+  // Anchor/offset for idle image (spritesheets have anchor+offset built-in).
+  // Offsets are in ART PIXELS (a tile is 24×24 art px).
   idleAnchorX?: number; idleAnchorY?: number; idleOffsetX?: number; idleOffsetY?: number;
-  idleScale?: number; // Per-image scale multiplier (default 1.0)
 
   // Moving state (actively moving) - for this specific direction
   movingImageData?: string; // Base64 encoded GIF for moving state
   movingImageUrl?: string; // URL to moving image
   movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
   movingAnchorX?: number; movingAnchorY?: number; movingOffsetX?: number; movingOffsetY?: number;
-  movingScale?: number;
 
   // Death state - for this specific direction
   deathImageData?: string; // Base64 encoded PNG/GIF for death state
   deathImageUrl?: string; // URL to death image
   deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
   deathAnchorX?: number; deathAnchorY?: number; deathOffsetX?: number; deathOffsetY?: number;
-  deathScale?: number;
 
   // Casting state - when casting spell while stationary
   castingImageData?: string; // Base64 encoded PNG/GIF for casting state
   castingImageUrl?: string; // URL to casting image
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
   castingAnchorX?: number; castingAnchorY?: number; castingOffsetX?: number; castingOffsetY?: number;
-  castingScale?: number;
 
   // Deprecated - for backwards compatibility
   imageData?: string; // Will be used as idleImageData if idleImageData not set
@@ -263,9 +260,8 @@ export interface SpriteSheetConfig {
   // Anchor point for positioning this spritesheet on tile (default: center)
   anchorX?: number; // 0=left, 0.5=center(default), 1=right
   anchorY?: number; // 0=top, 0.5=center(default), 1=bottom
-  offsetX?: number; // Pixel offset from anchor (positive = right)
-  offsetY?: number; // Pixel offset from anchor (positive = down)
-  scale?: number; // Per-spritesheet scale multiplier (default 1.0, compounds with master size)
+  offsetX?: number; // Art-pixel offset from anchor (positive = right; a tile is 24×24 art px)
+  offsetY?: number; // Art-pixel offset from anchor (positive = down)
 }
 
 export interface CustomSprite {
@@ -277,34 +273,31 @@ export interface CustomSprite {
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;
   secondaryColor?: string;
-  size?: number; // 0-1 scale
+  size?: number; // 0-1 of tile — SHAPE FALLBACK ONLY; images render at native pixel size
 
   // Simple mode images (same for all directions)
   // Each image field has an optional URL alternative for external storage
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
   idleImageUrl?: string; // URL to idle image (Supabase, CDN, etc.)
   idleSpriteSheet?: SpriteSheetConfig; // Sprite sheet for idle animation
-  // Anchor/scale for idle image (spritesheets have anchor+scale built-in)
+  // Anchor/offset for idle image (spritesheets have anchor+offset built-in).
+  // Offsets are in ART PIXELS (a tile is 24×24 art px).
   idleAnchorX?: number; idleAnchorY?: number; idleOffsetX?: number; idleOffsetY?: number;
-  idleScale?: number;
 
   movingImageData?: string; // Base64 encoded GIF for moving state
   movingImageUrl?: string; // URL to moving image
   movingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for moving animation
   movingAnchorX?: number; movingAnchorY?: number; movingOffsetX?: number; movingOffsetY?: number;
-  movingScale?: number;
 
   deathImageData?: string; // Base64 encoded PNG/GIF for death state
   deathImageUrl?: string; // URL to death image
   deathSpriteSheet?: SpriteSheetConfig; // Sprite sheet for death animation
   deathAnchorX?: number; deathAnchorY?: number; deathOffsetX?: number; deathOffsetY?: number;
-  deathScale?: number;
 
   castingImageData?: string; // Base64 encoded PNG/GIF for casting state
   castingImageUrl?: string; // URL to casting image
   castingSpriteSheet?: SpriteSheetConfig; // Sprite sheet for casting animation
   castingAnchorX?: number; castingAnchorY?: number; castingOffsetX?: number; castingOffsetY?: number;
-  castingScale?: number;
 
   // Spawn animation - plays once when entity first appears (for enemies on puzzle load, heroes on placement)
   // Does NOT have directional variants - same animation regardless of facing direction
@@ -312,7 +305,6 @@ export interface CustomSprite {
   spawnImageUrl?: string; // URL to spawn image
   spawnSpriteSheet?: SpriteSheetConfig; // Sprite sheet for spawn animation (plays once, no loop)
   spawnAnchorX?: number; spawnAnchorY?: number; spawnOffsetX?: number; spawnOffsetY?: number;
-  spawnScale?: number;
 
   // Note: Corpse appearance is handled by the final frame of the Death sprite sheet
 
@@ -322,9 +314,6 @@ export interface CustomSprite {
 
   // Pixel editor project URL (companion .project.json in Supabase for re-editing with layers)
   pixelEditorProjectUrl?: string;
-
-  // Universal scale — multiplied on top of all per-state individual scales
-  universalScale?: number; // Default 1.0, applied to all states/directions equally
 
   // Directional sprites (different appearance per direction with idle/moving states)
   directionalSprites?: Partial<Record<SpriteDirection, DirectionalSpriteConfig>>;
@@ -344,7 +333,6 @@ export interface CustomCharacter extends Character {
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment
-  allowOversizedSprite?: boolean; // Allow sprite to exceed tile bounds (like objects)
 }
 
 export interface CustomEnemy extends Enemy {
@@ -352,7 +340,6 @@ export interface CustomEnemy extends Enemy {
   isCustom: boolean;
   createdAt: string;
   folderId?: string; // Optional folder assignment
-  allowOversizedSprite?: boolean; // Allow sprite to exceed tile bounds (like objects)
 }
 
 export interface CustomTileType {
