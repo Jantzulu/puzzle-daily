@@ -2607,16 +2607,17 @@ function drawEnemy(
     const maxHealth = enemyData?.health || enemy.currentHealth;
     const isBoss = enemyData?.isBoss === true;
     const enemySpriteTop = hasCustomSprite ? getSpriteTopY(enemyData?.customSprite, py) : undefined;
+    const barTopY = getHealthBarTopY(py, enemySpriteTop);
     drawHealthBar(ctx, px, py, enemy.currentHealth + (enemy.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'enemy', enemy.statusEffects, now, isBoss, enemySpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (enemyData) {
       const enemyHasMovement = enemyHasMovementActions(enemyData.behavior);
-      drawDirectionIndicator(ctx, px, py, facing || Direction.SOUTH, isBoss, enemyHasMovement);
+      drawDirectionIndicator(ctx, px, barTopY, facing || Direction.SOUTH, isBoss, enemyHasMovement);
     }
 
     // Draw status effect icons above health bar
-    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects, false, enemyKey, now);
+    drawStatusEffectIcons(ctx, px, py, enemy.statusEffects, false, enemyKey, now, barTopY);
   }
 }
 
@@ -2855,6 +2856,15 @@ function getHomingTargetGlow(
   return undefined;
 }
 
+// Top Y of the health bar: near the tile top by default, raised above the
+// sprite when it's taller than the tile. The direction arrow and status-effect
+// icons anchor to this same Y so the whole cluster moves together.
+const HEALTH_BAR_HEIGHT = 5; // Total height including 1px border on each side (3px inner + 2px border)
+function getHealthBarTopY(py: number, spriteTopY?: number): number {
+  const defaultY = py + 2;
+  return spriteTopY !== undefined ? Math.min(defaultY, spriteTopY - HEALTH_BAR_HEIGHT - 1) : defaultY;
+}
+
 function drawHealthBar(
   ctx: CanvasRenderingContext2D,
   px: number,
@@ -2870,7 +2880,7 @@ function drawHealthBar(
   homingGlowColor?: string
 ) {
   const barWidth = 30; // Fixed total width of the health bar (including border)
-  const barHeight = 5; // Total height including 1px border on each side (3px inner + 2px border)
+  const barHeight = HEALTH_BAR_HEIGHT;
   const innerHeight = 3; // Height of the colored bar inside the border
 
   // Boss icon dimensions
@@ -2882,8 +2892,7 @@ function drawHealthBar(
   const totalWidth = isBoss ? barWidth + bossIconSize + bossIconGap : barWidth;
   const startX = px + (TILE_SIZE - totalWidth) / 2 + (isBoss ? bossIconSize + bossIconGap : 0);
   // Place healthbar above the sprite's top edge, or near tile top if sprite fits in tile
-  const defaultY = py + 2;
-  const startY = spriteTopY !== undefined ? Math.min(defaultY, spriteTopY - barHeight - 1) : defaultY;
+  const startY = getHealthBarTopY(py, spriteTopY);
 
   // Draw boss icon if this is a boss
   if (isBoss) {
@@ -3027,7 +3036,8 @@ function drawStatusEffectIcons(
   statusEffects: StatusEffectInstance[] | undefined,
   isCorpse?: boolean,
   entityKey?: string,
-  now?: number
+  now?: number,
+  barTopY?: number // Health bar top Y — icons sit directly above it (defaults to the bar's tile-top position)
 ) {
   if (!statusEffects || statusEffects.length === 0) {
     // Still need to render ghost effects even if no current effects
@@ -3056,10 +3066,11 @@ function drawStatusEffectIcons(
   const iconSpacing = 1;
   const maxIconsVisible = 4;
 
-  // Position: left-aligned, immediately above health bar
-  // Health bar is at py+2, so icons go at py-8 (8px icon height, touching the bar)
+  // Position: left-aligned, immediately above the health bar (8px icon
+  // height, touching the bar) — tracks the bar when it's raised above a
+  // taller-than-tile sprite
   const startX = px + (TILE_SIZE - 32) / 2; // Same as health bar start
-  const startY = py - 6; // Position above the health bar
+  const startY = (barTopY ?? getHealthBarTopY(py)) - iconSize;
 
   const visibleEffects = combined.slice(0, maxIconsVisible);
   const hasOverflow = combined.length > maxIconsVisible;
@@ -3466,16 +3477,17 @@ function drawCharacter(
     // Draw health bar above the character
     const maxHealth = charData?.health || character.currentHealth;
     const charSpriteTop = hasCustomSprite ? getSpriteTopY(charData?.customSprite, py) : undefined;
+    const barTopY = getHealthBarTopY(py, charSpriteTop);
     drawHealthBar(ctx, px, py, character.currentHealth + (character.pendingVisualDamage ?? 0), maxHealth, entityIndex ?? -1, 'character', character.statusEffects, now, false, charSpriteTop, homingGlowColor);
 
     // Draw direction indicator next to health bar — green if moving, grey for facing only
     if (charData) {
       const charHasMovement = hasMovementActions(charData.behavior || []);
-      drawDirectionIndicator(ctx, px, py, facing, false, charHasMovement);
+      drawDirectionIndicator(ctx, px, barTopY, facing, false, charHasMovement);
     }
 
     // Draw status effect icons above health bar
-    drawStatusEffectIcons(ctx, px, py, character.statusEffects, false, charKey, now);
+    drawStatusEffectIcons(ctx, px, py, character.statusEffects, false, charKey, now, barTopY);
   }
 }
 
@@ -3483,14 +3495,13 @@ function drawCharacter(
 function drawDirectionIndicator(
   ctx: CanvasRenderingContext2D,
   px: number,
-  py: number,
+  barTopY: number,
   direction: Direction,
   isBoss: boolean = false,
   isMoving: boolean = true
 ) {
   const arrowSize = 3; // Small arrow
   const barWidth = 30;
-  const barHeight = 5;
   const bossIconSize = 7;
   const bossIconGap = 2;
 
@@ -3501,7 +3512,7 @@ function drawDirectionIndicator(
 
   // Position arrow to the right of health bar, vertically centered with it
   const indicatorX = barEndX + 3; // 3px gap from health bar
-  const indicatorY = py + 2 + barHeight / 2; // Centered with health bar (py + 2 is where bar starts)
+  const indicatorY = barTopY + HEALTH_BAR_HEIGHT / 2; // Centered with health bar
 
   // Draw arrow rotated based on direction
   ctx.save();
