@@ -306,6 +306,20 @@ export interface CustomSprite {
   spawnSpriteSheet?: SpriteSheetConfig; // Sprite sheet for spawn animation (plays once, no loop)
   spawnAnchorX?: number; spawnAnchorY?: number; spawnOffsetX?: number; spawnOffsetY?: number;
 
+  // Select animations - hero-card-only flourish played when a hero is selected for placement.
+  // selectIntro plays once, then transitions into selectLoop which loops for as long as the
+  // hero stays selected. Both are single-direction (NOT directional) - one direction is all
+  // that's needed, same as Spawn. Not used by enemies or by placed heroes (those show idle/move).
+  selectIntroImageData?: string; // Base64 encoded PNG/GIF for the one-shot select intro
+  selectIntroImageUrl?: string; // URL to selectIntro image
+  selectIntroSpriteSheet?: SpriteSheetConfig; // Sprite sheet for selectIntro (plays once, no loop)
+  selectIntroAnchorX?: number; selectIntroAnchorY?: number; selectIntroOffsetX?: number; selectIntroOffsetY?: number;
+
+  selectLoopImageData?: string; // Base64 encoded PNG/GIF for the looping selected state
+  selectLoopImageUrl?: string; // URL to selectLoop image
+  selectLoopSpriteSheet?: SpriteSheetConfig; // Sprite sheet for selectLoop (loops while selected)
+  selectLoopAnchorX?: number; selectLoopAnchorY?: number; selectLoopOffsetX?: number; selectLoopOffsetY?: number;
+
   // Note: Corpse appearance is handled by the final frame of the Death sprite sheet
 
   // Deprecated - for backwards compatibility
@@ -1292,6 +1306,8 @@ export function extractSpriteImageUrls(sprite: CustomSprite | undefined): string
   addIfExists(sprite.castingImageData, sprite.castingImageUrl, sprite.castingSpriteSheet);
   addIfExists(sprite.triggeredImageData, sprite.triggeredImageUrl, sprite.triggeredSpriteSheet);
   addIfExists(sprite.spawnImageData, sprite.spawnImageUrl, sprite.spawnSpriteSheet);
+  addIfExists(sprite.selectIntroImageData, sprite.selectIntroImageUrl, sprite.selectIntroSpriteSheet);
+  addIfExists(sprite.selectLoopImageData, sprite.selectLoopImageUrl, sprite.selectLoopSpriteSheet);
 
   // Directional sprites
   if (sprite.directionalSprites) {

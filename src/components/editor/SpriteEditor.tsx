@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { toast } from '../shared/Toast';
-import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection } from '../../utils/assetStorage';
+import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection, SpriteSheetConfig } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
@@ -449,6 +449,12 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const [spawnImageUrlInput, setSpawnImageUrlInput] = useState('');
   const [showSpawnSpriteSheetUrl, setShowSpawnSpriteSheetUrl] = useState(false);
   const [spawnSpriteSheetUrlInput, setSpawnSpriteSheetUrlInput] = useState('');
+
+  // Generic URL-input UI state for the non-directional animation sections (selectIntro,
+  // selectLoop). Keyed by `${prefix}:sheet` / `${prefix}:image` so one record serves both
+  // sections without a fixed useState per field. Spawn keeps its own dedicated state above.
+  const [animUrlInputs, setAnimUrlInputs] = useState<Record<string, string>>({});
+  const [showAnimUrl, setShowAnimUrl] = useState<Record<string, boolean>>({});
 
   // Sprite type choice per state — 'sheet' or 'image', used when neither is uploaded yet
   const [spriteTypeChoice, setSpriteTypeChoice] = useState<Record<string, 'sheet' | 'image'>>({});
@@ -1892,6 +1898,199 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             />
           </div>
         </div>
+      </div>
+    );
+  };
+
+  // Generic editor section for one non-directional animation slot (selectIntro / selectLoop).
+  // Mirrors the Spawn section (spritesheet OR static image, with anchor/offset controls) but is
+  // parameterized by field prefix so we don't triplicate ~230 lines of JSX. `defaultLoop` is
+  // baked into newly-uploaded spritesheets: selectIntro plays once (false), selectLoop loops (true).
+  const renderNonDirectionalAnim = (
+    prefix: 'selectIntro' | 'selectLoop',
+    opts: { title: string; description: string; defaultLoop: boolean },
+  ) => {
+    const { title, description, defaultLoop } = opts;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const s = sprite as any;
+    const sheet: SpriteSheetConfig | undefined = s[`${prefix}SpriteSheet`];
+    const imageData: string | undefined = s[`${prefix}ImageData`];
+    const imageUrl: string | undefined = s[`${prefix}ImageUrl`];
+    const hasSheet = !!(sheet?.imageData || sheet?.imageUrl);
+    const hasImage = !!(imageData || imageUrl);
+    const sheetKey = `${prefix}:sheet`;
+    const imageKey = `${prefix}:image`;
+    const fileAccept = 'image/png,image/jpg,image/jpeg,image/gif,image/webp';
+    const fileInputClass = 'flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-purple-600 file:text-parchment-100 hover:file:bg-purple-700';
+
+    const handleSheetUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { toast.warning('Please upload an image file (PNG, JPG)'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const data = ev.target?.result as string;
+        warnIfOversizedUpload(data, 'Sprite sheet', true);
+        onChange({ ...sprite, [`${prefix}SpriteSheet`]: { imageData: data, frameCount: 4, frameRate: 10, loop: defaultLoop } });
+      };
+      reader.readAsDataURL(file);
+    };
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!file.type.startsWith('image/')) { toast.warning('Please upload an image file (PNG, JPG, GIF)'); return; }
+      const reader = new FileReader();
+      reader.onload = (ev) => {
+        const data = ev.target?.result as string;
+        warnIfOversizedUpload(data, `${title} image`);
+        onChange({ ...sprite, [`${prefix}ImageData`]: data });
+      };
+      reader.readAsDataURL(file);
+    };
+    const sheetConfigChange = (field: string, value: unknown) => {
+      if (!sheet) return;
+      onChange({ ...sprite, [`${prefix}SpriteSheet`]: { ...sheet, [field]: value } });
+    };
+    const clearSheet = () => {
+      const rest = { ...sprite } as Record<string, unknown>;
+      delete rest[`${prefix}SpriteSheet`];
+      onChange(rest as unknown as CustomSprite);
+    };
+    const clearImage = () => {
+      const rest = { ...sprite } as Record<string, unknown>;
+      for (const f of ['ImageData', 'ImageUrl', 'AnchorX', 'AnchorY', 'OffsetX', 'OffsetY']) delete rest[`${prefix}${f}`];
+      onChange(rest as unknown as CustomSprite);
+    };
+    const setSheetUrl = (url: string) => {
+      onChange({ ...sprite, [`${prefix}SpriteSheet`]: { imageUrl: url, imageData: undefined, frameCount: sheet?.frameCount || 4, frameRate: sheet?.frameRate || 10, loop: sheet?.loop ?? defaultLoop } });
+    };
+    const setImageUrl = (url: string) => {
+      onChange({ ...sprite, [`${prefix}ImageUrl`]: url, [`${prefix}ImageData`]: undefined });
+    };
+    const toggleUrl = (key: string) => setShowAnimUrl(p => ({ ...p, [key]: !p[key] }));
+    const setUrlInput = (key: string, val: string) => setAnimUrlInputs(p => ({ ...p, [key]: val }));
+
+    return (
+      <div className="border-2 border-purple-700 rounded-lg p-4 bg-stone-900/50 mt-4">
+        <h4 className="text-purple-400 font-bold mb-3 flex items-center gap-2">
+          <span className="text-lg">✦</span> {title}
+        </h4>
+        <p className="text-xs text-stone-400 mb-3">{description}</p>
+
+        {/* Sprite Sheet Upload */}
+        <div className="mb-4">
+          <label className="block text-sm font-bold mb-2">{title} Sprite Sheet (Animation)</label>
+          <div className="space-y-2">
+            <div className="flex gap-2 items-start min-w-0">
+              <input type="file" accept={fileAccept} onChange={handleSheetUpload} className={fileInputClass} />
+              {hasSheet && (
+                <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                  <img src={sheet?.imageData || sheet?.imageUrl} alt={`${title} spritesheet`} className="max-w-full max-h-full object-contain" />
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <MediaBrowseButton onSelect={(url) => setSheetUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+              <button type="button" onClick={() => toggleUrl(sheetKey)} className="text-xs text-arcane-400 hover:text-arcane-300">
+                {showAnimUrl[sheetKey] ? '▼ Hide URL input' : '▶ Or paste URL...'}
+              </button>
+            </div>
+            {showAnimUrl[sheetKey] && (
+              <div className="flex gap-2">
+                <input
+                  type="url"
+                  value={animUrlInputs[sheetKey] || ''}
+                  onChange={(e) => setUrlInput(sheetKey, e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter' && (animUrlInputs[sheetKey] || '').trim()) { setSheetUrl(animUrlInputs[sheetKey].trim()); setUrlInput(sheetKey, ''); } }}
+                  placeholder="https://your-storage.com/sheet.png"
+                  className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                />
+                <button type="button" onClick={() => { if ((animUrlInputs[sheetKey] || '').trim()) { setSheetUrl(animUrlInputs[sheetKey].trim()); setUrlInput(sheetKey, ''); } }} className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm">Set</button>
+              </div>
+            )}
+            {hasSheet && (
+              <>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
+                    <input type="number" min="1" max="64" value={sheet?.frameCount || 4} onChange={(e) => sheetConfigChange('frameCount', parseInt(e.target.value))} className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm" />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
+                    <input type="number" min="1" max="60" value={sheet?.frameRate || 10} onChange={(e) => sheetConfigChange('frameRate', parseInt(e.target.value))} className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm" />
+                  </div>
+                </div>
+                <button onClick={clearSheet} className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700">✕ Clear {title} Sprite Sheet</button>
+                {renderAnchorControls(
+                  sheet?.anchorX ?? 0.5,
+                  sheet?.anchorY ?? 0.5,
+                  sheet?.offsetX ?? 0,
+                  sheet?.offsetY ?? 0,
+                  (ax, ay) => { sheetConfigChange('anchorX', ax); sheetConfigChange('anchorY', ay); },
+                  (field, val) => sheetConfigChange(field, val),
+                  undefined,
+                  sheet,
+                )}
+              </>
+            )}
+            <p className="text-xs text-stone-400">
+              {hasSheet ? (sheet?.imageUrl && !sheet?.imageData ? '✓ Using URL' : '✓ Sprite sheet configured') : 'No sprite sheet uploaded'}
+            </p>
+          </div>
+        </div>
+
+        {/* Static Image Upload - hidden when spritesheet is set */}
+        {!hasSheet && (
+          <div>
+            <label className="block text-sm font-bold mb-2">{title} Image (Static)</label>
+            <div className="space-y-2">
+              <div className="flex gap-2 items-start min-w-0">
+                <input type="file" accept={fileAccept} onChange={handleImageUpload} className={fileInputClass} />
+                {hasImage && (
+                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                    <img src={imageData || imageUrl} alt={`${title} static`} className="max-w-full max-h-full object-contain" />
+                  </div>
+                )}
+              </div>
+              <div className="flex items-center gap-2">
+                <MediaBrowseButton onSelect={(url) => setImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
+                <button type="button" onClick={() => toggleUrl(imageKey)} className="text-xs text-arcane-400 hover:text-arcane-300">
+                  {showAnimUrl[imageKey] ? '▼ Hide URL input' : '▶ Or paste URL...'}
+                </button>
+              </div>
+              {showAnimUrl[imageKey] && (
+                <div className="flex gap-2">
+                  <input
+                    type="url"
+                    value={animUrlInputs[imageKey] || ''}
+                    onChange={(e) => setUrlInput(imageKey, e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter' && (animUrlInputs[imageKey] || '').trim()) { setImageUrl(animUrlInputs[imageKey].trim()); setUrlInput(imageKey, ''); } }}
+                    placeholder="https://your-storage.com/image.png"
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
+                  />
+                  <button type="button" onClick={() => { if ((animUrlInputs[imageKey] || '').trim()) { setImageUrl(animUrlInputs[imageKey].trim()); setUrlInput(imageKey, ''); } }} className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm">Set</button>
+                </div>
+              )}
+              {hasImage && (
+                <>
+                  <button onClick={clearImage} className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700">✕ Clear {title} Image</button>
+                  {renderAnchorControls(
+                    s[`${prefix}AnchorX`] ?? 0.5,
+                    s[`${prefix}AnchorY`] ?? 0.5,
+                    s[`${prefix}OffsetX`] ?? 0,
+                    s[`${prefix}OffsetY`] ?? 0,
+                    (ax, ay) => { onChange({ ...sprite, [`${prefix}AnchorX`]: ax, [`${prefix}AnchorY`]: ay }); },
+                    (field, val) => { const key = field === 'offsetX' ? `${prefix}OffsetX` : `${prefix}OffsetY`; onChange({ ...sprite, [key]: val }); },
+                    imageData || imageUrl,
+                  )}
+                </>
+              )}
+              <p className="text-xs text-stone-400">
+                {hasImage ? (imageUrl && !imageData ? '✓ Using URL' : `✓ ${title} image uploaded`) : `No ${title.toLowerCase()} image set`}
+              </p>
+            </div>
+          </div>
+        )}
       </div>
     );
   };
@@ -3514,6 +3713,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
 
       {/* GLOBAL SETTINGS TAB */}
       {editorTab === 'global' && (
+      <>
       <div className="border-2 border-cyan-700 rounded-lg p-4 bg-stone-900/50">
         <h4 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
           <span className="text-lg">✦</span> Spawn Animation (appears when entity spawns)
@@ -3747,6 +3947,17 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           </div>
         )}
       </div>
+      {renderNonDirectionalAnim('selectIntro', {
+        title: 'Select Intro',
+        description: 'Hero-card only. Plays once when a hero is selected for placement, then transitions into the Select Loop. Not directional — one direction is all that\'s needed.',
+        defaultLoop: false,
+      })}
+      {renderNonDirectionalAnim('selectLoop', {
+        title: 'Select Loop',
+        description: 'Hero-card only. Loops for as long as the hero stays selected, after the Select Intro finishes. Not directional.',
+        defaultLoop: true,
+      })}
+      </>
       )}
 
       <div>
