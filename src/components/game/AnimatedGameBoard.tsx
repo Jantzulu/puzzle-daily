@@ -2484,8 +2484,11 @@ function drawEnemy(
   const py = y * TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : enemy.facing;
 
-  // Use undefined direction before game starts to force 'default' directional sprite
-  const directionToUse = gameStarted ? facing : undefined;
+  // Honor the entity's facing direction even during setup, so the post-spawn idle
+  // points the way the entity will move once the game starts. Falls back to the
+  // 'default' directional sprite when that specific direction isn't configured
+  // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
+  const directionToUse = facing;
 
   // Determine if enemy is casting (only if not moving, since moving takes priority)
   const isCasting = !isMoving && !!enemy.isCasting && !!enemy.castingEndTime && enemy.castingEndTime > now;
@@ -3334,8 +3337,11 @@ function drawCharacter(
   const py = y * TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : character.facing;
 
-  // Use undefined direction before game starts to force 'default' directional sprite
-  const directionToUse = gameStarted ? facing : undefined;
+  // Honor the entity's facing direction even during setup, so the post-spawn idle
+  // points the way the entity will move once the game starts. Falls back to the
+  // 'default' directional sprite when that specific direction isn't configured
+  // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
+  const directionToUse = facing;
 
   // Determine if character is casting (only if not moving, since moving takes priority)
   const isCasting = !isMoving && !!character.isCasting && !!character.castingEndTime && character.castingEndTime > now;

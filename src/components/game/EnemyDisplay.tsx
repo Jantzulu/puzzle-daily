@@ -278,6 +278,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   pixelScale={CARD_PIXEL_SCALE}
                   bottomAlign={!enemyData.isFloating}
                   canvasStyle={isSelected ? { filter: selectedGlow } : undefined}
+                  cardRole="enemy"
                 />
                 {totalCount > 1 && (
                   <span className="absolute -top-1 -right-1 text-xs bg-blood-900 text-blood-300 px-1 py-0.5 rounded-pixel min-w-[18px] text-center border border-blood-700 leading-none">

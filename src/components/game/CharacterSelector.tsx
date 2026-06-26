@@ -297,6 +297,9 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   noBackground
                   pixelScale={CARD_PIXEL_SCALE}
                   bottomAlign={!character.isFloating}
+                  cardRole="hero"
+                  cardSelected={isSelected}
+                  cardPlaced={isPlaced}
                   canvasStyle={(isSelected && !isPlaced) ? { filter: 'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(212,165,116,0.9)) drop-shadow(0 0 7px rgba(212,165,116,0.5))' } : undefined}
                 />
                 {isPlaced && (

@@ -1,9 +1,108 @@
 import React, { useEffect, useRef, useState } from 'react';
-import type { CustomSprite } from '../../utils/assetStorage';
+import type { CustomSprite, SpriteSheetConfig, SpriteDirection } from '../../utils/assetStorage';
 import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetStorage';
 import { drawSprite } from './SpriteEditor';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { loadImage, isImageReady, subscribeToImageLoads } from '../../utils/imageLoader';
+
+// ─── Game-card animation helpers ───────────────────────────────────────────
+// Drives the hero/enemy SELECTOR CARD sprites (opt-in via the `cardRole` prop).
+// Default look is the SOUTH movement loop; selecting an unplaced hero plays a
+// one-shot selectIntro then loops selectLoop; a placed hero shows the SOUTH idle
+// loop. All other SpriteThumbnail callers (editors, compendium) are unaffected.
+
+/** One resolved animation step for the card renderer. */
+interface CardPhase {
+  spriteSheet?: SpriteSheetConfig;
+  imageSrc?: string;
+  isSheet: boolean;
+  anchorX: number; anchorY: number; offsetX: number; offsetY: number;
+  loop: boolean;
+}
+
+/**
+ * Resolve a single animation slot to a drawable phase. For the directional
+ * slots (idle/moving) this honors the agreed south→default→simple fallback so a
+ * sprite that only has a `default` variant still renders. The flat slots
+ * (selectIntro/selectLoop) read the non-directional top-level fields. Returns
+ * null when the slot has no sprite sheet or image configured.
+ */
+function resolveCardSlot(
+  sprite: CustomSprite,
+  slot: 'idle' | 'moving' | 'selectIntro' | 'selectLoop',
+  loop: boolean,
+): CardPhase | null {
+  const directional = slot === 'idle' || slot === 'moving';
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const candidates: Array<Record<string, any>> = [];
+  if (directional && sprite.useDirectional && sprite.directionalSprites) {
+    const south = sprite.directionalSprites['s' as SpriteDirection];
+    const def = sprite.directionalSprites['default' as SpriteDirection];
+    if (south) candidates.push(south);
+    if (def) candidates.push(def);
+  }
+  candidates.push(sprite); // simple/top-level fields (and where the flat slots live)
+
+  for (const src of candidates) {
+    const sheet: SpriteSheetConfig | undefined = src[`${slot}SpriteSheet`];
+    const sheetSrc = resolveSpriteSheetSource(sheet);
+    if (sheet && sheetSrc) {
+      return {
+        spriteSheet: sheet, imageSrc: sheetSrc, isSheet: true,
+        anchorX: sheet.anchorX ?? 0.5, anchorY: sheet.anchorY ?? 0.5,
+        offsetX: sheet.offsetX ?? 0, offsetY: sheet.offsetY ?? 0, loop,
+      };
+    }
+    // Only the idle slot may fall back to the legacy imageData/imageUrl fields.
+    const legacyData = slot === 'idle' ? src.imageData : undefined;
+    const legacyUrl = slot === 'idle' ? src.imageUrl : undefined;
+    const imgSrc = resolveImageSource(src[`${slot}ImageData`] ?? legacyData, src[`${slot}ImageUrl`] ?? legacyUrl);
+    if (imgSrc) {
+      return {
+        imageSrc: imgSrc, isSheet: false,
+        anchorX: src[`${slot}AnchorX`] ?? 0.5, anchorY: src[`${slot}AnchorY`] ?? 0.5,
+        offsetX: src[`${slot}OffsetX`] ?? 0, offsetY: src[`${slot}OffsetY`] ?? 0, loop,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Build the ordered phase queue for a card given its state. Enemies and the
+ * default/placed states are a single looping phase; a selected unplaced hero is
+ * a one-shot selectIntro followed by a looping selectLoop (each skipped if
+ * absent, with sensible fallbacks).
+ */
+function buildCardPhases(
+  sprite: CustomSprite,
+  role: 'hero' | 'enemy',
+  selected: boolean,
+  placed: boolean,
+): CardPhase[] {
+  const southMoveOrIdle = () => resolveCardSlot(sprite, 'moving', true) || resolveCardSlot(sprite, 'idle', true);
+
+  if (role === 'enemy') {
+    const p = southMoveOrIdle();
+    return p ? [p] : [];
+  }
+  // hero
+  if (placed) {
+    const idle = resolveCardSlot(sprite, 'idle', true) || resolveCardSlot(sprite, 'moving', true);
+    return idle ? [idle] : [];
+  }
+  if (selected) {
+    const intro = resolveCardSlot(sprite, 'selectIntro', false);
+    const loopP = resolveCardSlot(sprite, 'selectLoop', true);
+    if (intro && loopP) return [intro, loopP];
+    if (loopP) return [loopP];
+    if (intro) return [{ ...intro, loop: true }]; // only an intro set → loop it rather than freeze
+    const base = southMoveOrIdle(); // no select anims → just keep the default look
+    return base ? [base] : [];
+  }
+  const base = southMoveOrIdle();
+  return base ? [base] : [];
+}
 
 interface SpriteThumbnailProps {
   sprite?: CustomSprite;
@@ -44,9 +143,21 @@ interface SpriteThumbnailProps {
    * height based on the tallest entity.
    */
   fillWidth?: boolean;
+  /**
+   * Opt-in to game-card animation behavior (see the card-animation helpers at
+   * the top of this file). When set, the sprite renders its SOUTH movement loop
+   * by default instead of the static idle/default look. 'hero' cards also react
+   * to `cardSelected` (selectIntro → selectLoop) and `cardPlaced` (south idle
+   * loop). Leave unset for editor/compendium previews to keep their idle look.
+   */
+  cardRole?: 'hero' | 'enemy';
+  /** Hero card is currently selected for placement (ignored once placed). */
+  cardSelected?: boolean;
+  /** Hero card has been placed on the board (shows the south idle loop). */
+  cardPlaced?: boolean;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillWidth = false }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillWidth = false, cardRole, cardSelected = false, cardPlaced = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
@@ -191,6 +302,59 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         : Math.round(canvasHeightCSS / 2 - drawHeight * ay + oy);
       ctx.drawImage(img, sourceX, 0, sw, sh, xPos, yPos, drawWidth, drawHeight);
     };
+
+    // Game-card animation path (opt-in via `cardRole`). Runs a phase queue:
+    // each non-looping phase plays once then advances; the final phase loops.
+    if (cardRole) {
+      const phases = buildCardPhases(sprite, cardRole, cardSelected, cardPlaced);
+      if (phases.length === 0) {
+        // No usable animation — fall back to the shape rendering.
+        ctx.clearRect(0, 0, canvasWidthCSS, canvasHeightCSS);
+        drawSprite(ctx, sprite, canvasWidthCSS / 2, canvasHeightCSS / 2, canvasHeightCSS);
+        return;
+      }
+      const STATIC_PHASE_MS = 600; // how long a static (non-sheet) one-shot phase shows before advancing
+      let phaseIndex = 0;
+      let phaseStart = Date.now();
+      const animateCard = () => {
+        const now = Date.now();
+        const phase = phases[phaseIndex];
+        const img = phase.imageSrc ? loadImage(phase.imageSrc) : null;
+        if (!img || !isImageReady(img)) {
+          // Image still loading — wait; the imageLoads subscription re-runs this effect.
+          animationFrameId = requestAnimationFrame(animateCard);
+          return;
+        }
+        const isSheet = !!(phase.isSheet && phase.spriteSheet);
+        const frameCount = isSheet ? (phase.spriteSheet!.frameCount || 4) : 1;
+        const frameRate = isSheet ? (phase.spriteSheet!.frameRate || 10) : 1;
+        const frameWidth = isSheet ? (phase.spriteSheet!.frameWidth || img.width / frameCount) : img.width;
+        const frameHeight = isSheet ? (phase.spriteSheet!.frameHeight || img.height) : img.height;
+        const frameDuration = 1000 / frameRate;
+        const elapsed = now - phaseStart;
+        const phaseDuration = isSheet ? frameCount * frameDuration : STATIC_PHASE_MS;
+
+        // Advance to the next phase once a non-looping phase has played through.
+        if (!phase.loop && phaseIndex < phases.length - 1 && elapsed >= phaseDuration) {
+          phaseIndex++;
+          phaseStart = now;
+          animationFrameId = requestAnimationFrame(animateCard);
+          return;
+        }
+
+        let frameIndex = 0;
+        if (isSheet) {
+          frameIndex = Math.floor(elapsed / frameDuration);
+          if (frameIndex >= frameCount) frameIndex = phase.loop ? frameIndex % frameCount : frameCount - 1;
+        }
+        drawSpriteFrame(img, frameIndex, frameCount, frameWidth, frameHeight, phase.anchorX, phase.anchorY, phase.offsetX, phase.offsetY);
+        animationFrameId = requestAnimationFrame(animateCard);
+      };
+      animateCard();
+      return () => {
+        if (animationFrameId !== null) cancelAnimationFrame(animationFrameId);
+      };
+    }
 
     const renderThumbnail = () => {
       // Clear canvas (background is handled by CSS on parent div)
@@ -340,7 +504,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale, fillWidth, canvasWidthCSS, canvasHeightCSS]);
+  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale, fillWidth, canvasWidthCSS, canvasHeightCSS, cardRole, cardSelected, cardPlaced]);
 
   if (!sprite) {
     return (
