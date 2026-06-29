@@ -247,7 +247,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                           className="bg-stone-600 rounded flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
                           style={{ width: selectedId === enemy.id ? 56 : 40, height: selectedId === enemy.id ? 56 : 40 }}
                         >
-                          <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" />
+                          <SpriteThumbnail sprite={enemy.customSprite} size={selectedId === enemy.id ? 56 : 40} previewType="entity" fillBox />
                         </div>
                         <div className="min-w-0">
                           <h3 className={`font-bold ${scaledNameClass(enemy.name)}`}>{enemy.name}</h3>
@@ -292,7 +292,7 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                 <div className="flex justify-between items-center gap-2">
                   <div className="flex items-center gap-2 md:gap-4 min-w-0">
                     <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded items-center justify-center overflow-hidden flex-shrink-0">
-                      <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} previewType="entity" />
+                      <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} previewType="entity" fillBox />
                     </div>
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">

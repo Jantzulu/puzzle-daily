@@ -141,6 +141,10 @@ function drawSpriteSheet(
   offsetX: number = 0,
   offsetY: number = 0
 ): void {
+  // Offsets are whole art pixels — round defensively so any legacy/imported
+  // fractional value can't introduce zoom-dependent sub-pixel misalignment.
+  offsetX = Math.round(offsetX);
+  offsetY = Math.round(offsetY);
   // Resolve image source from data or URL
   const imageSrc = sheet.imageData || sheet.imageUrl;
   if (!imageSrc) return;
@@ -211,6 +215,10 @@ function drawSpriteSheetFromStartTime(
   offsetX: number = 0,
   offsetY: number = 0
 ): void {
+  // Offsets are whole art pixels — round defensively so any legacy/imported
+  // fractional value can't introduce zoom-dependent sub-pixel misalignment.
+  offsetX = Math.round(offsetX);
+  offsetY = Math.round(offsetY);
   // Resolve image source from data or URL
   const imageSrc = sheet.imageData || sheet.imageUrl;
   if (!imageSrc) return;
@@ -335,7 +343,8 @@ const DirectionPreviewCanvas: React.FC<{ dirConfig: DirectionalSpriteConfig; siz
  * Small inline preview showing how a sprite looks with the current anchor/offset.
  * Renders a tile boundary with the sprite positioned according to anchor settings.
  */
-const AnchorPreview: React.FC<{
+/** One drawable layer (active sprite or a ghosted other-direction sprite). */
+interface AnchorPreviewLayer {
   imageSrc: string;
   anchorX: number;
   anchorY: number;
@@ -343,13 +352,31 @@ const AnchorPreview: React.FC<{
   offsetY: number;
   isSpriteSheet?: boolean;
   frameCount?: number;
-}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount }) => {
+  /** Explicit frame dims from the sheet config — honored so the preview slices
+   *  frames exactly like the board does for imported sheets. */
+  frameWidth?: number;
+  frameHeight?: number;
+}
+
+const AnchorPreview: React.FC<AnchorPreviewLayer & {
+  /** Other directions' same-slot sprites, drawn faded behind the active one. */
+  ghosts?: AnchorPreviewLayer[];
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
+  const [loadTick, setLoadTick] = useState(0);
   const previewSize = 80;
-  // Same zoom the board uses at default size (48px tiles / 24 art px = 2×).
-  // The dashed rect is one tile; overflow shows true on-board proportions.
+  // Same zoom the board uses at default size (48px tiles / 24 art px = 2×),
+  // i.e. tileSize / ART_TILE_PX. Sprite and tile scale together, so sprite-to-
+  // tile proportions match the board; overflow shows true on-board size.
   const zoom = 2;
   const tileRect = ART_TILE_PX * zoom;
+
+  // Redraw when any sprite image finishes loading (covers active + ghosts,
+  // including imported sheets that resolve their dimensions only once cached).
+  useEffect(() => {
+    const unsub = subscribeToSpriteImageLoads(() => setLoadTick((t) => t + 1));
+    return unsub;
+  }, []);
 
   useEffect(() => {
     const canvas = previewRef.current;
@@ -361,44 +388,64 @@ const AnchorPreview: React.FC<{
     const dpr = window.devicePixelRatio || 1;
     canvas.width = previewSize * dpr;
     canvas.height = previewSize * dpr;
-    ctx.scale(dpr, dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, previewSize, previewSize);
 
-    const img = new Image();
-    img.onload = () => {
-      ctx.clearRect(0, 0, previewSize, previewSize);
+    const tileOrigin = (previewSize - tileRect) / 2;
 
-      // Draw tile boundary (one tile, centered)
-      const tileOrigin = (previewSize - tileRect) / 2;
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-      ctx.setLineDash([3, 3]);
-      ctx.strokeRect(tileOrigin + 0.5, tileOrigin + 0.5, tileRect - 1, tileRect - 1);
+    // Art-pixel grid inside the tile — one cell per art pixel. Makes whole-pixel
+    // offset alignment visible and gives a fixed reference for centering.
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    for (let i = 1; i < ART_TILE_PX; i++) {
+      const g = Math.round(tileOrigin + i * zoom) + 0.5;
+      ctx.moveTo(g, tileOrigin);
+      ctx.lineTo(g, tileOrigin + tileRect);
+      ctx.moveTo(tileOrigin, g);
+      ctx.lineTo(tileOrigin + tileRect, g);
+    }
+    ctx.stroke();
 
-      // Draw center crosshair
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.setLineDash([2, 3]);
-      ctx.beginPath();
-      ctx.moveTo(previewSize / 2, 0);
-      ctx.lineTo(previewSize / 2, previewSize);
-      ctx.moveTo(0, previewSize / 2);
-      ctx.lineTo(previewSize, previewSize / 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+    // Tile boundary (one tile, centered)
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+    ctx.setLineDash([3, 3]);
+    ctx.strokeRect(tileOrigin + 0.5, tileOrigin + 0.5, tileRect - 1, tileRect - 1);
+    ctx.setLineDash([]);
 
-      // Native-size rendering — for sprite sheets, use first frame only
-      const srcWidth = isSpriteSheet && frameCount ? img.naturalWidth / frameCount : img.naturalWidth;
-      const srcHeight = img.naturalHeight;
+    // Center crosshair
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+    ctx.setLineDash([2, 3]);
+    ctx.beginPath();
+    ctx.moveTo(previewSize / 2, 0);
+    ctx.lineTo(previewSize / 2, previewSize);
+    ctx.moveTo(0, previewSize / 2);
+    ctx.lineTo(previewSize, previewSize / 2);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Draw one sprite layer at frame 0, faithful to the board's native-size
+    // math: explicit frame dims when present, else naturalWidth / frameCount.
+    const drawLayer = (layer: AnchorPreviewLayer, alpha: number) => {
+      const img = loadSpriteImage(layer.imageSrc);
+      if (!img.complete || img.naturalWidth === 0) return;
+      const srcWidth = layer.frameWidth
+        ?? (layer.isSpriteSheet && layer.frameCount ? img.naturalWidth / layer.frameCount : img.naturalWidth);
+      const srcHeight = layer.frameHeight ?? img.naturalHeight;
       const drawWidth = Math.round(srcWidth * zoom);
       const drawHeight = Math.round(srcHeight * zoom);
-
-      // Draw first frame with anchor applied (offsets are art pixels)
-      const dx = Math.round(previewSize / 2 - drawWidth * anchorX + offsetX * zoom);
-      const dy = Math.round(previewSize / 2 - drawHeight * anchorY + offsetY * zoom);
-      // Use pixelated rendering for crisp sprites
-      ctx.imageSmoothingEnabled = false;
-      ctx.drawImage(img, 0, 0, srcWidth, srcHeight, dx, dy, drawWidth, drawHeight);
+      const dx = Math.round(previewSize / 2 - drawWidth * layer.anchorX + Math.round(layer.offsetX) * zoom);
+      const dy = Math.round(previewSize / 2 - drawHeight * layer.anchorY + Math.round(layer.offsetY) * zoom);
+      ctx.globalAlpha = alpha;
+      ctx.drawImage(img, 0, 0, Math.round(srcWidth), Math.round(srcHeight), dx, dy, drawWidth, drawHeight);
+      ctx.globalAlpha = 1;
     };
-    img.src = imageSrc;
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, tileRect]);
+
+    // Ghosts behind (faded), then the active layer on top.
+    if (ghosts) for (const g of ghosts) drawLayer(g, 0.28);
+    drawLayer({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight }, 1);
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, tileRect, loadTick]);
 
   return (
     <canvas
@@ -1801,6 +1848,35 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const hasSpawnSpriteSheetConfig = sprite.spawnSpriteSheet?.imageData || sprite.spawnSpriteSheet?.imageUrl;
   const hasSpawnImageConfig = sprite.spawnImageData || sprite.spawnImageUrl;
 
+  // Build faded "ghost" layers from the OTHER directions' same-slot sheets, so
+  // the offset preview shows how the direction being edited lines up with its
+  // siblings — no need to launch a game to check alignment. Directional mode only.
+  const buildDirectionGhosts = (
+    slotKey: 'idleSpriteSheet' | 'movingSpriteSheet' | 'deathSpriteSheet' | 'castingSpriteSheet',
+  ): AnchorPreviewLayer[] => {
+    if (spriteMode !== 'directional' || !sprite.directionalSprites) return [];
+    const layers: AnchorPreviewLayer[] = [];
+    for (const dir of DIRECTIONS) {
+      if (dir.key === selectedDirection) continue;
+      const sheet = sprite.directionalSprites[dir.key]?.[slotKey];
+      const src = sheet ? (sheet.imageData || sheet.imageUrl) : undefined;
+      if (sheet && src) {
+        layers.push({
+          imageSrc: src,
+          anchorX: sheet.anchorX ?? 0.5,
+          anchorY: sheet.anchorY ?? 0.5,
+          offsetX: sheet.offsetX ?? 0,
+          offsetY: sheet.offsetY ?? 0,
+          isSpriteSheet: true,
+          frameCount: sheet.frameCount,
+          frameWidth: sheet.frameWidth,
+          frameHeight: sheet.frameHeight,
+        });
+      }
+    }
+    return layers;
+  };
+
   // Helper to render compact anchor point grid + offset sliders + scale slider with inline preview
   const renderAnchorControls = (
     anchorX: number = 0.5,
@@ -1811,6 +1887,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     onOffsetChange: (field: 'offsetX' | 'offsetY', val: number) => void,
     previewImageSrc?: string,
     previewSpriteSheet?: import('../../utils/assetStorage').SpriteSheetConfig,
+    ghosts?: AnchorPreviewLayer[],
   ) => {
     const anchorPoints: { label: string; x: number; y: number }[] = [
       { label: 'TL', x: 0, y: 0 }, { label: 'T', x: 0.5, y: 0 }, { label: 'TR', x: 1, y: 0 },
@@ -1854,6 +1931,9 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               offsetY={offsetY}
               isSpriteSheet={!!previewSpriteSheet}
               frameCount={previewSpriteSheet?.frameCount}
+              frameWidth={previewSpriteSheet?.frameWidth}
+              frameHeight={previewSpriteSheet?.frameHeight}
+              ghosts={ghosts}
             />
           )}
         </div>
@@ -1865,16 +1945,18 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               type="range"
               min="-50"
               max="50"
+              step="1"
               value={offsetX}
-              onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value))}
+              onChange={(e) => onOffsetChange('offsetX', Math.round(parseFloat(e.target.value)) || 0)}
               className="flex-1 h-3"
             />
             <input
               type="number"
               min="-50"
               max="50"
+              step="1"
               value={offsetX}
-              onChange={(e) => onOffsetChange('offsetX', parseInt(e.target.value) || 0)}
+              onChange={(e) => onOffsetChange('offsetX', Math.round(parseFloat(e.target.value)) || 0)}
               className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
             />
           </div>
@@ -1884,16 +1966,18 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               type="range"
               min="-50"
               max="50"
+              step="1"
               value={offsetY}
-              onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value))}
+              onChange={(e) => onOffsetChange('offsetY', Math.round(parseFloat(e.target.value)) || 0)}
               className="flex-1 h-3"
             />
             <input
               type="number"
               min="-50"
               max="50"
+              step="1"
               value={offsetY}
-              onChange={(e) => onOffsetChange('offsetY', parseInt(e.target.value) || 0)}
+              onChange={(e) => onOffsetChange('offsetY', Math.round(parseFloat(e.target.value)) || 0)}
               className="w-10 text-[10px] text-stone-300 bg-stone-700 rounded px-1 py-0.5 text-right"
             />
           </div>
@@ -2739,6 +2823,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleIdleSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.idleSpriteSheet,
+                    buildDirectionGhosts('idleSpriteSheet'),
                   )}
                 </>
               )}
@@ -2993,6 +3078,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleMovingSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.movingSpriteSheet,
+                    buildDirectionGhosts('movingSpriteSheet'),
                   )}
                 </>
               )}
@@ -3264,6 +3350,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleDeathSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.deathSpriteSheet,
+                    buildDirectionGhosts('deathSpriteSheet'),
                   )}
                 </>
               )}
@@ -3535,6 +3622,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (field, val) => handleCastingSpriteSheetConfigChange(field, val),
                     undefined,
                     currentConfig.castingSpriteSheet,
+                    buildDirectionGhosts('castingSpriteSheet'),
                   )}
                 </>
               )}
@@ -4119,8 +4207,8 @@ function drawSpriteConfig(
     // Anchor from per-state image fields
     const ax = (imageState === 'moving' ? config.movingAnchorX : imageState === 'casting' ? config.castingAnchorX : config.idleAnchorX) ?? 0.5;
     const ay = (imageState === 'moving' ? config.movingAnchorY : imageState === 'casting' ? config.castingAnchorY : config.idleAnchorY) ?? 0.5;
-    const ox = (imageState === 'moving' ? config.movingOffsetX : imageState === 'casting' ? config.castingOffsetX : config.idleOffsetX) ?? 0;
-    const oy = (imageState === 'moving' ? config.movingOffsetY : imageState === 'casting' ? config.castingOffsetY : config.idleOffsetY) ?? 0;
+    const ox = Math.round((imageState === 'moving' ? config.movingOffsetX : imageState === 'casting' ? config.castingOffsetX : config.idleOffsetX) ?? 0);
+    const oy = Math.round((imageState === 'moving' ? config.movingOffsetY : imageState === 'casting' ? config.castingOffsetY : config.idleOffsetY) ?? 0);
 
     // Use cached image with load notification for GIF animation support
     const img = loadSpriteImage(imageToUse);
@@ -4274,8 +4362,8 @@ export function drawSprite(
     // Anchor from per-state image fields
     const ax = (imgState === 'moving' ? sprite.movingAnchorX : imgState === 'casting' ? sprite.castingAnchorX : sprite.idleAnchorX) ?? 0.5;
     const ay = (imgState === 'moving' ? sprite.movingAnchorY : imgState === 'casting' ? sprite.castingAnchorY : sprite.idleAnchorY) ?? 0.5;
-    const ox = (imgState === 'moving' ? sprite.movingOffsetX : imgState === 'casting' ? sprite.castingOffsetX : sprite.idleOffsetX) ?? 0;
-    const oy = (imgState === 'moving' ? sprite.movingOffsetY : imgState === 'casting' ? sprite.castingOffsetY : sprite.idleOffsetY) ?? 0;
+    const ox = Math.round((imgState === 'moving' ? sprite.movingOffsetX : imgState === 'casting' ? sprite.castingOffsetX : sprite.idleOffsetX) ?? 0);
+    const oy = Math.round((imgState === 'moving' ? sprite.movingOffsetY : imgState === 'casting' ? sprite.castingOffsetY : sprite.idleOffsetY) ?? 0);
 
     // Use cached image with load notification for GIF animation support
     const img = loadSpriteImage(spriteImageToUse);
@@ -4606,6 +4694,9 @@ function drawImage(
   offsetY: number = 0
 ): void {
   const img = loadSpriteImage(imageData);
+  // Offsets are whole art pixels — round defensively (see drawSpriteSheet).
+  offsetX = Math.round(offsetX);
+  offsetY = Math.round(offsetY);
 
   try {
     // Native-size rendering: image dims × zoom; offsets are in art pixels

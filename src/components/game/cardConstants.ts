@@ -3,7 +3,7 @@
  * EnemyDisplay, etc.). Kept in one place so tuning is a single-line edit.
  */
 
-import type { CustomSprite } from '../../utils/assetStorage';
+import type { CustomSprite, SpriteSheetConfig, SpriteDirection } from '../../utils/assetStorage';
 import { resolveImageSource, resolveSpriteSheetSource } from '../../utils/assetStorage';
 import { loadImage, isImageReady } from '../../utils/imageLoader';
 
@@ -101,6 +101,61 @@ export function getSpriteNativeHeight(sprite?: CustomSprite): number {
   return FALLBACK_NATIVE_HEIGHT;
 }
 
+/** Native pixel height of one sprite-sheet config, or 0 if unresolved. */
+function sheetNativeHeight(sheet?: SpriteSheetConfig): number {
+  if (!sheet) return 0;
+  if (sheet.frameHeight) return sheet.frameHeight;
+  const src = resolveSpriteSheetSource(sheet);
+  if (src) {
+    const img = loadImage(src);
+    if (img && isImageReady(img) && img.naturalHeight > 0) return img.naturalHeight;
+  }
+  return 0;
+}
+
+/**
+ * Native pixel height of the TALLEST frame a card might display for this
+ * sprite — across every animation slot a card can actually play: idle and
+ * moving (default/south directional variants used in previews), plus the
+ * flat selectIntro / selectLoop slots a selected hero card cycles through.
+ *
+ * Reserving against this max (rather than the idle frame alone) means the
+ * card's sprite area is tall enough for the selected/moving animations too,
+ * so a taller select animation is never clipped when the hero is selected.
+ *
+ * Falls back to the idle-only measure (which also covers static-image
+ * sprites and the FALLBACK default) when no sheet has resolved yet.
+ */
+export function getSpriteMaxCardNativeHeight(sprite?: CustomSprite): number {
+  if (!sprite) return FALLBACK_NATIVE_HEIGHT;
+
+  const sheets: Array<SpriteSheetConfig | undefined> = [];
+  // Directional default/south idle+moving — the variants card previews use.
+  if (sprite.useDirectional && sprite.directionalSprites) {
+    for (const dir of [sprite.directionalSprites.default, sprite.directionalSprites['s' as SpriteDirection]]) {
+      if (dir) sheets.push(dir.idleSpriteSheet, dir.movingSpriteSheet);
+    }
+  }
+  // Top-level slots: simple idle/moving + the flat select slots a hero plays.
+  sheets.push(
+    sprite.idleSpriteSheet,
+    sprite.movingSpriteSheet,
+    sprite.selectIntroSpriteSheet,
+    sprite.selectLoopSpriteSheet,
+  );
+
+  let maxH = 0;
+  for (const sheet of sheets) {
+    const h = sheetNativeHeight(sheet);
+    if (h > maxH) maxH = h;
+  }
+
+  // Fold in the idle-only measure as a floor — it handles static-image
+  // sprites and the FALLBACK_NATIVE_HEIGHT default, so the result is always
+  // at least a sensible height even before sheet images finish loading.
+  return Math.max(maxH, getSpriteNativeHeight(sprite));
+}
+
 /**
  * Compute the display-pixel height for a card's sprite area, given the
  * collection of sprites that will appear in the same card row.
@@ -110,13 +165,17 @@ export function getSpriteNativeHeight(sprite?: CustomSprite): number {
  * row get this height, so they render at a uniform size and the tallest
  * sprite is never clipped at the top.
  *
+ * Height is reserved against each sprite's TALLEST playable animation slot
+ * (see `getSpriteMaxCardNativeHeight`), so a selected hero's select-intro/
+ * loop animation never overflows the card it was sized for.
+ *
  * Clamped to a minimum so selectors with only very small sprites still
  * have a reasonable card height.
  */
 export function computeCardSpriteAreaHeight(sprites: Array<CustomSprite | undefined>): number {
   let maxNative = MIN_NATIVE_HEIGHT;
   for (const sprite of sprites) {
-    const h = getSpriteNativeHeight(sprite);
+    const h = getSpriteMaxCardNativeHeight(sprite);
     if (h > maxNative) maxNative = h;
   }
   return maxNative * CARD_PIXEL_SCALE;

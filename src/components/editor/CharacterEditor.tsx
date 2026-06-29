@@ -274,7 +274,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                           className="bg-stone-700 rounded-pixel flex items-center justify-center overflow-hidden flex-shrink-0 transition-all duration-150"
                           style={{ width: selectedId === char.id ? 56 : 40, height: selectedId === char.id ? 56 : 40 }}
                         >
-                          <SpriteThumbnail sprite={char.customSprite} size={selectedId === char.id ? 56 : 40} previewType="entity" />
+                          <SpriteThumbnail sprite={char.customSprite} size={selectedId === char.id ? 56 : 40} previewType="entity" fillBox />
                         </div>
                         <div className="min-w-0">
                           <h3 className={`font-bold text-parchment-200 ${scaledNameClass(char.name)}`}>{char.name}</h3>
@@ -321,7 +321,7 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                 <div className="flex justify-between items-center gap-2">
                   <div className="flex items-center gap-2 md:gap-4 min-w-0">
                     <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
-                      <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} previewType="entity" />
+                      <SpriteThumbnail sprite={editing.customSprite} size={isMobile ? 40 : 64} previewType="entity" fillBox />
                     </div>
                     <div className="min-w-0">
                       <h2 className="text-lg md:text-2xl font-bold font-medieval text-copper-400 truncate">

@@ -132,6 +132,18 @@ interface SpriteThumbnailProps {
    */
   pixelScale?: number;
   /**
+   * If true, the sprite is scaled to fill its icon box: the native frame is
+   * contain-fit to the canvas (largest scale that fits, with a small margin),
+   * independent of `sprite.size`/`spriteScale` and the legacy 0.6 factor.
+   *
+   * Use this for asset-editor list thumbnails where the goal is a readable,
+   * well-filled icon for every sprite regardless of native resolution — NOT
+   * board-faithful sizing (that's `pixelScale`). Ignored when `pixelScale` is
+   * set. Unlike the legacy fit-to-box path, this never depends on the removed
+   * `sprite.size` knob, so entities can't render tiny.
+   */
+  fillBox?: boolean;
+  /**
    * If true, the canvas stretches horizontally to fill its container's width
    * (measured via ResizeObserver). The `size` prop controls the CANVAS HEIGHT
    * only in this mode — the canvas is rectangular, width = parent width,
@@ -157,7 +169,7 @@ interface SpriteThumbnailProps {
   cardPlaced?: boolean;
 }
 
-export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillWidth = false, cardRole, cardSelected = false, cardPlaced = false }) => {
+export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillBox = false, fillWidth = false, cardRole, cardSelected = false, cardPlaced = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
@@ -249,6 +261,14 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         // extend beyond canvas bounds (canvas will clip naturally).
         drawWidth = frameWidth * pixelScale;
         drawHeight = frameHeight * pixelScale;
+      } else if (fillBox) {
+        // Fill-the-icon: contain-fit the native frame to the canvas with a
+        // small margin. Independent of sprite.size, so entities never render
+        // tiny; fractional scale is fine here (smoothing is off).
+        const FILL_PAD = 0.9;
+        const fit = Math.min(canvasWidthCSS / frameWidth, canvasHeightCSS / frameHeight) * FILL_PAD;
+        drawWidth = Math.round(frameWidth * fit);
+        drawHeight = Math.round(frameHeight * fit);
       } else {
         // Fit-to-box legacy path (preserved for backward compatibility).
         // Uses height as the reference dimension (matches the original
@@ -443,6 +463,12 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
             // Explicit pixelScale mode — see drawSpriteFrame for rationale
             drawWidth = img.width * pixelScale;
             drawHeight = img.height * pixelScale;
+          } else if (fillBox) {
+            // Fill-the-icon: contain-fit to the canvas (see drawSpriteFrame).
+            const FILL_PAD = 0.9;
+            const fit = Math.min(canvasWidthCSS / img.width, canvasHeightCSS / img.height) * FILL_PAD;
+            drawWidth = Math.round(img.width * fit);
+            drawHeight = Math.round(img.height * fit);
           } else {
             const legacySize = canvasHeightCSS;
             const maxSize = (sprite.size || 0.6) * legacySize * spriteScale;
@@ -504,7 +530,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
         cancelAnimationFrame(animationFrameId);
       }
     };
-  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale, fillWidth, canvasWidthCSS, canvasHeightCSS, cardRole, cardSelected, cardPlaced]);
+  }, [sprite, size, previewType, spriteScale, bottomAlign, renderTrigger, pixelScale, fillBox, fillWidth, canvasWidthCSS, canvasHeightCSS, cardRole, cardSelected, cardPlaced]);
 
   if (!sprite) {
     return (
