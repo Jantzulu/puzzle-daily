@@ -1595,6 +1595,9 @@ export function executeTurn(gameState: GameState): GameState {
     newCharacter.teleportFromX = undefined;
     newCharacter.teleportFromY = undefined;
     newCharacter.iceSlideDistance = undefined;
+    // Reset casting once per turn (NOT per action) so a SPELL anywhere in this
+    // turn's action chain stays flagged for the cast animation.
+    newCharacter.isCasting = false;
 
     if (!newCharacter.active || !isEntityFunctional(newCharacter)) {
       newCharacters.push(newCharacter);
@@ -1750,6 +1753,9 @@ export function executeTurn(gameState: GameState): GameState {
     newEnemy.teleportFromX = undefined;
     newEnemy.teleportFromY = undefined;
     newEnemy.iceSlideDistance = undefined;
+    // Reset casting once per turn (NOT per action) so a SPELL anywhere in this
+    // turn's action chain stays flagged for the cast animation.
+    newEnemy.isCasting = false;
 
     if (newEnemy.dead) {
       newEnemies.push(newEnemy);
@@ -1823,7 +1829,7 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.facing = result.facing;
       newEnemy.currentHealth = result.currentHealth;
       newEnemy.dead = result.dead;
-      newEnemy.isCasting = result.isCasting; // propagate per-turn casting flag for the cast animation
+      if (result.isCasting) newEnemy.isCasting = true; // sticky within the turn (reset once at turn start); a later chained action can't clear it
       newEnemy.spellCooldowns = result.spellCooldowns;
       newEnemy.justTeleported = result.justTeleported;
       newEnemy.teleportFromX = result.teleportFromX;

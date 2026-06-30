@@ -1303,6 +1303,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // Walk for the whole turn if this enemy changed tiles this turn
           // (gated to active play so it never loops in place at victory/defeat/setup).
           const movedThisTurn = (enemyMovedThisTurnRef.current.get(index) ?? false) && gameState.gameStatus === 'running';
+          // A cast turn (casting but NOT moving) takes over immediately, overriding
+          // any leftover walk animation still finishing from the previous turn. If
+          // the entity also moves this turn, movedThisTurn wins and no cast plays.
+          const castingThisTurn = !!enemy.isCasting && !movedThisTurn && gameState.gameStatus === 'running';
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1313,7 +1317,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             effectiveAnimDuration = anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION;
           }
 
-          if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted) {
+          if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted && !castingThisTurn) {
             const elapsed = now - anim.startTime;
 
             if (anim.teleported) {
@@ -1366,6 +1370,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // Walk for the whole turn if this character changed tiles this turn
           // (gated to active play so it never loops in place at victory/defeat/setup).
           const movedThisTurn = (characterMovedThisTurnRef.current.get(index) ?? false) && gameState.gameStatus === 'running';
+          // A cast turn (casting but NOT moving) takes over immediately, overriding
+          // any leftover walk animation still finishing from the previous turn. If
+          // the entity also moves this turn, movedThisTurn wins and no cast plays.
+          const castingThisTurn = !!character.isCasting && !movedThisTurn && gameState.gameStatus === 'running';
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1376,7 +1384,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             effectiveAnimDuration = anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE + IDLE_DURATION;
           }
 
-          if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted) {
+          if (anim && now - anim.startTime < effectiveAnimDuration && gameStarted && !castingThisTurn) {
             const elapsed = now - anim.startTime;
 
             if (anim.teleported) {

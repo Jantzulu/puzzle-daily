@@ -138,9 +138,6 @@ export function executeAction(
   gameState: GameState
 ): PlacedCharacter {
   const updatedCharacter = { ...character };
-  // Casting is a per-turn visual flag: reset each action so it's true only on
-  // the turn a SPELL is actually executed (set below). Deterministic — no clock.
-  updatedCharacter.isCasting = false;
 
   // Check if entity can act at all (Stun/Sleep prevention)
   const actCheck = canEntityAct(character);
