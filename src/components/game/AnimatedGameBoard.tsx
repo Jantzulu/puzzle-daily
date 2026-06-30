@@ -1035,8 +1035,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const wasDeadBefore = prevCharacterDeadStateRef.current.get(char.characterId) || false;
       const isDeadNow = char.dead || false;
 
-      // Entity just died - start death animation
-      if (!wasDeadBefore && isDeadNow) {
+      // Entity just died - start death animation (unless the draw loop already
+      // stamped a start time this frame — don't overwrite it).
+      if (!wasDeadBefore && isDeadNow && !newDeathAnimations.has(char.characterId)) {
         newDeathAnimations.set(char.characterId, {
           startTime: now,
           x: char.x,
@@ -1072,8 +1073,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const wasDeadBefore = prevEnemyDeadStateRef.current.get(idx) || false;
       const isDeadNow = enemy.dead || false;
 
-      // Entity just died - start death animation
-      if (!wasDeadBefore && isDeadNow) {
+      // Entity just died - start death animation (unless the draw loop already
+      // stamped a start time this frame — don't overwrite it).
+      if (!wasDeadBefore && isDeadNow && !newDeathAnimations.has(idx)) {
         newDeathAnimations.set(idx, {
           startTime: now,
           x: enemy.x,
@@ -1323,7 +1325,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const enemy = entity as PlacedEnemy;
           // Use ref for synchronous access (prevents flash at new position)
           const anim = enemyPositionsRef.current.get(index);
-          const deathAnim = enemyDeathAnimationsRef.current.get(index) || enemyDeathAnimations.get(index);
+          let deathAnim = enemyDeathAnimationsRef.current.get(index) || enemyDeathAnimations.get(index);
+          if (!deathAnim && enemy.dead) {
+            // First frame drawn dead — stamp the start now (see character path).
+            deathAnim = { startTime: now, x: enemy.x, y: enemy.y, facing: enemy.facing || Direction.SOUTH };
+            enemyDeathAnimationsRef.current.set(index, deathAnim);
+          }
           const spawnAnim = enemySpawnAnimations.get(index);
           const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current, index);
           // Walk for the whole turn if this enemy changed tiles this turn
@@ -1388,7 +1395,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const character = entity as PlacedCharacter;
           // Use ref for synchronous access (prevents flash at new position)
           const anim = characterPositionsRef.current.get(index);
-          const deathAnim = characterDeathAnimationsRef.current.get(character.characterId) || characterDeathAnimations.get(character.characterId);
+          let deathAnim = characterDeathAnimationsRef.current.get(character.characterId) || characterDeathAnimations.get(character.characterId);
+          if (!deathAnim && character.dead) {
+            // First frame this entity is drawn dead — stamp the start now so the
+            // death animation begins immediately, rather than stalling on frame 0
+            // until the detection effect lands (a variable, often long, delay).
+            deathAnim = { startTime: now, x: character.x, y: character.y, facing: character.facing };
+            characterDeathAnimationsRef.current.set(character.characterId, deathAnim);
+          }
           // Get spawn animation - keyed by characterId (stable across movement)
           const spawnKey = character.characterId;
           const spawnAnim = characterSpawnAnimations.get(spawnKey);
