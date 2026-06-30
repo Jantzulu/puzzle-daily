@@ -1037,6 +1037,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           facing: char.facing,
         });
         hasChanges = true;
+      } else if (wasDeadBefore && !isDeadNow) {
+        // Revived / puzzle retry — drop the stale death anim so a later death
+        // starts fresh from frame 0 (no mid-animation flash on the next attempt).
+        if (newDeathAnimations.delete(char.characterId)) hasChanges = true;
       }
 
       prevCharacterDeadStateRef.current.set(char.characterId, isDeadNow);
@@ -1069,6 +1073,10 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           facing: enemy.facing || Direction.SOUTH,
         });
         hasChanges = true;
+      } else if (wasDeadBefore && !isDeadNow) {
+        // Revived / puzzle retry — drop the stale death anim so a later death
+        // starts fresh from frame 0 (no mid-animation flash on the next attempt).
+        if (newDeathAnimations.delete(idx)) hasChanges = true;
       }
 
       prevEnemyDeadStateRef.current.set(idx, isDeadNow);
