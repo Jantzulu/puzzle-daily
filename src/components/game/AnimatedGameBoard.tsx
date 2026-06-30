@@ -4,7 +4,7 @@ import type { GameState, PlacedCharacter, PlacedEnemy, Projectile, ProjectileVis
 import { TileType, Direction, ActionType, StatusEffectType } from '../../types/game';
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
-import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads, getSpriteDrawHeight } from '../editor/SpriteEditor';
+import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads, getSpriteDrawHeight, ART_TILE_PX } from '../editor/SpriteEditor';
 import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
 import { getThemeAsset } from '../../utils/themeAssets';
@@ -1190,9 +1190,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         if (puzzleScale < 0.1) puzzleScale = 0.1;
       }
 
-      // Quantize scale so each tile = integer physical pixels (prevents sub-pixel warping on mobile)
+      // Quantize so each ART pixel lands on an integer count of physical pixels. The art
+      // grid is ART_TILE_PX per tile, so the zoom (physical px per art px) must be a whole
+      // number — otherwise sub-tile pixels fall on fractional boundaries (the residual
+      // "half pixel" artifact). We floor the zoom so the board never exceeds its responsive
+      // footprint (snaps down to fit, never up). See native-resolution-rendering-plan.md §8.
       const rawEffectiveScale = puzzleScale * dpr;
-      const physicalTileSize = Math.max(1, Math.round(TILE_SIZE * rawEffectiveScale));
+      const integerZoom = Math.max(1, Math.floor((TILE_SIZE * rawEffectiveScale) / ART_TILE_PX));
+      const physicalTileSize = integerZoom * ART_TILE_PX;
       const quantizedScale = physicalTileSize / TILE_SIZE;
 
       // Disable image smoothing for crisp pixel art
@@ -1640,9 +1645,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Capped at MAX_DPR to limit fragment cost on phones with DPR=3 (iPhone Pro etc.)
   const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 1, MAX_DPR) : 1;
 
-  // Quantize scale so each tile = integer physical pixels (prevents sub-pixel warping on mobile)
+  // Quantize so each ART pixel lands on an integer count of physical pixels. The art grid
+  // is ART_TILE_PX per tile, so the zoom (physical px per art px) must be a whole number —
+  // otherwise sub-tile pixels fall on fractional boundaries (the residual "half pixel"
+  // artifact). We floor the zoom so the board never exceeds its responsive footprint (snaps
+  // down to fit, never up). Must match the animation-loop quantization above.
   const rawEffectiveScale = scale * dpr;
-  const physicalTileSize = Math.max(1, Math.round(TILE_SIZE * rawEffectiveScale));
+  const integerZoom = Math.max(1, Math.floor((TILE_SIZE * rawEffectiveScale) / ART_TILE_PX));
+  const physicalTileSize = integerZoom * ART_TILE_PX;
   const quantizedScale = physicalTileSize / TILE_SIZE;
 
   // Canvas resolution from quantized scale — tiles land on exact pixel boundaries
