@@ -2,12 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 import { toast } from '../shared/Toast';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection, SpriteSheetConfig } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
-import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
 import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { MediaBrowseButton } from './MediaBrowseButton';
-
-// Preview type for character/enemy sprites (entities)
-const ENTITY_PREVIEW_TYPE: PreviewType = 'entity';
 
 // Tiles are 24×24 art pixels. Sprite images render at their NATIVE pixel
 // dimensions × (tileSize / ART_TILE_PX), centered on the tile — never scaled
@@ -287,8 +283,6 @@ interface SpriteEditorProps {
   size?: number; // Preview size in pixels
 }
 
-const PREVIEW_SIZE = 96;
-
 const DIRECTIONS: { key: SpriteDirection; label: string; arrow: string }[] = [
   { key: 'n', label: 'North', arrow: '↑' },
   { key: 'ne', label: 'North-East', arrow: '↗' },
@@ -363,6 +357,7 @@ interface AnchorPreviewLayer {
   offsetY: number;
   isSpriteSheet?: boolean;
   frameCount?: number;
+  frameRate?: number;
   /** Explicit frame dims from the sheet config — honored so the preview slices
    *  frames exactly like the board does for imported sheets. */
   frameWidth?: number;
@@ -382,11 +377,18 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   /** Opacity of the active (edited) sprite in the preview only — lets you see
    *  the ghosts behind it. Never affects board rendering. */
   activeAlpha?: number;
-}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, activeAlpha = 1 }) => {
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha = 1 }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef<HTMLCanvasElement>(null);
   const [loadTick, setLoadTick] = useState(0);
   const [zoomed, setZoomed] = useState(false);
+  // Playback: play the spritesheet animation in the preview. Plays once by
+  // default (resets to frame 0 when done); 🔁 toggles looping. Active layer +
+  // ghosts share one clock so you can line up last-frame/first-frame seams.
+  const [playing, setPlaying] = useState(false);
+  const [playLoop, setPlayLoop] = useState(false);
+  const [playTick, setPlayTick] = useState(0);
+  const playStartRef = useRef(0);
   // Draggable position for the zoom overlay (defaults to top-center, not a corner).
   const [overlayPos, setOverlayPos] = useState<{ x: number; y: number }>(() => ({
     x: typeof window !== 'undefined' ? Math.max(8, (window.innerWidth - ANCHOR_OVERLAY_SIZE - 32) / 2) : 360,
@@ -411,6 +413,26 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
     const unsub = subscribeToSpriteImageLoads(() => setLoadTick((t) => t + 1));
     return unsub;
   }, []);
+
+  // Playback loop: while playing, tick every frame to advance the animation.
+  // For a non-looping play, stop (→ frame 0) once the active sheet has run once.
+  useEffect(() => {
+    if (!playing) return;
+    playStartRef.current = Date.now();
+    const fc = frameCount && frameCount > 1 ? frameCount : 1;
+    const oneRunMs = fc * (1000 / (frameRate || 10));
+    let raf = 0;
+    const loop = () => {
+      if (!playLoop && Date.now() - playStartRef.current >= oneRunMs) {
+        setPlaying(false); // non-loop finished → render resets to frame 0
+        return;
+      }
+      setPlayTick((t) => t + 1);
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, [playing, playLoop, frameCount, frameRate]);
 
   useEffect(() => {
     // Render the same scene (grid + tile + crosshair + ghosts + active layer)
@@ -468,24 +490,32 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
         const srcWidth = layer.frameWidth
           ?? (layer.isSpriteSheet && layer.frameCount ? img.naturalWidth / layer.frameCount : img.naturalWidth);
         const srcHeight = layer.frameHeight ?? img.naturalHeight;
+        // Frame 0 unless playing; then advance by this layer's own frame rate off
+        // the shared play clock (loop wraps, otherwise clamp to the last frame).
+        let frame = 0;
+        const fc = layer.frameCount && layer.frameCount > 1 ? layer.frameCount : 1;
+        if (playing && fc > 1) {
+          const raw = Math.floor((Date.now() - playStartRef.current) / (1000 / (layer.frameRate || 10)));
+          frame = playLoop ? raw % fc : Math.min(raw, fc - 1);
+        }
         const drawWidth = Math.round(srcWidth * zoom);
         const drawHeight = Math.round(srcHeight * zoom);
         const dx = Math.round(displaySize / 2 - snapAnchorPx(drawWidth, layer.anchorX, zoom) + Math.round(layer.offsetX) * zoom);
         const dy = Math.round(displaySize / 2 - snapAnchorPx(drawHeight, layer.anchorY, zoom) + Math.round(layer.offsetY) * zoom);
         ctx.globalAlpha = alpha;
-        ctx.drawImage(img, 0, 0, Math.round(srcWidth), Math.round(srcHeight), dx, dy, drawWidth, drawHeight);
+        ctx.drawImage(img, Math.round(frame * srcWidth), 0, Math.round(srcWidth), Math.round(srcHeight), dx, dy, drawWidth, drawHeight);
         ctx.globalAlpha = 1;
       };
 
       // Ghosts behind (faded), then the active layer on top (at the requested
       // editor-only opacity so the ghosts stay visible behind it).
       if (ghosts) for (const g of ghosts) drawLayer(g, 0.28);
-      drawLayer({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight }, activeAlpha);
+      drawLayer({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight }, activeAlpha);
     };
 
     render(previewRef.current, ANCHOR_PREVIEW_SIZE, ANCHOR_PREVIEW_ZOOM);
     if (zoomed) render(zoomRef.current, ANCHOR_OVERLAY_SIZE, ANCHOR_OVERLAY_ZOOM);
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed]);
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed, playing, playLoop, playTick]);
 
   return (
     <div className="relative flex-shrink-0" style={{ width: ANCHOR_PREVIEW_SIZE, height: ANCHOR_PREVIEW_SIZE }}>
@@ -502,6 +532,26 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
       >
         🔍
       </button>
+      {isSpriteSheet && (frameCount ?? 0) > 1 && (
+        <>
+          <button
+            type="button"
+            onClick={() => setPlaying((p) => !p)}
+            title={playing ? 'Stop' : 'Play animation'}
+            className="absolute bottom-0.5 left-0.5 w-5 h-5 flex items-center justify-center rounded bg-stone-800/80 border border-stone-600 hover:bg-stone-700 text-[10px] leading-none"
+          >
+            {playing ? '⏹' : '▶'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setPlayLoop((l) => !l)}
+            title={playLoop ? 'Loop: on (resets to frame 0 when off)' : 'Loop: off'}
+            className={`absolute bottom-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded border text-[10px] leading-none ${playLoop ? 'bg-arcane-600 border-arcane-400' : 'bg-stone-800/80 border-stone-600 hover:bg-stone-700'}`}
+          >
+            🔁
+          </button>
+        </>
+      )}
       {zoomed && (
         // Non-blocking, draggable floating panel (no full-screen backdrop) so the
         // offset sliders and onion controls stay usable — the overlay updates
@@ -536,8 +586,7 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   );
 };
 
-export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange }) => {
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
   // Onion-skin controls for the offset previews (editor-only, never affects the board).
   const [onionEnabled, setOnionEnabled] = useState(true);
@@ -553,7 +602,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   // Copy-from-direction overlay
   const [showCopyFromOverlay, setShowCopyFromOverlay] = useState(false);
   // Trigger re-render when background images load
-  const [renderTrigger, setRenderTrigger] = useState(0);
+  const [, setRenderTrigger] = useState(0);
 
   // Subscribe to image load events to re-render when background images finish loading
   useEffect(() => {
@@ -623,142 +672,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    // The preview shows one tile (dashed rect) centered in the canvas with a
-    // half-tile margin on each side so oversized sprites show their true
-    // on-board overflow. previewTileSize is the tileSize passed to the shared
-    // draw functions — zoom = previewTileSize / ART_TILE_PX.
-    const previewTileSize = canvas.width / 2;
-
-    const renderPreview = () => {
-      // Clear (background is handled by CSS on parent div)
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw tile boundary guide (dashed outline, one tile centered)
-      const tileOrigin = (canvas.width - previewTileSize) / 2;
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-      ctx.setLineDash([4, 4]);
-      ctx.strokeRect(tileOrigin + 1, tileOrigin + 1, previewTileSize - 2, previewTileSize - 2);
-      ctx.restore();
-
-      // Draw center crosshair
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-      ctx.setLineDash([2, 4]);
-      ctx.beginPath();
-      ctx.moveTo(canvas.width / 2, 0);
-      ctx.lineTo(canvas.width / 2, canvas.height);
-      ctx.moveTo(0, canvas.height / 2);
-      ctx.lineTo(canvas.width, canvas.height / 2);
-      ctx.stroke();
-      ctx.restore();
-
-      // Helper to draw an image with anchor/offset applied (native size × zoom)
-      const drawImageWithAnchor = (
-        img: HTMLImageElement,
-        ax: number, ay: number, ox: number, oy: number
-      ) => {
-        const zoom = previewTileSize / ART_TILE_PX;
-        const drawWidth = Math.round(img.width * zoom);
-        const drawHeight = Math.round(img.height * zoom);
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, Math.round(canvas.width / 2 - snapAnchorPx(drawWidth, ax, zoom) + ox * zoom), Math.round(canvas.height / 2 - snapAnchorPx(drawHeight, ay, zoom) + oy * zoom), drawWidth, drawHeight);
-      };
-
-      // Draw sprite based on mode
-      if (spriteMode === 'directional' && sprite.directionalSprites) {
-        const dirSprite = sprite.directionalSprites[selectedDirection] || sprite.directionalSprites['default'];
-        if (dirSprite) {
-          // Check for sprite sheet first
-          if (dirSprite.idleSpriteSheet && (dirSprite.idleSpriteSheet.imageData || dirSprite.idleSpriteSheet.imageUrl)) {
-            drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, previewTileSize);
-          } else {
-            // Check for image data OR URL
-            const imageToShow = dirSprite.idleImageData || dirSprite.idleImageUrl || dirSprite.imageData || dirSprite.imageUrl;
-            if (imageToShow) {
-              const ax = dirSprite.idleAnchorX ?? 0.5;
-              const ay = dirSprite.idleAnchorY ?? 0.5;
-              const ox = dirSprite.idleOffsetX ?? 0;
-              const oy = dirSprite.idleOffsetY ?? 0;
-              const img = new Image();
-              img.onload = () => {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                // Redraw guides
-                const tileOrigin = (canvas.width - previewTileSize) / 2;
-                ctx.save();
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-                ctx.setLineDash([4, 4]);
-                ctx.strokeRect(tileOrigin + 1, tileOrigin + 1, previewTileSize - 2, previewTileSize - 2);
-                ctx.restore();
-                ctx.save();
-                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-                ctx.setLineDash([2, 4]);
-                ctx.beginPath();
-                ctx.moveTo(canvas.width / 2, 0);
-                ctx.lineTo(canvas.width / 2, canvas.height);
-                ctx.moveTo(0, canvas.height / 2);
-                ctx.lineTo(canvas.width, canvas.height / 2);
-                ctx.stroke();
-                ctx.restore();
-                drawImageWithAnchor(img, ax, ay, ox, oy);
-              };
-              img.src = imageToShow;
-            } else {
-              drawSpriteConfig(ctx, dirSprite, canvas.width / 2, canvas.height / 2, previewTileSize);
-            }
-          }
-        }
-      } else {
-        // Simple mode - check for sprite sheet first
-        if (sprite.idleSpriteSheet && (sprite.idleSpriteSheet.imageData || sprite.idleSpriteSheet.imageUrl)) {
-          drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, previewTileSize);
-        } else {
-          const simpleImageToShow = sprite.idleImageData || sprite.idleImageUrl || sprite.imageData || sprite.imageUrl;
-          if (simpleImageToShow) {
-            const ax = sprite.idleAnchorX ?? 0.5;
-            const ay = sprite.idleAnchorY ?? 0.5;
-            const ox = sprite.idleOffsetX ?? 0;
-            const oy = sprite.idleOffsetY ?? 0;
-            const img = new Image();
-            img.onload = () => {
-              ctx.clearRect(0, 0, canvas.width, canvas.height);
-              // Redraw guides
-              const tileOrigin = (canvas.width - previewTileSize) / 2;
-              ctx.save();
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
-              ctx.setLineDash([4, 4]);
-              ctx.strokeRect(tileOrigin + 1, tileOrigin + 1, previewTileSize - 2, previewTileSize - 2);
-              ctx.restore();
-              ctx.save();
-              ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)';
-              ctx.setLineDash([2, 4]);
-              ctx.beginPath();
-              ctx.moveTo(canvas.width / 2, 0);
-              ctx.lineTo(canvas.width / 2, canvas.height);
-              ctx.moveTo(0, canvas.height / 2);
-              ctx.lineTo(canvas.width, canvas.height / 2);
-              ctx.stroke();
-              ctx.restore();
-              drawImageWithAnchor(img, ax, ay, ox, oy);
-            };
-            img.src = simpleImageToShow;
-          } else {
-            drawSprite(ctx, sprite, canvas.width / 2, canvas.height / 2, previewTileSize);
-          }
-        }
-      }
-    };
-
-    renderPreview();
-  }, [sprite, selectedDirection, spriteMode, renderTrigger]);
 
   // Mode change function removed - always using directional mode now
 
@@ -1900,6 +1813,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           offsetY: sheet.offsetY ?? 0,
           isSpriteSheet: true,
           frameCount: sheet.frameCount,
+          frameRate: sheet.frameRate,
           frameWidth: sheet.frameWidth,
           frameHeight: sheet.frameHeight,
         });
@@ -1929,6 +1843,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           offsetY: sheet.offsetY ?? 0,
           isSpriteSheet: true,
           frameCount: sheet.frameCount,
+          frameRate: sheet.frameRate,
           frameWidth: sheet.frameWidth,
           frameHeight: sheet.frameHeight,
         });
@@ -2072,6 +1987,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               offsetY={offsetY}
               isSpriteSheet={!!previewSpriteSheet}
               frameCount={previewSpriteSheet?.frameCount}
+              frameRate={previewSpriteSheet?.frameRate}
               frameWidth={previewSpriteSheet?.frameWidth}
               frameHeight={previewSpriteSheet?.frameHeight}
               ghosts={ghosts}
@@ -3930,33 +3846,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       })}
       </>
       )}
-
-      <div>
-        <label className="block text-sm font-bold mb-2">
-          Preview ({DIRECTIONS.find(d => d.key === selectedDirection)?.label})
-        </label>
-        <div
-          className="border-2 border-stone-600 rounded overflow-hidden"
-          style={{
-            width: size,
-            height: size,
-            backgroundColor: getPreviewBgColor(ENTITY_PREVIEW_TYPE),
-            ...(getPreviewBgImageUrl(ENTITY_PREVIEW_TYPE) && {
-              backgroundImage: `url(${getPreviewBgImageUrl(ENTITY_PREVIEW_TYPE)})`,
-              backgroundSize: getPreviewBgTiled(ENTITY_PREVIEW_TYPE) ? 'auto' : 'cover',
-              backgroundRepeat: getPreviewBgTiled(ENTITY_PREVIEW_TYPE) ? 'repeat' : 'no-repeat',
-              backgroundPosition: 'center',
-            }),
-          }}
-        >
-          <canvas
-            ref={canvasRef}
-            width={size}
-            height={size}
-            className="block"
-          />
-        </div>
-      </div>
 
       <div>
         <label className="block text-sm font-bold mb-2">Shape</label>
