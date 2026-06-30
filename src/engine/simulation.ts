@@ -1823,6 +1823,7 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.facing = result.facing;
       newEnemy.currentHealth = result.currentHealth;
       newEnemy.dead = result.dead;
+      newEnemy.isCasting = result.isCasting; // propagate per-turn casting flag for the cast animation
       newEnemy.spellCooldowns = result.spellCooldowns;
       newEnemy.justTeleported = result.justTeleported;
       newEnemy.teleportFromX = result.teleportFromX;

@@ -316,8 +316,7 @@ export interface PlacedEnemy {
   teleportFromY?: number;
   teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
-  isCasting?: boolean; // True when casting a spell (for casting sprite state)
-  castingEndTime?: number; // Timestamp when casting state should end
+  isCasting?: boolean; // True on the turn a spell is cast — per-turn casting animation flag (deterministic, no clock)
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -579,8 +578,7 @@ export interface PlacedCharacter {
   teleportFromY?: number;
   teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
-  isCasting?: boolean; // True when casting a spell (for casting sprite state)
-  castingEndTime?: number; // Timestamp when casting state should end
+  isCasting?: boolean; // True on the turn a spell is cast — per-turn casting animation flag (deterministic, no clock)
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)

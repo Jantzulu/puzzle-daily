@@ -667,6 +667,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Track entities that have completed spawn animation (don't re-trigger on re-render)
   const spawnedCharactersRef = useRef<Set<string>>(new Set());
   const spawnedEnemiesRef = useRef<Set<number>>(new Set());
+  // Whether each entity changed tiles on the current turn (keyed by index).
+  // Drives the walk animation for the WHOLE turn (not just the brief slide),
+  // refreshed every turn so consecutive moves read as one continuous walk.
+  const characterMovedThisTurnRef = useRef<Map<number, boolean>>(new Map());
+  const enemyMovedThisTurnRef = useRef<Map<number, boolean>>(new Map());
 
   // Track tile activations (e.g., teleport tile effects)
   // Tile activation effects (e.g. teleport sparkle) — kept in a ref instead of
@@ -747,12 +752,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Detect character movement
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
+    const newMoved = new Map<number, boolean>();
     const newActivations: TileActivation[] = [];
     const now = Date.now();
 
     gameState.placedCharacters.forEach((char, idx) => {
       const prevChar = prevCharactersRef.current[idx];
       const existing = characterPositionsRef.current.get(idx);
+      newMoved.set(idx, false); // default: not walking unless an actual move below
 
       if (prevChar && (prevChar.x !== char.x || prevChar.y !== char.y)) {
         // Character moved!
@@ -812,6 +819,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             facingDuringMove: facingChanged ? char.facing : prevChar.facing,
             iceSlideDistance: char.iceSlideDistance,
           });
+          // Actual tile change → walk for the whole turn (not just the slide).
+          newMoved.set(idx, true);
         }
       } else if (prevChar && prevChar.facing !== char.facing) {
         // Character turned but didn't move (wall lookahead)
@@ -832,6 +841,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     // Update ref synchronously (prevents flash at new position during render)
     characterPositionsRef.current = newPositions;
+    characterMovedThisTurnRef.current = newMoved;
     setCharacterPositions(newPositions);
     if (newActivations.length > 0) {
       tileActivationsRef.current = [...tileActivationsRef.current, ...newActivations];
@@ -892,12 +902,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Detect enemy movement
   useEffect(() => {
     const newPositions = new Map<number, CharacterPosition>();
+    const newMoved = new Map<number, boolean>();
     const newActivations: TileActivation[] = [];
     const now = Date.now();
 
     gameState.puzzle.enemies.forEach((enemy, idx) => {
       const prevEnemy = prevEnemiesRef.current[idx];
       const existing = enemyPositionsRef.current.get(idx);
+      newMoved.set(idx, false); // default: not walking unless an actual move below
 
       if (prevEnemy && (prevEnemy.x !== enemy.x || prevEnemy.y !== enemy.y)) {
         // Enemy moved!
@@ -956,6 +968,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
             facingDuringMove: (facingChanged ? enemy.facing : prevEnemy.facing) || Direction.SOUTH,
             iceSlideDistance: enemy.iceSlideDistance,
           });
+          // Actual tile change → walk for the whole turn (not just the slide).
+          newMoved.set(idx, true);
         }
       } else if (prevEnemy && prevEnemy.facing !== enemy.facing) {
         // Enemy turned but didn't move (wall lookahead)
@@ -976,6 +990,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     // Update ref synchronously (prevents flash at new position during render)
     enemyPositionsRef.current = newPositions;
+    enemyMovedThisTurnRef.current = newMoved;
     setEnemyPositions(newPositions);
     if (newActivations.length > 0) {
       tileActivationsRef.current = [...tileActivationsRef.current, ...newActivations];
@@ -1285,6 +1300,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const deathAnim = enemyDeathAnimations.get(index);
           const spawnAnim = enemySpawnAnimations.get(index);
           const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current, index);
+          // Walk for the whole turn if this enemy changed tiles this turn
+          // (gated to active play so it never loops in place at victory/defeat/setup).
+          const movedThisTurn = (enemyMovedThisTurnRef.current.get(index) ?? false) && gameState.gameStatus === 'running';
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1329,11 +1347,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
               } else {
-                drawEnemy(ctx, enemy, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
+                // Arrived at the destination but still "moving this turn" — keep walking.
+                drawEnemy(ctx, enemy, anim.toX, anim.toY, movedThisTurn, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
               }
             }
           } else {
-            drawEnemy(ctx, enemy, enemy.x, enemy.y, false, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
+            drawEnemy(ctx, enemy, enemy.x, enemy.y, movedThisTurn, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
           }
         } else {
           const character = entity as PlacedCharacter;
@@ -1344,6 +1363,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const spawnKey = character.characterId;
           const spawnAnim = characterSpawnAnimations.get(spawnKey);
           const charGlow = getHomingTargetGlow(gameState, character.characterId, false, projectileVisualStateRef.current);
+          // Walk for the whole turn if this character changed tiles this turn
+          // (gated to active play so it never loops in place at victory/defeat/setup).
+          const movedThisTurn = (characterMovedThisTurnRef.current.get(index) ?? false) && gameState.gameStatus === 'running';
 
           // Calculate effective animation duration based on animation type
           let effectiveAnimDuration = ANIMATION_DURATION;
@@ -1388,7 +1410,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
                 drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
               } else {
-                drawCharacter(ctx, character, anim.toX, anim.toY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
+                // Arrived at the destination but still "moving this turn" — keep walking.
+                drawCharacter(ctx, character, anim.toX, anim.toY, movedThisTurn, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
               }
             }
           } else {
@@ -1405,7 +1428,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 dropOffsetY = -DROP_PLACE_OFFSET * (1 - eased);
               }
             }
-            drawCharacter(ctx, character, character.x, character.y + dropOffsetY, false, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
+            drawCharacter(ctx, character, character.x, character.y + dropOffsetY, movedThisTurn, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
           }
         }
       });
@@ -2495,8 +2518,9 @@ function drawEnemy(
   // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
   const directionToUse = facing;
 
-  // Determine if enemy is casting (only if not moving, since moving takes priority)
-  const isCasting = !isMoving && !!enemy.isCasting && !!enemy.castingEndTime && enemy.castingEndTime > now;
+  // Determine if enemy is casting (only if not moving, since moving takes priority).
+  // isCasting is a deterministic per-turn flag — true for the whole turn a spell is cast.
+  const isCasting = !isMoving && !!enemy.isCasting;
 
   // Check if this enemy has a custom sprite
   const enemyData = getEnemy(enemy.enemyId) as CustomEnemy | undefined;
@@ -3348,8 +3372,9 @@ function drawCharacter(
   // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
   const directionToUse = facing;
 
-  // Determine if character is casting (only if not moving, since moving takes priority)
-  const isCasting = !isMoving && !!character.isCasting && !!character.castingEndTime && character.castingEndTime > now;
+  // Determine if character is casting (only if not moving, since moving takes priority).
+  // isCasting is a deterministic per-turn flag — true for the whole turn a spell is cast.
+  const isCasting = !isMoving && !!character.isCasting;
 
   // Check if this character has a custom sprite
   const charData = getCharacter(character.characterId) as CustomCharacter | undefined;
