@@ -3,7 +3,7 @@ import { toast } from '../shared/Toast';
 import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection, SpriteSheetConfig } from '../../utils/assetStorage';
 import { Direction } from '../../types/game';
 import { getPreviewBgColor, getPreviewBgImageUrl, getPreviewBgTiled, type PreviewType } from '../../utils/themeAssets';
-import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
+import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { MediaBrowseButton } from './MediaBrowseButton';
 
 // Preview type for character/enemy sprites (entities)
@@ -361,7 +361,10 @@ interface AnchorPreviewLayer {
 const AnchorPreview: React.FC<AnchorPreviewLayer & {
   /** Other directions' same-slot sprites, drawn faded behind the active one. */
   ghosts?: AnchorPreviewLayer[];
-}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts }) => {
+  /** Opacity of the active (edited) sprite in the preview only — lets you see
+   *  the ghosts behind it. Never affects board rendering. */
+  activeAlpha?: number;
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, activeAlpha = 1 }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
   const [loadTick, setLoadTick] = useState(0);
   const previewSize = 80;
@@ -442,10 +445,11 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
       ctx.globalAlpha = 1;
     };
 
-    // Ghosts behind (faded), then the active layer on top.
+    // Ghosts behind (faded), then the active layer on top (at the requested
+    // editor-only opacity so the ghosts stay visible behind it).
     if (ghosts) for (const g of ghosts) drawLayer(g, 0.28);
-    drawLayer({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight }, 1);
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, tileRect, loadTick]);
+    drawLayer({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight }, activeAlpha);
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, activeAlpha, tileRect, loadTick]);
 
   return (
     <canvas
@@ -459,6 +463,10 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
 export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, size = PREVIEW_SIZE }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
+  // Onion-skin controls for the offset previews (editor-only, never affects the board).
+  const [onionEnabled, setOnionEnabled] = useState(true);
+  const [onionDir, setOnionDir] = useState<SpriteDirection | 'all'>('all');
+  const [activePreviewOpacity, setActivePreviewOpacity] = useState(1);
   // Always use directional mode - 'default' direction serves as universal fallback
   const spriteMode = 'directional' as const;
   // Tab for separating directional vs global settings
@@ -484,10 +492,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const [movingImageUrlInput, setMovingImageUrlInput] = useState('');
   const [showMovingSpriteSheetUrl, setShowMovingSpriteSheetUrl] = useState(false);
   const [movingSpriteSheetUrlInput, setMovingSpriteSheetUrlInput] = useState('');
-  const [showDeathImageUrl, setShowDeathImageUrl] = useState(false);
-  const [deathImageUrlInput, setDeathImageUrlInput] = useState('');
-  const [showDeathSpriteSheetUrl, setShowDeathSpriteSheetUrl] = useState(false);
-  const [deathSpriteSheetUrlInput, setDeathSpriteSheetUrlInput] = useState('');
+  // (Death URL inputs removed — death is now a single global animation set in Global Settings.)
   const [showCastingImageUrl, setShowCastingImageUrl] = useState(false);
   const [castingImageUrlInput, setCastingImageUrlInput] = useState('');
   const [showCastingSpriteSheetUrl, setShowCastingSpriteSheetUrl] = useState(false);
@@ -1097,66 +1102,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     }
   };
 
-  // URL setter for death image
-  const setDeathImageUrl = (url: string) => {
-    if (spriteMode === 'directional') {
-      const dirSprites = sprite.directionalSprites || {};
-      onChange({
-        ...sprite,
-        directionalSprites: {
-          ...dirSprites,
-          [selectedDirection]: {
-            ...(dirSprites[selectedDirection] || {}),
-            deathImageUrl: url,
-            deathImageData: undefined,
-          },
-        },
-      });
-    } else {
-      onChange({
-        ...sprite,
-        deathImageUrl: url,
-        deathImageData: undefined,
-      });
-    }
-  };
-
-  // URL setter for death sprite sheet
-  const setDeathSpriteSheetUrl = (url: string) => {
-    if (spriteMode === 'directional') {
-      const dirSprites = sprite.directionalSprites || {};
-      const currentConfig = dirSprites[selectedDirection];
-      const existingSheet = currentConfig?.deathSpriteSheet;
-      onChange({
-        ...sprite,
-        directionalSprites: {
-          ...dirSprites,
-          [selectedDirection]: {
-            ...(currentConfig || {}),
-            deathSpriteSheet: {
-              imageUrl: url,
-              imageData: undefined,
-              frameCount: existingSheet?.frameCount || 4,
-              frameRate: existingSheet?.frameRate || 10,
-              loop: existingSheet?.loop ?? false,
-            },
-          },
-        },
-      });
-    } else {
-      const existingSheet = sprite.deathSpriteSheet;
-      onChange({
-        ...sprite,
-        deathSpriteSheet: {
-          imageUrl: url,
-          imageData: undefined,
-          frameCount: existingSheet?.frameCount || 4,
-          frameRate: existingSheet?.frameRate || 10,
-          loop: existingSheet?.loop ?? false,
-        },
-      });
-    }
-  };
+  // (Death URL setters removed — death is now a single global animation,
+  // authored via renderNonDirectionalAnim('death') in Global Settings.)
 
   // URL setter for casting image
   const setCastingImageUrl = (url: string) => {
@@ -1854,10 +1801,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   const buildDirectionGhosts = (
     slotKey: 'idleSpriteSheet' | 'movingSpriteSheet' | 'deathSpriteSheet' | 'castingSpriteSheet',
   ): AnchorPreviewLayer[] => {
-    if (spriteMode !== 'directional' || !sprite.directionalSprites) return [];
+    if (!onionEnabled || spriteMode !== 'directional' || !sprite.directionalSprites) return [];
     const layers: AnchorPreviewLayer[] = [];
     for (const dir of DIRECTIONS) {
       if (dir.key === selectedDirection) continue;
+      if (onionDir !== 'all' && dir.key !== onionDir) continue;
       const sheet = sprite.directionalSprites[dir.key]?.[slotKey];
       const src = sheet ? (sheet.imageData || sheet.imageUrl) : undefined;
       if (sheet && src) {
@@ -1934,6 +1882,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               frameWidth={previewSpriteSheet?.frameWidth}
               frameHeight={previewSpriteSheet?.frameHeight}
               ghosts={ghosts}
+              activeAlpha={ghosts && ghosts.length > 0 ? activePreviewOpacity : 1}
             />
           )}
         </div>
@@ -1991,7 +1940,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   // parameterized by field prefix so we don't triplicate ~230 lines of JSX. `defaultLoop` is
   // baked into newly-uploaded spritesheets: selectIntro plays once (false), selectLoop loops (true).
   const renderNonDirectionalAnim = (
-    prefix: 'selectIntro' | 'selectLoop',
+    prefix: 'selectIntro' | 'selectLoop' | 'death',
     opts: { title: string; description: string; defaultLoop: boolean },
   ) => {
     const { title, description, defaultLoop } = opts;
@@ -2608,16 +2557,13 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 const dirConfig = sprite.directionalSprites?.[dir.key];
                 const hasIdleSS = !!dirConfig?.idleSpriteSheet;
                 const hasMovingSS = !!dirConfig?.movingSpriteSheet;
-                const hasDeathSS = !!dirConfig?.deathSpriteSheet;
                 const hasCastingSS = !!dirConfig?.castingSpriteSheet;
                 const hasIdleImg = dirConfig?.idleImageData || dirConfig?.imageData;
                 const hasMovingImg = dirConfig?.movingImageData;
-                const hasDeathImg = dirConfig?.deathImageData;
                 const hasCastingImg = dirConfig?.castingImageData;
 
                 const hasIdle = !!(hasIdleSS || hasIdleImg);
                 const hasMoving = !!(hasMovingSS || hasMovingImg);
-                const hasDeath = !!(hasDeathSS || hasDeathImg);
                 const hasCasting = !!(hasCastingSS || hasCastingImg);
 
                 return (
@@ -2631,11 +2577,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     }`}
                   >
                     <div className="text-sm">{dir.arrow} {dir.label}</div>
-                    <div className="grid grid-cols-4 gap-x-1 text-[9px]">
+                    <div className="grid grid-cols-3 gap-x-1 text-[9px]">
                       {[
                         { icon: '💤', done: hasIdle, label: 'Idle' },
                         { icon: '🏃', done: hasMoving, label: 'Move' },
-                        { icon: '💀', done: hasDeath, label: 'Death' },
                         { icon: '✨', done: hasCasting, label: 'Cast' },
                       ].map((s) => (
                         <div key={s.label} className="flex flex-col items-center" title={`${s.label}: ${s.done ? 'Set' : 'Not set'}`}>
@@ -2705,6 +2650,42 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               </button>
             </div>
           )}
+
+          {/* Onion-skin preview controls — affects the small offset previews only, never the board */}
+          <div className="mb-3 p-2 bg-stone-800/70 rounded border border-stone-600 text-xs">
+            <label className="flex items-center gap-2 text-stone-200 font-semibold cursor-pointer">
+              <input type="checkbox" checked={onionEnabled} onChange={(e) => setOnionEnabled(e.target.checked)} />
+              👻 Onion-skin (ghost other directions in the offset preview)
+            </label>
+            {onionEnabled && (
+              <div className="mt-2 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <span className="text-stone-400 w-20 shrink-0">Compare to</span>
+                  <select
+                    value={onionDir}
+                    onChange={(e) => setOnionDir(e.target.value as SpriteDirection | 'all')}
+                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
+                  >
+                    <option value="all">All other directions</option>
+                    {DIRECTIONS.filter((d) => d.key !== selectedDirection).map((d) => (
+                      <option key={d.key} value={d.key}>{d.arrow} {d.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-stone-400 w-20 shrink-0">Active opacity</span>
+                  <input
+                    type="range" min="0.15" max="1" step="0.05"
+                    value={activePreviewOpacity}
+                    onChange={(e) => setActivePreviewOpacity(parseFloat(e.target.value))}
+                    className="flex-1 h-3"
+                  />
+                  <span className="w-9 text-right text-stone-300">{Math.round(activePreviewOpacity * 100)}%</span>
+                </div>
+                <p className="text-[10px] text-stone-500">Preview only — never affects how sprites render in-game.</p>
+              </div>
+            )}
+          </div>
 
           {/* Idle Sprite Sheet Upload */}
           {(hasIdleSpriteSheet || (!hasIdleImage && (spriteTypeChoice.idle || 'sheet') === 'sheet')) && (<div>
@@ -3199,278 +3180,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           </div>)}
           </div>
 
-          {/* DEATH STATE */}
-          <div className="bg-red-950 bg-opacity-30 p-4 rounded border-2 border-red-900">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-lg font-semibold text-red-400">💀 Death State</h3>
-              <button
-                onClick={() => copyStateToAllDirections('death')}
-                className="px-2 py-0.5 text-[10px] bg-red-700 rounded hover:bg-red-600 text-parchment-100"
-                title="Copy death sprite to all directions"
-              >
-                Death → All
-              </button>
-            </div>
-            <p className="text-xs text-stone-400 mb-4">
-              Animation that plays when the unit dies (before corpse appears)
-            </p>
-
-          {/* Sprite type toggle — shown when neither sheet nor image is set */}
-          {!hasDeathSpriteSheet && !hasDeathImage && (
-            <div className="flex gap-1 mb-3">
-              <button
-                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, death: 'sheet' }))}
-                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${(spriteTypeChoice.death || 'sheet') === 'sheet' ? 'bg-purple-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
-              >
-                🎞️ Sprite Sheet
-              </button>
-              <button
-                onClick={() => setSpriteTypeChoice(prev => ({ ...prev, death: 'image' }))}
-                className={`flex-1 px-3 py-1.5 text-xs rounded transition-colors ${spriteTypeChoice.death === 'image' ? 'bg-blue-700 text-parchment-100' : 'bg-stone-700 text-stone-400 hover:bg-stone-600'}`}
-              >
-                🖼️ Still Image
-              </button>
-            </div>
-          )}
-
-          {/* Death Sprite Sheet Upload */}
-          {(hasDeathSpriteSheet || (!hasDeathImage && (spriteTypeChoice.death || 'sheet') === 'sheet')) && (<div>
-            <label className="block text-sm font-bold mb-2">
-              Death Sprite Sheet (On Death - Animated) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
-            </label>
-            <div className="space-y-2">
-              <div className="flex gap-2 items-start min-w-0">
-                <input
-                  type="file"
-                  accept="image/png,image/jpg,image/jpeg"
-                  onChange={handleDeathSpriteSheetUpload}
-                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-red-600 file:text-parchment-100 hover:file:bg-red-700"
-                />
-                {hasDeathSpriteSheet && (
-                  <div className="w-16 h-16 sprite-preview-bg rounded border border-red-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <img
-                      src={currentConfig.deathSpriteSheet?.imageData || currentConfig.deathSpriteSheet?.imageUrl}
-                      alt="Death sprite sheet"
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Cloud Media + URL Input Toggle */}
-              <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setDeathSpriteSheetUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
-                <button
-                  type="button"
-                  onClick={() => setShowDeathSpriteSheetUrl(!showDeathSpriteSheetUrl)}
-                  className="text-xs text-arcane-400 hover:text-arcane-300"
-                >
-                  {showDeathSpriteSheetUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
-                </button>
-              </div>
-
-              {/* URL Input */}
-              {showDeathSpriteSheetUrl && (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={deathSpriteSheetUrlInput}
-                    onChange={(e) => setDeathSpriteSheetUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && deathSpriteSheetUrlInput.trim()) {
-                        setDeathSpriteSheetUrl(deathSpriteSheetUrlInput.trim());
-                        setDeathSpriteSheetUrlInput('');
-                      }
-                    }}
-                    placeholder="https://your-storage.com/spritesheet.png"
-                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (deathSpriteSheetUrlInput.trim()) {
-                        setDeathSpriteSheetUrl(deathSpriteSheetUrlInput.trim());
-                        setDeathSpriteSheetUrlInput('');
-                      }
-                    }}
-                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
-                  >
-                    Set
-                  </button>
-                </div>
-              )}
-
-              {hasDeathSpriteSheet && (
-                <>
-                  <div className="grid grid-cols-2 gap-2">
-                    <div>
-                      <label className="block text-xs text-stone-400 mb-1">Frame Count</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="64"
-                        value={currentConfig.deathSpriteSheet?.frameCount || 4}
-                        onChange={(e) => handleDeathSpriteSheetConfigChange('frameCount', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-xs text-stone-400 mb-1">Frame Rate (FPS)</label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="60"
-                        value={currentConfig.deathSpriteSheet?.frameRate || 10}
-                        onChange={(e) => handleDeathSpriteSheetConfigChange('frameRate', parseInt(e.target.value))}
-                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-sm"
-                      />
-                    </div>
-                  </div>
-                  <label className="flex items-center gap-2 text-xs text-stone-400">
-                    <input
-                      type="checkbox"
-                      checked={currentConfig.deathSpriteSheet?.loop !== false}
-                      onChange={(e) => handleDeathSpriteSheetConfigChange('loop', e.target.checked)}
-                      className="w-4 h-4"
-                    />
-                    Loop animation
-                  </label>
-                  <button
-                    onClick={clearDeathSpriteSheet}
-                    className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                  >
-                    ✕ Clear Death Sprite Sheet
-                  </button>
-                  {renderAnchorControls(
-                    currentConfig.deathSpriteSheet?.anchorX ?? 0.5,
-                    currentConfig.deathSpriteSheet?.anchorY ?? 0.5,
-                    currentConfig.deathSpriteSheet?.offsetX ?? 0,
-                    currentConfig.deathSpriteSheet?.offsetY ?? 0,
-                    (ax, ay) => { handleDeathSpriteSheetConfigChange('anchorX', ax); handleDeathSpriteSheetConfigChange('anchorY', ay); },
-                    (field, val) => handleDeathSpriteSheetConfigChange(field, val),
-                    undefined,
-                    currentConfig.deathSpriteSheet,
-                    buildDirectionGhosts('deathSpriteSheet'),
-                  )}
-                </>
-              )}
-              <p className="text-xs text-stone-400">
-                {hasDeathSpriteSheet
-                  ? currentConfig.deathSpriteSheet?.imageUrl && !currentConfig.deathSpriteSheet?.imageData
-                    ? '✓ Using URL'
-                    : '✓ Death sprite sheet configured'
-                  : 'No sprite sheet uploaded'}
-              </p>
-              <p className="text-xs text-red-400">
-                💀 Death animation plays when character/enemy reaches 0 HP
-              </p>
-            </div>
-          </div>)}
-
-          {/* Death Image Upload */}
-          {(hasDeathImage || (!hasDeathSpriteSheet && spriteTypeChoice.death === 'image')) && (<div>
-            <label className="block text-sm font-bold mb-2">
-              Death Image (On Death - Static) - {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
-            </label>
-            <div className="space-y-2">
-              <div className="flex gap-2 items-start min-w-0">
-                <input
-                  type="file"
-                  accept="image/png,image/jpg,image/jpeg,image/gif,image/webp"
-                  onChange={handleDeathImageUpload}
-                  className="flex-1 px-3 py-2 bg-stone-700 rounded text-parchment-100 text-sm file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:bg-blue-600 file:text-parchment-100 hover:file:bg-blue-700"
-                />
-                {hasDeathImage && (
-                  <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <img
-                      src={currentConfig.deathImageData || currentConfig.deathImageUrl}
-                      alt="Death static"
-                      className="max-w-full max-h-full object-contain"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Cloud Media + URL Input Toggle */}
-              <div className="flex items-center gap-2">
-                <MediaBrowseButton onSelect={(url) => setDeathImageUrl(url)} label="☁️ Browse Media" className="px-2 py-1 text-xs" />
-                <button
-                  type="button"
-                  onClick={() => setShowDeathImageUrl(!showDeathImageUrl)}
-                  className="text-xs text-arcane-400 hover:text-arcane-300"
-                >
-                  {showDeathImageUrl ? '▼ Hide URL input' : '▶ Or paste URL...'}
-                </button>
-              </div>
-
-              {/* URL Input */}
-              {showDeathImageUrl && (
-                <div className="flex gap-2">
-                  <input
-                    type="url"
-                    value={deathImageUrlInput}
-                    onChange={(e) => setDeathImageUrlInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && deathImageUrlInput.trim()) {
-                        setDeathImageUrl(deathImageUrlInput.trim());
-                        setDeathImageUrlInput('');
-                      }
-                    }}
-                    placeholder="https://your-storage.com/sprite.png"
-                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-sm text-parchment-100 placeholder:text-stone-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (deathImageUrlInput.trim()) {
-                        setDeathImageUrl(deathImageUrlInput.trim());
-                        setDeathImageUrlInput('');
-                      }
-                    }}
-                    className="px-3 py-1 bg-arcane-700 hover:bg-arcane-600 rounded text-sm"
-                  >
-                    Set
-                  </button>
-                </div>
-              )}
-
-              {hasDeathImage && (
-                <>
-                <button
-                  onClick={clearDeathImage}
-                  className="w-full px-3 py-1 text-xs bg-red-600 rounded hover:bg-red-700"
-                >
-                  ✕ Clear Death Image
-                </button>
-                {renderAnchorControls(
-                  currentConfig.deathAnchorX ?? 0.5,
-                  currentConfig.deathAnchorY ?? 0.5,
-                  currentConfig.deathOffsetX ?? 0,
-                  currentConfig.deathOffsetY ?? 0,
-                  (ax, ay) => {
-                    const dirSprites = sprite.directionalSprites || {};
-                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, deathAnchorX: ax, deathAnchorY: ay } } });
-                  },
-                  (field, val) => {
-                    const dirSprites = sprite.directionalSprites || {};
-                    const key = field === 'offsetX' ? 'deathOffsetX' : 'deathOffsetY';
-                    onChange({ ...sprite, directionalSprites: { ...dirSprites, [selectedDirection]: { ...currentConfig, [key]: val } } });
-                  },
-                  currentConfig.deathImageData || currentConfig.deathImageUrl,
-                )}
-                </>
-              )}
-              <p className="text-xs text-stone-400">
-                {hasDeathImage
-                  ? currentConfig.deathImageUrl && !currentConfig.deathImageData
-                    ? '✓ Using URL'
-                    : '✓ Death image uploaded'
-                  : 'No death image - will show X overlay'}
-              </p>
-            </div>
-          </div>)}
-          </div>
-
           {/* CASTING STATE */}
           <div className="bg-yellow-950 bg-opacity-30 p-4 rounded border-2 border-yellow-900">
             <div className="flex items-center justify-between mb-3">
@@ -3802,6 +3511,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       {/* GLOBAL SETTINGS TAB */}
       {editorTab === 'global' && (
       <>
+      {renderNonDirectionalAnim('death', {
+        title: '💀 Death',
+        description: 'Plays once when the entity reaches 0 HP, then holds on the final frame (the corpse). Not directional — the same animation plays regardless of facing direction.',
+        defaultLoop: false,
+      })}
       <div className="border-2 border-cyan-700 rounded-lg p-4 bg-stone-900/50">
         <h4 className="text-cyan-400 font-bold mb-3 flex items-center gap-2">
           <span className="text-lg">✦</span> Spawn Animation (appears when entity spawns)
@@ -4508,41 +4222,13 @@ export function drawDeathSprite(
   centerX: number,
   centerY: number,
   tileSize: number,
-  direction?: Direction,
+  _direction?: Direction,
   startTime: number = Date.now()
 ): boolean {
   const now = Date.now();
 
-  // Check for directional death sprite first
-  if (sprite.useDirectional && sprite.directionalSprites && direction) {
-    const dirKey = mapGameDirectionToSpriteDirection(direction);
-    const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
-
-    if (dirConfig) {
-      // Check for death sprite sheet
-      if (dirConfig.deathSpriteSheet) {
-        const dax = dirConfig.deathSpriteSheet.anchorX ?? 0.5;
-        const day = dirConfig.deathSpriteSheet.anchorY ?? 0.5;
-        const dox = dirConfig.deathSpriteSheet.offsetX ?? 0;
-        const doy = dirConfig.deathSpriteSheet.offsetY ?? 0;
-        // Force loop=false for death animations so they stop on final frame
-        const deathSheet = { ...dirConfig.deathSpriteSheet, loop: false };
-        drawSpriteSheetFromStartTime(ctx, deathSheet, centerX, centerY, tileSize, startTime, now, dax, day, dox, doy);
-        return true;
-      }
-      // Check for death image
-      if (dirConfig.deathImageData) {
-        const dax = dirConfig.deathAnchorX ?? 0.5;
-        const day = dirConfig.deathAnchorY ?? 0.5;
-        const dox = dirConfig.deathOffsetX ?? 0;
-        const doy = dirConfig.deathOffsetY ?? 0;
-        drawImage(ctx, dirConfig.deathImageData, centerX, centerY, tileSize, dax, day, dox, doy);
-        return true;
-      }
-    }
-  }
-
-  // Check for simple mode death sprite sheet
+  // Death is a single global (non-directional) animation — same sprite plays
+  // regardless of facing direction. Authored in the editor's Global Settings.
   if (sprite.deathSpriteSheet) {
     const ax = sprite.deathSpriteSheet.anchorX ?? 0.5;
     const ay = sprite.deathSpriteSheet.anchorY ?? 0.5;
@@ -4572,21 +4258,8 @@ export function drawDeathSprite(
  */
 // eslint-disable-next-line react-refresh/only-export-components
 export function hasDeathAnimation(sprite: CustomSprite): boolean {
-  // Check simple mode
-  if (sprite.deathSpriteSheet || sprite.deathImageData) {
-    return true;
-  }
-
-  // Check directional sprites
-  if (sprite.useDirectional && sprite.directionalSprites) {
-    for (const dir of Object.values(sprite.directionalSprites)) {
-      if (dir?.deathSpriteSheet || dir?.deathImageData) {
-        return true;
-      }
-    }
-  }
-
-  return false;
+  // Death is a single global animation (see drawDeathSprite).
+  return !!(sprite.deathSpriteSheet || sprite.deathImageData);
 }
 
 /**
