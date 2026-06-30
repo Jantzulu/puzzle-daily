@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: April 30, 2026 (Phase D-b lite refactor — isEntityFunctional helper shipped; full Phase D-b documented as not-recommended)
+Last Updated: June 30, 2026 (sprite/animation polish session — editor offset tooling, Death→global animation, entity-animation fidelity bug sweep)
 
 ## Doc Map — Where to Find What
 
@@ -303,6 +303,30 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+
+### Recently completed (June 30, 2026 — sprite/animation polish: editor tooling, death→global, animation-fidelity bug sweep)
+
+A long single session (14 commits, `dd11e24`..`152a2b3`). Three threads: sprite-editor offset tooling, moving Death to a global animation, and a deep sweep of entity-animation fidelity bugs. All visual/editor or visual-layer engine changes — **logic loop untouched, 237/237 tests pass throughout**, and one change actively *improved* determinism (removed a `Date.now()` from `actions.ts`).
+
+**Sprite-editor offset tooling** (all in `SpriteEditor.tsx` unless noted)
+- **Whole-pixel offsets** — offset inputs `step="1"` + `Math.round`; shared draw helpers round defensively so legacy/imported fractional offsets can't cause zoom-dependent half-pixel drift.
+- **Grid-snap rendering** (`snapAnchorPx`) — odd-dimension sprites now lock to the tile's art-pixel grid instead of sub-pixel centering (even sprites unaffected). Applied to every entity draw path so the board and the offset preview snap identically. Commit `fd9323d`.
+- **Faithful offset preview** — `AnchorPreview` honors explicit `frameWidth/frameHeight` (matches the board's slicing for imported sheets); reuses the shared native-size math.
+- **Onion-skin overlay** — ghost other directions (or, in Global Settings, a chosen directional pose) behind the slot being edited; per-(direction × animation) selection; art-pixel grid + crosshair; active-opacity fade (preview-only). Controls live under the Off X/Y sliders.
+- **Zoom overlay** — magnifier opens a non-blocking, **draggable** floating panel that updates live while you drag sliders.
+- **Playable previews** — ▶/⏹ plays the spritesheet, 🔁 toggles loop (default play-once → reset to frame 0); active + ghost layers share one clock so last-frame/first-frame seams can be aligned.
+- **Fill-each-icon thumbnails** — `SpriteThumbnail` `fillBox` prop (contain-fit, independent of the removed `sprite.size`) on the Character/Enemy editor list icons (fixes "renders tiny").
+- **Card bounds** — `computeCardSpriteAreaHeight` now reserves the tallest *playable* slot (idle/moving/selectIntro/selectLoop), so a selected hero's taller select animation no longer clips. `cardConstants.ts`.
+- **Removed the vestigial "Preview (…)" canvas** at the bottom of both tabs (broken render) + its dead `renderPreview` effect and orphaned imports. Commit `152a2b3`.
+
+**Death → single global animation** (`71c4ba0`)
+- Death was genuinely directional; now a single non-directional animation authored in the editor's **Global Settings** tab (via the shared `renderNonDirectionalAnim`). `drawDeathSprite`/`hasDeathAnimation` use only the top-level `sprite.deathSpriteSheet`; removed the per-direction death section + the `castingEndTime`-style dead code. Still forced `loop:false` (holds final/corpse frame).
+
+**Animation-fidelity bug sweep** (`AnimatedGameBoard.tsx` + engine where noted)
+- **Spawn re-firing every move** — spawn was keyed by `characterId:x,y` (position), so each move looked like a new spawn. Keyed by `characterId` now (stable, matches death keying). Enemies were already index-keyed. `9fd42c9`.
+- **Walk for the full moving turn** — an entity that actually changes tiles reads as "walking" for the whole turn (continuous across consecutive moves), idle when a move is blocked. Per-entity `movedThisTurn` flag gated to `gameStatus==='running'`. `9df57fc`.
+- **Casting made deterministic + reliable** — `isCasting` is now a **per-turn flag reset once per turn** in `simulation.ts` (alongside `justTeleported`), set on a SPELL action in `actions.ts`; **removed `castingEndTime = Date.now()+800`** (a determinism smell + display-misalignment bug) and the `castingEndTime` field. Board gate is just `!isMoving && isCasting`. Enemy casts now animate (`executeEnemyAction` copies `isCasting` back). A cast turn also overrides a finishing walk from the prior turn (unless it also moves). Commits `9df57fc`, `86dce64`, `6a87304`.
+- **Death animation saga** (all visual-layer): corpse now **holds the final frame** instead of reverting to frame 0 (stopped deleting the death anim after a fixed duration; the persistent fixed `startTime` does the right thing) → `6a87304`/`c0bdc9f`; **plays fresh on every puzzle retry** (clear stale anim on dead→alive revive) → `9e20872`; **no frame-0 stall** — the death `startTime` is now stamped in the draw loop the first frame an entity is drawn dead, so it never waits on a variable effect-timing delay → `746766b`/`46f0466`. Confirmed **death/spawn already use the correct board-side display-clock pattern** (only the engine `dead`/`spawned` flags are deterministic; the animation clock lives in the visual layer) — casting was brought up to that standard.
 
 ### Recently completed (April 30, 2026 — Phase D-b lite: isEntityFunctional helper)
 
