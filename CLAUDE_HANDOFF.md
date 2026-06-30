@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: June 30, 2026 (sprite/animation polish session — editor offset tooling, Death→global animation, entity-animation fidelity bug sweep)
+Last Updated: June 30, 2026 (integer-zoom board quantization — pixel-perfect board sprites; prior: sprite/animation polish session — editor offset tooling, Death→global animation, entity-animation fidelity bug sweep)
 
 ## Doc Map — Where to Find What
 
@@ -302,7 +302,19 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 
 ### Won't-do (decided)
 
-- **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc.
+- **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc. **NOTE (2026-06-30):** board pixel-perfection was *later achieved by a different, much smaller change* — see "Recently completed (June 30, 2026 — integer-zoom board quantization)" below. The "half-pixels are an accepted tax" framing in that plan doc is now superseded for the board.
+
+### Recently completed (June 30, 2026 — integer-zoom board quantization: pixel-perfect sprites)
+
+User-confirmed fix for the long-standing residual "half pixel" artifact on the board. **Visual-only, logic loop untouched. Build + `tsc --noEmit` clean.** Commit [`670fe32`](https://github.com/Jantzulu/puzzle-daily/commit/670fe32).
+
+**Root cause:** the board quantized the scale so each 48px `TILE_SIZE` landed on integer *physical* pixels (clean tile edges), but a tile is `ART_TILE_PX = 24` art pixels. The per-art-pixel ratio `zoom = physicalTileSize / 24` was almost never a whole number, because `physicalTileSize = round(TILE_SIZE × puzzleScale × dpr)` and `puzzleScale` comes from fitting the puzzle to the responsive max box (`maxWidth = min(container, 900)`, `maxHeight = 525`) — an arbitrary fraction. So sub-tile (art) pixels rendered as a mix of e.g. 4px and 5px columns. DPR is baked into the scale, so the landing spot also varied by device.
+
+**Fix:** quantize the *zoom* to a whole number instead of the tile. Both quantization sites in [AnimatedGameBoard.tsx](src/components/game/AnimatedGameBoard.tsx) (animation loop ~L1193, render ~L1647) now compute `integerZoom = max(1, floor(TILE_SIZE × rawEffectiveScale / ART_TILE_PX))`, `physicalTileSize = integerZoom × ART_TILE_PX`. `physicalTileSize` is now always a multiple of 24 → every art pixel lands on an integer physical-pixel boundary → tiles, skins, and entity sprites all pixel-exact. `floor` (not `round`) guarantees the board **snaps down to fit, never up**, so it never exceeds today's footprint (the old `round()` could even overshoot the box slightly). Cost: board is slightly smaller with more centered margin — typical 4–8 tile puzzles lose ~30–55px width, worst cases (old zoom just above an integer, e.g. 8×6 at zoom 3.67→3) up to ~128px. Verified flooring is *necessary*: bumping up would overflow the 525px height cap on boards like 8×6.
+
+**Not addressed (separate lever):** `MAX_DPR = 2` cap means DPR-3 phones still get an OS-side ×1.5 fractional upscale of the 2× buffer. Intentional perf trade, independent of this fix. Only relevant if softness shows up specifically on high-end phones (not desktop/retina).
+
+**Why this isn't the reverted Phase 2:** Phase 2 shrank the canvas *buffer* and fractionally *downsampled* 48px source art (destroys pixels). This keeps the full-res buffer and constrains the *upscale* factor — sprites are authored small (<20px native) and zoomed *up* by an integer factor, so it's a clean nearest-neighbor enlargement. No conflict with `sprite.size` (the per-sprite/per-sheet scale knobs were already removed 2026-06-11; board art is native-size only).
 
 ### Recently completed (June 30, 2026 — sprite/animation polish: editor tooling, death→global, animation-fidelity bug sweep)
 

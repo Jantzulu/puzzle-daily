@@ -1,6 +1,8 @@
 # Native-Resolution Rendering — Plan
 
 **Status:** Closed (2026-04-17). Phase 1 (cards/thumbnails) shipped. Phases 2–4 (board, map editor, text) marked won't-do — see Phase 2 section for reasoning.
+
+> **UPDATE (2026-06-30):** the board-pixel-perfection *goal* of Phase 2 was later achieved by a completely different, ~15-line change — **integer-zoom quantization** (commit [`670fe32`](https://github.com/Jantzulu/puzzle-daily/commit/670fe32)). Phase 2 below remains won't-do *as written* (shrink-the-buffer + CSS-upscale), but the conclusion that "board half-pixels are a permanent tax for creator flexibility" is **superseded**. The actual fix kept the full-resolution buffer and instead constrained the *upscale* factor so each art pixel lands on an integer physical-pixel boundary. See the Phase 2 section's closing note and CLAUDE_HANDOFF.md ("integer-zoom board quantization") for the full write-up.
 **Goal:** Eliminate sprite deformation (static non-uniform pixel sizes, and frame-to-frame "wobble" during sprite-sheet animation) by rendering the game and its thumbnails at a small native pixel resolution, then CSS-scaling the canvas uniformly to display size.
 **Scope:** `AnimatedGameBoard.tsx`, `MapEditor.tsx` board rendering, `SpriteThumbnail.tsx`, `PixelEditorAnimationPreview.tsx`, and related helpers in `SpriteEditor.tsx` (`drawSprite`, `drawSpriteSheet`).
 
@@ -110,6 +112,8 @@ The "pixel-perfect via integer scaling" approach (the one that worked for cards 
 Any "auto-snap to nearest integer ratio" scheme would defeat that normalization (each sheet snaps to a different ratio of its own source). And requiring all art at a uniform native size would mean re-authoring the entire asset library.
 
 **Settled position:** the small static half-pixels visible on entities are a tax for creator flexibility, and they're far less perceptually noticeable on the small board entities than they were on the large card thumbnails. Keep board rendering as-is. If a specific sprite ever looks bad, fix it at the asset level (clean source dimensions, tweak `scale`) rather than reaching for a system-wide refactor.
+
+> **SUPERSEDED (2026-06-30).** This "settled position" no longer holds. After the per-sheet/per-sprite `scale` knobs were removed (2026-06-11 — board art is now native-size only, `ART_TILE_PX = 24`), the remaining half-pixel source was purely the board's *zoom* factor (`physicalTileSize / 24`) being fractional. Snapping that zoom to a whole integer (floor, so the board only shrinks to fit) makes every art pixel land on an integer physical-pixel boundary — pixel-perfect tiles, skins, and sprites — for ~15 lines and no asset re-authoring. The cost is a slightly smaller board (more centered margin), which the user accepted. Commit [`670fe32`](https://github.com/Jantzulu/puzzle-daily/commit/670fe32). The reason this works where Phase 2 failed: it never downsamples — small native art is zoomed *up* by an integer factor (clean nearest-neighbor), so there's no fractional source-to-dest mapping to destroy pixels.
 
 If sprite-sheet animation drift (`Math.round(frameIndex * frameWidth)` with fractional `frameWidth`) ever becomes a real complaint, fix it source-side in the sprite editor (snap `frameWidth` to integer when loading sheets). That's an authoring-side fix, not a renderer refactor.
 
