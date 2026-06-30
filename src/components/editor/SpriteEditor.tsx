@@ -387,6 +387,23 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   const zoomRef = useRef<HTMLCanvasElement>(null);
   const [loadTick, setLoadTick] = useState(0);
   const [zoomed, setZoomed] = useState(false);
+  // Draggable position for the zoom overlay (defaults to top-center, not a corner).
+  const [overlayPos, setOverlayPos] = useState<{ x: number; y: number }>(() => ({
+    x: typeof window !== 'undefined' ? Math.max(8, (window.innerWidth - ANCHOR_OVERLAY_SIZE - 32) / 2) : 360,
+    y: 72,
+  }));
+  const startOverlayDrag = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const grabX = e.clientX - overlayPos.x;
+    const grabY = e.clientY - overlayPos.y;
+    const onMove = (ev: MouseEvent) => setOverlayPos({ x: ev.clientX - grabX, y: ev.clientY - grabY });
+    const onUp = () => {
+      window.removeEventListener('mousemove', onMove);
+      window.removeEventListener('mouseup', onUp);
+    };
+    window.addEventListener('mousemove', onMove);
+    window.addEventListener('mouseup', onUp);
+  };
 
   // Redraw when any sprite image finishes loading (covers active + ghosts,
   // including imported sheets that resolve their dimensions only once cached).
@@ -486,11 +503,20 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
         🔍
       </button>
       {zoomed && (
-        // Non-blocking floating panel (no full-screen backdrop) so the offset
-        // sliders and onion controls stay usable — the overlay updates live as
-        // you adjust them. Pinned to a corner; close with the ✕.
-        <div className="fixed bottom-4 right-4 z-50 bg-stone-900 rounded-lg border border-stone-600 shadow-2xl p-3">
-          <div className="text-[10px] text-stone-400 mb-1 font-semibold">Zoomed preview (live)</div>
+        // Non-blocking, draggable floating panel (no full-screen backdrop) so the
+        // offset sliders and onion controls stay usable — the overlay updates
+        // live as you adjust them. Drag the header to move it; ✕ to close.
+        <div
+          className="fixed z-50 bg-stone-900 rounded-lg border border-stone-600 shadow-2xl p-3"
+          style={{ left: overlayPos.x, top: overlayPos.y }}
+        >
+          <div
+            onMouseDown={startOverlayDrag}
+            title="Drag to move"
+            className="text-[10px] text-stone-400 mb-1 font-semibold cursor-move select-none"
+          >
+            ⠿ Zoomed preview (live) — drag to move
+          </div>
           <button
             type="button"
             onClick={() => setZoomed(false)}
@@ -1883,40 +1909,59 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   };
 
   // Non-directional (Global Settings) slots have no sibling directions to ghost,
-  // so the useful onion-skin reference is the idle pose — ghost it so death /
-  // spawn / select animations can be aligned to where the entity rests.
+  // so the onion-skin reference is a directional pose — by default the idle, but
+  // the user can pick any animation (idle/moving/casting) from any direction so
+  // death / spawn / select can be aligned to where the entity rests / moves.
   const buildIdleGhost = (): AnchorPreviewLayer[] => {
     if (!onionEnabled) return [];
-    const dir = sprite.useDirectional ? sprite.directionalSprites?.default : undefined;
-    const sheet = dir?.idleSpriteSheet ?? sprite.idleSpriteSheet;
-    const sheetSrc = sheet ? (sheet.imageData || sheet.imageUrl) : undefined;
-    if (sheet && sheetSrc) {
-      return [{
-        imageSrc: sheetSrc,
-        anchorX: sheet.anchorX ?? 0.5,
-        anchorY: sheet.anchorY ?? 0.5,
-        offsetX: sheet.offsetX ?? 0,
-        offsetY: sheet.offsetY ?? 0,
-        isSpriteSheet: true,
-        frameCount: sheet.frameCount,
-        frameWidth: sheet.frameWidth,
-        frameHeight: sheet.frameHeight,
-      }];
+    // 'same' has no meaning for a non-directional slot — default to idle.
+    const slot = onionSlot === 'same' ? 'idle' : onionSlot;
+    const slotKey = `${slot}SpriteSheet` as 'idleSpriteSheet' | 'movingSpriteSheet' | 'castingSpriteSheet';
+    const layers: AnchorPreviewLayer[] = [];
+    const pushSheet = (sheet?: SpriteSheetConfig) => {
+      const src = sheet ? (sheet.imageData || sheet.imageUrl) : undefined;
+      if (sheet && src) {
+        layers.push({
+          imageSrc: src,
+          anchorX: sheet.anchorX ?? 0.5,
+          anchorY: sheet.anchorY ?? 0.5,
+          offsetX: sheet.offsetX ?? 0,
+          offsetY: sheet.offsetY ?? 0,
+          isSpriteSheet: true,
+          frameCount: sheet.frameCount,
+          frameWidth: sheet.frameWidth,
+          frameHeight: sheet.frameHeight,
+        });
+      }
+    };
+
+    if (sprite.useDirectional && sprite.directionalSprites) {
+      for (const d of DIRECTIONS) {
+        if (onionDir !== 'all' && d.key !== onionDir) continue;
+        pushSheet(sprite.directionalSprites[d.key]?.[slotKey]);
+      }
+    } else {
+      pushSheet(sprite[slotKey]);
     }
-    const imgSrc = dir
-      ? (dir.idleImageData || dir.imageData || dir.idleImageUrl || dir.imageUrl)
-      : (sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl);
-    if (imgSrc) {
-      return [{
-        imageSrc: imgSrc,
-        anchorX: (dir ? dir.idleAnchorX : sprite.idleAnchorX) ?? 0.5,
-        anchorY: (dir ? dir.idleAnchorY : sprite.idleAnchorY) ?? 0.5,
-        offsetX: (dir ? dir.idleOffsetX : sprite.idleOffsetX) ?? 0,
-        offsetY: (dir ? dir.idleOffsetY : sprite.idleOffsetY) ?? 0,
-        isSpriteSheet: false,
-      }];
+
+    // Fall back to the idle static image when no sheet resolved.
+    if (layers.length === 0) {
+      const dir = sprite.useDirectional ? sprite.directionalSprites?.default : undefined;
+      const imgSrc = dir
+        ? (dir.idleImageData || dir.imageData || dir.idleImageUrl || dir.imageUrl)
+        : (sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl);
+      if (imgSrc) {
+        layers.push({
+          imageSrc: imgSrc,
+          anchorX: (dir ? dir.idleAnchorX : sprite.idleAnchorX) ?? 0.5,
+          anchorY: (dir ? dir.idleAnchorY : sprite.idleAnchorY) ?? 0.5,
+          offsetX: (dir ? dir.idleOffsetX : sprite.idleOffsetX) ?? 0,
+          offsetY: (dir ? dir.idleOffsetY : sprite.idleOffsetY) ?? 0,
+          isSpriteSheet: false,
+        });
+      }
     }
-    return [];
+    return layers;
   };
 
   // Onion-skin controls for the offset previews. `forGlobal` hides the
@@ -1926,40 +1971,36 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     <div className="mb-3 p-2 bg-stone-800/70 rounded border border-stone-600 text-xs">
       <label className="flex items-center gap-2 text-stone-200 font-semibold cursor-pointer">
         <input type="checkbox" checked={onionEnabled} onChange={(e) => setOnionEnabled(e.target.checked)} />
-        👻 Onion-skin ({forGlobal ? 'ghost the idle pose' : 'ghost other directions'} in the offset preview)
+        👻 Onion-skin ({forGlobal ? 'ghost a directional pose' : 'ghost other directions'} in the offset preview)
       </label>
       {onionEnabled && (
         <div className="mt-2 space-y-1.5">
-          {!forGlobal && (
-            <div className="flex items-center gap-2">
-              <span className="text-stone-400 w-20 shrink-0">Compare to</span>
-              <select
-                value={onionDir}
-                onChange={(e) => setOnionDir(e.target.value as SpriteDirection | 'all')}
-                className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
-              >
-                <option value="all">All other directions</option>
-                {DIRECTIONS.filter((d) => d.key !== selectedDirection).map((d) => (
-                  <option key={d.key} value={d.key}>{d.arrow} {d.label}</option>
-                ))}
-              </select>
-            </div>
-          )}
-          {!forGlobal && (
-            <div className="flex items-center gap-2">
-              <span className="text-stone-400 w-20 shrink-0">Animation</span>
-              <select
-                value={onionSlot}
-                onChange={(e) => setOnionSlot(e.target.value as 'same' | 'idle' | 'moving' | 'casting')}
-                className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
-              >
-                <option value="same">Same as editing</option>
-                <option value="idle">Idle</option>
-                <option value="moving">Moving</option>
-                <option value="casting">Casting</option>
-              </select>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            <span className="text-stone-400 w-20 shrink-0">Compare to</span>
+            <select
+              value={onionDir}
+              onChange={(e) => setOnionDir(e.target.value as SpriteDirection | 'all')}
+              className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
+            >
+              <option value="all">{forGlobal ? 'All directions' : 'All other directions'}</option>
+              {DIRECTIONS.filter((d) => forGlobal || d.key !== selectedDirection).map((d) => (
+                <option key={d.key} value={d.key}>{d.arrow} {d.label}</option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-stone-400 w-20 shrink-0">Animation</span>
+            <select
+              value={forGlobal && onionSlot === 'same' ? 'idle' : onionSlot}
+              onChange={(e) => setOnionSlot(e.target.value as 'same' | 'idle' | 'moving' | 'casting')}
+              className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
+            >
+              {!forGlobal && <option value="same">Same as editing</option>}
+              <option value="idle">Idle</option>
+              <option value="moving">Moving</option>
+              <option value="casting">Casting</option>
+            </select>
+          </div>
           <div className="flex items-center gap-2">
             <span className="text-stone-400 w-20 shrink-0">Active opacity</span>
             <input
@@ -1987,6 +2028,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     previewImageSrc?: string,
     previewSpriteSheet?: import('../../utils/assetStorage').SpriteSheetConfig,
     ghosts?: AnchorPreviewLayer[],
+    forGlobal: boolean = false,
   ) => {
     const anchorPoints: { label: string; x: number; y: number }[] = [
       { label: 'TL', x: 0, y: 0 }, { label: 'T', x: 0.5, y: 0 }, { label: 'TR', x: 1, y: 0 },
@@ -2082,6 +2124,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
             />
           </div>
         </div>
+        {/* Onion-skin controls, co-located right under the offset sliders */}
+        <div className="mt-2">{renderOnionControls(forGlobal)}</div>
       </div>
     );
   };
@@ -2215,6 +2259,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   undefined,
                   sheet,
                   buildIdleGhost(),
+                  true,
                 )}
               </>
             )}
@@ -2269,6 +2314,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     imageData || imageUrl,
                     undefined,
                     buildIdleGhost(),
+                    true,
                   )}
                 </>
               )}
@@ -2804,9 +2850,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
               </button>
             </div>
           )}
-
-          {/* Onion-skin preview controls — affects the small offset previews only, never the board */}
-          {renderOnionControls(false)}
 
           {/* Idle Sprite Sheet Upload */}
           {(hasIdleSpriteSheet || (!hasIdleImage && (spriteTypeChoice.idle || 'sheet') === 'sheet')) && (<div>
@@ -3632,8 +3675,6 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       {/* GLOBAL SETTINGS TAB */}
       {editorTab === 'global' && (
       <>
-      {/* Onion-skin here ghosts the idle pose behind the non-directional anims */}
-      {renderOnionControls(true)}
       {renderNonDirectionalAnim('death', {
         title: '💀 Death',
         description: 'Plays once when the entity reaches 0 HP, then holds on the final frame (the corpse). Not directional — the same animation plays regardless of facing direction.',
@@ -3756,6 +3797,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   (field, val) => handleSpawnSpriteSheetConfigChange(field, val),
                   undefined,
                   sprite.spawnSpriteSheet,
+                  buildIdleGhost(),
+                  true,
                 )}
               </>
             )}
@@ -3858,6 +3901,9 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                       onChange({ ...sprite, [key]: val });
                     },
                     sprite.spawnImageData || sprite.spawnImageUrl,
+                    undefined,
+                    buildIdleGhost(),
+                    true,
                   )}
                 </>
               )}
