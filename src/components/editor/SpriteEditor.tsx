@@ -127,6 +127,17 @@ interface SpriteSheetState {
 const spriteSheetStates = new Map<string, SpriteSheetState>();
 
 /**
+ * Snap an anchor offset to a whole art pixel (a multiple of `zoom`) so
+ * odd-dimension sprites lock to the tile's art-pixel grid instead of landing on
+ * a sub-art-pixel (half-pixel) position. Even-dimension sprites are unaffected.
+ * Used by every entity draw path so the board and the offset preview snap
+ * identically (offsets are already whole art pixels, so they stay grid-aligned).
+ */
+function snapAnchorPx(drawSize: number, anchor: number, zoom: number): number {
+  return Math.round((drawSize * anchor) / zoom) * zoom;
+}
+
+/**
  * Draw an animated sprite sheet
  */
 function drawSpriteSheet(
@@ -187,8 +198,8 @@ function drawSpriteSheet(
   const sh = Math.round(frameHeight);
   const dw = finalWidth;
   const dh = finalHeight;
-  const dx = Math.round(centerX - finalWidth * anchorX + offsetX * zoom);
-  const dy = Math.round(centerY - finalHeight * anchorY + offsetY * zoom);
+  const dx = Math.round(centerX - snapAnchorPx(finalWidth, anchorX, zoom) + offsetX * zoom);
+  const dy = Math.round(centerY - snapAnchorPx(finalHeight, anchorY, zoom) + offsetY * zoom);
 
   try {
     ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
@@ -260,8 +271,8 @@ function drawSpriteSheetFromStartTime(
   const sh = Math.round(frameHeight);
   const dw = finalWidth;
   const dh = finalHeight;
-  const dx = Math.round(centerX - finalWidth * anchorX + offsetX * zoom);
-  const dy = Math.round(centerY - finalHeight * anchorY + offsetY * zoom);
+  const dx = Math.round(centerX - snapAnchorPx(finalWidth, anchorX, zoom) + offsetX * zoom);
+  const dy = Math.round(centerY - snapAnchorPx(finalHeight, anchorY, zoom) + offsetY * zoom);
 
   try {
     ctx.drawImage(img, sourceX, 0, sw, sh, dx, dy, dw, dh);
@@ -442,8 +453,8 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
         const srcHeight = layer.frameHeight ?? img.naturalHeight;
         const drawWidth = Math.round(srcWidth * zoom);
         const drawHeight = Math.round(srcHeight * zoom);
-        const dx = Math.round(displaySize / 2 - drawWidth * layer.anchorX + Math.round(layer.offsetX) * zoom);
-        const dy = Math.round(displaySize / 2 - drawHeight * layer.anchorY + Math.round(layer.offsetY) * zoom);
+        const dx = Math.round(displaySize / 2 - snapAnchorPx(drawWidth, layer.anchorX, zoom) + Math.round(layer.offsetX) * zoom);
+        const dy = Math.round(displaySize / 2 - snapAnchorPx(drawHeight, layer.anchorY, zoom) + Math.round(layer.offsetY) * zoom);
         ctx.globalAlpha = alpha;
         ctx.drawImage(img, 0, 0, Math.round(srcWidth), Math.round(srcHeight), dx, dy, drawWidth, drawHeight);
         ctx.globalAlpha = 1;
@@ -634,7 +645,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
         const drawWidth = Math.round(img.width * zoom);
         const drawHeight = Math.round(img.height * zoom);
         ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(img, Math.round(canvas.width / 2 - drawWidth * ax + ox * zoom), Math.round(canvas.height / 2 - drawHeight * ay + oy * zoom), drawWidth, drawHeight);
+        ctx.drawImage(img, Math.round(canvas.width / 2 - snapAnchorPx(drawWidth, ax, zoom) + ox * zoom), Math.round(canvas.height / 2 - snapAnchorPx(drawHeight, ay, zoom) + oy * zoom), drawWidth, drawHeight);
       };
 
       // Draw sprite based on mode
@@ -4042,7 +4053,7 @@ function drawSpriteConfig(
         drawHeight = Math.round(img.naturalHeight * zoom);
       }
 
-      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox * zoom), Math.round(centerY - drawHeight * ay + oy * zoom), drawWidth, drawHeight);
+      ctx.drawImage(img, Math.round(centerX - snapAnchorPx(drawWidth, ax, zoom) + ox * zoom), Math.round(centerY - snapAnchorPx(drawHeight, ay, zoom) + oy * zoom), drawWidth, drawHeight);
     } catch {
       // Image not ready yet, will draw on next frame
     }
@@ -4205,7 +4216,7 @@ export function drawSprite(
         drawHeight = Math.round(img.naturalHeight * zoom);
       }
 
-      ctx.drawImage(img, Math.round(centerX - drawWidth * ax + ox * zoom), Math.round(centerY - drawHeight * ay + oy * zoom), drawWidth, drawHeight);
+      ctx.drawImage(img, Math.round(centerX - snapAnchorPx(drawWidth, ax, zoom) + ox * zoom), Math.round(centerY - snapAnchorPx(drawHeight, ay, zoom) + oy * zoom), drawWidth, drawHeight);
     } catch {
       // Image not ready yet, will draw on next frame
     }
@@ -4492,7 +4503,7 @@ function drawImage(
       drawHeight = Math.round(img.naturalHeight * zoom);
     }
 
-    ctx.drawImage(img, Math.round(centerX - drawWidth * anchorX + offsetX * zoom), Math.round(centerY - drawHeight * anchorY + offsetY * zoom), drawWidth, drawHeight);
+    ctx.drawImage(img, Math.round(centerX - snapAnchorPx(drawWidth, anchorX, zoom) + offsetX * zoom), Math.round(centerY - snapAnchorPx(drawHeight, anchorY, zoom) + offsetY * zoom), drawWidth, drawHeight);
   } catch {
     // Image not ready
   }
