@@ -486,28 +486,24 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
         🔍
       </button>
       {zoomed && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
-          onClick={() => setZoomed(false)}
-        >
-          <div
-            className="relative bg-stone-900 rounded-lg border border-stone-600 p-3"
-            onClick={(e) => e.stopPropagation()}
+        // Non-blocking floating panel (no full-screen backdrop) so the offset
+        // sliders and onion controls stay usable — the overlay updates live as
+        // you adjust them. Pinned to a corner; close with the ✕.
+        <div className="fixed bottom-4 right-4 z-50 bg-stone-900 rounded-lg border border-stone-600 shadow-2xl p-3">
+          <div className="text-[10px] text-stone-400 mb-1 font-semibold">Zoomed preview (live)</div>
+          <button
+            type="button"
+            onClick={() => setZoomed(false)}
+            title="Close"
+            className="absolute -top-2.5 -right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-stone-700 border border-stone-500 text-stone-200 hover:bg-stone-600 text-sm leading-none"
           >
-            <button
-              type="button"
-              onClick={() => setZoomed(false)}
-              title="Close"
-              className="absolute -top-2.5 -right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-stone-700 border border-stone-500 text-stone-200 hover:bg-stone-600 text-sm leading-none"
-            >
-              ✕
-            </button>
-            <canvas
-              ref={zoomRef}
-              className="rounded bg-stone-900"
-              style={{ width: ANCHOR_OVERLAY_SIZE, height: ANCHOR_OVERLAY_SIZE, imageRendering: 'pixelated' }}
-            />
-          </div>
+            ✕
+          </button>
+          <canvas
+            ref={zoomRef}
+            className="rounded bg-stone-900"
+            style={{ width: ANCHOR_OVERLAY_SIZE, height: ANCHOR_OVERLAY_SIZE, imageRendering: 'pixelated' }}
+          />
         </div>
       )}
     </div>
@@ -520,6 +516,9 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
   // Onion-skin controls for the offset previews (editor-only, never affects the board).
   const [onionEnabled, setOnionEnabled] = useState(true);
   const [onionDir, setOnionDir] = useState<SpriteDirection | 'all'>('all');
+  // Which animation slot to ghost from the chosen direction(s). 'same' = the
+  // slot currently being edited; otherwise ghost that specific animation.
+  const [onionSlot, setOnionSlot] = useState<'same' | 'idle' | 'moving' | 'casting'>('same');
   const [activePreviewOpacity, setActivePreviewOpacity] = useState(1);
   // Always use directional mode - 'default' direction serves as universal fallback
   const spriteMode = 'directional' as const;
@@ -1856,11 +1855,15 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     slotKey: 'idleSpriteSheet' | 'movingSpriteSheet' | 'deathSpriteSheet' | 'castingSpriteSheet',
   ): AnchorPreviewLayer[] => {
     if (!onionEnabled || spriteMode !== 'directional' || !sprite.directionalSprites) return [];
+    // 'same' ghosts the slot being edited; otherwise ghost a specific animation.
+    const effectiveSlot = onionSlot === 'same' ? slotKey : (`${onionSlot}SpriteSheet` as typeof slotKey);
     const layers: AnchorPreviewLayer[] = [];
     for (const dir of DIRECTIONS) {
-      if (dir.key === selectedDirection) continue;
       if (onionDir !== 'all' && dir.key !== onionDir) continue;
-      const sheet = sprite.directionalSprites[dir.key]?.[slotKey];
+      // Skip only the exact layer being edited (same direction AND same slot);
+      // a different slot of the current direction is a useful comparison.
+      if (dir.key === selectedDirection && effectiveSlot === slotKey) continue;
+      const sheet = sprite.directionalSprites[dir.key]?.[effectiveSlot];
       const src = sheet ? (sheet.imageData || sheet.imageUrl) : undefined;
       if (sheet && src) {
         layers.push({
@@ -1939,6 +1942,21 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                 {DIRECTIONS.filter((d) => d.key !== selectedDirection).map((d) => (
                   <option key={d.key} value={d.key}>{d.arrow} {d.label}</option>
                 ))}
+              </select>
+            </div>
+          )}
+          {!forGlobal && (
+            <div className="flex items-center gap-2">
+              <span className="text-stone-400 w-20 shrink-0">Animation</span>
+              <select
+                value={onionSlot}
+                onChange={(e) => setOnionSlot(e.target.value as 'same' | 'idle' | 'moving' | 'casting')}
+                className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
+              >
+                <option value="same">Same as editing</option>
+                <option value="idle">Idle</option>
+                <option value="moving">Moving</option>
+                <option value="casting">Casting</option>
               </select>
             </div>
           )}
