@@ -839,20 +839,25 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     // Clean up spawn keys for characters that were removed (unplaced)
     // and trigger lift-off animations
+    // Spawn is tracked per characterId (stable across movement) so a hero's
+    // spawn animation fires once on placement, not again every time it moves.
     const currentSpawnKeys = new Set(
-      gameState.placedCharacters.map((char) => `${char.characterId}:${char.x},${char.y}`)
+      gameState.placedCharacters.map((char) => char.characterId)
     );
     const newLiftOffs: LiftOffAnimation[] = [];
-    spawnedCharactersRef.current.forEach((key) => {
-      if (!currentSpawnKeys.has(key)) {
+    spawnedCharactersRef.current.forEach((charId) => {
+      if (!currentSpawnKeys.has(charId)) {
         // Character was removed — trigger lift-off only if user manually unplaced
-        // (both current and previous status must be 'setup' to avoid reset transitions)
+        // (both current and previous status must be 'setup' to avoid reset transitions).
+        // Last-known position comes from the previous snapshot (the key no longer
+        // carries it now that spawn is keyed by characterId alone).
         if (gameState.gameStatus === 'setup' && prevGameStatusRef.current === 'setup') {
-          const [charId, pos] = key.split(':');
-          const [px, py] = pos.split(',').map(Number);
-          newLiftOffs.push({ startTime: now, x: px, y: py, characterId: charId });
+          const prevChar = prevCharactersRef.current.find((c) => c.characterId === charId);
+          if (prevChar) {
+            newLiftOffs.push({ startTime: now, x: prevChar.x, y: prevChar.y, characterId: charId });
+          }
         }
-        spawnedCharactersRef.current.delete(key);
+        spawnedCharactersRef.current.delete(charId);
       }
     });
     if (newLiftOffs.length > 0) {
@@ -862,8 +867,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     // Detect newly placed characters and trigger spawn animations
     const newCharSpawns = new Map<string, SpawnAnimationState>();
     gameState.placedCharacters.forEach((char) => {
-      // Create a unique key for this character placement (characterId + position)
-      const spawnKey = `${char.characterId}:${char.x},${char.y}`;
+      // Keyed by characterId only — stable across movement (see lift-off above).
+      const spawnKey = char.characterId;
       if (!spawnedCharactersRef.current.has(spawnKey) && !char.dead) {
         newCharSpawns.set(spawnKey, { startTime: now, x: char.x, y: char.y });
         spawnedCharactersRef.current.add(spawnKey);
@@ -1335,8 +1340,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           // Use ref for synchronous access (prevents flash at new position)
           const anim = characterPositionsRef.current.get(index);
           const deathAnim = characterDeathAnimations.get(character.characterId);
-          // Get spawn animation - keyed by characterId + position
-          const spawnKey = `${character.characterId}:${character.x},${character.y}`;
+          // Get spawn animation - keyed by characterId (stable across movement)
+          const spawnKey = character.characterId;
           const spawnAnim = characterSpawnAnimations.get(spawnKey);
           const charGlow = getHomingTargetGlow(gameState, character.characterId, false, projectileVisualStateRef.current);
 
