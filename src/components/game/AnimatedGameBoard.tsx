@@ -648,6 +648,11 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Track death animations - keyed by entity ID (characterId or index)
   const [characterDeathAnimations, setCharacterDeathAnimations] = useState<Map<string, DeathAnimationState>>(new Map());
   const [enemyDeathAnimations, setEnemyDeathAnimations] = useState<Map<number, DeathAnimationState>>(new Map());
+  // Synchronous mirrors of the above, read by the rAF draw loop so a freshly
+  // detected death is visible immediately (the state copy lags a frame, which
+  // made the death sprite stall on frame 0 — same fix as the spawn ref).
+  const characterDeathAnimationsRef = useRef<Map<string, DeathAnimationState>>(new Map());
+  const enemyDeathAnimationsRef = useRef<Map<number, DeathAnimationState>>(new Map());
   const prevCharacterDeadStateRef = useRef<Map<string, boolean>>(new Map());
   const prevEnemyDeadStateRef = useRef<Map<number, boolean>>(new Map());
 
@@ -707,6 +712,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       // corpses, so they must be cleared explicitly on a new puzzle).
       setCharacterDeathAnimations(new Map());
       setEnemyDeathAnimations(new Map());
+      characterDeathAnimationsRef.current = new Map();
+      enemyDeathAnimationsRef.current = new Map();
       prevCharacterDeadStateRef.current.clear();
       prevEnemyDeadStateRef.current.clear();
       characterCastStartTimes.clear();
@@ -1021,7 +1028,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Detect character deaths and trigger death animations
   useEffect(() => {
     const now = Date.now();
-    const newDeathAnimations = new Map(characterDeathAnimations);
+    const newDeathAnimations = new Map(characterDeathAnimationsRef.current);
     let hasChanges = false;
 
     gameState.placedCharacters.forEach((char) => {
@@ -1049,6 +1056,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     // No cleanup: the death anim persists while the entity is a corpse, so its
     // fixed startTime lets the sheet play through and hold its final frame.
     // Cleared on puzzle change. (Re-death overwrites the entry above.)
+    characterDeathAnimationsRef.current = newDeathAnimations; // sync mirror for the draw loop
     if (hasChanges) {
       setCharacterDeathAnimations(newDeathAnimations);
     }
@@ -1057,7 +1065,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   // Detect enemy deaths and trigger death animations
   useEffect(() => {
     const now = Date.now();
-    const newDeathAnimations = new Map(enemyDeathAnimations);
+    const newDeathAnimations = new Map(enemyDeathAnimationsRef.current);
     let hasChanges = false;
 
     gameState.puzzle.enemies.forEach((enemy, idx) => {
@@ -1084,6 +1092,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
 
     // No cleanup: the death anim persists while the entity is a corpse, so its
     // fixed startTime lets the sheet play through and hold its final frame.
+    enemyDeathAnimationsRef.current = newDeathAnimations; // sync mirror for the draw loop
     if (hasChanges) {
       setEnemyDeathAnimations(newDeathAnimations);
     }
@@ -1314,7 +1323,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const enemy = entity as PlacedEnemy;
           // Use ref for synchronous access (prevents flash at new position)
           const anim = enemyPositionsRef.current.get(index);
-          const deathAnim = enemyDeathAnimations.get(index);
+          const deathAnim = enemyDeathAnimationsRef.current.get(index) || enemyDeathAnimations.get(index);
           const spawnAnim = enemySpawnAnimations.get(index);
           const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current, index);
           // Walk for the whole turn if this enemy changed tiles this turn
@@ -1379,7 +1388,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           const character = entity as PlacedCharacter;
           // Use ref for synchronous access (prevents flash at new position)
           const anim = characterPositionsRef.current.get(index);
-          const deathAnim = characterDeathAnimations.get(character.characterId);
+          const deathAnim = characterDeathAnimationsRef.current.get(character.characterId) || characterDeathAnimations.get(character.characterId);
           // Get spawn animation - keyed by characterId (stable across movement)
           const spawnKey = character.characterId;
           const spawnAnim = characterSpawnAnimations.get(spawnKey);
