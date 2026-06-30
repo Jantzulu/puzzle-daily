@@ -6,6 +6,7 @@ import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
 import { getCharacter } from '../../data/characters';
 import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebugSilenced, findPathBFS, getTilesAlongLine, isHomingDebug, isPierceDebug, maybeMarkLingerDespawn } from '../../engine/simulation';
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
+import { isTileBlockingMovement } from '../../engine/actions';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
@@ -638,6 +639,15 @@ export const Game: React.FC<GameProps> = ({
       if (!tile) {
         playGameSound('error');
         return; // Can't place on null/void tiles
+      }
+
+      // Check if tile is impassable (default walls, custom wall-base tiles, and
+      // currently-active dynamic blockers). Heroes can't stand where they can't
+      // move, so reuse the canonical movement validator as the single source of
+      // truth — this also covers custom wall-type tiles, not just default walls.
+      if (isTileBlockingMovement(tile, gameState)) {
+        playGameSound('error');
+        return; // Can't place on impassable tiles
       }
 
       // Check if custom tile prevents placement
