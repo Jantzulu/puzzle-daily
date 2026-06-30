@@ -358,6 +358,13 @@ interface AnchorPreviewLayer {
   frameHeight?: number;
 }
 
+// Inline offset preview is small (board-faithful 2× zoom); the magnifier opens
+// a larger overlay that magnifies further so fine offsets are easy to see.
+const ANCHOR_PREVIEW_SIZE = 80;
+const ANCHOR_PREVIEW_ZOOM = 2;
+const ANCHOR_OVERLAY_SIZE = 360;
+const ANCHOR_OVERLAY_ZOOM = 8;
+
 const AnchorPreview: React.FC<AnchorPreviewLayer & {
   /** Other directions' same-slot sprites, drawn faded behind the active one. */
   ghosts?: AnchorPreviewLayer[];
@@ -366,13 +373,9 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   activeAlpha?: number;
 }> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, activeAlpha = 1 }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
+  const zoomRef = useRef<HTMLCanvasElement>(null);
   const [loadTick, setLoadTick] = useState(0);
-  const previewSize = 80;
-  // Same zoom the board uses at default size (48px tiles / 24 art px = 2×),
-  // i.e. tileSize / ART_TILE_PX. Sprite and tile scale together, so sprite-to-
-  // tile proportions match the board; overflow shows true on-board size.
-  const zoom = 2;
-  const tileRect = ART_TILE_PX * zoom;
+  const [zoomed, setZoomed] = useState(false);
 
   // Redraw when any sprite image finishes loading (covers active + ghosts,
   // including imported sheets that resolve their dimensions only once cached).
@@ -382,81 +385,121 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   }, []);
 
   useEffect(() => {
-    const canvas = previewRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
+    // Render the same scene (grid + tile + crosshair + ghosts + active layer)
+    // to a canvas at a given display size and zoom. Used for both the small
+    // inline preview and the larger zoom overlay.
+    const render = (canvas: HTMLCanvasElement | null, displaySize: number, zoom: number) => {
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = displaySize * dpr;
+      canvas.height = displaySize * dpr;
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, displaySize, displaySize);
 
-    // Account for device pixel ratio for crisp rendering
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = previewSize * dpr;
-    canvas.height = previewSize * dpr;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, previewSize, previewSize);
+      const tileRect = ART_TILE_PX * zoom;
+      const tileOrigin = (displaySize - tileRect) / 2;
 
-    const tileOrigin = (previewSize - tileRect) / 2;
+      // Art-pixel grid inside the tile — one cell per art pixel.
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 1; i < ART_TILE_PX; i++) {
+        const g = Math.round(tileOrigin + i * zoom) + 0.5;
+        ctx.moveTo(g, tileOrigin);
+        ctx.lineTo(g, tileOrigin + tileRect);
+        ctx.moveTo(tileOrigin, g);
+        ctx.lineTo(tileOrigin + tileRect, g);
+      }
+      ctx.stroke();
 
-    // Art-pixel grid inside the tile — one cell per art pixel. Makes whole-pixel
-    // offset alignment visible and gives a fixed reference for centering.
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let i = 1; i < ART_TILE_PX; i++) {
-      const g = Math.round(tileOrigin + i * zoom) + 0.5;
-      ctx.moveTo(g, tileOrigin);
-      ctx.lineTo(g, tileOrigin + tileRect);
-      ctx.moveTo(tileOrigin, g);
-      ctx.lineTo(tileOrigin + tileRect, g);
-    }
-    ctx.stroke();
+      // Tile boundary (one tile, centered)
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+      ctx.setLineDash([3, 3]);
+      ctx.strokeRect(tileOrigin + 0.5, tileOrigin + 0.5, tileRect - 1, tileRect - 1);
+      ctx.setLineDash([]);
 
-    // Tile boundary (one tile, centered)
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-    ctx.setLineDash([3, 3]);
-    ctx.strokeRect(tileOrigin + 0.5, tileOrigin + 0.5, tileRect - 1, tileRect - 1);
-    ctx.setLineDash([]);
+      // Center crosshair
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.setLineDash([2, 3]);
+      ctx.beginPath();
+      ctx.moveTo(displaySize / 2, 0);
+      ctx.lineTo(displaySize / 2, displaySize);
+      ctx.moveTo(0, displaySize / 2);
+      ctx.lineTo(displaySize, displaySize / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-    // Center crosshair
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.12)';
-    ctx.setLineDash([2, 3]);
-    ctx.beginPath();
-    ctx.moveTo(previewSize / 2, 0);
-    ctx.lineTo(previewSize / 2, previewSize);
-    ctx.moveTo(0, previewSize / 2);
-    ctx.lineTo(previewSize, previewSize / 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
+      // Draw one sprite layer at frame 0, faithful to the board's native-size
+      // math: explicit frame dims when present, else naturalWidth / frameCount.
+      const drawLayer = (layer: AnchorPreviewLayer, alpha: number) => {
+        const img = loadSpriteImage(layer.imageSrc);
+        if (!img.complete || img.naturalWidth === 0) return;
+        const srcWidth = layer.frameWidth
+          ?? (layer.isSpriteSheet && layer.frameCount ? img.naturalWidth / layer.frameCount : img.naturalWidth);
+        const srcHeight = layer.frameHeight ?? img.naturalHeight;
+        const drawWidth = Math.round(srcWidth * zoom);
+        const drawHeight = Math.round(srcHeight * zoom);
+        const dx = Math.round(displaySize / 2 - drawWidth * layer.anchorX + Math.round(layer.offsetX) * zoom);
+        const dy = Math.round(displaySize / 2 - drawHeight * layer.anchorY + Math.round(layer.offsetY) * zoom);
+        ctx.globalAlpha = alpha;
+        ctx.drawImage(img, 0, 0, Math.round(srcWidth), Math.round(srcHeight), dx, dy, drawWidth, drawHeight);
+        ctx.globalAlpha = 1;
+      };
 
-    // Draw one sprite layer at frame 0, faithful to the board's native-size
-    // math: explicit frame dims when present, else naturalWidth / frameCount.
-    const drawLayer = (layer: AnchorPreviewLayer, alpha: number) => {
-      const img = loadSpriteImage(layer.imageSrc);
-      if (!img.complete || img.naturalWidth === 0) return;
-      const srcWidth = layer.frameWidth
-        ?? (layer.isSpriteSheet && layer.frameCount ? img.naturalWidth / layer.frameCount : img.naturalWidth);
-      const srcHeight = layer.frameHeight ?? img.naturalHeight;
-      const drawWidth = Math.round(srcWidth * zoom);
-      const drawHeight = Math.round(srcHeight * zoom);
-      const dx = Math.round(previewSize / 2 - drawWidth * layer.anchorX + Math.round(layer.offsetX) * zoom);
-      const dy = Math.round(previewSize / 2 - drawHeight * layer.anchorY + Math.round(layer.offsetY) * zoom);
-      ctx.globalAlpha = alpha;
-      ctx.drawImage(img, 0, 0, Math.round(srcWidth), Math.round(srcHeight), dx, dy, drawWidth, drawHeight);
-      ctx.globalAlpha = 1;
+      // Ghosts behind (faded), then the active layer on top (at the requested
+      // editor-only opacity so the ghosts stay visible behind it).
+      if (ghosts) for (const g of ghosts) drawLayer(g, 0.28);
+      drawLayer({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight }, activeAlpha);
     };
 
-    // Ghosts behind (faded), then the active layer on top (at the requested
-    // editor-only opacity so the ghosts stay visible behind it).
-    if (ghosts) for (const g of ghosts) drawLayer(g, 0.28);
-    drawLayer({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight }, activeAlpha);
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, activeAlpha, tileRect, loadTick]);
+    render(previewRef.current, ANCHOR_PREVIEW_SIZE, ANCHOR_PREVIEW_ZOOM);
+    if (zoomed) render(zoomRef.current, ANCHOR_OVERLAY_SIZE, ANCHOR_OVERLAY_ZOOM);
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed]);
 
   return (
-    <canvas
-      ref={previewRef}
-      className="rounded border border-stone-600 bg-stone-900 flex-shrink-0"
-      style={{ width: previewSize, height: previewSize }}
-    />
+    <div className="relative flex-shrink-0" style={{ width: ANCHOR_PREVIEW_SIZE, height: ANCHOR_PREVIEW_SIZE }}>
+      <canvas
+        ref={previewRef}
+        className="rounded border border-stone-600 bg-stone-900"
+        style={{ width: ANCHOR_PREVIEW_SIZE, height: ANCHOR_PREVIEW_SIZE }}
+      />
+      <button
+        type="button"
+        onClick={() => setZoomed(true)}
+        title="Zoom preview"
+        className="absolute top-0.5 right-0.5 w-5 h-5 flex items-center justify-center rounded bg-stone-800/80 border border-stone-600 hover:bg-stone-700 text-[11px] leading-none"
+      >
+        🔍
+      </button>
+      {zoomed && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70"
+          onClick={() => setZoomed(false)}
+        >
+          <div
+            className="relative bg-stone-900 rounded-lg border border-stone-600 p-3"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setZoomed(false)}
+              title="Close"
+              className="absolute -top-2.5 -right-2.5 w-7 h-7 flex items-center justify-center rounded-full bg-stone-700 border border-stone-500 text-stone-200 hover:bg-stone-600 text-sm leading-none"
+            >
+              ✕
+            </button>
+            <canvas
+              ref={zoomRef}
+              className="rounded bg-stone-900"
+              style={{ width: ANCHOR_OVERLAY_SIZE, height: ANCHOR_OVERLAY_SIZE, imageRendering: 'pixelated' }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -1825,6 +1868,85 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
     return layers;
   };
 
+  // Non-directional (Global Settings) slots have no sibling directions to ghost,
+  // so the useful onion-skin reference is the idle pose — ghost it so death /
+  // spawn / select animations can be aligned to where the entity rests.
+  const buildIdleGhost = (): AnchorPreviewLayer[] => {
+    if (!onionEnabled) return [];
+    const dir = sprite.useDirectional ? sprite.directionalSprites?.default : undefined;
+    const sheet = dir?.idleSpriteSheet ?? sprite.idleSpriteSheet;
+    const sheetSrc = sheet ? (sheet.imageData || sheet.imageUrl) : undefined;
+    if (sheet && sheetSrc) {
+      return [{
+        imageSrc: sheetSrc,
+        anchorX: sheet.anchorX ?? 0.5,
+        anchorY: sheet.anchorY ?? 0.5,
+        offsetX: sheet.offsetX ?? 0,
+        offsetY: sheet.offsetY ?? 0,
+        isSpriteSheet: true,
+        frameCount: sheet.frameCount,
+        frameWidth: sheet.frameWidth,
+        frameHeight: sheet.frameHeight,
+      }];
+    }
+    const imgSrc = dir
+      ? (dir.idleImageData || dir.imageData || dir.idleImageUrl || dir.imageUrl)
+      : (sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl);
+    if (imgSrc) {
+      return [{
+        imageSrc: imgSrc,
+        anchorX: (dir ? dir.idleAnchorX : sprite.idleAnchorX) ?? 0.5,
+        anchorY: (dir ? dir.idleAnchorY : sprite.idleAnchorY) ?? 0.5,
+        offsetX: (dir ? dir.idleOffsetX : sprite.idleOffsetX) ?? 0,
+        offsetY: (dir ? dir.idleOffsetY : sprite.idleOffsetY) ?? 0,
+        isSpriteSheet: false,
+      }];
+    }
+    return [];
+  };
+
+  // Onion-skin controls for the offset previews. `forGlobal` hides the
+  // direction picker (Global Settings slots ghost the idle pose instead of
+  // sibling directions). Shared state, so toggling in either tab applies to both.
+  const renderOnionControls = (forGlobal: boolean) => (
+    <div className="mb-3 p-2 bg-stone-800/70 rounded border border-stone-600 text-xs">
+      <label className="flex items-center gap-2 text-stone-200 font-semibold cursor-pointer">
+        <input type="checkbox" checked={onionEnabled} onChange={(e) => setOnionEnabled(e.target.checked)} />
+        👻 Onion-skin ({forGlobal ? 'ghost the idle pose' : 'ghost other directions'} in the offset preview)
+      </label>
+      {onionEnabled && (
+        <div className="mt-2 space-y-1.5">
+          {!forGlobal && (
+            <div className="flex items-center gap-2">
+              <span className="text-stone-400 w-20 shrink-0">Compare to</span>
+              <select
+                value={onionDir}
+                onChange={(e) => setOnionDir(e.target.value as SpriteDirection | 'all')}
+                className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
+              >
+                <option value="all">All other directions</option>
+                {DIRECTIONS.filter((d) => d.key !== selectedDirection).map((d) => (
+                  <option key={d.key} value={d.key}>{d.arrow} {d.label}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <span className="text-stone-400 w-20 shrink-0">Active opacity</span>
+            <input
+              type="range" min="0.15" max="1" step="0.05"
+              value={activePreviewOpacity}
+              onChange={(e) => setActivePreviewOpacity(parseFloat(e.target.value))}
+              className="flex-1 h-3"
+            />
+            <span className="w-9 text-right text-stone-300">{Math.round(activePreviewOpacity * 100)}%</span>
+          </div>
+          <p className="text-[10px] text-stone-500">Preview only — never affects how sprites render in-game.</p>
+        </div>
+      )}
+    </div>
+  );
+
   // Helper to render compact anchor point grid + offset sliders + scale slider with inline preview
   const renderAnchorControls = (
     anchorX: number = 0.5,
@@ -2063,6 +2185,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                   (field, val) => sheetConfigChange(field, val),
                   undefined,
                   sheet,
+                  buildIdleGhost(),
                 )}
               </>
             )}
@@ -2115,6 +2238,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
                     (ax, ay) => { onChange({ ...sprite, [`${prefix}AnchorX`]: ax, [`${prefix}AnchorY`]: ay }); },
                     (field, val) => { const key = field === 'offsetX' ? `${prefix}OffsetX` : `${prefix}OffsetY`; onChange({ ...sprite, [key]: val }); },
                     imageData || imageUrl,
+                    undefined,
+                    buildIdleGhost(),
                   )}
                 </>
               )}
@@ -2652,40 +2777,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
           )}
 
           {/* Onion-skin preview controls — affects the small offset previews only, never the board */}
-          <div className="mb-3 p-2 bg-stone-800/70 rounded border border-stone-600 text-xs">
-            <label className="flex items-center gap-2 text-stone-200 font-semibold cursor-pointer">
-              <input type="checkbox" checked={onionEnabled} onChange={(e) => setOnionEnabled(e.target.checked)} />
-              👻 Onion-skin (ghost other directions in the offset preview)
-            </label>
-            {onionEnabled && (
-              <div className="mt-2 space-y-1.5">
-                <div className="flex items-center gap-2">
-                  <span className="text-stone-400 w-20 shrink-0">Compare to</span>
-                  <select
-                    value={onionDir}
-                    onChange={(e) => setOnionDir(e.target.value as SpriteDirection | 'all')}
-                    className="flex-1 px-2 py-1 bg-stone-700 rounded text-parchment-100"
-                  >
-                    <option value="all">All other directions</option>
-                    {DIRECTIONS.filter((d) => d.key !== selectedDirection).map((d) => (
-                      <option key={d.key} value={d.key}>{d.arrow} {d.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-stone-400 w-20 shrink-0">Active opacity</span>
-                  <input
-                    type="range" min="0.15" max="1" step="0.05"
-                    value={activePreviewOpacity}
-                    onChange={(e) => setActivePreviewOpacity(parseFloat(e.target.value))}
-                    className="flex-1 h-3"
-                  />
-                  <span className="w-9 text-right text-stone-300">{Math.round(activePreviewOpacity * 100)}%</span>
-                </div>
-                <p className="text-[10px] text-stone-500">Preview only — never affects how sprites render in-game.</p>
-              </div>
-            )}
-          </div>
+          {renderOnionControls(false)}
 
           {/* Idle Sprite Sheet Upload */}
           {(hasIdleSpriteSheet || (!hasIdleImage && (spriteTypeChoice.idle || 'sheet') === 'sheet')) && (<div>
@@ -3511,6 +3603,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, si
       {/* GLOBAL SETTINGS TAB */}
       {editorTab === 'global' && (
       <>
+      {/* Onion-skin here ghosts the idle pose behind the non-directional anims */}
+      {renderOnionControls(true)}
       {renderNonDirectionalAnim('death', {
         title: '💀 Death',
         description: 'Plays once when the entity reaches 0 HP, then holds on the final frame (the corpse). Not directional — the same animation plays regardless of facing direction.',

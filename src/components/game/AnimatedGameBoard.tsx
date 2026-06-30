@@ -58,7 +58,6 @@ const SIDE_BORDER_SIZE = 16; // Thinner side borders to match pixel art style
 const ANIMATION_DURATION = 400; // ms per move (faster animation, half the turn interval)
 const MOVE_DURATION = 180; // Movement duration - balance between smoothness and minimizing time on wrong tile
 const IDLE_DURATION = 220; // Idle time on destination tile (where entity actually is)
-const DEATH_ANIMATION_DURATION = 500; // ms for death animation
 const SPAWN_ANIMATION_DURATION = 500; // ms for spawn animation (plays once when entity first appears)
 const ICE_SLIDE_MS_PER_TILE = 120; // ms per tile when sliding on ice (slower than walking)
 const TELEPORT_APPEAR_DURATION = 100; // Small delay after walking to teleport tile before appearing at destination
@@ -704,6 +703,14 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       characterSpawnAnimationsRef.current = new Map();
       setEnemySpawnAnimations(new Map());
       setLiftOffAnimations([]);
+      // Reset death + casting animation tracking (death anims now persist as
+      // corpses, so they must be cleared explicitly on a new puzzle).
+      setCharacterDeathAnimations(new Map());
+      setEnemyDeathAnimations(new Map());
+      prevCharacterDeadStateRef.current.clear();
+      prevEnemyDeadStateRef.current.clear();
+      characterCastStartTimes.clear();
+      enemyCastStartTimes.clear();
     }
     prevPuzzleIdRef.current = currentPuzzleId;
   }, [gameState.puzzle.id]);
@@ -1035,14 +1042,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       prevCharacterDeadStateRef.current.set(char.characterId, isDeadNow);
     });
 
-    // Clean up old death animations that have completed
-    for (const [id, anim] of newDeathAnimations.entries()) {
-      if (now - anim.startTime > DEATH_ANIMATION_DURATION) {
-        newDeathAnimations.delete(id);
-        hasChanges = true;
-      }
-    }
-
+    // No cleanup: the death anim persists while the entity is a corpse, so its
+    // fixed startTime lets the sheet play through and hold its final frame.
+    // Cleared on puzzle change. (Re-death overwrites the entry above.)
     if (hasChanges) {
       setCharacterDeathAnimations(newDeathAnimations);
     }
@@ -1072,14 +1074,8 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       prevEnemyDeadStateRef.current.set(idx, isDeadNow);
     });
 
-    // Clean up old death animations that have completed
-    for (const [idx, anim] of newDeathAnimations.entries()) {
-      if (now - anim.startTime > DEATH_ANIMATION_DURATION) {
-        newDeathAnimations.delete(idx);
-        hasChanges = true;
-      }
-    }
-
+    // No cleanup: the death anim persists while the entity is a corpse, so its
+    // fixed startTime lets the sheet play through and hold its final frame.
     if (hasChanges) {
       setEnemyDeathAnimations(newDeathAnimations);
     }
@@ -2586,10 +2582,11 @@ function drawEnemy(
       if (hasDeathSprite) {
         // Death sprite sheet will animate and stop on final frame (corpse state)
         // Use the death animation start time for proper frame calculation
-        // Once the death anim is cleaned up (~DEATH_ANIMATION_DURATION), fall back
-        // to 0 so elapsed is effectively infinite and the sheet holds its FINAL
-        // (corpse) frame — not `now`, which would reset the corpse to frame 0.
-        const deathStartTime = deathAnimState?.startTime || 0;
+        // The death anim now persists while the entity is dead, so its fixed
+        // startTime plays the sheet through and holds the final (corpse) frame.
+        // `now` only applies for the 1-frame window before the anim registers,
+        // where it correctly starts at frame 0 (no last-frame flash).
+        const deathStartTime = deathAnimState?.startTime || now;
         drawDeathSpritePixelPerfect(
           ctx,
           enemyData.customSprite,
@@ -3452,10 +3449,11 @@ function drawCharacter(
 
       if (hasDeathSprite) {
         // Death sprite sheet will animate and stop on final frame (corpse state)
-        // Once the death anim is cleaned up (~DEATH_ANIMATION_DURATION), fall back
-        // to 0 so elapsed is effectively infinite and the sheet holds its FINAL
-        // (corpse) frame — not `now`, which would reset the corpse to frame 0.
-        const deathStartTime = deathAnimState?.startTime || 0;
+        // The death anim now persists while the entity is dead, so its fixed
+        // startTime plays the sheet through and holds the final (corpse) frame.
+        // `now` only applies for the 1-frame window before the anim registers,
+        // where it correctly starts at frame 0 (no last-frame flash).
+        const deathStartTime = deathAnimState?.startTime || now;
         drawDeathSpritePixelPerfect(
           ctx,
           charData.customSprite,
