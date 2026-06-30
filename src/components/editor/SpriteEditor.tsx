@@ -3874,7 +3874,11 @@ function drawSpriteConfig(
   tileSize: number,
   isMoving: boolean = false,
   now: number = Date.now(),
-  isCasting: boolean = false
+  isCasting: boolean = false,
+  // When provided (board casting), the casting sheet animates from this start
+  // time so it restarts each cast; without it (editor preview) it uses the
+  // continuous shared-state path.
+  castStartTime?: number
 ) {
   // Determine active state and resolve anchor from the appropriate source
   // For spritesheets: anchor lives on SpriteSheetConfig
@@ -3898,7 +3902,12 @@ function drawSpriteConfig(
     const ay = spriteSheet.anchorY ?? 0.5;
     const ox = spriteSheet.offsetX ?? 0;
     const oy = spriteSheet.offsetY ?? 0;
-    drawSpriteSheet(ctx, spriteSheet, centerX, centerY, tileSize, now, ax, ay, ox, oy);
+    if (castStartTime !== undefined && spriteSheet === config.castingSpriteSheet) {
+      // Casting sheet plays from the cast's start time so it restarts each cast.
+      drawSpriteSheetFromStartTime(ctx, spriteSheet, centerX, centerY, tileSize, castStartTime, now, ax, ay, ox, oy);
+    } else {
+      drawSpriteSheet(ctx, spriteSheet, centerX, centerY, tileSize, now, ax, ay, ox, oy);
+    }
     return;
   }
 
@@ -4024,7 +4033,10 @@ export function drawSprite(
   direction?: Direction,
   isMoving: boolean = false,
   now: number = Date.now(),
-  isCasting: boolean = false
+  isCasting: boolean = false,
+  // When provided (board casting), the casting sheet restarts from this start
+  // time each cast; omitted by the editor preview (continuous path).
+  castStartTime?: number
 ) {
   // Check if we should use directional sprites
   if (sprite.useDirectional && sprite.directionalSprites) {
@@ -4033,7 +4045,7 @@ export function drawSprite(
     const dirConfig = sprite.directionalSprites[dirKey] || sprite.directionalSprites['default'];
 
     if (dirConfig) {
-      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now, isCasting);
+      drawSpriteConfig(ctx, dirConfig, centerX, centerY, tileSize, isMoving, now, isCasting, castStartTime);
       return;
     }
   }
@@ -4053,7 +4065,12 @@ export function drawSprite(
     const ay = simpleSpriteSheet.anchorY ?? 0.5;
     const ox = simpleSpriteSheet.offsetX ?? 0;
     const oy = simpleSpriteSheet.offsetY ?? 0;
-    drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, tileSize, now, ax, ay, ox, oy);
+    if (castStartTime !== undefined && simpleSpriteSheet === sprite.castingSpriteSheet) {
+      // Casting sheet plays from the cast's start time so it restarts each cast.
+      drawSpriteSheetFromStartTime(ctx, simpleSpriteSheet, centerX, centerY, tileSize, castStartTime, now, ax, ay, ox, oy);
+    } else {
+      drawSpriteSheet(ctx, simpleSpriteSheet, centerX, centerY, tileSize, now, ax, ay, ox, oy);
+    }
     return;
   }
 

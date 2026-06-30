@@ -100,10 +100,11 @@ type DrawSpriteArgs = [
   isMoving?: boolean,
   now?: number,
   isCasting?: boolean,
+  castStartTime?: number,
 ];
 
 function drawSpritePixelPerfect(...args: DrawSpriteArgs) {
-  const [ctx, sprite, centerX, centerY, tileSize, direction, isMoving, now, isCasting] = args;
+  const [ctx, sprite, centerX, centerY, tileSize, direction, isMoving, now, isCasting, castStartTime] = args;
   const transform = ctx.getTransform();
   const scale = transform.a; // horizontal scale
   const currentAlpha = ctx.globalAlpha; // Preserve alpha across setTransform
@@ -127,7 +128,7 @@ function drawSpritePixelPerfect(...args: DrawSpriteArgs) {
   const physCenterY = Math.round(physPoint.y);
   const physTileSize = Math.round(tileSize * scale);
 
-  drawSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, isMoving, now, isCasting);
+  drawSprite(ctx, sprite, physCenterX, physCenterY, physTileSize, direction, isMoving, now, isCasting, castStartTime);
   ctx.restore();
 }
 
@@ -195,6 +196,12 @@ interface SpriteSheetConfig {
 
 // Cache for sprite sheet animation state
 const spellSpriteSheetStates = new Map<string, { currentFrame: number; lastFrameTime: number }>();
+
+// Per-entity casting-animation start times (display clock), keyed by entity index.
+// Set each cast turn so the casting sheet restarts from frame 0; read by
+// drawCharacter/drawEnemy and threaded into drawSprite (mirrors spawn/death).
+const characterCastStartTimes = new Map<number, number>();
+const enemyCastStartTimes = new Map<number, number>();
 
 /**
  * Draw a spell sprite sheet with optional rotation and mirroring
@@ -760,6 +767,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const prevChar = prevCharactersRef.current[idx];
       const existing = characterPositionsRef.current.get(idx);
       newMoved.set(idx, false); // default: not walking unless an actual move below
+      // Stamp a fresh casting start (display clock) on each cast turn so the
+      // casting sheet restarts from frame 0; stale values are ignored when not casting.
+      if (char.isCasting) characterCastStartTimes.set(idx, now);
 
       if (prevChar && (prevChar.x !== char.x || prevChar.y !== char.y)) {
         // Character moved!
@@ -910,6 +920,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const prevEnemy = prevEnemiesRef.current[idx];
       const existing = enemyPositionsRef.current.get(idx);
       newMoved.set(idx, false); // default: not walking unless an actual move below
+      // Stamp a fresh casting start (display clock) on each cast turn so the
+      // casting sheet restarts from frame 0; stale values are ignored when not casting.
+      if (enemy.isCasting) enemyCastStartTimes.set(idx, now);
 
       if (prevEnemy && (prevEnemy.x !== enemy.x || prevEnemy.y !== enemy.y)) {
         // Enemy moved!
@@ -2559,7 +2572,7 @@ function drawEnemy(
         drawSpawnSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
       } else {
         // Normal sprite (idle/moving/casting)
-        drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+        drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting, entityIndex !== undefined ? enemyCastStartTimes.get(entityIndex) : undefined);
       }
 
       ctx.shadowColor = 'transparent';
@@ -2573,7 +2586,10 @@ function drawEnemy(
       if (hasDeathSprite) {
         // Death sprite sheet will animate and stop on final frame (corpse state)
         // Use the death animation start time for proper frame calculation
-        const deathStartTime = deathAnimState?.startTime || now;
+        // Once the death anim is cleaned up (~DEATH_ANIMATION_DURATION), fall back
+        // to 0 so elapsed is effectively infinite and the sheet holds its FINAL
+        // (corpse) frame — not `now`, which would reset the corpse to frame 0.
+        const deathStartTime = deathAnimState?.startTime || 0;
         drawDeathSpritePixelPerfect(
           ctx,
           enemyData.customSprite,
@@ -3423,7 +3439,7 @@ function drawCharacter(
         ctx.shadowOffsetX = 1;
         ctx.shadowOffsetY = 1;
 
-        drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting);
+        drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting, entityIndex !== undefined ? characterCastStartTimes.get(entityIndex) : undefined);
 
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
@@ -3436,7 +3452,10 @@ function drawCharacter(
 
       if (hasDeathSprite) {
         // Death sprite sheet will animate and stop on final frame (corpse state)
-        const deathStartTime = deathAnimState?.startTime || now;
+        // Once the death anim is cleaned up (~DEATH_ANIMATION_DURATION), fall back
+        // to 0 so elapsed is effectively infinite and the sheet holds its FINAL
+        // (corpse) frame — not `now`, which would reset the corpse to frame 0.
+        const deathStartTime = deathAnimState?.startTime || 0;
         drawDeathSpritePixelPerfect(
           ctx,
           charData.customSprite,
