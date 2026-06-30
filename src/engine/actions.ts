@@ -199,11 +199,25 @@ export function executeAction(
       updatedCharacter.facing = turnAround(character.facing);
       return updatedCharacter;
 
-    case ActionType.FACE_DIRECTION:
-      if (action.faceDirection !== undefined) {
+    case ActionType.FACE_DIRECTION: {
+      if (action.faceTarget) {
+        // Face the nearest enemy/ally, snapped to the 8 compass directions.
+        // Reuses the same target-finders + direction snapping as auto-targeting,
+        // honoring autoTargetMode/autoTargetRange when set. If no valid target
+        // exists, facing is left unchanged.
+        const mode = action.autoTargetMode ?? 'omnidirectional';
+        const range = action.autoTargetRange ?? 0;
+        const nearest = action.faceTarget === 'nearest_enemy'
+          ? findNearestEnemies(updatedCharacter, gameState, 1, mode, range)
+          : findNearestCharacters(updatedCharacter, gameState, 1, mode, range);
+        if (nearest.length > 0) {
+          updatedCharacter.facing = nearest[0].direction;
+        }
+      } else if (action.faceDirection !== undefined) {
         updatedCharacter.facing = action.faceDirection;
       }
       return updatedCharacter;
+    }
 
     case ActionType.WAIT:
       // Do nothing

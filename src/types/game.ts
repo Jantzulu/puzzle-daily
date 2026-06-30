@@ -189,7 +189,8 @@ export interface CharacterAction {
   tilesPerMove?: number; // How many tiles to move per tick (default: 1)
   onWallCollision?: WallCollisionBehavior; // What to do when hitting a wall (default: 'stop')
   turnDegrees?: 45 | 90 | 135; // Turn amount: 45 (one diagonal), 90 (cardinal), 135 (skip diagonal, useful for corners) (default: 90)
-  faceDirection?: Direction; // Target direction for FACE_DIRECTION action
+  faceDirection?: Direction; // Target direction for FACE_DIRECTION action (used when faceTarget is unset)
+  faceTarget?: 'nearest_enemy' | 'nearest_character'; // For FACE_DIRECTION: face the nearest enemy (opposing team) or character (own team/ally) instead of a fixed direction. Direction is snapped to the 8 compass dirs. Unset = use faceDirection.
 
   // Execution configuration (new system)
   executionMode?: ExecutionMode;  // Default: 'sequential'

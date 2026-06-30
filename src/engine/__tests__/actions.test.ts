@@ -191,6 +191,76 @@ describe('executeAction — turning', () => {
 });
 
 // ==========================================
+// FACE_DIRECTION
+// ==========================================
+describe('executeAction — FACE_DIRECTION', () => {
+  it('fixed direction sets facing (default behavior, no faceTarget)', () => {
+    const gs = createTestGameState({
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceDirection: Direction.WEST }, gs);
+    expect(result.facing).toBe(Direction.WEST);
+  });
+
+  it('faceTarget=nearest_enemy snaps to the enemy direction (cardinal)', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 7, height: 7, enemies: [createTestEnemy({ x: 5, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_enemy' }, gs);
+    expect(result.facing).toBe(Direction.EAST);
+  });
+
+  it('faceTarget=nearest_enemy snaps to the 8 compass dirs (diagonal)', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 7, height: 7, enemies: [createTestEnemy({ x: 4, y: 4 })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_enemy' }, gs);
+    expect(result.facing).toBe(Direction.SOUTHEAST);
+  });
+
+  it('faceTarget=nearest_enemy picks the closest of several enemies', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 9, height: 9, enemies: [
+        createTestEnemy({ enemyId: 'goblin-1', x: 8, y: 4 }), // far east
+        createTestEnemy({ enemyId: 'goblin-1', x: 4, y: 2 }), // closer, north
+      ] }),
+      placedCharacters: [createTestCharacter({ x: 4, y: 4, facing: Direction.EAST })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_enemy' }, gs);
+    expect(result.facing).toBe(Direction.NORTH);
+  });
+
+  it('faceTarget=nearest_character faces a teammate hero', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 7, height: 7 }),
+      placedCharacters: [
+        createTestCharacter({ characterId: 'hero-1', x: 2, y: 2, facing: Direction.NORTH }),
+        createTestCharacter({ characterId: 'hero-2', x: 2, y: 5, facing: Direction.NORTH }),
+      ],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_character' }, gs);
+    expect(result.facing).toBe(Direction.SOUTH);
+  });
+
+  it('leaves facing unchanged when no valid target exists', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 7, height: 7, enemies: [] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_enemy' }, gs);
+    expect(result.facing).toBe(Direction.NORTH);
+  });
+});
+
+// ==========================================
 // WAIT
 // ==========================================
 describe('executeAction — WAIT', () => {

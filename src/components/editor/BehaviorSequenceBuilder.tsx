@@ -293,17 +293,44 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
       {action.type === ActionType.FACE_DIRECTION && (
         <div className="ml-8 space-y-2">
           <div className="flex items-center gap-2">
-            <label className="text-xs text-stone-400">Direction:</label>
+            <label className="text-xs text-stone-400">Face:</label>
             <select
-              value={action.faceDirection ?? Direction.NORTH}
-              onChange={(e) => onUpdate({ ...action, faceDirection: e.target.value as Direction })}
+              value={action.faceTarget ?? 'fixed'}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (v === 'fixed') {
+                  onUpdate({ ...action, faceTarget: undefined });
+                } else {
+                  onUpdate({ ...action, faceTarget: v as 'nearest_enemy' | 'nearest_character' });
+                }
+              }}
               className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
             >
-              {Object.entries(Direction).filter(([k]) => isNaN(Number(k))).map(([name, val]) => (
-                <option key={val} value={val}>{name.charAt(0) + name.slice(1).toLowerCase()}</option>
-              ))}
+              <option value="fixed">Fixed Direction</option>
+              <option value="nearest_enemy">Nearest Enemy</option>
+              <option value="nearest_character">Nearest Character</option>
             </select>
           </div>
+          {/* Fixed-direction picker (only when not facing a target) */}
+          {!action.faceTarget && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-stone-400">Direction:</label>
+              <select
+                value={action.faceDirection ?? Direction.NORTH}
+                onChange={(e) => onUpdate({ ...action, faceDirection: e.target.value as Direction })}
+                className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
+              >
+                {Object.entries(Direction).filter(([k]) => isNaN(Number(k))).map(([name, val]) => (
+                  <option key={val} value={val}>{name.charAt(0) + name.slice(1).toLowerCase()}</option>
+                ))}
+              </select>
+            </div>
+          )}
+          {action.faceTarget && (
+            <p className="text-[10px] text-stone-500 leading-tight">
+              Snaps to the nearest {action.faceTarget === 'nearest_enemy' ? 'opposing-team entity' : 'ally'} along one of the 8 compass directions. Facing is unchanged if no valid target exists.
+            </p>
+          )}
         </div>
       )}
 
