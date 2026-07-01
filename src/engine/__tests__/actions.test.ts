@@ -7,6 +7,7 @@ import {
   clearAllRegistries,
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
+  registerTestSpell,
   registerTestTileType,
   createEmptyGrid,
   createTestPuzzle,
@@ -18,7 +19,7 @@ import {
   setTile,
   setNull,
 } from './helpers';
-import { Direction, TileType, ActionType, StatusEffectType } from '../../types/game';
+import { Direction, TileType, ActionType, StatusEffectType, SpellTemplate } from '../../types/game';
 import type { CharacterAction, CadenceConfig } from '../../types/game';
 import { executeAction, isTileBlockingMovement, isTileActiveOnTurn, applyDamageToEntity } from '../actions';
 
@@ -287,6 +288,52 @@ describe('executeAction — FACE_DIRECTION', () => {
       gameStatus: 'running',
     });
     const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_enemy' }, gs);
+    expect(result.facing).toBe(Direction.NORTH);
+  });
+});
+
+// ==========================================
+// SPELL — faceTargetOnCast
+// ==========================================
+describe('executeAction — SPELL faceTargetOnCast', () => {
+  const registerBolt = () => registerTestSpell('bolt', {
+    id: 'bolt', name: 'Bolt', description: '', thumbnailIcon: '',
+    templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+    damage: 1, range: 5, projectileSpeed: 4, sprites: {},
+  });
+
+  it('rotates the caster to face the auto-target (stay: no revert stash)', () => {
+    registerBolt();
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, enemies: [createTestEnemy({ x: 5, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestEnemy: true, faceTargetOnCast: true }, gs);
+    expect(result.facing).toBe(Direction.EAST);
+    expect(result.preCastFacing).toBeUndefined();
+  });
+
+  it('with revert, stashes the pre-cast facing for restoration next turn', () => {
+    registerBolt();
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 5, height: 8, enemies: [createTestEnemy({ x: 2, y: 5 })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestEnemy: true, faceTargetOnCast: true, revertFacingAfterCast: true }, gs);
+    expect(result.facing).toBe(Direction.SOUTH);
+    expect(result.preCastFacing).toBe(Direction.NORTH);
+  });
+
+  it('leaves facing unchanged when faceTargetOnCast is off', () => {
+    registerBolt();
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 8, height: 5, enemies: [createTestEnemy({ x: 5, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestEnemy: true }, gs);
     expect(result.facing).toBe(Direction.NORTH);
   });
 });

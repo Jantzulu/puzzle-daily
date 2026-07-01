@@ -8,6 +8,7 @@ import {
   clearAllRegistries,
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
+  registerTestSpell,
   createEmptyGrid,
   createTestPuzzle,
   createTestCharacterDef,
@@ -18,7 +19,7 @@ import {
   createTestGameState,
   setTile,
 } from './helpers';
-import { Direction, TileType, ActionType } from '../../types/game';
+import { Direction, TileType, ActionType, SpellTemplate } from '../../types/game';
 import {
   initializeGameState,
   executeTurn,
@@ -165,6 +166,53 @@ describe('executeTurn', () => {
     // Turn 2: no action at index 1, should deactivate
     executeTurn(gs);
     expect(gs.placedCharacters[0].active).toBe(false);
+  });
+
+  describe('face-on-cast facing revert', () => {
+    const registerBolt = () => registerTestSpell('bolt', {
+      id: 'bolt', name: 'Bolt', description: '', thumbnailIcon: '',
+      templateType: SpellTemplate.LINEAR, directionMode: 'current_facing',
+      damage: 1, range: 5, projectileSpeed: 4, sprites: {},
+    });
+
+    const setupCaster = (revert: boolean) => {
+      registerBolt();
+      regChar(createTestCharacterDef({
+        id: 'hero-caster',
+        behavior: [{ type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestEnemy: true, faceTargetOnCast: true, revertFacingAfterCast: revert }],
+      }));
+      regEnemy(createTestEnemyDef({ id: 'goblin-tank', health: 20 }));
+      return createTestGameState({
+        puzzle: createTestPuzzle({
+          width: 8, height: 5,
+          enemies: [createTestEnemy({ enemyId: 'goblin-tank', x: 5, y: 2, currentHealth: 20 })],
+          availableCharacters: ['hero-caster'],
+          winConditions: [{ type: 'survive_turns', params: { turns: 99 } }],
+        }),
+        gameStatus: 'running',
+        currentTurn: 0,
+        placedCharacters: [createTestCharacter({ characterId: 'hero-caster', x: 2, y: 2, facing: Direction.NORTH, actionIndex: 0, active: true })],
+      });
+    };
+
+    it('faces the target on the cast turn, then reverts at the next turn start', () => {
+      const gs = setupCaster(true);
+      executeTurn(gs); // casts east at the enemy, faces EAST, stashes NORTH
+      expect(gs.placedCharacters[0].facing).toBe(Direction.EAST);
+      expect(gs.placedCharacters[0].preCastFacing).toBe(Direction.NORTH);
+      executeTurn(gs); // next turn: revert to NORTH, clear the stash
+      expect(gs.placedCharacters[0].facing).toBe(Direction.NORTH);
+      expect(gs.placedCharacters[0].preCastFacing).toBeUndefined();
+    });
+
+    it('keeps the new facing when revert is off', () => {
+      const gs = setupCaster(false);
+      executeTurn(gs);
+      expect(gs.placedCharacters[0].facing).toBe(Direction.EAST);
+      expect(gs.placedCharacters[0].preCastFacing).toBeUndefined();
+      executeTurn(gs); // no revert: facing persists
+      expect(gs.placedCharacters[0].facing).toBe(Direction.EAST);
+    });
   });
 
   it('REPEAT loops back to first action', () => {

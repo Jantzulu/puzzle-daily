@@ -1598,6 +1598,12 @@ export function executeTurn(gameState: GameState): GameState {
     // Reset casting once per turn (NOT per action) so a SPELL anywhere in this
     // turn's action chain stays flagged for the cast animation.
     newCharacter.isCasting = false;
+    // Restore facing stashed by a face-on-cast-with-revert last turn: the entity
+    // faced its target during that cast turn's animation window; now it reverts.
+    if (newCharacter.preCastFacing !== undefined) {
+      newCharacter.facing = newCharacter.preCastFacing;
+      newCharacter.preCastFacing = undefined;
+    }
 
     if (!newCharacter.active || !isEntityFunctional(newCharacter)) {
       newCharacters.push(newCharacter);
@@ -1756,6 +1762,12 @@ export function executeTurn(gameState: GameState): GameState {
     // Reset casting once per turn (NOT per action) so a SPELL anywhere in this
     // turn's action chain stays flagged for the cast animation.
     newEnemy.isCasting = false;
+    // Restore facing stashed by a face-on-cast-with-revert last turn (see the
+    // character loop for the full rationale).
+    if (newEnemy.preCastFacing !== undefined) {
+      newEnemy.facing = newEnemy.preCastFacing;
+      newEnemy.preCastFacing = undefined;
+    }
 
     if (newEnemy.dead) {
       newEnemies.push(newEnemy);
@@ -1822,6 +1834,7 @@ export function executeTurn(gameState: GameState): GameState {
         active: newEnemy.active || true,
         dead: newEnemy.dead,
         spellCooldowns: newEnemy.spellCooldowns,
+        preCastFacing: newEnemy.preCastFacing, // carry the pre-cast stash across chained actions this turn
       };
       const result = executeAction(tempChar, action, gameState);
       newEnemy.x = result.x;
@@ -1830,6 +1843,7 @@ export function executeTurn(gameState: GameState): GameState {
       newEnemy.currentHealth = result.currentHealth;
       newEnemy.dead = result.dead;
       if (result.isCasting) newEnemy.isCasting = true; // sticky within the turn (reset once at turn start); a later chained action can't clear it
+      newEnemy.preCastFacing = result.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       newEnemy.spellCooldowns = result.spellCooldowns;
       newEnemy.justTeleported = result.justTeleported;
       newEnemy.teleportFromX = result.teleportFromX;
@@ -1923,6 +1937,7 @@ export function executeTurn(gameState: GameState): GameState {
         active: enemy.active || true,
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
+        preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
       };
       evaluateTriggers(tempCharForTrigger, gameState);
 
@@ -1932,6 +1947,7 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.facing = tempCharForTrigger.facing;
       enemy.currentHealth = tempCharForTrigger.currentHealth;
       enemy.dead = tempCharForTrigger.dead;
+      enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
     }
   }
@@ -1957,6 +1973,7 @@ export function executeTurn(gameState: GameState): GameState {
         active: enemy.active || true,
         dead: enemy.dead,
         spellCooldowns: enemy.spellCooldowns,
+        preCastFacing: enemy.preCastFacing, // carry the pre-cast stash (may have been set by a sequential cast this turn)
       };
       evaluateTriggers(tempCharForTrigger, gameState);
 
@@ -1966,6 +1983,7 @@ export function executeTurn(gameState: GameState): GameState {
       enemy.facing = tempCharForTrigger.facing;
       enemy.currentHealth = tempCharForTrigger.currentHealth;
       enemy.dead = tempCharForTrigger.dead;
+      enemy.preCastFacing = tempCharForTrigger.preCastFacing; // face-on-cast-with-revert stash (restored next turn start)
       enemy.spellCooldowns = tempCharForTrigger.spellCooldowns;
     }
   }

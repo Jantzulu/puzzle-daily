@@ -1282,6 +1282,27 @@ function relativeToAbsolute(facing: Direction, relative: RelativeDirection): Dir
 }
 
 /**
+ * For auto-target SPELL actions with faceTargetOnCast: rotate the caster to face
+ * the (nearest) target, snapped to the 8 compass directions. `direction` is the
+ * already-snapped direction to that target. When revertFacingAfterCast is set, the
+ * pre-cast facing is stashed once per turn (guarded so multiple casts in a turn
+ * don't overwrite the true original) and restored at the next turn start by the
+ * simulation. Mutates `character` in place. Facing is logical state, so this flows
+ * through the single executeAction path and the headless solver reflects it.
+ */
+function applyFaceOnCast(
+  character: PlacedCharacter,
+  action: CharacterAction,
+  direction: Direction | undefined
+): void {
+  if (!action.faceTargetOnCast || direction === undefined) return;
+  if (action.revertFacingAfterCast && character.preCastFacing === undefined) {
+    character.preCastFacing = character.facing;
+  }
+  character.facing = direction;
+}
+
+/**
  * Execute a spell from the spell library
  */
 function executeSpell(
@@ -1373,6 +1394,7 @@ function executeSpell(
 
     if (nearestCharacters.length > 0) {
       castDirections = nearestCharacters.map(target => target.direction);
+      applyFaceOnCast(character, action, nearestCharacters[0].direction);
       // Store target info for homing
       if (action.homing) {
         homingTargets = nearestCharacters.map(target => ({
@@ -1393,6 +1415,7 @@ function executeSpell(
 
     if (nearestEnemies.length > 0) {
       castDirections = nearestEnemies.map(target => target.direction);
+      applyFaceOnCast(character, action, nearestEnemies[0].direction);
       // Store target info for homing
       if (action.homing) {
         homingTargets = nearestEnemies.map(target => ({

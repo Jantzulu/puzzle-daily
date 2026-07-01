@@ -192,6 +192,8 @@ export interface CharacterAction {
   faceDirection?: Direction; // Target direction for FACE_DIRECTION action (used when faceTarget is unset)
   faceTarget?: 'nearest_enemy' | 'nearest_hero'; // For FACE_DIRECTION: face the nearest enemy or hero (absolute teams, resolved against the actor's own side) instead of a fixed direction. Snapped to the 8 compass dirs. Unset = use faceDirection.
   faceTargetRange?: number; // For FACE_DIRECTION faceTarget: max search range in tiles (0 or unset = unlimited).
+  faceTargetOnCast?: boolean; // For auto-target SPELL actions: rotate the caster to face the nearest target when casting, snapped to the 8 compass dirs.
+  revertFacingAfterCast?: boolean; // With faceTargetOnCast: restore the pre-cast facing at the start of the next turn (otherwise the new facing persists).
 
   // Execution configuration (new system)
   executionMode?: ExecutionMode;  // Default: 'sequential'
@@ -319,6 +321,7 @@ export interface PlacedEnemy {
   teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
   isCasting?: boolean; // True on the turn a spell is cast — per-turn casting animation flag (deterministic, no clock)
+  preCastFacing?: Direction; // Set when a face-on-cast with revert changes facing; restored at the next turn start (deterministic)
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -581,6 +584,7 @@ export interface PlacedCharacter {
   teleportSprite?: TeleportSpriteConfig; // DEPRECATED: No longer used, activation sprite is on tile instead
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
   isCasting?: boolean; // True on the turn a spell is cast — per-turn casting animation flag (deterministic, no clock)
+  preCastFacing?: Direction; // Set when a face-on-cast with revert changes facing; restored at the next turn start (deterministic)
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)

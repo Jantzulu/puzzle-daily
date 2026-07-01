@@ -715,6 +715,30 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               </>
             )}
 
+            {/* Face target on cast */}
+            {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
+              <>
+                <label className="flex items-center gap-2 text-xs text-sky-300">
+                  <input type="checkbox" checked={action.faceTargetOnCast || false}
+                    onChange={(e) => onUpdate({
+                      ...action,
+                      faceTargetOnCast: e.target.checked,
+                      revertFacingAfterCast: e.target.checked ? action.revertFacingAfterCast : false,
+                    })}
+                    className="w-3 h-3" />
+                  Face Target on Cast
+                </label>
+                {action.faceTargetOnCast && (
+                  <label className="flex items-center gap-2 text-xs ml-4">
+                    <input type="checkbox" checked={action.revertFacingAfterCast || false}
+                      onChange={(e) => onUpdate({ ...action, revertFacingAfterCast: e.target.checked })}
+                      className="w-3 h-3" />
+                    <span className="text-stone-400">Revert facing next turn</span>
+                  </label>
+                )}
+              </>
+            )}
+
             {/* Homing — not for dead ally */}
             {(action.autoTargetNearestEnemy || action.autoTargetNearestCharacter) && (
               <label className="flex items-center gap-2 text-xs ml-4 text-yellow-300">
