@@ -1,6 +1,6 @@
 # Claude Handoff Document - Puzzle Daily
 
-Last Updated: June 30, 2026 (integer-zoom board quantization — pixel-perfect board sprites; prior: sprite/animation polish session — editor offset tooling, Death→global animation, entity-animation fidelity bug sweep)
+Last Updated: June 30, 2026 (facing/targeting + contact-damage session — wall-placement fix, FACE_DIRECTION nearest-target, face-on-cast, contact-damage reaction; prior: integer-zoom board quantization — pixel-perfect board sprites)
 
 ## Doc Map — Where to Find What
 
@@ -303,6 +303,18 @@ That deviation was the root problem. The singleton's lack of ownership boundarie
 ### Won't-do (decided)
 
 - **Native-resolution rendering Phase 2 (game board), and Phase 3 / Phase 4 with it.** Attempted on 2026-04-17 (commit `f2de97f`), reverted same day (commit `257c50b`). The "shrink the canvas buffer + CSS-upscale" approach is incompatible with the per-sheet `scale` and fractional `sprite.size` knobs the board needs for cross-sheet entity normalization. See [docs/native-resolution-rendering-plan.md](docs/native-resolution-rendering-plan.md) Phase 2 section for full reasoning. Don't reattempt without revisiting that doc. **NOTE (2026-06-30):** board pixel-perfection was *later achieved by a different, much smaller change* — see "Recently completed (June 30, 2026 — integer-zoom board quantization)" below. The "half-pixels are an accepted tax" framing in that plan doc is now superseded for the board.
+
+### Recently completed (June 30, 2026 — facing/targeting features + contact-damage reaction)
+
+A four-item session (bug + three facing/targeting features). All engine changes flow through the single `executeTurn`/`executeAction` path, so the headless solver/validator reflects them automatically. **255/255 tests, corpus goldens unchanged throughout.** New shared concept: a **`preCastFacing` revert primitive** (restored in the turn-start reset next to `isCasting`).
+
+- **Wall-placement fix** ([`dd55b0d`](https://github.com/Jantzulu/puzzle-daily/commit/dd55b0d)). `handleTileClick` never checked tile passability, so heroes could be placed on default walls. Added an `isTileBlockingMovement()` guard — reuses the canonical movement validator, so it also closes the latent custom-wall-tile / active-dynamic-blocker variants. Setup-phase only.
+- **FACE_DIRECTION → nearest enemy/hero** ([`4624d57`](https://github.com/Jantzulu/puzzle-daily/commit/4624d57), refined [`56f6096`](https://github.com/Jantzulu/puzzle-daily/commit/56f6096)). New `faceTarget` ('nearest_enemy' | 'nearest_hero') on the action + a `faceTargetRange`. Reuses `findNearestEnemies`/`findNearestCharacters` + `calculateDirectionTo` (8-way snap). **Absolute team semantics** (resolved against the actor's own side via `actorIsEnemy XOR wantHero`), so labels are truthful for both hero and enemy behaviors. Editor: Face-mode dropdown + Range in BehaviorSequenceBuilder.
+- **Auto-target face-on-cast** ([`56dab04`](https://github.com/Jantzulu/puzzle-daily/commit/56dab04)). `faceTargetOnCast` on auto-target SPELL actions rotates the caster to face its nearest target (direction already computed in the auto-target path). `revertFacingAfterCast` stashes `preCastFacing` and restores it at the next turn start (else the facing persists). Enemies thread `preCastFacing` through all three tempChar copy-back sites. **Answered along the way:** triggered auto-target spells fire at *end of turn* (after sequential actions), not the instant the trigger condition is met.
+- **Contact-damage reaction** ([`cb78108`](https://github.com/Jantzulu/puzzle-daily/commit/cb78108)). CONTACT_DAMAGE asset gains `contactDamageAnimate` / `contactDamageFaceAttacker` / `contactDamageKeepFacing`. When a hero walks into a contact-damage enemy, the enemy can play its cast animation and face the attacker. **Timing gotcha:** contact damage fires during the *attacker's* char-loop turn, *before* the holder-enemy's own turn-start reset in the same `executeTurn` — so a naive `isCasting`/`preCastFacing` would be clobbered. Uses a turn-stamped visual marker (`contactReactionTurn` + `contactReactionFacing`) that survives the reset and self-clears; board reads it via the `enemyContactReactionFacing` module map in drawEnemy. "Keep facing" is a plain logical facing change; default "revert" is visual-only (logical facing never changes).
+  - **Test-harness bug fixed here:** the `getEnemy` test mock returned `null` for a miss, but the real `getEnemy` returns `undefined`. The engine's `getEnemy(id) !== undefined` check treated `null` as "is an enemy", so heroes were misclassified as moving enemies and the **entire hero-into-enemy combat branch was silently skipped in all tests**. Mock now returns `undefined` (matches production). Any future melee/contact combat test depends on this.
+
+**Deferred (from the same list):** selective per-direction spritesheet loading (#6). Savings are modest (~0.6–2.4 MB/puzzle, browser-cached) and can't be proven safe statically because pushes/redirects can force an entity into a direction it normally never faces — risking a missing-sprite frame and brushing the determinism rule. Maps to the roadmap's open "lazy-load off-screen sprites" item; revisit only if mobile load becomes a real complaint.
 
 ### Recently completed (June 30, 2026 — integer-zoom board quantization: pixel-perfect sprites)
 
