@@ -201,15 +201,19 @@ export function executeAction(
 
     case ActionType.FACE_DIRECTION: {
       if (action.faceTarget) {
-        // Face the nearest enemy/ally, snapped to the 8 compass directions.
-        // Reuses the same target-finders + direction snapping as auto-targeting,
-        // honoring autoTargetMode/autoTargetRange when set. If no valid target
-        // exists, facing is left unchanged.
-        const mode = action.autoTargetMode ?? 'omnidirectional';
-        const range = action.autoTargetRange ?? 0;
-        const nearest = action.faceTarget === 'nearest_enemy'
-          ? findNearestEnemies(updatedCharacter, gameState, 1, mode, range)
-          : findNearestCharacters(updatedCharacter, gameState, 1, mode, range);
+        // Face the nearest enemy/hero (absolute teams), snapped to the 8 compass
+        // directions. "Enemy" and "hero" are resolved against the actor's own side:
+        // a hero's enemies are the enemy team; an enemy's enemies are the heroes.
+        // findNearestEnemies targets the opposing team, findNearestCharacters the
+        // own team — both are charm/stealth-aware and already snap the direction.
+        // If no valid target is in range, facing is left unchanged.
+        const range = action.faceTargetRange ?? 0;
+        const actorIsEnemy = 'enemyId' in updatedCharacter;
+        const wantHero = action.faceTarget === 'nearest_hero';
+        const targetOpposingTeam = actorIsEnemy ? wantHero : !wantHero;
+        const nearest = targetOpposingTeam
+          ? findNearestEnemies(updatedCharacter, gameState, 1, 'omnidirectional', range)
+          : findNearestCharacters(updatedCharacter, gameState, 1, 'omnidirectional', range);
         if (nearest.length > 0) {
           updatedCharacter.facing = nearest[0].direction;
         }

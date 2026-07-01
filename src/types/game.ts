@@ -190,7 +190,8 @@ export interface CharacterAction {
   onWallCollision?: WallCollisionBehavior; // What to do when hitting a wall (default: 'stop')
   turnDegrees?: 45 | 90 | 135; // Turn amount: 45 (one diagonal), 90 (cardinal), 135 (skip diagonal, useful for corners) (default: 90)
   faceDirection?: Direction; // Target direction for FACE_DIRECTION action (used when faceTarget is unset)
-  faceTarget?: 'nearest_enemy' | 'nearest_character'; // For FACE_DIRECTION: face the nearest enemy (opposing team) or character (own team/ally) instead of a fixed direction. Direction is snapped to the 8 compass dirs. Unset = use faceDirection.
+  faceTarget?: 'nearest_enemy' | 'nearest_hero'; // For FACE_DIRECTION: face the nearest enemy or hero (absolute teams, resolved against the actor's own side) instead of a fixed direction. Snapped to the 8 compass dirs. Unset = use faceDirection.
+  faceTargetRange?: number; // For FACE_DIRECTION faceTarget: max search range in tiles (0 or unset = unlimited).
 
   // Execution configuration (new system)
   executionMode?: ExecutionMode;  // Default: 'sequential'

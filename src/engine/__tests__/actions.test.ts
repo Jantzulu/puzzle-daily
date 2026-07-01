@@ -236,7 +236,7 @@ describe('executeAction — FACE_DIRECTION', () => {
     expect(result.facing).toBe(Direction.NORTH);
   });
 
-  it('faceTarget=nearest_character faces a teammate hero', () => {
+  it('faceTarget=nearest_hero faces a teammate hero', () => {
     const gs = createTestGameState({
       puzzle: createTestPuzzle({ width: 7, height: 7 }),
       placedCharacters: [
@@ -245,8 +245,39 @@ describe('executeAction — FACE_DIRECTION', () => {
       ],
       gameStatus: 'running',
     });
-    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_character' }, gs);
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_hero' }, gs);
     expect(result.facing).toBe(Direction.SOUTH);
+  });
+
+  it('enemy actor faceTarget=nearest_hero faces a hero (absolute teams)', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 7, height: 7, enemies: [createTestEnemy({ x: 2, y: 2, facing: Direction.NORTH })] }),
+      placedCharacters: [createTestCharacter({ characterId: 'hero-1', x: 5, y: 2 })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.puzzle.enemies[0] as unknown as ReturnType<typeof createTestCharacter>, { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_hero' }, gs);
+    expect(result.facing).toBe(Direction.EAST);
+  });
+
+  it('faceTargetRange excludes targets beyond range (facing unchanged)', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 9, height: 9, enemies: [createTestEnemy({ x: 7, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    // enemy is 5 tiles east; range 3 excludes it
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_enemy', faceTargetRange: 3 }, gs);
+    expect(result.facing).toBe(Direction.NORTH);
+  });
+
+  it('faceTargetRange includes targets within range', () => {
+    const gs = createTestGameState({
+      puzzle: createTestPuzzle({ width: 9, height: 9, enemies: [createTestEnemy({ x: 7, y: 2 })] }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.NORTH })],
+      gameStatus: 'running',
+    });
+    const result = executeAction(gs.placedCharacters[0], { type: ActionType.FACE_DIRECTION, faceTarget: 'nearest_enemy', faceTargetRange: 6 }, gs);
+    expect(result.facing).toBe(Direction.EAST);
   });
 
   it('leaves facing unchanged when no valid target exists', () => {

@@ -301,14 +301,14 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
                 if (v === 'fixed') {
                   onUpdate({ ...action, faceTarget: undefined });
                 } else {
-                  onUpdate({ ...action, faceTarget: v as 'nearest_enemy' | 'nearest_character' });
+                  onUpdate({ ...action, faceTarget: v as 'nearest_enemy' | 'nearest_hero' });
                 }
               }}
               className="flex-1 px-2 py-1 bg-stone-600 rounded text-xs"
             >
               <option value="fixed">Fixed Direction</option>
               <option value="nearest_enemy">Nearest Enemy</option>
-              <option value="nearest_character">Nearest Character</option>
+              <option value="nearest_hero">Nearest Hero</option>
             </select>
           </div>
           {/* Fixed-direction picker (only when not facing a target) */}
@@ -326,9 +326,23 @@ const ActionNodeContent: React.FC<ActionNodeContentProps> = ({
               </select>
             </div>
           )}
+          {/* Search range (only when facing a target) */}
+          {action.faceTarget && (
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-stone-400">Range:</label>
+              <input
+                type="number"
+                min={0}
+                value={action.faceTargetRange ?? 0}
+                onChange={(e) => onUpdate({ ...action, faceTargetRange: Math.max(0, Math.floor(Number(e.target.value) || 0)) })}
+                className="w-16 px-2 py-1 bg-stone-600 rounded text-xs"
+              />
+              <span className="text-[10px] text-stone-500">tiles (0 = unlimited)</span>
+            </div>
+          )}
           {action.faceTarget && (
             <p className="text-[10px] text-stone-500 leading-tight">
-              Snaps to the nearest {action.faceTarget === 'nearest_enemy' ? 'opposing-team entity' : 'ally'} along one of the 8 compass directions. Facing is unchanged if no valid target exists.
+              Snaps to face the nearest {action.faceTarget === 'nearest_enemy' ? 'enemy' : 'hero'} along one of the 8 compass directions. Facing is unchanged if none is in range.
             </p>
           )}
         </div>
