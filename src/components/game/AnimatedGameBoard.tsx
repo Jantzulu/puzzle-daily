@@ -202,6 +202,12 @@ const spellSpriteSheetStates = new Map<string, { currentFrame: number; lastFrame
 const characterCastStartTimes = new Map<number, number>();
 const enemyCastStartTimes = new Map<number, number>();
 
+// Per-enemy contact-damage reaction facing, keyed by entity index. Populated (in the
+// detect-movement effect) only on the turn an enemy's contact-damage reaction fires;
+// its presence tells drawEnemy to play the cast animation toward this direction. Uses
+// a turn-stamped engine flag (contactReactionTurn) so it survives the enemy turn-reset.
+const enemyContactReactionFacing = new Map<number, Direction>();
+
 /**
  * Draw a spell sprite sheet with optional rotation and mirroring
  * Used for projectiles and particle effects that need directional rotation
@@ -934,9 +940,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const prevEnemy = prevEnemiesRef.current[idx];
       const existing = enemyPositionsRef.current.get(idx);
       newMoved.set(idx, false); // default: not walking unless an actual move below
+      // Contact-damage reaction: fires on the turn stamped by the engine. Populate the
+      // reaction-facing map so drawEnemy plays the cast animation toward the attacker.
+      const contactReacting = enemy.contactReactionTurn === gameState.currentTurn;
+      if (contactReacting) {
+        enemyContactReactionFacing.set(idx, enemy.contactReactionFacing ?? enemy.facing ?? Direction.SOUTH);
+      } else {
+        enemyContactReactionFacing.delete(idx);
+      }
       // Stamp a fresh casting start (display clock) on each cast turn so the
       // casting sheet restarts from frame 0; stale values are ignored when not casting.
-      if (enemy.isCasting) enemyCastStartTimes.set(idx, now);
+      if (enemy.isCasting || contactReacting) enemyCastStartTimes.set(idx, now);
 
       if (prevEnemy && (prevEnemy.x !== enemy.x || prevEnemy.y !== enemy.y)) {
         // Enemy moved!
@@ -2570,15 +2584,22 @@ function drawEnemy(
   const py = y * TILE_SIZE;
   const facing = facingOverride !== undefined ? facingOverride : enemy.facing;
 
+  // Contact-damage reaction: when active for this enemy this turn, play the cast
+  // animation toward the recorded reaction facing (which faces the attacker when the
+  // effect opts in). Read from the module map so drawEnemy needs no gameState.
+  const reactionFacing = entityIndex !== undefined ? enemyContactReactionFacing.get(entityIndex) : undefined;
+  const contactReacting = !isMoving && reactionFacing !== undefined;
+
   // Honor the entity's facing direction even during setup, so the post-spawn idle
   // points the way the entity will move once the game starts. Falls back to the
   // 'default' directional sprite when that specific direction isn't configured
   // (see directionalSprites[dirKey] || ['default'] in drawSpritePixelPerfect).
-  const directionToUse = facing;
+  const directionToUse = contactReacting ? reactionFacing! : facing;
 
   // Determine if enemy is casting (only if not moving, since moving takes priority).
   // isCasting is a deterministic per-turn flag — true for the whole turn a spell is cast.
-  const isCasting = !isMoving && !!enemy.isCasting;
+  // The contact-damage reaction reuses the same cast animation.
+  const isCasting = !isMoving && (!!enemy.isCasting || contactReacting);
 
   // Check if this enemy has a custom sprite
   const enemyData = getEnemy(enemy.enemyId) as CustomEnemy | undefined;

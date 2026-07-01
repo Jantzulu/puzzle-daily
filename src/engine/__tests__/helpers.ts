@@ -78,7 +78,10 @@ vi.mock('../../data/characters', () => ({
 }));
 
 vi.mock('../../data/enemies', () => ({
-  getEnemy: (id: string) => enemyRegistry.get(id) ?? null,
+  // Match the real getEnemy signature (EnemyWithSprite | undefined). Returning null
+  // for a miss breaks engine checks like `getEnemy(id) !== undefined` (null passes),
+  // which misclassifies heroes as enemies in moveCharacter's combat branch.
+  getEnemy: (id: string) => enemyRegistry.get(id) ?? undefined,
 }));
 
 vi.mock('../../utils/assetStorage', () => ({

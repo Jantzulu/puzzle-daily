@@ -135,6 +135,9 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
   const [charmTintColor, setCharmTintColor] = useState(effect?.charmTintColor || '#e879f9');
   const [charmTintOpacity, setCharmTintOpacity] = useState(effect?.charmTintOpacity ?? 0.35);
   const [charmShowHeart, setCharmShowHeart] = useState(effect?.charmShowHeart !== false);
+  const [contactDamageAnimate, setContactDamageAnimate] = useState(effect?.contactDamageAnimate ?? false);
+  const [contactDamageFaceAttacker, setContactDamageFaceAttacker] = useState(effect?.contactDamageFaceAttacker ?? false);
+  const [contactDamageKeepFacing, setContactDamageKeepFacing] = useState(effect?.contactDamageKeepFacing ?? false);
 
   // Dispel/Cleanse state
   const [targetingIntent, setTargetingIntent] = useState<'hostile' | 'friendly' | undefined>(effect?.targetingIntent);
@@ -166,6 +169,9 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
       maxStacks: stackingBehavior === 'stack' ? maxStacks : undefined,
       healthBarColor: type === StatusEffectType.SHIELD ? healthBarColor : undefined,
       stealthOpacity: type === StatusEffectType.STEALTH ? stealthOpacity : undefined,
+      contactDamageAnimate: type === StatusEffectType.CONTACT_DAMAGE ? contactDamageAnimate : undefined,
+      contactDamageFaceAttacker: type === StatusEffectType.CONTACT_DAMAGE ? contactDamageFaceAttacker : undefined,
+      contactDamageKeepFacing: type === StatusEffectType.CONTACT_DAMAGE && contactDamageFaceAttacker ? contactDamageKeepFacing : undefined,
       polymorphSprite: type === StatusEffectType.POLYMORPH ? polymorphSprite : undefined,
       overlaySprite: overlaySprite,
       overlayOpacity: overlaySprite ? overlayOpacity : undefined,
@@ -476,6 +482,48 @@ export const StatusEffectEditor: React.FC<StatusEffectEditorProps> = ({
                   <span className="relative">Entity sprite</span>
                 </div>
               </div>
+            </div>
+          )}
+
+          {type === StatusEffectType.CONTACT_DAMAGE && (
+            <div className="space-y-2 p-3 rounded-lg bg-stone-700/40 border border-stone-600">
+              <h4 className="text-sm font-medium text-stone-300">Contact Reaction (optional)</h4>
+              <p className="text-xs text-stone-400">
+                When something walks into the holder and takes contact damage, the holder can play its cast animation to signal the hit.
+              </p>
+              <label className="flex items-center gap-2 text-sm">
+                <input
+                  type="checkbox"
+                  checked={contactDamageAnimate}
+                  onChange={(e) => setContactDamageAnimate(e.target.checked)}
+                  className="w-4 h-4"
+                />
+                Play cast animation on contact
+              </label>
+              {contactDamageAnimate && (
+                <>
+                  <label className="flex items-center gap-2 text-sm ml-4">
+                    <input
+                      type="checkbox"
+                      checked={contactDamageFaceAttacker}
+                      onChange={(e) => setContactDamageFaceAttacker(e.target.checked)}
+                      className="w-4 h-4"
+                    />
+                    Turn to face the incoming entity
+                  </label>
+                  {contactDamageFaceAttacker && (
+                    <label className="flex items-center gap-2 text-sm ml-8">
+                      <input
+                        type="checkbox"
+                        checked={contactDamageKeepFacing}
+                        onChange={(e) => setContactDamageKeepFacing(e.target.checked)}
+                        className="w-4 h-4"
+                      />
+                      Keep the new facing (otherwise revert after)
+                    </label>
+                  )}
+                </>
+              )}
             </div>
           )}
 

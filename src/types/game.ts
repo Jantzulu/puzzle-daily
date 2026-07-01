@@ -322,6 +322,8 @@ export interface PlacedEnemy {
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
   isCasting?: boolean; // True on the turn a spell is cast — per-turn casting animation flag (deterministic, no clock)
   preCastFacing?: Direction; // Set when a face-on-cast with revert changes facing; restored at the next turn start (deterministic)
+  contactReactionTurn?: number; // Turn on which this entity's contact-damage reaction fired — visual only (board plays a cast animation while this === currentTurn)
+  contactReactionFacing?: Direction; // Facing to render the contact-damage reaction animation toward — visual only
   statusEffects?: StatusEffectInstance[]; // Active status effects on this enemy
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -585,6 +587,8 @@ export interface PlacedCharacter {
   iceSlideDistance?: number; // Number of tiles slid on ice (for slower animation)
   isCasting?: boolean; // True on the turn a spell is cast — per-turn casting animation flag (deterministic, no clock)
   preCastFacing?: Direction; // Set when a face-on-cast with revert changes facing; restored at the next turn start (deterministic)
+  contactReactionTurn?: number; // Turn on which this entity's contact-damage reaction fired — visual only (board plays a cast animation while this === currentTurn)
+  contactReactionFacing?: Direction; // Facing to render the contact-damage reaction animation toward — visual only
   statusEffects?: StatusEffectInstance[]; // Active status effects on this character
   spellCooldowns?: Record<string, number>; // Spell ID -> turns remaining on cooldown
   spellUseCounts?: Record<string, number>; // Spell ID -> number of times used this game (for maxUsesPerGame)
@@ -1373,6 +1377,11 @@ export interface StatusEffectAsset {
 
   // Stealth configuration
   stealthOpacity?: number;        // Opacity when stealthed (0-1, default 0.5)
+
+  // Contact-damage reaction configuration (CONTACT_DAMAGE type)
+  contactDamageAnimate?: boolean;      // Play the holder's cast animation when its contact damage fires
+  contactDamageFaceAttacker?: boolean; // Turn the holder to face the incoming entity for the reaction (else use current facing)
+  contactDamageKeepFacing?: boolean;   // With faceAttacker: persist the new facing logically (else revert — the turn is visual-only)
 
   // Overlay sprite - renders on top of entity at reduced opacity (for shields, deflect, etc.)
   overlaySprite?: SpriteReference;  // Sprite to overlay on entity (supports spritesheets)

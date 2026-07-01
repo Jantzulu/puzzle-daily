@@ -8,6 +8,7 @@ import {
   registerTestCharacter as regChar,
   registerTestEnemy as regEnemy,
   registerTestSpell,
+  registerTestStatusEffect,
   registerTestTileType,
   createEmptyGrid,
   createTestPuzzle,
@@ -335,6 +336,65 @@ describe('executeAction — SPELL faceTargetOnCast', () => {
     });
     const result = executeAction(gs.placedCharacters[0], { type: ActionType.SPELL, spellId: 'bolt', autoTargetNearestEnemy: true }, gs);
     expect(result.facing).toBe(Direction.NORTH);
+  });
+});
+
+// ==========================================
+// CONTACT_DAMAGE — reaction animation + facing
+// ==========================================
+describe('contact-damage reaction', () => {
+  // Hero at (2,2) facing EAST walks into an enemy at (3,2) that holds a
+  // CONTACT_DAMAGE effect. The enemy sits to the east; it faces the hero to its WEST.
+  const buildScenario = (assetConfig: Record<string, unknown>) => {
+    registerTestStatusEffect('spikes', {
+      id: 'spikes', name: 'Spikes', type: StatusEffectType.CONTACT_DAMAGE, ...assetConfig,
+    });
+    return createTestGameState({
+      currentTurn: 5,
+      puzzle: createTestPuzzle({
+        width: 6, height: 5,
+        enemies: [createTestEnemy({
+          x: 3, y: 2, currentHealth: 10, facing: Direction.EAST,
+          statusEffects: [{ id: 'se1', type: StatusEffectType.CONTACT_DAMAGE, statusAssetId: 'spikes', value: 1, duration: 99, appliedOnTurn: 0 }],
+        })],
+      }),
+      placedCharacters: [createTestCharacter({ x: 2, y: 2, facing: Direction.EAST })],
+      gameStatus: 'running',
+    });
+  };
+
+  it('stamps a turn-marked reaction facing the attacker when animate is on', () => {
+    const gs = buildScenario({ contactDamageAnimate: true, contactDamageFaceAttacker: true });
+    executeAction(gs.placedCharacters[0], { type: ActionType.MOVE_FORWARD }, gs);
+    const enemy = gs.puzzle.enemies[0];
+    expect(enemy.contactReactionTurn).toBe(5);
+    expect(enemy.contactReactionFacing).toBe(Direction.WEST); // hero is west of the enemy
+    expect(enemy.facing).toBe(Direction.EAST); // revert default: logical facing unchanged
+  });
+
+  it('keeps the new facing logically when contactDamageKeepFacing is on', () => {
+    const gs = buildScenario({ contactDamageAnimate: true, contactDamageFaceAttacker: true, contactDamageKeepFacing: true });
+    executeAction(gs.placedCharacters[0], { type: ActionType.MOVE_FORWARD }, gs);
+    const enemy = gs.puzzle.enemies[0];
+    expect(enemy.contactReactionFacing).toBe(Direction.WEST);
+    expect(enemy.facing).toBe(Direction.WEST); // persisted
+  });
+
+  it('uses the holder current facing for the reaction when faceAttacker is off', () => {
+    const gs = buildScenario({ contactDamageAnimate: true });
+    executeAction(gs.placedCharacters[0], { type: ActionType.MOVE_FORWARD }, gs);
+    const enemy = gs.puzzle.enemies[0];
+    expect(enemy.contactReactionTurn).toBe(5);
+    expect(enemy.contactReactionFacing).toBe(Direction.EAST); // its own facing
+    expect(enemy.facing).toBe(Direction.EAST);
+  });
+
+  it('does not react when the asset does not opt in', () => {
+    const gs = buildScenario({});
+    executeAction(gs.placedCharacters[0], { type: ActionType.MOVE_FORWARD }, gs);
+    const enemy = gs.puzzle.enemies[0];
+    expect(enemy.contactReactionTurn).toBeUndefined();
+    expect(enemy.facing).toBe(Direction.EAST);
   });
 });
 

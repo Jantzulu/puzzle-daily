@@ -750,6 +750,34 @@ function processPressurePlateBehavior(
 }
 
 /**
+ * When a stationary contact-damage holder is walked into, optionally react per its
+ * effect asset config: play its cast animation (turn-stamped via contactReactionTurn
+ * so it survives the enemy turn-reset) and face the incoming attacker. Facing the
+ * attacker is visual-only by default (the reaction turn renders the holder facing the
+ * attacker via contactReactionFacing); it only persists logically when
+ * contactDamageKeepFacing is set. `holder` is a live gameState reference — mutations
+ * persist. Facing is snapped to the 8 compass dirs by calculateDirectionTo.
+ */
+function applyContactDamageReaction(
+  holder: PlacedCharacter | PlacedEnemy,
+  attacker: PlacedCharacter | PlacedEnemy,
+  effect: StatusEffectInstance | undefined,
+  gameState: GameState
+): void {
+  if (!effect) return;
+  const asset = loadStatusEffectAsset(effect.statusAssetId);
+  if (!asset || !asset.contactDamageAnimate) return;
+  const reactionFacing = asset.contactDamageFaceAttacker
+    ? calculateDirectionTo(holder.x, holder.y, attacker.x, attacker.y)
+    : (holder.facing ?? Direction.SOUTH);
+  holder.contactReactionTurn = gameState.currentTurn;
+  holder.contactReactionFacing = reactionFacing;
+  if (asset.contactDamageFaceAttacker && asset.contactDamageKeepFacing) {
+    holder.facing = reactionFacing; // persist the new facing (logical); otherwise it reverts (visual-only)
+  }
+}
+
+/**
  * Move character in a direction, handling collisions
  */
 function moveCharacter(
@@ -1089,6 +1117,13 @@ function moveCharacter(
             // Use centralized damage to respect shields - enemy is source for deflect
             applyDamageToEntity(updatedChar, enemyContactDamage, gameState, enemyAtTarget);
           }
+        }
+
+        // Contact-damage reaction: the stationary enemy (walked into by the hero) with
+        // a CONTACT_DAMAGE effect optionally plays a cast animation + turns to face the
+        // incoming hero. No-op unless the effect's asset opts in. Skip if it just died.
+        if (enemyContactEffect && !enemyAtTarget.dead) {
+          applyContactDamageReaction(enemyAtTarget, updatedChar, enemyContactEffect, gameState);
         }
       }
 
