@@ -30,6 +30,7 @@ import { submitCompletion } from '../../services/statsService';
 import { CommunityStats } from './CommunityStats';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
+import { BannerMesh } from './BannerMesh';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -1984,28 +1985,9 @@ export const Game: React.FC<GameProps> = ({
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="w-full flex justify-center animate-slide-down-from-nav-wrapper sticky top-0 z-20 quest-panel-sticky">
-              <div className="mb-2 w-full max-w-2xl px-3 md:px-4 py-1.5 dungeon-panel-dark -mt-[2px] relative z-10 overflow-visible animate-slide-down-from-nav" style={{ borderBottomLeftRadius: '40px', borderBottomRightRadius: '40px' }}>
-                {/* Ornate corner decorations - L-brackets with filled triangle at corner */}
-                {/* Bottom-left: L-bracket with triangle */}
-                <svg className="absolute -bottom-[1px] -left-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
-                  {/* Horizontal line at bottom edge */}
-                  <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line - extends upward to navbar border */}
-                  <path d="M0 4 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" className="hidden md:block" />
-                  <path d="M0 8 L0 40" stroke="#c4915c" strokeWidth="2" fill="none" className="md:hidden" />
-                  {/* Triangle at corner */}
-                  <path d="M0 40 L0 24 Q4 36 16 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
-                </svg>
-                {/* Bottom-right: L-bracket with triangle */}
-                <svg className="absolute -bottom-[1px] -right-[1px] w-10 h-10" viewBox="0 0 40 40" overflow="visible">
-                  {/* Horizontal line at bottom edge */}
-                  <path d="M0 40 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" />
-                  {/* Vertical line - extends upward to navbar border */}
-                  <path d="M40 4 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" className="hidden md:block" />
-                  <path d="M40 8 L40 40" stroke="#c4915c" strokeWidth="2" fill="none" className="md:hidden" />
-                  {/* Triangle at corner */}
-                  <path d="M40 40 L40 24 Q36 36 24 40 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
-                </svg>
+              <div className="mb-2 w-full max-w-2xl px-8 md:px-9 pt-1.5 pb-4 quest-banner -mt-[2px] relative z-10 overflow-visible animate-slide-down-from-nav">
+                {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
+                <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">

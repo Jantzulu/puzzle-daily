@@ -1364,6 +1364,33 @@ html body.theme-font-active,
 }
 
 /* ============================================
+   QUEST BANNER
+   The quest HUD's low-poly stone banner (BannerMesh) — hangs from the
+   navbar, hewn sides and hem, faint torch glow. Content renders above
+   the mesh; the container itself is transparent.
+   ============================================ */
+.quest-banner {
+  background: transparent;
+}
+
+.quest-banner-mesh {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  filter:
+    drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5))
+    drop-shadow(0 2px 10px rgba(212, 165, 116, 0.14));
+}
+
+.quest-banner > :not(.quest-banner-mesh) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
    BOARD PHASE TRANSITIONS
    A quick reveal masking the instant repaint on reset/retry.
    Pure overlay: the board itself is never remounted.
