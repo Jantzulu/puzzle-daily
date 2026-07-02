@@ -3,6 +3,7 @@ import { getCharacter } from '../../data/characters';
 import type { CharacterAction, PlacedCharacter, Direction } from '../../types/game';
 import { loadSpellAsset } from '../../utils/assetStorage';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
+import { GemMesh } from './GemMesh';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
 import { DirectionArrow } from './DirectionArrow';
@@ -203,20 +204,18 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             ) : (
               <button
                 onClick={onTest}
-                className={`px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
-                  themeAssets.actionButtonTestHeroesBg ? '' : 'bg-arcane-800 hover:bg-arcane-700 border border-arcane-600 text-arcane-100'
-                } ${getShapeClass(themeAssets.actionButtonTestHeroesShape)}`}
-                style={{
-                  ...(themeAssets.actionButtonTestHeroesBg && { backgroundColor: themeAssets.actionButtonTestHeroesBg }),
-                  ...(themeAssets.actionButtonTestHeroesBorder && { borderColor: themeAssets.actionButtonTestHeroesBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                  ...(themeAssets.actionButtonTestHeroesText && { color: themeAssets.actionButtonTestHeroesText }),
-                }}
+                className="gem-btn px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1"
                 title="Test your heroes without enemies for 5 turns"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-                Test
+                {/* Amethyst stone — supersedes the legacy flat theme colors
+                    (custom theme IMAGES still win via the branch above) */}
+                <GemMesh tone="amethyst" />
+                <span className="flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  Test
+                </span>
               </button>
             )
           )}

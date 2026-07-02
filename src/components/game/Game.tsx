@@ -31,6 +31,7 @@ import { CommunityStats } from './CommunityStats';
 import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { BannerMesh } from './BannerMesh';
+import { GemMesh } from './GemMesh';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -2671,22 +2672,16 @@ export const Game: React.FC<GameProps> = ({
                       ) : (
                         <button
                           onClick={handlePlay}
-                          className={`min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all flex items-center justify-center !py-0 ${
-                            gameState.placedCharacters.length === 0
-                              ? 'opacity-50 cursor-not-allowed dungeon-btn'
-                              : `${themeAssets.actionButtonPlayBg ? '' : 'dungeon-btn-success torch-glow'}`
-                          } ${
-                            themeAssets.actionButtonPlayShape === 'rounded' ? 'rounded-lg' :
-                            themeAssets.actionButtonPlayShape === 'pill' ? 'rounded-full' : ''
+                          className={`gem-btn min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all flex items-center justify-center !py-0 ${
+                            gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
-                          style={{
-                            minHeight: 'unset',
-                            ...(themeAssets.actionButtonPlayBg && { backgroundColor: themeAssets.actionButtonPlayBg }),
-                            ...(themeAssets.actionButtonPlayBorder && { borderColor: themeAssets.actionButtonPlayBorder, borderWidth: '2px', borderStyle: 'solid' }),
-                            ...(themeAssets.actionButtonPlayText && { color: themeAssets.actionButtonPlayText }),
-                          }}
+                          style={{ minHeight: 'unset' }}
                         >
-                          Play
+                          {/* Emerald stone — supersedes the legacy flat theme
+                              colors for this button (custom theme IMAGES still
+                              win via the branch above) */}
+                          <GemMesh tone="emerald" />
+                          <span>Play</span>
                         </button>
                       )
                     ) : (

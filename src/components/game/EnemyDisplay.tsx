@@ -4,6 +4,7 @@ import { getEnemy } from '../../data/enemies';
 import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
+import { GemMesh } from './GemMesh';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
@@ -217,20 +218,18 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             ) : (
               <button
                 onClick={onTest}
-                className={`px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1 ${
-                  themeAssets.actionButtonTestEnemiesBg ? '' : 'bg-blood-800 hover:bg-blood-700 border border-blood-600 text-blood-100'
-                } ${getShapeClass(themeAssets.actionButtonTestEnemiesShape)}`}
-                style={{
-                  ...(themeAssets.actionButtonTestEnemiesBg && { backgroundColor: themeAssets.actionButtonTestEnemiesBg }),
-                  ...(themeAssets.actionButtonTestEnemiesBorder && { borderColor: themeAssets.actionButtonTestEnemiesBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                  ...(themeAssets.actionButtonTestEnemiesText && { color: themeAssets.actionButtonTestEnemiesText }),
-                }}
+                className="gem-btn px-2 lg:px-2.5 py-px text-xs transition-colors flex items-center gap-1"
                 title="Watch enemies move without heroes for 5 turns"
               >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M8 5v14l11-7z"/>
-                </svg>
-                Test
+                {/* Ruby stone — supersedes the legacy flat theme colors
+                    (custom theme IMAGES still win via the branch above) */}
+                <GemMesh tone="ruby" />
+                <span className="flex items-center gap-1">
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                    <path d="M8 5v14l11-7z"/>
+                  </svg>
+                  Test
+                </span>
               </button>
             )
           )}
