@@ -12,6 +12,7 @@ import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
+import { blobShadowsEnabled, drawBlobShadow, drawProjectileBlobShadow } from './blobShadows';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -2619,11 +2620,17 @@ function drawEnemy(
 
   if (hasCustomSprite && enemyData.customSprite) {
     if (!enemy.dead) {
-      // Living enemy
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-      ctx.shadowBlur = 2;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
+      // Living enemy — grounded blob shadow, or the legacy offset silhouette
+      // when the blob toggle is off (see blobShadows.ts)
+      const blob = blobShadowsEnabled();
+      if (blob) {
+        drawBlobShadow(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!enemyData.isFloating);
+      } else {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+      }
 
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
@@ -2633,10 +2640,12 @@ function drawEnemy(
         drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting, entityIndex !== undefined ? enemyCastStartTimes.get(entityIndex) : undefined);
       }
 
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
+      if (!blob) {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      }
     } else {
       // Dead enemy - use death sprite (animates then stays on final frame as corpse)
       const hasDeathSprite = hasDeathAnimation(enemyData.customSprite);
@@ -2669,6 +2678,10 @@ function drawEnemy(
   } else {
     // Default rendering (no custom sprite)
     if (!enemy.dead) {
+      // Legacy default enemies had no shadow at all — blob mode grounds them too
+      if (blobShadowsEnabled()) {
+        drawBlobShadow(ctx, enemyData?.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!enemyData?.isFloating);
+      }
       ctx.fillStyle = COLORS.enemy;
       ctx.beginPath();
       ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
@@ -3477,29 +3490,27 @@ function drawCharacter(
 
   if (hasCustomSprite && charData.customSprite) {
     if (!character.dead) {
-      // Living character
+      // Living character — grounded blob shadow, or the legacy offset
+      // silhouette when the blob toggle is off (see blobShadows.ts)
+      const blob = blobShadowsEnabled();
+      if (blob) {
+        drawBlobShadow(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!charData.isFloating);
+      } else {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+      }
+
       if (isSpawning && spawnAnimState) {
         // Spawn animation is playing - draw spawn sprite instead of normal sprite
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = 2;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-
         drawSpawnSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, spawnAnimState.startTime);
-
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
       } else {
         // Normal sprite (idle/moving/casting)
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-        ctx.shadowBlur = 2;
-        ctx.shadowOffsetX = 1;
-        ctx.shadowOffsetY = 1;
-
         drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, isMoving, now, isCasting, entityIndex !== undefined ? characterCastStartTimes.get(entityIndex) : undefined);
+      }
 
+      if (!blob) {
         ctx.shadowColor = 'transparent';
         ctx.shadowBlur = 0;
         ctx.shadowOffsetX = 0;
@@ -3536,20 +3547,27 @@ function drawCharacter(
   } else {
     // Default rendering (no custom sprite)
     if (!character.dead) {
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-      ctx.shadowBlur = 2;
-      ctx.shadowOffsetX = 1;
-      ctx.shadowOffsetY = 1;
+      const blob = blobShadowsEnabled();
+      if (blob) {
+        drawBlobShadow(ctx, charData?.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!charData?.isFloating);
+      } else {
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+        ctx.shadowBlur = 2;
+        ctx.shadowOffsetX = 1;
+        ctx.shadowOffsetY = 1;
+      }
 
       ctx.fillStyle = COLORS.character;
       const size = TILE_SIZE * 0.6;
       const offset = (TILE_SIZE - size) / 2;
       ctx.fillRect(px + offset, py + offset, size, size);
 
-      ctx.shadowColor = 'transparent';
-      ctx.shadowBlur = 0;
-      ctx.shadowOffsetX = 0;
-      ctx.shadowOffsetY = 0;
+      if (!blob) {
+        ctx.shadowColor = 'transparent';
+        ctx.shadowBlur = 0;
+        ctx.shadowOffsetX = 0;
+        ctx.shadowOffsetY = 0;
+      }
     } else {
       // Dead default character - draw dimmed version with X
       ctx.globalAlpha = 0.3;
@@ -4140,6 +4158,12 @@ function drawProjectile(
       if (shrinkFactor <= 0.01) return;
       scale *= shrinkFactor;
     }
+  }
+
+  // Ground shadow under the bolt (uses final scale so it shrinks with the
+  // despawn animation) — drawn first so every sprite branch renders above it
+  if (blobShadowsEnabled()) {
+    drawProjectileBlobShadow(ctx, px, py, TILE_SIZE, scale);
   }
 
   // Check if the visual has passed the reflect point (tint only applies after reflect)
