@@ -447,12 +447,28 @@ html body.theme-font-active,
 .theme-root h4 { font-size: calc(var(--theme-font-size-heading-px, 16px) * 1.125); }
 .theme-root .font-medieval { font-size: var(--theme-font-size-heading-px, inherit); }
 
-/* Theme-aware dungeon panels */
+/* ============================================
+   DUNGEON CHROME MATERIAL
+   Early-fantasy-client material language (the compendium slab's cousin):
+   stone panels with grain and chunky two-tone bevels, buttons as chiseled
+   plates that visibly press, inputs carved into the stone, torch-warm glow
+   on interaction. Everything layers OVER the theme variables — custom theme
+   colors and panel images keep working.
+   ============================================ */
+:root {
+  --chrome-noise: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+  --chrome-bevel-light: rgba(255, 235, 200, 0.08);
+  --chrome-bevel-dark: rgba(0, 0, 0, 0.5);
+  --chrome-torch: rgba(212, 165, 116, 0.32);
+}
+
+/* Theme-aware dungeon panels — stone with grain and a carved bevel */
 .dungeon-panel {
   background-color: var(--theme-bg-secondary, #2a2118);
-  background-image: var(--asset-bg-panel, none);
-  background-repeat: var(--asset-bg-panel-repeat, no-repeat);
-  background-size: var(--asset-bg-panel-size, cover);
+  /* Theme panel image wins when set; bare panels get stone grain */
+  background-image: var(--asset-bg-panel, var(--chrome-noise));
+  background-repeat: var(--asset-bg-panel-repeat, repeat);
+  background-size: var(--asset-bg-panel-size, auto);
   background-position: center;
   border-color: var(--theme-border-primary, #5a4a35);
   border-radius: var(--theme-border-radius, 4px);
@@ -461,32 +477,27 @@ html body.theme-font-active,
 
 .dungeon-panel-dark {
   background-color: var(--theme-bg-control-panel, var(--theme-bg-input, #15100a));
+  background-image: var(--chrome-noise);
   border-color: var(--theme-border-primary, #3d3224);
   border-radius: var(--theme-border-radius, 4px);
   border-width: var(--theme-border-width, 2px);
+  box-shadow:
+    inset 0 2px 0 var(--chrome-bevel-light),
+    inset 0 -2px 0 var(--chrome-bevel-dark),
+    0 4px 10px rgba(0, 0, 0, 0.4);
 }
 
-/* Theme-aware buttons */
+/* Theme-aware buttons — chiseled plates */
 .dungeon-btn {
   background-color: var(--theme-button-bg, #44403c);
   border-color: var(--theme-button-border, #57534e);
   border-radius: var(--theme-border-radius, 3px);
 }
 
-.dungeon-btn:hover {
-  background-color: var(--theme-button-bg, #57534e);
-  filter: brightness(1.1);
-}
-
 .dungeon-btn-primary {
   background-color: var(--theme-button-primary-bg, var(--theme-accent-primary, #8c5c37));
   border-color: var(--theme-button-primary-border, var(--theme-border-accent, #c4915c));
   border-radius: var(--theme-border-radius, 3px);
-}
-
-.dungeon-btn-primary:hover {
-  background-color: var(--theme-button-primary-bg, var(--theme-accent-primary, #a97545));
-  filter: brightness(1.1);
 }
 
 .dungeon-btn-success {
@@ -500,21 +511,61 @@ html body.theme-font-active,
   border-radius: var(--theme-border-radius, 3px);
 }
 
-.dungeon-btn-danger:hover {
-  background-color: var(--theme-button-danger-bg, var(--theme-accent-danger, #991b1b));
-  filter: brightness(1.1);
+/* Shared plate material: lit top edge, weighted base, real pressed state */
+.dungeon-btn,
+.dungeon-btn-primary,
+.dungeon-btn-success,
+.dungeon-btn-danger {
+  background-image: linear-gradient(
+    180deg,
+    rgba(255, 235, 200, 0.1),
+    rgba(255, 235, 200, 0.02) 45%,
+    rgba(0, 0, 0, 0.22)
+  );
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.16),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.4);
+  transition: filter 0.12s, box-shadow 0.12s, transform 0.05s;
 }
 
-/* Theme-aware inputs */
+.dungeon-btn:hover,
+.dungeon-btn-primary:hover,
+.dungeon-btn-success:hover,
+.dungeon-btn-danger:hover {
+  filter: brightness(1.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 235, 200, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    0 0 10px var(--chrome-torch);
+}
+
+.dungeon-btn:active,
+.dungeon-btn-primary:active,
+.dungeon-btn-success:active,
+.dungeon-btn-danger:active {
+  transform: translateY(1px);
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.08));
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Theme-aware inputs — carved into the stone */
 .dungeon-input {
   background-color: var(--theme-bg-input, #15100a);
   border-color: var(--theme-border-primary, #5a4a35);
   color: var(--theme-text-primary, #f2e0b5);
   border-radius: var(--theme-border-radius, 3px);
+  box-shadow: inset 0 2px 5px rgba(0, 0, 0, 0.45);
 }
 
 .dungeon-input:focus {
   border-color: var(--theme-border-accent, #c4915c);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.45),
+    0 0 8px var(--chrome-torch);
 }
 
 /* Theme-aware sprite/asset preview backgrounds */
@@ -1273,34 +1324,42 @@ html body.theme-font-active,
   background: rgba(139, 101, 48, 0.5);
 }
 
-/* Metallic shine on primary buttons using box-shadow */
+/* Metallic shine on primary buttons — merged with the chiseled-plate bevel
+   (this rule overrides the shared button box-shadow, so it must carry the
+   bevel components itself) */
 .dungeon-btn-primary {
   --shine-offset: calc(var(--scroll-percent) * 300% - 150%);
   box-shadow:
-    inset 1px 1px 0 rgba(255,255,255,0.2),
-    inset -1px -1px 0 rgba(0,0,0,0.3),
+    inset 0 1px 0 rgba(255, 235, 200, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.35),
     0 0 8px rgba(212, 165, 116, 0.2),
-    0 2px 4px rgba(0,0,0,0.3),
+    0 2px 4px rgba(0, 0, 0, 0.35),
     inset var(--shine-offset) 0 30px -8px rgba(255, 255, 255, 0.35);
 }
 
 .dungeon-btn-primary:hover {
   --shine-offset: calc(var(--scroll-percent) * 300% - 150%);
   box-shadow:
-    inset 1px 1px 0 rgba(255,255,255,0.25),
-    inset -1px -1px 0 rgba(0,0,0,0.25),
+    inset 0 1px 0 rgba(255, 235, 200, 0.24),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3),
     0 0 15px rgba(212, 165, 116, 0.4),
-    0 2px 4px rgba(0,0,0,0.3),
+    0 2px 4px rgba(0, 0, 0, 0.35),
     inset var(--shine-offset) 0 35px -8px rgba(255, 255, 255, 0.45);
 }
 
-/* Metallic shine on panels */
+.dungeon-btn-primary:active {
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.55),
+    0 1px 2px rgba(0, 0, 0, 0.3);
+}
+
+/* Metallic shine on panels — merged with the stone bevel */
 .dungeon-panel {
   --shine-offset: calc(var(--scroll-percent) * 300% - 150%);
   box-shadow:
-    inset 1px 1px 0 rgba(255,255,255,0.05),
-    inset -1px -1px 0 rgba(0,0,0,0.3),
-    0 4px 8px rgba(0,0,0,0.4),
+    inset 0 2px 0 var(--chrome-bevel-light),
+    inset 0 -2px 0 var(--chrome-bevel-dark),
+    0 4px 10px rgba(0, 0, 0, 0.4),
     inset var(--shine-offset) 0 50px -20px rgba(255, 255, 255, 0.2);
 }
 
