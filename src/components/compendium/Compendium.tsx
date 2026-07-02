@@ -319,7 +319,7 @@ export const Compendium: React.FC = () => {
     </button>
   );
   const folio = selectedIndex >= 0
-    ? `— ${TAB_LABELS[activeTab].plural} · Page ${selectedIndex + 1} of ${currentEntries.length} —`
+    ? `— ${TAB_LABELS[activeTab].plural} · Entry ${selectedIndex + 1} of ${currentEntries.length} —`
     : undefined;
 
   return (
