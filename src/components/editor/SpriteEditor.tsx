@@ -3844,6 +3844,49 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange }) 
         description: 'Hero-card only. Loops for as long as the hero stays selected, after the Select Intro finishes. Not directional.',
         defaultLoop: true,
       })}
+      <div className="border-2 border-stone-600 rounded-lg p-4 bg-stone-900/50">
+        <h4 className="text-stone-300 font-bold mb-3 flex items-center gap-2">
+          <span className="text-lg">⬮</span> Ground Shadow
+        </h4>
+        <p className="text-xs text-stone-400 mb-3">
+          The soft shadow under this entity on the board. Centered on the tile by default —
+          use the offsets to tailor sprites whose body isn't at the tile center.
+          All values are in art pixels (a tile is 24). Width 0 hides the shadow.
+        </p>
+        <div className="grid grid-cols-3 gap-3">
+          <div>
+            <label className="block text-xs font-bold mb-1">Width</label>
+            <input
+              type="number"
+              min={0}
+              value={sprite.shadowWidth ?? ''}
+              placeholder="14"
+              onChange={(e) => onChange({ ...sprite, shadowWidth: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) })}
+              className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1">Offset X</label>
+            <input
+              type="number"
+              value={sprite.shadowOffsetX ?? ''}
+              placeholder="0"
+              onChange={(e) => onChange({ ...sprite, shadowOffsetX: e.target.value === '' ? undefined : Number(e.target.value) })}
+              className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-bold mb-1">Offset Y</label>
+            <input
+              type="number"
+              value={sprite.shadowOffsetY ?? ''}
+              placeholder="0"
+              onChange={(e) => onChange({ ...sprite, shadowOffsetY: e.target.value === '' ? undefined : Number(e.target.value) })}
+              className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+            />
+          </div>
+        </div>
+      </div>
       </>
       )}
 

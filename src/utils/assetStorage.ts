@@ -269,6 +269,12 @@ export interface CustomSprite {
   name: string;
   type: 'simple' | 'directional' | 'image';
 
+  // Grounded blob shadow (see blobShadows.ts). Defaults: centered on the
+  // tile's ground point at a standard width. All values in ART PIXELS.
+  shadowWidth?: number;   // ellipse width; 0 hides the shadow for this sprite
+  shadowOffsetX?: number; // shift from tile center (positive = right)
+  shadowOffsetY?: number; // shift from the default ground line (positive = down)
+
   // Simple rendering (single sprite for all directions)
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;
