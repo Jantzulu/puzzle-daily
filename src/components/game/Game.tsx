@@ -168,6 +168,10 @@ export const Game: React.FC<GameProps> = ({
   // victory.
   const [showGameOver, setShowGameOver] = useState(false);
   const [spritesReady, setSpritesReady] = useState(false);
+  // Phase-transition overlays (see index.css BOARD PHASE TRANSITIONS):
+  // keyed by nonce so each trigger replays the animation. 0 = never fired.
+  const [battleFxNonce, setBattleFxNonce] = useState(0);
+  const [resetFxNonce, setResetFxNonce] = useState(0);
 
 
   // Scoring system
@@ -830,6 +834,9 @@ export const Game: React.FC<GameProps> = ({
     attemptStartRef.current = Date.now();
     submittedRef.current = false;
     runTrackedRef.current = false;
+    // Battle-start beat: brief dark pulse over the board + quest shimmer
+    setBattleFxNonce(n => n + 1);
+    setShimmerKey(k => k + 1);
     playGameSound('simulation_start');
     vibrate('playButton');
   };
@@ -861,6 +868,7 @@ export const Game: React.FC<GameProps> = ({
     setIsSimulating(false);
     setSelectedCharacterId(null);
     setPuzzleScore(null);
+    setResetFxNonce(n => n + 1);
     runTrackedRef.current = false;
   };
 
@@ -900,6 +908,7 @@ export const Game: React.FC<GameProps> = ({
     setCurrentPuzzle(resetPuzzle);
     setIsSimulating(false);
     setSelectedCharacterId(null);
+    setResetFxNonce(n => n + 1);
   }, [originalPuzzle, playStartCharacters]);
 
   // Restart puzzle from game over (reset lives and go to setup).
@@ -921,6 +930,7 @@ export const Game: React.FC<GameProps> = ({
     setDefeatReason(null);
     setVictoryDismissed(false);
     setDefeatDismissed(false);
+    setResetFxNonce(n => n + 1);
   };
 
   // Concede current attempt - lose a life and show defeat panel with buttons
@@ -2130,6 +2140,16 @@ export const Game: React.FC<GameProps> = ({
                 <div className="absolute inset-0 flex items-center justify-center bg-stone-900/80">
                   <div className="text-stone-400 text-sm animate-pulse">Loading sprites...</div>
                 </div>
+              )}
+
+              {/* Phase-transition beats — keyed so each trigger replays; they
+                  end at opacity 0 and are pointer-events-none, so stale ones
+                  are inert. Rendered under the victory/defeat panels. */}
+              {battleFxNonce > 0 && (
+                <div key={`battle-fx-${battleFxNonce}`} className="absolute inset-0 z-10 bg-black board-battle-pulse" />
+              )}
+              {resetFxNonce > 0 && (
+                <div key={`reset-fx-${resetFxNonce}`} className="absolute inset-0 z-10 bg-stone-950 board-reset-reveal" />
               )}
 
               {/* Game Over Overlay — dismissible (matches Victory pattern) */}

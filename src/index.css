@@ -1284,6 +1284,39 @@ html body.theme-font-active,
 }
 
 /* ============================================
+   BOARD PHASE TRANSITIONS
+   Soft beats between game phases — a brief dark pulse when the battle
+   starts, and a quick reveal masking the instant repaint on reset/retry.
+   Pure overlays: the board itself is never remounted.
+   ============================================ */
+@keyframes board-battle-pulse {
+  0%   { opacity: 0; }
+  30%  { opacity: 0.5; }
+  100% { opacity: 0; }
+}
+.board-battle-pulse {
+  animation: board-battle-pulse 0.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes board-reset-reveal {
+  from { opacity: 0.9; }
+  to   { opacity: 0; }
+}
+.board-reset-reveal {
+  animation: board-reset-reveal 0.45s ease-out forwards;
+  pointer-events: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-battle-pulse,
+  .board-reset-reveal {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* ============================================
    COMPENDIUM PAGE-TURN
    3D flip when the shown entry/chapter changes, plus folded page-corner
    buttons for prev/next paging. Content wrappers are keyed by entry, so a
