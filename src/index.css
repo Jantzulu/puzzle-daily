@@ -1365,12 +1365,47 @@ html body.theme-font-active,
 
 /* ============================================
    QUEST BANNER
-   The quest HUD's low-poly stone banner (BannerMesh) — hangs from the
-   navbar, hewn sides and hem, faint torch glow. Content renders above
-   the mesh; the container itself is transparent.
+   The quest HUD is a cloth banner (BannerMesh) unfurling down from the
+   navbar — the navbar reads as the dungeon wall it hangs from. Entrance:
+   a rotateX unfurl (perspective baked into the keyframes — ancestor
+   perspective doesn't reach here). Ambient: a sub-degree sway on top of
+   the mesh's own SMIL hem ripple. Content renders above the mesh.
    ============================================ */
 .quest-banner {
   background: transparent;
+  transform-origin: top center;
+  animation:
+    quest-unfurl 0.9s cubic-bezier(0.34, 1.3, 0.5, 1),
+    quest-sway 9s ease-in-out 0.9s infinite;
+}
+
+@keyframes quest-unfurl {
+  0% {
+    transform: perspective(700px) rotateX(-88deg);
+    opacity: 0.5;
+  }
+  65% {
+    transform: perspective(700px) rotateX(7deg);
+    opacity: 1;
+  }
+  85% {
+    transform: perspective(700px) rotateX(-3deg);
+  }
+  100% {
+    transform: perspective(700px) rotateX(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes quest-sway {
+  0%, 100% { transform: rotate(0.2deg); }
+  50% { transform: rotate(-0.2deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .quest-banner {
+    animation: none;
+  }
 }
 
 .quest-banner-mesh {

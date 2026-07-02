@@ -1985,7 +1985,7 @@ export const Game: React.FC<GameProps> = ({
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <div className="w-full flex justify-center animate-slide-down-from-nav-wrapper sticky top-0 z-20 quest-panel-sticky">
-              <div className="mb-2 w-full max-w-2xl px-8 md:px-9 pt-1.5 pb-4 quest-banner -mt-[2px] relative z-10 overflow-visible animate-slide-down-from-nav">
+              <div className="mb-2 w-full max-w-2xl px-8 md:px-9 pt-1.5 pb-7 quest-banner -mt-[2px] relative z-10 overflow-visible">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
