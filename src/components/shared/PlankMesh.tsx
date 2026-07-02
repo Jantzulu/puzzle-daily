@@ -1,114 +1,82 @@
 import React from 'react';
 
 // ============================================================================
-// HANGING PLANK SIGN — the mobile nav menu
+// PLANK MENU ITEM — one wooden plank per nav button
 // ============================================================================
-// Modeled on a rustic rope-hung sign: horizontal wooden planks with ragged
-// ends and visible grain, bound by rope at both sides, hanging from a rope
-// triangle. Renders behind the mobile menu's nav links (which are carved
-// into the wood). Deterministic low-poly, same family as Wall/Slab/Banner.
+// The mobile menu is a stack of individual planks, each carrying exactly one
+// nav item, strung together by two short vertical rope stubs that reach up
+// through the gap to the plank above (the top pair reaches the navbar wall
+// and carries the knots). No hanging triangle — it ate too much room.
+// Ragged outlines and wood tones vary per plank index. Deterministic.
 
 const VIEW_W = 400;
-const VIEW_H = 340;
+const VIEW_H = 52;
 
 const hash = (i: number): number => {
   const s = Math.sin((i + 71) * 12.9898) * 43758.5453;
   return s - Math.floor(s);
 };
 
-const DARK: [number, number, number] = [0x4a, 0x35, 0x21];
-const LIGHT: [number, number, number] = [0x7d, 0x5e, 0x3c];
+const DARK: [number, number, number] = [0x54, 0x3c, 0x25];
+const LIGHT: [number, number, number] = [0x8a, 0x68, 0x42];
 
-function woodTone(seed: number, bias: number): string {
-  const t = Math.max(0, Math.min(1, bias + (hash(seed) - 0.5) * 0.4));
+function woodTone(seed: number): string {
+  const t = 0.35 + hash(seed) * 0.45;
   const c = DARK.map((d, i) => Math.round(d + (LIGHT[i] - d) * t));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
 const pts = (arr: Array<[number, number]>) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
 
-interface Plank {
-  quad: string;
-  fill: string;
-  grains: Array<{ x1: number; y1: number; x2: number; y2: number }>;
-  topEdge: string;
-  bottomEdge: string;
-}
-
-// Four planks below the rope area (y 52+), ragged ends, slight offsets
-const PLANKS: Plank[] = [];
-{
-  const rows = [
-    { y0: 52, y1: 120 },
-    { y0: 126, y1: 194 },
-    { y0: 200, y1: 268 },
-    { y0: 274, y1: 338 },
-  ];
-  rows.forEach((row, r) => {
-    const seed = r * 31;
-    const xl = 8 + (hash(seed) - 0.5) * 14;
-    const xr = 392 + (hash(seed + 1) - 0.5) * 14;
-    const j = (k: number) => (hash(seed + k) - 0.5) * 6;
-    const tl: [number, number] = [xl, row.y0 + j(2)];
-    const tr: [number, number] = [xr, row.y0 + j(3)];
-    const br: [number, number] = [xr + j(4) * 1.5, row.y1 + j(5)];
-    const bl: [number, number] = [xl + j(6) * 1.5, row.y1 + j(7)];
-    const grains = Array.from({ length: 3 }, (_, g) => {
-      const gy = row.y0 + 14 + g * 18 + (hash(seed + 10 + g) - 0.5) * 8;
-      return {
-        x1: xl + 20 + hash(seed + 20 + g) * 60,
-        y1: gy,
-        x2: xr - 20 - hash(seed + 30 + g) * 60,
-        y2: gy + (hash(seed + 40 + g) - 0.5) * 6,
-      };
-    });
-    PLANKS.push({
-      quad: pts([tl, tr, br, bl]),
-      fill: woodTone(seed, 0.55 - r * 0.08), // lower planks slightly darker
-      grains,
-      topEdge: pts([tl, tr]),
-      bottomEdge: pts([bl, br]),
-    });
-  });
-}
-
-// Rope: triangle from the top-center hook down to the two bind points
 const ROPE = '#8a6f4d';
 const ROPE_DARK = '#5e4a30';
+const ROPE_X = [72, 328];
 
-export const PlankMesh: React.FC = () => (
-  <svg
-    className="nav-plank-mesh"
-    viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-    preserveAspectRatio="none"
-    aria-hidden="true"
-  >
-    {/* Hanging ropes */}
-    <polyline points="200,2 30,58" fill="none" stroke={ROPE_DARK} strokeWidth="7" />
-    <polyline points="200,2 370,58" fill="none" stroke={ROPE_DARK} strokeWidth="7" />
-    <polyline points="200,2 30,58" fill="none" stroke={ROPE} strokeWidth="4.5" strokeDasharray="7 2.5" />
-    <polyline points="200,2 370,58" fill="none" stroke={ROPE} strokeWidth="4.5" strokeDasharray="7 2.5" />
+export const PlankItemMesh: React.FC<{ index: number; first?: boolean; ropes?: boolean }> = ({ index, first = false, ropes = true }) => {
+  const seed = index * 37;
+  const j = (k: number, amp: number) => (hash(seed + k) - 0.5) * amp;
+  // Ragged plank outline (ends more ragged than the long edges)
+  const tl: [number, number] = [4 + j(1, 10), 5 + j(2, 5)];
+  const tm: [number, number] = [200 + j(3, 60), 3 + j(4, 4)];
+  const tr: [number, number] = [396 + j(5, 10), 5 + j(6, 5)];
+  const mr: [number, number] = [398 + j(7, 8), 26 + j(8, 10)];
+  const br: [number, number] = [396 + j(9, 10), 47 + j(10, 5)];
+  const bm: [number, number] = [200 + j(11, 60), 49 + j(12, 4)];
+  const bl: [number, number] = [4 + j(13, 10), 47 + j(14, 5)];
+  const ml: [number, number] = [2 + j(15, 8), 26 + j(16, 10)];
+  const outline = [tl, tm, tr, mr, br, bm, bl, ml];
 
-    {/* Planks */}
-    {PLANKS.map((p, i) => (
-      <g key={i}>
-        <polygon points={p.quad} fill={p.fill} />
-        <polyline points={p.topEdge} fill="none" stroke="rgba(255,235,200,0.12)" strokeWidth="2.5" />
-        <polyline points={p.bottomEdge} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="3" />
-        {p.grains.map((g, gi) => (
-          <line key={gi} x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" />
-        ))}
-      </g>
-    ))}
+  const grains = Array.from({ length: 2 }, (_, g) => ({
+    x1: 30 + hash(seed + 20 + g) * 80,
+    y1: 16 + g * 18 + j(24 + g, 8),
+    x2: 370 - hash(seed + 30 + g) * 80,
+    y2: 16 + g * 18 + j(34 + g, 8),
+  }));
 
-    {/* Rope bindings wrapping the side edges over all planks */}
-    {[28, 372].map((rx, i) => (
-      <g key={i}>
-        <line x1={rx} y1="50" x2={rx - 8} y2="338" stroke={ROPE_DARK} strokeWidth="8" />
-        <line x1={rx} y1="50" x2={rx - 8} y2="338" stroke={ROPE} strokeWidth="5" strokeDasharray="6 3" />
-        {/* Knot at the top plank */}
-        <circle cx={rx} cy="58" r="8" fill={ROPE} stroke={ROPE_DARK} strokeWidth="2.5" />
-      </g>
-    ))}
-  </svg>
-);
+  return (
+    <svg
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+      style={{ overflow: 'visible' }}
+    >
+      {/* Rope stubs reaching up through the gap to whatever's above
+          (omitted for wall-mounted planks like the desktop nav) */}
+      {ropes && ROPE_X.map((rx, i) => (
+        <g key={i}>
+          <line x1={rx} y1="-16" x2={rx} y2="10" stroke={ROPE_DARK} strokeWidth="7" />
+          <line x1={rx} y1="-16" x2={rx} y2="10" stroke={ROPE} strokeWidth="4.5" strokeDasharray="5 2.5" />
+          {first && <circle cx={rx} cy="0" r="7" fill={ROPE} stroke={ROPE_DARK} strokeWidth="2.5" />}
+        </g>
+      ))}
+
+      {/* The plank */}
+      <polygon points={pts(outline)} fill={woodTone(seed)} />
+      <polyline points={pts([ml, tl, tm, tr])} fill="none" stroke="rgba(255,235,200,0.14)" strokeWidth="2.5" />
+      <polyline points={pts([mr, br, bm, bl])} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="3" />
+      {grains.map((g, gi) => (
+        <line key={gi} x1={g.x1} y1={g.y1} x2={g.x2} y2={g.y2} stroke="rgba(0,0,0,0.18)" strokeWidth="1.5" />
+      ))}
+    </svg>
+  );
+};

@@ -6,7 +6,7 @@ import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { WallMesh } from './components/shared/WallMesh';
-import { PlankMesh } from './components/shared/PlankMesh';
+import { PlankItemMesh } from './components/shared/PlankMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
@@ -277,10 +277,21 @@ function Navigation() {
 
   const isActive = (path: string) => location.pathname === path;
 
-  const linkClass = (path: string) => `
-    px-3 md:px-4 py-2 transition-all duration-200 font-medium text-sm md:text-base
-    nav-carved ${isActive(path) ? 'nav-carved-active' : ''}
-  `;
+  // One list drives both menus: desktop (wall-mounted planks) and mobile
+  // (rope-strung planks). Dark carved text is readable on wood, which is
+  // why every nav item sits on a plank rather than on the bare dark stones.
+  const navItems: Array<{ to: string; label: string; unread?: boolean }> = [
+    { to: '/', label: themeAssets.navLabelPlay || 'Play' },
+    { to: '/town-crier', label: 'Town Crier', unread: hasUnreadNews },
+    { to: '/compendium', label: themeAssets.navLabelCompendium || 'Compendium' },
+    { to: '/training', label: 'Training' },
+    ...(isCreator ? [
+      { to: '/assets', label: themeAssets.navLabelAssets || 'Assets' },
+      { to: '/editors', label: themeAssets.navLabelEditor || 'Editors' },
+      { to: '/puzzle-resources', label: 'Admin Controls' },
+      { to: '/settings', label: 'Settings' },
+    ] : []),
+  ];
 
   // Get navbar background style
   const navbarStyle: React.CSSProperties = {};
@@ -371,35 +382,21 @@ function Navigation() {
           </div>
         </Link>
 
-        {/* Desktop navigation - closer to title */}
+        {/* Desktop navigation — each item on its own wall-mounted plank */}
         <div className="hidden md:flex items-center gap-2 ml-4">
-          <Link to="/" className={linkClass('/')}>
-            {themeAssets.navLabelPlay || 'Play'}
-          </Link>
-          <Link to="/town-crier" className={linkClass('/town-crier')}>
-            Town Crier
-            {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-          </Link>
-          <Link to="/compendium" className={linkClass('/compendium')}>
-            {themeAssets.navLabelCompendium || 'Compendium'}
-          </Link>
-          <Link to="/training" className={linkClass('/training')}>
-            Training
-          </Link>
-          {isCreator && <>
-            <Link to="/assets" className={linkClass('/assets')}>
-              {themeAssets.navLabelAssets || 'Assets'}
+          {navItems.map((item, i) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              className={`nav-plank-item inline-block px-3 py-1 whitespace-nowrap ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
+            >
+              <PlankItemMesh index={i} ropes={false} />
+              <span>
+                {item.label}
+                {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
+              </span>
             </Link>
-            <Link to="/editors" className={linkClass('/editors')}>
-              {themeAssets.navLabelEditor || 'Editors'}
-            </Link>
-            <Link to="/puzzle-resources" className={linkClass('/puzzle-resources')}>
-              Admin Controls
-            </Link>
-            <Link to="/settings" className={linkClass('/settings')}>
-              Settings
-            </Link>
-          </>}
+          ))}
         </div>
 
         <div className="flex-1" />
@@ -444,69 +441,24 @@ function Navigation() {
 
       {/* Mobile menu dropdown — hangs below the wall */}
       {mobileMenuOpen && (
-        <div className={`nav-plank-menu md:hidden mt-2 pt-14 pb-4 px-10 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
-          {/* Rope-hung plank sign behind the menu links */}
-          <PlankMesh />
-          <Link
-            to="/"
-            className={`block ${linkClass('/')}`}
-            onClick={closeMobileMenu}
-          >
-            {themeAssets.navLabelPlay || 'Play'}
-          </Link>
-          <Link
-            to="/town-crier"
-            className={`block ${linkClass('/town-crier')}`}
-            onClick={closeMobileMenu}
-          >
-            Town Crier
-            {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-          </Link>
-          <Link
-            to="/compendium"
-            className={`block ${linkClass('/compendium')}`}
-            onClick={closeMobileMenu}
-          >
-            {themeAssets.navLabelCompendium || 'Compendium'}
-          </Link>
-          <Link
-            to="/training"
-            className={`block ${linkClass('/training')}`}
-            onClick={closeMobileMenu}
-          >
-            Training
-          </Link>
-          {isCreator && <>
+        <div className={`md:hidden pt-4 pb-3 px-4 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
+          {/* One plank per nav item, strung by rope stubs; the top pair of
+              stubs (with knots) reaches up to the navbar wall */}
+          {navItems.map((item, i) => (
             <Link
-              to="/assets"
-              className={`block ${linkClass('/assets')}`}
+              key={item.to}
+              to={item.to}
               onClick={closeMobileMenu}
+              className={`nav-plank-item block px-8 py-2.5 ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
             >
-              {themeAssets.navLabelAssets || 'Assets'}
+              <PlankItemMesh index={i} first={i === 0} />
+              <span>
+                {item.label}
+                {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
+              </span>
             </Link>
-            <Link
-              to="/editors"
-              className={`block ${linkClass('/editors')}`}
-              onClick={closeMobileMenu}
-            >
-              {themeAssets.navLabelEditor || 'Editors'}
-            </Link>
-            <Link
-              to="/puzzle-resources"
-              className={`block ${linkClass('/puzzle-resources')}`}
-              onClick={closeMobileMenu}
-            >
-              Admin Controls
-            </Link>
-            <Link
-              to="/settings"
-              className={`block ${linkClass('/settings')}`}
-              onClick={closeMobileMenu}
-            >
-              Settings
-            </Link>
-          </>}
-          <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
+          ))}
+          <div className="pt-3 mt-2 flex items-center gap-2 justify-center">
             <SoundSettings isMobile />
             {isCreator && <CloudSyncButton />}
             <UserMenu />

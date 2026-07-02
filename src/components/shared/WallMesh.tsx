@@ -51,22 +51,23 @@ const STONES: Stone[] = [];
       const w = 130 + hash(seed + 1) * 130; // 130–260: big stones
       const x2 = Math.min(x + w, VIEW_W + 160);
       const j = (k: number, amp: number) => (hash(seed + k) - 0.5) * amp;
-      // Six-vertex irregular outline: corners + bulging edge midpoints
-      const y0 = row.y0 + j(2, 10);
-      const y1 = row.y1 + j(3, 10);
-      const tl: [number, number] = [x + 4 + j(4, 12), y0 + 4 + j(5, 8)];
-      const tm: [number, number] = [(x + x2) / 2 + j(6, 30), y0 + 2 + j(7, 9)];
-      const tr: [number, number] = [x2 - 4 + j(8, 12), y0 + 4 + j(9, 8)];
-      const br: [number, number] = [x2 - 4 + j(10, 14), y1 - 4 + j(11, 8)];
-      const bm: [number, number] = [(x + x2) / 2 + j(12, 30), y1 - 2 + j(13, 9)];
-      const bl: [number, number] = [x + 4 + j(14, 14), y1 - 4 + j(15, 8)];
+      // Six-vertex irregular outline: corners + bulging edge midpoints.
+      // Big jitter = rubble, not brick; stones nearly touch (thin seams).
+      const y0 = row.y0 + j(2, 18);
+      const y1 = row.y1 + j(3, 18);
+      const tl: [number, number] = [x + 2 + j(4, 22), y0 + 3 + j(5, 12)];
+      const tm: [number, number] = [(x + x2) / 2 + j(6, 48), y0 + 1 + j(7, 14)];
+      const tr: [number, number] = [x2 - 2 + j(8, 22), y0 + 3 + j(9, 12)];
+      const br: [number, number] = [x2 - 2 + j(10, 24), y1 - 3 + j(11, 12)];
+      const bm: [number, number] = [(x + x2) / 2 + j(12, 48), y1 - 1 + j(13, 14)];
+      const bl: [number, number] = [x + 2 + j(14, 24), y1 - 3 + j(15, 12)];
       STONES.push({
         poly: pts([tl, tm, tr, br, bm, bl]),
         top: pts([bl, tl, tm, tr]),
         bottom: pts([tr, br, bm, bl]),
         fill: tone(seed, row.light),
       });
-      x = x2 + 7; // thick mortar seam
+      x = x2 + 3; // thin mortar seam — stones nearly interlock
       seed += 17;
     }
   });
