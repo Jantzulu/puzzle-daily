@@ -4,7 +4,7 @@ import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection, SpriteShee
 import { Direction } from '../../types/game';
 import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { MediaBrowseButton } from './MediaBrowseButton';
-import { drawBlobShadow } from '../game/blobShadows';
+import { drawBlobShadowResolved, resolveShadowConfigByKey, type ResolvedShadow } from '../game/blobShadows';
 
 // Tiles are 24×24 art pixels. Sprite images render at their NATIVE pixel
 // dimensions × (tileSize / ART_TILE_PX), centered on the tile — never scaled
@@ -386,11 +386,12 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   activeAlpha?: number;
   /** When set (entity sprites), the board's ground blob shadow is drawn under
    *  the sprite exactly as it will render in game — so shadow width/offsets
-   *  can be tuned by eye. */
-  shadowSprite?: CustomSprite;
+   *  can be tuned by eye. Pass the RESOLVED config for the direction being
+   *  edited (per-direction overrides inherit sprite-level values). */
+  shadow?: ResolvedShadow;
   /** The owning entity's isFloating flag (smaller, fainter shadow). */
   shadowFloating?: boolean;
-}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha = 1, shadowSprite, shadowFloating = false }) => {
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha = 1, shadow, shadowFloating = false }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef<HTMLCanvasElement>(null);
   const [loadTick, setLoadTick] = useState(0);
@@ -467,7 +468,7 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
 
       // Shadow preview needs a floor to darken — a 28%-black ellipse is
       // invisible on the near-black canvas. Mid-tone fill, tile area only.
-      if (shadowSprite) {
+      if (shadow) {
         ctx.fillStyle = '#4a4a4a';
         ctx.fillRect(tileOrigin, tileOrigin, tileRect, tileRect);
       }
@@ -503,8 +504,8 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
       ctx.setLineDash([]);
 
       // Ground shadow under the sprite, board-faithful (entity sprites only)
-      if (shadowSprite) {
-        drawBlobShadow(ctx, shadowSprite, displaySize / 2, displaySize / 2, tileRect, shadowFloating);
+      if (shadow) {
+        drawBlobShadowResolved(ctx, shadow, displaySize / 2, displaySize / 2, tileRect, shadowFloating);
       }
 
       // Draw one sprite layer at frame 0, faithful to the board's native-size
@@ -540,7 +541,7 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
 
     render(previewRef.current, ANCHOR_PREVIEW_SIZE, ANCHOR_PREVIEW_ZOOM);
     if (zoomed) render(zoomRef.current, ANCHOR_OVERLAY_SIZE, ANCHOR_OVERLAY_ZOOM);
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed, playing, playLoop, playTick, shadowSprite, shadowSprite?.shadowWidth, shadowSprite?.shadowOffsetX, shadowSprite?.shadowOffsetY, shadowFloating]);
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed, playing, playLoop, playTick, shadow?.widthArt, shadow?.offsetXArt, shadow?.offsetYArt, shadowFloating]);
 
   return (
     <div className="relative flex-shrink-0" style={{ width: ANCHOR_PREVIEW_SIZE, height: ANCHOR_PREVIEW_SIZE }}>
@@ -2017,7 +2018,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
               frameHeight={previewSpriteSheet?.frameHeight}
               ghosts={ghosts}
               activeAlpha={ghosts && ghosts.length > 0 ? activePreviewOpacity : 1}
-              shadowSprite={shadowPreview ? sprite : undefined}
+              shadow={shadowPreview ? resolveShadowConfigByKey(sprite, spriteMode === 'directional' ? selectedDirection : undefined) : undefined}
               shadowFloating={shadowPreviewFloating}
             />
           )}
@@ -2749,6 +2750,72 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
             >
               📥 Copy From Another Direction
             </button>
+
+            {/* Per-direction ground-shadow override. Blank = inherit the
+                sprite-level values from Global Settings; the offset previews
+                below draw the resolved shadow so changes are visible live. */}
+            {shadowPreview && (() => {
+              const dirCfg = sprite.directionalSprites?.[selectedDirection];
+              const setShadowField = (field: 'shadowWidth' | 'shadowOffsetX' | 'shadowOffsetY', raw: string) => {
+                const value = raw === '' ? undefined
+                  : field === 'shadowWidth' ? Math.max(0, Number(raw)) : Number(raw);
+                onChange({
+                  ...sprite,
+                  directionalSprites: {
+                    ...(sprite.directionalSprites || {}),
+                    [selectedDirection]: {
+                      ...(sprite.directionalSprites?.[selectedDirection] || {}),
+                      [field]: value,
+                    },
+                  },
+                });
+              };
+              return (
+                <div className="mt-3 p-3 rounded border border-stone-600 bg-stone-900/40">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs font-bold text-stone-300">
+                      ⬮ Ground Shadow override — {DIRECTIONS.find(d => d.key === selectedDirection)?.label}
+                    </span>
+                  </div>
+                  <p className="text-[10px] text-stone-400 mb-2">
+                    Blank inherits Global Settings. Use when this direction's sheet seats the body differently. Art px.
+                  </p>
+                  <div className="grid grid-cols-3 gap-2">
+                    <div>
+                      <label className="block text-[10px] font-bold mb-0.5">Width</label>
+                      <input
+                        type="number"
+                        min={0}
+                        value={dirCfg?.shadowWidth ?? ''}
+                        placeholder={String(sprite.shadowWidth ?? 14)}
+                        onChange={(e) => setShadowField('shadowWidth', e.target.value)}
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold mb-0.5">Offset X</label>
+                      <input
+                        type="number"
+                        value={dirCfg?.shadowOffsetX ?? ''}
+                        placeholder={String(sprite.shadowOffsetX ?? 0)}
+                        onChange={(e) => setShadowField('shadowOffsetX', e.target.value)}
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-xs"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-bold mb-0.5">Offset Y</label>
+                      <input
+                        type="number"
+                        value={dirCfg?.shadowOffsetY ?? ''}
+                        placeholder={String(sprite.shadowOffsetY ?? 0)}
+                        onChange={(e) => setShadowField('shadowOffsetY', e.target.value)}
+                        className="w-full px-2 py-1 bg-stone-700 rounded text-parchment-100 text-xs"
+                      />
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* IDLE & MOVING STATES */}
@@ -3877,9 +3944,10 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
           <span className="text-lg">⬮</span> Ground Shadow
         </h4>
         <p className="text-xs text-stone-400 mb-3">
-          The soft shadow under this entity on the board. Centered on the tile by default —
-          use the offsets to tailor sprites whose body isn't at the tile center.
-          All values are in art pixels (a tile is 24). Width 0 hides the shadow.
+          The soft shadow under this entity on the board. These are the base values for all
+          directions — individual directions can override them in the Directional Sprites tab
+          when a sheet seats the body differently. All values are in art pixels (a tile is 24).
+          Width 0 hides the shadow.
         </p>
         <div className="flex gap-4 items-start">
           <div className="grid grid-cols-3 gap-3 flex-1">
@@ -3939,7 +4007,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                 frameRate={sheet?.frameRate}
                 frameWidth={sheet?.frameWidth}
                 frameHeight={sheet?.frameHeight}
-                shadowSprite={sprite}
+                shadow={resolveShadowConfigByKey(sprite, undefined)}
                 shadowFloating={shadowPreviewFloating}
               />
             );

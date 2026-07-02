@@ -1,4 +1,5 @@
-import type { CustomSprite } from '../../utils/assetStorage';
+import type { CustomSprite, SpriteDirection } from '../../utils/assetStorage';
+import { Direction } from '../../types/game';
 
 // ============================================================================
 // GROUNDED BLOB SHADOWS
@@ -68,6 +69,46 @@ if (typeof window !== 'undefined') {
   };
 }
 
+// ─── Config resolution ──────────────────────────────────────────────────────
+// Per-direction overrides beat sprite-level values beat the default. The
+// direction fallback mirrors drawSprite: the facing's config, else 'default'.
+
+export interface ResolvedShadow {
+  widthArt: number;
+  offsetXArt: number;
+  offsetYArt: number;
+}
+
+function mapDirectionToSpriteDir(direction: Direction): SpriteDirection {
+  switch (direction) {
+    case Direction.NORTH: return 'n';
+    case Direction.NORTHEAST: return 'ne';
+    case Direction.EAST: return 'e';
+    case Direction.SOUTHEAST: return 'se';
+    case Direction.SOUTH: return 's';
+    case Direction.SOUTHWEST: return 'sw';
+    case Direction.WEST: return 'w';
+    case Direction.NORTHWEST: return 'nw';
+    default: return 'default';
+  }
+}
+
+/** Resolve by sprite-direction key ('s', 'e', …). Pass undefined for the
+ *  sprite-level base values (used by the Global Settings preview). */
+export function resolveShadowConfigByKey(
+  sprite: CustomSprite | undefined,
+  dirKey?: SpriteDirection,
+): ResolvedShadow {
+  const dir = dirKey && sprite?.useDirectional && sprite.directionalSprites
+    ? sprite.directionalSprites[dirKey] ?? sprite.directionalSprites['default']
+    : undefined;
+  return {
+    widthArt: dir?.shadowWidth ?? sprite?.shadowWidth ?? KNOBS.DEFAULT_WIDTH_ART,
+    offsetXArt: dir?.shadowOffsetX ?? sprite?.shadowOffsetX ?? 0,
+    offsetYArt: dir?.shadowOffsetY ?? sprite?.shadowOffsetY ?? 0,
+  };
+}
+
 // ─── Drawing ────────────────────────────────────────────────────────────────
 
 function fillSoftEllipse(
@@ -90,27 +131,24 @@ function fillSoftEllipse(
 }
 
 /**
- * Grounded shadow for an entity standing on (or floating over) a tile.
- * Call BEFORE drawing the entity's sprite. Coordinates are in logical canvas
- * units (the same space drawEnemy/drawCharacter work in). Inherits the
- * caller's globalAlpha, so stealth fading applies to the shadow too.
+ * Draw an already-resolved shadow config. Used directly by the editor
+ * previews; the board path goes through drawBlobShadow below.
  */
-export function drawBlobShadow(
+export function drawBlobShadowResolved(
   ctx: CanvasRenderingContext2D,
-  sprite: CustomSprite | undefined,
+  shadow: ResolvedShadow,
   tileCenterX: number,
   tileCenterY: number,
   tileSize: number,
   floating: boolean = false,
 ): void {
-  const widthArt = sprite?.shadowWidth ?? KNOBS.DEFAULT_WIDTH_ART;
-  if (widthArt <= 0) return; // per-sprite opt-out
+  if (shadow.widthArt <= 0) return; // per-sprite opt-out
 
   const zoom = tileSize / ART_TILE_PX;
-  const cx = tileCenterX + (sprite?.shadowOffsetX ?? 0) * zoom;
-  const cy = tileCenterY + tileSize * KNOBS.GROUND_LINE + (sprite?.shadowOffsetY ?? 0) * zoom;
+  const cx = tileCenterX + shadow.offsetXArt * zoom;
+  const cy = tileCenterY + tileSize * KNOBS.GROUND_LINE + shadow.offsetYArt * zoom;
 
-  let width = widthArt * zoom;
+  let width = shadow.widthArt * zoom;
   let alpha = KNOBS.ENTITY_ALPHA;
   if (floating) {
     width *= KNOBS.FLOATING_SCALE;
@@ -118,6 +156,28 @@ export function drawBlobShadow(
   }
   const rx = width / 2;
   fillSoftEllipse(ctx, cx, cy, rx, rx / KNOBS.SQUASH, alpha);
+}
+
+/**
+ * Grounded shadow for an entity standing on (or floating over) a tile,
+ * resolved for the direction currently being drawn (per-direction overrides
+ * inherit from the sprite-level values). Call BEFORE drawing the entity's
+ * sprite. Coordinates are in logical canvas units (the same space
+ * drawEnemy/drawCharacter work in). Inherits the caller's globalAlpha, so
+ * stealth fading applies to the shadow too.
+ */
+export function drawBlobShadow(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite | undefined,
+  direction: Direction | undefined,
+  tileCenterX: number,
+  tileCenterY: number,
+  tileSize: number,
+  floating: boolean = false,
+): void {
+  const dirKey = direction !== undefined ? mapDirectionToSpriteDir(direction) : undefined;
+  const shadow = resolveShadowConfigByKey(sprite, dirKey);
+  drawBlobShadowResolved(ctx, shadow, tileCenterX, tileCenterY, tileSize, floating);
 }
 
 /**

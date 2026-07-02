@@ -217,6 +217,13 @@ export interface DirectionalSpriteConfig {
   secondaryColor?: string;
   size?: number; // 0-1 of tile — SHAPE FALLBACK ONLY; images render at native pixel size
 
+  // Per-direction ground-shadow overrides (art px). Unset fields inherit the
+  // sprite-level shadowWidth/shadowOffsetX/shadowOffsetY — use these when a
+  // direction's sheet seats the body differently in-frame.
+  shadowWidth?: number;
+  shadowOffsetX?: number;
+  shadowOffsetY?: number;
+
   // Idle state (not moving) - for this specific direction
   idleImageData?: string; // Base64 encoded PNG/GIF for idle state
   idleImageUrl?: string; // URL to idle image

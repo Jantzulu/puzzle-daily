@@ -2624,7 +2624,7 @@ function drawEnemy(
       // when the blob toggle is off (see blobShadows.ts)
       const blob = blobShadowsEnabled();
       if (blob) {
-        drawBlobShadow(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!enemyData.isFloating);
+        drawBlobShadow(ctx, enemyData.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!enemyData.isFloating);
       } else {
         ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
         ctx.shadowBlur = 2;
@@ -2680,7 +2680,7 @@ function drawEnemy(
     if (!enemy.dead) {
       // Legacy default enemies had no shadow at all — blob mode grounds them too
       if (blobShadowsEnabled()) {
-        drawBlobShadow(ctx, enemyData?.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!enemyData?.isFloating);
+        drawBlobShadow(ctx, enemyData?.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!enemyData?.isFloating);
       }
       ctx.fillStyle = COLORS.enemy;
       ctx.beginPath();
@@ -3494,7 +3494,7 @@ function drawCharacter(
       // silhouette when the blob toggle is off (see blobShadows.ts)
       const blob = blobShadowsEnabled();
       if (blob) {
-        drawBlobShadow(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!charData.isFloating);
+        drawBlobShadow(ctx, charData.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!charData.isFloating);
       } else {
         ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
         ctx.shadowBlur = 2;
@@ -3549,7 +3549,7 @@ function drawCharacter(
     if (!character.dead) {
       const blob = blobShadowsEnabled();
       if (blob) {
-        drawBlobShadow(ctx, charData?.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!charData?.isFloating);
+        drawBlobShadow(ctx, charData?.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, !!charData?.isFloating);
       } else {
         ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
         ctx.shadowBlur = 2;
