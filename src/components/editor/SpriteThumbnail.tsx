@@ -171,24 +171,26 @@ interface SpriteThumbnailProps {
 
 export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size = 64, className = '', previewType, noBackground = false, spriteScale = 1, bottomAlign = false, canvasStyle, pixelScale, fillBox = false, fillWidth = false, cardRole, cardSelected = false, cardPlaced = false }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [containerEl, setContainerEl] = useState<HTMLDivElement | null>(null);
   const [renderTrigger, setRenderTrigger] = useState(0);
   const [measuredWidth, setMeasuredWidth] = useState<number | null>(null);
 
   // Observe container width when fillWidth is enabled. Re-renders on resize
   // so the canvas's internal resolution tracks the parent's actual width.
+  // Keyed on the element (callback ref), not mount: when the sprite loads
+  // async the first render is the no-sprite placeholder with no container,
+  // and a mount-only effect would never attach the observer.
   useEffect(() => {
-    if (!fillWidth || !containerRef.current) return;
-    const element = containerRef.current;
+    if (!fillWidth || !containerEl) return;
     const observer = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const w = Math.floor(entry.contentRect.width);
         if (w > 0) setMeasuredWidth(w);
       }
     });
-    observer.observe(element);
+    observer.observe(containerEl);
     return () => observer.disconnect();
-  }, [fillWidth]);
+  }, [fillWidth, containerEl]);
 
   // Effective canvas dimensions (CSS pixels).
   // fillWidth: width tracks parent; height is `size`. Non-fillWidth: both equal `size`.
@@ -563,7 +565,7 @@ export const SpriteThumbnail: React.FC<SpriteThumbnailProps> = ({ sprite, size =
   };
 
   return (
-    <div ref={containerRef} className={`rounded ${noBackground ? 'overflow-visible' : 'overflow-hidden'} ${className}`} style={backgroundStyle}>
+    <div ref={setContainerEl} className={`rounded ${noBackground ? 'overflow-visible' : 'overflow-hidden'} ${className}`} style={backgroundStyle}>
       <canvas
         ref={canvasRef}
         className="block"
