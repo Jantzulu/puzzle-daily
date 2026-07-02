@@ -187,6 +187,37 @@ export const Compendium: React.FC = () => {
     count: counts[tab.id],
   }));
 
+  // Slab aura takes the active chapter's accent color (see index.css)
+  const TAB_THEME: Record<TabId, string> = {
+    characters: 'compendium-theme-heroes',
+    enemies: 'compendium-theme-enemies',
+    status_effects: 'compendium-theme-enchantments',
+    special_tiles: 'compendium-theme-tiles',
+    items: 'compendium-theme-items',
+  };
+  const themeClass = TAB_THEME[activeTab];
+
+  // Floating nav stack: the chapter capsule with the search pill hanging
+  // under it — search lives OFF the slab (a stone slab with a search box
+  // carved into it broke the artifact illusion).
+  const navStack = (orientation: 'vertical' | 'horizontal') => (
+    <div className="compendium-nav-stack">
+      <ChapterNav
+        tabs={chapterTabs}
+        activeTab={activeTab}
+        onTabChange={handleTabChange}
+        orientation={orientation}
+      />
+      <input
+        type="text"
+        placeholder={`Search ${TAB_LABELS[activeTab].plural.toLowerCase()}...`}
+        value={searchQuery}
+        onChange={(e) => setSearchQuery(e.target.value)}
+        className="compendium-search compendium-search--float"
+      />
+    </div>
+  );
+
   // Get detail content based on active tab
   const detailContent = (() => {
     if (activeTab === 'characters' && selectedCharacter) {
@@ -223,17 +254,6 @@ export const Compendium: React.FC = () => {
           ({currentCount})
         </span>
       </h2>
-
-      {/* Search */}
-      <div className="mb-3">
-        <input
-          type="text"
-          placeholder={`Search ${TAB_LABELS[activeTab].plural.toLowerCase()}...`}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="compendium-search"
-        />
-      </div>
 
       {/* Entry list */}
       <div className="space-y-1">
@@ -331,17 +351,18 @@ export const Compendium: React.FC = () => {
           <p className="text-stone-400">A tome of all Dungeon knowledge — Heroes, Enemies, Status Effects, Tiles, and Items.</p>
         </div>
 
-        {/* Desktop: Two-page book layout (lg+) */}
+        {/* Desktop: two-face slab layout (lg+) */}
         <div className="hidden lg:block">
           <BookLayout
+            className={themeClass}
             leftPage={
-              // Keyed by chapter: switching tabs turns the index page too
+              // Keyed by chapter: switching tabs re-manifests the index too
               <div key={`list-${activeTab}`} className="compendium-flip--from-right">
                 {entryListContent}
               </div>
             }
             rightPage={
-              // Keyed by entry: every selection change plays the page-turn
+              // Keyed by entry: every selection change plays the manifestation
               <div key={`detail-${activeTab}-${selectedId ?? 'none'}`} className="compendium-flip" style={{ height: '100%' }}>
                 {detailPageContent}
               </div>
@@ -349,34 +370,21 @@ export const Compendium: React.FC = () => {
             prevButton={prevCorner}
             nextButton={nextCorner}
             rightFooter={folio}
-            chapterTabs={
-              <ChapterNav
-                tabs={chapterTabs}
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                orientation="vertical"
-              />
-            }
+            chapterTabs={navStack('vertical')}
           />
         </div>
 
-        {/* Mobile: Single-page layout (< lg) */}
+        {/* Mobile: single-face slab layout (< lg) */}
         <div className="lg:hidden">
           <SinglePageLayout
+            className={themeClass}
             cornerButtons={mobileShowDetail && detailContent ? (
               <>
                 {prevCorner}
                 {nextCorner}
               </>
             ) : undefined}
-            chapterTabs={
-              <ChapterNav
-                tabs={chapterTabs}
-                activeTab={activeTab}
-                onTabChange={handleTabChange}
-                orientation="horizontal"
-              />
-            }
+            chapterTabs={navStack('horizontal')}
           >
             {mobileShowDetail && detailContent ? (
               <div key={`m-detail-${activeTab}-${selectedId ?? 'none'}`} className="compendium-flip">

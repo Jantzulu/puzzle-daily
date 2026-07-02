@@ -713,7 +713,10 @@ html body.theme-font-active,
   position: relative;
   height: 76vh;
   min-height: 480px;
-  padding: 50px 5.5%;
+  /* Vertical padding tracks slab height — the mesh's plate inset is a
+     fraction of the height, so fixed-px padding let text overlap the
+     facet ring on tall screens. max() guards the min-height case. */
+  padding: max(6.4vh, 44px) 6.5%;
 }
 
 /* Single-page mode for mobile — same slab, one face */
@@ -722,7 +725,7 @@ html body.theme-font-active,
   position: relative;
   height: 76vh;
   min-height: 480px;
-  padding: 48px 6%;
+  padding: max(6.4vh, 44px) 7%;
 }
 
 /* The mesh fills the slab behind the content */
@@ -843,7 +846,7 @@ html body.theme-font-active,
   gap: 0.25rem;
   width: fit-content;
   max-width: 100%;
-  margin: 0 auto 1.1rem;
+  margin: 0 auto;
   padding: 0.3rem 0.55rem;
   border-radius: 999px;
   background: rgba(24, 21, 19, 0.78);
@@ -862,6 +865,50 @@ html body.theme-font-active,
 .compendium-chapter-tabs--horizontal::-webkit-scrollbar {
   display: none;
 }
+
+/* Nav stack: the capsule with the search pill attached beneath it */
+.compendium-nav-stack {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 1.1rem;
+  position: relative;
+  z-index: 3;
+}
+
+/* Search as a frosted pill under the capsule — off the slab, on purpose.
+   16px font is deliberate: iOS Safari force-zooms the page when focusing
+   inputs with a smaller font size. Double-class selector: this block sits
+   BEFORE the base .compendium-search rule, so it needs the specificity. */
+.compendium-search.compendium-search--float {
+  width: min(340px, 88vw);
+  border-radius: 999px;
+  text-align: center;
+  font-size: 16px;
+  background: rgba(24, 21, 19, 0.78);
+  border: 1px solid rgba(228, 185, 106, 0.14);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 235, 200, 0.05);
+}
+
+.compendium-search.compendium-search--float:focus {
+  border-color: rgba(228, 185, 106, 0.5);
+  box-shadow:
+    0 4px 16px rgba(0, 0, 0, 0.45),
+    0 0 10px var(--gold-glow);
+}
+
+/* Per-chapter aura color — the slab's pulsing perimeter glow takes the
+   accent of whatever asset type is open */
+.compendium-wrapper.compendium-theme-heroes { --arcane-aura: rgba(228, 185, 106, 0.24); }
+.compendium-wrapper.compendium-theme-enemies { --arcane-aura: rgba(224, 112, 92, 0.26); }
+.compendium-wrapper.compendium-theme-enchantments { --arcane-aura: rgba(180, 140, 232, 0.28); }
+.compendium-wrapper.compendium-theme-tiles { --arcane-aura: rgba(201, 178, 138, 0.22); }
+.compendium-wrapper.compendium-theme-items { --arcane-aura: rgba(147, 200, 110, 0.24); }
 
 /* Entry card on parchment page */
 .compendium-entry {
