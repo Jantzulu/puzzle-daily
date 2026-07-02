@@ -7,6 +7,12 @@ interface BookLayoutProps {
   rightPage: React.ReactNode;
   /** Chapter tab navigation, rendered on right edge (desktop) or above (mobile) */
   chapterTabs: React.ReactNode;
+  /** Folded page-corner button, bottom-left of the book (previous entry) */
+  prevButton?: React.ReactNode;
+  /** Folded page-corner button, bottom-right of the book (next entry) */
+  nextButton?: React.ReactNode;
+  /** Right page footer line — defaults to "— Details —" */
+  rightFooter?: React.ReactNode;
   /** Additional class name */
   className?: string;
 }
@@ -15,15 +21,17 @@ interface BookLayoutProps {
  * Desktop two-page open book layout.
  * Left page = index/list, right page = detail, spine between.
  * Chapter tabs rendered on right edge via absolute positioning.
+ * Turn buttons live on the book (not inside the scrolling pages) so they
+ * stay pinned to the bottom corners like real folded page corners.
  */
-export const BookLayout: React.FC<BookLayoutProps> = ({ leftPage, rightPage, chapterTabs, className = '' }) => {
+export const BookLayout: React.FC<BookLayoutProps> = ({ leftPage, rightPage, chapterTabs, prevButton, nextButton, rightFooter, className = '' }) => {
   return (
     <div className={`compendium-wrapper relative ${className}`}>
       {/* Chapter tabs on right edge */}
       {chapterTabs}
 
       {/* The book */}
-      <div className="compendium-book" style={{ minHeight: '70vh' }}>
+      <div className="compendium-book relative" style={{ minHeight: '70vh' }}>
         {/* Decorative corners — left page */}
         <div className="compendium-corner compendium-corner--tl" />
         <div className="compendium-corner compendium-corner--bl" />
@@ -40,12 +48,16 @@ export const BookLayout: React.FC<BookLayoutProps> = ({ leftPage, rightPage, cha
         {/* Right page — detail */}
         <div className="compendium-page compendium-page--right" style={{ display: 'flex', flexDirection: 'column' }}>
           <div className="flex-1">{rightPage}</div>
-          <div className="compendium-page-number">— Details —</div>
+          <div className="compendium-page-number">{rightFooter ?? '— Details —'}</div>
         </div>
 
         {/* Decorative corners — right page */}
         <div className="compendium-corner compendium-corner--tr" />
         <div className="compendium-corner compendium-corner--br" />
+
+        {/* Folded page-corner turn buttons */}
+        {prevButton}
+        {nextButton}
       </div>
     </div>
   );
@@ -54,6 +66,8 @@ export const BookLayout: React.FC<BookLayoutProps> = ({ leftPage, rightPage, cha
 interface SinglePageLayoutProps {
   children: React.ReactNode;
   chapterTabs: React.ReactNode;
+  /** Folded page-corner prev/next buttons (rendered on the page) */
+  cornerButtons?: React.ReactNode;
   className?: string;
 }
 
@@ -61,7 +75,7 @@ interface SinglePageLayoutProps {
  * Mobile single-page layout — looks like one parchment page.
  * Chapter tabs render horizontally above.
  */
-export const SinglePageLayout: React.FC<SinglePageLayoutProps> = ({ children, chapterTabs, className = '' }) => {
+export const SinglePageLayout: React.FC<SinglePageLayoutProps> = ({ children, chapterTabs, cornerButtons, className = '' }) => {
   return (
     <div className={`compendium-wrapper ${className}`}>
       {/* Horizontal chapter tabs above */}
@@ -77,6 +91,8 @@ export const SinglePageLayout: React.FC<SinglePageLayoutProps> = ({ children, ch
           <div className="compendium-corner compendium-corner--br" />
 
           {children}
+
+          {cornerButtons}
         </div>
       </div>
     </div>

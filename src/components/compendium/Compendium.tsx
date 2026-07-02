@@ -116,6 +116,53 @@ export const Compendium: React.FC = () => {
     items: filteredItems.length,
   };
 
+  // The active tab's filtered entries, in list order — drives prev/next
+  // paging (page corners + arrow keys) and the folio line.
+  const currentEntries: Array<{ id: string }> = useMemo(() => {
+    switch (activeTab) {
+      case 'characters': return filteredCharacters;
+      case 'enemies': return filteredEnemies;
+      case 'status_effects': return filteredStatusEffects;
+      case 'special_tiles': return filteredTiles;
+      case 'items': return filteredItems;
+    }
+  }, [activeTab, filteredCharacters, filteredEnemies, filteredStatusEffects, filteredTiles, filteredItems]);
+
+  const selectedIndex = selectedId ? currentEntries.findIndex(e => e.id === selectedId) : -1;
+  const canPrev = selectedIndex > 0;
+  const canNext = selectedIndex >= 0
+    ? selectedIndex < currentEntries.length - 1
+    : currentEntries.length > 0; // nothing selected yet — "next" opens the first page
+
+  const goRelative = (delta: 1 | -1) => {
+    if (currentEntries.length === 0) return;
+    if (selectedIndex < 0) {
+      if (delta === 1) {
+        setSelectedId(currentEntries[0].id);
+        setMobileShowDetail(true);
+      }
+      return;
+    }
+    const target = selectedIndex + delta;
+    if (target < 0 || target >= currentEntries.length) return;
+    setSelectedId(currentEntries[target].id);
+    setMobileShowDetail(true);
+  };
+
+  // Arrow keys page through entries like leafing through the tome.
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+      e.preventDefault();
+      goRelative(e.key === 'ArrowRight' ? 1 : -1);
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentEntries, selectedIndex]);
+
   const handleTabChange = (tabId: string) => {
     setActiveTab(tabId as TabId);
     setSelectedId(null);
@@ -248,6 +295,33 @@ export const Compendium: React.FC = () => {
     </div>
   );
 
+  // Folded page-corner turn buttons + folio line
+  const prevCorner = (
+    <button
+      className="compendium-turn-corner compendium-turn-corner--prev"
+      onClick={() => goRelative(-1)}
+      disabled={!canPrev}
+      title="Previous entry (←)"
+      aria-label="Previous entry"
+    >
+      <span>‹</span>
+    </button>
+  );
+  const nextCorner = (
+    <button
+      className="compendium-turn-corner compendium-turn-corner--next"
+      onClick={() => goRelative(1)}
+      disabled={!canNext}
+      title="Next entry (→)"
+      aria-label="Next entry"
+    >
+      <span>›</span>
+    </button>
+  );
+  const folio = selectedIndex >= 0
+    ? `— ${TAB_LABELS[activeTab].plural} · Page ${selectedIndex + 1} of ${currentEntries.length} —`
+    : undefined;
+
   return (
     <div className="min-h-screen theme-root text-parchment-200">
       <div className="max-w-7xl mx-auto p-4 md:p-6">
@@ -260,8 +334,21 @@ export const Compendium: React.FC = () => {
         {/* Desktop: Two-page book layout (lg+) */}
         <div className="hidden lg:block">
           <BookLayout
-            leftPage={entryListContent}
-            rightPage={detailPageContent}
+            leftPage={
+              // Keyed by chapter: switching tabs turns the index page too
+              <div key={`list-${activeTab}`} className="compendium-flip--from-right">
+                {entryListContent}
+              </div>
+            }
+            rightPage={
+              // Keyed by entry: every selection change plays the page-turn
+              <div key={`detail-${activeTab}-${selectedId ?? 'none'}`} className="compendium-flip" style={{ height: '100%' }}>
+                {detailPageContent}
+              </div>
+            }
+            prevButton={prevCorner}
+            nextButton={nextCorner}
+            rightFooter={folio}
             chapterTabs={
               <ChapterNav
                 tabs={chapterTabs}
@@ -276,6 +363,12 @@ export const Compendium: React.FC = () => {
         {/* Mobile: Single-page layout (< lg) */}
         <div className="lg:hidden">
           <SinglePageLayout
+            cornerButtons={mobileShowDetail && detailContent ? (
+              <>
+                {prevCorner}
+                {nextCorner}
+              </>
+            ) : undefined}
             chapterTabs={
               <ChapterNav
                 tabs={chapterTabs}
@@ -286,7 +379,7 @@ export const Compendium: React.FC = () => {
             }
           >
             {mobileShowDetail && detailContent ? (
-              <>
+              <div key={`m-detail-${activeTab}-${selectedId ?? 'none'}`} className="compendium-flip">
                 {/* Back button */}
                 <button
                   onClick={handleMobileBack}
@@ -299,9 +392,13 @@ export const Compendium: React.FC = () => {
                   Back to Index
                 </button>
                 {detailContent}
-              </>
+                {/* Folio + breathing room above the corner buttons */}
+                <div className="compendium-page-number pb-8">{folio}</div>
+              </div>
             ) : (
-              entryListContent
+              <div key={`m-list-${activeTab}`} className="compendium-flip">
+                {entryListContent}
+              </div>
             )}
           </SinglePageLayout>
         </div>

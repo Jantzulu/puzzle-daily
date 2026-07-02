@@ -1283,4 +1283,102 @@ html body.theme-font-active,
     inset var(--shine-offset) 0 50px -20px rgba(255, 255, 255, 0.2);
 }
 
+/* ============================================
+   COMPENDIUM PAGE-TURN
+   3D flip when the shown entry/chapter changes, plus folded page-corner
+   buttons for prev/next paging. Content wrappers are keyed by entry, so a
+   change remounts them and the mount animation plays.
+   ============================================ */
+.compendium-book,
+.compendium-book--single {
+  perspective: 1600px;
+}
+
+/* Right page / mobile page: swings open from the spine (left edge) */
+.compendium-flip {
+  transform-origin: left center;
+  backface-visibility: hidden;
+  animation: compendium-page-flip 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+/* Left page (index): its spine edge is on the right */
+.compendium-flip--from-right {
+  transform-origin: right center;
+  backface-visibility: hidden;
+  animation: compendium-page-flip-rev 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+}
+
+@keyframes compendium-page-flip {
+  from { transform: rotateY(-65deg); opacity: 0.2; filter: brightness(0.85); }
+  60%  { filter: brightness(0.95); }
+  to   { transform: rotateY(0deg); opacity: 1; filter: brightness(1); }
+}
+
+@keyframes compendium-page-flip-rev {
+  from { transform: rotateY(65deg); opacity: 0.2; filter: brightness(0.85); }
+  60%  { filter: brightness(0.95); }
+  to   { transform: rotateY(0deg); opacity: 1; filter: brightness(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .compendium-flip,
+  .compendium-flip--from-right {
+    animation: none;
+  }
+}
+
+/* Folded page-corner turn buttons */
+.compendium-turn-corner {
+  position: absolute;
+  bottom: 0;
+  width: 44px;
+  height: 44px;
+  border: none;
+  padding: 0;
+  background: transparent;
+  cursor: pointer;
+  z-index: 5;
+  transition: transform 0.15s ease;
+}
+.compendium-turn-corner:hover:not(:disabled) {
+  transform: scale(1.12);
+}
+.compendium-turn-corner:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+.compendium-turn-corner::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+}
+/* Next (bottom-right): the corner folds up toward the reader */
+.compendium-turn-corner--next {
+  right: 0;
+  border-bottom-right-radius: 4px;
+}
+.compendium-turn-corner--next::before {
+  background: linear-gradient(315deg, var(--page-bg-dark, #b89768) 0%, var(--page-bg-dark, #b89768) 46%, rgba(74, 51, 24, 0.45) 50%, transparent 54%);
+  border-bottom-right-radius: 4px;
+}
+/* Prev (bottom-left) */
+.compendium-turn-corner--prev {
+  left: 0;
+  border-bottom-left-radius: 4px;
+}
+.compendium-turn-corner--prev::before {
+  background: linear-gradient(45deg, var(--page-bg-dark, #b89768) 0%, var(--page-bg-dark, #b89768) 46%, rgba(74, 51, 24, 0.45) 50%, transparent 54%);
+  border-bottom-left-radius: 4px;
+}
+.compendium-turn-corner span {
+  position: absolute;
+  bottom: 6px;
+  font-size: 13px;
+  line-height: 1;
+  color: var(--text-heading, #4a3318);
+  font-weight: bold;
+}
+.compendium-turn-corner--next span { right: 8px; }
+.compendium-turn-corner--prev span { left: 8px; }
+
 
