@@ -692,7 +692,7 @@ html body.theme-font-active,
   --spine-dark: #151210;
   --spine-light: #35302b;
   --corner-color: rgba(228, 185, 106, 0.45);
-  --arcane-aura: rgba(147, 112, 219, 0.16);
+  --arcane-aura: rgba(147, 112, 219, 0.35);
   --gold-glow: rgba(228, 185, 106, 0.35);
   --page-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
@@ -705,7 +705,6 @@ html body.theme-font-active,
 .compendium-book,
 .compendium-book--single {
   background: transparent;
-  animation: compendium-slab-aura 7s ease-in-out infinite;
 }
 
 .compendium-book {
@@ -728,7 +727,11 @@ html body.theme-font-active,
   padding: max(6.4vh, 44px) 7%;
 }
 
-/* The mesh fills the slab behind the content */
+/* The mesh fills the slab behind the content. The aura filter lives HERE,
+   on the SVG, not on the container: a filter rasterizes its whole subtree,
+   and on the container it dragged the text into the filtered layer and made
+   it slightly hazy on mobile GPUs. On the mesh alone, the glow follows the
+   stone's silhouette and the DOM text above stays crisp. */
 .compendium-slab-mesh {
   position: absolute;
   inset: 0;
@@ -736,38 +739,46 @@ html body.theme-font-active,
   height: 100%;
   pointer-events: none;
   z-index: 0;
+  animation: compendium-slab-aura 5s ease-in-out infinite;
 }
 
 @keyframes compendium-slab-aura {
   0%, 100% {
     filter:
       drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55))
-      drop-shadow(0 0 18px var(--arcane-aura));
+      drop-shadow(0 0 10px var(--arcane-aura))
+      drop-shadow(0 0 26px var(--arcane-aura));
   }
   50% {
     filter:
       drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55))
-      drop-shadow(0 0 30px var(--arcane-aura));
+      drop-shadow(0 0 16px var(--arcane-aura))
+      drop-shadow(0 0 54px var(--arcane-aura));
   }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .compendium-book,
-  .compendium-book--single {
+  .compendium-slab-mesh {
     animation: none;
     filter:
       drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55))
-      drop-shadow(0 0 18px var(--arcane-aura));
+      drop-shadow(0 0 10px var(--arcane-aura))
+      drop-shadow(0 0 26px var(--arcane-aura));
   }
 }
 
-/* Content face — sits on the mesh's flattened plate */
+/* Content face — sits on the mesh's flattened plate. The text-shadow is
+   the "carved into stone" treatment (debossed): a dark line above each
+   stroke (the incision's shadowed wall) and a faint lit lip below. 1px
+   offsets only — legibility first. text-shadow inherits, so this reaches
+   every glyph on the slab; the heading overrides with its gold glow. */
 .compendium-page {
   flex: 1;
   min-width: 0;
   background-color: transparent;
   background-image: var(--page-texture);
   color: var(--text-primary);
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 240, 210, 0.06);
   padding: 1rem 1.25rem;
   overflow-y: auto;
   position: relative;
@@ -779,6 +790,7 @@ html body.theme-font-active,
   background-color: transparent;
   background-image: var(--page-texture);
   color: var(--text-primary);
+  text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 240, 210, 0.06);
   padding: 0.5rem 0.75rem;
   height: 100%;
   overflow-y: auto;
@@ -904,11 +916,11 @@ html body.theme-font-active,
 
 /* Per-chapter aura color — the slab's pulsing perimeter glow takes the
    accent of whatever asset type is open */
-.compendium-wrapper.compendium-theme-heroes { --arcane-aura: rgba(228, 185, 106, 0.24); }
-.compendium-wrapper.compendium-theme-enemies { --arcane-aura: rgba(224, 112, 92, 0.26); }
-.compendium-wrapper.compendium-theme-enchantments { --arcane-aura: rgba(180, 140, 232, 0.28); }
-.compendium-wrapper.compendium-theme-tiles { --arcane-aura: rgba(201, 178, 138, 0.22); }
-.compendium-wrapper.compendium-theme-items { --arcane-aura: rgba(147, 200, 110, 0.24); }
+.compendium-wrapper.compendium-theme-heroes { --arcane-aura: rgba(228, 185, 106, 0.42); }
+.compendium-wrapper.compendium-theme-enemies { --arcane-aura: rgba(224, 112, 92, 0.45); }
+.compendium-wrapper.compendium-theme-enchantments { --arcane-aura: rgba(180, 140, 232, 0.48); }
+.compendium-wrapper.compendium-theme-tiles { --arcane-aura: rgba(201, 178, 138, 0.38); }
+.compendium-wrapper.compendium-theme-items { --arcane-aura: rgba(147, 200, 110, 0.42); }
 
 /* Entry card on parchment page */
 .compendium-entry {
@@ -937,7 +949,10 @@ html body.theme-font-active,
   color: var(--text-heading);
   font-weight: 700;
   text-align: center;
-  text-shadow: 0 0 10px var(--gold-glow), 0 1px 0 rgba(0, 0, 0, 0.6);
+  text-shadow:
+    0 0 10px var(--gold-glow),
+    0 -1px 1px rgba(0, 0, 0, 0.8),
+    0 1px 0 rgba(255, 240, 210, 0.08);
   border-bottom: 2px solid var(--border-warm);
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
