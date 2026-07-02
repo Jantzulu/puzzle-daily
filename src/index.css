@@ -743,17 +743,19 @@ html body.theme-font-active,
 }
 
 @keyframes compendium-slab-aura {
+  /* Deep ebb → wide flare: the variance is what makes the pulse legible.
+     At rest the glow sits tight against the stone. */
   0%, 100% {
     filter:
       drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55))
-      drop-shadow(0 0 10px var(--arcane-aura))
-      drop-shadow(0 0 26px var(--arcane-aura));
+      drop-shadow(0 0 3px var(--arcane-aura))
+      drop-shadow(0 0 8px var(--arcane-aura));
   }
   50% {
     filter:
       drop-shadow(0 8px 18px rgba(0, 0, 0, 0.55))
       drop-shadow(0 0 16px var(--arcane-aura))
-      drop-shadow(0 0 54px var(--arcane-aura));
+      drop-shadow(0 0 58px var(--arcane-aura));
   }
 }
 
@@ -914,11 +916,31 @@ html body.theme-font-active,
 
 /* Per-chapter aura color — the slab's pulsing perimeter glow takes the
    accent of whatever asset type is open */
-.compendium-wrapper.compendium-theme-heroes { --arcane-aura: rgba(228, 185, 106, 0.42); }
-.compendium-wrapper.compendium-theme-enemies { --arcane-aura: rgba(224, 112, 92, 0.45); }
-.compendium-wrapper.compendium-theme-enchantments { --arcane-aura: rgba(180, 140, 232, 0.48); }
-.compendium-wrapper.compendium-theme-tiles { --arcane-aura: rgba(201, 178, 138, 0.38); }
-.compendium-wrapper.compendium-theme-items { --arcane-aura: rgba(147, 200, 110, 0.42); }
+.compendium-wrapper.compendium-theme-heroes {
+  --arcane-aura: rgba(228, 185, 106, 0.42);
+  --chapter-accent: #e4b96a;
+  --chapter-accent-glow: rgba(228, 185, 106, 0.28);
+}
+.compendium-wrapper.compendium-theme-enemies {
+  --arcane-aura: rgba(224, 112, 92, 0.45);
+  --chapter-accent: #e0705c;
+  --chapter-accent-glow: rgba(224, 112, 92, 0.3);
+}
+.compendium-wrapper.compendium-theme-enchantments {
+  --arcane-aura: rgba(180, 140, 232, 0.48);
+  --chapter-accent: #b48ce8;
+  --chapter-accent-glow: rgba(180, 140, 232, 0.32);
+}
+.compendium-wrapper.compendium-theme-tiles {
+  --arcane-aura: rgba(201, 178, 138, 0.38);
+  --chapter-accent: #c9b28a;
+  --chapter-accent-glow: rgba(201, 178, 138, 0.26);
+}
+.compendium-wrapper.compendium-theme-items {
+  --arcane-aura: rgba(147, 200, 110, 0.42);
+  --chapter-accent: #93c86e;
+  --chapter-accent-glow: rgba(147, 200, 110, 0.28);
+}
 
 /* Entry card on parchment page */
 .compendium-entry {
@@ -941,16 +963,19 @@ html body.theme-font-active,
   box-shadow: inset 0 0 10px rgba(228, 185, 106, 0.06);
 }
 
-/* Page heading — engraved, softly glowing, centered on the slab */
+/* Page heading — engraved, centered, colored by the open chapter. The glow
+   is a WIDE low-alpha halo (18px) rather than a tight bleed: a small-radius
+   glow hugs the glyph outline and fuzzes it, a wide halo reads as light in
+   the air around crisp letters. Carve shadows first for edge definition. */
 .compendium-page-heading {
   font-family: 'Almendra', serif;
-  color: var(--text-heading);
+  color: var(--chapter-accent, var(--text-heading));
   font-weight: 700;
   text-align: center;
   text-shadow:
-    0 0 10px var(--gold-glow),
     0 -1px 1px rgba(0, 0, 0, 0.8),
-    0 1px 0 rgba(255, 240, 210, 0.08);
+    0 1px 0 rgba(255, 240, 210, 0.08),
+    0 0 18px var(--chapter-accent-glow, var(--gold-glow));
   border-bottom: 2px solid var(--border-warm);
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
