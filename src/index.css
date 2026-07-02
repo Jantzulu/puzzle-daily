@@ -645,25 +645,27 @@ html body.theme-font-active,
   gap: 0.5rem;
 }
 
-.shimmer-container::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    transparent 40%,
-    rgba(255, 255, 255, 0.4) 50%,
-    transparent 60%,
-    transparent 100%
-  );
-  background-size: 250% 100%;
-  animation: shimmer-sweep 1.2s ease-out forwards;
-  pointer-events: none;
-  mix-blend-mode: overlay;
+/* Quest-change flare: the LETTERS flash gold and fade, via animated
+   text-shadow (inherits to the child spans). The old version was a white
+   gradient sweeping the whole box, which visibly lit the banner cloth
+   behind the text instead of the text itself. */
+.shimmer-container {
+  animation: quest-flare 1.2s ease-out;
+}
+
+@keyframes quest-flare {
+  0% {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  }
+  30% {
+    text-shadow:
+      0 1px 2px rgba(0, 0, 0, 0.75),
+      0 0 6px rgba(255, 230, 170, 0.9),
+      0 0 18px rgba(255, 210, 130, 0.6);
+  }
+  100% {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
+  }
 }
 
 @keyframes slide-in-up {
@@ -1374,26 +1376,33 @@ html body.theme-font-active,
 .quest-banner {
   background: transparent;
   transform-origin: top center;
+  /* Cloth drops down from the rod (a rotateX flip read as a rigid plate,
+     not fabric) — a top-down wipe with a small settle bounce. Ambient
+     motion comes from the mesh's wind displacement + hem ripple, plus a
+     sub-degree sway here. */
   animation:
-    quest-unfurl 0.9s cubic-bezier(0.34, 1.3, 0.5, 1),
-    quest-sway 9s ease-in-out 0.9s infinite;
+    quest-drop 0.85s cubic-bezier(0.3, 0.9, 0.35, 1),
+    quest-sway 9s ease-in-out 0.85s infinite;
+  /* Legibility over the layered heraldry */
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
-@keyframes quest-unfurl {
+@keyframes quest-drop {
   0% {
-    transform: perspective(700px) rotateX(-88deg);
-    opacity: 0.5;
+    clip-path: inset(0 0 100% 0);
+    transform: translateY(-8px);
   }
-  65% {
-    transform: perspective(700px) rotateX(7deg);
-    opacity: 1;
+  70% {
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
   }
-  85% {
-    transform: perspective(700px) rotateX(-3deg);
+  82% {
+    clip-path: inset(0 0 0 0);
+    transform: translateY(3px);
   }
   100% {
-    transform: perspective(700px) rotateX(0deg);
-    opacity: 1;
+    clip-path: inset(0 0 0 0);
+    transform: translateY(0);
   }
 }
 
