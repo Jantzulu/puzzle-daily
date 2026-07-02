@@ -84,22 +84,42 @@ for (let i = 0; i < OUTER.length; i++) {
   FACETS.push({ points: pts([OUTER[j], INNER[j], INNER[i]]), fill: facetFill(OUTER[i], OUTER[j], i * 2 + 1) });
 }
 
-export const SlabMesh: React.FC = () => (
-  <svg
-    className="compendium-slab-mesh"
-    viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
-    preserveAspectRatio="none"
-    aria-hidden="true"
-  >
-    {/* Facet ring */}
-    {FACETS.map((f, i) => (
-      <polygon key={i} points={f.points} fill={f.fill} />
-    ))}
-    {/* Flattened plate the text sits on */}
-    <polygon points={pts(INNER)} fill="#211d1a" />
-    {/* Faint gold engraving line around the plate edge */}
-    <polygon points={pts(INNER)} fill="none" stroke="rgba(228, 185, 106, 0.1)" strokeWidth="2" />
-    {/* Dark outline for silhouette definition */}
-    <polygon points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.55)" strokeWidth="3" />
-  </svg>
-);
+export const SlabMesh: React.FC = () => {
+  // Unique filter id per instance (desktop + mobile both render one)
+  const grainId = React.useId().replace(/[^a-zA-Z0-9_-]/g, '');
+  return (
+    <svg
+      className="compendium-slab-mesh"
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <defs>
+        {/* Stone grain, generated in-SVG and clipped to the silhouette —
+            grain must never paint a rectangle (a grain rect on the content
+            div used to ghost as a faint "screen" against the facets) */}
+        <filter id={grainId}>
+          <feTurbulence type="fractalNoise" baseFrequency="0.8" numOctaves="2" stitchTiles="stitch" result="n" />
+          <feColorMatrix
+            in="n"
+            type="matrix"
+            values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.06 0"
+          />
+          <feComposite operator="in" in2="SourceGraphic" />
+        </filter>
+      </defs>
+      {/* Facet ring */}
+      {FACETS.map((f, i) => (
+        <polygon key={i} points={f.points} fill={f.fill} />
+      ))}
+      {/* Flattened plate the text sits on */}
+      <polygon points={pts(INNER)} fill="#211d1a" />
+      {/* Faint gold engraving line around the plate edge */}
+      <polygon points={pts(INNER)} fill="none" stroke="rgba(228, 185, 106, 0.1)" strokeWidth="2" />
+      {/* Grain over the whole stone, following the hewn outline */}
+      <polygon points={pts(OUTER)} fill="#fff" filter={`url(#${grainId})`} />
+      {/* Dark outline for silhouette definition */}
+      <polygon points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.55)" strokeWidth="3" />
+    </svg>
+  );
+};

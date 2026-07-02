@@ -775,8 +775,7 @@ html body.theme-font-active,
 .compendium-page {
   flex: 1;
   min-width: 0;
-  background-color: transparent;
-  background-image: var(--page-texture);
+  background: none;
   color: var(--text-primary);
   text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 240, 210, 0.06);
   padding: 1rem 1.25rem;
@@ -787,8 +786,7 @@ html body.theme-font-active,
 
 /* Mobile single face */
 .compendium-page--single {
-  background-color: transparent;
-  background-image: var(--page-texture);
+  background: none;
   color: var(--text-primary);
   text-shadow: 0 -1px 1px rgba(0, 0, 0, 0.7), 0 1px 0 rgba(255, 240, 210, 0.06);
   padding: 0.5rem 0.75rem;
@@ -1173,16 +1171,10 @@ html body.theme-font-active,
   letter-spacing: 0.2em;
 }
 
-/* Page edge aging — subtle darker edges overlaid on texture */
-.compendium-page,
-.compendium-page--single {
-  background-image:
-    radial-gradient(ellipse at top left, rgba(74, 51, 24, 0.06) 0%, transparent 40%),
-    radial-gradient(ellipse at bottom right, rgba(74, 51, 24, 0.06) 0%, transparent 40%),
-    radial-gradient(ellipse at top right, rgba(74, 51, 24, 0.04) 0%, transparent 35%),
-    radial-gradient(ellipse at bottom left, rgba(74, 51, 24, 0.04) 0%, transparent 35%),
-    var(--page-texture);
-}
+/* (Page-edge aging removed — the corner gradients and grain texture painted
+   the content div's RECTANGLE, whose straight edges ghosted against the
+   slab's irregular facets as a faint "screen". Stone grain now lives inside
+   SlabMesh, clipped to the hewn silhouette.) */
 
 /* Entry card hover — sprite scale */
 .compendium-entry .compendium-entry-sprite {
