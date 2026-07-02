@@ -931,11 +931,12 @@ html body.theme-font-active,
   box-shadow: inset 0 0 10px rgba(228, 185, 106, 0.06);
 }
 
-/* Page heading — engraved, softly glowing */
+/* Page heading — engraved, softly glowing, centered on the slab */
 .compendium-page-heading {
   font-family: 'Almendra', serif;
   color: var(--text-heading);
   font-weight: 700;
+  text-align: center;
   text-shadow: 0 0 10px var(--gold-glow), 0 1px 0 rgba(0, 0, 0, 0.6);
   border-bottom: 2px solid var(--border-warm);
   padding-bottom: 0.5rem;
