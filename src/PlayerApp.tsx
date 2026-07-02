@@ -326,7 +326,10 @@ function PlayerNavigation() {
             <Link
               key={item.to}
               to={item.to}
-              onClick={closeMobileMenu}
+              // Scroll home along with the collapse — without this, picking
+              // Play while already on / left the page stranded mid-scroll
+              // with the board out of view (routes don't reset scroll).
+              onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`nav-plank-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
             >
               <PlankItemMesh index={i} first={i === 0} />

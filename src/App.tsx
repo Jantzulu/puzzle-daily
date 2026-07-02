@@ -449,7 +449,9 @@ function Navigation() {
             <Link
               key={item.to}
               to={item.to}
-              onClick={closeMobileMenu}
+              // Scroll home along with the collapse — routes don't reset
+              // scroll, so same-page picks left the target out of view
+              onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
               className={`nav-plank-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
             >
               <PlankItemMesh index={i} first={i === 0} />
