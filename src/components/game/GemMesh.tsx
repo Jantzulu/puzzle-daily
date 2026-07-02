@@ -67,12 +67,14 @@ function facetT(a: [number, number], b: [number, number], seed: number): number 
   return (nx * LIGHT_DIR.x + ny * LIGHT_DIR.y + 1) / 2 + (hash(seed) - 0.5) * 0.1;
 }
 
-// Precompute facet geometry + shading factors (color applied per-tone)
+// Precompute facet geometry + shading factors (color applied per-tone).
+// One QUAD per edge — splitting each bevel into two triangles put a
+// diagonal seam across every flat face of the cut (two jittered tones
+// meeting mid-edge), which read as clutter, not facets.
 const FACETS: Array<{ points: string; t: number }> = [];
 for (let i = 0; i < OUTER.length; i++) {
   const j = (i + 1) % OUTER.length;
-  FACETS.push({ points: pts([OUTER[i], OUTER[j], INNER[i]]), t: facetT(OUTER[i], OUTER[j], i * 2) });
-  FACETS.push({ points: pts([OUTER[j], INNER[j], INNER[i]]), t: facetT(OUTER[i], OUTER[j], i * 2 + 1) });
+  FACETS.push({ points: pts([OUTER[i], OUTER[j], INNER[j], INNER[i]]), t: facetT(OUTER[i], OUTER[j], i * 2) });
 }
 
 export const GemMesh: React.FC<{ tone: GemTone; phase?: number }> = ({ tone, phase = 0 }) => {
