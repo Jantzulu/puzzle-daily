@@ -449,12 +449,13 @@ export async function fetchTodaysPuzzle(): Promise<Puzzle | null> {
     .from('daily_schedule')
     .select('puzzle_id, puzzles_live(*)')
     .eq('scheduled_date', today)
-    .single();
+    .maybeSingle();
 
-  if (error || !data) {
-    console.error('Error fetching today\'s puzzle:', error);
+  if (error) {
+    console.warn(`Couldn't fetch today's puzzle: ${error.message}`);
     return null;
   }
+  if (!data) return null; // nothing scheduled for today — normal, not an error
 
   const puzzleLive = data.puzzles_live as unknown as DbPuzzle;
   return puzzleLive?.data as unknown as Puzzle;

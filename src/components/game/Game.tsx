@@ -324,11 +324,19 @@ export const Game: React.FC<GameProps> = ({
   useEffect(() => {
     const urlsToPreload = collectPuzzleAssetUrls(currentPuzzle);
     setSpritesReady(false);
-    if (urlsToPreload.length > 0) {
-      preloadImagesEager(urlsToPreload).then(() => setSpritesReady(true));
-    } else {
+    if (urlsToPreload.length === 0) {
       setSpritesReady(true);
+      return;
     }
+    let cancelled = false;
+    const reveal = () => { if (!cancelled) setSpritesReady(true); };
+    // A hung or failed image must never gate the board forever — reveal after
+    // a grace timeout regardless; anything still loading pops in afterwards
+    // via the image-load subscription re-renders. The cancelled flag also
+    // stops a stale preload (from a puzzle switched away from) firing late.
+    const timeoutId = setTimeout(reveal, 8000);
+    preloadImagesEager(urlsToPreload).then(reveal, reveal);
+    return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [currentPuzzle.id]);
 
   // Simulation loop
