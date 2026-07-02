@@ -13,6 +13,7 @@ import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHR
 import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
+import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -1274,6 +1275,34 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           } else {
             // Draw void/null tile
             drawVoidTile(ctx, x, y);
+          }
+        }
+      }
+
+      // Wall-contact ambient occlusion: darken floor edges bordering walls or
+      // voids so the dungeon reads as carved rather than tiled. Per-tile local
+      // neighbor checks only — no wall tracing, floor pixels only, the walls'
+      // own rendering is untouched. See wallAO.ts (toggleWallAO() to compare).
+      if (wallAOEnabled()) {
+        const tilesGrid = gameState.puzzle.tiles;
+        const isOccluder = (tx: number, ty: number): boolean => {
+          // Beyond the map counts as wall — matches the 3D dungeon border
+          if (tx < 0 || ty < 0 || ty >= gameState.puzzle.height || tx >= gameState.puzzle.width) return true;
+          const t = tilesGrid[ty][tx];
+          if (!t) return AO_VOID_OCCLUDES;
+          return t.type === TileType.WALL;
+        };
+        for (let y = 0; y < gameState.puzzle.height; y++) {
+          for (let x = 0; x < gameState.puzzle.width; x++) {
+            const t = tilesGrid[y][x];
+            if (!t || t.type === TileType.WALL) continue; // AO lands on floor only
+            drawWallAO(ctx, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, {
+              n: isOccluder(x, y - 1),
+              w: isOccluder(x - 1, y),
+              e: isOccluder(x + 1, y),
+              nw: isOccluder(x - 1, y - 1),
+              ne: isOccluder(x + 1, y - 1),
+            });
           }
         }
       }
