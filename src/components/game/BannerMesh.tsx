@@ -61,13 +61,13 @@ const OUTER_B: Array<[number, number]> = OUTER.map(([x, y], i) => {
   if (y <= 22) return [x, y];
   const sway = y > 120 ? 1 : 0.35;
   return [
-    x + (hash(i + 80) - 0.5) * 14 * sway,
-    y + (hash(i + 90) - 0.5) * 9 * sway,
+    x + (hash(i + 80) - 0.5) * 22 * sway,
+    y + (hash(i + 90) - 0.5) * 14 * sway,
   ];
 });
 
 const RIPPLE = {
-  dur: '8s',
+  dur: '6s',
   keyTimes: '0;0.5;1',
   calcMode: 'spline',
   keySplines: '0.45 0 0.55 1;0.45 0 0.55 1',
@@ -78,30 +78,9 @@ const PointsRipple: React.FC<{ a: string; b: string }> = ({ a, b }) => (
   <animate attributeName="points" values={`${a};${b};${a}`} {...RIPPLE} />
 );
 
-// Whisper-subtle drape shading: a few wide soft strips, not a stripe pattern
-interface Fold { points: string; fill: string }
-const FOLDS: Fold[] = [];
-{
-  const COLS = 5;
-  let x = 40;
-  for (let i = 0; i < COLS; i++) {
-    const w = (VIEW_W - 80) / COLS + (hash(i) - 0.5) * 40;
-    const slant = (hash(i + 31) - 0.5) * 24;
-    const x2 = Math.min(x + w, VIEW_W - 40);
-    FOLDS.push({
-      points: pts([
-        [x, 22],
-        [x2, 22],
-        [x2 + slant, VIEW_H],
-        [x + slant, VIEW_H],
-      ]),
-      fill: i % 2 === 0
-        ? `rgba(255, 225, 190, ${(0.015 + hash(i + 7) * 0.015).toFixed(3)})`
-        : `rgba(0, 0, 0, ${(0.05 + hash(i + 13) * 0.05).toFixed(3)})`,
-    });
-    x = x2;
-  }
-}
+// (Fold strips removed — even at low alpha they read as alternating color
+// stripes on OLED screens and fought the quest text. The cloth is a single
+// uniform red; the wind displacement provides all the surface life.)
 
 // Cloth loops pinning the banner over the rod (rigid, drawn above the rod)
 const LOOPS = [110, 310, 500, 690, 890];
@@ -138,12 +117,12 @@ export const BannerMesh: React.FC = () => {
           <feTurbulence type="fractalNoise" baseFrequency="0.008 0.03" numOctaves="2" seed="7" result="w">
             <animate
               attributeName="baseFrequency"
-              values="0.008 0.03;0.013 0.042;0.008 0.03"
-              dur="11s"
+              values="0.008 0.03;0.017 0.052;0.011 0.026;0.008 0.03"
+              dur="8s"
               repeatCount="indefinite"
             />
           </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="w" scale="9" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="SourceGraphic" in2="w" scale="15" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
 
@@ -154,9 +133,6 @@ export const BannerMesh: React.FC = () => {
         </polygon>
 
         <g clipPath={`url(#${clipId})`}>
-          {FOLDS.map((f, i) => (
-            <polygon key={i} points={f.points} fill={f.fill} />
-          ))}
           {/* Weathered edge darkening */}
           <polygon points={pts(OUTER)} fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="16">
             <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} />
