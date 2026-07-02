@@ -1322,35 +1322,35 @@ html body.theme-font-active,
    buttons for prev/next paging. Content wrappers are keyed by entry, so a
    change remounts them and the mount animation plays.
    ============================================ */
-.compendium-book,
-.compendium-book--single {
-  perspective: 1600px;
-}
+/* NOTE: perspective is baked into the keyframe transforms rather than set on
+   an ancestor — CSS `perspective` only reaches DIRECT children, and the flip
+   wrappers are grandchildren of the book. Without it the rotation flattens
+   into a horizontal stretch instead of a 3D turn. */
 
 /* Right page / mobile page: swings open from the spine (left edge) */
 .compendium-flip {
   transform-origin: left center;
   backface-visibility: hidden;
-  animation: compendium-page-flip 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+  animation: compendium-page-flip 0.45s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 /* Left page (index): its spine edge is on the right */
 .compendium-flip--from-right {
   transform-origin: right center;
   backface-visibility: hidden;
-  animation: compendium-page-flip-rev 0.4s cubic-bezier(0.2, 0.7, 0.3, 1);
+  animation: compendium-page-flip-rev 0.45s cubic-bezier(0.2, 0.7, 0.3, 1);
 }
 
 @keyframes compendium-page-flip {
-  from { transform: rotateY(-65deg); opacity: 0.2; filter: brightness(0.85); }
+  from { transform: perspective(1100px) rotateY(-70deg); opacity: 0.2; filter: brightness(0.85); }
   60%  { filter: brightness(0.95); }
-  to   { transform: rotateY(0deg); opacity: 1; filter: brightness(1); }
+  to   { transform: perspective(1100px) rotateY(0deg); opacity: 1; filter: brightness(1); }
 }
 
 @keyframes compendium-page-flip-rev {
-  from { transform: rotateY(65deg); opacity: 0.2; filter: brightness(0.85); }
+  from { transform: perspective(1100px) rotateY(70deg); opacity: 0.2; filter: brightness(0.85); }
   60%  { filter: brightness(0.95); }
-  to   { transform: rotateY(0deg); opacity: 1; filter: brightness(1); }
+  to   { transform: perspective(1100px) rotateY(0deg); opacity: 1; filter: brightness(1); }
 }
 
 @media (prefers-reduced-motion: reduce) {
