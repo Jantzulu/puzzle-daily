@@ -121,11 +121,12 @@ export const BannerMesh: React.FC = () => {
             <animate
               attributeName="baseFrequency"
               values="0.004 0.015;0.006 0.024;0.004 0.015"
-              dur="10s"
+              dur="8s"
               repeatCount="indefinite"
             />
           </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="w" scale="13" xChannelSelector="R" yChannelSelector="G" />
+          {/* Same long wavelengths, bigger amplitude: billow you can see */}
+          <feDisplacementMap in="SourceGraphic" in2="w" scale="22" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
 

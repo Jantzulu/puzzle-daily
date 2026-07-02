@@ -1985,9 +1985,10 @@ export const Game: React.FC<GameProps> = ({
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               // z-[60] beats the navbar's z-50 so the banner rod always paints
-              // OVER the navbar's gold bottom border (it flickered underneath
-              // during the drop animation at z-20)
-              <div className="w-full flex justify-center animate-slide-down-from-nav-wrapper sticky top-0 z-[60] quest-panel-sticky">
+              // OVER the navbar's gold bottom border. No slide-down-wrapper
+              // class: it was overflow:hidden for the old panel's slide and
+              // clipped the rod's overhang for its first second (the "pop").
+              <div className="w-full flex justify-center sticky top-0 z-[60] quest-panel-sticky">
               <div className="mb-2 w-full max-w-2xl px-8 md:px-9 pt-4 pb-8 quest-banner -mt-[3px] relative z-10 overflow-visible">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
