@@ -115,7 +115,7 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
-        className={`flex items-center gap-2 px-3 py-2 rounded transition-colors bg-stone-700 hover:bg-stone-600 ${statusColor}`}
+        className={`nav-pill flex items-center gap-2 px-3 py-2 transition-colors ${statusColor}`}
         title={`Cloud Sync - ${formatLastSync(lastSync)}`}
       >
         {isLoading ? (

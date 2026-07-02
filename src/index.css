@@ -1497,6 +1497,22 @@ html body.theme-font-active,
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
 }
 
+/* Shared frosted pill for nav utility buttons (sound / cloud / profile) —
+   matches the plank-label pills and the compendium capsule */
+.nav-pill {
+  border-radius: 999px;
+  background: rgba(24, 21, 19, 0.72);
+  border: 1px solid rgba(228, 185, 106, 0.14);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 235, 200, 0.05);
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.nav-pill:hover {
+  border-color: rgba(228, 185, 106, 0.3);
+}
+
 /* Everything riding a plank sits above its wood */
 .nav-plank-item > :not(svg) {
   position: relative;

@@ -126,7 +126,7 @@ export const UserMenu: React.FC = () => {
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 px-2 py-1 rounded hover:bg-stone-700 transition-colors"
+        className="nav-pill flex items-center gap-2 px-2 py-1 transition-colors"
       >
         <div className={`w-7 h-7 rounded-full ${avatar.color} flex items-center justify-center text-xs font-bold text-white`}>
           {avatar.icon}

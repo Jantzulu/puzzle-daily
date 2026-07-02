@@ -22,9 +22,12 @@ const hash = (i: number): number => {
 const DARK: [number, number, number] = [0x1b, 0x17, 0x14];
 const LIGHT: [number, number, number] = [0x35, 0x2e, 0x27];
 
-function tone(seed: number, bias: number): string {
-  const t = Math.max(0, Math.min(1, bias + (hash(seed) - 0.5) * 0.55));
-  const c = DARK.map((d, i) => Math.round(d + (LIGHT[i] - d) * t));
+// Pure tone mix — NO hidden jitter. The old version added ±0.27 random on
+// top of the lighting, which made facets noisy; the slab's cleanliness
+// comes from lighting-dominated shading with only tiny explicit variance.
+function tone(t: number): string {
+  const tt = Math.max(0, Math.min(1, t));
+  const c = DARK.map((d, i) => Math.round(d + (LIGHT[i] - d) * tt));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
 
@@ -66,11 +69,12 @@ const STONES: Stone[] = [];
       ];
       const cx = outline.reduce((s, p) => s + p[0], 0) / outline.length;
       const cy = outline.reduce((s, p) => s + p[1], 0) / outline.length;
-      // Flat face: outline pulled toward the center, jittered — the bevel
-      // ring between outline and face carries the low-poly look
+      // Flat face: outline pulled toward the center with gentle jitter —
+      // the NARROW bevel ring between outline and face is the slab look
+      // (a wide ring dominated the stone and read messy)
       const innerPts: Array<[number, number]> = outline.map(([px, py], i) => [
-        cx + (px - cx) * 0.68 + (hash(seed + 80 + i) - 0.5) * 8,
-        cy + (py - cy) * 0.62 + (hash(seed + 90 + i) - 0.5) * 8,
+        cx + (px - cx) * 0.8 + (hash(seed + 80 + i) - 0.5) * 5,
+        cy + (py - cy) * 0.75 + (hash(seed + 90 + i) - 0.5) * 5,
       ]);
       const base = row.light;
       const facets: Array<{ points: string; fill: string }> = [];
@@ -80,14 +84,14 @@ const STONES: Stone[] = [];
         const ey = q[1] - p[1];
         const len = Math.hypot(ex, ey) || 1;
         const d = ((ey / len) * LIGHT_DIR.x + (-ex / len) * LIGHT_DIR.y + 1) / 2;
-        const t1 = base + (d - 0.5) * 0.6 + (hash(seed + 40 + i) - 0.5) * 0.14;
-        const t2 = base + (d - 0.5) * 0.6 + (hash(seed + 50 + i) - 0.5) * 0.14;
-        facets.push({ points: pts([p, q, innerPts[i]]), fill: tone(seed + 60 + i, t1) });
-        facets.push({ points: pts([q, innerPts[(i + 1) % outline.length], innerPts[i]]), fill: tone(seed + 70 + i, t2) });
+        const t1 = base + (d - 0.5) * 0.45 + (hash(seed + 40 + i) - 0.5) * 0.08;
+        const t2 = base + (d - 0.5) * 0.45 + (hash(seed + 50 + i) - 0.5) * 0.08;
+        facets.push({ points: pts([p, q, innerPts[i]]), fill: tone(t1) });
+        facets.push({ points: pts([q, innerPts[(i + 1) % outline.length], innerPts[i]]), fill: tone(t2) });
       });
       STONES.push({
         facets,
-        face: { points: pts(innerPts), fill: tone(seed + 5, base + 0.05) },
+        face: { points: pts(innerPts), fill: tone(base + 0.04 + (hash(seed + 5) - 0.5) * 0.06) },
       });
       x = x2 + 4;
       seed += 17;

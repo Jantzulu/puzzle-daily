@@ -88,7 +88,7 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose,
     <div className="relative" ref={dropdownRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className={`flex items-center gap-2 px-3 py-2 rounded transition-colors bg-stone-700 hover:bg-stone-600 ${
+        className={`nav-pill flex items-center gap-2 px-3 py-2 transition-colors ${
           settings.enabled ? 'text-parchment-300' : 'text-stone-500'
         }`}
         title="Sound Settings"
