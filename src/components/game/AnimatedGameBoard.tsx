@@ -12,7 +12,7 @@ import type { Tile } from '../../types/game';
 import { updateProjectiles, updateParticles, executeParallelActions, DESPAWN_SHRINK_MS, TARGET_LOST_LINGER_MS } from '../../engine/simulation';
 import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
-import { blobShadowsEnabled, drawBlobShadow, drawProjectileBlobShadow } from './blobShadows';
+import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -2658,6 +2658,9 @@ function drawEnemy(
         // `now` only applies for the 1-frame window before the anim registers,
         // where it correctly starts at frame 0 (no last-frame flash).
         const deathStartTime = deathAnimState?.startTime || now;
+        if (blobShadowsEnabled()) {
+          drawDeathBlobShadow(ctx, enemyData.customSprite, deathAnimState?.facing || facing, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, deathStartTime, now);
+        }
         drawDeathSpritePixelPerfect(
           ctx,
           enemyData.customSprite,
@@ -2669,6 +2672,9 @@ function drawEnemy(
         );
       } else {
         // No death sprite - draw dimmed version with X
+        if (blobShadowsEnabled()) {
+          drawDeathBlobShadow(ctx, enemyData.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now, now);
+        }
         ctx.globalAlpha = 0.3;
         drawSpritePixelPerfect(ctx, enemyData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
         ctx.globalAlpha = 1.0;
@@ -2688,6 +2694,9 @@ function drawEnemy(
       ctx.fill();
     } else {
       // Dead default sprite
+      if (blobShadowsEnabled()) {
+        drawDeathBlobShadow(ctx, enemyData?.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now, now);
+      }
       ctx.fillStyle = COLORS.deadEnemy;
       ctx.beginPath();
       ctx.arc(px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE / 3, 0, Math.PI * 2);
@@ -3527,6 +3536,9 @@ function drawCharacter(
         // `now` only applies for the 1-frame window before the anim registers,
         // where it correctly starts at frame 0 (no last-frame flash).
         const deathStartTime = deathAnimState?.startTime || now;
+        if (blobShadowsEnabled()) {
+          drawDeathBlobShadow(ctx, charData.customSprite, deathAnimState?.facing || facing, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, deathStartTime, now);
+        }
         drawDeathSpritePixelPerfect(
           ctx,
           charData.customSprite,
@@ -3538,6 +3550,9 @@ function drawCharacter(
         );
       } else {
         // No death sprite - draw dimmed version with X
+        if (blobShadowsEnabled()) {
+          drawDeathBlobShadow(ctx, charData.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now, now);
+        }
         ctx.globalAlpha = 0.3;
         drawSpritePixelPerfect(ctx, charData.customSprite, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, directionToUse, false, now);
         ctx.globalAlpha = 1.0;
@@ -3570,6 +3585,9 @@ function drawCharacter(
       }
     } else {
       // Dead default character - draw dimmed version with X
+      if (blobShadowsEnabled()) {
+        drawDeathBlobShadow(ctx, charData?.customSprite, directionToUse, px + TILE_SIZE / 2, py + TILE_SIZE / 2, TILE_SIZE, now, now);
+      }
       ctx.globalAlpha = 0.3;
       ctx.fillStyle = COLORS.character;
       const size = TILE_SIZE * 0.6;

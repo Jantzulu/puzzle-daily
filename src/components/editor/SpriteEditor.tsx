@@ -4,7 +4,7 @@ import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection, SpriteShee
 import { Direction } from '../../types/game';
 import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { MediaBrowseButton } from './MediaBrowseButton';
-import { drawBlobShadowResolved, resolveShadowConfigByKey, type ResolvedShadow } from '../game/blobShadows';
+import { drawBlobShadowResolved, resolveShadowConfigByKey, resolveDeathShadowConfig, type ResolvedShadow } from '../game/blobShadows';
 
 // Tiles are 24×24 art pixels. Sprite images render at their NATIVE pixel
 // dimensions × (tileSize / ART_TILE_PX), centered on the tile — never scaled
@@ -4012,6 +4012,73 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
               />
             );
           })()}
+        </div>
+
+        {/* Corpse shadow — used while the death animation plays and for the
+            held corpse frame. The board lerps living → corpse across the
+            death sheet, so a body falling flat can widen its shadow. */}
+        <div className="mt-4 pt-3 border-t border-stone-700">
+          <div className="text-xs font-bold text-stone-300 mb-1">💀 Corpse Shadow (death animation)</div>
+          <p className="text-[10px] text-stone-400 mb-2">
+            Blank inherits the living values above. Widen it for bodies that fall flat.
+            The shadow blends from living to corpse over the death animation. Use ▶ on the
+            preview to watch the fall with the corpse shadow.
+          </p>
+          <div className="flex gap-4 items-start">
+            <div className="grid grid-cols-3 gap-3 flex-1">
+              <div>
+                <label className="block text-xs font-bold mb-1">Width</label>
+                <input
+                  type="number"
+                  min={0}
+                  value={sprite.deathShadowWidth ?? ''}
+                  placeholder={String(sprite.shadowWidth ?? 14)}
+                  onChange={(e) => onChange({ ...sprite, deathShadowWidth: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) })}
+                  className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Offset X</label>
+                <input
+                  type="number"
+                  value={sprite.deathShadowOffsetX ?? ''}
+                  placeholder={String(sprite.shadowOffsetX ?? 0)}
+                  onChange={(e) => onChange({ ...sprite, deathShadowOffsetX: e.target.value === '' ? undefined : Number(e.target.value) })}
+                  className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-bold mb-1">Offset Y</label>
+                <input
+                  type="number"
+                  value={sprite.deathShadowOffsetY ?? ''}
+                  placeholder={String(sprite.shadowOffsetY ?? 0)}
+                  onChange={(e) => onChange({ ...sprite, deathShadowOffsetY: e.target.value === '' ? undefined : Number(e.target.value) })}
+                  className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+                />
+              </div>
+            </div>
+            {(() => {
+              const sheet = sprite.deathSpriteSheet;
+              const imgSrc = sheet?.imageData ?? sheet?.imageUrl ?? sprite.deathImageData ?? sprite.deathImageUrl;
+              if (!imgSrc) return null;
+              return (
+                <AnchorPreview
+                  imageSrc={imgSrc}
+                  anchorX={(sheet ? sheet.anchorX : sprite.deathAnchorX) ?? 0.5}
+                  anchorY={(sheet ? sheet.anchorY : sprite.deathAnchorY) ?? 0.5}
+                  offsetX={(sheet ? sheet.offsetX : sprite.deathOffsetX) ?? 0}
+                  offsetY={(sheet ? sheet.offsetY : sprite.deathOffsetY) ?? 0}
+                  isSpriteSheet={!!sheet}
+                  frameCount={sheet?.frameCount}
+                  frameRate={sheet?.frameRate}
+                  frameWidth={sheet?.frameWidth}
+                  frameHeight={sheet?.frameHeight}
+                  shadow={resolveDeathShadowConfig(sprite)}
+                />
+              );
+            })()}
+          </div>
         </div>
       </div>
       )}

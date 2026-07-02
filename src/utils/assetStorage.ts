@@ -281,6 +281,13 @@ export interface CustomSprite {
   shadowWidth?: number;   // ellipse width; 0 hides the shadow for this sprite
   shadowOffsetX?: number; // shift from tile center (positive = right)
   shadowOffsetY?: number; // shift from the default ground line (positive = down)
+  // Corpse variant, used while the death animation plays and for the held
+  // corpse frame (e.g. a body lying flat casts a wider shadow). Unset fields
+  // inherit the living values above. The board lerps living → corpse across
+  // the death animation so the shadow follows the fall.
+  deathShadowWidth?: number;
+  deathShadowOffsetX?: number;
+  deathShadowOffsetY?: number;
 
   // Simple rendering (single sprite for all directions)
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';

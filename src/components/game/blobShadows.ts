@@ -109,6 +109,25 @@ export function resolveShadowConfigByKey(
   };
 }
 
+/** Corpse shadow: the sprite's death* fields, inheriting the living base
+ *  values. Death is a single global (non-directional) animation, so no
+ *  per-direction resolution here. */
+export function resolveDeathShadowConfig(sprite: CustomSprite | undefined): ResolvedShadow {
+  return {
+    widthArt: sprite?.deathShadowWidth ?? sprite?.shadowWidth ?? KNOBS.DEFAULT_WIDTH_ART,
+    offsetXArt: sprite?.deathShadowOffsetX ?? sprite?.shadowOffsetX ?? 0,
+    offsetYArt: sprite?.deathShadowOffsetY ?? sprite?.shadowOffsetY ?? 0,
+  };
+}
+
+/** One full play of the death sheet, in ms. 0 when there's no animated death
+ *  sheet (static death image or none) — treated as "already a corpse". */
+function getDeathAnimDurationMs(sprite: CustomSprite | undefined): number {
+  const sheet = sprite?.deathSpriteSheet;
+  if (!sheet || !sheet.frameCount || sheet.frameCount <= 1) return 0;
+  return (sheet.frameCount / (sheet.frameRate || 10)) * 1000;
+}
+
 // ─── Drawing ────────────────────────────────────────────────────────────────
 
 function fillSoftEllipse(
@@ -178,6 +197,40 @@ export function drawBlobShadow(
   const dirKey = direction !== undefined ? mapDirectionToSpriteDir(direction) : undefined;
   const shadow = resolveShadowConfigByKey(sprite, dirKey);
   drawBlobShadowResolved(ctx, shadow, tileCenterX, tileCenterY, tileSize, floating);
+}
+
+/**
+ * Shadow for a dying or dead entity. Lerps from the living shadow (resolved
+ * for the facing the entity died with) to the corpse shadow across one play
+ * of the death sheet, so the shadow follows the body as it falls — then holds
+ * the corpse shadow. Ignores `floating`: a corpse lies on the ground.
+ */
+export function drawDeathBlobShadow(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite | undefined,
+  direction: Direction | undefined,
+  tileCenterX: number,
+  tileCenterY: number,
+  tileSize: number,
+  deathStartTime: number,
+  now: number,
+): void {
+  const to = resolveDeathShadowConfig(sprite);
+  const durationMs = getDeathAnimDurationMs(sprite);
+  let shadow = to;
+  if (durationMs > 0) {
+    const t = Math.min(1, Math.max(0, (now - deathStartTime) / durationMs));
+    if (t < 1) {
+      const dirKey = direction !== undefined ? mapDirectionToSpriteDir(direction) : undefined;
+      const from = resolveShadowConfigByKey(sprite, dirKey);
+      shadow = {
+        widthArt: from.widthArt + (to.widthArt - from.widthArt) * t,
+        offsetXArt: from.offsetXArt + (to.offsetXArt - from.offsetXArt) * t,
+        offsetYArt: from.offsetYArt + (to.offsetYArt - from.offsetYArt) * t,
+      };
+    }
+  }
+  drawBlobShadowResolved(ctx, shadow, tileCenterX, tileCenterY, tileSize, false);
 }
 
 /**
