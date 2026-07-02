@@ -4584,6 +4584,43 @@ function drawPersistentAreaEffect(
  * Uses 'source-atop' composite mode to only affect existing pixels,
  * preventing darkening of transparent areas in wall sprites.
  */
+// Seeded value-noise mist texture for the fog effect — generated once,
+// reused every frame. Two octaves of soft blobs; alpha-only black so drawing
+// it darkens the board irregularly (no circular silhouettes). Seeding uses
+// the same sin-hash as the dust particles: deterministic, no Math.random.
+let fogNoiseTexture: HTMLCanvasElement | null = null;
+const FOG_NOISE_SIZE = 256;
+function getFogNoiseTexture(): HTMLCanvasElement {
+  if (fogNoiseTexture) return fogNoiseTexture;
+  const tex = document.createElement('canvas');
+  tex.width = FOG_NOISE_SIZE;
+  tex.height = FOG_NOISE_SIZE;
+  const tctx = tex.getContext('2d')!;
+  tctx.imageSmoothingEnabled = true;
+  const drawOctave = (cells: number, seedBase: number, alpha: number) => {
+    const c = document.createElement('canvas');
+    c.width = cells;
+    c.height = cells;
+    const cctx = c.getContext('2d')!;
+    const img = cctx.createImageData(cells, cells);
+    for (let i = 0; i < cells * cells; i++) {
+      const s = Math.sin((i + seedBase) * 12.9898) * 43758.5453;
+      const v = s - Math.floor(s);
+      // v² biases toward clear air so dark wisps stay sparse
+      img.data[i * 4 + 3] = Math.round(v * v * 255);
+    }
+    cctx.putImageData(img, 0, 0);
+    tctx.globalAlpha = alpha;
+    // Upscaling the coarse grid with smoothing turns cells into soft blobs
+    tctx.drawImage(c, 0, 0, cells, cells, 0, 0, FOG_NOISE_SIZE, FOG_NOISE_SIZE);
+  };
+  drawOctave(6, 7, 0.75);   // large wisps
+  drawOctave(13, 131, 0.45); // finer variation on top
+  tctx.globalAlpha = 1;
+  fogNoiseTexture = tex;
+  return tex;
+}
+
 function drawPuzzleVignette(
   ctx: CanvasRenderingContext2D,
   tiles: (import('../../types/game').TileOrNull)[][],
@@ -4732,38 +4769,38 @@ function drawPuzzleVignette(
   const fogSpeed = 0.0003 * fogSpeedScale;
 
   clipToPlayableTiles(() => {
-    // Use a fixed base size for fog clusters (in pixels), capped so large puzzles
-    // have visible moving clouds rather than one big blob
-    const baseFogSize = 200; // Base fog cluster size in pixels
-    const maxFogSize = 350; // Cap the fog size
+    // Layered seeded-noise mist instead of drifting radial-gradient circles:
+    // irregular wisps that wander slowly and "breathe" in intensity, reading
+    // as torchlight fluctuation rather than moving discs. The texture is
+    // generated once; per-frame cost is two drawImage calls (cheaper than
+    // the three per-frame gradients this replaced).
+    const tex = getFogNoiseTexture();
+    ctx.imageSmoothingEnabled = true; // soft mist — restored by the clip's ctx.restore()
+    const centerX = gameAreaX + gameAreaWidth / 2;
+    const centerY = gameAreaY + gameAreaHeight / 2;
+    const cover = Math.max(gameAreaWidth, gameAreaHeight);
 
-    // Create multiple fog layers at different positions/speeds for depth
-    for (let layer = 0; layer < 3; layer++) {
-      const layerOffset = layer * 2000;
-      const layerSpeed = fogSpeed * (1 + layer * 0.3);
-      const layerOpacity = fogOpacity * (1 - layer * 0.15);
+    for (let layer = 0; layer < 2; layer++) {
+      const phase = layer * 2.1;
+      const dir = layer === 0 ? 1 : -1;
+      const speed = fogSpeed * (0.8 + layer * 0.5);
+      // Bounded wander — the oversized layer never exposes an edge
+      const driftX = Math.sin(timestamp * speed + phase) * gameAreaWidth * 0.10 * dir;
+      const driftY = Math.cos(timestamp * speed * 0.63 + phase) * gameAreaHeight * 0.10;
+      // Slow intensity breathing — the "lighting fluctuation" component
+      const breathe = 0.75 + 0.25 * Math.sin(timestamp * speed * 1.7 + phase * 3);
+      // ≥1.7× the larger dimension keeps a rotated layer covering the whole
+      // area (inradius > half-diagonal + drift) for any board aspect ratio
+      const size = cover * (1.7 + layer * 0.9);
 
-      // Fog center drifts across the entire game area
-      const fogCenterX = gameAreaX + gameAreaWidth / 2 +
-        Math.sin((timestamp + layerOffset) * layerSpeed) * gameAreaWidth * 0.4;
-      const fogCenterY = gameAreaY + gameAreaHeight / 2 +
-        Math.cos((timestamp + layerOffset) * layerSpeed * 0.7) * gameAreaHeight * 0.4;
-
-      // Fixed fog radius with slight variation per layer, capped at max
-      const fogRadius = Math.min(baseFogSize + layer * 50, maxFogSize);
-
-      const fogGradient = ctx.createRadialGradient(
-        fogCenterX, fogCenterY, 0,
-        fogCenterX, fogCenterY, fogRadius
-      );
-      fogGradient.addColorStop(0, `rgba(0, 0, 0, ${layerOpacity})`);
-      fogGradient.addColorStop(0.4, `rgba(0, 0, 0, ${layerOpacity * 0.6})`);
-      fogGradient.addColorStop(0.7, `rgba(0, 0, 0, ${layerOpacity * 0.2})`);
-      fogGradient.addColorStop(1, 'rgba(0, 0, 0, 0)');
-
-      ctx.fillStyle = fogGradient;
-      ctx.fillRect(gameAreaX, gameAreaY, gameAreaWidth, gameAreaHeight);
+      ctx.globalAlpha = fogOpacity * (layer === 0 ? 0.9 : 0.6) * breathe;
+      ctx.save();
+      ctx.translate(centerX + driftX, centerY + driftY);
+      ctx.rotate(layer === 0 ? 0.35 : -0.85);
+      ctx.drawImage(tex, -size / 2, -size / 2, size, size);
+      ctx.restore();
     }
+    ctx.globalAlpha = 1;
   });
 
   // --- DUST PARTICLES ---
