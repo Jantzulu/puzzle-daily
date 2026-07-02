@@ -645,27 +645,36 @@ html body.theme-font-active,
   gap: 0.5rem;
 }
 
-/* Quest-change flare: the LETTERS flash gold and fade, via animated
-   text-shadow (inherits to the child spans). The old version was a white
-   gradient sweeping the whole box, which visibly lit the banner cloth
-   behind the text instead of the text itself. */
-.shimmer-container {
-  animation: quest-flare 1.2s ease-out;
+/* Quest-change shine: the original fuse effect — a hot band racing
+   left-to-right through every letter — but clipped to the GLYPHS, never
+   lighting the cloth behind them. Technique: each span's text is filled by
+   a gradient (base color → hot band → base color) via background-clip:text,
+   and the gradient position sweeps across. The gradient's resting edges ARE
+   the span's original color, so after the sweep (forwards) the text looks
+   exactly as before. The tiny delay on the quest text makes the flame read
+   as racing on from the word Quest. */
+.shimmer-container > span {
+  background-image: linear-gradient(
+    100deg,
+    var(--flare-base) 42%,
+    #ffe9c0 50%,
+    var(--flare-base) 58%
+  );
+  background-size: 300% 100%;
+  background-position: 200% center;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: shimmer-sweep 1.1s ease-out forwards;
 }
 
-@keyframes quest-flare {
-  0% {
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
-  }
-  30% {
-    text-shadow:
-      0 1px 2px rgba(0, 0, 0, 0.75),
-      0 0 6px rgba(255, 230, 170, 0.9),
-      0 0 18px rgba(255, 210, 130, 0.6);
-  }
-  100% {
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
-  }
+.shimmer-container > span:first-child {
+  --flare-base: #a8a29e; /* text-stone-400 */
+}
+
+.shimmer-container > span:last-child {
+  --flare-base: #ebc097; /* text-copper-300 */
+  animation-delay: 0.12s;
 }
 
 @keyframes slide-in-up {
@@ -704,16 +713,14 @@ html body.theme-font-active,
 }
 
 @keyframes shimmer-sweep {
+  /* No opacity fade — the element IS the text now (background-clip: text),
+     so it must stay fully visible; the hot band simply sweeps through and
+     parks off-glyph, leaving the base color. */
   0% {
     background-position: 200% center;
-    opacity: 1;
-  }
-  85% {
-    opacity: 1;
   }
   100% {
-    background-position: -50% center;
-    opacity: 0;
+    background-position: -100% center;
   }
 }
 
@@ -1375,40 +1382,22 @@ html body.theme-font-active,
    ============================================ */
 .quest-banner {
   background: transparent;
-  transform-origin: top center;
-  /* Cloth drops down from the rod (a rotateX flip read as a rigid plate,
-     not fabric) — a top-down wipe with a small settle bounce. Ambient
-     motion comes from the mesh's wind displacement + hem ripple, plus a
-     sub-degree sway here. */
-  animation:
-    quest-drop 0.85s cubic-bezier(0.3, 0.9, 0.35, 1),
-    quest-sway 9s ease-in-out 0.85s infinite;
-  /* Legibility over the layered heraldry */
+  /* Pure top-down reveal — NO transform: the rod is mounted iron, so the
+     container must never move (an earlier settle bounce shifted the rod
+     and read as the whole banner jumping). All ambient motion lives in
+     the mesh: wind displacement + hem ripple on the cloth only. */
+  animation: quest-drop 0.85s cubic-bezier(0.3, 0.9, 0.35, 1);
+  /* Legibility over the cloth */
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.75);
 }
 
 @keyframes quest-drop {
   0% {
     clip-path: inset(0 0 100% 0);
-    transform: translateY(-8px);
-  }
-  70% {
-    clip-path: inset(0 0 0 0);
-    transform: translateY(0);
-  }
-  82% {
-    clip-path: inset(0 0 0 0);
-    transform: translateY(3px);
   }
   100% {
     clip-path: inset(0 0 0 0);
-    transform: translateY(0);
   }
-}
-
-@keyframes quest-sway {
-  0%, 100% { transform: rotate(0.2deg); }
-  50% { transform: rotate(-0.2deg); }
 }
 
 @media (prefers-reduced-motion: reduce) {

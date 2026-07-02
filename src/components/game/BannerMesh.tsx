@@ -3,45 +3,50 @@ import React from 'react';
 // ============================================================================
 // WAR BANNER — the quest HUD's cloth
 // ============================================================================
-// Modeled on a weathered war banner: hung from an iron rod, layered heraldry
-// (crimson upper field, gold chevron band, dark lower field), ONE deep
-// swallowtail notch with ragged edges — no scallops, no tassels.
+// A weathered war banner on an iron rod. Single dark-red field (heraldic
+// bands and loud fold stripes were tried and hurt quest-text legibility),
+// whisper-subtle drape shading, and a heavily TATTERED hem — irregular torn
+// points, not a clean crescent. Cloth loops pin it over the rod.
 //
-// Alive in two ways:
-//  - An SVG turbulence-displacement filter with an animated frequency warps
-//    the whole cloth continuously — genuine wind, not a rigid transform.
-//  - A SMIL point-ripple sways the hem between two drape poses.
-// The rod stays rigid outside the wind filter. Real DOM content renders
-// above; deterministic geometry.
+// Alive: an animated turbulence-displacement filter warps the hanging cloth
+// continuously (wind), plus a SMIL two-pose hem ripple. The rod and the
+// pinned loops stay rigid — mounted iron doesn't sway.
 
 const VIEW_W = 1000;
 const VIEW_H = 240;
 
-// Cloth silhouette, clockwise. Top edge hangs just below the rod; sides
-// taper with ragged nicks; the bottom sweeps into two long tails around a
-// deep center notch (apex kept shallow enough to clear the HUD content).
+// Cloth silhouette, clockwise. Top hangs at y=22 just under the rod; the
+// hem is torn — two long tails, secondary rips, an uneven center notch.
 const OUTER: Array<[number, number]> = [
-  [22, 16],
-  [978, 16],
-  [972, 62],
-  [982, 112],
-  [968, 164],
-  [976, 210],
-  [950, 235],
-  [862, 208],
-  [768, 194],
-  [655, 188],
-  [560, 186],
-  [500, 183],
-  [438, 187],
-  [340, 190],
-  [235, 198],
-  [140, 212],
-  [52, 233],
-  [28, 206],
-  [36, 158],
-  [24, 104],
-  [33, 54],
+  [24, 22],
+  [976, 22],
+  [970, 64],
+  [980, 108],
+  [966, 152],
+  [974, 205],
+  [948, 236],
+  [905, 200],
+  [872, 216],
+  [800, 190],
+  [742, 202],
+  [684, 184],
+  [628, 197],
+  [566, 182],
+  [522, 190],
+  [488, 180],
+  [452, 192],
+  [395, 182],
+  [345, 196],
+  [280, 186],
+  [225, 206],
+  [170, 194],
+  [118, 224],
+  [84, 204],
+  [52, 230],
+  [32, 198],
+  [40, 150],
+  [26, 100],
+  [35, 56],
 ];
 
 const hash = (i: number): number => {
@@ -53,7 +58,7 @@ const pts = (arr: Array<[number, number]>) => arr.map(p => `${p[0].toFixed(1)},$
 
 // Second drape pose for the hem ripple — lower half drifts, top stays pinned
 const OUTER_B: Array<[number, number]> = OUTER.map(([x, y], i) => {
-  if (y <= 16) return [x, y];
+  if (y <= 22) return [x, y];
   const sway = y > 120 ? 1 : 0.35;
   return [
     x + (hash(i + 80) - 0.5) * 14 * sway,
@@ -73,39 +78,33 @@ const PointsRipple: React.FC<{ a: string; b: string }> = ({ a, b }) => (
   <animate attributeName="points" values={`${a};${b};${a}`} {...RIPPLE} />
 );
 
-// Heraldic layers (clipped to the cloth): crimson upper field ending in a
-// shallow chevron, gold band along the chevron, dark field below.
-const UPPER_FIELD = pts([
-  [22, 16], [978, 16], [980, 88], [500, 122], [22, 88],
-]);
-const CHEVRON: Array<[number, number]> = [
-  [982, 86], [500, 120], [20, 86],
-];
-
-// Drape folds — vertical low-poly strips, slight hem slant
+// Whisper-subtle drape shading: a few wide soft strips, not a stripe pattern
 interface Fold { points: string; fill: string }
 const FOLDS: Fold[] = [];
 {
-  const COLS = 11;
-  let x = 24;
+  const COLS = 5;
+  let x = 40;
   for (let i = 0; i < COLS; i++) {
-    const w = (VIEW_W - 48) / COLS + (hash(i) - 0.5) * 30;
+    const w = (VIEW_W - 80) / COLS + (hash(i) - 0.5) * 40;
     const slant = (hash(i + 31) - 0.5) * 24;
-    const x2 = Math.min(x + w, VIEW_W - 24);
+    const x2 = Math.min(x + w, VIEW_W - 40);
     FOLDS.push({
       points: pts([
-        [x, 16],
-        [x2, 16],
+        [x, 22],
+        [x2, 22],
         [x2 + slant, VIEW_H],
         [x + slant, VIEW_H],
       ]),
       fill: i % 2 === 0
-        ? `rgba(255, 225, 190, ${(0.03 + hash(i + 7) * 0.035).toFixed(3)})`
-        : `rgba(0, 0, 0, ${(0.12 + hash(i + 13) * 0.12).toFixed(3)})`,
+        ? `rgba(255, 225, 190, ${(0.015 + hash(i + 7) * 0.015).toFixed(3)})`
+        : `rgba(0, 0, 0, ${(0.05 + hash(i + 13) * 0.05).toFixed(3)})`,
     });
     x = x2;
   }
 }
+
+// Cloth loops pinning the banner over the rod (rigid, drawn above the rod)
+const LOOPS = [110, 310, 500, 690, 890];
 
 export const BannerMesh: React.FC = () => {
   const uid = React.useId().replace(/[^a-zA-Z0-9_-]/g, '');
@@ -125,7 +124,6 @@ export const BannerMesh: React.FC = () => {
             <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} />
           </polygon>
         </clipPath>
-        {/* Weave grain, clipped to the cloth */}
         <filter id={grainId}>
           <feTurbulence type="fractalNoise" baseFrequency="1.1" numOctaves="2" stitchTiles="stitch" result="n" />
           <feColorMatrix
@@ -135,8 +133,7 @@ export const BannerMesh: React.FC = () => {
           />
           <feComposite operator="in" in2="SourceGraphic" />
         </filter>
-        {/* Wind: animated turbulence displaces the whole cloth — edges and
-            layers wave organically instead of moving as a rigid sheet */}
+        {/* Wind: animated turbulence displaces the hanging cloth organically */}
         <filter id={windId} x="-6%" y="-15%" width="112%" height="130%">
           <feTurbulence type="fractalNoise" baseFrequency="0.008 0.03" numOctaves="2" seed="7" result="w">
             <animate
@@ -150,20 +147,13 @@ export const BannerMesh: React.FC = () => {
         </filter>
       </defs>
 
-      {/* Everything cloth lives inside the wind */}
+      {/* Hanging cloth, inside the wind */}
       <g filter={`url(#${windId})`}>
-        {/* Dark lower field = cloth base */}
-        <polygon points={pts(OUTER)} fill="#26211c">
+        <polygon points={pts(OUTER)} fill="#451614">
           <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} />
         </polygon>
 
         <g clipPath={`url(#${clipId})`}>
-          {/* Crimson upper field */}
-          <polygon points={UPPER_FIELD} fill="#5a1f1c" />
-          {/* Gold chevron band, shadowed edge beneath */}
-          <polyline points={pts(CHEVRON)} fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="16" />
-          <polyline points={pts(CHEVRON)} fill="none" stroke="#a3803f" strokeWidth="10" />
-          {/* Drape folds over the heraldry */}
           {FOLDS.map((f, i) => (
             <polygon key={i} points={f.points} fill={f.fill} />
           ))}
@@ -179,11 +169,17 @@ export const BannerMesh: React.FC = () => {
         </polygon>
       </g>
 
-      {/* Iron hanging rod — rigid, outside the wind */}
-      <rect x="4" y="5" width="992" height="9" rx="4.5" fill="#2c2723" />
-      <rect x="4" y="5" width="992" height="3.5" rx="1.75" fill="rgba(255,235,200,0.14)" />
-      <circle cx="10" cy="9.5" r="8" fill="#3a332c" stroke="rgba(0,0,0,0.5)" strokeWidth="1.5" />
-      <circle cx="990" cy="9.5" r="8" fill="#3a332c" stroke="rgba(0,0,0,0.5)" strokeWidth="1.5" />
+      {/* Iron rod — robust, rigid, mounted on the wall */}
+      <rect x="2" y="4" width="996" height="14" rx="7" fill="#211d19" />
+      <rect x="4" y="6" width="992" height="10" rx="5" fill="#403a32" />
+      <rect x="4" y="6" width="992" height="4" rx="2" fill="rgba(255, 235, 200, 0.24)" />
+      <circle cx="12" cy="11" r="11" fill="#4a443b" stroke="rgba(0,0,0,0.6)" strokeWidth="2" />
+      <circle cx="988" cy="11" r="11" fill="#4a443b" stroke="rgba(0,0,0,0.6)" strokeWidth="2" />
+
+      {/* Cloth loops pinning the banner over the rod (rigid with the rod) */}
+      {LOOPS.map((lx, i) => (
+        <rect key={i} x={lx - 16} y="0" width="32" height="26" rx="4" fill="#3a1210" stroke="rgba(0,0,0,0.35)" strokeWidth="1.5" />
+      ))}
     </svg>
   );
 };
