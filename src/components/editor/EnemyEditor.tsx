@@ -822,6 +822,8 @@ export const EnemyEditor: React.FC<{ initialSelectedId?: string }> = ({ initialS
                     <SpriteEditor
                       sprite={editing.customSprite}
                       onChange={updateSprite}
+                      shadowPreview
+                      shadowPreviewFloating={!!editing.isFloating}
                     />
                   )}
                 </CollapsiblePanel>

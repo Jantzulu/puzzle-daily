@@ -852,6 +852,8 @@ export const CharacterEditor: React.FC<{ initialSelectedId?: string }> = ({ init
                       <SpriteEditor
                         sprite={editing.customSprite}
                         onChange={updateSprite}
+                        shadowPreview
+                        shadowPreviewFloating={!!editing.isFloating}
                       />
                     )}
                   </CollapsiblePanel>

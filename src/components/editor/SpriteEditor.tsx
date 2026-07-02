@@ -4,6 +4,7 @@ import type { CustomSprite, DirectionalSpriteConfig, SpriteDirection, SpriteShee
 import { Direction } from '../../types/game';
 import { subscribeToImageLoads, loadImage } from '../../utils/imageLoader';
 import { MediaBrowseButton } from './MediaBrowseButton';
+import { drawBlobShadow } from '../game/blobShadows';
 
 // Tiles are 24×24 art pixels. Sprite images render at their NATIVE pixel
 // dimensions × (tileSize / ART_TILE_PX), centered on the tile — never scaled
@@ -281,6 +282,12 @@ interface SpriteEditorProps {
   sprite: CustomSprite;
   onChange: (sprite: CustomSprite) => void;
   size?: number; // Preview size in pixels
+  /** Entity sprites (characters/enemies): draw the ground blob shadow in the
+   *  offset previews and show the Ground Shadow settings. Leave unset for
+   *  non-entity sprites (tiles, objects) which never cast shadows. */
+  shadowPreview?: boolean;
+  /** The owning entity's isFloating flag — previews the smaller floating shadow. */
+  shadowPreviewFloating?: boolean;
 }
 
 const DIRECTIONS: { key: SpriteDirection; label: string; arrow: string }[] = [
@@ -377,7 +384,13 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   /** Opacity of the active (edited) sprite in the preview only — lets you see
    *  the ghosts behind it. Never affects board rendering. */
   activeAlpha?: number;
-}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha = 1 }) => {
+  /** When set (entity sprites), the board's ground blob shadow is drawn under
+   *  the sprite exactly as it will render in game — so shadow width/offsets
+   *  can be tuned by eye. */
+  shadowSprite?: CustomSprite;
+  /** The owning entity's isFloating flag (smaller, fainter shadow). */
+  shadowFloating?: boolean;
+}> = ({ imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha = 1, shadowSprite, shadowFloating = false }) => {
   const previewRef = useRef<HTMLCanvasElement>(null);
   const zoomRef = useRef<HTMLCanvasElement>(null);
   const [loadTick, setLoadTick] = useState(0);
@@ -452,6 +465,13 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
       const tileRect = ART_TILE_PX * zoom;
       const tileOrigin = (displaySize - tileRect) / 2;
 
+      // Shadow preview needs a floor to darken — a 28%-black ellipse is
+      // invisible on the near-black canvas. Mid-tone fill, tile area only.
+      if (shadowSprite) {
+        ctx.fillStyle = '#4a4a4a';
+        ctx.fillRect(tileOrigin, tileOrigin, tileRect, tileRect);
+      }
+
       // Art-pixel grid inside the tile — one cell per art pixel.
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.06)';
       ctx.lineWidth = 1;
@@ -481,6 +501,11 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
       ctx.lineTo(displaySize, displaySize / 2);
       ctx.stroke();
       ctx.setLineDash([]);
+
+      // Ground shadow under the sprite, board-faithful (entity sprites only)
+      if (shadowSprite) {
+        drawBlobShadow(ctx, shadowSprite, displaySize / 2, displaySize / 2, tileRect, shadowFloating);
+      }
 
       // Draw one sprite layer at frame 0, faithful to the board's native-size
       // math: explicit frame dims when present, else naturalWidth / frameCount.
@@ -515,7 +540,7 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
 
     render(previewRef.current, ANCHOR_PREVIEW_SIZE, ANCHOR_PREVIEW_ZOOM);
     if (zoomed) render(zoomRef.current, ANCHOR_OVERLAY_SIZE, ANCHOR_OVERLAY_ZOOM);
-  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed, playing, playLoop, playTick]);
+  }, [imageSrc, anchorX, anchorY, offsetX, offsetY, isSpriteSheet, frameCount, frameRate, frameWidth, frameHeight, ghosts, activeAlpha, loadTick, zoomed, playing, playLoop, playTick, shadowSprite, shadowSprite?.shadowWidth, shadowSprite?.shadowOffsetX, shadowSprite?.shadowOffsetY, shadowFloating]);
 
   return (
     <div className="relative flex-shrink-0" style={{ width: ANCHOR_PREVIEW_SIZE, height: ANCHOR_PREVIEW_SIZE }}>
@@ -586,7 +611,7 @@ const AnchorPreview: React.FC<AnchorPreviewLayer & {
   );
 };
 
-export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange }) => {
+export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, shadowPreview = false, shadowPreviewFloating = false }) => {
   const [selectedDirection, setSelectedDirection] = useState<SpriteDirection>('default');
   // Onion-skin controls for the offset previews (editor-only, never affects the board).
   const [onionEnabled, setOnionEnabled] = useState(true);
@@ -1992,6 +2017,8 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange }) 
               frameHeight={previewSpriteSheet?.frameHeight}
               ghosts={ghosts}
               activeAlpha={ghosts && ghosts.length > 0 ? activePreviewOpacity : 1}
+              shadowSprite={shadowPreview ? sprite : undefined}
+              shadowFloating={shadowPreviewFloating}
             />
           )}
         </div>
@@ -3844,6 +3871,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange }) 
         description: 'Hero-card only. Loops for as long as the hero stays selected, after the Select Intro finishes. Not directional.',
         defaultLoop: true,
       })}
+      {shadowPreview && (
       <div className="border-2 border-stone-600 rounded-lg p-4 bg-stone-900/50">
         <h4 className="text-stone-300 font-bold mb-3 flex items-center gap-2">
           <span className="text-lg">⬮</span> Ground Shadow
@@ -3853,40 +3881,72 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange }) 
           use the offsets to tailor sprites whose body isn't at the tile center.
           All values are in art pixels (a tile is 24). Width 0 hides the shadow.
         </p>
-        <div className="grid grid-cols-3 gap-3">
-          <div>
-            <label className="block text-xs font-bold mb-1">Width</label>
-            <input
-              type="number"
-              min={0}
-              value={sprite.shadowWidth ?? ''}
-              placeholder="14"
-              onChange={(e) => onChange({ ...sprite, shadowWidth: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) })}
-              className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
-            />
+        <div className="flex gap-4 items-start">
+          <div className="grid grid-cols-3 gap-3 flex-1">
+            <div>
+              <label className="block text-xs font-bold mb-1">Width</label>
+              <input
+                type="number"
+                min={0}
+                value={sprite.shadowWidth ?? ''}
+                placeholder="14"
+                onChange={(e) => onChange({ ...sprite, shadowWidth: e.target.value === '' ? undefined : Math.max(0, Number(e.target.value)) })}
+                className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Offset X</label>
+              <input
+                type="number"
+                value={sprite.shadowOffsetX ?? ''}
+                placeholder="0"
+                onChange={(e) => onChange({ ...sprite, shadowOffsetX: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-bold mb-1">Offset Y</label>
+              <input
+                type="number"
+                value={sprite.shadowOffsetY ?? ''}
+                placeholder="0"
+                onChange={(e) => onChange({ ...sprite, shadowOffsetY: e.target.value === '' ? undefined : Number(e.target.value) })}
+                className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
+              />
+            </div>
           </div>
-          <div>
-            <label className="block text-xs font-bold mb-1">Offset X</label>
-            <input
-              type="number"
-              value={sprite.shadowOffsetX ?? ''}
-              placeholder="0"
-              onChange={(e) => onChange({ ...sprite, shadowOffsetX: e.target.value === '' ? undefined : Number(e.target.value) })}
-              className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
-            />
-          </div>
-          <div>
-            <label className="block text-xs font-bold mb-1">Offset Y</label>
-            <input
-              type="number"
-              value={sprite.shadowOffsetY ?? ''}
-              placeholder="0"
-              onChange={(e) => onChange({ ...sprite, shadowOffsetY: e.target.value === '' ? undefined : Number(e.target.value) })}
-              className="w-full px-2 py-1.5 bg-stone-700 rounded text-parchment-100 text-sm"
-            />
-          </div>
+          {(() => {
+            // Live preview with the sprite's idle for context (south → default →
+            // simple), sharing the same board-faithful AnchorPreview as the
+            // offset controls. Updates as the shadow fields change.
+            const dir = sprite.useDirectional
+              ? (sprite.directionalSprites?.s ?? sprite.directionalSprites?.default)
+              : undefined;
+            const sheet = dir?.idleSpriteSheet ?? sprite.idleSpriteSheet;
+            const imgSrc = sheet?.imageData ?? sheet?.imageUrl
+              ?? dir?.idleImageData ?? dir?.imageData ?? dir?.idleImageUrl ?? dir?.imageUrl
+              ?? sprite.idleImageData ?? sprite.imageData ?? sprite.idleImageUrl ?? sprite.imageUrl;
+            if (!imgSrc) return null;
+            return (
+              <AnchorPreview
+                imageSrc={imgSrc}
+                anchorX={(sheet ? sheet.anchorX : (dir?.idleAnchorX ?? sprite.idleAnchorX)) ?? 0.5}
+                anchorY={(sheet ? sheet.anchorY : (dir?.idleAnchorY ?? sprite.idleAnchorY)) ?? 0.5}
+                offsetX={(sheet ? sheet.offsetX : (dir?.idleOffsetX ?? sprite.idleOffsetX)) ?? 0}
+                offsetY={(sheet ? sheet.offsetY : (dir?.idleOffsetY ?? sprite.idleOffsetY)) ?? 0}
+                isSpriteSheet={!!sheet}
+                frameCount={sheet?.frameCount}
+                frameRate={sheet?.frameRate}
+                frameWidth={sheet?.frameWidth}
+                frameHeight={sheet?.frameHeight}
+                shadowSprite={sprite}
+                shadowFloating={shadowPreviewFloating}
+              />
+            );
+          })()}
         </div>
       </div>
+      )}
       </>
       )}
 
