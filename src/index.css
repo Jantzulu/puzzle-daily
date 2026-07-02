@@ -1427,12 +1427,14 @@ html body.theme-font-active,
 }
 
 /* Rod end finials as fixed-size CSS dots — circles inside the stretched
-   SVG rendered as ellipses at desktop widths */
+   SVG rendered as ellipses at desktop widths. Positioned at the rod's
+   proportional coordinates (rod center = y 11/240, ends ≈ x 0.9%) and
+   centered with translate, so they sit ON the rod at any banner size. */
 .quest-banner::before,
 .quest-banner::after {
   content: '';
   position: absolute;
-  top: 0;
+  top: 4.6%;
   width: 11px;
   height: 11px;
   border-radius: 50%;
@@ -1441,8 +1443,15 @@ html body.theme-font-active,
   z-index: 1;
 }
 
-.quest-banner::before { left: 2px; }
-.quest-banner::after { right: 2px; }
+.quest-banner::before {
+  left: 0.9%;
+  transform: translate(-50%, -50%);
+}
+
+.quest-banner::after {
+  right: 0.9%;
+  transform: translate(50%, -50%);
+}
 
 @media (prefers-reduced-motion: reduce) {
   .quest-banner {

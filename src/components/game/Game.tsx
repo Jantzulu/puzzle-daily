@@ -1990,7 +1990,7 @@ export const Game: React.FC<GameProps> = ({
               // class: it was overflow:hidden for the old panel's slide and
               // clipped the rod's overhang for its first second (the "pop").
               <div className="w-full flex justify-center sticky top-0 z-[60] quest-panel-sticky">
-              <div className="mb-2 w-full max-w-2xl px-8 md:px-9 pt-4 pb-8 quest-banner -mt-[3px] relative z-10 overflow-visible">
+              <div className="-mb-3 w-full max-w-2xl px-8 md:px-9 pt-4 pb-8 quest-banner -mt-[3px] relative z-10 overflow-visible">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
