@@ -168,9 +168,8 @@ export const Game: React.FC<GameProps> = ({
   // victory.
   const [showGameOver, setShowGameOver] = useState(false);
   const [spritesReady, setSpritesReady] = useState(false);
-  // Phase-transition overlays (see index.css BOARD PHASE TRANSITIONS):
+  // Reset-reveal overlay (see index.css BOARD PHASE TRANSITIONS):
   // keyed by nonce so each trigger replays the animation. 0 = never fired.
-  const [battleFxNonce, setBattleFxNonce] = useState(0);
   const [resetFxNonce, setResetFxNonce] = useState(0);
 
 
@@ -834,8 +833,8 @@ export const Game: React.FC<GameProps> = ({
     attemptStartRef.current = Date.now();
     submittedRef.current = false;
     runTrackedRef.current = false;
-    // Battle-start beat: brief dark pulse over the board + quest shimmer
-    setBattleFxNonce(n => n + 1);
+    // Battle-start beat: quest-panel shimmer only (a board dim was tried
+    // here and rejected — it read as lag before the game started)
     setShimmerKey(k => k + 1);
     playGameSound('simulation_start');
     vibrate('playButton');
@@ -2142,12 +2141,9 @@ export const Game: React.FC<GameProps> = ({
                 </div>
               )}
 
-              {/* Phase-transition beats — keyed so each trigger replays; they
-                  end at opacity 0 and are pointer-events-none, so stale ones
-                  are inert. Rendered under the victory/defeat panels. */}
-              {battleFxNonce > 0 && (
-                <div key={`battle-fx-${battleFxNonce}`} className="absolute inset-0 z-10 bg-black board-battle-pulse" />
-              )}
+              {/* Reset reveal — keyed so each trigger replays; ends at
+                  opacity 0 and is pointer-events-none, so stale ones are
+                  inert. Rendered under the victory/defeat panels. */}
               {resetFxNonce > 0 && (
                 <div key={`reset-fx-${resetFxNonce}`} className="absolute inset-0 z-10 bg-stone-950 board-reset-reveal" />
               )}

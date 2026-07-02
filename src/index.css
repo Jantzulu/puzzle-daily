@@ -1285,20 +1285,10 @@ html body.theme-font-active,
 
 /* ============================================
    BOARD PHASE TRANSITIONS
-   Soft beats between game phases — a brief dark pulse when the battle
-   starts, and a quick reveal masking the instant repaint on reset/retry.
-   Pure overlays: the board itself is never remounted.
+   A quick reveal masking the instant repaint on reset/retry.
+   Pure overlay: the board itself is never remounted.
+   (A battle-start dim pulse was tried and rejected — felt like lag.)
    ============================================ */
-@keyframes board-battle-pulse {
-  0%   { opacity: 0; }
-  30%  { opacity: 0.5; }
-  100% { opacity: 0; }
-}
-.board-battle-pulse {
-  animation: board-battle-pulse 0.6s ease-out forwards;
-  pointer-events: none;
-}
-
 @keyframes board-reset-reveal {
   from { opacity: 0.9; }
   to   { opacity: 0; }
