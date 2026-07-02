@@ -5,6 +5,7 @@ import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
+import { WallMesh } from './components/shared/WallMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
@@ -277,7 +278,7 @@ function Navigation() {
 
   const linkClass = (path: string) => `
     px-3 md:px-4 py-2 transition-all duration-200 font-medium text-sm md:text-base
-    nav-link-btn ${isActive(path) ? 'nav-link-active shadow-inner-dark' : ''}
+    nav-carved ${isActive(path) ? 'nav-carved-active' : ''}
   `;
 
   // Get navbar background style
@@ -296,12 +297,15 @@ function Navigation() {
   return (
     <nav
       ref={navRef}
-      className="bg-stone-600 border-b-2 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon md:sticky md:top-0 z-50"
+      className="nav-wall px-4 md:px-6 py-0.5 md:py-1.5 md:sticky md:top-0 z-50"
       style={navbarStyle}
     >
+      {/* Castle wall behind everything — the gold bottom border is gone;
+          the quest banner's rod hangs directly against the stones */}
+      <WallMesh />
       <div className="flex items-center gap-3 md:gap-4">
-        {/* Logo/Title */}
-        <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline">
+        {/* Logo/Title — pops off the wall */}
+        <Link to="/" className="nav-pop flex items-center gap-2 md:gap-3 no-underline">
           {/* Custom logo or default torch icon */}
           {(() => {
             // Check for randomized logo first
@@ -367,30 +371,30 @@ function Navigation() {
         {/* Desktop navigation - closer to title */}
         <div className="hidden md:flex items-center gap-2 ml-4">
           <Link to="/" className={linkClass('/')}>
-            <span className="mr-1">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
+            {themeAssets.navLabelPlay || 'Play'}
           </Link>
           <Link to="/town-crier" className={linkClass('/town-crier')}>
-            <span className="mr-1">{'\uD83D\uDCE3'}</span> Town Crier
+            Town Crier
             {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
           </Link>
           <Link to="/compendium" className={linkClass('/compendium')}>
-            <span className="mr-1">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
+            {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
           <Link to="/training" className={linkClass('/training')}>
-            <span className="mr-1">{'\uD83C\uDFAF'}</span> Training
+            Training
           </Link>
           {isCreator && <>
             <Link to="/assets" className={linkClass('/assets')}>
-              <span className="mr-1">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
+              {themeAssets.navLabelAssets || 'Assets'}
             </Link>
             <Link to="/editors" className={linkClass('/editors')}>
-              <span className="mr-1">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
+              {themeAssets.navLabelEditor || 'Editors'}
             </Link>
             <Link to="/puzzle-resources" className={linkClass('/puzzle-resources')}>
-              <span className="mr-1">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
+              Admin Controls
             </Link>
             <Link to="/settings" className={linkClass('/settings')}>
-              <span className="mr-1">⚙️</span> Settings
+              Settings
             </Link>
           </>}
         </div>
@@ -441,14 +445,14 @@ function Navigation() {
             className={`block ${linkClass('/')}`}
             onClick={closeMobileMenu}
           >
-            <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
+            {themeAssets.navLabelPlay || 'Play'}
           </Link>
           <Link
             to="/town-crier"
             className={`block ${linkClass('/town-crier')}`}
             onClick={closeMobileMenu}
           >
-            <span className="mr-2">{'\uD83D\uDCE3'}</span> Town Crier
+            Town Crier
             {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
           </Link>
           <Link
@@ -456,14 +460,14 @@ function Navigation() {
             className={`block ${linkClass('/compendium')}`}
             onClick={closeMobileMenu}
           >
-            <span className="mr-2">{themeAssets.iconNavCompendium || '\uD83D\uDCD6'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
+            {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
           <Link
             to="/training"
             className={`block ${linkClass('/training')}`}
             onClick={closeMobileMenu}
           >
-            <span className="mr-2">{'\uD83C\uDFAF'}</span> Training
+            Training
           </Link>
           {isCreator && <>
             <Link
@@ -471,28 +475,28 @@ function Navigation() {
               className={`block ${linkClass('/assets')}`}
               onClick={closeMobileMenu}
             >
-              <span className="mr-2">{themeAssets.iconNavAssets || '\uD83D\uDCE6'}</span> {themeAssets.navLabelAssets || 'Assets'}
+              {themeAssets.navLabelAssets || 'Assets'}
             </Link>
             <Link
               to="/editors"
               className={`block ${linkClass('/editors')}`}
               onClick={closeMobileMenu}
             >
-              <span className="mr-2">{themeAssets.iconNavEditor || '\uD83D\uDEE0'}</span> {themeAssets.navLabelEditor || 'Editors'}
+              {themeAssets.navLabelEditor || 'Editors'}
             </Link>
             <Link
               to="/puzzle-resources"
               className={`block ${linkClass('/puzzle-resources')}`}
               onClick={closeMobileMenu}
             >
-              <span className="mr-2">{'\uD83D\uDEE1\uFE0F'}</span> Admin Controls
+              Admin Controls
             </Link>
             <Link
               to="/settings"
               className={`block ${linkClass('/settings')}`}
               onClick={closeMobileMenu}
             >
-              <span className="mr-2">⚙️</span> Settings
+              Settings
             </Link>
           </>}
           <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
