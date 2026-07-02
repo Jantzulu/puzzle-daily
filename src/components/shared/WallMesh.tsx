@@ -17,9 +17,10 @@ const VIEW_H = 120;
 const CX = VIEW_W / 2;
 const CY = VIEW_H / 2;
 
-// Same stone as the compendium slab
-const DARK: [number, number, number] = [0x16, 0x12, 0x0f];
-const LIGHT: [number, number, number] = [0x41, 0x39, 0x2f];
+// Slab recipe, but the deep-dungeon cut of the stone: barely above black.
+// What shape the wall has should come from the torch pool, not the facets.
+const DARK: [number, number, number] = [0x05, 0x04, 0x04];
+const LIGHT: [number, number, number] = [0x1e, 0x19, 0x14];
 const LIGHT_DIR = { x: -0.55, y: -0.85 };
 
 const hash = (i: number): number => {
@@ -89,13 +90,38 @@ export const WallMesh: React.FC = () => {
           />
           <feComposite operator="in" in2="SourceGraphic" />
         </filter>
+        {/* Torch pool: a warm light living behind the logo + title (left
+            side of the bar), the only thing that gives the black stone its
+            shape. userSpaceOnUse so it pins to the title, not the bar. */}
+        <radialGradient id={`${grainId}torch`} gradientUnits="userSpaceOnUse" cx="330" cy="66" r="520">
+          <stop offset="0" stopColor="rgba(212, 165, 116, 0.16)" />
+          <stop offset="0.45" stopColor="rgba(212, 165, 116, 0.07)" />
+          <stop offset="1" stopColor="rgba(212, 165, 116, 0)" />
+        </radialGradient>
+        {/* The corridor recedes into darkness away from the torch */}
+        <linearGradient id={`${grainId}depth`} x1="0" y1="0" x2="1" y2="0">
+          <stop offset="0" stopColor="rgba(0,0,0,0)" />
+          <stop offset="0.55" stopColor="rgba(0,0,0,0)" />
+          <stop offset="1" stopColor="rgba(0,0,0,0.6)" />
+        </linearGradient>
       </defs>
       {/* Facet ring */}
       {FACETS.map((f, i) => (
         <polygon key={i} points={f.points} fill={f.fill} />
       ))}
       {/* Flat face the nav content sits on */}
-      <polygon points={pts(INNER)} fill="#211d1a" />
+      <polygon points={pts(INNER)} fill="#0c0a08" />
+      {/* Torchlight breathing on the stone — uneven flicker, not a metronome */}
+      <polygon points={pts(OUTER)} fill={`url(#${grainId}torch)`}>
+        <animate
+          attributeName="opacity"
+          values="0.75;1;0.82;0.95;0.7;1;0.75"
+          dur="7s"
+          repeatCount="indefinite"
+        />
+      </polygon>
+      {/* Depth falloff toward the far end of the corridor */}
+      <polygon points={pts(OUTER)} fill={`url(#${grainId}depth)`} />
       {/* Grain over the whole stone, following the hewn outline */}
       <polygon points={pts(OUTER)} fill="#fff" filter={`url(#${grainId})`} />
       {/* Dark outline for silhouette definition — constant weight at any

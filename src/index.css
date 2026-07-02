@@ -1508,6 +1508,33 @@ html body.theme-font-active,
   filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.65));
 }
 
+/* Title glimmers out of the dark wall — a breathing gold glow that rides
+   the same slow, uneven rhythm as the lintel's torch pool (7s, both
+   flicker rather than pulse). Mobile only: desktop is the clean flat bar. */
+@media (max-width: 767px) {
+  .nav-title-glimmer {
+    animation: nav-title-glimmer 7s ease-in-out infinite;
+  }
+}
+
+@keyframes nav-title-glimmer {
+  0%, 100% {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(228, 185, 106, 0.22), 0 0 20px rgba(212, 165, 116, 0.10);
+  }
+  14% {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 12px rgba(228, 185, 106, 0.38), 0 0 26px rgba(212, 165, 116, 0.18);
+  }
+  28% {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 9px rgba(228, 185, 106, 0.26), 0 0 22px rgba(212, 165, 116, 0.12);
+  }
+  57% {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 13px rgba(228, 185, 106, 0.42), 0 0 30px rgba(212, 165, 116, 0.20);
+  }
+  71% {
+    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5), 0 0 8px rgba(228, 185, 106, 0.24), 0 0 20px rgba(212, 165, 116, 0.11);
+  }
+}
+
 /* Mobile menu: one plank per nav item (PlankItemMesh), strung on rope
    stubs. Labels are carved INTO the wood: dark fill with a lit lip below. */
 .nav-plank-item {
