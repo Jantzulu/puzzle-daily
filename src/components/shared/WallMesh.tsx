@@ -40,31 +40,34 @@ const pts = (arr: Array<[number, number]>) => arr.map(p => `${p[0].toFixed(1)},$
 
 const LIGHT_DIR = { x: -0.55, y: -0.85 };
 
-// Two uneven rows of big stones, each built EXACTLY like the compendium
-// slab: an irregular outline, a ring of lit bevel facets around the edge,
-// and a FLAT FACE in the middle (not a fan pinched to the center).
+// Four uneven courses of hand-sized stones, each built EXACTLY like the
+// compendium slab: an irregular outline, a ring of lit bevel facets around
+// the edge, and a FLAT FACE in the middle (not a fan pinched to the center).
 // Irregularity comes from inward-only corner insets, so stones can never
-// cross their seams — no overlap.
+// cross their seams — no overlap. Stone scale is tuned to the navbar
+// sprite: a humanoid should read these as liftable masonry, not megaliths.
 const STONES: Stone[] = [];
 {
   const rows = [
-    { y0: -4, y1: 58, light: 0.6 },
-    { y0: 62, y1: 124, light: 0.4 },
+    { y0: -4, y1: 27, light: 0.62 },
+    { y0: 30, y1: 57, light: 0.54 },
+    { y0: 60, y1: 87, light: 0.46 },
+    { y0: 90, y1: 124, light: 0.38 },
   ];
   let seed = 0;
   rows.forEach((row, r) => {
-    let x = r % 2 === 0 ? -40 : -140;
+    let x = -30 - (r % 3) * 35;
     while (x < VIEW_W) {
-      const w = 130 + hash(seed + 1) * 130; // 130–260: big stones
-      const x2 = Math.min(x + w, VIEW_W + 160);
-      const inset = (k: number) => 2 + hash(seed + k) * 7; // inward only
+      const w = 50 + hash(seed + 1) * 55; // 50–105: hand-sized stones
+      const x2 = Math.min(x + w, VIEW_W + 80);
+      const inset = (k: number) => 1 + hash(seed + k) * 4; // inward only
       const wob = (k: number, amp: number) => (hash(seed + k) - 0.5) * amp;
       const outline: Array<[number, number]> = [
         [x + inset(2), row.y0 + inset(3)],
-        [(x + x2) / 2 + wob(4, 30), row.y0 + inset(5) * 0.6],
+        [(x + x2) / 2 + wob(4, 10), row.y0 + inset(5) * 0.6],
         [x2 - inset(6), row.y0 + inset(7)],
         [x2 - inset(8), row.y1 - inset(9)],
-        [(x + x2) / 2 + wob(10, 30), row.y1 - inset(11) * 0.6],
+        [(x + x2) / 2 + wob(10, 10), row.y1 - inset(11) * 0.6],
         [x + inset(12), row.y1 - inset(13)],
       ];
       const cx = outline.reduce((s, p) => s + p[0], 0) / outline.length;
@@ -73,8 +76,8 @@ const STONES: Stone[] = [];
       // the NARROW bevel ring between outline and face is the slab look
       // (a wide ring dominated the stone and read messy)
       const innerPts: Array<[number, number]> = outline.map(([px, py], i) => [
-        cx + (px - cx) * 0.8 + (hash(seed + 80 + i) - 0.5) * 5,
-        cy + (py - cy) * 0.75 + (hash(seed + 90 + i) - 0.5) * 5,
+        cx + (px - cx) * 0.8 + (hash(seed + 80 + i) - 0.5) * 3,
+        cy + (py - cy) * 0.75 + (hash(seed + 90 + i) - 0.5) * 3,
       ]);
       const base = row.light;
       const facets: Array<{ points: string; fill: string }> = [];
@@ -93,7 +96,7 @@ const STONES: Stone[] = [];
         facets,
         face: { points: pts(innerPts), fill: tone(base + 0.04 + (hash(seed + 5) - 0.5) * 0.06) },
       });
-      x = x2 + 4;
+      x = x2 + 3;
       seed += 17;
     }
   });
