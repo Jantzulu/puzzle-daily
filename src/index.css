@@ -660,6 +660,11 @@ html body.theme-font-active,
     #ffe9c0 50%,
     var(--flare-base) 58%
   );
+  /* Underlay: wherever the sweeping image isn't covering the glyphs
+     (including the very first frames, when it's parked off-view), the
+     letters show the base color — so start color = end color, with only
+     the brief bright band in between. */
+  background-color: var(--flare-base);
   background-size: 300% 100%;
   background-position: 200% center;
   background-repeat: no-repeat;
@@ -701,6 +706,13 @@ html body.theme-font-active,
 
 .animate-slide-in-right {
   animation: slide-in-up 0.25s ease-out;
+}
+
+/* Mobile: the navbar is not sticky, so the banner sticks to the viewport
+   top — offset it so the rod (pulled up by the banner's negative margin)
+   stays fully visible instead of being cut off by the page edge. */
+.quest-panel-sticky {
+  top: 3px;
 }
 
 @media (min-width: 768px) {

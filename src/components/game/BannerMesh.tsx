@@ -67,7 +67,7 @@ const OUTER_B: Array<[number, number]> = OUTER.map(([x, y], i) => {
 });
 
 const RIPPLE = {
-  dur: '6s',
+  dur: '8s',
   keyTimes: '0;0.5;1',
   calcMode: 'spline',
   keySplines: '0.45 0 0.55 1;0.45 0 0.55 1',
@@ -114,15 +114,18 @@ export const BannerMesh: React.FC = () => {
         </filter>
         {/* Wind: animated turbulence displaces the hanging cloth organically */}
         <filter id={windId} x="-6%" y="-15%" width="112%" height="130%">
-          <feTurbulence type="fractalNoise" baseFrequency="0.008 0.03" numOctaves="2" seed="7" result="w">
+          {/* One octave, LOW frequency: a couple of long slow undulations.
+              Higher frequencies made many small waves — jelly-wiggle, not
+              cloth billow. */}
+          <feTurbulence type="fractalNoise" baseFrequency="0.004 0.015" numOctaves="1" seed="7" result="w">
             <animate
               attributeName="baseFrequency"
-              values="0.008 0.03;0.017 0.052;0.011 0.026;0.008 0.03"
-              dur="8s"
+              values="0.004 0.015;0.006 0.024;0.004 0.015"
+              dur="10s"
               repeatCount="indefinite"
             />
           </feTurbulence>
-          <feDisplacementMap in="SourceGraphic" in2="w" scale="15" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="SourceGraphic" in2="w" scale="13" xChannelSelector="R" yChannelSelector="G" />
         </filter>
       </defs>
 
