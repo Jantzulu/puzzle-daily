@@ -697,37 +697,42 @@ html body.theme-font-active,
   --page-texture: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
 }
 
-/* The slab — hand-hewn stone silhouette. The clip-path cuts irregular
-   chamfers and edge nicks so it stops reading as a web rectangle, and the
-   aura is a drop-shadow FILTER (not box-shadow) so the glow hugs the hewn
-   outline. Inner bevel via inset shadows along the straight edge runs. */
+/* The slab — a low-poly stone mesh (see SlabMesh.tsx) rendered behind the
+   content. The container is transparent; the SVG carries the silhouette,
+   the faceted border, and the flattened plate the text sits on. The aura is
+   a drop-shadow FILTER so the glow hugs the mesh's hewn outline. FIXED
+   heights: the stone never resizes between chapters — the writing scrolls. */
 .compendium-book,
 .compendium-book--single {
-  --slab-cut: polygon(
-    1.8% 0%, 52% 0.45%, 54% 0%, 98.2% 0%, 100% 2.6%,
-    99.55% 38%, 100% 40.5%, 100% 97%, 97.6% 100%,
-    46% 99.55%, 44% 100%, 2.2% 100%, 0% 97.2%,
-    0.45% 58%, 0% 56%, 0% 2.4%
-  );
-  clip-path: var(--slab-cut);
-  box-shadow:
-    inset 0 2px 0 rgba(255, 235, 200, 0.06),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
-    inset 3px 0 12px rgba(0, 0, 0, 0.3),
-    inset -3px 0 12px rgba(0, 0, 0, 0.3);
+  background: transparent;
   animation: compendium-slab-aura 7s ease-in-out infinite;
 }
 
 .compendium-book {
   display: flex;
   position: relative;
-  background: var(--spine-dark);
+  height: 76vh;
+  min-height: 480px;
+  padding: 50px 5.5%;
 }
 
-/* Single-page mode for mobile — same hewn slab, one face */
+/* Single-page mode for mobile — same slab, one face */
 .compendium-book--single {
   display: block;
-  background: var(--page-bg);
+  position: relative;
+  height: 76vh;
+  min-height: 480px;
+  padding: 48px 6%;
+}
+
+/* The mesh fills the slab behind the content */
+.compendium-slab-mesh {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
 }
 
 @keyframes compendium-slab-aura {
@@ -753,119 +758,50 @@ html body.theme-font-active,
   }
 }
 
-/* Book page — left or right */
+/* Content face — sits on the mesh's flattened plate */
 .compendium-page {
   flex: 1;
   min-width: 0;
-  background-color: var(--page-bg);
+  background-color: transparent;
   background-image: var(--page-texture);
   color: var(--text-primary);
-  padding: 1.5rem;
+  padding: 1rem 1.25rem;
   overflow-y: auto;
   position: relative;
-}
-
-/* Left face — carved shadow toward the groove */
-.compendium-page--left {
-  border-radius: 4px 0 0 4px;
-  box-shadow: inset -12px 0 20px -10px rgba(0, 0, 0, 0.5);
-}
-
-/* Right face — carved shadow toward the groove */
-.compendium-page--right {
-  border-radius: 0 4px 4px 0;
-  box-shadow: inset 12px 0 20px -10px rgba(0, 0, 0, 0.5);
-}
-
-/* Mobile single page */
-.compendium-page--single {
-  border-radius: 4px;
-  background-color: var(--page-bg);
-  background-image: var(--page-texture);
-  color: var(--text-primary);
-  padding: 1rem;
-}
-
-/* Carved groove dividing the slab's two faces */
-.compendium-spine {
-  width: 14px;
-  flex-shrink: 0;
-  background: linear-gradient(
-    to right,
-    var(--spine-light),
-    var(--spine-dark) 35%,
-    var(--spine-dark) 65%,
-    var(--spine-light)
-  );
-  box-shadow:
-    inset 2px 0 5px rgba(0, 0, 0, 0.7),
-    inset -2px 0 5px rgba(0, 0, 0, 0.7);
-  position: relative;
-}
-
-/* Inlaid gold seam running down the groove */
-.compendium-spine::after {
-  content: '';
-  position: absolute;
-  left: 50%;
-  top: 6%;
-  bottom: 6%;
-  width: 2px;
-  transform: translateX(-50%);
-  background: repeating-linear-gradient(
-    to bottom,
-    var(--gold-glow) 0px,
-    var(--gold-glow) 5px,
-    transparent 5px,
-    transparent 14px
-  );
-  filter: drop-shadow(0 0 3px var(--gold-glow));
-}
-
-/* Decorative corners (L-bracket, overridable by theme) */
-.compendium-corner {
-  position: absolute;
-  width: 24px;
-  height: 24px;
-  pointer-events: none;
   z-index: 1;
 }
 
-.compendium-corner::before,
-.compendium-corner::after {
-  content: '';
-  position: absolute;
-  background-color: var(--corner-color);
+/* Mobile single face */
+.compendium-page--single {
+  background-color: transparent;
+  background-image: var(--page-texture);
+  color: var(--text-primary);
+  padding: 0.5rem 0.75rem;
+  height: 100%;
+  overflow-y: auto;
+  position: relative;
+  z-index: 1;
 }
 
-/* Horizontal arm */
-.compendium-corner::before {
-  height: 2px;
-  width: 20px;
+/* Engraved seam dividing the slab's two faces */
+.compendium-spine {
+  width: 3px;
+  flex-shrink: 0;
+  margin: 2% 1rem;
+  background: linear-gradient(
+    to bottom,
+    transparent,
+    var(--gold-glow) 20%,
+    var(--gold-glow) 80%,
+    transparent
+  );
+  opacity: 0.35;
+  position: relative;
+  z-index: 1;
 }
 
-/* Vertical arm */
-.compendium-corner::after {
-  width: 2px;
-  height: 20px;
-}
-
-/* Inset enough to clear the slab's hewn chamfer cuts */
-.compendium-corner--tl { top: 16px; left: 16px; }
-.compendium-corner--tl::before { top: 0; left: 0; }
-.compendium-corner--tl::after { top: 0; left: 0; }
-
-.compendium-corner--tr { top: 16px; right: 16px; }
-.compendium-corner--tr::before { top: 0; right: 0; }
-.compendium-corner--tr::after { top: 0; right: 0; }
-
-.compendium-corner--bl { bottom: 16px; left: 16px; }
-.compendium-corner--bl::before { bottom: 0; left: 0; }
-.compendium-corner--bl::after { bottom: 0; left: 0; }
-
-.compendium-corner--br { bottom: 16px; right: 16px; }
-.compendium-corner--br::before { bottom: 0; right: 0; }
-.compendium-corner--br::after { bottom: 0; right: 0; }
+/* (Corner brackets removed — they were a book-era ornament and collided
+   with content on the slab. The mesh's facets carry the corners now.) */
 
 /* Chapter navigation — a floating rune bar, detached from the slab.
    Weightless: a frosted capsule centered above the slab, no attached-tab
