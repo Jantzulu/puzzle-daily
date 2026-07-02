@@ -29,20 +29,24 @@ function tone(seed: number, bias: number): string {
 }
 
 interface Stone {
-  poly: string;
+  facets: Array<{ points: string; fill: string }>;
   top: string;
   bottom: string;
-  fill: string;
 }
 
 const pts = (arr: Array<[number, number]>) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
 
-// Two uneven rows of big irregular stones
+const LIGHT_DIR = { x: -0.55, y: -0.85 };
+
+// Two uneven rows of big stones. Irregularity comes from INWARD-ONLY corner
+// insets (stones can never cross their seam — no overlap, no slop) and from
+// each stone being a faceted mini-slab: a triangle fan from its center with
+// per-facet lighting, the same treatment as the compendium slab's border.
 const STONES: Stone[] = [];
 {
   const rows = [
-    { y0: -6, y1: 60, light: 0.6 },
-    { y0: 64, y1: 126, light: 0.38 },
+    { y0: -4, y1: 58, light: 0.62 },
+    { y0: 62, y1: 124, light: 0.4 },
   ];
   let seed = 0;
   rows.forEach((row, r) => {
@@ -50,24 +54,35 @@ const STONES: Stone[] = [];
     while (x < VIEW_W) {
       const w = 130 + hash(seed + 1) * 130; // 130–260: big stones
       const x2 = Math.min(x + w, VIEW_W + 160);
-      const j = (k: number, amp: number) => (hash(seed + k) - 0.5) * amp;
-      // Six-vertex irregular outline: corners + bulging edge midpoints.
-      // Big jitter = rubble, not brick; stones nearly touch (thin seams).
-      const y0 = row.y0 + j(2, 18);
-      const y1 = row.y1 + j(3, 18);
-      const tl: [number, number] = [x + 2 + j(4, 22), y0 + 3 + j(5, 12)];
-      const tm: [number, number] = [(x + x2) / 2 + j(6, 48), y0 + 1 + j(7, 14)];
-      const tr: [number, number] = [x2 - 2 + j(8, 22), y0 + 3 + j(9, 12)];
-      const br: [number, number] = [x2 - 2 + j(10, 24), y1 - 3 + j(11, 12)];
-      const bm: [number, number] = [(x + x2) / 2 + j(12, 48), y1 - 1 + j(13, 14)];
-      const bl: [number, number] = [x + 2 + j(14, 24), y1 - 3 + j(15, 12)];
-      STONES.push({
-        poly: pts([tl, tm, tr, br, bm, bl]),
-        top: pts([bl, tl, tm, tr]),
-        bottom: pts([tr, br, bm, bl]),
-        fill: tone(seed, row.light),
+      const inset = (k: number) => 2 + hash(seed + k) * 7; // inward only
+      const wob = (k: number, amp: number) => (hash(seed + k) - 0.5) * amp;
+      const outline: Array<[number, number]> = [
+        [x + inset(2), row.y0 + inset(3)],
+        [(x + x2) / 2 + wob(4, 30), row.y0 + inset(5) * 0.6],
+        [x2 - inset(6), row.y0 + inset(7)],
+        [x2 - inset(8), row.y1 - inset(9)],
+        [(x + x2) / 2 + wob(10, 30), row.y1 - inset(11) * 0.6],
+        [x + inset(12), row.y1 - inset(13)],
+      ];
+      const cx = outline.reduce((s, p) => s + p[0], 0) / outline.length;
+      const cy = outline.reduce((s, p) => s + p[1], 0) / outline.length;
+      const base = row.light;
+      const facets = outline.map((p, i) => {
+        const q = outline[(i + 1) % outline.length];
+        // Facet lit by its outer edge's normal, like the slab
+        const ex = q[0] - p[0];
+        const ey = q[1] - p[1];
+        const len = Math.hypot(ex, ey) || 1;
+        const d = ((ey / len) * LIGHT_DIR.x + (-ex / len) * LIGHT_DIR.y + 1) / 2;
+        const t = base + (d - 0.5) * 0.55 + (hash(seed + 40 + i) - 0.5) * 0.18;
+        return { points: pts([p, q, [cx, cy]]), fill: tone(seed + 60 + i, t) };
       });
-      x = x2 + 3; // thin mortar seam — stones nearly interlock
+      STONES.push({
+        facets,
+        top: pts([outline[5], outline[0], outline[1], outline[2]]),
+        bottom: pts([outline[2], outline[3], outline[4], outline[5]]),
+      });
+      x = x2 + 4;
       seed += 17;
     }
   });
@@ -84,7 +99,9 @@ export const WallMesh: React.FC = () => (
     <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill={MORTAR} />
     {STONES.map((s, i) => (
       <g key={i}>
-        <polygon points={s.poly} fill={s.fill} />
+        {s.facets.map((f, fi) => (
+          <polygon key={fi} points={f.points} fill={f.fill} />
+        ))}
         <polyline points={s.top} fill="none" stroke="rgba(255,235,200,0.06)" strokeWidth="2.5" />
         <polyline points={s.bottom} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="3" />
       </g>

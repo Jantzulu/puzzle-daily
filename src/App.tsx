@@ -449,7 +449,7 @@ function Navigation() {
               key={item.to}
               to={item.to}
               onClick={closeMobileMenu}
-              className={`nav-plank-item block px-8 py-2.5 ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
+              className={`nav-plank-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
             >
               <PlankItemMesh index={i} first={i === 0} />
               <span>
@@ -458,7 +458,9 @@ function Navigation() {
               </span>
             </Link>
           ))}
-          <div className="pt-3 mt-2 flex items-center gap-2 justify-center">
+          {/* Utility row rides its own plank at the bottom of the sign */}
+          <div className="nav-plank-item px-8 py-2 flex items-center gap-2 justify-center">
+            <PlankItemMesh index={navItems.length} />
             <SoundSettings isMobile />
             {isCreator && <CloudSyncButton />}
             <UserMenu />

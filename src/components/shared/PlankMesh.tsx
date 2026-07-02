@@ -17,8 +17,9 @@ const hash = (i: number): number => {
   return s - Math.floor(s);
 };
 
-const DARK: [number, number, number] = [0x54, 0x3c, 0x25];
-const LIGHT: [number, number, number] = [0x8a, 0x68, 0x42];
+// Weathered old timber — darker and grayer than fresh-cut wood
+const DARK: [number, number, number] = [0x37, 0x2a, 0x1d];
+const LIGHT: [number, number, number] = [0x59, 0x46, 0x31];
 
 function woodTone(seed: number): string {
   const t = 0.35 + hash(seed) * 0.45;
@@ -46,11 +47,12 @@ export const PlankItemMesh: React.FC<{ index: number; first?: boolean; ropes?: b
   const ml: [number, number] = [2 + j(15, 8), 26 + j(16, 10)];
   const outline = [tl, tm, tr, mr, br, bm, bl, ml];
 
-  const grains = Array.from({ length: 2 }, (_, g) => ({
+  // Extra grain on weathered wood
+  const grains = Array.from({ length: 3 }, (_, g) => ({
     x1: 30 + hash(seed + 20 + g) * 80,
-    y1: 16 + g * 18 + j(24 + g, 8),
+    y1: 13 + g * 13 + j(24 + g, 7),
     x2: 370 - hash(seed + 30 + g) * 80,
-    y2: 16 + g * 18 + j(34 + g, 8),
+    y2: 13 + g * 13 + j(34 + g, 7),
   }));
 
   return (

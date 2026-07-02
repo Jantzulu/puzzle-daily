@@ -1497,16 +1497,20 @@ html body.theme-font-active,
   filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
 }
 
-.nav-plank-item > span {
+/* Everything riding a plank sits above its wood */
+.nav-plank-item > :not(svg) {
   position: relative;
   z-index: 1;
+}
+
+.nav-plank-item > span {
   font-family: 'Almendra', serif;
   font-weight: 700;
   font-size: 1rem;
-  color: #2b1e10;
+  color: #211709;
   text-shadow:
-    0 1px 0 rgba(255, 235, 200, 0.28),
-    0 -1px 1px rgba(0, 0, 0, 0.35);
+    0 1px 0 rgba(255, 235, 200, 0.35),
+    0 -1px 1px rgba(0, 0, 0, 0.4);
 }
 
 .nav-plank-item-active > span {

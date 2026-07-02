@@ -25,19 +25,16 @@ const VIEW_H = 70;
 const CX = VIEW_W / 2;
 const CY = VIEW_H / 2;
 
-// Table-cut silhouette, clockwise, slightly irregular
+// Table-cut silhouette, clockwise — pristine: straight vertical sides and
+// symmetric corner chamfers (the mid-side kinks read as flaws, not facets)
 const OUTER: Array<[number, number]> = [
   [16, 3],
-  [100, 6],
   [184, 3],
-  [197, 17],
-  [194, 36],
-  [197, 53],
-  [185, 67],
-  [98, 64],
-  [15, 67],
-  [3, 52],
-  [6, 34],
+  [197, 16],
+  [197, 54],
+  [184, 67],
+  [16, 67],
+  [3, 54],
   [3, 16],
 ];
 
@@ -46,10 +43,10 @@ const hash = (i: number): number => {
   return s - Math.floor(s);
 };
 
-// Table facet: inset toward center with a little jitter
-const INNER: Array<[number, number]> = OUTER.map(([x, y], i) => [
-  CX + (x - CX) * 0.76 + (hash(i) - 0.5) * 5,
-  CY + (y - CY) * 0.5 + (hash(i + 20) - 0.5) * 5,
+// Table facet: clean symmetric inset — pristine cut, no jitter
+const INNER: Array<[number, number]> = OUTER.map(([x, y]) => [
+  CX + (x - CX) * 0.76,
+  CY + (y - CY) * 0.5,
 ]);
 
 const LIGHT_DIR = { x: -0.55, y: -0.85 };
@@ -67,7 +64,7 @@ function facetT(a: [number, number], b: [number, number], seed: number): number 
   const len = Math.hypot(ex, ey) || 1;
   const nx = ey / len;
   const ny = -ex / len;
-  return (nx * LIGHT_DIR.x + ny * LIGHT_DIR.y + 1) / 2 + (hash(seed) - 0.5) * 0.2;
+  return (nx * LIGHT_DIR.x + ny * LIGHT_DIR.y + 1) / 2 + (hash(seed) - 0.5) * 0.1;
 }
 
 // Precompute facet geometry + shading factors (color applied per-tone)
@@ -130,7 +127,7 @@ export const GemMesh: React.FC<{ tone: GemTone; phase?: number }> = ({ tone, pha
       {/* Silhouette definition */}
       <polygon points={pts(OUTER)} fill="none" stroke="rgba(0,0,0,0.5)" strokeWidth="2.5" />
       {/* Lit top edge */}
-      <polyline points={pts([OUTER[11], OUTER[0], OUTER[1], OUTER[2], OUTER[3]])} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
+      <polyline points={pts([OUTER[7], OUTER[0], OUTER[1], OUTER[2]])} fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1.5" />
     </svg>
   );
 };
