@@ -223,7 +223,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
               >
                 {/* Ruby stone — supersedes the legacy flat theme colors
                     (custom theme IMAGES still win via the branch above) */}
-                <GemMesh tone="ruby" />
+                <GemMesh tone="ruby" phase={260} />
                 <span className="flex items-center gap-1">
                   <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
                     <path d="M8 5v14l11-7z"/>

@@ -2639,20 +2639,14 @@ export const Game: React.FC<GameProps> = ({
                   {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
                   <div className="flex justify-center">
                     {testMode !== 'none' ? (
-                      // Test mode indicator
-                      <div className={`flex items-center gap-2 px-3 py-1 rounded-pixel border ${
-                        testMode === 'enemies'
-                          ? 'bg-blood-900/80 border-blood-600'
-                          : 'bg-arcane-900/80 border-arcane-600'
-                      }`}>
-                        <span className={`text-xs font-medium ${
-                          testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
-                        }`}>
+                      // Test mode indicator — a larger cut of the same stone
+                      // as the Test button that started it
+                      <div className="gem-plate flex items-center gap-2 px-4 py-1">
+                        <GemMesh tone={testMode === 'enemies' ? 'ruby' : 'amethyst'} phase={testMode === 'enemies' ? 200 : 90} />
+                        <span className="text-xs font-medium">
                           Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
                         </span>
-                        <span className={`text-lg font-bold ${
-                          testMode === 'enemies' ? 'text-blood-300' : 'text-arcane-300'
-                        }`}>
+                        <span className="text-lg font-bold">
                           {testTurnsRemaining}
                         </span>
                       </div>
@@ -2680,7 +2674,7 @@ export const Game: React.FC<GameProps> = ({
                           {/* Emerald stone — supersedes the legacy flat theme
                               colors for this button (custom theme IMAGES still
                               win via the branch above) */}
-                          <GemMesh tone="emerald" />
+                          <GemMesh tone="emerald" phase={0} />
                           <span>Play</span>
                         </button>
                       )
@@ -2730,20 +2724,12 @@ export const Game: React.FC<GameProps> = ({
                     ) : (
                       <button
                         onClick={() => setShowConcedeConfirm(true)}
-                        className={`text-xs px-2 py-1 ${
-                          themeAssets.actionButtonConcedeBg ? '' : 'dungeon-btn-danger'
-                        } ${
-                          themeAssets.actionButtonConcedeShape === 'rounded' ? 'rounded-lg' :
-                          themeAssets.actionButtonConcedeShape === 'pill' ? 'rounded-full' : ''
-                        }`}
-                        style={{
-                          ...(themeAssets.actionButtonConcedeBg && { backgroundColor: themeAssets.actionButtonConcedeBg }),
-                          ...(themeAssets.actionButtonConcedeBorder && { borderColor: themeAssets.actionButtonConcedeBorder, borderWidth: '1px', borderStyle: 'solid' }),
-                          ...(themeAssets.actionButtonConcedeText && { color: themeAssets.actionButtonConcedeText }),
-                        }}
+                        className="gem-btn text-xs px-2 py-1"
                         title="Give up this attempt and lose a life"
                       >
-                        Concede
+                        {/* Orange topaz — matches the gem action-button set */}
+                        <GemMesh tone="topaz" phase={300} />
+                        <span>Concede</span>
                       </button>
                     )}
                   </div>

@@ -1454,7 +1454,10 @@ html body.theme-font-active,
    stone, the label sits carved on the table facet, and a shine band rides
    the scroll position (same --scroll-percent as the metallic borders).
    ============================================ */
-.gem-btn {
+/* .gem-plate is the non-interactive variant (status plates): same stone,
+   no hover/press behavior */
+.gem-btn,
+.gem-plate {
   position: relative;
   background: transparent !important;
   border: none !important;
@@ -1465,7 +1468,8 @@ html body.theme-font-active,
     0 1px 0 rgba(255, 255, 255, 0.14);
 }
 
-.gem-btn > .gem-mesh {
+.gem-btn > .gem-mesh,
+.gem-plate > .gem-mesh {
   position: absolute;
   inset: 0;
   width: 100%;
@@ -1476,7 +1480,8 @@ html body.theme-font-active,
   transition: filter 0.12s;
 }
 
-.gem-btn > :not(.gem-mesh) {
+.gem-btn > :not(.gem-mesh),
+.gem-plate > :not(.gem-mesh) {
   position: relative;
   z-index: 1;
 }
@@ -1496,10 +1501,12 @@ html body.theme-font-active,
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55)) brightness(0.9);
 }
 
-/* Shine band position follows page scroll (viewBox units; the band spans
-   x -46..0, translated across the 200-unit stone as you scroll) */
+/* Shine band position follows page scroll (viewBox units). Each gem sets
+   --gem-shine-phase so the band sits at a different point of its travel per
+   stone — the light moves together but never gleams in unison. The longer
+   travel also means the band is off-stone at many scroll positions. */
 .gem-scroll-shine {
-  transform: translateX(calc(var(--scroll-percent, 0) * 280px));
+  transform: translateX(calc(var(--scroll-percent, 0) * 380px - var(--gem-shine-phase, 0px)));
   transition: transform 0.15s linear;
 }
 

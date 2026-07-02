@@ -11,12 +11,13 @@ import React from 'react';
 // --scroll-percent variable as the metallic border shine) clipped to the
 // stone. Static geometry, deterministic; the button label renders above.
 
-export type GemTone = 'emerald' | 'amethyst' | 'ruby';
+export type GemTone = 'emerald' | 'amethyst' | 'ruby' | 'topaz';
 
 const TONES: Record<GemTone, { d: [number, number, number]; l: [number, number, number] }> = {
   emerald: { d: [8, 52, 34], l: [72, 196, 134] },
   amethyst: { d: [46, 24, 76], l: [178, 132, 234] },
   ruby: { d: [74, 12, 30], l: [228, 88, 108] },
+  topaz: { d: [92, 50, 10], l: [242, 172, 68] },
 };
 
 const VIEW_W = 200;
@@ -77,7 +78,7 @@ for (let i = 0; i < OUTER.length; i++) {
   FACETS.push({ points: pts([OUTER[j], INNER[j], INNER[i]]), t: facetT(OUTER[i], OUTER[j], i * 2 + 1) });
 }
 
-export const GemMesh: React.FC<{ tone: GemTone }> = ({ tone }) => {
+export const GemMesh: React.FC<{ tone: GemTone; phase?: number }> = ({ tone, phase = 0 }) => {
   const uid = React.useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const clipId = `gemclip${uid}`;
   const shineId = `gemshine${uid}`;
@@ -95,7 +96,7 @@ export const GemMesh: React.FC<{ tone: GemTone }> = ({ tone }) => {
         </clipPath>
         <linearGradient id={shineId} x1="0" y1="0" x2="1" y2="0">
           <stop offset="0" stopColor="rgba(255,255,255,0)" />
-          <stop offset="0.5" stopColor="rgba(255,255,255,0.32)" />
+          <stop offset="0.5" stopColor="rgba(255,255,255,0.14)" />
           <stop offset="1" stopColor="rgba(255,255,255,0)" />
         </linearGradient>
       </defs>
@@ -111,9 +112,19 @@ export const GemMesh: React.FC<{ tone: GemTone }> = ({ tone }) => {
       {/* Glass gloss on the table, upper-left */}
       <ellipse cx={CX - 34} cy={CY - 9} rx="46" ry="12" fill="rgba(255,255,255,0.10)" transform={`rotate(-6 ${CX - 34} ${CY - 9})`} />
 
-      {/* Scroll-driven shine band, clipped to the stone */}
+      {/* Scroll-driven shine band, clipped to the stone. `phase` staggers
+          each gem so stones in the same frame never gleam in unison — they
+          share the light's movement, not its position. */}
       <g clipPath={`url(#${clipId})`}>
-        <rect className="gem-scroll-shine" x="-46" y="-15" width="46" height="100" fill={`url(#${shineId})`} />
+        <rect
+          className="gem-scroll-shine"
+          x="-46"
+          y="-15"
+          width="46"
+          height="100"
+          fill={`url(#${shineId})`}
+          style={{ '--gem-shine-phase': `${phase}px` } as React.CSSProperties}
+        />
       </g>
 
       {/* Silhouette definition */}
