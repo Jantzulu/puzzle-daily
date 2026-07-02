@@ -337,14 +337,16 @@ body {
     }
     to {
       opacity: 1;
-      max-height: 500px;
+      /* Roomy cap: the plank-sign menu is taller than the old flat list
+         (rope header + plank padding) — 500px clipped its last links */
+      max-height: 720px;
       transform: translateY(0);
     }
   }
   @keyframes menu-slide-up {
     from {
       opacity: 1;
-      max-height: 500px;
+      max-height: 720px;
       transform: translateY(0);
     }
     to {
@@ -1477,6 +1479,27 @@ html body.theme-font-active,
 /* Logo + title pop off the wall */
 .nav-pop {
   filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.65));
+}
+
+/* Mobile menu: a rope-hung plank sign (PlankMesh) dropping down the wall;
+   nav links carve into the wood */
+.nav-plank-menu {
+  position: relative;
+}
+
+.nav-plank-mesh {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.55));
+}
+
+.nav-plank-menu > *:not(.nav-plank-mesh) {
+  position: relative;
+  z-index: 1;
 }
 
 /* Nav items carved into the stone */

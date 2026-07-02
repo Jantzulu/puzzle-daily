@@ -6,6 +6,7 @@ import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { WallMesh } from './components/shared/WallMesh';
+import { PlankMesh } from './components/shared/PlankMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
@@ -297,11 +298,13 @@ function Navigation() {
   return (
     <nav
       ref={navRef}
-      className="nav-wall px-4 md:px-6 py-0.5 md:py-1.5 md:sticky md:top-0 z-50"
+      className="md:sticky md:top-0 z-50"
       style={navbarStyle}
     >
-      {/* Castle wall behind everything — the gold bottom border is gone;
-          the quest banner's rod hangs directly against the stones */}
+      {/* The wall wraps ONLY the top bar — sized to the whole nav it would
+          zoom (slice-fit) to cover the taller element whenever the mobile
+          menu opened. The plank-sign menu hangs below it as a sibling. */}
+      <div className="nav-wall px-4 md:px-6 py-0.5 md:py-1.5">
       <WallMesh />
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title — pops off the wall */}
@@ -437,9 +440,13 @@ function Navigation() {
         </button>
       </div>
 
-      {/* Mobile menu dropdown */}
+      </div>
+
+      {/* Mobile menu dropdown — hangs below the wall */}
       {mobileMenuOpen && (
-        <div className={`md:hidden mt-3 pt-3 border-t-2 border-stone-700 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
+        <div className={`nav-plank-menu md:hidden mt-2 pt-14 pb-4 px-10 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
+          {/* Rope-hung plank sign behind the menu links */}
+          <PlankMesh />
           <Link
             to="/"
             className={`block ${linkClass('/')}`}
