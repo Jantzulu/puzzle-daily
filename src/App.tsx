@@ -310,12 +310,13 @@ function Navigation() {
     <nav
       ref={navRef}
       className="md:sticky md:top-0 z-50"
-      style={navbarStyle}
     >
       {/* The wall wraps ONLY the top bar — sized to the whole nav it would
           zoom (slice-fit) to cover the taller element whenever the mobile
-          menu opened. The plank-sign menu hangs below it as a sibling. */}
-      <div className="nav-wall px-4 md:px-6 py-0.5 md:py-1.5">
+          menu opened. The plank-sign menu hangs below it as a sibling.
+          navbarStyle lives here too: on the nav it painted the open-menu
+          area a lighter shade than the page. */}
+      <div className="nav-wall px-4 md:px-6 py-0.5 md:py-1.5" style={navbarStyle}>
       <WallMesh />
       <div className="flex items-center gap-3 md:gap-4">
         {/* Logo/Title — pops off the wall */}

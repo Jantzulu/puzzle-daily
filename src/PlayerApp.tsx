@@ -9,6 +9,8 @@ import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
+import { WallMesh } from './components/shared/WallMesh';
+import { PlankItemMesh } from './components/shared/PlankMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { LoginPage } from './components/auth/LoginPage';
@@ -178,11 +180,13 @@ function PlayerNavigation() {
     `nav-link px-2.5 py-1.5 rounded transition-all text-sm font-semibold whitespace-nowrap ${
       isActive(path) ? 'nav-link-active text-copper-300 shadow-glow-copper' : 'text-stone-400 hover:text-parchment-200'
     }`;
-  // Mobile: button-styled links matching dev app
-  const mobileLinkClass = (path: string) => `
-    px-3 py-2 transition-all duration-200 font-medium text-sm
-    nav-link-btn ${isActive(path) ? 'nav-link-active shadow-inner-dark' : ''}
-  `;
+  // One list drives the mobile plank menu (ported from the dev app)
+  const navItems: Array<{ to: string; label: string; unread?: boolean }> = [
+    { to: '/', label: themeAssets.navLabelPlay || 'Play' },
+    { to: '/town-crier', label: 'Town Crier', unread: hasUnreadNews },
+    { to: '/compendium', label: themeAssets.navLabelCompendium || 'Compendium' },
+    { to: '/training', label: 'Training' },
+  ];
 
   const scrolledPast = useRef(false);
   const [, forceUpdate] = useState(0);
@@ -215,13 +219,23 @@ function PlayerNavigation() {
   return (
     <nav
       ref={navRef}
-      className={`bg-stone-600 border-b-2 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon md:sticky md:top-0 z-50 transition-shadow duration-300 ${
-        // eslint-disable-next-line react-hooks/refs
-        scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
-      }`}
-      style={navbarStyle}
+      className="md:sticky md:top-0 z-50"
     >
-      <div className="flex items-center gap-3 md:gap-4 md:justify-center relative">
+      {/* Top bar: stone wall on mobile, the clean flat bar on desktop —
+          no gold bottom border on either. The plank menu hangs below as
+          a sibling so it can't stretch the wall. */}
+      <div
+        className={`relative bg-transparent md:bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 md:shadow-dungeon transition-shadow duration-300 ${
+          // eslint-disable-next-line react-hooks/refs
+          scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
+        }`}
+        style={navbarStyle}
+      >
+      {/* Castle wall, mobile only */}
+      <div className="md:hidden absolute inset-0 z-0 overflow-hidden">
+        <WallMesh />
+      </div>
+      <div className="flex items-center gap-3 md:gap-4 md:justify-center relative z-10">
         <div className="flex items-center gap-2 md:gap-4">
         <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline shrink-0">
           {logoSrc ? (
@@ -268,17 +282,17 @@ function PlayerNavigation() {
 
         <div className="hidden md:flex items-center gap-2 ml-4">
           <Link to="/" className={desktopLinkClass('/')}>
-            <span className="mr-1">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
+            {themeAssets.navLabelPlay || 'Play'}
           </Link>
           <Link to="/town-crier" className={desktopLinkClass('/town-crier')}>
-            <span className="mr-1">📣</span> Town Crier
+            Town Crier
             {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
           </Link>
           <Link to="/compendium" className={desktopLinkClass('/compendium')}>
-            <span className="mr-1">{themeAssets.iconNavCompendium || '📖'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
+            {themeAssets.navLabelCompendium || 'Compendium'}
           </Link>
           <Link to="/training" className={desktopLinkClass('/training')}>
-            <span className="mr-1">🎯</span> Training
+            Training
           </Link>
         </div>
         </div>
@@ -303,22 +317,28 @@ function PlayerNavigation() {
         </button>
       </div>
 
+      </div>
+
+      {/* Mobile menu — the plank sign, ported from the dev app */}
       {mobileMenuOpen && (
-        <div className={`md:hidden mt-3 pt-3 border-t-2 border-stone-700 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
-          <Link to="/" className={`block ${mobileLinkClass('/')}`} onClick={closeMobileMenu}>
-            <span className="mr-2">{themeAssets.iconNavPlay || '\u2694'}</span> {themeAssets.navLabelPlay || 'Play'}
-          </Link>
-          <Link to="/town-crier" className={`block ${mobileLinkClass('/town-crier')}`} onClick={closeMobileMenu}>
-            <span className="mr-2">📣</span> Town Crier
-            {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-          </Link>
-          <Link to="/compendium" className={`block ${mobileLinkClass('/compendium')}`} onClick={closeMobileMenu}>
-            <span className="mr-2">{themeAssets.iconNavCompendium || '📖'}</span> {themeAssets.navLabelCompendium || 'Compendium'}
-          </Link>
-          <Link to="/training" className={`block ${mobileLinkClass('/training')}`} onClick={closeMobileMenu}>
-            <span className="mr-2">🎯</span> Training
-          </Link>
-          <div className="pt-3 mt-2 border-t border-stone-700 flex items-center gap-2">
+        <div className={`md:hidden pt-4 pb-3 px-4 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
+          {navItems.map((item, i) => (
+            <Link
+              key={item.to}
+              to={item.to}
+              onClick={closeMobileMenu}
+              className={`nav-plank-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
+            >
+              <PlankItemMesh index={i} first={i === 0} />
+              <span>
+                {item.label}
+                {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
+              </span>
+            </Link>
+          ))}
+          {/* Utility row rides its own plank */}
+          <div className="nav-plank-item px-8 py-2 flex items-center gap-2 justify-center">
+            <PlankItemMesh index={navItems.length} />
             <SoundSettings isMobile />
             <UserMenu />
           </div>
