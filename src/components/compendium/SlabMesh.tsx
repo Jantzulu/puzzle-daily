@@ -118,8 +118,11 @@ export const SlabMesh: React.FC = () => {
       <polygon points={pts(INNER)} fill="none" stroke="rgba(228, 185, 106, 0.1)" strokeWidth="2" />
       {/* Grain over the whole stone, following the hewn outline */}
       <polygon points={pts(OUTER)} fill="#fff" filter={`url(#${grainId})`} />
-      {/* Dark outline for silhouette definition */}
-      <polygon points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.55)" strokeWidth="3" />
+      {/* Dark outline for silhouette definition. non-scaling-stroke: the
+          viewBox squashes to the element (preserveAspectRatio=none), which
+          thinned the border to ~1px on phones — the outline should be the
+          same 3px weight at every size. */}
+      <polygon points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.55)" strokeWidth="3" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 };
