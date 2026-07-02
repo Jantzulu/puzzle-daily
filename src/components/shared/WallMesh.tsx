@@ -30,22 +30,22 @@ function tone(seed: number, bias: number): string {
 
 interface Stone {
   facets: Array<{ points: string; fill: string }>;
-  top: string;
-  bottom: string;
+  face: { points: string; fill: string };
 }
 
 const pts = (arr: Array<[number, number]>) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
 
 const LIGHT_DIR = { x: -0.55, y: -0.85 };
 
-// Two uneven rows of big stones. Irregularity comes from INWARD-ONLY corner
-// insets (stones can never cross their seam — no overlap, no slop) and from
-// each stone being a faceted mini-slab: a triangle fan from its center with
-// per-facet lighting, the same treatment as the compendium slab's border.
+// Two uneven rows of big stones, each built EXACTLY like the compendium
+// slab: an irregular outline, a ring of lit bevel facets around the edge,
+// and a FLAT FACE in the middle (not a fan pinched to the center).
+// Irregularity comes from inward-only corner insets, so stones can never
+// cross their seams — no overlap.
 const STONES: Stone[] = [];
 {
   const rows = [
-    { y0: -4, y1: 58, light: 0.62 },
+    { y0: -4, y1: 58, light: 0.6 },
     { y0: 62, y1: 124, light: 0.4 },
   ];
   let seed = 0;
@@ -66,21 +66,28 @@ const STONES: Stone[] = [];
       ];
       const cx = outline.reduce((s, p) => s + p[0], 0) / outline.length;
       const cy = outline.reduce((s, p) => s + p[1], 0) / outline.length;
+      // Flat face: outline pulled toward the center, jittered — the bevel
+      // ring between outline and face carries the low-poly look
+      const innerPts: Array<[number, number]> = outline.map(([px, py], i) => [
+        cx + (px - cx) * 0.68 + (hash(seed + 80 + i) - 0.5) * 8,
+        cy + (py - cy) * 0.62 + (hash(seed + 90 + i) - 0.5) * 8,
+      ]);
       const base = row.light;
-      const facets = outline.map((p, i) => {
+      const facets: Array<{ points: string; fill: string }> = [];
+      outline.forEach((p, i) => {
         const q = outline[(i + 1) % outline.length];
-        // Facet lit by its outer edge's normal, like the slab
         const ex = q[0] - p[0];
         const ey = q[1] - p[1];
         const len = Math.hypot(ex, ey) || 1;
         const d = ((ey / len) * LIGHT_DIR.x + (-ex / len) * LIGHT_DIR.y + 1) / 2;
-        const t = base + (d - 0.5) * 0.55 + (hash(seed + 40 + i) - 0.5) * 0.18;
-        return { points: pts([p, q, [cx, cy]]), fill: tone(seed + 60 + i, t) };
+        const t1 = base + (d - 0.5) * 0.6 + (hash(seed + 40 + i) - 0.5) * 0.14;
+        const t2 = base + (d - 0.5) * 0.6 + (hash(seed + 50 + i) - 0.5) * 0.14;
+        facets.push({ points: pts([p, q, innerPts[i]]), fill: tone(seed + 60 + i, t1) });
+        facets.push({ points: pts([q, innerPts[(i + 1) % outline.length], innerPts[i]]), fill: tone(seed + 70 + i, t2) });
       });
       STONES.push({
         facets,
-        top: pts([outline[5], outline[0], outline[1], outline[2]]),
-        bottom: pts([outline[2], outline[3], outline[4], outline[5]]),
+        face: { points: pts(innerPts), fill: tone(seed + 5, base + 0.05) },
       });
       x = x2 + 4;
       seed += 17;
@@ -102,8 +109,7 @@ export const WallMesh: React.FC = () => (
         {s.facets.map((f, fi) => (
           <polygon key={fi} points={f.points} fill={f.fill} />
         ))}
-        <polyline points={s.top} fill="none" stroke="rgba(255,235,200,0.06)" strokeWidth="2.5" />
-        <polyline points={s.bottom} fill="none" stroke="rgba(0,0,0,0.45)" strokeWidth="3" />
+        <polygon points={s.face.points} fill={s.face.fill} />
       </g>
     ))}
     {/* Base of the wall falls into shadow where the page begins */}

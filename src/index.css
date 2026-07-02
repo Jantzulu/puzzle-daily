@@ -1432,6 +1432,9 @@ html body.theme-font-active,
   }
 }
 
+/* No CSS filter here — combined with the SVG's internal wind filter it
+   ghosted the filter REGION as a faint rectangle around the banner. The
+   drop shadows live inside the SVG filter chain instead (BannerMesh). */
 .quest-banner-mesh {
   position: absolute;
   inset: 0;
@@ -1439,9 +1442,6 @@ html body.theme-font-active,
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  filter:
-    drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5))
-    drop-shadow(0 2px 10px rgba(212, 165, 116, 0.14));
 }
 
 .quest-banner > :not(.quest-banner-mesh) {
@@ -1503,21 +1503,38 @@ html body.theme-font-active,
   z-index: 1;
 }
 
+/* Labels ride the planks inside frosted pills — the same capsule language
+   as the compendium's floating tab bar — in the Knightly title's copper */
 .nav-plank-item > span {
+  display: inline-block;
   font-family: 'Almendra', serif;
   font-weight: 700;
-  font-size: 1rem;
-  color: #211709;
-  text-shadow:
-    0 1px 0 rgba(255, 235, 200, 0.35),
-    0 -1px 1px rgba(0, 0, 0, 0.4);
+  font-size: 0.95rem;
+  color: #d4a574; /* copper-400, the Knightly title color */
+  padding: 0.15rem 0.85rem;
+  border-radius: 999px;
+  background: rgba(24, 21, 19, 0.72);
+  border: 1px solid rgba(228, 185, 106, 0.14);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 235, 200, 0.05);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+}
+
+.nav-plank-item:hover > span {
+  color: #ebc097;
+  border-color: rgba(228, 185, 106, 0.3);
 }
 
 .nav-plank-item-active > span {
-  color: #1a1108;
-  text-shadow:
-    0 1px 0 rgba(255, 235, 200, 0.32),
-    0 0 10px rgba(255, 205, 100, 0.5);
+  color: #e4b96a;
+  border-color: rgba(228, 185, 106, 0.4);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 235, 200, 0.05),
+    0 0 10px rgba(228, 185, 106, 0.3);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(228, 185, 106, 0.45);
 }
 
 /* Nav items carved into the stone — dark chiseled fill; the engraving

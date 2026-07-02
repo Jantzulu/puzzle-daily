@@ -126,7 +126,13 @@ export const BannerMesh: React.FC = () => {
             />
           </feTurbulence>
           {/* Same long wavelengths, bigger amplitude: billow you can see */}
-          <feDisplacementMap in="SourceGraphic" in2="w" scale="22" xChannelSelector="R" yChannelSelector="G" />
+          <feDisplacementMap in="SourceGraphic" in2="w" scale="22" xChannelSelector="R" yChannelSelector="G" result="cloth" />
+          {/* Shadows live INSIDE this filter chain: a CSS drop-shadow on the
+              svg used the internal filter's rectangular REGION as its alpha
+              source, ghosting a faint box around the banner. In-chain
+              feDropShadow computes from the actual cloth alpha. */}
+          <feDropShadow in="cloth" dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.5)" result="shadowed" />
+          <feDropShadow in="shadowed" dx="0" dy="2" stdDeviation="5" floodColor="rgba(212, 165, 116, 0.16)" />
         </filter>
       </defs>
 
