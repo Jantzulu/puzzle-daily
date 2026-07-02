@@ -155,12 +155,13 @@ export const BannerMesh: React.FC = () => {
         </polygon>
       </g>
 
-      {/* Iron rod — robust, rigid, mounted on the wall */}
+      {/* Iron rod — robust, rigid, mounted on the wall. End finials are NOT
+          drawn here: with preserveAspectRatio="none" any circle stretches
+          into an ellipse; the round caps are fixed-size CSS dots on
+          .quest-banner instead (::before / ::after). */}
       <rect x="2" y="4" width="996" height="14" rx="7" fill="#211d19" />
       <rect x="4" y="6" width="992" height="10" rx="5" fill="#403a32" />
       <rect x="4" y="6" width="992" height="4" rx="2" fill="rgba(255, 235, 200, 0.24)" />
-      <circle cx="12" cy="11" r="11" fill="#4a443b" stroke="rgba(0,0,0,0.6)" strokeWidth="2" />
-      <circle cx="988" cy="11" r="11" fill="#4a443b" stroke="rgba(0,0,0,0.6)" strokeWidth="2" />
 
       {/* Cloth loops pinning the banner over the rod (rigid with the rod) */}
       {LOOPS.map((lx, i) => (

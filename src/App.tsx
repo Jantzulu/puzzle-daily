@@ -311,14 +311,15 @@ function Navigation() {
       ref={navRef}
       className="md:sticky md:top-0 z-50"
     >
-      {/* The wall wraps ONLY the top bar — sized to the whole nav it would
-          zoom (slice-fit) to cover the taller element whenever the mobile
-          menu opened. The plank-sign menu hangs below it as a sibling.
-          navbarStyle lives here too: on the nav it painted the open-menu
-          area a lighter shade than the page. */}
-      <div className="nav-wall px-4 md:px-6 py-0.5 md:py-1.5" style={navbarStyle}>
-      <WallMesh />
-      <div className="flex items-center gap-3 md:gap-4">
+      {/* Top bar: stone wall on MOBILE only — desktop matches the player
+          app's clean flat bar (user judged the wall mobile-only). The wall
+          wraps only this bar so the open menu can't stretch the stones;
+          navbarStyle lives here (on the nav it tinted the open-menu area). */}
+      <div className="relative bg-transparent md:bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 md:shadow-dungeon" style={navbarStyle}>
+      <div className="md:hidden absolute inset-0 z-0 overflow-hidden">
+        <WallMesh />
+      </div>
+      <div className="flex items-center gap-3 md:gap-4 relative z-10">
         {/* Logo/Title — pops off the wall */}
         <Link to="/" className="nav-pop flex items-center gap-2 md:gap-3 no-underline">
           {/* Custom logo or default torch icon */}
@@ -383,19 +384,18 @@ function Navigation() {
           </div>
         </Link>
 
-        {/* Desktop navigation — each item on its own wall-mounted plank */}
+        {/* Desktop navigation — plain text links, matching the player app */}
         <div className="hidden md:flex items-center gap-2 ml-4">
-          {navItems.map((item, i) => (
+          {navItems.map((item) => (
             <Link
               key={item.to}
               to={item.to}
-              className={`nav-plank-item inline-block px-3 py-1 whitespace-nowrap ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
+              className={`nav-link px-2.5 py-1.5 rounded transition-all text-sm font-semibold whitespace-nowrap ${
+                isActive(item.to) ? 'nav-link-active text-copper-300 shadow-glow-copper' : 'text-stone-400 hover:text-parchment-200'
+              }`}
             >
-              <PlankItemMesh index={i} ropes={false} />
-              <span>
-                {item.label}
-                {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-              </span>
+              {item.label}
+              {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
             </Link>
           ))}
         </div>

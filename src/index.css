@@ -1426,6 +1426,24 @@ html body.theme-font-active,
   }
 }
 
+/* Rod end finials as fixed-size CSS dots — circles inside the stretched
+   SVG rendered as ellipses at desktop widths */
+.quest-banner::before,
+.quest-banner::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #4a443b;
+  border: 2px solid rgba(0, 0, 0, 0.6);
+  z-index: 1;
+}
+
+.quest-banner::before { left: 2px; }
+.quest-banner::after { right: 2px; }
+
 @media (prefers-reduced-motion: reduce) {
   .quest-banner {
     animation: none;

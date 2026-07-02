@@ -56,7 +56,7 @@ export const UserMenu: React.FC = () => {
     return (
       <Link
         to="/login"
-        className="px-3 py-1.5 text-xs bg-stone-700 hover:bg-stone-600 rounded text-stone-300 transition-colors"
+        className="nav-pill px-3 py-1.5 text-xs text-stone-300 transition-colors"
       >
         Sign In
       </Link>
