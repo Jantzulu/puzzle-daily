@@ -1738,15 +1738,18 @@ html body.theme-font-active,
 .gem-plate-aura::before {
   content: '';
   position: absolute;
-  inset: -16px -22px;
+  inset: -18px -26px;
   z-index: 0; /* same layer as the mesh, earlier in paint order — behind the stone */
-  background: radial-gradient(ellipse closest-side, rgba(74, 222, 128, 0.30), rgba(74, 222, 128, 0.10) 55%, transparent 78%);
+  /* Alphas are deliberately strong: at the breathe trough this halves,
+     and on an OLED near-black rail anything subtler vanishes entirely
+     (first cut used 0.30/0.10 — invisible on device). */
+  background: radial-gradient(ellipse closest-side, rgba(74, 222, 128, 0.55), rgba(74, 222, 128, 0.20) 55%, transparent 80%);
   animation: gem-aura-breathe 4s ease-in-out infinite;
   pointer-events: none;
 }
 
 @keyframes gem-aura-breathe {
-  0%, 100% { opacity: 0.5; }
+  0%, 100% { opacity: 0.55; }
   50% { opacity: 1; }
 }
 

@@ -1999,7 +1999,10 @@ export const Game: React.FC<GameProps> = ({
                   floats over the board on scroll, its bars reaching up
                   toward the navbar, its spikes hanging over the dungeon. */}
               {!replayMode && (
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+              // pt-2/pb-1: contents sit 2px low of geometric center — the
+              // beam's bottom lip + hanging spikes add visual mass below,
+              // and dead-center read as riding high (user-tuned)
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-scale-pop' : ''}`}>
                   {/* Portcullis rail: mt-[3px] is tuned so that with the
                       mobile menu OPEN (menu pb-3 = 12px above this), the
                       beam-to-beam gap between the menu's last beam and this
@@ -2107,7 +2110,9 @@ export const Game: React.FC<GameProps> = ({
                       // engraving and breathes (gem-plate-aura). Text
                       // inherits the plate's Play-label ivory; the
                       // near-limit warning colors still take over.
-                      <div className="gem-plate gem-plate-aura h-10 min-w-[100px] lg:min-w-[110px] px-3 flex items-center justify-center gap-1.5">
+                      // px-5: the emerald's side facets slant inward — at
+                      // px-3 the first/last glyphs sat on the cut edges
+                      <div className="gem-plate gem-plate-aura h-10 min-w-[100px] lg:min-w-[110px] px-5 flex items-center justify-center gap-1.5">
                         <GemMesh tone="emerald" phase={0} />
                         <span className="text-xs lg:text-sm font-medium opacity-80">Turn</span>
                         {(() => {
