@@ -2115,9 +2115,168 @@ export const Game: React.FC<GameProps> = ({
               </div>
             )}
 
+            {/* Control Panel Row — Lives / Play / Max Turns riding the
+                portcullis rail between the banner and the dungeon */}
+            {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+              <div className={`control-rail relative z-20 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mb-2${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+                  {/* Portcullis rail under the banner: the gate bars rise
+                      up beneath the cloth (banner wrapper is z-60), the
+                      forged spikes hang over the dungeon entrance below
+                      (board is z-10, this rail z-20) */}
+                  <PortcullisMesh />
+                  {/* Left: Lives - centered in left third */}
+                  <div className="flex items-center justify-center gap-1">
+                    <span className="text-stone-400 text-xs">Lives:</span>
+                    <div className="flex items-center gap-0.5">
+                      {(() => {
+                        const puzzleLives = currentPuzzle.lives ?? 3;
+                        const isUnlimitedLives = puzzleLives === 0;
+
+                        if (isUnlimitedLives) {
+                          return <span className="text-base lg:text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
+                        }
+
+                        const hearts = [];
+                        for (let i = 0; i < puzzleLives; i++) {
+                          const isFilled = i < livesRemaining;
+                          const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
+
+                          if (customIcon) {
+                            // Use integer pixel sizes for crisp pixel art (14px width)
+                            hearts.push(
+                              <img
+                                key={i}
+                                src={customIcon}
+                                alt={isFilled ? 'Life remaining' : 'Life lost'}
+                                title={isFilled ? 'Life remaining' : 'Life lost'}
+                                style={{
+                                  width: '14px',
+                                  height: '16px',
+                                  opacity: isFilled ? 1 : 0.4,
+                                  imageRendering: 'pixelated'
+                                }}
+                              />
+                            );
+                          } else {
+                            hearts.push(
+                              <span
+                                key={i}
+                                className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
+                                title={isFilled ? 'Life remaining' : 'Life lost'}
+                              >
+                                &#x2665;
+                              </span>
+                            );
+                          }
+                        }
+                        return hearts;
+                      })()}
+                    </div>
+                  </div>
+
+                  {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
+                  <div className="flex justify-center">
+                    {testMode !== 'none' ? (
+                      // Test mode indicator — a larger cut of the same stone
+                      // as the Test button that started it
+                      <div className="gem-plate flex items-center gap-2 px-4 py-1">
+                        <GemMesh tone={testMode === 'enemies' ? 'ruby' : 'amethyst'} phase={testMode === 'enemies' ? 200 : 90} />
+                        <span className="text-xs font-medium">
+                          Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
+                        </span>
+                        <span className="text-lg font-bold">
+                          {testTurnsRemaining}
+                        </span>
+                      </div>
+                    ) : gameState.gameStatus === 'setup' ? (
+                      themeAssets.actionButtonPlayImage ? (
+                        <button
+                          onClick={handlePlay}
+                          className={`relative transition-all ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
+                        >
+                          <img
+                            src={themeAssets.actionButtonPlayImage}
+                            alt="Play"
+                            className="h-6 lg:h-8 w-auto"
+                            style={{ imageRendering: 'pixelated' }}
+                          />
+                        </button>
+                      ) : (
+                        <button
+                          onClick={handlePlay}
+                          className={`gem-btn min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all flex items-center justify-center !py-0 ${
+                            gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
+                          }`}
+                          style={{ minHeight: 'unset' }}
+                        >
+                          {/* Emerald stone — supersedes the legacy flat theme
+                              colors for this button (custom theme IMAGES still
+                              win via the branch above) */}
+                          <GemMesh tone="emerald" phase={0} />
+                          <span>Play</span>
+                        </button>
+                      )
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
+                        {(() => {
+                          const maxTurns = currentPuzzle.maxTurns;
+                          const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
+                          const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                          const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+
+                          return (
+                            <>
+                              <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
+                                isVeryNearLimit
+                                  ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                                  : isNearLimit
+                                  ? 'text-rust-400'
+                                  : 'text-copper-400 text-shadow-glow-copper'
+                              }`}>
+                                {gameState.currentTurn}
+                              </span>
+                              {maxTurns && (
+                                <span className={`text-xs lg:text-sm ${
+                                  isNearLimit ? 'text-blood-400' : 'text-stone-500'
+                                }`}>
+                                  / {maxTurns}
+                                </span>
+                              )}
+                            </>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Right: Max Turns OR Concede button - centered in right third */}
+                  <div className="flex items-center justify-center">
+                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
+                      gameState.puzzle.maxTurns && (
+                        <div className="flex items-center gap-1">
+                          <span className="text-stone-400 text-xs">Max Turns:</span>
+                          <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
+                        </div>
+                      )
+                    ) : (
+                      <button
+                        onClick={() => setShowConcedeConfirm(true)}
+                        className="gem-btn text-xs px-2 py-1"
+                        title="Give up this attempt and lose a life"
+                      >
+                        {/* Orange topaz — matches the gem action-button set */}
+                        <GemMesh tone="topaz" phase={300} />
+                        <span>Concede</span>
+                      </button>
+                    )}
+                  </div>
+              </div>
+            )}
+
             {/* Game board with overlay container for loss/victory panels.
-                z-10: the portcullis gate bars rise from the control rail
-                below and must tuck BEHIND the dungeon. */}
+                z-10: the portcullis spikes hang from the rail above and
+                paint OVER the dungeon's top wall (rail is z-20). */}
             <div className={`relative z-10 w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
@@ -2585,165 +2744,6 @@ export const Game: React.FC<GameProps> = ({
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             */}
-            {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
-            {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <>
-                <div className={`control-rail grid grid-cols-3 items-center px-3 py-1 mb-4${justExitedReplay ? ' animate-scale-pop' : ''}`}>
-                  {/* Portcullis rail behind the controls: gate bars tuck
-                      behind the board (board wrapper is z-10), spikes hang
-                      where the divider line used to sit */}
-                  <PortcullisMesh />
-                  {/* Left: Lives - centered in left third */}
-                  <div className="flex items-center justify-center gap-1">
-                    <span className="text-stone-400 text-xs">Lives:</span>
-                    <div className="flex items-center gap-0.5">
-                      {(() => {
-                        const puzzleLives = currentPuzzle.lives ?? 3;
-                        const isUnlimitedLives = puzzleLives === 0;
-
-                        if (isUnlimitedLives) {
-                          return <span className="text-base lg:text-lg text-copper-400" title="Unlimited lives">&#x221E;</span>;
-                        }
-
-                        const hearts = [];
-                        for (let i = 0; i < puzzleLives; i++) {
-                          const isFilled = i < livesRemaining;
-                          const customIcon = isFilled ? themeAssets.iconHeart : themeAssets.iconHeartEmpty;
-
-                          if (customIcon) {
-                            // Use integer pixel sizes for crisp pixel art (14px width)
-                            hearts.push(
-                              <img
-                                key={i}
-                                src={customIcon}
-                                alt={isFilled ? 'Life remaining' : 'Life lost'}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                                style={{
-                                  width: '14px',
-                                  height: '16px',
-                                  opacity: isFilled ? 1 : 0.4,
-                                  imageRendering: 'pixelated'
-                                }}
-                              />
-                            );
-                          } else {
-                            hearts.push(
-                              <span
-                                key={i}
-                                className={`text-sm lg:text-base ${isFilled ? 'heart-filled' : 'heart-empty'}`}
-                                title={isFilled ? 'Life remaining' : 'Life lost'}
-                              >
-                                &#x2665;
-                              </span>
-                            );
-                          }
-                        }
-                        return hearts;
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* Center: Play button OR Turn counter OR Test mode indicator - centered in middle third */}
-                  <div className="flex justify-center">
-                    {testMode !== 'none' ? (
-                      // Test mode indicator — a larger cut of the same stone
-                      // as the Test button that started it
-                      <div className="gem-plate flex items-center gap-2 px-4 py-1">
-                        <GemMesh tone={testMode === 'enemies' ? 'ruby' : 'amethyst'} phase={testMode === 'enemies' ? 200 : 90} />
-                        <span className="text-xs font-medium">
-                          Testing {testMode === 'enemies' ? 'Enemies' : 'Heroes'}
-                        </span>
-                        <span className="text-lg font-bold">
-                          {testTurnsRemaining}
-                        </span>
-                      </div>
-                    ) : gameState.gameStatus === 'setup' ? (
-                      themeAssets.actionButtonPlayImage ? (
-                        <button
-                          onClick={handlePlay}
-                          className={`relative transition-all ${gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:scale-105 active:scale-95'}`}
-                        >
-                          <img
-                            src={themeAssets.actionButtonPlayImage}
-                            alt="Play"
-                            className="h-6 lg:h-8 w-auto"
-                            style={{ imageRendering: 'pixelated' }}
-                          />
-                        </button>
-                      ) : (
-                        <button
-                          onClick={handlePlay}
-                          className={`gem-btn min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all flex items-center justify-center !py-0 ${
-                            gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
-                          }`}
-                          style={{ minHeight: 'unset' }}
-                        >
-                          {/* Emerald stone — supersedes the legacy flat theme
-                              colors for this button (custom theme IMAGES still
-                              win via the branch above) */}
-                          <GemMesh tone="emerald" phase={0} />
-                          <span>Play</span>
-                        </button>
-                      )
-                    ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
-                        {(() => {
-                          const maxTurns = currentPuzzle.maxTurns;
-                          const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
-                          const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
-                          const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
-
-                          return (
-                            <>
-                              <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
-                                isVeryNearLimit
-                                  ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
-                                  : isNearLimit
-                                  ? 'text-rust-400'
-                                  : 'text-copper-400 text-shadow-glow-copper'
-                              }`}>
-                                {gameState.currentTurn}
-                              </span>
-                              {maxTurns && (
-                                <span className={`text-xs lg:text-sm ${
-                                  isNearLimit ? 'text-blood-400' : 'text-stone-500'
-                                }`}>
-                                  / {maxTurns}
-                                </span>
-                              )}
-                            </>
-                          );
-                        })()}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Right: Max Turns OR Concede button - centered in right third */}
-                  <div className="flex items-center justify-center">
-                    {gameState.gameStatus === 'setup' || testMode !== 'none' ? (
-                      gameState.puzzle.maxTurns && (
-                        <div className="flex items-center gap-1">
-                          <span className="text-stone-400 text-xs">Max Turns:</span>
-                          <span className="text-xs lg:text-sm text-parchment-300 font-medium">{gameState.puzzle.maxTurns}</span>
-                        </div>
-                      )
-                    ) : (
-                      <button
-                        onClick={() => setShowConcedeConfirm(true)}
-                        className="gem-btn text-xs px-2 py-1"
-                        title="Give up this attempt and lose a life"
-                      >
-                        {/* Orange topaz — matches the gem action-button set */}
-                        <GemMesh tone="topaz" phase={300} />
-                        <span>Concede</span>
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </>
-            )}
-
             {/* Replay Controls - replace hero placement area during replay */}
             {replayMode ? (
               <div className={dismissingReplay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}>
