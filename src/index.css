@@ -1511,39 +1511,32 @@ html body.theme-font-active,
 /* Static-logo torch lighting. Canvas logos shade their own pixels in-draw
    (navTorchLight.ts); a static img gets the same scene from two copies —
    a darkened base plus a right-masked warm copy. The mask rides the copy's
-   own alpha, so no light paints against the wall behind it. Mobile only:
-   desktop is the clean flat bar with the untouched sprite. */
+   own alpha, so no light paints against the wall behind it. All viewports:
+   the sprite carries its torch scene onto the desktop bar too. */
 .nav-sprite-torchlit {
   position: relative;
   display: inline-block;
 }
 
+.nav-sprite-torchlit > img:first-child {
+  filter: brightness(0.38) saturate(0.85);
+}
+
 .nav-sprite-torchlit-lit {
-  display: none;
   position: absolute;
   top: 0;
   left: 0;
+  -webkit-mask-image: linear-gradient(100deg, transparent 42%, #000 82%);
+  mask-image: linear-gradient(100deg, transparent 42%, #000 82%);
+  filter: sepia(0.25) saturate(1.2) brightness(1.05);
 }
 
-@media (max-width: 767px) {
-  .nav-sprite-torchlit > img:first-child {
-    filter: brightness(0.38) saturate(0.85);
-  }
-  .nav-sprite-torchlit-lit {
-    display: block;
-    -webkit-mask-image: linear-gradient(100deg, transparent 42%, #000 82%);
-    mask-image: linear-gradient(100deg, transparent 42%, #000 82%);
-    filter: sepia(0.25) saturate(1.2) brightness(1.05);
-  }
-}
-
-/* Title glimmers out of the dark wall — a breathing gold glow that rides
-   the same slow, uneven rhythm as the lintel's torch pool (7s, both
-   flicker rather than pulse). Mobile only: desktop is the clean flat bar. */
-@media (max-width: 767px) {
-  .nav-title-glimmer {
-    animation: nav-title-glimmer 7s ease-in-out infinite;
-  }
+/* Title glimmers out of the dark — a breathing gold glow that rides the
+   same slow, uneven rhythm as the lintel's torch pool (7s, both flicker
+   rather than pulse). All viewports: desktop keeps its flat bar, but the
+   title and sprite carry the torch scene there too. */
+.nav-title-glimmer {
+  animation: nav-title-glimmer 7s ease-in-out infinite;
 }
 
 @keyframes nav-title-glimmer {

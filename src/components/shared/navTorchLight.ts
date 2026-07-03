@@ -8,15 +8,11 @@
 // shading lands ONLY on the sprite's own pixels — an overlay element would
 // ghost a rectangle against the wall (rendering lesson #4).
 //
-// Desktop keeps the clean flat bar and the untouched sprite, so the pass
-// is gated on the mobile breakpoint — checked per frame (it's a cheap
-// cached MediaQueryList read), so rotating a tablet updates live.
-
-const mobileMq = typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)') : null;
+// All viewports: desktop keeps its clean flat bar, but the sprite (and
+// title glimmer) carry the torch scene there too — user call 2026-07-02.
 
 /** Shade a just-drawn navbar sprite frame into the lintel's torchlight. */
 export function applyNavTorchLight(ctx: CanvasRenderingContext2D, w: number, h: number): void {
-  if (!mobileMq?.matches) return;
   ctx.globalCompositeOperation = 'source-atop';
   // Shadow, heaviest on the side facing away from the torch
   const shadow = ctx.createLinearGradient(0, 0, w, 0);
