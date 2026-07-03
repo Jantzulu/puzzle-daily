@@ -1631,6 +1631,22 @@ html body.theme-font-active,
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
 
+/* The gate's bottom rung on pages WITHOUT the play page's control rail:
+   the utility row swaps its beam for the SAME PortcullisMesh, mapped onto
+   its row exactly as the rail maps onto the control panel (rail band =
+   the row box, bars 62.5% up, spikes 37.5% down — .control-rail-mesh's
+   ratios), so the gate bottoms out identically on every page. z:-1 tucks
+   the rising bars behind the beam above, mirroring the play page where
+   the rail's tips tuck behind the menu (wrapper z-40 < nav z-50). No
+   drop-shadow: the control rail casts none. */
+.nav-gate-item > svg.nav-gate-rail-mesh {
+  top: -62.5%;
+  bottom: auto;
+  height: 200%;
+  z-index: -1;
+  filter: none;
+}
+
 /* Shared frosted pill for nav utility buttons (sound / cloud / profile) —
    matches the plank-label pills and the compendium capsule */
 .nav-pill {

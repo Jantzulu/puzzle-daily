@@ -16,11 +16,12 @@ import { IRON } from '../game/PortcullisMesh';
 // next item's beam paints over the incoming bar tips (later siblings render
 // above earlier ones), which is exactly how a lattice reads. The FIRST
 // item's bars instead reach up and slide behind the navbar (its bar is
-// z-10). The menu has NO bottom of its own: the game page's control rail
-// (PortcullisMesh, spiked) IS the gate's bottom — its rising bars meet the
-// last beam's from below, so open menu + rail read as one solid
-// portcullis. On pages without the rail the short stubs read as a raised
-// gate whose bottom is out of sight.
+// z-10). On the play page the menu has NO bottom of its own: the control
+// rail (PortcullisMesh, spiked) IS the gate's bottom — its rising bars meet
+// the last beam's from below, so open menu + rail read as one solid
+// portcullis. On every other page the utility row swaps its beam for that
+// same mesh (nav-gate-rail-mesh), so the gate bottoms out with the
+// identical spiked rail everywhere.
 //
 // Bar x fractions (10/30/50/70/90%) and ~3% widths MATCH PortcullisMesh —
 // on mobile both elements render at the same width, so the columns align.

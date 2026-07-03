@@ -48,9 +48,12 @@ const BAR_XS = [100, 300, 500, 700, 900];
 const BAR_HALF = 15;   // bar half-width (3% of viewBox, matches the menu)
 const SPIKE_HALF = 22; // spike half-width at the root
 
-export const PortcullisMesh: React.FC = () => (
+// className is swappable: the mobile menu renders this same mesh as its
+// bottom rung on pages without the control rail (nav-gate-rail-mesh) —
+// the gate must bottom out with the identical spiked rail everywhere.
+export const PortcullisMesh: React.FC<{ className?: string }> = ({ className = 'control-rail-mesh' }) => (
   <svg
-    className="control-rail-mesh"
+    className={className}
     viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
     preserveAspectRatio="none"
     aria-hidden="true"

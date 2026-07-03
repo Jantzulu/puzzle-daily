@@ -11,6 +11,7 @@ import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
 import { GateBeamMesh } from './components/shared/GateMesh';
+import { PortcullisMesh } from './components/game/PortcullisMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { LoginPage } from './components/auth/LoginPage';
@@ -325,7 +326,12 @@ function PlayerNavigation() {
           (the control rail below rides the push as the gate's bottom). */}
       <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}`}>
         <div>
-          <div className="pt-4 pb-3 px-4 space-y-2">
+          {/* pb: on the play page the control rail below the menu is the
+              gate's bottom (pb-3 = 12px tunes the beam-to-rail gap, see
+              Game.tsx); everywhere else the utility row IS the spiked
+              bottom rail and pb-6 keeps its hanging spikes (37.5% of the
+              row's height) inside .menu-gate's clip edge. */}
+          <div className={`pt-4 px-4 space-y-2 ${isActive('/') ? 'pb-3' : 'pb-6'}`}>
             {navItems.map((item, i) => (
               <Link
                 key={item.to}
@@ -343,9 +349,12 @@ function PlayerNavigation() {
                 </span>
               </Link>
             ))}
-            {/* Utility row rides the gate's last beam */}
+            {/* Utility row: on the play page it rides a plain beam (the
+                control rail below the menu is the gate's spiked bottom);
+                on every other page it IS the bottom rail — the same
+                PortcullisMesh the control panel wears, spikes and all. */}
             <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
-              <GateBeamMesh />
+              {isActive('/') ? <GateBeamMesh /> : <PortcullisMesh className="nav-gate-rail-mesh" />}
               <SoundSettings isMobile />
               <UserMenu />
             </div>
