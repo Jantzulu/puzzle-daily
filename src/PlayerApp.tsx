@@ -220,11 +220,14 @@ function PlayerNavigation() {
   return (
     <nav
       ref={navRef}
-      className="md:sticky md:top-0 z-50"
+      className="relative md:sticky md:top-0 z-50"
     >
       {/* Top bar: the clean flat bar at every width (stone-wall meshes were
-          retired) — no gold bottom border. The plank menu hangs below as
-          a sibling so it can't stretch the bar. */}
+          retired) — no gold bottom border. The gate menu hangs below as
+          a sibling so it can't stretch the bar. NOTE: the nav is `relative`
+          at every width — z-50 needs a positioned element, and with
+          md:sticky alone it was inert on mobile, letting the control
+          rail's rising bars (z-40) paint over the navbar. */}
       <div
         className={`relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon transition-shadow duration-300 ${
           // eslint-disable-next-line react-hooks/refs

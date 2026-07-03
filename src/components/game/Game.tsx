@@ -2631,19 +2631,13 @@ export const Game: React.FC<GameProps> = ({
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             */}
-            {/* Quest banner — a flag draped on the dungeon's bottom wall
-                (user call 2026-07-03): pulled up over the board so the rod
-                lines up with the seam between the wall's lit face and its
-                dark base. --board-wall-h is published by AnimatedGameBoard
-                at the current zoom, so the drape tracks the art on any
-                device; the 0.83/-8px pair places the rod on the seam
-                (tuned against the rendered wall). z-20 > board's z-10 so
-                the cloth lies ON the wall. Not sticky. */}
+            {/* Quest banner — hangs BENEATH the dungeon (the wall-drape
+                overlap was tried 2026-07-03 and rejected same night): rod
+                mounts under the board, quest text and side quests read
+                where the old control panel sat. Not sticky; only the
+                portcullis rail above the board floats. */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div
-                className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1"
-                style={{ marginTop: 'calc(var(--board-wall-h, 0px) * -0.83 - 15px)' }}
-              >
+              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative overflow-visible mb-1">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
