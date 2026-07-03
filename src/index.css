@@ -1486,6 +1486,11 @@ html body.theme-font-active,
 .menu-gate {
   display: grid;
   grid-template-rows: 0fr;
+  /* end-aligned: mid-transition the fr track lags the box height by a few
+     frames and the slack would sit BELOW the row, floating the gate off
+     the control rail. Anchoring the row to the box bottom keeps the
+     lattice's bottom glued to the rail through the whole motion. */
+  align-content: end;
   visibility: hidden;
   transition:
     grid-template-rows 0.45s cubic-bezier(0.5, 0, 0.75, 0.5),
@@ -1505,6 +1510,21 @@ html body.theme-font-active,
 .menu-gate > div {
   overflow: hidden;
   min-height: 0;
+  /* Pin the lattice to the BOTTOM of the clip box: as the row grows the
+     content slides DOWN from under the navbar — bottom beam first, always
+     in contact with the control rail riding the push below. Top-anchored
+     (the default) revealed beams top-first while the rail moved away,
+     opening a gap mid-gate and breaking the solid-object illusion. */
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+
+/* The lattice itself must NOT flex-shrink to the clip box (shrinking
+   squashed the stack and let the bottom beam drift off the rail mid-
+   animation) — keep natural height and let the box clip the top. */
+.menu-gate > div > div {
+  flex-shrink: 0;
 }
 
 .control-rail-mesh {
