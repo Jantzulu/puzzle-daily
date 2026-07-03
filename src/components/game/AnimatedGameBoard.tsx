@@ -771,6 +771,12 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     };
   }, []);
 
+  // Rendered CSS height of the board's bottom border wall, published as
+  // --board-wall-h on <html> so page chrome can align to the board's ART
+  // (the quest banner drapes its rod along the wall's seam). Cached so the
+  // style write happens only when zoom/border actually change.
+  const lastWallCssRef = useRef<number | null>(null);
+
   // Offscreen static-layer bake (border + tiles + wall AO) — rebuilt when
   // the signature in the animate loop changes. See staticBake.ts (toggle).
   const staticBakeRef = useRef<{
@@ -1233,6 +1239,16 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const integerZoom = Math.max(1, Math.floor((TILE_SIZE * rawEffectiveScale) / ART_TILE_PX));
       const physicalTileSize = integerZoom * ART_TILE_PX;
       const quantizedScale = physicalTileSize / TILE_SIZE;
+
+      // Publish the bottom wall's rendered CSS height (--board-wall-h) so
+      // page chrome can align to the board's art regardless of zoom — the
+      // quest banner drapes its rod along the wall's face seam. Guarded:
+      // writes only when zoom or border presence actually changes.
+      const wallCss = hasBorderForScale ? (BORDER_SIZE * quantizedScale) / dpr : 0;
+      if (wallCss !== lastWallCssRef.current) {
+        lastWallCssRef.current = wallCss;
+        document.documentElement.style.setProperty('--board-wall-h', `${wallCss.toFixed(1)}px`);
+      }
 
       // Disable image smoothing for crisp pixel art
       ctx.imageSmoothingEnabled = false;

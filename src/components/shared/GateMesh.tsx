@@ -17,10 +17,10 @@ import { IRON } from '../game/PortcullisMesh';
 // above earlier ones), which is exactly how a lattice reads. The FIRST
 // item's bars instead reach up and slide behind the navbar (its bar is
 // z-10). The menu has NO bottom of its own: the game page's control rail
-// (PortcullisMesh, spiked) IS the gate's bottom — the LAST beam's bars
-// reach further down to meet the rail's rising bars, so open menu + rail
-// read as one solid portcullis. On pages without the rail the long stubs
-// just run off toward the content — a raised gate, bottom out of sight.
+// (PortcullisMesh, spiked) IS the gate's bottom — its rising bars meet the
+// last beam's from below, so open menu + rail read as one solid
+// portcullis. On pages without the rail the short stubs read as a raised
+// gate whose bottom is out of sight.
 //
 // Bar x fractions (10/30/50/70/90%) and ~3% widths MATCH PortcullisMesh —
 // on mobile both elements render at the same width, so the columns align.
@@ -35,12 +35,14 @@ const BEAM_BOT = 44;
 const BAR_XS = [40, 120, 200, 280, 360];
 const BAR_HALF = 6;
 
-export const GateBeamMesh: React.FC<{ first?: boolean; last?: boolean }> = ({ first = false, last = false }) => {
-  // First: reach up through the menu's top padding to the navbar.
-  // Last: reach down through the menu's bottom padding toward the
-  // control rail's rising bars (the gate's one true bottom).
+export const GateBeamMesh: React.FC<{ first?: boolean }> = ({ first = false }) => {
+  // First: reach up through the menu's top padding to the navbar. Every
+  // beam (including the last) extends the same +12 below — the control
+  // rail's own rising bars bridge the remaining gap from underneath, and
+  // because the rail's wrapper is z-40 vs the nav's z-50, those rising
+  // tips tuck BEHIND this beam, never over it.
   const barTop = first ? -26 : 0;
-  const barBot = last ? VIEW_H + 30 : VIEW_H + 12;
+  const barBot = VIEW_H + 12;
   return (
     <svg
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}

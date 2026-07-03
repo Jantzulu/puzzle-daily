@@ -470,7 +470,7 @@ function Navigation() {
           ))}
           {/* Utility row rides the gate's spiked bottom rail */}
           <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
-            <GateBeamMesh last />
+            <GateBeamMesh />
             <SoundSettings isMobile />
             {isCreator && <CloudSyncButton />}
             <UserMenu />

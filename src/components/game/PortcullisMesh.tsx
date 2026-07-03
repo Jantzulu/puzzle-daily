@@ -66,17 +66,21 @@ export const PortcullisMesh: React.FC = () => (
     ))}
 
     {/* The rail: dark under-frame, flat face, lit top edge. The face band
-        is where the DOM controls live. */}
+        is where the DOM controls live. Layer proportions mirror the menu
+        beams' (GateMesh) at rendered-pixel scale: ~2.5px top inset, ~2.5px
+        highlight, ~4.2px bottom lip — the bottom rung must not read as a
+        different make of iron than the rungs above it. */}
     <rect x="0" y={RAIL_TOP} width={VIEW_W} height={RAIL_BOT - RAIL_TOP} fill={IRON.dark} />
-    <rect x="0" y={RAIL_TOP + 3} width={VIEW_W} height={RAIL_BOT - RAIL_TOP - 8} fill={IRON.face} />
-    <rect x="0" y={RAIL_TOP + 3} width={VIEW_W} height="3.5" fill={IRON.highlight} />
+    <rect x="0" y={RAIL_TOP + 2.5} width={VIEW_W} height={RAIL_BOT - RAIL_TOP - 6.7} fill={IRON.face} />
+    <rect x="0" y={RAIL_TOP + 2.5} width={VIEW_W} height="2.5" fill={IRON.highlight} />
 
     {/* Square forge plates bolting each bar to the rail. Non-square units
-        here (viewBox squashes): ~22u wide × 7u tall renders square. */}
+        here (viewBox squashes): ~22u wide × 7u tall renders square. Same
+        11px offset from the beam top as the menu beams' plates. */}
     {BAR_XS.map((x, i) => (
       <g key={`rivet${i}`}>
-        <rect x={x - 11} y="30" width="22" height="7" fill={IRON.lit} />
-        <rect x={x - 7} y="31.2" width="14" height="4.6" fill={IRON.body} />
+        <rect x={x - 11} y="31" width="22" height="7" fill={IRON.lit} />
+        <rect x={x - 7} y="32.2" width="14" height="4.6" fill={IRON.body} />
       </g>
     ))}
 

@@ -1986,10 +1986,12 @@ export const Game: React.FC<GameProps> = ({
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              // z-[60] beats the navbar's z-50 so the rail floats over
-              // everything while stuck; quest-panel-sticky handles the top
-              // offset per breakpoint (below the sticky navbar on desktop).
-              <div className="w-full flex flex-col items-center sticky top-0 z-[60] quest-panel-sticky">
+              // z-[40]: above the board (z-10) so the spikes hang over the
+              // dungeon, but BELOW the nav (z-50) so the rising gate bars
+              // can never paint on top of the navbar or the open menu's
+              // beams — bar tips always tuck behind. quest-panel-sticky
+              // handles the top offset per breakpoint.
+              <div className="w-full flex flex-col items-center sticky top-0 z-[40] quest-panel-sticky">
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the
@@ -1997,13 +1999,14 @@ export const Game: React.FC<GameProps> = ({
                   floats over the board on scroll, its bars reaching up
                   toward the navbar, its spikes hanging over the dungeon. */}
               {!replayMode && (
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mt-3 mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
-                  {/* Portcullis rail: mt-3 leaves a gap below the navbar so
-                      the rising gate bars show before tucking behind it
-                      (navbar z-10); when the mobile menu opens, its beams
-                      stack above and this rail is the gate's spiked BOTTOM.
-                      Spikes hang over the dungeon (wrapper z-60 > board
-                      z-10). */}
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mt-[5px] mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+                  {/* Portcullis rail: mt-[3px] is tuned so that with the
+                      mobile menu OPEN (menu pb-3 = 12px above this), the
+                      beam-to-beam gap between the menu's last beam and this
+                      rail matches the menu's own rung spacing — one
+                      equidistant lattice with this rail as the spiked
+                      bottom. Spikes hang over the dungeon (wrapper z-40 >
+                      board z-10). */}
                   <PortcullisMesh />
                   {/* Left: Lives - centered in left third */}
                   <div className="flex items-center justify-center gap-1">
@@ -2628,12 +2631,19 @@ export const Game: React.FC<GameProps> = ({
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             */}
-            {/* Quest banner — hangs BELOW the dungeon now (user call
-                2026-07-03): the rod mounts under the board, quest text and
-                side quests read where the old control panel sat. Not
-                sticky; only the portcullis rail above the board floats. */}
+            {/* Quest banner — a flag draped on the dungeon's bottom wall
+                (user call 2026-07-03): pulled up over the board so the rod
+                lines up with the seam between the wall's lit face and its
+                dark base. --board-wall-h is published by AnimatedGameBoard
+                at the current zoom, so the drape tracks the art on any
+                device; the 0.83/-8px pair places the rod on the seam
+                (tuned against the rendered wall). z-20 > board's z-10 so
+                the cloth lies ON the wall. Not sticky. */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative overflow-visible mb-1">
+              <div
+                className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative z-20 overflow-visible mb-1"
+                style={{ marginTop: 'calc(var(--board-wall-h, 0px) * -0.83 - 15px)' }}
+              >
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
