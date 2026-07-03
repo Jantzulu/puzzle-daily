@@ -14,6 +14,7 @@ import { isTileActiveOnTurn } from '../../engine/actions';
 import { subscribeToImageLoads, loadImage, isImageReady } from '../../utils/imageLoader';
 import { blobShadowsEnabled, drawBlobShadow, drawDeathBlobShadow, drawProjectileBlobShadow } from './blobShadows';
 import { wallAOEnabled, drawWallAO, AO_VOID_OCCLUDES } from './wallAO';
+import { staticBakeEnabled } from './staticBake';
 
 // Movement action types - entities with these actions should show direction arrow
 const MOVEMENT_ACTIONS = new Set([
@@ -752,16 +753,33 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
     }
   }, [gameState.puzzle.id, gameState.puzzle.enemies.length]);
 
-  // Force re-render when images finish loading
+  // Force re-render when images finish loading. Also bumps the static-bake
+  // image version: the bake must resign once tile/border sprites become
+  // .complete (drawTile silently skips images still loading).
   const [, forceUpdate] = useState(0);
+  const imageVersionRef = useRef(0);
   useEffect(() => {
-    const unsubscribe1 = subscribeToImageLoads(() => forceUpdate(n => n + 1));
-    const unsubscribe2 = subscribeToSpriteImageLoads(() => forceUpdate(n => n + 1));
+    const onLoad = () => {
+      imageVersionRef.current++;
+      forceUpdate(n => n + 1);
+    };
+    const unsubscribe1 = subscribeToImageLoads(onLoad);
+    const unsubscribe2 = subscribeToSpriteImageLoads(onLoad);
     return () => {
       unsubscribe1();
       unsubscribe2();
     };
   }, []);
+
+  // Offscreen static-layer bake (border + tiles + wall AO) — rebuilt when
+  // the signature in the animate loop changes. See staticBake.ts (toggle).
+  const staticBakeRef = useRef<{
+    canvas: HTMLCanvasElement;
+    sig: string;
+    tiles: unknown;
+    borderConfig: unknown;
+    skinOverride: unknown;
+  } | null>(null);
 
   // Force re-render after puzzle loads to ensure images are displayed
   // This handles the case where images finish loading before the component subscribes
@@ -1237,11 +1255,6 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       const offsetX = hasBorder ? SIDE_BORDER_SIZE : 0;
       const offsetY = hasBorder ? BORDER_SIZE : 0;
 
-      // Draw border first (if enabled)
-      if (hasBorder) {
-        drawBorder(ctx, gameState.puzzle.width, gameState.puzzle.height, borderStyle, gameState.puzzle.borderConfig, gameState.puzzle.tiles);
-      }
-
       // Save context and translate for grid rendering
       ctx.save();
       ctx.translate(offsetX, offsetY);
@@ -1266,45 +1279,63 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
         onProjectileKill();
       }
 
-      // Draw tiles
-      for (let y = 0; y < gameState.puzzle.height; y++) {
-        for (let x = 0; x < gameState.puzzle.width; x++) {
-          const tile = gameState.puzzle.tiles[y][x];
-          if (tile) {
-            drawTile(ctx, x, y, tile.type, tileSprites, tile, customTileSprites, isEditor, gameState.currentTurn, gameState.tileStates);
-          } else {
-            // Draw void/null tile
-            drawVoidTile(ctx, x, y);
+      // Static layers (border + tiles + wall AO) change per turn, not per
+      // frame — bake to an offscreen canvas once and blit. The signature
+      // holds everything that shapes the raster. tileStates is CONTENT-
+      // signed, not identity-compared: trigger processing mutates the Map
+      // in place mid-turn (getTileState in actions.ts), so identity alone
+      // would go stale. imageVersion covers tile/border sprites finishing
+      // async loads (drawTile skips images that aren't .complete yet).
+      if (staticBakeEnabled()) {
+        const overrideSig = gameState.tileStates
+          ? [...gameState.tileStates.entries()].map(([k, v]) => `${k}:${v.overrideState ?? ''}`).join()
+          : '';
+        const sig = [
+          canvas.width, canvas.height, quantizedScale, gameState.currentTurn,
+          borderStyle, isEditor, wallAOEnabled(), imageVersionRef.current,
+          gameState.puzzle.skinId ?? '', overrideSig,
+        ].join('|');
+        const prev = staticBakeRef.current;
+        if (
+          !prev || prev.sig !== sig ||
+          prev.tiles !== gameState.puzzle.tiles ||
+          prev.borderConfig !== gameState.puzzle.borderConfig ||
+          prev.skinOverride !== skinOverride
+        ) {
+          const bake = prev?.canvas ?? document.createElement('canvas');
+          if (bake.width !== canvas.width) bake.width = canvas.width;
+          if (bake.height !== canvas.height) bake.height = canvas.height;
+          const bctx = bake.getContext('2d');
+          if (bctx) {
+            bctx.clearRect(0, 0, bake.width, bake.height);
+            bctx.imageSmoothingEnabled = false;
+            bctx.save();
+            bctx.scale(quantizedScale, quantizedScale);
+            drawStaticLayers(bctx, gameState.puzzle, gameState.currentTurn, gameState.tileStates, tileSprites, customTileSprites, isEditor, hasBorder, borderStyle, offsetX, offsetY);
+            bctx.restore();
           }
+          staticBakeRef.current = {
+            canvas: bake,
+            sig,
+            tiles: gameState.puzzle.tiles,
+            borderConfig: gameState.puzzle.borderConfig,
+            skinOverride,
+          };
         }
-      }
-
-      // Wall-contact ambient occlusion: darken floor edges bordering walls or
-      // voids so the dungeon reads as carved rather than tiled. Per-tile local
-      // neighbor checks only — no wall tracing, floor pixels only, the walls'
-      // own rendering is untouched. See wallAO.ts (toggleWallAO() to compare).
-      if (wallAOEnabled()) {
-        const tilesGrid = gameState.puzzle.tiles;
-        const isOccluder = (tx: number, ty: number): boolean => {
-          // Beyond the map counts as wall — matches the 3D dungeon border
-          if (tx < 0 || ty < 0 || ty >= gameState.puzzle.height || tx >= gameState.puzzle.width) return true;
-          const t = tilesGrid[ty][tx];
-          if (!t) return AO_VOID_OCCLUDES;
-          return t.type === TileType.WALL;
-        };
-        for (let y = 0; y < gameState.puzzle.height; y++) {
-          for (let x = 0; x < gameState.puzzle.width; x++) {
-            const t = tilesGrid[y][x];
-            if (!t || t.type === TileType.WALL) continue; // AO lands on floor only
-            drawWallAO(ctx, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, {
-              n: isOccluder(x, y - 1),
-              w: isOccluder(x - 1, y),
-              e: isOccluder(x + 1, y),
-              nw: isOccluder(x - 1, y - 1),
-              ne: isOccluder(x + 1, y - 1),
-            });
-          }
-        }
+        // Blit in raw physical pixels — the bake was rendered at full res,
+        // so this is an exact 1:1 copy with no resampling.
+        ctx.save();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
+        ctx.drawImage(staticBakeRef.current!.canvas, 0, 0);
+        ctx.restore();
+      } else {
+        // Live A/B path (toggleStaticBake() off): identical drawing straight
+        // onto the board. The main ctx is already translated for the grid;
+        // the helper manages its own translate, so step back out first.
+        ctx.save();
+        ctx.translate(-offsetX, -offsetY);
+        drawStaticLayers(ctx, gameState.puzzle, gameState.currentTurn, gameState.tileStates, tileSprites, customTileSprites, isEditor, hasBorder, borderStyle, offsetX, offsetY);
+        ctx.restore();
       }
 
       // Draw objects below entities (sorted by y for proper layering)
@@ -1742,6 +1773,77 @@ function easeInOutQuad(t: number): number {
 // ==========================================
 // BORDER RENDERING
 // ==========================================
+
+// ============================================================================
+// STATIC LAYERS (border + tiles + wall AO)
+// ============================================================================
+// Everything here changes per TURN (cadence, trigger overrides, turn clones)
+// or on asset/skin changes — never per animation frame. The animate loop
+// bakes this to an offscreen canvas and blits it each frame; with the bake
+// toggled off (toggleStaticBake()) it draws live through this same function,
+// so the two paths cannot drift. Expects a ctx already scaled to the board's
+// quantized scale but NOT translated for the border inset.
+function drawStaticLayers(
+  ctx: CanvasRenderingContext2D,
+  puzzle: GameState['puzzle'],
+  currentTurn: number,
+  tileStates: Map<string, import('../../types/game').TileRuntimeState> | undefined,
+  tileSprites: TileSprites | undefined,
+  customTileSprites: { [customTileTypeId: string]: string | { onSprite?: string; offSprite?: string } } | undefined,
+  isEditor: boolean,
+  hasBorder: boolean,
+  borderStyle: string,
+  offsetX: number,
+  offsetY: number,
+) {
+  if (hasBorder) {
+    drawBorder(ctx, puzzle.width, puzzle.height, borderStyle, puzzle.borderConfig, puzzle.tiles);
+  }
+  ctx.save();
+  ctx.translate(offsetX, offsetY);
+
+  for (let y = 0; y < puzzle.height; y++) {
+    for (let x = 0; x < puzzle.width; x++) {
+      const tile = puzzle.tiles[y][x];
+      if (tile) {
+        drawTile(ctx, x, y, tile.type, tileSprites, tile, customTileSprites, isEditor, currentTurn, tileStates);
+      } else {
+        // Draw void/null tile
+        drawVoidTile(ctx, x, y);
+      }
+    }
+  }
+
+  // Wall-contact ambient occlusion: darken floor edges bordering walls or
+  // voids so the dungeon reads as carved rather than tiled. Per-tile local
+  // neighbor checks only — no wall tracing, floor pixels only, the walls'
+  // own rendering is untouched. See wallAO.ts (toggleWallAO() to compare).
+  if (wallAOEnabled()) {
+    const tilesGrid = puzzle.tiles;
+    const isOccluder = (tx: number, ty: number): boolean => {
+      // Beyond the map counts as wall — matches the 3D dungeon border
+      if (tx < 0 || ty < 0 || ty >= puzzle.height || tx >= puzzle.width) return true;
+      const t = tilesGrid[ty][tx];
+      if (!t) return AO_VOID_OCCLUDES;
+      return t.type === TileType.WALL;
+    };
+    for (let y = 0; y < puzzle.height; y++) {
+      for (let x = 0; x < puzzle.width; x++) {
+        const t = tilesGrid[y][x];
+        if (!t || t.type === TileType.WALL) continue; // AO lands on floor only
+        drawWallAO(ctx, x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, {
+          n: isOccluder(x, y - 1),
+          w: isOccluder(x - 1, y),
+          e: isOccluder(x + 1, y),
+          nw: isOccluder(x - 1, y - 1),
+          ne: isOccluder(x + 1, y - 1),
+        });
+      }
+    }
+  }
+
+  ctx.restore();
+}
 
 function drawBorder(
   ctx: CanvasRenderingContext2D,
