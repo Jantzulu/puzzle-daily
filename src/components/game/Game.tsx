@@ -2003,13 +2003,14 @@ export const Game: React.FC<GameProps> = ({
               // beam's bottom lip + hanging spikes add visual mass below,
               // and dead-center read as riding high (user-tuned)
               <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-scale-pop' : ''}`}>
-                  {/* Portcullis rail: mt-[3px] is tuned so that with the
-                      mobile menu OPEN (menu pb-3 = 12px above this), the
-                      beam-to-beam gap between the menu's last beam and this
-                      rail matches the menu's own rung spacing — one
-                      equidistant lattice with this rail as the spiked
-                      bottom. Spikes hang over the dungeon (wrapper z-40 >
-                      board z-10). */}
+                  {/* Portcullis rail: with the mobile menu OPEN the sticky
+                      wrapper rides the gate's leading edge (translated by
+                      --gate-drop, see index.css), so this rail hangs
+                      pb-3 = 12px under the menu's last beam — the mt here
+                      is tuned so that beam-to-beam gap matches the menu's
+                      own rung spacing: one equidistant lattice with this
+                      rail as the spiked bottom. Spikes hang over the
+                      dungeon (wrapper z-40 > board z-10). */}
                   <PortcullisMesh />
                   {/* Left: Lives - centered in left third */}
                   <div className="flex items-center justify-center gap-1">

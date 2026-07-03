@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, lazy, Suspense } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspense } from 'react';
 import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
@@ -219,6 +219,36 @@ function Navigation() {
   const closeMobileMenu = useCallback(() => {
     setMobileMenuOpen(false);
   }, []);
+
+  // The gate's bottom: when the play page's control rail is mounted, the
+  // menu docks with it — the rail rides the gate's leading edge (the
+  // body class + --gate-drop below; CSS in index.css). When the rail is
+  // absent (victory hides it, replay swaps it out, other pages never
+  // have it) the utility row carries its own spiked rail instead.
+  // Sniffed at open time: NavBar has no line to Game's state, and the
+  // menu can't outlive an open (route changes close it).
+  const menuInnerRef = useRef<HTMLDivElement>(null);
+  const [dockRail, setDockRail] = useState(false);
+
+  useLayoutEffect(() => {
+    if (mobileMenuOpen) {
+      setDockRail(location.pathname === '/' && !!document.querySelector('.control-rail-mesh'));
+    }
+  }, [mobileMenuOpen, location.pathname]);
+
+  // Separate effect, AFTER dockRail settles: --gate-drop must measure the
+  // menu at its docked padding (pb-3), not the pb-6 it renders while
+  // undocked — a 12px docking error otherwise. Both layout effects flush
+  // before paint, so the rail's ride and the gate's drop start together.
+  useLayoutEffect(() => {
+    if (mobileMenuOpen && dockRail && menuInnerRef.current) {
+      document.body.style.setProperty('--gate-drop', `${menuInnerRef.current.offsetHeight}px`);
+      document.body.classList.add('menu-gate-lowered');
+    } else {
+      document.body.classList.remove('menu-gate-lowered');
+    }
+    return () => document.body.classList.remove('menu-gate-lowered');
+  }, [mobileMenuOpen, dockRail]);
 
   const toggleMobileMenu = useCallback(() => {
     if (mobileMenuOpen) {
@@ -449,15 +479,16 @@ function Navigation() {
 
       {/* Mobile menu — the portcullis lattice. Always mounted; .menu-gate
           transitions grid rows 0fr↔1fr so the whole gate lowers/rises at
-          true height (the page below rides the push). */}
+          true height, OVER the page (absolute — the courtyard doesn't
+          move; on the play page the control rail rides the drop as the
+          gate's bottom). */}
       <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}`}>
         <div>
-          {/* pb: on the play page the control rail below the menu is the
-              gate's bottom (pb-3 = 12px tunes the beam-to-rail gap, see
-              Game.tsx); everywhere else the utility row IS the spiked
-              bottom rail and pb-6 keeps its hanging spikes (37.5% of the
-              row's height) inside .menu-gate's clip edge. */}
-          <div className={`pt-4 px-4 space-y-2 ${isActive('/') ? 'pb-3' : 'pb-6'}`}>
+          {/* pb: when docked with the control rail, pb-3 = 12px tunes the
+              beam-to-rail gap (see Game.tsx); when the utility row IS the
+              spiked bottom rail, pb-6 keeps its hanging spikes (37.5% of
+              the row's height) inside .menu-gate's clip edge. */}
+          <div ref={menuInnerRef} className={`pt-4 px-4 space-y-2 ${dockRail ? 'pb-3' : 'pb-6'}`}>
             {/* One portcullis beam per nav item — opening the menu lowers
                 the gate. The first beam's bars reach up behind the navbar
                 (z-10). */}
@@ -477,12 +508,12 @@ function Navigation() {
                 </span>
               </Link>
             ))}
-            {/* Utility row: on the play page it rides a plain beam (the
-                control rail below the menu is the gate's spiked bottom);
-                on every other page it IS the bottom rail — the same
+            {/* Utility row: when the control rail is riding the gate below
+                us it rides a plain beam (the rail is the gate's spiked
+                bottom); otherwise it IS the bottom rail — the same
                 PortcullisMesh the control panel wears, spikes and all. */}
             <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
-              {isActive('/') ? <GateBeamMesh /> : <PortcullisMesh className="nav-gate-rail-mesh" />}
+              {dockRail ? <GateBeamMesh /> : <PortcullisMesh className="nav-gate-rail-mesh" />}
               <SoundSettings isMobile />
               {isCreator && <CloudSyncButton />}
               <UserMenu />
