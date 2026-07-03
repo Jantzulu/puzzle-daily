@@ -1568,20 +1568,22 @@ html body.theme-font-active,
   }
 }
 
-/* Mobile menu: one plank per nav item (PlankItemMesh), strung on rope
-   stubs. Labels are carved INTO the wood: dark fill with a lit lip below. */
-.nav-plank-item {
+/* Mobile menu: the portcullis lattice (GateBeamMesh) — one iron beam per
+   nav item, vertical gate bars bridging the gaps between items (drawn
+   outside each svg's viewBox, overflow visible), spiked bottom rail on
+   the last item. Opening the menu lowers the gate. */
+.nav-gate-item {
   position: relative;
 }
 
-.nav-plank-item > svg {
+.nav-gate-item > svg {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
   pointer-events: none;
   z-index: 0;
-  filter: drop-shadow(0 3px 5px rgba(0, 0, 0, 0.5));
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
 
 /* Shared frosted pill for nav utility buttons (sound / cloud / profile) —
@@ -1600,15 +1602,15 @@ html body.theme-font-active,
   border-color: rgba(228, 185, 106, 0.3);
 }
 
-/* Everything riding a plank sits above its wood */
-.nav-plank-item > :not(svg) {
+/* Everything riding a beam sits above its iron */
+.nav-gate-item > :not(svg) {
   position: relative;
   z-index: 1;
 }
 
-/* Labels ride the planks inside frosted pills — the same capsule language
-   as the compendium's floating tab bar — in the Knightly title's copper */
-.nav-plank-item > span {
+/* Labels ride the gate beams inside frosted pills — the same capsule
+   language as the compendium's floating tab bar — in the Knightly copper */
+.nav-gate-item > span {
   display: inline-block;
   font-family: 'Almendra', serif;
   font-weight: 700;
@@ -1625,12 +1627,12 @@ html body.theme-font-active,
   transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
 }
 
-.nav-plank-item:hover > span {
+.nav-gate-item:hover > span {
   color: #ebc097;
   border-color: rgba(228, 185, 106, 0.3);
 }
 
-.nav-plank-item-active > span {
+.nav-gate-item-active > span {
   color: #e4b96a;
   border-color: rgba(228, 185, 106, 0.4);
   box-shadow:

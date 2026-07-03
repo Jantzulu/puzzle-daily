@@ -6,7 +6,7 @@ import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
-import { PlankItemMesh } from './components/shared/PlankMesh';
+import { GateBeamMesh } from './components/shared/GateMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { GlobalSearch } from './components/shared/GlobalSearch';
@@ -316,7 +316,7 @@ function Navigation() {
           retired — the tiled masonry and then the lintel both lost to the
           plain bar). navbarStyle lives here, not on the nav (there it
           tinted the open-menu area). */}
-      <div className="relative bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon" style={navbarStyle}>
+      <div className="relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon" style={navbarStyle}>
       <div className="flex items-center gap-3 md:gap-4 relative z-10">
         {/* Logo/Title — pops off the wall */}
         <Link to="/" className="nav-pop flex items-center gap-2 md:gap-3 no-underline">
@@ -449,8 +449,9 @@ function Navigation() {
       {/* Mobile menu dropdown — hangs below the wall */}
       {mobileMenuOpen && (
         <div className={`md:hidden pt-4 pb-3 px-4 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
-          {/* One plank per nav item, strung by rope stubs; the top pair of
-              stubs (with knots) reaches up to the navbar wall */}
+          {/* One portcullis beam per nav item — opening the menu lowers the
+              gate. The first beam's bars reach up behind the navbar (z-10);
+              the last beam is the gate's spiked bottom rail. */}
           {navItems.map((item, i) => (
             <Link
               key={item.to}
@@ -458,18 +459,18 @@ function Navigation() {
               // Scroll home along with the collapse — routes don't reset
               // scroll, so same-page picks left the target out of view
               onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`nav-plank-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
+              className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
             >
-              <PlankItemMesh index={i} first={i === 0} />
+              <GateBeamMesh first={i === 0} />
               <span>
                 {item.label}
                 {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
               </span>
             </Link>
           ))}
-          {/* Utility row rides its own plank at the bottom of the sign */}
-          <div className="nav-plank-item px-8 py-2 flex items-center gap-2 justify-center">
-            <PlankItemMesh index={navItems.length} />
+          {/* Utility row rides the gate's spiked bottom rail */}
+          <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
+            <GateBeamMesh last />
             <SoundSettings isMobile />
             {isCreator && <CloudSyncButton />}
             <UserMenu />

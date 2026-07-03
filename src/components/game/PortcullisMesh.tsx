@@ -29,8 +29,9 @@ const hash = (i: number): number => {
   return s - Math.floor(s);
 };
 
-// Iron tones, shared with the banner rod's palette
-const IRON = {
+// Iron tones, shared with the banner rod's palette. Exported: the mobile
+// menu's gate beams (shared/GateMesh.tsx) are forged from the same iron.
+export const IRON = {
   dark: '#17130f',      // under-frame, shadowed metal
   body: '#2b2620',      // bar stock
   face: '#3b352d',      // rail face the controls sit on

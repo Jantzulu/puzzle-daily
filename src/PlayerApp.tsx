@@ -10,7 +10,7 @@ import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
-import { PlankItemMesh } from './components/shared/PlankMesh';
+import { GateBeamMesh } from './components/shared/GateMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
 import { LoginPage } from './components/auth/LoginPage';
@@ -226,7 +226,7 @@ function PlayerNavigation() {
           retired) — no gold bottom border. The plank menu hangs below as
           a sibling so it can't stretch the bar. */}
       <div
-        className={`relative bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon transition-shadow duration-300 ${
+        className={`relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon transition-shadow duration-300 ${
           // eslint-disable-next-line react-hooks/refs
           scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
         }`}
@@ -319,7 +319,9 @@ function PlayerNavigation() {
 
       </div>
 
-      {/* Mobile menu — the plank sign, ported from the dev app */}
+      {/* Mobile menu — the portcullis lattice: one beam per item, gate bars
+          running through the stack, spiked bottom rail on the utility row.
+          Opening the menu lowers the gate. */}
       {mobileMenuOpen && (
         <div className={`md:hidden pt-4 pb-3 px-4 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
           {navItems.map((item, i) => (
@@ -330,18 +332,18 @@ function PlayerNavigation() {
               // Play while already on / left the page stranded mid-scroll
               // with the board out of view (routes don't reset scroll).
               onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`nav-plank-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-plank-item-active' : ''}`}
+              className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
             >
-              <PlankItemMesh index={i} first={i === 0} />
+              <GateBeamMesh first={i === 0} />
               <span>
                 {item.label}
                 {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
               </span>
             </Link>
           ))}
-          {/* Utility row rides its own plank */}
-          <div className="nav-plank-item px-8 py-2 flex items-center gap-2 justify-center">
-            <PlankItemMesh index={navItems.length} />
+          {/* Utility row rides the gate's spiked bottom rail */}
+          <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
+            <GateBeamMesh last />
             <SoundSettings isMobile />
             <UserMenu />
           </div>
