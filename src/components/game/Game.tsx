@@ -2091,7 +2091,7 @@ export const Game: React.FC<GameProps> = ({
                       ) : (
                         <button
                           onClick={handlePlay}
-                          className={`gem-btn min-w-[100px] lg:min-w-[110px] h-10 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 ${
+                          className={`gem-btn w-[118px] lg:w-[132px] shrink-0 h-10 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 ${
                             gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           style={{ minHeight: 'unset' }}
@@ -2110,12 +2110,19 @@ export const Game: React.FC<GameProps> = ({
                       // engraving and breathes (gem-plate-aura). Text
                       // inherits the plate's Play-label ivory; the
                       // near-limit warning colors still take over.
-                      // px-5: the emerald's side facets slant inward — at
-                      // px-3 the first/last glyphs sat on the cut edges.
-                      // The label is ONE inline span so Turn/number/max
-                      // share a text baseline and can never wrap (the
-                      // "/ 100" once broke onto its own line mid-gem).
-                      <div className="gem-plate gem-plate-aura h-10 min-w-[100px] lg:min-w-[110px] px-5 flex items-center justify-center">
+                      // Width is LOCKED (w-[118px] lg:w-[132px]) and matches
+                      // the Play button exactly, so the stone never resizes
+                      // across setup→running or as the turn count gains
+                      // digits. shrink-0 is essential: without it the
+                      // center grid cell shrinks the fixed width back to
+                      // content size. Just clears the widest label
+                      // ("Turn 100 / 100" ≈ 83px text); games never exceed
+                      // 100 turns. px-4: enough to keep the first/last
+                      // glyphs off the emerald's slanted facets (px-3 was
+                      // too tight) without bloating the stone. The label is
+                      // ONE inline span so Turn/number/max share a baseline
+                      // and can never wrap.
+                      <div className="gem-plate gem-plate-aura h-10 w-[118px] lg:w-[132px] shrink-0 px-4 flex items-center justify-center">
                         <GemMesh tone="emerald" phase={0} />
                         <span className="whitespace-nowrap">
                           <span className="text-xs lg:text-sm font-medium opacity-80">Turn&nbsp;</span>
