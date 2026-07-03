@@ -2101,8 +2101,15 @@ export const Game: React.FC<GameProps> = ({
                         </button>
                       )
                     ) : (
-                      <div className="flex items-center gap-2">
-                        <span className="text-stone-400 text-xs lg:text-sm font-medium">Turn</span>
+                      // The turn counter rides the SAME emerald the Play
+                      // button was cut from (same size, phase, tone) — the
+                      // center stone never leaves, it just changes its
+                      // engraving and breathes (gem-plate-aura). Text
+                      // inherits the plate's Play-label ivory; the
+                      // near-limit warning colors still take over.
+                      <div className="gem-plate gem-plate-aura h-10 min-w-[100px] lg:min-w-[110px] px-3 flex items-center justify-center gap-1.5">
+                        <GemMesh tone="emerald" phase={0} />
+                        <span className="text-xs lg:text-sm font-medium opacity-80">Turn</span>
                         {(() => {
                           const maxTurns = currentPuzzle.maxTurns;
                           const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
@@ -2111,18 +2118,18 @@ export const Game: React.FC<GameProps> = ({
 
                           return (
                             <>
-                              <span className={`text-xl lg:text-2xl font-bold min-w-[2ch] text-center ${
+                              <span className={`text-base lg:text-lg font-bold min-w-[2ch] text-center ${
                                 isVeryNearLimit
                                   ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
                                   : isNearLimit
                                   ? 'text-rust-400'
-                                  : 'text-copper-400 text-shadow-glow-copper'
+                                  : ''
                               }`}>
                                 {gameState.currentTurn}
                               </span>
                               {maxTurns && (
                                 <span className={`text-xs lg:text-sm ${
-                                  isNearLimit ? 'text-blood-400' : 'text-stone-500'
+                                  isNearLimit ? 'text-blood-400' : 'opacity-70'
                                 }`}>
                                   / {maxTurns}
                                 </span>

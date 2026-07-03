@@ -1729,6 +1729,27 @@ html body.theme-font-active,
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.55)) brightness(0.9);
 }
 
+/* Turn counter rides the emerald during a run, and the stone breathes a
+   green aura. Slab-reminiscent but CHEAP: the slab animates stacked
+   drop-shadow filters (re-rasterizes every frame); this is a static
+   pre-blurred radial gradient on a pseudo-element with only its OPACITY
+   animated — compositor-only, no per-frame raster work. The gradient
+   fades to transparent well inside its box, so no ghost rectangle. */
+.gem-plate-aura::before {
+  content: '';
+  position: absolute;
+  inset: -16px -22px;
+  z-index: 0; /* same layer as the mesh, earlier in paint order — behind the stone */
+  background: radial-gradient(ellipse closest-side, rgba(74, 222, 128, 0.30), rgba(74, 222, 128, 0.10) 55%, transparent 78%);
+  animation: gem-aura-breathe 4s ease-in-out infinite;
+  pointer-events: none;
+}
+
+@keyframes gem-aura-breathe {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
 /* Shine band position follows page scroll (viewBox units). Each gem sets
    --gem-shine-phase so the band sits at a different point of its travel per
    stone — the light moves together but never gleams in unison. The longer
