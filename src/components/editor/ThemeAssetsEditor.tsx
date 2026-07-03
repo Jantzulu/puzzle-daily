@@ -23,10 +23,10 @@ import {
 const DEFAULT_COLORS: Partial<Record<ThemeAssetKey, string>> = {
   colorBgPrimary: '#0a0805',      // Page background (darkest)
   colorBgSecondary: '#2a2118',    // Panel background
-  colorBgNavbar: '#0d0b09',       // Navbar background — warm near-black, a
-                                  // step above the page bg; neutral greys
-                                  // (#141414) read as an off-palette grey
-                                  // bar, worst on OLED
+  colorBgNavbar: '#080706',       // Navbar background — warm, a whisper
+                                  // above the page bg (#0a0805 family);
+                                  // neutral greys (#141414) read as an
+                                  // off-palette grey bar, worst on OLED
   colorBgInput: '#15100a',        // Input/dark panel background
   colorBgPreview: '#1f1810',      // Preview/thumbnail background
   colorTextPrimary: '#f2e0b5',
