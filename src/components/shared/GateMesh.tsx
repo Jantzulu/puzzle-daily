@@ -16,30 +16,31 @@ import { IRON } from '../game/PortcullisMesh';
 // next item's beam paints over the incoming bar tips (later siblings render
 // above earlier ones), which is exactly how a lattice reads. The FIRST
 // item's bars instead reach up and slide behind the navbar (its bar is
-// z-10). The LAST item is the gate's bottom rail: bars stop at the beam and
-// forged spikes hang beneath it.
+// z-10). The menu has NO bottom of its own: the game page's control rail
+// (PortcullisMesh, spiked) IS the gate's bottom — the LAST beam's bars
+// reach further down to meet the rail's rising bars, so open menu + rail
+// read as one solid portcullis. On pages without the rail the long stubs
+// just run off toward the content — a raised gate, bottom out of sight.
+//
+// Bar x fractions (10/30/50/70/90%) and ~3% widths MATCH PortcullisMesh —
+// on mobile both elements render at the same width, so the columns align.
 
 const VIEW_W = 400;
 const VIEW_H = 52;
 const BEAM_TOP = 8;
 const BEAM_BOT = 44;
 
-const hash = (i: number): number => {
-  const s = Math.sin((i + 47) * 12.9898) * 43758.5453;
-  return s - Math.floor(s);
-};
-
 // Vertical bars — same x positions on every item so segments line up into
 // continuous bars down the whole menu (all items share width and viewBox)
 const BAR_XS = [40, 120, 200, 280, 360];
 const BAR_HALF = 6;
-const SPIKE_HALF = 9;
 
 export const GateBeamMesh: React.FC<{ first?: boolean; last?: boolean }> = ({ first = false, last = false }) => {
   // First: reach up through the menu's top padding to the navbar.
-  // Last: the gate ends here — bars stop at the beam, spikes take over.
+  // Last: reach down through the menu's bottom padding toward the
+  // control rail's rising bars (the gate's one true bottom).
   const barTop = first ? -26 : 0;
-  const barBot = last ? BEAM_BOT : VIEW_H + 12;
+  const barBot = last ? VIEW_H + 30 : VIEW_H + 12;
   return (
     <svg
       viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
@@ -69,16 +70,8 @@ export const GateBeamMesh: React.FC<{ first?: boolean; last?: boolean }> = ({ fi
         </g>
       ))}
 
-      {/* Bottom rail only: forged spikes hang beneath the gate's last beam */}
-      {last && BAR_XS.map((x, i) => {
-        const tip = 57 + hash(i) * 3;
-        return (
-          <g key={`spike${i}`}>
-            <polygon points={`${x - SPIKE_HALF},${BEAM_BOT} ${x},${BEAM_BOT} ${x},${tip.toFixed(1)}`} fill={IRON.face} />
-            <polygon points={`${x},${BEAM_BOT} ${x + SPIKE_HALF},${BEAM_BOT} ${x},${tip.toFixed(1)}`} fill={IRON.dark} />
-          </g>
-        );
-      })}
+      {/* No spikes here — the game page's control rail is the gate's one
+          spiked bottom; a second set read as two competing gate bottoms. */}
     </svg>
   );
 };

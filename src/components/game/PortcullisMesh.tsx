@@ -39,10 +39,14 @@ export const IRON = {
   highlight: 'rgba(255, 235, 200, 0.22)',
 };
 
-// One gate bar every 100 units; a spike is forged under each bar
-const BAR_XS = [50, 150, 250, 350, 450, 550, 650, 750, 850, 950];
-const BAR_HALF = 8;    // bar half-width
-const SPIKE_HALF = 11; // spike half-width at the root
+// Gate bars at the SAME width fractions as the mobile menu's beams
+// (GateMesh BAR_XS [40,120,200,280,360]/400 = 10/30/50/70/90%) and the
+// same ~3% pixel width — on mobile the two elements share their rendered
+// width, so the menu's lattice flows straight into this rail and the whole
+// thing reads as ONE gate whose spiked bottom is this control rail.
+const BAR_XS = [100, 300, 500, 700, 900];
+const BAR_HALF = 15;   // bar half-width (3% of viewBox, matches the menu)
+const SPIKE_HALF = 22; // spike half-width at the root
 
 export const PortcullisMesh: React.FC = () => (
   <svg
@@ -51,12 +55,13 @@ export const PortcullisMesh: React.FC = () => (
     preserveAspectRatio="none"
     aria-hidden="true"
   >
-    {/* Gate bars rising behind the board. Left edge lit, right in shade. */}
+    {/* Gate bars rising toward the navbar. Left edge lit, right in shade.
+        (Strip width 7u ≈ the menu beams' 3u at their wider unit scale.) */}
     {BAR_XS.map((x, i) => (
       <g key={`bar${i}`}>
         <rect x={x - BAR_HALF} y="0" width={BAR_HALF * 2} height={RAIL_TOP + 4} fill={IRON.body} />
-        <rect x={x - BAR_HALF} y="0" width="4" height={RAIL_TOP + 4} fill={IRON.lit} />
-        <rect x={x + BAR_HALF - 4} y="0" width="4" height={RAIL_TOP + 4} fill={IRON.dark} />
+        <rect x={x - BAR_HALF} y="0" width="7" height={RAIL_TOP + 4} fill={IRON.lit} />
+        <rect x={x + BAR_HALF - 7} y="0" width="7" height={RAIL_TOP + 4} fill={IRON.dark} />
       </g>
     ))}
 
@@ -66,11 +71,12 @@ export const PortcullisMesh: React.FC = () => (
     <rect x="0" y={RAIL_TOP + 3} width={VIEW_W} height={RAIL_BOT - RAIL_TOP - 8} fill={IRON.face} />
     <rect x="0" y={RAIL_TOP + 3} width={VIEW_W} height="3.5" fill={IRON.highlight} />
 
-    {/* Square forge plates bolting each bar to the rail */}
+    {/* Square forge plates bolting each bar to the rail. Non-square units
+        here (viewBox squashes): ~22u wide × 7u tall renders square. */}
     {BAR_XS.map((x, i) => (
       <g key={`rivet${i}`}>
-        <rect x={x - 5} y="31" width="10" height="10" fill={IRON.lit} />
-        <rect x={x - 3.5} y="32.5" width="8.5" height="8.5" fill={IRON.body} />
+        <rect x={x - 11} y="30" width="22" height="7" fill={IRON.lit} />
+        <rect x={x - 7} y="31.2" width="14" height="4.6" fill={IRON.body} />
       </g>
     ))}
 

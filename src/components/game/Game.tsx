@@ -1986,149 +1986,24 @@ export const Game: React.FC<GameProps> = ({
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              // z-[60] beats the navbar's z-50 so the banner rod always paints
-              // OVER the navbar's gold bottom border. No slide-down-wrapper
-              // class: it was overflow:hidden for the old panel's slide and
-              // clipped the rod's overhang for its first second (the "pop").
+              // z-[60] beats the navbar's z-50 so the rail floats over
+              // everything while stuck; quest-panel-sticky handles the top
+              // offset per breakpoint (below the sticky navbar on desktop).
               <div className="w-full flex flex-col items-center sticky top-0 z-[60] quest-panel-sticky">
-              {/* pb-4 + -mb-2: the shortened hem drapes onto the portcullis
-                  rail below (banner z-10 > rail z-0) with a sliver of gate
-                  bar showing between hem and rail. NOTE: these two move
-                  together — shrink the banner by X and reduce the negative
-                  margin by X and the rail keeps its exact flow position,
-                  only the bar reveal changes. */}
-              <div className="-mb-2 w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner -mt-[3px] relative z-10 overflow-visible">
-                {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
-                <BannerMesh />
-                {/* Puzzle Number & Quest Row */}
-                {puzzleNumber && (
-                  <div className="text-center mb-0.5">
-                    <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-copper-400/70">
-                      Puzzle #{puzzleNumber}
-                    </span>
-                  </div>
-                )}
-                <div className="flex items-center justify-center gap-2 flex-wrap">
-                    {/* Back to Editor — only when caller (e.g. MapEditor playtest) provides
-                        the callback. Player builds never pass this, so the button doesn't render. */}
-                    {onExitToEditor && (
-                      <button
-                        onClick={onExitToEditor}
-                        className="dungeon-btn px-2.5 py-1 text-xs flex items-center gap-1 flex-shrink-0"
-                        title="Back to Editor"
-                      >
-                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M19 12H5M12 19l-7-7 7-7" />
-                        </svg>
-                        <span className="hidden md:inline">Editor</span>
-                      </button>
-                    )}
-                    {/* Combat Log — editor-only, opens MapEditor's combat-log modal.
-                        Same feature-gate pattern as Back to Editor — caller-provided
-                        callback is the trigger; player builds don't pass it. */}
-                    {onShowCombatLog && (
-                      <button
-                        onClick={onShowCombatLog}
-                        className="dungeon-btn px-2.5 py-1 text-xs flex items-center gap-1 flex-shrink-0"
-                        title="View combat log"
-                      >
-                        <span className="text-sm leading-none">📜</span>
-                        <span className="hidden md:inline">Log</span>
-                      </button>
-                    )}
-                    <HelpButton sectionId="game_general" />
-                    <span key={shimmerKey} className="shimmer-container">
-                      <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
-                      <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
-                      {gameState.puzzle.winConditions.map((wc) => {
-                        switch (wc.type) {
-                          case 'defeat_all_enemies': {
-                            const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
-                            return `Defeat all Enemies (${enemyCount})`;
-                          }
-                          case 'defeat_boss': {
-                            const bossEnemies = gameState.puzzle.enemies
-                              .filter(e => {
-                                const enemy = loadEnemy(e.enemyId);
-                                return enemy?.isBoss && !e.dead;
-                              })
-                              .map(e => loadEnemy(e.enemyId)!);
-                            const bossCount = bossEnemies.length;
-                            const bossNames = bossEnemies.map(enemy => enemy.name);
-                            if (bossNames.length === 0) return 'Defeat the Boss';
-                            if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
-                            return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
-                          }
-                          case 'collect_all': {
-                            const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
-                            return `Collect all Items (${collectibleCount})`;
-                          }
-                          case 'collect_keys': {
-                            const keyCount = gameState.puzzle.collectibles.filter(c => {
-                              if (!c.collectibleId) return false;
-                              const collectible = loadCollectible(c.collectibleId);
-                              return collectible?.effects?.some(e => e.type === 'win_key') && !c.collected;
-                            }).length;
-                            return `Collect all Keys (${keyCount})`;
-                          }
-                          case 'reach_goal':
-                            return 'Reach the Exit';
-                          case 'survive_turns':
-                            return `Survive ${wc.params?.turns ?? 10} Turns`;
-                          case 'win_in_turns':
-                            return `Win within ${wc.params?.turns ?? 10} Turns`;
-                          case 'max_characters':
-                            return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
-                          case 'characters_alive':
-                            return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
-                          default:
-                            return wc.type;
-                        }
-                      }).join(' & ')}
-                      </span>
-                    </span>
-                  </div>
-
-                {/* Side Quests Display */}
-                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
-                  const completedQuestIds = gameState.gameStatus === 'running'
-                    ? checkSideQuests(gameState)
-                    : [];
-
-                  return (
-                    <div className="flex items-center justify-center gap-1 md:gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
-                      <HelpButton sectionId="side_quests" />
-                      <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
-                      <span className="text-xs md:text-sm text-arcane-300">
-                        {gameState.puzzle.sideQuests.map((q, i) => {
-                          const isCompleted = completedQuestIds.includes(q.id);
-                          return (
-                            <span
-                              key={q.id}
-                              className={isCompleted ? 'text-moss-400' : ''}
-                            >
-                              {i > 0 && ', '}
-                              {isCompleted && '✓ '}
-                              {q.title} <span className={isCompleted ? 'text-moss-500' : 'text-arcane-500'}>(+{q.bonusPoints})</span>
-                            </span>
-                          );
-                        })}
-                      </span>
-                    </div>
-                  );
-                })()}
-              </div>
+              {/* (The quest banner used to hang here — it now hangs BELOW
+                  the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the
-                  portcullis rail. Inside the sticky wrapper so the gate
-                  travels WITH the banner on scroll; the game-status gate is
-                  the wrapper's own conditional, only replay hides the rail. */}
+                  portcullis rail. The rail is the ONLY sticky element: it
+                  floats over the board on scroll, its bars reaching up
+                  toward the navbar, its spikes hanging over the dungeon. */}
               {!replayMode && (
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
-                  {/* Portcullis rail under the banner: the hem drapes over
-                      the rail's top edge (banner z-10 > rail z-0 inside the
-                      shared sticky wrapper), gate bars peek through the
-                      tatter gaps, forged spikes hang over the dungeon
-                      entrance (wrapper z-60 > board z-10) */}
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mt-3 mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+                  {/* Portcullis rail: mt-3 leaves a gap below the navbar so
+                      the rising gate bars show before tucking behind it
+                      (navbar z-10); when the mobile menu opens, its beams
+                      stack above and this rail is the gate's spiked BOTTOM.
+                      Spikes hang over the dungeon (wrapper z-60 > board
+                      z-10). */}
                   <PortcullisMesh />
                   {/* Left: Lives - centered in left third */}
                   <div className="flex items-center justify-center gap-1">
@@ -2753,6 +2628,134 @@ export const Game: React.FC<GameProps> = ({
               <path d="M40 0 L40 16 Q36 4 24 0 Z" fill="#a97545" stroke="#c4915c" strokeWidth="1" />
             </svg>
             */}
+            {/* Quest banner — hangs BELOW the dungeon now (user call
+                2026-07-03): the rod mounts under the board, quest text and
+                side quests read where the old control panel sat. Not
+                sticky; only the portcullis rail above the board floats. */}
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative overflow-visible mb-1">
+                {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
+                <BannerMesh />
+                {/* Puzzle Number & Quest Row */}
+                {puzzleNumber && (
+                  <div className="text-center mb-0.5">
+                    <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-copper-400/70">
+                      Puzzle #{puzzleNumber}
+                    </span>
+                  </div>
+                )}
+                <div className="flex items-center justify-center gap-2 flex-wrap">
+                    {/* Back to Editor — only when caller (e.g. MapEditor playtest) provides
+                        the callback. Player builds never pass this, so the button doesn't render. */}
+                    {onExitToEditor && (
+                      <button
+                        onClick={onExitToEditor}
+                        className="dungeon-btn px-2.5 py-1 text-xs flex items-center gap-1 flex-shrink-0"
+                        title="Back to Editor"
+                      >
+                        <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M19 12H5M12 19l-7-7 7-7" />
+                        </svg>
+                        <span className="hidden md:inline">Editor</span>
+                      </button>
+                    )}
+                    {/* Combat Log — editor-only, opens MapEditor's combat-log modal.
+                        Same feature-gate pattern as Back to Editor — caller-provided
+                        callback is the trigger; player builds don't pass it. */}
+                    {onShowCombatLog && (
+                      <button
+                        onClick={onShowCombatLog}
+                        className="dungeon-btn px-2.5 py-1 text-xs flex items-center gap-1 flex-shrink-0"
+                        title="View combat log"
+                      >
+                        <span className="text-sm leading-none">📜</span>
+                        <span className="hidden md:inline">Log</span>
+                      </button>
+                    )}
+                    <HelpButton sectionId="game_general" />
+                    <span key={shimmerKey} className="shimmer-container">
+                      <span className="text-base md:text-lg lg:text-xl font-semibold text-stone-400">Quest:</span>
+                      <span className="text-sm md:text-base lg:text-lg text-copper-300 font-medium">
+                      {gameState.puzzle.winConditions.map((wc) => {
+                        switch (wc.type) {
+                          case 'defeat_all_enemies': {
+                            const enemyCount = gameState.puzzle.enemies.filter(e => !e.dead).length;
+                            return `Defeat all Enemies (${enemyCount})`;
+                          }
+                          case 'defeat_boss': {
+                            const bossEnemies = gameState.puzzle.enemies
+                              .filter(e => {
+                                const enemy = loadEnemy(e.enemyId);
+                                return enemy?.isBoss && !e.dead;
+                              })
+                              .map(e => loadEnemy(e.enemyId)!);
+                            const bossCount = bossEnemies.length;
+                            const bossNames = bossEnemies.map(enemy => enemy.name);
+                            if (bossNames.length === 0) return 'Defeat the Boss';
+                            if (bossNames.length === 1) return `Defeat ${bossNames[0]}`;
+                            return `Defeat ${bossNames.slice(0, -1).join(', ')} & ${bossNames[bossNames.length - 1]} (${bossCount})`;
+                          }
+                          case 'collect_all': {
+                            const collectibleCount = gameState.puzzle.collectibles.filter(c => !c.collected).length;
+                            return `Collect all Items (${collectibleCount})`;
+                          }
+                          case 'collect_keys': {
+                            const keyCount = gameState.puzzle.collectibles.filter(c => {
+                              if (!c.collectibleId) return false;
+                              const collectible = loadCollectible(c.collectibleId);
+                              return collectible?.effects?.some(e => e.type === 'win_key') && !c.collected;
+                            }).length;
+                            return `Collect all Keys (${keyCount})`;
+                          }
+                          case 'reach_goal':
+                            return 'Reach the Exit';
+                          case 'survive_turns':
+                            return `Survive ${wc.params?.turns ?? 10} Turns`;
+                          case 'win_in_turns':
+                            return `Win within ${wc.params?.turns ?? 10} Turns`;
+                          case 'max_characters':
+                            return `Use at most ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''}`;
+                          case 'characters_alive':
+                            return `Keep ${wc.params?.characterCount ?? 1} Hero${(wc.params?.characterCount ?? 1) > 1 ? 'es' : ''} alive`;
+                          default:
+                            return wc.type;
+                        }
+                      }).join(' & ')}
+                      </span>
+                    </span>
+                  </div>
+
+                {/* Side Quests Display */}
+                {gameState.puzzle.sideQuests && gameState.puzzle.sideQuests.length > 0 && (() => {
+                  const completedQuestIds = gameState.gameStatus === 'running'
+                    ? checkSideQuests(gameState)
+                    : [];
+
+                  return (
+                    <div className="flex items-center justify-center gap-1 md:gap-2 mt-2 pt-2 border-t border-stone-700 flex-wrap">
+                      <HelpButton sectionId="side_quests" />
+                      <span className="text-sm md:text-base font-semibold text-arcane-400">Side Quests:</span>
+                      <span className="text-xs md:text-sm text-arcane-300">
+                        {gameState.puzzle.sideQuests.map((q, i) => {
+                          const isCompleted = completedQuestIds.includes(q.id);
+                          return (
+                            <span
+                              key={q.id}
+                              className={isCompleted ? 'text-moss-400' : ''}
+                            >
+                              {i > 0 && ', '}
+                              {isCompleted && '✓ '}
+                              {q.title} <span className={isCompleted ? 'text-moss-500' : 'text-arcane-500'}>(+{q.bonusPoints})</span>
+                            </span>
+                          );
+                        })}
+                      </span>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
+
             {/* Replay Controls - replace hero placement area during replay */}
             {replayMode ? (
               <div className={dismissingReplay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}>
