@@ -1486,10 +1486,10 @@ html body.theme-font-active,
    the rail's sticky wrapper translates down that far, hanging at the
    gate's leading edge exactly where the old in-flow push left it (the
    pb-3 + mt-[5px] tuning is unchanged). Duration/easing pairs MUST match
-   .menu-gate / .menu-gate-open so gate and rail lower as one iron
-   object; the rail's rising bars (~30px of overlap tucked behind the
-   beams) mask a frame of layout-vs-compositor skew. Mobile-only: the
-   gate doesn't exist at md+. */
+   the .menu-gate transform rules below so gate and rail lower as one
+   iron object — both are compositor transforms, so with matching curves
+   they stay frame-locked even when the main thread stutters. Mobile-only:
+   the gate doesn't exist at md+. */
 @media (max-width: 767px) {
   .quest-panel-sticky {
     transition: transform 0.8s cubic-bezier(0.5, 0, 0.75, 0.5);
@@ -1500,74 +1500,70 @@ html body.theme-font-active,
   }
 }
 
-/* Whole-gate menu open/close: grid-template-rows 0fr↔1fr interpolates the
-   TRUE content height at constant speed (the old max-height keyframes
-   spent most of their time above the real height, so the visible motion
-   was one fast jump). The gate is absolutely anchored under the bar and
-   lowers OVER the page — a portcullis descends in front of the courtyard,
-   it doesn't shove it down. Out of flow it can't PUSH the play page's
-   control rail into dock, so the rail rides instead (see the
+/* Whole-gate menu open/close. The gate is absolutely anchored under the
+   bar and lowers OVER the page — a portcullis descends in front of the
+   courtyard, it doesn't shove it down. Out of flow it can't PUSH the
+   play page's control rail into dock, so the rail rides instead (see the
    .quest-panel-sticky docking rules); when the rail isn't mounted the
    utility row carries its own spiked bottom (nav-gate-rail-mesh).
-   Opening drops with gravity (ease-out
-   settle); closing is winched up (ease-in start) — both at a heavy-iron
-   pace. Padding lives on the INNERMOST div: the middle child must be
-   padding-free or the collapsed row keeps a padding-tall sliver. */
+
+   The reveal is a pure TRANSFORM: the container is a constant
+   full-height clip box whose top is definitionally the navbar's bottom
+   edge, and the lattice translates -100%↔0 inside it. Transform keeps
+   the whole move on the COMPOSITOR, frame-locked with the control
+   rail's ride — the previous grid-template-rows 0fr↔1fr height reveal
+   ran on the main thread (layout per frame) and lagged the rail's
+   compositor transform under load, so the docked panel visibly ran
+   ahead of the rungs. It also retires that era's fr-track machinery
+   (align-content:end, flex-end pinning, shrink locks — the track lagged
+   the box by up to ~80px mid-transition and every fix bred another).
+   Bottom-anchoring is free here: the lattice's bottom edge IS the
+   leading edge of a -100%→0 slide.
+
+   Opening drops with gravity (ease-out settle); closing is winched up
+   (ease-in start) — both at a heavy-iron pace, duration/easing paired
+   with the .quest-panel-sticky ride rules above. */
 .menu-gate {
   position: absolute;
   top: 100%;
   left: 0;
   right: 0;
-  display: grid;
-  grid-template-rows: 0fr;
-  /* end-aligned: mid-transition the fr track lags the box height by a few
-     frames and the slack would sit BELOW the row, floating the gate's
-     bottom rail off the leading edge of the reveal. Anchoring the row to
-     the box bottom keeps the lattice's bottom on that edge through the
-     whole motion. */
-  align-content: end;
-  /* Clip on the CONTAINER, not the row: end-aligning parks the track's lag
-     slack ABOVE the row, and clipping at the row's top edge made each beam
-     surface/vanish a few px BELOW the navbar, flashing background through
-     the slack. The container's top is definitionally the navbar's bottom;
-     the bottom-anchored lattice spills up through the slack and is cut
-     exactly at the bar. */
   overflow: hidden;
   visibility: hidden;
-  transition:
-    grid-template-rows 0.8s cubic-bezier(0.5, 0, 0.75, 0.5),
-    visibility 0s 0.8s;
-}
-
-.menu-gate-open {
-  grid-template-rows: 1fr;
-  visibility: visible;
-  /* Moderate start + soft landing: an aggressive ease-out front-loaded
-     half the travel into the first 40ms — a slam, not a lowering */
-  transition:
-    grid-template-rows 0.9s cubic-bezier(0.45, 0.3, 0.25, 1),
-    visibility 0s;
+  transition: visibility 0s 0.8s;
 }
 
 .menu-gate > div {
-  min-height: 0;
-  /* Pin the lattice to the BOTTOM of the box: as the row grows the
-     content slides DOWN from under the navbar — spiked bottom rail first,
-     riding the reveal's leading edge. Top-anchored (the default) revealed
-     beams top-first while the leading edge moved away, opening a gap
-     mid-gate and breaking the solid-object illusion.
-     No overflow:hidden here — the lattice must overflow this box's top
-     so .menu-gate's own clip edge (the navbar bottom) does the cutting. */
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
+  transform: translateY(-100%);
+  transition: transform 0.8s cubic-bezier(0.5, 0, 0.75, 0.5);
 }
 
-/* The lattice itself must NOT flex-shrink to the box (shrinking
-   squashed the stack and let the bottom beam drift off the rail mid-
-   animation) — keep natural height and let .menu-gate clip the top. */
-.menu-gate > div > div {
-  flex-shrink: 0;
+.menu-gate-open {
+  visibility: visible;
+  transition: visibility 0s;
+}
+
+.menu-gate-open > div {
+  transform: translateY(0);
+  /* Moderate start + soft landing: an aggressive ease-out front-loaded
+     half the travel into the first 40ms — a slam, not a lowering */
+  transition: transform 0.9s cubic-bezier(0.45, 0.3, 0.25, 1);
+}
+
+/* Instant dismissal — a link was tapped: the destination page appears
+   and the gate is simply gone (a 0.8s winch-up while the page changes
+   underneath read as lag). Only the hamburger X keeps the animated
+   close. The body-level twin snaps the control rail home the same way.
+   Same specificity as the rules above — these must stay AFTER them. */
+.menu-gate-instant,
+.menu-gate-instant > div {
+  transition: none;
+}
+
+@media (max-width: 767px) {
+  body.menu-gate-instant .quest-panel-sticky {
+    transition: none;
+  }
 }
 
 .control-rail-mesh {
@@ -1662,7 +1658,13 @@ html body.theme-font-active,
   width: 100%;
   height: 100%;
   pointer-events: none;
-  z-index: 0;
+  /* 1, not 0: the bottom rail mesh sits at 0 so its rising bars tuck
+     BEHIND these beams. NO negative z anywhere in the gate — a z:-1 rail
+     paints fine per spec (still inside the nav's z-50 context) but
+     WebKit mis-sorts negative z against composited page layers (the
+     compendium slab's animated aura filter), dropping the gate's bottom
+     behind the page. Contents ride above both at 2. */
+  z-index: 1;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.5));
 }
 
@@ -1670,15 +1672,15 @@ html body.theme-font-active,
    the utility row swaps its beam for the SAME PortcullisMesh, mapped onto
    its row exactly as the rail maps onto the control panel (rail band =
    the row box, bars 62.5% up, spikes 37.5% down — .control-rail-mesh's
-   ratios), so the gate bottoms out identically on every page. z:-1 tucks
-   the rising bars behind the beam above, mirroring the play page where
-   the rail's tips tuck behind the menu (wrapper z-40 < nav z-50). No
-   drop-shadow: the control rail casts none. */
+   ratios), so the gate bottoms out identically on every page. z:0 under
+   the beams' z:1 tucks the rising bars behind the beam above, mirroring
+   the play page where the rail's tips tuck behind the menu (wrapper
+   z-40 < nav z-50). No drop-shadow: the control rail casts none. */
 .nav-gate-item > svg.nav-gate-rail-mesh {
   top: -62.5%;
   bottom: auto;
   height: 200%;
-  z-index: -1;
+  z-index: 0;
   filter: none;
 }
 
@@ -1698,10 +1700,10 @@ html body.theme-font-active,
   border-color: rgba(228, 185, 106, 0.3);
 }
 
-/* Everything riding a beam sits above its iron */
+/* Everything riding a beam sits above its iron (beams z:1, rail z:0) */
 .nav-gate-item > :not(svg) {
   position: relative;
-  z-index: 1;
+  z-index: 2;
 }
 
 /* Labels ride the gate beams inside frosted pills — the same capsule

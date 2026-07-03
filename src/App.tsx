@@ -216,7 +216,12 @@ function Navigation() {
 
   // No dismissing state/timeout anymore: the menu is always mounted and
   // .menu-gate's CSS transition animates the close on class removal.
-  const closeMobileMenu = useCallback(() => {
+  // instant=true (link taps) skips the winch-up entirely — the gate is
+  // just gone as the destination page appears; only the hamburger X
+  // plays the animated close. The flag clears on the next open.
+  const [instantClose, setInstantClose] = useState(false);
+  const closeMobileMenu = useCallback((instant = false) => {
+    setInstantClose(instant);
     setMobileMenuOpen(false);
   }, []);
 
@@ -241,19 +246,27 @@ function Navigation() {
   // undocked — a 12px docking error otherwise. Both layout effects flush
   // before paint, so the rail's ride and the gate's drop start together.
   useLayoutEffect(() => {
+    const body = document.body;
+    // Instant twin BEFORE dropping the ride class: both land in the same
+    // style recalc, so the rail snaps home instead of winching up.
+    body.classList.toggle('menu-gate-instant', !mobileMenuOpen && instantClose);
     if (mobileMenuOpen && dockRail && menuInnerRef.current) {
-      document.body.style.setProperty('--gate-drop', `${menuInnerRef.current.offsetHeight}px`);
-      document.body.classList.add('menu-gate-lowered');
+      body.style.setProperty('--gate-drop', `${menuInnerRef.current.offsetHeight}px`);
+      body.classList.add('menu-gate-lowered');
     } else {
-      document.body.classList.remove('menu-gate-lowered');
+      body.classList.remove('menu-gate-lowered');
     }
-    return () => document.body.classList.remove('menu-gate-lowered');
-  }, [mobileMenuOpen, dockRail]);
+    return () => {
+      body.classList.remove('menu-gate-lowered');
+      body.classList.remove('menu-gate-instant');
+    };
+  }, [mobileMenuOpen, dockRail, instantClose]);
 
   const toggleMobileMenu = useCallback(() => {
     if (mobileMenuOpen) {
       closeMobileMenu();
     } else {
+      setInstantClose(false);
       setMobileMenuOpen(true);
     }
   }, [mobileMenuOpen, closeMobileMenu]);
@@ -482,7 +495,7 @@ function Navigation() {
           true height, OVER the page (absolute — the courtyard doesn't
           move; on the play page the control rail rides the drop as the
           gate's bottom). */}
-      <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}`}>
+      <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
         <div>
           {/* pb: when docked with the control rail, pb-3 = 12px tunes the
               beam-to-rail gap (see Game.tsx); when the utility row IS the
@@ -496,9 +509,11 @@ function Navigation() {
               <Link
                 key={item.to}
                 to={item.to}
-                // Scroll home along with the collapse — routes don't reset
-                // scroll, so same-page picks left the target out of view
-                onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                // Scroll home along with the dismissal — routes don't reset
+                // scroll, so same-page picks left the target out of view.
+                // instant: a tapped link means GO — no winch-up over the
+                // arriving page.
+                onClick={() => { closeMobileMenu(true); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
                 className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
               >
                 <GateBeamMesh first={i === 0} />
