@@ -144,27 +144,39 @@ export const BannerMesh: React.FC = () => {
           />
           <feComposite operator="in" in2="SourceGraphic" />
         </filter>
-        {/* Wind: animated turbulence displaces the hanging cloth organically */}
+        {/* Wind: animated turbulence displaces the hanging cloth organically.
+            DESKTOP ONLY: WebKit never animates the turbulence, so on iOS the
+            displacement is a frozen warp — invisible next to the hand-torn
+            hem — yet the ripple/sway animating the cloth THROUGH this chain
+            forced turbulence + displacement + blur to re-run every frame.
+            Mobile keeps just the in-chain shadow. */}
         <filter id={windId} x="-6%" y="-15%" width="112%" height="130%">
-          {/* One octave, LOW frequency: a couple of long slow undulations.
-              Higher frequencies made many small waves — jelly-wiggle, not
-              cloth billow. */}
-          <feTurbulence type="fractalNoise" baseFrequency="0.004 0.015" numOctaves="1" seed="7" result="w">
-            <animate
-              attributeName="baseFrequency"
-              values="0.004 0.015;0.006 0.024;0.004 0.015"
-              dur="8s"
-              repeatCount="indefinite"
-            />
-          </feTurbulence>
-          {/* Same long wavelengths, bigger amplitude: billow you can see */}
-          <feDisplacementMap in="SourceGraphic" in2="w" scale="22" xChannelSelector="R" yChannelSelector="G" result="cloth" />
+          {!isMobile && (
+            <feTurbulence type="fractalNoise" baseFrequency="0.004 0.015" numOctaves="1" seed="7" result="w">
+              {/* One octave, LOW frequency: a couple of long slow
+                  undulations. Higher frequencies made many small waves —
+                  jelly-wiggle, not cloth billow. */}
+              <animate
+                attributeName="baseFrequency"
+                values="0.004 0.015;0.006 0.024;0.004 0.015"
+                dur="8s"
+                repeatCount="indefinite"
+              />
+            </feTurbulence>
+          )}
+          {!isMobile && (
+            <feDisplacementMap in="SourceGraphic" in2="w" scale="22" xChannelSelector="R" yChannelSelector="G" result="cloth" />
+          )}
           {/* Shadows live INSIDE this filter chain: a CSS drop-shadow on the
               svg used the internal filter's rectangular REGION as its alpha
               source, ghosting a faint box around the banner. In-chain
               feDropShadow computes from the actual cloth alpha. */}
           {/* Black shadow only — a gold glow layer was tried and rejected */}
-          <feDropShadow in="cloth" dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.55)" />
+          {isMobile ? (
+            <feDropShadow dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.55)" />
+          ) : (
+            <feDropShadow in="cloth" dx="0" dy="6" stdDeviation="6" floodColor="rgba(0, 0, 0, 0.55)" />
+          )}
         </filter>
       </defs>
 
