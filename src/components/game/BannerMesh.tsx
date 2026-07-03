@@ -71,8 +71,21 @@ const drapePose = (seed: number, ampX: number, ampY: number): Array<[number, num
     ];
   });
 
-const OUTER_B = drapePose(80, 26, 16);
-const OUTER_C = drapePose(130, 26, 16);
+// Mobile runs the ripple/sway HOTTER: with no turbulence layer underneath,
+// the morphs are the entire wind there — and the banner is under half the
+// physical size, so equal amplitudes read as half the motion.
+const useIsMobile = (): boolean => {
+  const [mobile, setMobile] = React.useState<boolean>(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches
+  );
+  React.useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = () => setMobile(mq.matches);
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+  return mobile;
+};
 
 const RIPPLE = {
   dur: '8s',
@@ -98,6 +111,17 @@ export const BannerMesh: React.FC = () => {
   const clipId = `clip${uid}`;
   const grainId = `grain${uid}`;
   const windId = `wind${uid}`;
+  const isMobile = useIsMobile();
+  const ripA = pts(OUTER);
+  const ripB = React.useMemo(
+    () => pts(drapePose(80, isMobile ? 36 : 26, isMobile ? 22 : 16)),
+    [isMobile]
+  );
+  const ripC = React.useMemo(
+    () => pts(drapePose(130, isMobile ? 36 : 26, isMobile ? 22 : 16)),
+    [isMobile]
+  );
+  const swayValues = isMobile ? '0;-2.6;1.8;0' : '0;-1.8;1.2;0';
   return (
     <svg
       className="quest-banner-mesh"
@@ -108,7 +132,7 @@ export const BannerMesh: React.FC = () => {
       <defs>
         <clipPath id={clipId}>
           <polygon points={pts(OUTER)}>
-            <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
+            <PointsRipple a={ripA} b={ripB} c={ripC} />
           </polygon>
         </clipPath>
         <filter id={grainId}>
@@ -154,7 +178,7 @@ export const BannerMesh: React.FC = () => {
         <animateTransform
           attributeName="transform"
           type="skewX"
-          values="0;-1.8;1.2;0"
+          values={swayValues}
           keyTimes="0;0.38;0.72;1"
           calcMode="spline"
           keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1"
@@ -162,19 +186,19 @@ export const BannerMesh: React.FC = () => {
           repeatCount="indefinite"
         />
         <polygon points={pts(OUTER)} fill="#451614">
-          <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
+          <PointsRipple a={ripA} b={ripB} c={ripC} />
         </polygon>
 
         <g clipPath={`url(#${clipId})`}>
           {/* Weathered edge darkening */}
           <polygon points={pts(OUTER)} fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="16">
-            <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
+            <PointsRipple a={ripA} b={ripB} c={ripC} />
           </polygon>
         </g>
 
         {/* Weave grain */}
         <polygon points={pts(OUTER)} fill="#fff" filter={`url(#${grainId})`}>
-          <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
+          <PointsRipple a={ripA} b={ripB} c={ripC} />
         </polygon>
       </g>
 
