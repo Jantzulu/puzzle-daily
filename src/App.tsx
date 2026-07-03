@@ -6,6 +6,7 @@ import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { WallMesh } from './components/shared/WallMesh';
+import { applyNavTorchLight } from './components/shared/navTorchLight';
 import { PlankItemMesh } from './components/shared/PlankMesh';
 import { getLatestPostTimestamp } from './services/newsService';
 import { ToastContainer } from './components/shared/Toast';
@@ -161,6 +162,7 @@ function AnimatedLogo({ src, alt, frameCount, frameRate, className }: {
           frameIndexRef.current * frameWidth, 0, frameWidth, frameHeight,
           0, 0, frameWidth, frameHeight
         );
+        applyNavTorchLight(ctx, frameWidth, frameHeight);
 
         animationFrameId = requestAnimationFrame(animate);
       };
@@ -344,11 +346,19 @@ function Navigation() {
                 );
               } else {
                 return (
-                  <img
-                    src={logoSrc}
-                    alt={themeAssets.logoAlt || 'Logo'}
-                    className="h-8 md:h-12 w-auto object-contain flex-shrink-0"
-                  />
+                  <span className="nav-sprite-torchlit flex-shrink-0">
+                    <img
+                      src={logoSrc}
+                      alt={themeAssets.logoAlt || 'Logo'}
+                      className="h-8 md:h-12 w-auto object-contain"
+                    />
+                    <img
+                      src={logoSrc}
+                      alt=""
+                      aria-hidden="true"
+                      className="nav-sprite-torchlit-lit h-8 md:h-12 w-auto object-contain"
+                    />
+                  </span>
                 );
               }
             } else {
