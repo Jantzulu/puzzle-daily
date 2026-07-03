@@ -1999,7 +1999,7 @@ export const Game: React.FC<GameProps> = ({
                   floats over the board on scroll, its bars reaching up
                   toward the navbar, its spikes hanging over the dungeon. */}
               {!replayMode && (
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mt-[5px] mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-scale-pop' : ''}`}>
                   {/* Portcullis rail: mt-[3px] is tuned so that with the
                       mobile menu OPEN (menu pb-3 = 12px above this), the
                       beam-to-beam gap between the menu's last beam and this
@@ -2088,7 +2088,7 @@ export const Game: React.FC<GameProps> = ({
                       ) : (
                         <button
                           onClick={handlePlay}
-                          className={`gem-btn min-w-[80px] lg:min-w-[100px] h-6 lg:h-7 font-bold text-xs lg:text-sm transition-all flex items-center justify-center !py-0 ${
+                          className={`gem-btn min-w-[100px] lg:min-w-[110px] h-10 font-bold text-sm lg:text-base transition-all flex items-center justify-center !py-0 ${
                             gameState.placedCharacters.length === 0 ? 'opacity-50 cursor-not-allowed' : ''
                           }`}
                           style={{ minHeight: 'unset' }}

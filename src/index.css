@@ -1617,6 +1617,10 @@ html body.theme-font-active,
   font-size: 0.95rem;
   color: #d4a574; /* copper-400, the Knightly title color */
   padding: 0.15rem 0.85rem;
+  /* Center the pill on the BEAM: the item box centers it, but the beam
+     sits at 8–44 of the 52u viewBox and Almendra rides high in its line
+     box — measured 1.8px low against the beam's center. */
+  transform: translateY(-1.8px);
   border-radius: 999px;
   background: rgba(24, 21, 19, 0.72);
   border: 1px solid rgba(228, 185, 106, 0.14);
