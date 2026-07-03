@@ -1477,6 +1477,36 @@ html body.theme-font-active,
 }
 
 /* ============================================
+   PORTCULLIS CONTROL RAIL
+   The control panel under the board is the bottom rail of the dungeon's
+   portcullis (PortcullisMesh): gate bars rise behind the board, forged
+   spikes hang below, controls sit on the rail's face. The overhang
+   percentages mirror the mesh's viewBox zones (bars 20/64, rail 32/64,
+   spikes 12/64) so the rail band maps EXACTLY onto the panel: overhangs
+   are fractions of RAIL height — 20/32 = 62.5% up, 12/32 = 37.5% down.
+   Change the mesh zones, change these.
+   ============================================ */
+.control-rail {
+  position: relative;
+}
+
+.control-rail-mesh {
+  position: absolute;
+  left: 0;
+  top: -62.5%;
+  width: 100%;
+  height: 200%; /* explicit — an abs-pos svg keeps its intrinsic aspect
+                   ratio instead of stretching between top/bottom offsets */
+  pointer-events: none;
+  z-index: 0;
+}
+
+.control-rail > *:not(.control-rail-mesh) {
+  position: relative;
+  z-index: 1;
+}
+
+/* ============================================
    NAVBAR
    The clean flat bar at every width (the stone-wall meshes — tiled
    masonry, then a hewn lintel — were both retired in its favor). The

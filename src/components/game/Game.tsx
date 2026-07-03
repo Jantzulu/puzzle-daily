@@ -8,6 +8,7 @@ import { initializeGameState, executeTurn, checkVictoryConditions, setHomingDebu
 import { calculateScore, getRankEmoji, getRankName, checkSideQuests } from '../../engine/scoring';
 import { isTileBlockingMovement } from '../../engine/actions';
 import { ResponsiveGameBoard } from './AnimatedGameBoard';
+import { PortcullisMesh } from './PortcullisMesh';
 import { CharacterSelector } from './CharacterSelector';
 import { EnemyDisplay } from './EnemyDisplay';
 import { StatusEffectsDisplay } from './StatusEffectsDisplay';
@@ -2114,8 +2115,10 @@ export const Game: React.FC<GameProps> = ({
               </div>
             )}
 
-            {/* Game board with overlay container for loss/victory panels */}
-            <div className={`relative w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
+            {/* Game board with overlay container for loss/victory panels.
+                z-10: the portcullis gate bars rise from the control rail
+                below and must tuck BEHIND the dungeon. */}
+            <div className={`relative z-10 w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
@@ -2585,7 +2588,11 @@ export const Game: React.FC<GameProps> = ({
             {/* Control Panel Row - Lives / Play Button / Max Turns (NOT dimmed during play) */}
             {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
               <>
-                <div className={`grid grid-cols-3 items-center mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+                <div className={`control-rail grid grid-cols-3 items-center px-3 py-1 mb-4${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+                  {/* Portcullis rail behind the controls: gate bars tuck
+                      behind the board (board wrapper is z-10), spikes hang
+                      where the divider line used to sit */}
+                  <PortcullisMesh />
                   {/* Left: Lives - centered in left third */}
                   <div className="flex items-center justify-center gap-1">
                     <span className="text-stone-400 text-xs">Lives:</span>
@@ -2734,9 +2741,6 @@ export const Game: React.FC<GameProps> = ({
                     )}
                   </div>
                 </div>
-
-                {/* Divider between control panel and heroes - solid line */}
-                <div className="mb-1 border-t border-copper-700/50" />
               </>
             )}
 
