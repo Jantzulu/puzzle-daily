@@ -1991,10 +1991,13 @@ export const Game: React.FC<GameProps> = ({
               // class: it was overflow:hidden for the old panel's slide and
               // clipped the rod's overhang for its first second (the "pop").
               <div className="w-full flex flex-col items-center sticky top-0 z-[60] quest-panel-sticky">
-              {/* pb-6 + -mb-4: the shortened hem drapes OVER the portcullis
-                  rail below (banner z-10 > rail z-0) — gate bars only peek
-                  through the tatter gaps */}
-              <div className="-mb-4 w-full max-w-2xl px-8 md:px-9 pt-3 pb-6 quest-banner -mt-[3px] relative z-10 overflow-visible">
+              {/* pb-4 + -mb-2: the shortened hem drapes onto the portcullis
+                  rail below (banner z-10 > rail z-0) with a sliver of gate
+                  bar showing between hem and rail. NOTE: these two move
+                  together — shrink the banner by X and reduce the negative
+                  margin by X and the rail keeps its exact flow position,
+                  only the bar reveal changes. */}
+              <div className="-mb-2 w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner -mt-[3px] relative z-10 overflow-visible">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
