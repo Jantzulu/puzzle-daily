@@ -1536,6 +1536,18 @@ html body.theme-font-active,
 .menu-gate > div {
   transform: translateY(-100%);
   transition: transform 0.8s cubic-bezier(0.5, 0, 0.75, 0.5);
+  /* The dungeon dims behind the lowered gate: a dark scrim on the lattice
+     layer tints the page seen through the bar gaps — looking into the
+     gatehouse's shadow, not straight at the courtyard. On this element it
+     rides the gate's own transform (same compositor layer, no sync cost)
+     so the shadow descends WITH the iron; the last ~20px fade out so the
+     tint has no hard edge floating under the spike tips. */
+  background: linear-gradient(
+    to bottom,
+    rgba(8, 6, 4, 0.55) 0%,
+    rgba(8, 6, 4, 0.55) calc(100% - 20px),
+    rgba(8, 6, 4, 0) 100%
+  );
 }
 
 .menu-gate-open {
