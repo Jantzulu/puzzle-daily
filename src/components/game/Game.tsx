@@ -2111,37 +2111,42 @@ export const Game: React.FC<GameProps> = ({
                       // inherits the plate's Play-label ivory; the
                       // near-limit warning colors still take over.
                       // px-5: the emerald's side facets slant inward — at
-                      // px-3 the first/last glyphs sat on the cut edges
-                      <div className="gem-plate gem-plate-aura h-10 min-w-[100px] lg:min-w-[110px] px-5 flex items-center justify-center gap-1.5">
+                      // px-3 the first/last glyphs sat on the cut edges.
+                      // The label is ONE inline span so Turn/number/max
+                      // share a text baseline and can never wrap (the
+                      // "/ 100" once broke onto its own line mid-gem).
+                      <div className="gem-plate gem-plate-aura h-10 min-w-[100px] lg:min-w-[110px] px-5 flex items-center justify-center">
                         <GemMesh tone="emerald" phase={0} />
-                        <span className="text-xs lg:text-sm font-medium opacity-80">Turn</span>
-                        {(() => {
-                          const maxTurns = currentPuzzle.maxTurns;
-                          const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
-                          const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
-                          const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
+                        <span className="whitespace-nowrap">
+                          <span className="text-xs lg:text-sm font-medium opacity-80">Turn&nbsp;</span>
+                          {(() => {
+                            const maxTurns = currentPuzzle.maxTurns;
+                            const turnsRemaining = maxTurns ? maxTurns - gameState.currentTurn : null;
+                            const isNearLimit = turnsRemaining !== null && turnsRemaining <= 3;
+                            const isVeryNearLimit = turnsRemaining !== null && turnsRemaining <= 1;
 
-                          return (
-                            <>
-                              <span className={`text-base lg:text-lg font-bold min-w-[2ch] text-center ${
-                                isVeryNearLimit
-                                  ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
-                                  : isNearLimit
-                                  ? 'text-rust-400'
-                                  : ''
-                              }`}>
-                                {gameState.currentTurn}
-                              </span>
-                              {maxTurns && (
-                                <span className={`text-xs lg:text-sm ${
-                                  isNearLimit ? 'text-blood-400' : 'opacity-70'
+                            return (
+                              <>
+                                <span className={`text-base lg:text-lg font-bold ${
+                                  isVeryNearLimit
+                                    ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                                    : isNearLimit
+                                    ? 'text-rust-400'
+                                    : ''
                                 }`}>
-                                  / {maxTurns}
+                                  {gameState.currentTurn}
                                 </span>
-                              )}
-                            </>
-                          );
-                        })()}
+                                {maxTurns && (
+                                  <span className={`text-xs lg:text-sm ${
+                                    isNearLimit ? 'text-blood-400' : 'opacity-70'
+                                  }`}>
+                                    &nbsp;/&nbsp;{maxTurns}
+                                  </span>
+                                )}
+                              </>
+                            );
+                          })()}
+                        </span>
                       </div>
                     )}
                   </div>

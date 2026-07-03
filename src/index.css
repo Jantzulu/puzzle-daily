@@ -1735,6 +1735,18 @@ html body.theme-font-active,
    pre-blurred radial gradient on a pseudo-element with only its OPACITY
    animated — compositor-only, no per-frame raster work. The gradient
    fades to transparent well inside its box, so no ghost rectangle. */
+/* The ACTIVATED stone: green light hugging the gem's own silhouette.
+   Static drop-shadows — the browser rasterizes the filtered mesh once and
+   caches it (nothing inside the SVG animates); the only live animation
+   remains the ::before halo's opacity, which is compositor-only. */
+.gem-plate-aura > .gem-mesh {
+  filter:
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.55))
+    drop-shadow(0 0 6px rgba(74, 222, 128, 0.9))
+    drop-shadow(0 0 16px rgba(74, 222, 128, 0.55))
+    brightness(1.08);
+}
+
 .gem-plate-aura::before {
   content: '';
   position: absolute;
