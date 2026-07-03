@@ -1990,8 +1990,11 @@ export const Game: React.FC<GameProps> = ({
               // OVER the navbar's gold bottom border. No slide-down-wrapper
               // class: it was overflow:hidden for the old panel's slide and
               // clipped the rod's overhang for its first second (the "pop").
-              <div className="w-full flex justify-center sticky top-0 z-[60] quest-panel-sticky">
-              <div className="-mb-1 w-full max-w-2xl px-8 md:px-9 pt-4 pb-8 quest-banner -mt-[3px] relative z-10 overflow-visible">
+              <div className="w-full flex flex-col items-center sticky top-0 z-[60] quest-panel-sticky">
+              {/* pb-6 + -mb-4: the shortened hem drapes OVER the portcullis
+                  rail below (banner z-10 > rail z-0) — gate bars only peek
+                  through the tatter gaps */}
+              <div className="-mb-4 w-full max-w-2xl px-8 md:px-9 pt-3 pb-6 quest-banner -mt-[3px] relative z-10 overflow-visible">
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
                 <BannerMesh />
                 {/* Puzzle Number & Quest Row */}
@@ -2112,17 +2115,17 @@ export const Game: React.FC<GameProps> = ({
                   );
                 })()}
               </div>
-              </div>
-            )}
-
-            {/* Control Panel Row — Lives / Play / Max Turns riding the
-                portcullis rail between the banner and the dungeon */}
-            {!replayMode && (gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className={`control-rail relative z-20 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mb-2${justExitedReplay ? ' animate-scale-pop' : ''}`}>
-                  {/* Portcullis rail under the banner: the gate bars rise
-                      up beneath the cloth (banner wrapper is z-60), the
-                      forged spikes hang over the dungeon entrance below
-                      (board is z-10, this rail z-20) */}
+              {/* Control Panel Row — Lives / Play / Max Turns riding the
+                  portcullis rail. Inside the sticky wrapper so the gate
+                  travels WITH the banner on scroll; the game-status gate is
+                  the wrapper's own conditional, only replay hides the rail. */}
+              {!replayMode && (
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 py-1 mb-1${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+                  {/* Portcullis rail under the banner: the hem drapes over
+                      the rail's top edge (banner z-10 > rail z-0 inside the
+                      shared sticky wrapper), gate bars peek through the
+                      tatter gaps, forged spikes hang over the dungeon
+                      entrance (wrapper z-60 > board z-10) */}
                   <PortcullisMesh />
                   {/* Left: Lives - centered in left third */}
                   <div className="flex items-center justify-center gap-1">
@@ -2272,11 +2275,14 @@ export const Game: React.FC<GameProps> = ({
                     )}
                   </div>
               </div>
+              )}
+              </div>
             )}
 
             {/* Game board with overlay container for loss/victory panels.
-                z-10: the portcullis spikes hang from the rail above and
-                paint OVER the dungeon's top wall (rail is z-20). */}
+                z-10: the portcullis spikes hang from the rail above (inside
+                the sticky z-60 wrapper) and paint OVER the dungeon's top
+                wall — including while the banner+gate float on scroll. */}
             <div className={`relative z-10 w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
