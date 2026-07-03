@@ -133,7 +133,6 @@ function PlayerNavigation() {
   const location = useLocation();
   const { user: _user } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobileMenuDismissing, setMobileMenuDismissing] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
   const [hasUnreadNews, setHasUnreadNews] = useState(false);
   const navRef = useRef<HTMLElement>(null);
@@ -152,12 +151,10 @@ function PlayerNavigation() {
     return () => observer.disconnect();
   }, []);
 
+  // No dismissing state/timeout anymore: the menu is always mounted and
+  // .menu-gate's CSS transition animates the close on class removal.
   const closeMobileMenu = useCallback(() => {
-    setMobileMenuDismissing(true);
-    setTimeout(() => {
-      setMobileMenuOpen(false);
-      setMobileMenuDismissing(false);
-    }, 200);
+    setMobileMenuOpen(false);
   }, []);
 
   useEffect(() => { closeMobileMenu(); }, [location.pathname, closeMobileMenu]);
@@ -323,35 +320,38 @@ function PlayerNavigation() {
       </div>
 
       {/* Mobile menu — the portcullis lattice: one beam per item, gate bars
-          running through the stack, spiked bottom rail on the utility row.
-          Opening the menu lowers the gate. */}
-      {mobileMenuOpen && (
-        <div className={`md:hidden pt-4 pb-3 px-4 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
-          {navItems.map((item, i) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              // Scroll home along with the collapse — without this, picking
-              // Play while already on / left the page stranded mid-scroll
-              // with the board out of view (routes don't reset scroll).
-              onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
-            >
-              <GateBeamMesh first={i === 0} />
-              <span>
-                {item.label}
-                {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-              </span>
-            </Link>
-          ))}
-          {/* Utility row rides the gate's spiked bottom rail */}
-          <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
-            <GateBeamMesh />
-            <SoundSettings isMobile />
-            <UserMenu />
+          running through the stack. Always mounted; .menu-gate transitions
+          grid rows 0fr↔1fr so the whole gate lowers/rises at true height
+          (the control rail below rides the push as the gate's bottom). */}
+      <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}`}>
+        <div>
+          <div className="pt-4 pb-3 px-4 space-y-2">
+            {navItems.map((item, i) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                // Scroll home along with the collapse — without this, picking
+                // Play while already on / left the page stranded mid-scroll
+                // with the board out of view (routes don't reset scroll).
+                onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
+              >
+                <GateBeamMesh first={i === 0} />
+                <span>
+                  {item.label}
+                  {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
+                </span>
+              </Link>
+            ))}
+            {/* Utility row rides the gate's last beam */}
+            <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
+              <GateBeamMesh />
+              <SoundSettings isMobile />
+              <UserMenu />
+            </div>
           </div>
         </div>
-      )}
+      </div>
     </nav>
   );
 }

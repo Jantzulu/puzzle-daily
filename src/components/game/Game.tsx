@@ -1991,7 +1991,7 @@ export const Game: React.FC<GameProps> = ({
               // can never paint on top of the navbar or the open menu's
               // beams — bar tips always tuck behind. quest-panel-sticky
               // handles the top offset per breakpoint.
-              <div className="w-full flex flex-col items-center sticky top-0 z-[40] quest-panel-sticky">
+              <div className="w-full flex flex-col items-center sticky top-0 z-[40] quest-panel-sticky gate-settle">
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the

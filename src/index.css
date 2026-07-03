@@ -290,12 +290,6 @@ body {
   .animate-scale-pop {
     animation: scale-pop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) both;
   }
-  .animate-menu-slide-down {
-    animation: menu-slide-down 0.2s ease-out both;
-  }
-  .animate-menu-slide-up {
-    animation: menu-slide-up 0.2s ease-in both;
-  }
   .animate-slide-down-from-nav-wrapper {
     overflow: hidden;
     animation: wrapper-reveal 0s 1.0s forwards;
@@ -329,32 +323,8 @@ body {
     }
   }
 
-  @keyframes menu-slide-down {
-    from {
-      opacity: 0;
-      max-height: 0;
-      transform: translateY(-10px);
-    }
-    to {
-      opacity: 1;
-      /* Roomy cap: the plank-sign menu is taller than the old flat list
-         (rope header + plank padding) — 500px clipped its last links */
-      max-height: 720px;
-      transform: translateY(0);
-    }
-  }
-  @keyframes menu-slide-up {
-    from {
-      opacity: 1;
-      max-height: 720px;
-      transform: translateY(0);
-    }
-    to {
-      opacity: 0;
-      max-height: 0;
-      transform: translateY(-10px);
-    }
-  }
+  /* (menu-slide-down/up keyframes removed — the mobile menu now uses the
+     .menu-gate grid-rows transition for true-height whole-gate motion) */
 
   @keyframes slide-down-from-nav {
     from {
@@ -1488,6 +1458,53 @@ html body.theme-font-active,
    ============================================ */
 .control-rail {
   position: relative;
+}
+
+/* The gate settles on page load: the rail (mesh + controls, applied to
+   the sticky wrapper so it can't fight the rail's own replay-exit
+   scale-pop) starts a touch low and rises into place — catching the last
+   moment of the portcullis opening as the dungeon is revealed.
+   Transform-only, runs once per mount. */
+@keyframes gate-settle {
+  from { transform: translateY(16px); }
+  to { transform: translateY(0); }
+}
+
+.gate-settle {
+  animation: gate-settle 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Whole-gate menu open/close: grid-template-rows 0fr↔1fr interpolates the
+   TRUE content height at constant speed (the old max-height keyframes
+   spent most of their time above the real height, so the visible motion
+   was one fast jump). The menu is in normal flow, so the page — control
+   rail included — rides the push, and the entire portcullis (beams +
+   spiked bottom rail) lowers and rises as one. Opening drops with
+   gravity (ease-out settle); closing is winched up (ease-in start).
+   Padding lives on the INNERMOST div: the clipping middle child must be
+   padding-free or the collapsed row keeps a padding-tall sliver. */
+.menu-gate {
+  display: grid;
+  grid-template-rows: 0fr;
+  visibility: hidden;
+  transition:
+    grid-template-rows 0.45s cubic-bezier(0.5, 0, 0.75, 0.5),
+    visibility 0s 0.45s;
+}
+
+.menu-gate-open {
+  grid-template-rows: 1fr;
+  visibility: visible;
+  /* Moderate start + soft landing: an aggressive ease-out front-loaded
+     half the travel into the first 40ms — a slam, not a lowering */
+  transition:
+    grid-template-rows 0.55s cubic-bezier(0.45, 0.3, 0.25, 1),
+    visibility 0s;
+}
+
+.menu-gate > div {
+  overflow: hidden;
+  min-height: 0;
 }
 
 .control-rail-mesh {

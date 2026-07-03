@@ -195,7 +195,6 @@ function Navigation() {
   const location = useLocation();
   const { user, isCreator } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [mobileMenuDismissing, setMobileMenuDismissing] = useState(false);
   const [themeAssets, setThemeAssets] = useState<ThemeAssets>({});
   const [searchOpen, setSearchOpen] = useState(false);
   const [hasUnreadNews, setHasUnreadNews] = useState(false);
@@ -214,12 +213,10 @@ function Navigation() {
     return () => observer.disconnect();
   }, []);
 
+  // No dismissing state/timeout anymore: the menu is always mounted and
+  // .menu-gate's CSS transition animates the close on class removal.
   const closeMobileMenu = useCallback(() => {
-    setMobileMenuDismissing(true);
-    setTimeout(() => {
-      setMobileMenuOpen(false);
-      setMobileMenuDismissing(false);
-    }, 200);
+    setMobileMenuOpen(false);
   }, []);
 
   const toggleMobileMenu = useCallback(() => {
@@ -449,37 +446,41 @@ function Navigation() {
 
       </div>
 
-      {/* Mobile menu dropdown — hangs below the wall */}
-      {mobileMenuOpen && (
-        <div className={`md:hidden pt-4 pb-3 px-4 space-y-2 overflow-hidden ${mobileMenuDismissing ? 'animate-menu-slide-up' : 'animate-menu-slide-down'}`}>
-          {/* One portcullis beam per nav item — opening the menu lowers the
-              gate. The first beam's bars reach up behind the navbar (z-10);
-              the last beam is the gate's spiked bottom rail. */}
-          {navItems.map((item, i) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              // Scroll home along with the collapse — routes don't reset
-              // scroll, so same-page picks left the target out of view
-              onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
-              className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
-            >
-              <GateBeamMesh first={i === 0} />
-              <span>
-                {item.label}
-                {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-              </span>
-            </Link>
-          ))}
-          {/* Utility row rides the gate's spiked bottom rail */}
-          <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
-            <GateBeamMesh />
-            <SoundSettings isMobile />
-            {isCreator && <CloudSyncButton />}
-            <UserMenu />
+      {/* Mobile menu — the portcullis lattice. Always mounted; .menu-gate
+          transitions grid rows 0fr↔1fr so the whole gate lowers/rises at
+          true height (the page below rides the push). */}
+      <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}`}>
+        <div>
+          <div className="pt-4 pb-3 px-4 space-y-2">
+            {/* One portcullis beam per nav item — opening the menu lowers
+                the gate. The first beam's bars reach up behind the navbar
+                (z-10). */}
+            {navItems.map((item, i) => (
+              <Link
+                key={item.to}
+                to={item.to}
+                // Scroll home along with the collapse — routes don't reset
+                // scroll, so same-page picks left the target out of view
+                onClick={() => { closeMobileMenu(); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+                className={`nav-gate-item block px-8 py-2.5 text-center ${isActive(item.to) ? 'nav-gate-item-active' : ''}`}
+              >
+                <GateBeamMesh first={i === 0} />
+                <span>
+                  {item.label}
+                  {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
+                </span>
+              </Link>
+            ))}
+            {/* Utility row rides the gate's last beam */}
+            <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
+              <GateBeamMesh />
+              <SoundSettings isMobile />
+              {isCreator && <CloudSyncButton />}
+              <UserMenu />
+            </div>
           </div>
         </div>
-      )}
+      </div>
       {isCreator && <GlobalSearch isOpen={searchOpen} onClose={() => setSearchOpen(false)} />}
     </nav>
   );
