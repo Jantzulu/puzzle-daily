@@ -56,26 +56,34 @@ const hash = (i: number): number => {
 
 const pts = (arr: Array<[number, number]>) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
 
-// Second drape pose for the hem ripple — lower half drifts, top stays pinned
-const OUTER_B: Array<[number, number]> = OUTER.map(([x, y], i) => {
-  if (y <= 22) return [x, y];
-  const sway = y > 120 ? 1 : 0.35;
-  return [
-    x + (hash(i + 80) - 0.5) * 22 * sway,
-    y + (hash(i + 90) - 0.5) * 14 * sway,
-  ];
-});
+// Drape poses for the hem ripple — lower half drifts, top stays pinned.
+// THREE poses cycling A→B→C→A: the two-pose version read as a single slow
+// breath, and on iOS this morph is most of the visible wind (WebKit does
+// not animate feTurbulence attributes, so the displacement wind is a
+// desktop-only bonus — points morphs and transforms animate everywhere).
+const drapePose = (seed: number, ampX: number, ampY: number): Array<[number, number]> =>
+  OUTER.map(([x, y], i) => {
+    if (y <= 22) return [x, y];
+    const sway = y > 120 ? 1 : 0.35;
+    return [
+      x + (hash(i + seed) - 0.5) * ampX * sway,
+      y + (hash(i + seed + 10) - 0.5) * ampY * sway,
+    ];
+  });
+
+const OUTER_B = drapePose(80, 26, 16);
+const OUTER_C = drapePose(130, 26, 16);
 
 const RIPPLE = {
   dur: '8s',
-  keyTimes: '0;0.5;1',
+  keyTimes: '0;0.34;0.67;1',
   calcMode: 'spline',
-  keySplines: '0.45 0 0.55 1;0.45 0 0.55 1',
+  keySplines: '0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1',
   repeatCount: 'indefinite',
 } as const;
 
-const PointsRipple: React.FC<{ a: string; b: string }> = ({ a, b }) => (
-  <animate attributeName="points" values={`${a};${b};${a}`} {...RIPPLE} />
+const PointsRipple: React.FC<{ a: string; b: string; c: string }> = ({ a, b, c }) => (
+  <animate attributeName="points" values={`${a};${b};${c};${a}`} {...RIPPLE} />
 );
 
 // (Fold strips removed — even at low alpha they read as alternating color
@@ -100,7 +108,7 @@ export const BannerMesh: React.FC = () => {
       <defs>
         <clipPath id={clipId}>
           <polygon points={pts(OUTER)}>
-            <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} />
+            <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
           </polygon>
         </clipPath>
         <filter id={grainId}>
@@ -136,22 +144,37 @@ export const BannerMesh: React.FC = () => {
         </filter>
       </defs>
 
-      {/* Hanging cloth, inside the wind */}
+      {/* Hanging cloth, inside the wind. The skew sway is the cross-browser
+          wind: x-shift grows with y, so the pinned top (y≈22) barely moves
+          while the hem swings — flag physics for free. Runs on a 7s cycle
+          against the ripple's 8s so the combined motion doesn't visibly
+          repeat every loop. GPU-cheap and animates on iOS, unlike the
+          turbulence displacement. */}
       <g filter={`url(#${windId})`}>
+        <animateTransform
+          attributeName="transform"
+          type="skewX"
+          values="0;-1.8;1.2;0"
+          keyTimes="0;0.38;0.72;1"
+          calcMode="spline"
+          keySplines="0.45 0 0.55 1;0.45 0 0.55 1;0.45 0 0.55 1"
+          dur="7s"
+          repeatCount="indefinite"
+        />
         <polygon points={pts(OUTER)} fill="#451614">
-          <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} />
+          <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
         </polygon>
 
         <g clipPath={`url(#${clipId})`}>
           {/* Weathered edge darkening */}
           <polygon points={pts(OUTER)} fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="16">
-            <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} />
+            <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
           </polygon>
         </g>
 
         {/* Weave grain */}
         <polygon points={pts(OUTER)} fill="#fff" filter={`url(#${grainId})`}>
-          <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} />
+          <PointsRipple a={pts(OUTER)} b={pts(OUTER_B)} c={pts(OUTER_C)} />
         </polygon>
       </g>
 
