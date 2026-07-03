@@ -9,7 +9,6 @@ import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
-import { WallMesh } from './components/shared/WallMesh';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
 import { PlankItemMesh } from './components/shared/PlankMesh';
 import { getLatestPostTimestamp } from './services/newsService';
@@ -223,20 +222,16 @@ function PlayerNavigation() {
       ref={navRef}
       className="md:sticky md:top-0 z-50"
     >
-      {/* Top bar: stone wall on mobile, the clean flat bar on desktop —
-          no gold bottom border on either. The plank menu hangs below as
-          a sibling so it can't stretch the wall. */}
+      {/* Top bar: the clean flat bar at every width (stone-wall meshes were
+          retired) — no gold bottom border. The plank menu hangs below as
+          a sibling so it can't stretch the bar. */}
       <div
-        className={`relative bg-transparent md:bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 md:shadow-dungeon transition-shadow duration-300 ${
+        className={`relative bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon transition-shadow duration-300 ${
           // eslint-disable-next-line react-hooks/refs
           scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
         }`}
         style={navbarStyle}
       >
-      {/* Castle wall, mobile only */}
-      <div className="md:hidden absolute inset-0 z-0 overflow-hidden">
-        <WallMesh />
-      </div>
       <div className="flex items-center gap-3 md:gap-4 md:justify-center relative z-10">
         <div className="flex items-center gap-2 md:gap-4">
         <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline shrink-0">

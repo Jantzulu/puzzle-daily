@@ -5,7 +5,6 @@ import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
-import { WallMesh } from './components/shared/WallMesh';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
 import { PlankItemMesh } from './components/shared/PlankMesh';
 import { getLatestPostTimestamp } from './services/newsService';
@@ -313,14 +312,11 @@ function Navigation() {
       ref={navRef}
       className="md:sticky md:top-0 z-50"
     >
-      {/* Top bar: stone wall on MOBILE only — desktop matches the player
-          app's clean flat bar (user judged the wall mobile-only). The wall
-          wraps only this bar so the open menu can't stretch the stones;
-          navbarStyle lives here (on the nav it tinted the open-menu area). */}
-      <div className="relative bg-transparent md:bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 md:shadow-dungeon" style={navbarStyle}>
-      <div className="md:hidden absolute inset-0 z-0 overflow-hidden">
-        <WallMesh />
-      </div>
+      {/* Top bar: the clean flat bar at every width (stone-wall meshes were
+          retired — the tiled masonry and then the lintel both lost to the
+          plain bar). navbarStyle lives here, not on the nav (there it
+          tinted the open-menu area). */}
+      <div className="relative bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon" style={navbarStyle}>
       <div className="flex items-center gap-3 md:gap-4 relative z-10">
         {/* Logo/Title — pops off the wall */}
         <Link to="/" className="nav-pop flex items-center gap-2 md:gap-3 no-underline">

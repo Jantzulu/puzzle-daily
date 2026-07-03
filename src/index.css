@@ -1477,33 +1477,14 @@ html body.theme-font-active,
 }
 
 /* ============================================
-   CASTLE WALL NAVBAR
-   The navbar is a stone wall (WallMesh). Nav items are carved INTO the
-   stones — no boxed buttons — with the active page's carving lit like
-   torchlight in the groove. The logo/title pop OFF the wall with a drop
-   shadow: two depths, one material. No gold border; the quest banner's
-   rod hangs directly against the stones below.
+   NAVBAR
+   The clean flat bar at every width (the stone-wall meshes — tiled
+   masonry, then a hewn lintel — were both retired in its favor). The
+   torch scene survives on the CONTENT: sprite lit from the right
+   (navTorchLight.ts) and the glimmering title. No gold border; the
+   quest banner's rod hangs directly against the bar below.
    ============================================ */
-.nav-wall {
-  position: relative;
-  background: transparent;
-}
-
-.nav-wall-mesh {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.nav-wall > *:not(.nav-wall-mesh) {
-  position: relative;
-  z-index: 1;
-}
-
-/* Logo + title pop off the wall */
+/* Logo + title pop off the bar */
 .nav-pop {
   filter: drop-shadow(0 3px 3px rgba(0, 0, 0, 0.65));
 }
