@@ -2188,8 +2188,12 @@ export const Game: React.FC<GameProps> = ({
             {/* Game board with overlay container for loss/victory panels.
                 z-10: the portcullis spikes hang from the rail above (inside
                 the sticky z-60 wrapper) and paint OVER the dungeon's top
-                wall — including while the banner+gate float on scroll. */}
-            <div className={`relative z-10 w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
+                wall — including while the banner+gate float on scroll.
+                top-1.5/lg:top-[7px]: nudge the board DOWN so it sits less
+                under the rail's spikes. A relative offset (not margin) so
+                the banner below stays put — the board slides into the
+                board-to-banner gap, halving it (12px base / 14px at lg). */}
+            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
