@@ -361,7 +361,13 @@ function Navigation() {
           it was inert on mobile, letting the control rail's rising bars
           (z-40) paint over the navbar. */}
       <div className="relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon" style={navbarStyle}>
-      <div className="flex items-center gap-3 md:gap-4 relative z-10">
+      {/* Marquee layout: logo/title dead-center at every width. Desktop
+          puts the hamburger in flow right of the title, with a ghost
+          spacer (w-11 = the button's 44px) on the left so the title stays
+          truly page-centered; mobile keeps the hamburger pinned at the
+          right edge (absolute, so it doesn't skew the centering). */}
+      <div className="flex items-center justify-center gap-3 md:gap-4 relative z-10">
+        <div className="hidden md:block w-11 shrink-0" aria-hidden="true" />
         {/* Logo/Title — pops off the wall */}
         <Link to="/" className="nav-pop flex items-center gap-2 md:gap-3 no-underline">
           {/* Custom logo or default torch icon */}
@@ -434,16 +440,13 @@ function Navigation() {
           </div>
         </Link>
 
-        {/* One nav at every width (user's call: the portcullis menu is
-            the identity, mobile-first game — desktop gets the same
-            hamburger, not a separate link row). */}
-        <div className="flex-1" />
-
-        {/* Global search button (only for creators) */}
+        {/* Global search button (only for creators) — off the marquee:
+            mobile keeps it just left of the pinned hamburger (right-12 =
+            the button's 44px + 4px), desktop parks it at the far edge. */}
         {isCreator && (
           <button
             onClick={() => setSearchOpen(true)}
-            className="flex items-center gap-2 px-2.5 py-1.5 rounded bg-stone-700/60 hover:bg-stone-600/80 border border-stone-600 text-stone-400 hover:text-parchment-200 transition-colors text-sm"
+            className="absolute right-12 md:right-0 flex items-center gap-2 px-2.5 py-1.5 rounded bg-stone-700/60 hover:bg-stone-600/80 border border-stone-600 text-stone-400 hover:text-parchment-200 transition-colors text-sm"
             title="Search all assets (Ctrl+K)"
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -454,11 +457,12 @@ function Navigation() {
           </button>
         )}
 
-        {/* Hamburger — the gate's winch at every width (sound/cloud/user
-            controls live on the gate's utility rung) */}
+        {/* Hamburger — the gate's winch: right edge on mobile, right of
+            the centered title on desktop (sound/cloud/user controls live
+            on the gate's utility rung) */}
         <button
           onClick={toggleMobileMenu}
-          className="p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="absolute right-0 md:static p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {mobileMenuOpen ? (

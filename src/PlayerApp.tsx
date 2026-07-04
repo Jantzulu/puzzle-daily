@@ -273,8 +273,13 @@ function PlayerNavigation() {
       >
       {/* One nav at every width (user's call: the portcullis menu is the
           identity, mobile-first game — desktop gets the same hamburger,
-          not a separate link row). */}
-      <div className="flex items-center gap-3 md:gap-4 relative z-10">
+          not a separate link row). Marquee layout: logo/title dead-center;
+          desktop puts the hamburger in flow right of the title with a
+          ghost spacer (w-11 = the button's 44px) balancing the left so
+          the title stays truly page-centered; mobile keeps the hamburger
+          pinned at the right edge (absolute, doesn't skew centering). */}
+      <div className="flex items-center justify-center gap-3 md:gap-4 relative z-10">
+        <div className="hidden md:block w-11 shrink-0" aria-hidden="true" />
         <div className="flex items-center gap-2 md:gap-4">
         <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline shrink-0">
           {logoSrc ? (
@@ -324,7 +329,8 @@ function PlayerNavigation() {
 
         </div>
 
-        {/* Hamburger — the gate's winch at every width */}
+        {/* Hamburger — the gate's winch: right edge on mobile, right of
+            the centered title on desktop */}
         <button
           onClick={() => {
             if (mobileMenuOpen) {
@@ -334,7 +340,7 @@ function PlayerNavigation() {
               setMobileMenuOpen(true);
             }
           }}
-          className="p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center absolute right-3"
+          className="p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center absolute right-3 md:static"
           aria-label="Menu"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
