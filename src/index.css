@@ -1495,6 +1495,15 @@ html body.theme-font-active,
     transition: transform 0.8s cubic-bezier(0.5, 0, 0.75, 0.5);
   }
   body.menu-gate-lowered .quest-panel-sticky {
+    /* While the gate holds the rail, the rail IS the gate's bottom: it
+       abandons stickiness and rides the page like the rest of the
+       portcullis, locked at the fully-lowered position — sticky + the
+       ride transform pinned it to the viewport on scroll, floating it
+       mid-page detached from the lattice above. top:auto so the mobile
+       3px sticky offset doesn't become a relative nudge. On close the
+       wrapper turns sticky again and resumes viewport-top duty. */
+    position: relative;
+    top: auto;
     transform: translateY(var(--gate-drop, 0px));
     transition: transform 0.9s cubic-bezier(0.45, 0.3, 0.25, 1);
   }
