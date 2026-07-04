@@ -1479,33 +1479,38 @@ html body.theme-font-active,
   animation: gate-settle 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
-/* Overlay docking: with the gate out of flow, opening the menu can't push
-   the play page's control rail into place below it — so the rail RIDES
-   the gate. While open-and-docked the navbar broadcasts
+/* Overlay docking (every width): with the gate out of flow, opening the
+   menu can't push the play page's control rail into place below it — so
+   the rail RIDES the gate. While open-and-docked the navbar broadcasts
    body.menu-gate-lowered + --gate-drop (the menu content's full height);
-   the rail's sticky wrapper translates down that far, hanging at the
-   gate's leading edge exactly where the old in-flow push left it (the
-   pb-3 + mt-[5px] tuning is unchanged). Duration/easing pairs MUST match
-   the .menu-gate transform rules below so gate and rail lower as one
-   iron object — both are compositor transforms, so with matching curves
-   they stay frame-locked even when the main thread stutters. Mobile-only:
-   the gate doesn't exist at md+. */
+   the rail's wrapper translates down that far, hanging at the gate's
+   leading edge exactly where the old in-flow push left it (the pb-3 +
+   mt-[5px] tuning is unchanged). Duration/easing pairs MUST match the
+   .menu-gate transform rules below so gate and rail lower as one iron
+   object — both are compositor transforms, so with matching curves they
+   stay frame-locked even when the main thread stutters. */
+.quest-panel-sticky {
+  transition: transform 0.8s cubic-bezier(0.5, 0, 0.75, 0.5);
+}
+
+body.menu-gate-lowered .quest-panel-sticky {
+  transform: translateY(var(--gate-drop, 0px));
+  transition: transform 0.9s cubic-bezier(0.45, 0.3, 0.25, 1);
+}
+
+/* Scroll-during-open differs by navbar mode. MOBILE: the navbar is
+   `relative` and scrolls away, so the docked rail must abandon
+   stickiness and scroll with the gate — sticky + the ride transform
+   pinned it to the viewport, floating it mid-page detached from the
+   lattice. top:auto so the mobile 3px sticky offset doesn't become a
+   relative nudge; on close the wrapper turns sticky again and resumes
+   viewport-top duty. DESKTOP (md+): the navbar is sticky, so the gate
+   is viewport-pinned — the rail KEEPS its stickiness
+   (top: var(--nav-height)) and stays docked under the pinned gate. */
 @media (max-width: 767px) {
-  .quest-panel-sticky {
-    transition: transform 0.8s cubic-bezier(0.5, 0, 0.75, 0.5);
-  }
   body.menu-gate-lowered .quest-panel-sticky {
-    /* While the gate holds the rail, the rail IS the gate's bottom: it
-       abandons stickiness and rides the page like the rest of the
-       portcullis, locked at the fully-lowered position — sticky + the
-       ride transform pinned it to the viewport on scroll, floating it
-       mid-page detached from the lattice above. top:auto so the mobile
-       3px sticky offset doesn't become a relative nudge. On close the
-       wrapper turns sticky again and resumes viewport-top duty. */
     position: relative;
     top: auto;
-    transform: translateY(var(--gate-drop, 0px));
-    transition: transform 0.9s cubic-bezier(0.45, 0.3, 0.25, 1);
   }
 }
 
@@ -1577,13 +1582,21 @@ html body.theme-font-active,
    close. The body-level twin snaps the control rail home the same way.
    Same specificity as the rules above — these must stay AFTER them. */
 .menu-gate-instant,
-.menu-gate-instant > div {
+.menu-gate-instant > div,
+body.menu-gate-instant .quest-panel-sticky {
   transition: none;
 }
 
-@media (max-width: 767px) {
-  body.menu-gate-instant .quest-panel-sticky {
-    transition: none;
+/* Desktop: the gate is the board column's portcullis, not a wall-to-wall
+   curtain. Max width = the play page rail's max-w-2xl (42rem) plus the
+   menu's own px-4 (2rem), so the beams inside render the same 42rem as
+   the docked rail and their bar columns align — one lattice, same as
+   mobile where both span the viewport. Centered under the full-width
+   bar (absolute + left/right 0 + margin auto). */
+@media (min-width: 768px) {
+  .menu-gate {
+    max-width: calc(42rem + 2rem);
+    margin-inline: auto;
   }
 }
 
@@ -1665,10 +1678,11 @@ html body.theme-font-active,
   }
 }
 
-/* Mobile menu: the portcullis lattice (GateBeamMesh) — one iron beam per
-   nav item, vertical gate bars bridging the gaps between items (drawn
-   outside each svg's viewBox, overflow visible), spiked bottom rail on
-   the last item. Opening the menu lowers the gate. */
+/* The gate menu (every width): the portcullis lattice (GateBeamMesh) —
+   one iron beam per nav item, vertical gate bars bridging the gaps
+   between items (drawn outside each svg's viewBox, overflow visible),
+   spiked bottom rail on the last item. Opening the menu lowers the
+   gate. */
 .nav-gate-item {
   position: relative;
 }

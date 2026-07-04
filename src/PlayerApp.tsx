@@ -216,12 +216,8 @@ function PlayerNavigation() {
   }, [location.pathname]);
 
   const isActive = (path: string) => location.pathname === path;
-  // Desktop: buttonless plain text links
-  const desktopLinkClass = (path: string) =>
-    `nav-link px-2.5 py-1.5 rounded transition-all text-sm font-semibold whitespace-nowrap ${
-      isActive(path) ? 'nav-link-active text-copper-300 shadow-glow-copper' : 'text-stone-400 hover:text-parchment-200'
-    }`;
-  // One list drives the mobile plank menu (ported from the dev app)
+  // One list drives the gate menu at every width (desktop's separate
+  // text-link row was retired — the portcullis IS the nav)
   const navItems: Array<{ to: string; label: string; unread?: boolean }> = [
     { to: '/', label: themeAssets.navLabelPlay || 'Play' },
     { to: '/town-crier', label: 'Town Crier', unread: hasUnreadNews },
@@ -275,7 +271,10 @@ function PlayerNavigation() {
         }`}
         style={navbarStyle}
       >
-      <div className="flex items-center gap-3 md:gap-4 md:justify-center relative z-10">
+      {/* One nav at every width (user's call: the portcullis menu is the
+          identity, mobile-first game — desktop gets the same hamburger,
+          not a separate link row). */}
+      <div className="flex items-center gap-3 md:gap-4 relative z-10">
         <div className="flex items-center gap-2 md:gap-4">
         <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline shrink-0">
           {logoSrc ? (
@@ -323,30 +322,9 @@ function PlayerNavigation() {
           </div>
         </Link>
 
-        <div className="hidden md:flex items-center gap-2 ml-4">
-          <Link to="/" className={desktopLinkClass('/')}>
-            {themeAssets.navLabelPlay || 'Play'}
-          </Link>
-          <Link to="/town-crier" className={desktopLinkClass('/town-crier')}>
-            Town Crier
-            {hasUnreadNews && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-          </Link>
-          <Link to="/compendium" className={desktopLinkClass('/compendium')}>
-            {themeAssets.navLabelCompendium || 'Compendium'}
-          </Link>
-          <Link to="/training" className={desktopLinkClass('/training')}>
-            Training
-          </Link>
-        </div>
         </div>
 
-        {/* Right-side controls - absolutely positioned on desktop to keep center group truly centered */}
-        <div className="hidden md:flex items-center gap-2 absolute right-3">
-          <SoundSettings />
-          <UserMenu />
-        </div>
-
-        {/* Mobile hamburger */}
+        {/* Hamburger — the gate's winch at every width */}
         <button
           onClick={() => {
             if (mobileMenuOpen) {
@@ -356,7 +334,7 @@ function PlayerNavigation() {
               setMobileMenuOpen(true);
             }
           }}
-          className="md:hidden p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center absolute right-3"
+          className="p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center absolute right-3"
           aria-label="Menu"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -369,12 +347,13 @@ function PlayerNavigation() {
 
       </div>
 
-      {/* Mobile menu — the portcullis lattice: one beam per item, gate bars
-          running through the stack. Always mounted; .menu-gate transitions
-          grid rows 0fr↔1fr so the whole gate lowers/rises at true height,
-          OVER the page (absolute — the courtyard doesn't move; on the
-          play page the control rail rides the drop as the gate's bottom). */}
-      <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
+      {/* The menu at every width — the portcullis lattice: one beam per
+          item, gate bars running through the stack. Always mounted; the
+          lattice translates -100%↔0 inside .menu-gate's clip box, OVER
+          the page (absolute — the courtyard doesn't move; on the play
+          page the control rail rides the drop as the gate's bottom). At
+          md+ the gate is the board column's width, centered (see CSS). */}
+      <div className={`menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
         <div>
           {/* pb: when docked with the control rail, pb-3 = 12px tunes the
               beam-to-rail gap (see Game.tsx); when the utility row IS the

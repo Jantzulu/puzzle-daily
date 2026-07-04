@@ -2,7 +2,7 @@ import React from 'react';
 import { IRON } from '../game/PortcullisMesh';
 
 // ============================================================================
-// GATE BEAM — one horizontal portcullis beam per mobile nav item
+// GATE BEAM — one horizontal portcullis beam per nav menu item (all widths)
 // ============================================================================
 // The hamburger's stacked menu items ARE the portcullis: each item rides a
 // horizontal iron beam, vertical gate bars run through the stack, and the
@@ -25,7 +25,9 @@ import { IRON } from '../game/PortcullisMesh';
 // rail everywhere.
 //
 // Bar x fractions (10/30/50/70/90%) and ~3% widths MATCH PortcullisMesh —
-// on mobile both elements render at the same width, so the columns align.
+// both elements render at the same width at every viewport (mobile: the
+// full width; md+: the 42rem board column, .menu-gate max-width plus the
+// menu's px-4 = rail's max-w-2xl), so the columns align.
 
 const VIEW_W = 400;
 const VIEW_H = 52;

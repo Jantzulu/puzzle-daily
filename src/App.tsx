@@ -434,22 +434,9 @@ function Navigation() {
           </div>
         </Link>
 
-        {/* Desktop navigation — plain text links, matching the player app */}
-        <div className="hidden md:flex items-center gap-2 ml-4">
-          {navItems.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={`nav-link px-2.5 py-1.5 rounded transition-all text-sm font-semibold whitespace-nowrap ${
-                isActive(item.to) ? 'nav-link-active text-copper-300 shadow-glow-copper' : 'text-stone-400 hover:text-parchment-200'
-              }`}
-            >
-              {item.label}
-              {item.unread && <span className="ml-1 w-2 h-2 bg-red-500 rounded-full inline-block animate-pulse" />}
-            </Link>
-          ))}
-        </div>
-
+        {/* One nav at every width (user's call: the portcullis menu is
+            the identity, mobile-first game — desktop gets the same
+            hamburger, not a separate link row). */}
         <div className="flex-1" />
 
         {/* Global search button (only for creators) */}
@@ -467,16 +454,11 @@ function Navigation() {
           </button>
         )}
 
-        <div className="hidden md:flex items-center gap-2">
-          <SoundSettings />
-          {isCreator && <CloudSyncButton />}
-          <UserMenu />
-        </div>
-
-        {/* Mobile hamburger button */}
+        {/* Hamburger — the gate's winch at every width (sound/cloud/user
+            controls live on the gate's utility rung) */}
         <button
           onClick={toggleMobileMenu}
-          className="md:hidden p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
+          className="p-2 text-stone-400 hover:text-copper-400 transition-colors min-w-[44px] min-h-[44px] flex items-center justify-center"
         >
           <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             {mobileMenuOpen ? (
@@ -490,12 +472,13 @@ function Navigation() {
 
       </div>
 
-      {/* Mobile menu — the portcullis lattice. Always mounted; .menu-gate
-          transitions grid rows 0fr↔1fr so the whole gate lowers/rises at
-          true height, OVER the page (absolute — the courtyard doesn't
+      {/* The menu at every width — the portcullis lattice. Always
+          mounted; the lattice translates -100%↔0 inside .menu-gate's
+          clip box, OVER the page (absolute — the courtyard doesn't
           move; on the play page the control rail rides the drop as the
-          gate's bottom). */}
-      <div className={`md:hidden menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
+          gate's bottom). At md+ the gate is the board column's width,
+          centered (see CSS). */}
+      <div className={`menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
         <div>
           {/* pb: when docked with the control rail, pb-3 = 12px tunes the
               beam-to-rail gap (see Game.tsx); when the utility row IS the
