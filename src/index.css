@@ -1550,18 +1550,57 @@ body.menu-gate-lowered .quest-panel-sticky {
 .menu-gate > div {
   transform: translateY(-100%);
   transition: transform 0.8s cubic-bezier(0.5, 0, 0.75, 0.5);
-  /* The dungeon dims behind the lowered gate: a dark scrim on the lattice
-     layer tints the page seen through the bar gaps — looking into the
-     gatehouse's shadow, not straight at the courtyard. On this element it
-     rides the gate's own transform (same compositor layer, no sync cost)
-     so the shadow descends WITH the iron; the last ~20px fade out so the
-     tint has no hard edge floating under the spike tips. */
+}
+
+/* The dungeon dims behind the lowered gate: a dark scrim tints the page
+   seen through the bar gaps — looking into the gatehouse's shadow, not
+   straight at the courtyard. It lives on a ::before (not the lattice
+   div's own background) so a mask can feather its edges WITHOUT fading
+   the beams — a mask on the beam-bearing div would eat the outer bars.
+   The transform on the parent makes it the containing block, so the
+   scrim rides the gate's descent on the same compositor layer.
+
+   Edges: the background gradient fades the bottom ~20px (no hard tint
+   under the spike tips); the mask fades the left/right ~44px. Together
+   the scrim has no hard boundary on any free edge — the top is hard but
+   tucked under the navbar. This only showed once the gate became a
+   centered ~44rem column on desktop: full-width on mobile, the side
+   edges fell off-screen. z-index 0 (NOT negative — WebKit mis-sorts
+   negative z against the compendium slab's composited aura); the
+   content div sits above at z-index 1. */
+.menu-gate > div::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
   background: linear-gradient(
     to bottom,
     rgba(8, 6, 4, 0.55) 0%,
     rgba(8, 6, 4, 0.55) calc(100% - 20px),
     rgba(8, 6, 4, 0) 100%
   );
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 44px,
+    #000 calc(100% - 44px),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 44px,
+    #000 calc(100% - 44px),
+    transparent 100%
+  );
+}
+
+/* Content rides above the scrim. z-index 1 (positive, per the rule
+   above) puts the beams and labels over the ::before tint. */
+.menu-gate > div > div {
+  position: relative;
+  z-index: 1;
 }
 
 .menu-gate-open {
