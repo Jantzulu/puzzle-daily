@@ -39,16 +39,42 @@
 }
 
 /* Base styles */
+html {
+  /* No gray flash on tap (iOS/Android) — the theme provides its own pressed states */
+  -webkit-tap-highlight-color: transparent;
+  /* No rubber-band bounce or accidental pull-to-refresh mid-game */
+  overscroll-behavior-y: none;
+}
+
 body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
+  min-height: 100dvh; /* iOS Safari: exclude the collapsing address bar */
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
 }
 
 * {
   box-sizing: border-box;
+}
+
+/* Remove the double-tap-zoom delay on everything tappable (pinch-zoom still works) */
+button,
+a,
+input,
+select,
+textarea,
+canvas,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+/* Game canvases: no long-press callout or text-selection artifacts on touch */
+canvas {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 
 /* Pixel-perfect rendering for sprites */
