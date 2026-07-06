@@ -5,6 +5,7 @@ import { SpriteThumbnail } from '../editor/SpriteThumbnail';
 import { RichTextRenderer } from '../editor/RichTextEditor';
 import { HelpButton } from './HelpOverlay';
 import { GemMesh } from './GemMesh';
+import { LintelMesh } from './LintelMesh';
 import { DirectionArrow } from './DirectionArrow';
 import type { ThemeAssets } from '../../utils/themeAssets';
 import { CARD_PIXEL_SCALE, computeCardSpriteAreaHeight } from './cardConstants';
@@ -151,10 +152,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   const selectedGlow =
     'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(180,50,50,0.9)) drop-shadow(0 0 7px rgba(180,50,50,0.5))';
 
-  // "Dungeon Details" threshold shown in noPanel mode — a carved stone
-  // lintel marking the doorway between the heroes' hall and the dungeon
+  // "Dungeon Details" threshold shown in noPanel mode — a course of hewn
+  // stone blocks (LintelMesh) marking the doorway between the heroes'
+  // panel and the dungeon, with the label engraved on the stone
   const divider = noPanel ? (
     <div className="dungeon-lintel mt-2 mb-2">
+      <LintelMesh />
       <span className="dungeon-lintel-text font-medieval">
         <span>Dungeon</span>
         {themeAssets.iconDungeonDetails ? (
