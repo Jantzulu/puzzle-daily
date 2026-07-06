@@ -2114,8 +2114,9 @@ body.menu-gate-instant .quest-panel-sticky {
 }
 
 /* Section headers carved into the page in the medieval face, using the
-   compendium's engraving recipe. Gold for the heroes' hall; a colder,
-   drier red for the dungeon's — same carve, different world. */
+   compendium's engraving recipe. The heroes keep their purple (their
+   identity color everywhere else — names, side quests); the dungeon's
+   is a colder, drier red. Same carve, different world. */
 .carved-header {
   font-weight: 700;
   letter-spacing: 0.05em;
@@ -2124,8 +2125,8 @@ body.menu-gate-instant .quest-panel-sticky {
     0 1px 0 rgba(255, 235, 200, 0.10);
 }
 
-.carved-header-gold {
-  color: #e4b96a;
+.carved-header-arcane {
+  color: #c084fc;
 }
 
 .carved-header-blood {

@@ -224,7 +224,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="characters" />
           </div>
-          <h3 className="carved-header carved-header-gold font-medieval text-lg lg:text-xl">Heroes</h3>
+          <h3 className="carved-header carved-header-arcane font-medieval text-lg lg:text-xl">Heroes</h3>
         </div>
         <div className="flex items-center gap-2">
           <span className={`text-sm lg:text-base ${isAtMaxPlaced ? 'text-copper-400' : 'text-stone-400'}`}>
