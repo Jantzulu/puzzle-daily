@@ -2094,20 +2094,13 @@ body.menu-gate-instant .quest-panel-sticky {
 }
 
 /* ============================================
-   NOBLE HALL / DUNGEON TEMPERATURE SPLIT
-   The below-board region reads as two worlds: the heroes' hall above
-   the lintel in warm torchlight, the dungeon's denizens below it in
-   colder dark. Carried entirely by lighting washes — no new panels,
-   no borders, no layout change. Values are deliberately a whisper off
-   the page bg (#15100a): amber-shifted above, desaturated-cold below.
+   DUNGEON DARK BELOW THE LINTEL
+   Everything below the Dungeon Details lintel sits in a colder,
+   desaturated near-black — a whisper off the page bg (#15100a), so the
+   enemies read as belonging to the dungeon's world. The hero panel
+   above keeps the plain page ground (a matching warm wash was tried
+   2026-07-06 and rejected as ever-present noise).
    ============================================ */
-.hall-above {
-  background:
-    radial-gradient(ellipse 75% 70% at 50% 0%, rgba(228, 150, 60, 0.06), transparent 75%),
-    #181209;
-  padding-bottom: 4px;
-}
-
 .dungeon-below {
   background: #0d0a09;
   padding-bottom: 10px;

@@ -2810,10 +2810,6 @@ export const Game: React.FC<GameProps> = ({
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
               <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
-                {/* Temperature split: the heroes' hall sits in warm torchlight,
-                    everything below the Dungeon Details lintel in colder dark.
-                    Visual wrappers only — no behavior. */}
-                <div className="hall-above">
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
@@ -2849,8 +2845,11 @@ export const Game: React.FC<GameProps> = ({
                     } : undefined}
                   />
                 )}
-                </div>
 
+                {/* Everything below the Dungeon Details lintel sits in the
+                    dungeon's colder dark. Visual wrapper only — no behavior.
+                    (A matching warm wash on the hero panel was tried
+                    2026-07-06 and rejected: ever-present tint read as noise.) */}
                 <div className="dungeon-below">
                 {/* Enemies Display */}
                 <EnemyDisplay
