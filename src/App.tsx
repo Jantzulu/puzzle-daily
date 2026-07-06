@@ -537,6 +537,9 @@ function App() {
       requestAnimationFrame(() => {
         const root = document.getElementById('root');
         if (root) root.style.opacity = '1';
+        // The pre-hydration splash (index.html) is done its job;
+        // root's own fade-in covers the handoff.
+        document.getElementById('splash')?.remove();
       });
     });
   }, []);
