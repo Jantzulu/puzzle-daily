@@ -41,7 +41,10 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
       role="dialog"
       aria-modal="true"
       aria-label={label}
-      className="fixed inset-0 z-[70] flex items-center justify-center p-4 animate-overlay-fade-in"
+      // theme-root: the portal lands on <body>, OUTSIDE the app's .theme-root
+      // wrapper — without re-applying it here the sheet loses the theme font
+      // (falls back to Inter) and theme sizing.
+      className="theme-root fixed inset-0 z-[70] flex items-center justify-center p-4 animate-overlay-fade-in"
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
       onClick={onClose}
     >

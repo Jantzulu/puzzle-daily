@@ -73,7 +73,9 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
       role="dialog"
       aria-modal="true"
       aria-label={helpContent.title}
-      className={`fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
+      // theme-root: portaled to <body>, outside the app's .theme-root — re-apply
+      // so the sheet keeps the theme font instead of falling back to Inter
+      className={`theme-root fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
       onClick={handleClose}
     >
