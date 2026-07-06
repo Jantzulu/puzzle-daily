@@ -238,49 +238,46 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
     return null;
   }
 
-  // Accent divider for noPanel mode (when part of unified panel)
-  const divider = noPanel ? (
-    <div className="my-1.5 border-t border-copper-700/50 relative">
-      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
-    </div>
-  ) : null;
+  // Chiseled seam between the dungeon's informational sections
+  const divider = noPanel ? <div className="dungeon-seam" /> : null;
 
   const content = (
     <>
       {divider}
-      <div className="relative flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-1">
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="status_effects" />
           </div>
-          <h3 className="text-lg lg:text-xl font-bold text-mystic-400">Status Effects</h3>
+          <h3 className="carved-header carved-header-mystic font-medieval text-lg lg:text-xl">Status Effects</h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
           {statusEffectsWithSources.length} possible
         </span>
       </div>
 
-      <div className="space-y-2">
+      {/* Ledger rows, two columns when the width is there — the entry
+          boxes read as wasted air; a tight row per effect keeps every
+          field (name, description, grouped sources) in less space */}
+      <div className="md:columns-2 md:gap-x-5">
         {statusEffectsWithSources.map(({ effect, sources }) => (
           <div
             key={effect.id}
-            className="p-2 bg-stone-800/80 rounded-pixel-md border border-mystic-900/30"
+            className="py-1.5 border-t border-stone-700/40 first:border-t-0 break-inside-avoid"
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2">
               {/* Icon */}
-              <div className="flex-shrink-0">
-                <StatusEffectIcon effect={effect} size={24} />
+              <div className="flex-shrink-0 mt-0.5">
+                <StatusEffectIcon effect={effect} size={20} />
               </div>
 
-              {/* Name and description */}
-              <div className="flex-1 min-w-0">
-                <div className="text-sm lg:text-base font-medium text-mystic-300">
+              {/* Name and description flow inline */}
+              <div className="flex-1 min-w-0 leading-snug">
+                <span className="text-sm lg:text-base font-medium text-mystic-300">
                   {effect.name}
-                </div>
-                <div className="text-xs lg:text-sm text-stone-400">
-                  {effect.description}
-                </div>
+                </span>
+                <span className="text-xs lg:text-sm text-stone-400"> — {effect.description}</span>
               </div>
             </div>
 
@@ -314,7 +311,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               const allPickups = [...pickups, ...deathDrop];
 
               return (
-                <div className="mt-2 pt-2 border-t border-stone-700 space-y-1">
+                <div className="mt-1 pl-7 space-y-0.5">
                   {/* Innate: entity starts with the effect */}
                   {innate.length > 0 && (
                     <div className="flex items-center gap-1 flex-wrap">

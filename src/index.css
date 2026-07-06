@@ -2133,4 +2133,27 @@ body.menu-gate-instant .quest-panel-sticky {
   color: #c9564a;
 }
 
+/* The informational panels keep their identity colors, same carve */
+.carved-header-mystic {
+  color: #2dd4bf;
+}
+
+.carved-header-parchment {
+  color: #e8cc8a;
+}
+
+.carved-header-rust {
+  color: #e68f6d;
+}
+
+/* Chiseled seam between the dungeon's informational sections — a groove
+   cut into the dark ground, quieter than the lintel above it. Dark cut
+   on top, faint lit lip below: the same top-left light as everything. */
+.dungeon-seam {
+  height: 0;
+  border-top: 1px solid rgba(0, 0, 0, 0.6);
+  border-bottom: 1px solid rgba(255, 235, 200, 0.05);
+  margin: 6px 0;
+}
+
 

@@ -211,65 +211,60 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
     return null;
   }
 
-  // Accent divider for noPanel mode (when part of unified panel)
-  const divider = noPanel ? (
-    <div className="my-1.5 border-t border-copper-700/50 relative">
-      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
-    </div>
-  ) : null;
+  // Chiseled seam between the dungeon's informational sections
+  const divider = noPanel ? <div className="dungeon-seam" /> : null;
 
   const content = (
     <>
       {divider}
-      <div className="relative flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-1">
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="items" />
           </div>
-          <h3 className="text-lg lg:text-xl font-bold text-parchment-400">Items</h3>
+          <h3 className="carved-header carved-header-parchment font-medieval text-lg lg:text-xl">Items</h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
           {itemsWithSources.length} type{itemsWithSources.length !== 1 ? 's' : ''}
         </span>
       </div>
 
-      <div className="space-y-2">
+      {/* Ledger rows, two columns when the width is there */}
+      <div className="md:columns-2 md:gap-x-5">
         {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources }) => (
           <div
             key={collectible.id}
-            className="p-2 bg-stone-800/80 rounded-pixel-md border border-parchment-900/30"
+            className="py-1.5 border-t border-stone-700/40 first:border-t-0 break-inside-avoid"
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2">
               {/* Icon */}
-              <div className="flex-shrink-0">
-                <ItemIcon collectible={collectible} size={24} />
+              <div className="flex-shrink-0 mt-0.5">
+                <ItemIcon collectible={collectible} size={20} />
               </div>
 
               {/* Name and effects */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm lg:text-base font-medium text-parchment-200">
-                    {collectible.name}
+              <div className="flex-1 min-w-0 leading-snug">
+                <span className="text-sm lg:text-base font-medium text-parchment-200 mr-2">
+                  {collectible.name}
+                </span>
+                {/* On map indicator */}
+                {onMap && (
+                  <span className="dungeon-badge align-middle">
+                    On Map
                   </span>
-                  {/* On map indicator */}
-                  {onMap && (
-                    <span className="dungeon-badge">
-                      On Map
-                    </span>
-                  )}
-                </div>
+                )}
 
                 {/* Description if available */}
                 {collectible.description && (
                   <div
-                    className="text-xs lg:text-sm text-stone-400 mt-0.5"
+                    className="text-xs lg:text-sm text-stone-400"
                     dangerouslySetInnerHTML={{ __html: sanitizeHtml(collectible.description) }}
                   />
                 )}
                 {/* Show placement restriction info - separate line like SpecialTilesDisplay */}
                 {collectible.preventPlacement && (
-                  <div className="text-xs lg:text-sm text-blood-400/70 mt-0.5">
+                  <div className="text-xs lg:text-sm text-blood-400/70">
                     Cannot place heroes on this tile
                   </div>
                 )}
@@ -278,7 +273,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
             {/* Drop sources - who drops this item */}
             {dropSources.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-stone-700">
+              <div className="mt-1 pl-7">
                 <div className="flex items-center gap-1 flex-wrap">
                   <span className="text-xs text-stone-500 mr-1">Dropped by:</span>
                   {dropSources.map((source) => (
@@ -303,16 +298,12 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
             {/* Spell sources - who places/throws this item */}
             {spellSources.length > 0 && (
-              <div className="mt-2 pt-2 border-t border-stone-700">
+              <div className="mt-1 pl-7">
                 <div className="flex items-center gap-1 flex-wrap">
                   {spellSources.map((source, idx) => (
                     <div
                       key={`${source.entityId}-${source.spellName}-${idx}`}
-                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${
-                        source.isEnemy
-                          ? 'bg-teal-900/50 text-teal-300 border border-teal-700'
-                          : 'bg-teal-900/50 text-teal-300 border border-teal-700'
-                      }`}
+                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs bg-teal-900/50 text-teal-300 border border-teal-700"
                       title={`${source.isThrow ? 'Thrown' : 'Placed'} by ${source.entityName}`}
                     >
                       {source.entitySprite && (
@@ -326,7 +317,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                 </div>
                 {/* Duration info */}
                 {spellSources.some(s => s.duration && s.duration > 0) && (
-                  <div className="text-xs text-stone-400 mt-1">
+                  <div className="text-xs text-stone-400 mt-0.5">
                     {spellSources.filter(s => s.duration && s.duration > 0).map((s, i) => (
                       <span key={i}>
                         {i > 0 && ', '}Lasts {s.duration} turn{s.duration !== 1 ? 's' : ''}
@@ -339,7 +330,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
 
             {/* Duration info for base collectible */}
             {collectible.duration && collectible.duration > 0 && spellSources.length === 0 && (
-              <div className="mt-1">
+              <div className="pl-7">
                 <span className="text-xs text-stone-400">
                   Lasts {collectible.duration} turn{collectible.duration !== 1 ? 's' : ''}
                 </span>

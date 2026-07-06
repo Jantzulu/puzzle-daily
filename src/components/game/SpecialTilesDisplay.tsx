@@ -234,103 +234,99 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
     return null;
   }
 
-  // Accent divider for noPanel mode (when part of unified panel)
-  const divider = noPanel ? (
-    <div className="my-1.5 border-t border-copper-700/50 relative">
-      <div className="absolute left-1/2 -translate-x-1/2 -top-px w-16 h-px bg-gradient-to-r from-transparent via-copper-500 to-transparent" />
-    </div>
-  ) : null;
+  // Chiseled seam between the dungeon's informational sections
+  const divider = noPanel ? <div className="dungeon-seam" /> : null;
 
   const content = (
     <>
       {divider}
-      <div className="relative flex items-center justify-between mb-3">
+      <div className="relative flex items-center justify-between mb-1">
         <div className="min-w-[60px]" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center">
           <div className="absolute right-full mr-1">
             <HelpButton sectionId="special_tiles" />
           </div>
-          <h3 className="text-lg lg:text-xl font-bold text-rust-400">Dungeon Tiles</h3>
+          <h3 className="carved-header carved-header-rust font-medieval text-lg lg:text-xl">Dungeon Tiles</h3>
         </div>
         <span className="text-sm lg:text-base text-stone-400">
           {specialTiles.length} type{specialTiles.length !== 1 ? 's' : ''}
         </span>
       </div>
 
-      <div className="space-y-2">
+      {/* Ledger rows, two columns when the width is there */}
+      <div className="md:columns-2 md:gap-x-5">
         {specialTiles.map((info) => (
           <div
             key={info.tileType.id}
-            className="p-2 bg-stone-800/80 rounded-pixel-md border border-rust-900/30"
+            className="py-1.5 border-t border-stone-700/40 first:border-t-0 break-inside-avoid"
           >
-            <div className="flex items-start gap-3">
+            <div className="flex items-start gap-2">
               {/* Tile sprite(s) */}
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 mt-0.5">
                 {info.hasCadence ? (
                   // Show both on and off sprites for cadenced tiles
                   <div className="flex items-center gap-1">
                     <div className="relative">
-                      <TileSprite info={info} size={28} isOffState={false} />
+                      <TileSprite info={info} size={26} isOffState={false} />
                       <div className="absolute -bottom-1 -right-1 text-[8px] bg-moss-700 text-white px-0.5 rounded-pixel">ON</div>
                     </div>
                     <span className="text-stone-500 text-xs">⇄</span>
                     <div className="relative">
-                      <TileSprite info={info} size={28} isOffState={true} />
+                      <TileSprite info={info} size={26} isOffState={true} />
                       <div className="absolute -bottom-1 -right-1 text-[8px] bg-stone-600 text-white px-0.5 rounded-pixel">OFF</div>
                     </div>
                   </div>
                 ) : (
                   // Single sprite for non-cadenced tiles
-                  <TileSprite info={info} size={32} />
+                  <TileSprite info={info} size={26} />
                 )}
               </div>
 
-              {/* Name and description */}
-              <div className="flex-1 min-w-0">
-                <div className="text-sm lg:text-base font-medium text-parchment-200 flex items-center gap-2 flex-wrap">
+              {/* Name and description flow inline; detail lines keep their
+                  own rows (and colors) below */}
+              <div className="flex-1 min-w-0 leading-snug">
+                <span className="text-sm lg:text-base font-medium text-parchment-200">
                   {info.tileType.name}
-                  {/* Show different icons based on trigger type */}
-                  {info.triggerGroupId ? (
-                    <span className="text-amber-400 text-xs lg:text-sm" title={`Triggered by pressure plate (Group ${info.triggerGroupId})`}>⚡</span>
-                  ) : info.hasCadence ? (
-                    <span className="text-copper-400 text-xs lg:text-sm" title="Has on/off cadence">⟳</span>
-                  ) : null}
-                </div>
+                </span>
+                {/* Show different icons based on trigger type */}
+                {info.triggerGroupId ? (
+                  <span className="text-amber-400 text-xs lg:text-sm ml-1.5" title={`Triggered by pressure plate (Group ${info.triggerGroupId})`}>⚡</span>
+                ) : info.hasCadence ? (
+                  <span className="text-copper-400 text-xs lg:text-sm ml-1.5" title="Has on/off cadence">⟳</span>
+                ) : null}
                 {/* Use tile's description if available, otherwise generate from behaviors */}
-                <div className="text-xs lg:text-sm text-stone-400">
-                  {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}
-                </div>
+                <span className="text-xs lg:text-sm text-stone-400"> — {info.tileType.description || getBehaviorDescription(info.tileType.behaviors)}</span>
                 {/* Off-state behaviors */}
                 {info.tileType.offStateBehaviors && info.tileType.offStateBehaviors.length > 0 && (
-                  <div className="text-xs lg:text-sm text-stone-500 mt-0.5">
+                  <div className="text-xs lg:text-sm text-stone-500">
                     Off state: {getBehaviorDescription(info.tileType.offStateBehaviors)}
                   </div>
                 )}
                 {/* On-state blocks movement */}
                 {info.tileType.onStateBlocksMovement && (
-                  <div className="text-xs lg:text-sm text-rust-400/70 mt-0.5">
+                  <div className="text-xs lg:text-sm text-rust-400/70">
                     Blocks movement when active (on)
                   </div>
                 )}
                 {/* Show wall behavior info */}
                 {info.behavesLikeWall && !info.tileType.onStateBlocksMovement && (
-                  <div className="text-xs lg:text-sm text-rust-400/70 mt-0.5">
+                  <div className="text-xs lg:text-sm text-rust-400/70">
                     Blocks movement (behaves like wall)
                   </div>
                 )}
                 {/* Show placement restriction info */}
                 {info.preventPlacement && (
-                  <div className="text-xs lg:text-sm text-blood-400/70 mt-0.5">
+                  <div className="text-xs lg:text-sm text-blood-400/70">
                     Cannot place heroes on this tile
                   </div>
                 )}
                 {/* Show trigger group info OR cadence info, but not both */}
                 {info.triggerGroupId ? (
-                  <div className="text-xs lg:text-sm text-amber-400/70 mt-0.5">
+                  <div className="text-xs lg:text-sm text-amber-400/70">
                     Triggered by pressure plate (Group {info.triggerGroupId})
                   </div>
                 ) : info.hasCadence && info.cadence ? (
-                  <div className="text-xs lg:text-sm text-copper-400/70 mt-0.5">
+                  <div className="text-xs lg:text-sm text-copper-400/70">
                     {getCadenceDescription(info.cadence)}
                   </div>
                 ) : null}
