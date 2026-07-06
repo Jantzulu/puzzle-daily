@@ -264,7 +264,7 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
         {statusEffectsWithSources.map(({ effect, sources }) => (
           <div
             key={effect.id}
-            className="py-1.5 border-t border-stone-700/40 first:border-t-0 break-inside-avoid"
+            className="py-1.5 break-inside-avoid"
           >
             <div className="flex items-start gap-2">
               {/* Icon */}
@@ -289,11 +289,13 @@ export const StatusEffectsDisplay: React.FC<StatusEffectsDisplayProps> = ({ puzz
               const deathDrop = sources.filter(s => s.method === 'death_drop');
 
               const entityBadge = (source: EntitySource, key: string) => {
+                // Chip wears the applicator's identity color: blood for
+                // enemies, arcane purple for heroes, parchment for items
                 const colorClass = source.sourceType === 'enemy'
                   ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
                   : source.sourceType === 'item'
                   ? 'bg-parchment-900/50 text-parchment-300 border border-parchment-700'
-                  : 'bg-copper-900/50 text-copper-300 border border-copper-700';
+                  : 'bg-arcane-900/50 text-arcane-300 border border-arcane-700';
                 return (
                   <div
                     key={key}

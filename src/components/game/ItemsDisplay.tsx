@@ -235,7 +235,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
         {itemsWithSources.map(({ collectible, onMap, dropSources, spellSources }) => (
           <div
             key={collectible.id}
-            className="py-1.5 border-t border-stone-700/40 first:border-t-0 break-inside-avoid"
+            className="py-1.5 break-inside-avoid"
           >
             <div className="flex items-start gap-2">
               {/* Icon */}
@@ -282,7 +282,7 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                       className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${
                         source.isEnemy
                           ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
-                          : 'bg-copper-900/50 text-copper-300 border border-copper-700'
+                          : 'bg-arcane-900/50 text-arcane-300 border border-arcane-700'
                       }`}
                       title={source.name}
                     >
@@ -303,7 +303,11 @@ export const ItemsDisplay: React.FC<ItemsDisplayProps> = ({ puzzle, className = 
                   {spellSources.map((source, idx) => (
                     <div
                       key={`${source.entityId}-${source.spellName}-${idx}`}
-                      className="flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs bg-teal-900/50 text-teal-300 border border-teal-700"
+                      className={`flex items-center gap-1 px-1.5 py-0.5 rounded-pixel text-xs ${
+                        source.isEnemy
+                          ? 'bg-blood-900/50 text-blood-300 border border-blood-700'
+                          : 'bg-arcane-900/50 text-arcane-300 border border-arcane-700'
+                      }`}
                       title={`${source.isThrow ? 'Thrown' : 'Placed'} by ${source.entityName}`}
                     >
                       {source.entitySprite && (

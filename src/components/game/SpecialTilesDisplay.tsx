@@ -258,7 +258,7 @@ export const SpecialTilesDisplay: React.FC<SpecialTilesDisplayProps> = ({ puzzle
         {specialTiles.map((info) => (
           <div
             key={info.tileType.id}
-            className="py-1.5 border-t border-stone-700/40 first:border-t-0 break-inside-avoid"
+            className="py-1.5 break-inside-avoid"
           >
             <div className="flex items-start gap-2">
               {/* Tile sprite(s) */}
