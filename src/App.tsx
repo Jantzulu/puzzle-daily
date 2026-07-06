@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react
 import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
+import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
@@ -516,7 +517,7 @@ function Navigation() {
                 PortcullisMesh the control panel wears, spikes and all. */}
             <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
               {dockRail ? <GateBeamMesh /> : <PortcullisMesh className="nav-gate-rail-mesh" />}
-              <SoundSettings isMobile />
+              <SoundSettings />
               {isCreator && <CloudSyncButton />}
               <UserMenu />
             </div>
@@ -586,6 +587,7 @@ function App() {
         <div className="min-h-screen theme-root">
           <Navigation />
           <ErrorBoundary>
+            <RouteFade>
             <Suspense fallback={
               <div className="flex items-center justify-center p-12">
                 <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
@@ -605,6 +607,7 @@ function App() {
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
+            </RouteFade>
           </ErrorBoundary>
           <ToastContainer />
         </div>

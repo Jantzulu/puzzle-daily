@@ -83,6 +83,25 @@ canvas {
   image-rendering: crisp-edges;
 }
 
+/* Route transition — into and out of the darkness: the old page vanishes
+   into the void backdrop, a beat of black, then the new page lights up.
+   Triggered by a keyed remount per pathname (see RouteFade). */
+@keyframes route-emerge {
+  0% { opacity: 0; }
+  30% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+.route-emerge {
+  animation: route-emerge 0.35s ease-out;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .route-emerge {
+    animation: none;
+  }
+}
+
 /* ============================================
    DUNGEON THEME COMPONENT CLASSES
    ============================================ */

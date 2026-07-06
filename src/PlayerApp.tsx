@@ -7,6 +7,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspen
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
+import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
 import { applyNavTorchLight } from './components/shared/navTorchLight';
@@ -391,7 +392,7 @@ function PlayerNavigation() {
                 PortcullisMesh the control panel wears, spikes and all. */}
             <div className="nav-gate-item px-8 py-2 flex items-center gap-2 justify-center">
               {dockRail ? <GateBeamMesh /> : <PortcullisMesh className="nav-gate-rail-mesh" />}
-              <SoundSettings isMobile />
+              <SoundSettings />
               <UserMenu />
             </div>
           </div>
@@ -487,6 +488,7 @@ function PlayerApp() {
         <div className="min-h-screen theme-root">
           <PlayerNavigation />
           <ErrorBoundary autoReloadOnChunkError>
+            <RouteFade>
             <Suspense fallback={
               <div className="flex items-center justify-center p-12">
                 <div className="text-copper-400 font-medieval text-lg animate-pulse">Loading...</div>
@@ -502,6 +504,7 @@ function PlayerApp() {
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
+            </RouteFade>
           </ErrorBoundary>
           <ToastContainer />
         </div>
