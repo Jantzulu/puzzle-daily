@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   pushAllToCloud,
   pullFromCloud,
@@ -12,6 +12,7 @@ import {
   type SyncConflict,
 } from '../../utils/cloudSync';
 import { ConflictResolutionModal } from './ConflictResolutionModal';
+import { NavSheet } from '../shared/NavSheet';
 
 interface CloudSyncButtonProps {
   onSyncComplete?: () => void;
@@ -25,7 +26,6 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
   const [confirmPull, setConfirmPull] = useState(false);
   const [conflicts, setConflicts] = useState<SyncConflict[]>(getConflicts());
   const [showConflicts, setShowConflicts] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const unsubscribe = subscribeSyncStatus((status) => {
@@ -45,17 +45,10 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
     return unsubscribe;
   }, []);
 
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setShowDropdown(false);
-        setConfirmPull(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  const closeDropdown = () => {
+    setShowDropdown(false);
+    setConfirmPull(false);
+  };
 
   const handlePush = async () => {
     setErrors([]);
@@ -112,7 +105,7 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
                       syncStatus === 'error' ? 'text-red-400' : 'text-stone-400';
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <>
       <button
         onClick={() => setShowDropdown(!showDropdown)}
         className={`nav-pill flex items-center gap-2 px-3 py-2 transition-colors ${statusColor}`}
@@ -139,8 +132,7 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
         </svg>
       </button>
 
-      {showDropdown && (
-        <div className="fixed left-1/2 -translate-x-1/2 top-16 sm:absolute sm:left-auto sm:translate-x-0 sm:right-0 sm:top-full sm:mt-2 w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-50">
+      <NavSheet open={showDropdown} onClose={closeDropdown} label="Cloud sync">
           <div className="p-3 border-b border-stone-700">
             <div className="flex items-center justify-between">
               <span className="text-parchment-100 font-medium">Cloud Sync</span>
@@ -228,8 +220,7 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
               </ul>
             </div>
           )}
-        </div>
-      )}
+      </NavSheet>
 
       {/* Conflict Resolution Modal */}
       {showConflicts && conflicts.length > 0 && (
@@ -240,6 +231,6 @@ export const CloudSyncButton: React.FC<CloudSyncButtonProps> = ({ onSyncComplete
           onClose={() => setShowConflicts(false)}
         />
       )}
-    </div>
+    </>
   );
 };

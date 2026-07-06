@@ -67,6 +67,28 @@ export function isHapticsSupported(): boolean {
   return WebHaptics.isSupported || isTouchDevice;
 }
 
+// ─── Player preference ───────────────────────────────────────────
+// Team config decides WHICH triggers fire; this is the player's own
+// master switch on top of it. Defaults to on.
+
+const PLAYER_PREF_KEY = 'puzzle-game-haptics-enabled';
+
+export function isHapticsEnabledByPlayer(): boolean {
+  try {
+    return localStorage.getItem(PLAYER_PREF_KEY) !== 'off';
+  } catch {
+    return true;
+  }
+}
+
+export function setHapticsEnabledByPlayer(enabled: boolean): void {
+  try {
+    localStorage.setItem(PLAYER_PREF_KEY, enabled ? 'on' : 'off');
+  } catch {
+    // Storage unavailable — preference just won't persist.
+  }
+}
+
 /**
  * Get the effective haptic config — stored config merged over defaults.
  */
@@ -94,6 +116,7 @@ function firePattern(pattern: HapticPattern): void {
  */
 export function vibrate(triggerId: HapticTriggerId): void {
   if (!isHapticsSupported()) return;
+  if (!isHapticsEnabledByPlayer()) return;
 
   const config = getEffectiveHapticConfig();
   const pattern = config[triggerId];

@@ -1,16 +1,30 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import { soundManager } from '../../utils/soundManager';
+import { isHapticsSupported, isHapticsEnabledByPlayer, setHapticsEnabledByPlayer, vibratePreview } from '../../utils/haptics';
+import { NavSheet } from './NavSheet';
 import type { SoundSettings as SoundSettingsType } from '../../types/game';
 
-interface SoundSettingsProps {
-  onClose?: () => void;
-  isMobile?: boolean;
-}
+const Toggle: React.FC<{ on: boolean; onClick: () => void; label: string }> = ({ on, onClick, label }) => (
+  <button
+    onClick={onClick}
+    aria-label={label}
+    aria-pressed={on}
+    className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
+      on ? 'bg-blue-600' : 'bg-stone-600'
+    }`}
+  >
+    <span
+      className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
+        on ? 'translate-x-5' : 'translate-x-1'
+      }`}
+    />
+  </button>
+);
 
-export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose, isMobile = false }) => {
+export const SoundSettings: React.FC = () => {
   const [settings, setSettings] = useState<SoundSettingsType>(soundManager.getSettings());
+  const [hapticsOn, setHapticsOn] = useState(isHapticsEnabledByPlayer());
   const [isOpen, setIsOpen] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     // Initialize audio context on first interaction
@@ -20,17 +34,6 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose,
     };
     document.addEventListener('click', initAudio);
     return () => document.removeEventListener('click', initAudio);
-  }, []);
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (e: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
   const handleMasterChange = (value: number) => {
@@ -51,6 +54,14 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose,
   const handleToggle = () => {
     soundManager.setEnabled(!settings.enabled);
     setSettings(soundManager.getSettings());
+  };
+
+  const handleHapticsToggle = () => {
+    const next = !hapticsOn;
+    setHapticsEnabledByPlayer(next);
+    setHapticsOn(next);
+    // A little buzz confirms the switch actually does something
+    if (next) vibratePreview('tap');
   };
 
   const VolumeSlider: React.FC<{
@@ -85,13 +96,13 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose,
   );
 
   return (
-    <div className="relative" ref={dropdownRef}>
+    <>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => setIsOpen(true)}
         className={`nav-pill flex items-center gap-2 px-3 py-2 transition-colors ${
           settings.enabled ? 'text-parchment-300' : 'text-stone-500'
         }`}
-        title="Sound Settings"
+        title="Sound & Haptics"
       >
         {settings.enabled ? (
           <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -103,69 +114,61 @@ export const SoundSettings: React.FC<SoundSettingsProps> = ({ onClose: _onClose,
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2" />
           </svg>
         )}
-        <svg className={`w-3 h-3 text-stone-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
       </button>
 
-      {isOpen && (
-        <div className={`${
-          isMobile
-            ? 'fixed left-1/2 -translate-x-1/2 bottom-4'
-            : 'absolute right-0 top-full mt-2'
-        } w-64 bg-stone-800 border border-stone-700 rounded-lg shadow-xl z-[60]`}>
-          <div className="p-3 border-b border-stone-700">
-            <div className="flex items-center justify-between">
-              <span className="text-parchment-100 font-medium">Sound Settings</span>
-              <button
-                onClick={handleToggle}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${
-                  settings.enabled ? 'bg-blue-600' : 'bg-stone-600'
-                }`}
-              >
-                <span
-                  className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${
-                    settings.enabled ? 'translate-x-5' : 'translate-x-1'
-                  }`}
-                />
-              </button>
-            </div>
+      <NavSheet open={isOpen} onClose={() => setIsOpen(false)} label="Sound and haptics settings">
+        <div className="p-3 border-b border-stone-700">
+          <div className="flex items-center justify-between">
+            <span className="text-parchment-100 font-medium">Sound</span>
+            <Toggle on={settings.enabled} onClick={handleToggle} label="Toggle sound" />
           </div>
-
-          <div className="p-3 space-y-4">
-            {/* eslint-disable-next-line react-hooks/static-components */}
-            <VolumeSlider
-              label="Master Volume"
-              value={settings.masterVolume}
-              onChange={handleMasterChange}
-              disabled={!settings.enabled}
-            />
-            {/* eslint-disable-next-line react-hooks/static-components */}
-            <VolumeSlider
-              label="Music"
-              value={settings.musicVolume}
-              onChange={handleMusicChange}
-              disabled={!settings.enabled}
-            />
-            {/* eslint-disable-next-line react-hooks/static-components */}
-            <VolumeSlider
-              label="Sound Effects"
-              value={settings.sfxVolume}
-              onChange={handleSfxChange}
-              disabled={!settings.enabled}
-            />
-          </div>
-
-          {!settings.enabled && (
-            <div className="px-3 pb-3">
-              <p className="text-stone-500 text-xs">
-                Sound is muted. Toggle the switch to enable.
-              </p>
-            </div>
-          )}
         </div>
-      )}
-    </div>
+
+        <div className="p-3 space-y-4">
+          {/* eslint-disable-next-line react-hooks/static-components */}
+          <VolumeSlider
+            label="Master Volume"
+            value={settings.masterVolume}
+            onChange={handleMasterChange}
+            disabled={!settings.enabled}
+          />
+          {/* eslint-disable-next-line react-hooks/static-components */}
+          <VolumeSlider
+            label="Music"
+            value={settings.musicVolume}
+            onChange={handleMusicChange}
+            disabled={!settings.enabled}
+          />
+          {/* eslint-disable-next-line react-hooks/static-components */}
+          <VolumeSlider
+            label="Sound Effects"
+            value={settings.sfxVolume}
+            onChange={handleSfxChange}
+            disabled={!settings.enabled}
+          />
+        </div>
+
+        {!settings.enabled && (
+          <div className="px-3 pb-3">
+            <p className="text-stone-500 text-xs">
+              Sound is muted. Toggle the switch to enable.
+            </p>
+          </div>
+        )}
+
+        {isHapticsSupported() && (
+          <div className="p-3 border-t border-stone-700">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="text-parchment-100 font-medium">Haptics</span>
+                <p className="text-stone-500 text-xs mt-0.5">Vibration on taps and events</p>
+              </div>
+              <Toggle on={hapticsOn} onClick={handleHapticsToggle} label="Toggle haptics" />
+            </div>
+          </div>
+        )}
+      </NavSheet>
+    </>
   );
 };
 
