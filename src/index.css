@@ -93,7 +93,7 @@ canvas {
 }
 
 .route-emerge {
-  animation: route-emerge 0.35s ease-out;
+  animation: route-emerge 0.55s ease-out;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1523,6 +1523,13 @@ html body.theme-font-active,
      releasing the fill at animation end is invisible. */
   animation: gate-settle 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
+
+/* Ride-vs-settle conflict: a RUNNING settle overrides the ride transition
+   (animations beat transitions), pinning the rail at home while the gate
+   lowers. Handled in JS, not here: the nav finish()es any running settle
+   before broadcasting menu-gate-lowered (an `animation: none` rule was
+   tried and SNAPS — Chrome won't transition from a removed animation's
+   value), and Game.tsx drops the class once the settle has played. */
 
 /* Overlay docking (every width): with the gate out of flow, opening the
    menu can't push the play page's control rail into place below it — so

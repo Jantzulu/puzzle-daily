@@ -181,6 +181,16 @@ export const Game: React.FC<GameProps> = ({
   // Count of puzzle sprites that failed to preload. Non-zero shows a small
   // retry pill on the board instead of rendering missing art silently.
   const [failedSpriteCount, setFailedSpriteCount] = useState(0);
+  // The gate-settle mount animation gets exactly one showing, then its class
+  // comes off. A lingering class would restart the animation whenever the
+  // menu-ride rule (index.css) toggles animation:none off again — and a
+  // RUNNING settle overrides the ride transition (animations beat
+  // transitions), which froze the rail while the gate lowered.
+  const [gateSettling, setGateSettling] = useState(true);
+  useEffect(() => {
+    const id = setTimeout(() => setGateSettling(false), 1050); // settle runs 1s
+    return () => clearTimeout(id);
+  }, []);
   // Reset-reveal overlay (see index.css BOARD PHASE TRANSITIONS):
   // keyed by nonce so each trigger replays the animation. 0 = never fired.
   const [resetFxNonce, setResetFxNonce] = useState(0);
@@ -2084,7 +2094,7 @@ export const Game: React.FC<GameProps> = ({
               // can never paint on top of the navbar or the open menu's
               // beams — bar tips always tuck behind. quest-panel-sticky
               // handles the top offset per breakpoint.
-              <div className="w-full flex flex-col items-center sticky top-0 z-[40] quest-panel-sticky gate-settle">
+              <div className={`w-full flex flex-col items-center sticky top-0 z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the

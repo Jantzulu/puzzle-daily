@@ -252,6 +252,13 @@ function Navigation() {
     // style recalc, so the rail snaps home instead of winching up.
     body.classList.toggle('menu-gate-instant', !mobileMenuOpen && instantClose);
     if (mobileMenuOpen && dockRail && menuInnerRef.current) {
+      // A mid-flight gate-settle would override the ride transition
+      // (animations beat transitions) and pin the rail while the gate
+      // lowers alone. Jump it to its end state (home) so the ride
+      // transitions from there as normal.
+      document.querySelectorAll('.gate-settle').forEach(el => {
+        el.getAnimations().forEach(a => { try { a.finish(); } catch { /* infinite anims can't finish */ } });
+      });
       body.style.setProperty('--gate-drop', `${menuInnerRef.current.offsetHeight}px`);
       body.classList.add('menu-gate-lowered');
     } else {
