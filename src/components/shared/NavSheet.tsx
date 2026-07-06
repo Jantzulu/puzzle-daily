@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 
@@ -8,6 +8,9 @@ interface NavSheetProps {
   label: string;
   children: React.ReactNode;
 }
+
+// Matches .animate-overlay-fade-out / .animate-panel-scale-out (0.25s)
+const EXIT_MS = 250;
 
 /**
  * Centered sheet for nav utility panels (sound settings, user menu).
@@ -20,6 +23,20 @@ interface NavSheetProps {
  */
 export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, children }) => {
   const panelRef = useFocusTrap<HTMLDivElement>(open);
+
+  // Linger after close so the exit animation can play. `open` flipping false
+  // (any path: backdrop, Escape, or a button inside) switches the classes to
+  // the -out pair; unmount follows once they've run. Covers every close path
+  // without consumers doing anything.
+  const [rendered, setRendered] = useState(open);
+  useEffect(() => {
+    if (open) {
+      setRendered(true);
+      return;
+    }
+    const id = setTimeout(() => setRendered(false), EXIT_MS);
+    return () => clearTimeout(id);
+  }, [open]);
 
   useEffect(() => {
     if (!open) return;
@@ -34,7 +51,7 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!rendered) return null;
 
   return createPortal(
     <div
@@ -44,14 +61,14 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
       // theme-root: the portal lands on <body>, OUTSIDE the app's .theme-root
       // wrapper — without re-applying it here the sheet loses the theme font
       // (falls back to Inter) and theme sizing.
-      className="theme-root fixed inset-0 z-[70] flex items-center justify-center p-4 animate-overlay-fade-in"
+      className={`theme-root fixed inset-0 z-[70] flex items-center justify-center p-4 ${open ? 'animate-overlay-fade-in' : 'animate-overlay-fade-out pointer-events-none'}`}
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
       onClick={onClose}
     >
       <div
         ref={panelRef}
         tabIndex={-1}
-        className="w-full max-w-xs max-h-[85vh] overflow-y-auto dungeon-panel rounded-lg shadow-xl animate-panel-scale-in"
+        className={`w-full max-w-xs max-h-[85vh] overflow-y-auto dungeon-panel rounded-lg shadow-xl ${open ? 'animate-panel-scale-in' : 'animate-panel-scale-out'}`}
         onClick={e => e.stopPropagation()}
       >
         {children}
