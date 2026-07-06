@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { invalidateImageCache } from './imageLoader';
+import { optimizeImageForUpload } from './imageOptimize';
 
 const BUCKET = 'theme-assets';
 
@@ -97,6 +98,8 @@ export async function uploadMedia(
   folderPath: string,
 ): Promise<{ url: string; path: string } | null> {
   try {
+    // Large PNG/JPEGs re-encode to WebP; sprites/GIFs pass through untouched
+    file = await optimizeImageForUpload(file);
     const ext = getMimeExt(file);
     const baseName = file.name.replace(/\.[^.]+$/, '');
     const filename = `${Date.now()}-${sanitizeFilename(baseName)}.${ext}`;
