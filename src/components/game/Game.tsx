@@ -259,6 +259,45 @@ export const Game: React.FC<GameProps> = ({
   const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
   const [showBugReport, setShowBugReport] = useState(false);
 
+  // Full-screen overlay visibility (mirrors the render conditions below)
+  const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !victoryDismissed;
+  const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode;
+  const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode;
+
+  // Escape closes whichever dismissible overlay is on top (matches HelpOverlay behavior).
+  // The life-lost overlay is deliberately excluded — it has no dismiss affordance;
+  // the player must pick an action.
+  useEffect(() => {
+    const anyDismissible = showConcedeConfirm || victoryOverlayVisible || gameOverOverlayVisible;
+    if (!anyDismissible) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      if (showConcedeConfirm) {
+        if (dismissingConcede) return;
+        setDismissingConcede(true);
+        setTimeout(() => { setDismissingConcede(false); setShowConcedeConfirm(false); }, 250);
+      } else if (dismissingOverlay) {
+        return;
+      } else if (victoryOverlayVisible) {
+        dismissOverlay(() => setVictoryDismissed(true));
+      } else if (gameOverOverlayVisible) {
+        dismissOverlay(() => setDefeatDismissed(true));
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showConcedeConfirm, dismissingConcede, victoryOverlayVisible, gameOverOverlayVisible, dismissingOverlay, dismissOverlay]);
+
+  // Lock body scroll while a fixed full-screen overlay is up so the page
+  // can't scroll behind it (the game-over overlay only covers the board,
+  // so it doesn't lock).
+  useEffect(() => {
+    const anyFullScreen = showConcedeConfirm || victoryOverlayVisible || lifeLostOverlayVisible;
+    if (!anyFullScreen) return;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = ''; };
+  }, [showConcedeConfirm, victoryOverlayVisible, lifeLostOverlayVisible]);
+
   // Shimmer animation key for Quest text - triggers on puzzle change
   const [shimmerKey, setShimmerKey] = useState(0);
   const prevPuzzleIdForShimmerRef = useRef<string | null>(null);
@@ -2216,6 +2255,9 @@ export const Game: React.FC<GameProps> = ({
               {/* Game Over Overlay — dismissible (matches Victory pattern) */}
               {showGameOver && !defeatDismissed && !replayMode && (
                 <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Game over"
                   className={`absolute inset-0 flex items-center justify-center z-10 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                   style={{
                     backgroundColor: themeAssets.gameOverPanelOverlayBg || 'rgba(0, 0, 0, 0.8)',
@@ -2334,6 +2376,9 @@ export const Game: React.FC<GameProps> = ({
               {/* Victory Full Overlay — dismissible */}
               {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && !victoryDismissed && (
                 <div
+                  role="dialog"
+                  aria-modal="true"
+                  aria-label="Victory"
                   className={`fixed inset-0 flex items-center justify-center z-50 overflow-y-auto py-4 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                   style={{ backgroundColor: 'rgba(0, 0, 0, 0.8)' }}
                   onClick={() => dismissOverlay(() => setVictoryDismissed(true))}
@@ -2346,6 +2391,7 @@ export const Game: React.FC<GameProps> = ({
                     <button
                       onClick={() => dismissOverlay(() => setVictoryDismissed(true))}
                       disabled={dismissingOverlay}
+                      aria-label="Dismiss"
                       className="absolute top-2 right-2 p-1 text-moss-400 hover:text-parchment-100 hover:bg-moss-700 rounded transition-colors"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -2525,6 +2571,9 @@ export const Game: React.FC<GameProps> = ({
             {/* Life Lost Overlay — outside shaking container so transform doesn't break fixed positioning */}
             {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
               <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Defeated"
                 className={`fixed inset-0 flex items-center justify-center z-50 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                 style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
               >
@@ -2581,6 +2630,9 @@ export const Game: React.FC<GameProps> = ({
             {/* Concede Confirmation Popup */}
             {showConcedeConfirm && (
               <div
+                role="dialog"
+                aria-modal="true"
+                aria-label="Concede confirmation"
                 className={`fixed inset-0 flex items-center justify-center z-50 ${dismissingConcede ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                 style={{
                   backgroundColor: themeAssets.concedeModalOverlayBg || 'rgba(0, 0, 0, 0.7)',
