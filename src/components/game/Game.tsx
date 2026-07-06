@@ -2307,9 +2307,13 @@ export const Game: React.FC<GameProps> = ({
 
                             return (
                               <>
+                                {/* No glow on the final-turn state: the 10px red text-shadow
+                                    rendered as a soft red square around the digits on desktop
+                                    and hurt readability — the blood color + pulse carry the
+                                    warning on their own. */}
                                 <span className={`text-base lg:text-lg font-bold ${
                                   isVeryNearLimit
-                                    ? 'text-blood-400 text-shadow-glow-blood animate-pulse'
+                                    ? 'text-blood-400 animate-pulse'
                                     : isNearLimit
                                     ? 'text-rust-400'
                                     : ''
