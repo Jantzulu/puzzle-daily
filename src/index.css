@@ -2047,4 +2047,50 @@ body.menu-gate-instant .quest-panel-sticky {
   padding-bottom: 2px;
 }
 
+/* ============================================
+   DUNGEON THRESHOLD LINTEL
+   The "Dungeon Details" divider is a carved stone lintel — the doorway
+   between the heroes' hall above it and the dungeon below. Same hewn
+   stone as the compendium slab (#262120), same engraved-gold lettering
+   recipe (dark carve above the stroke, lit lip below). Deliberately the
+   ONLY new set-piece in the below-board region: everything else in the
+   noble/dungeon split is carried by lighting, not furniture.
+   ============================================ */
+.dungeon-lintel {
+  position: relative;
+  height: 38px;
+  background: #262120;
+  box-shadow:
+    inset 0 2px 0 #2e2824,
+    inset 0 -3px 0 #14100d,
+    0 3px 6px rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.dungeon-lintel-text {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #e4b96a;
+  text-shadow:
+    0 -1px 0 rgba(0, 0, 0, 0.85),
+    0 1px 0 rgba(255, 235, 200, 0.12);
+}
+
+/* Fallback center mark when no theme icon is set — the same copper
+   diamond the old divider used, now inlaid in the stone */
+.dungeon-lintel-gem {
+  width: 8px;
+  height: 8px;
+  transform: rotate(45deg);
+  background: #a97545;
+  border: 1px solid #c4915c;
+  flex-shrink: 0;
+}
+
 

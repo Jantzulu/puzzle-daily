@@ -151,12 +151,12 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   const selectedGlow =
     'drop-shadow(0 0 2px rgba(0,0,0,1)) drop-shadow(0 0 3px rgba(180,50,50,0.9)) drop-shadow(0 0 7px rgba(180,50,50,0.5))';
 
-  // "DUNGEON ◆ DETAILS" divider shown in noPanel mode
+  // "Dungeon Details" threshold shown in noPanel mode — a carved stone
+  // lintel marking the doorway between the heroes' hall and the dungeon
   const divider = noPanel ? (
-    <div className="mt-2 mb-1.5">
-      <div className="relative flex items-center justify-center">
-        <div className="flex-1 border-t-2 border-copper-700/60" />
-        <span className="mx-2 text-xs text-stone-500 tracking-wider uppercase">Dungeon</span>
+    <div className="dungeon-lintel mt-2 mb-2">
+      <span className="dungeon-lintel-text font-medieval">
+        <span>Dungeon</span>
         {themeAssets.iconDungeonDetails ? (
           <img
             src={themeAssets.iconDungeonDetails}
@@ -165,11 +165,10 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             style={{ imageRendering: 'pixelated' }}
           />
         ) : (
-          <div className="w-2 h-2 rotate-45 bg-copper-600 border border-copper-500 flex-shrink-0" />
+          <span className="dungeon-lintel-gem" />
         )}
-        <span className="mx-2 text-xs text-stone-500 tracking-wider uppercase">Details</span>
-        <div className="flex-1 border-t-2 border-copper-700/60" />
-      </div>
+        <span>Details</span>
+      </span>
     </div>
   ) : null;
 
