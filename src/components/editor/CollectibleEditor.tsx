@@ -3,7 +3,7 @@ import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { CustomCollectible, CustomSprite } from '../../utils/assetStorage';
-import type { CollectibleEffectConfig, CollectibleEffectType } from '../../types/game';
+import type { CollectibleEffectConfig, CollectibleEffectType, Direction } from '../../types/game';
 import { saveCollectible, getCustomCollectibles, deleteCollectible, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -701,7 +701,7 @@ const CollectibleEffectEditor: React.FC<{
                 const mode = e.target.value as 'clockwise' | 'counter_clockwise' | 'fixed';
                 const updates: CollectibleEffectConfig = { ...effect, redirectMode: mode };
                 if (mode === 'fixed' && !effect.redirectFixedDirection) {
-                  updates.redirectFixedDirection = 'north' as any;
+                  updates.redirectFixedDirection = 'north';
                 }
                 onChange(updates);
               }}
@@ -718,7 +718,7 @@ const CollectibleEffectEditor: React.FC<{
               <label className="block text-xs text-stone-400 mb-1">Rotation Angle</label>
               <select
                 value={effect.redirectAngle ?? 90}
-                onChange={(e) => onChange({ ...effect, redirectAngle: parseInt(e.target.value) as any })}
+                onChange={(e) => onChange({ ...effect, redirectAngle: parseInt(e.target.value) as 45 | 90 | 135 | 180 })}
                 className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
               >
                 <option value={45}>45° (one step)</option>
@@ -734,7 +734,7 @@ const CollectibleEffectEditor: React.FC<{
               <label className="block text-xs text-stone-400 mb-1">Fixed Direction</label>
               <select
                 value={(effect.redirectFixedDirection as string) ?? 'north'}
-                onChange={(e) => onChange({ ...effect, redirectFixedDirection: e.target.value as any })}
+                onChange={(e) => onChange({ ...effect, redirectFixedDirection: e.target.value as Direction })}
                 className="w-full px-2 py-1 bg-stone-600 rounded text-sm"
               >
                 <option value="north">North</option>

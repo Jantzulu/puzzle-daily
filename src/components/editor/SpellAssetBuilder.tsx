@@ -3,7 +3,6 @@ import { toast } from '../shared/Toast';
 import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets, getCustomCollectibles } from '../../utils/assetStorage';
-import type { CollectiblePickupPermissions } from '../../types/game';
 import { RichTextEditor } from './RichTextEditor';
 import { MediaBrowseButton } from './MediaBrowseButton';
 import { VersionHistoryModal } from './VersionHistoryModal';
@@ -1498,8 +1497,8 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                   <select
                     value={editedSpell.redirectMode ?? 'clockwise'}
                     onChange={(e) => {
-                      const mode = e.target.value;
-                      const updates: any = { ...editedSpell, redirectMode: mode };
+                      const mode = e.target.value as NonNullable<SpellAsset['redirectMode']>;
+                      const updates: SpellAsset = { ...editedSpell, redirectMode: mode };
                       // Set default fixed direction when switching to fixed mode
                       if (mode === 'fixed' && !editedSpell.redirectFixedDirection) {
                         updates.redirectFixedDirection = 'north';
@@ -1524,7 +1523,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     <label className="block text-sm font-medium mb-1">Rotation Angle</label>
                     <select
                       value={editedSpell.redirectAngle ?? 90}
-                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectAngle: parseInt(e.target.value) as any })}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectAngle: parseInt(e.target.value) as 45 | 90 | 135 | 180 })}
                       className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                     >
                       <option value={45}>45° (one step)</option>
@@ -1543,7 +1542,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                     <label className="block text-sm font-medium mb-1">Fixed Direction</label>
                     <select
                       value={editedSpell.redirectFixedDirection ?? 'north'}
-                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectFixedDirection: e.target.value as any })}
+                      onChange={(e) => setEditedSpell({ ...editedSpell, redirectFixedDirection: e.target.value as Direction })}
                       className="w-full px-3 py-2 bg-stone-700 rounded text-parchment-100"
                     >
                       <option value="north">North</option>

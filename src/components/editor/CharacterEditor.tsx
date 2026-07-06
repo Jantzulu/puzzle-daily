@@ -5,7 +5,7 @@ import { scaledNameClass } from '../../utils/textScale';
 import { Direction, ActionType } from '../../types/game';
 import type { CharacterAction } from '../../types/game';
 import type { CustomCharacter, CustomSprite } from '../../utils/assetStorage';
-import { saveCharacter, deleteCharacter, getFolders, getSoundAssets, getAllCollectibles, getStatusEffectAssets, loadStatusEffectAsset } from '../../utils/assetStorage';
+import { saveCharacter, deleteCharacter, getFolders, getSoundAssets, getAllCollectibles, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { getAllCharacters } from '../../data/characters';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';

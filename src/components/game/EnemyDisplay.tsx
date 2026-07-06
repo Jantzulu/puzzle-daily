@@ -39,14 +39,6 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
   className = '',
   noPanel = false,
 }) => {
-  const getShapeClass = (shape?: string) => {
-    switch (shape) {
-      case 'rounded': return 'rounded-lg';
-      case 'pill': return 'rounded-full';
-      default: return 'rounded';
-    }
-  };
-
   // Info panel animation state — grid 0fr→1fr so easing applies to real content height.
   // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [selectedEnemyId, setSelectedEnemyId] = useState<string | null>(null);

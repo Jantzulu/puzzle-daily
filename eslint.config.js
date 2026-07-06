@@ -29,6 +29,10 @@ export default defineConfig([
       'react-hooks/set-state-in-effect': 'warn',
       'react-hooks/purity': 'warn',
       'react-hooks/refs': 'warn',
+      'react-hooks/immutability': 'warn',
+      // Dev-experience-only rule (HMR quality); mixed exports are deliberate
+      // in a few mesh/picker files — not worth splitting files over
+      'react-refresh/only-export-components': 'warn',
     },
   },
 ])

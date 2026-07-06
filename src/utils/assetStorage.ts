@@ -812,7 +812,7 @@ export const loadSpellAsset = (spellId: string): SpellAsset | null => {
 // STATUS EFFECT ASSETS
 // ==========================================
 
-import type { StatusEffectAsset, StatusEffectType } from '../types/game';
+import type { StatusEffectAsset } from '../types/game';
 
 const STATUS_EFFECT_STORAGE_KEY = 'status_effect_assets';
 

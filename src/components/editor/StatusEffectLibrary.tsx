@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { StatusEffectAsset } from '../../types/game';

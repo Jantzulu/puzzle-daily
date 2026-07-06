@@ -283,8 +283,8 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
             <select
               value={behavior.directionChangeMode || 'fixed'}
               onChange={e => {
-                const mode = e.target.value;
-                const updates: any = { ...behavior, directionChangeMode: mode };
+                const mode = e.target.value as 'fixed' | 'clockwise' | 'counter_clockwise';
+                const updates = { ...behavior, directionChangeMode: mode };
                 if (mode === 'fixed' && !behavior.newFacing) {
                   updates.newFacing = 'south';
                 }
@@ -318,7 +318,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
               <label className="text-sm text-stone-300">Rotation Angle</label>
               <select
                 value={behavior.directionChangeAngle ?? 90}
-                onChange={e => onChange({ ...behavior, directionChangeAngle: parseInt(e.target.value) as any })}
+                onChange={e => onChange({ ...behavior, directionChangeAngle: parseInt(e.target.value) as 45 | 90 | 135 | 180 })}
                 className="w-full bg-stone-600 rounded px-2 py-1 text-sm mt-1"
               >
                 <option value={45}>45° (one step)</option>

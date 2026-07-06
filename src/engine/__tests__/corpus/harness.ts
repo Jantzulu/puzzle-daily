@@ -8,7 +8,7 @@
  * already branches on at simulation.ts:1729.
  */
 import { executeTurn } from '../../simulation';
-import type { GameState, PlacedCharacter } from '../../../types/game';
+import type { PlacedCharacter } from '../../../types/game';
 import type { CorpusCase } from './types';
 import { IdNormalizer, serializeTurn, type TurnSnapshot } from './snapshot';
 import { getCharacter } from '../../../data/characters';

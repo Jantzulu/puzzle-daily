@@ -1182,6 +1182,7 @@ export interface ParticleEffect {
  * Extended CharacterAction to support custom attacks
  * Backwards compatible - existing actions still work
  */
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type -- kept as an interface (not a type alias) so future per-action extensions don't ripple through implementers
 export interface CharacterActionExtended extends CharacterAction {
   // Reserved for future per-action extensions; the legacy customAttack /
   // customAttackId fields lived here previously and have been removed.

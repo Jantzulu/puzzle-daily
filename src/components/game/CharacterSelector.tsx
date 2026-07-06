@@ -129,14 +129,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [availableCharacterIds]);
 
-  const getShapeClass = (shape?: string) => {
-    switch (shape) {
-      case 'rounded': return 'rounded-lg';
-      case 'pill': return 'rounded-full';
-      default: return 'rounded';
-    }
-  };
-
   // Info panel animation: grid 0fr→1fr so easing applies to real content height.
   // Double rAF ensures browser paints the closed (0fr) state before opening.
   const [renderedCharId, setRenderedCharId] = useState<string | null>(selectedCharacterId);

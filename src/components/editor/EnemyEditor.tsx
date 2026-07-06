@@ -5,7 +5,7 @@ import { scaledNameClass } from '../../utils/textScale';
 import { Direction } from '../../types/game';
 import type { CharacterAction, EnemyBehavior } from '../../types/game';
 import type { CustomEnemy, CustomSprite } from '../../utils/assetStorage';
-import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles, getStatusEffectAssets, loadStatusEffectAsset } from '../../utils/assetStorage';
+import { saveEnemy, deleteEnemy, getFolders, getSoundAssets, getAllCollectibles, loadStatusEffectAsset } from '../../utils/assetStorage';
 import { getAllEnemies } from '../../data/enemies';
 import { SpriteEditor } from './SpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
