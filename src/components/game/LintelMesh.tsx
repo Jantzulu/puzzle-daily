@@ -4,13 +4,14 @@ import React from 'react';
 // THRESHOLD LINTEL — the Dungeon Details doorframe
 // ============================================================================
 // The divider between the heroes' panel and the dungeon's is a course of
-// hewn stone blocks — the lintel over the doorway the heroes are about to
-// descend through. Same low-poly recipe as the rest of the mesh family
-// (PortcullisMesh, BannerMesh, the compendium slab): rects and triangles
-// only (preserveAspectRatio="none" stretches circles into ellipses), a
-// fixed top-left light, per-block tone and edge jitter from the
-// deterministic hash so the course reads hand-quarried, not tiled. The
-// engraved text renders above in the DOM.
+// hand-quarried stones, drawn after the game's own painted wall-border
+// art: chunky irregular blocks with rounded-octagon silhouettes, lit tops
+// catching the fixed top-left light, bottoms falling into shade, and
+// near-black gaps between them. Widths vary; a slot occasionally holds
+// two small stacked stones, like the painted course does. Same mesh-family
+// rules as PortcullisMesh/BannerMesh: polygons only (preserveAspectRatio
+// "none" stretches circles into ellipses), deterministic hash jitter, no
+// clock and no Math.random. The engraved label renders above in the DOM.
 
 const VIEW_W = 400;
 const VIEW_H = 38;
@@ -20,37 +21,96 @@ const hash = (i: number): number => {
   return s - Math.floor(s);
 };
 
-// Compendium-slab stone, hewn into a door lintel
-const STONE = {
-  mortar: '#120e0b',                        // seams and shadowed gaps
-  faces: ['#262120', '#221e1c', '#2a2420'], // per-block tone variation
-  lit: 'rgba(255, 235, 200, 0.10)',         // top edges catching the light
-  edgeLit: '#312a25',                       // left edges, lit less than the top
-  dark: '#19140f',                          // bottom lips falling into shade
-};
+// Painterly stone tones sampled from the wall-border art: warm grey-taupe
+// faces, lighter tops, shaded bottoms, near-black mortar. Four families so
+// neighboring stones never read as copies.
+const FACES = ['#6d6357', '#665c51', '#75695c', '#5f564c'];
+const LITS = ['#8b8071', '#847768', '#948676', '#7c7264'];
+const DARKS = ['#4a4239', '#453d34', '#50473d', '#3f382f'];
+const MORTAR = '#14100c';
 
-// Block layout: 6 blocks, widths jittered around an even course, 3u seams.
-// Top and bottom edges waver ~±1.2u per block — quarried, not extruded.
-type Block = { x: number; w: number; top: number; bot: number; tone: string };
-const BLOCKS: Block[] = (() => {
-  const n = 6;
-  const seam = 3;
-  const raw = Array.from({ length: n }, (_, i) => 1 + (hash(i * 3) - 0.5) * 0.45);
-  const total = raw.reduce((a, b) => a + b, 0);
-  const blocks: Block[] = [];
-  let x = 0;
-  for (let i = 0; i < n; i++) {
-    const w = (raw[i] / total) * (VIEW_W - seam * (n - 1));
-    blocks.push({
-      x,
-      w,
-      top: 2 + (hash(i * 5 + 1) - 0.5) * 2.4,
-      bot: VIEW_H - 2 + (hash(i * 7 + 2) - 0.5) * 2.4,
-      tone: STONE.faces[Math.floor(hash(i * 11 + 3) * STONE.faces.length) % STONE.faces.length],
-    });
-    x += w + seam;
+type Pt = [number, number];
+const pts = (arr: Pt[]) =>
+  arr.map(p => `${p[0].toFixed(1)},${Math.max(0.4, Math.min(VIEW_H - 0.4, p[1])).toFixed(1)}`).join(' ');
+
+interface Stone {
+  body: string;
+  lit: string;
+  shade: string;
+  tone: number;
+}
+
+function makeStone(x0: number, w: number, top: number, bot: number, seed: number): Stone {
+  let s = seed;
+  const j = (amp: number) => (hash(s++) - 0.5) * amp;
+  const c = () => 3 + hash(s++) * 4.5; // corner cut, 3–7.5u
+  const x1 = x0 + w;
+  const h = bot - top;
+
+  // Rounded-octagon silhouette, clockwise from the left edge: corner cuts
+  // plus a mid-edge bump on top and bottom make the block read as a
+  // hand-rounded stone rather than a machined rect
+  const lt: Pt = [x0 + j(1), top + c() * 0.9];
+  const tl: Pt = [x0 + c(), top + j(1.6)];
+  const tm: Pt = [x0 + w * (0.35 + hash(s++) * 0.3), top - 0.6 + j(1.2)];
+  const tr: Pt = [x1 - c(), top + j(1.6)];
+  const rt: Pt = [x1 + j(1.2), top + h * (0.28 + hash(s++) * 0.12)];
+  const rb: Pt = [x1 - 0.8 + j(1.4), bot - c() * 0.7];
+  const br: Pt = [x1 - c(), bot + j(1.2)];
+  const bm: Pt = [x0 + w * (0.45 + hash(s++) * 0.3), bot + 0.6 + j(1.2)];
+  const bl: Pt = [x0 + c(), bot + j(1.2)];
+  const lb: Pt = [x0 + j(1.2), bot - h * (0.25 + hash(s++) * 0.12)];
+
+  const outline: Pt[] = [lt, tl, tm, tr, rt, rb, br, bm, bl, lb];
+
+  // Lit cap: the top chain closed by an inner chain roughly a third down
+  // the face — the painted stones' bright upper plane
+  const capDrop = h * (0.3 + hash(s++) * 0.1);
+  const capInner: Pt[] = [
+    [rt[0] - 2, rt[1] + capDrop * 0.7],
+    [tm[0] + j(4), tm[1] + capDrop],
+    [tl[0] + 1.5, tl[1] + capDrop * 0.8],
+    [lt[0] + 2, lt[1] + capDrop * 0.6],
+  ];
+
+  // Shade: the bottom chain closed by an inner chain a quarter up the face
+  const shadeRise = h * (0.2 + hash(s++) * 0.08);
+  const shadeInner: Pt[] = [
+    [rb[0] - 2, rb[1] - shadeRise * 0.7],
+    [bm[0] + j(4), bm[1] - shadeRise],
+    [bl[0] + 1.5, bl[1] - shadeRise * 0.8],
+    [lb[0] + 2, lb[1] - shadeRise * 0.6],
+  ];
+
+  return {
+    body: pts(outline),
+    lit: pts([lt, tl, tm, tr, rt, ...capInner]),
+    shade: pts([lb, bl, bm, br, rb, ...shadeInner]),
+    tone: Math.floor(hash(s++) * FACES.length) % FACES.length,
+  };
+}
+
+const STONES: Stone[] = (() => {
+  const stones: Stone[] = [];
+  let x = 1.5;
+  let i = 0;
+  while (x < VIEW_W - 12) {
+    const rem = VIEW_W - 1.5 - x;
+    let w = 26 + hash(i * 31 + 11) * 38;
+    if (rem - w < 22) w = rem; // last stone absorbs the remainder
+    const gap = 2.5 + hash(i * 37 + 17) * 1.5;
+    if (w < 36 && w < rem && hash(i * 41 + 23) > 0.62) {
+      // A slot with two small stacked stones, like the painted course
+      const split = VIEW_H / 2 + (hash(i * 43 + 29) - 0.5) * 3;
+      stones.push(makeStone(x, w, 2, split - 1.5, i * 100 + 1));
+      stones.push(makeStone(x + (hash(i * 47 + 31) - 0.5) * 2, w, split + 1.5, VIEW_H - 2, i * 100 + 53));
+    } else {
+      stones.push(makeStone(x, w, 2, VIEW_H - 2, i * 100 + 1));
+    }
+    x += w + gap;
+    i++;
   }
-  return blocks;
+  return stones;
 })();
 
 export const LintelMesh: React.FC = () => (
@@ -60,35 +120,15 @@ export const LintelMesh: React.FC = () => (
     preserveAspectRatio="none"
     aria-hidden="true"
   >
-    {/* Mortar bed behind the course */}
-    <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill={STONE.mortar} />
+    {/* Mortar bed — the near-black gaps between stones */}
+    <rect x="0" y="0" width={VIEW_W} height={VIEW_H} fill={MORTAR} />
 
-    {BLOCKS.map((b, i) => {
-      const h = b.bot - b.top;
-      return (
-        <g key={i}>
-          {/* Block face */}
-          <rect x={b.x} y={b.top} width={b.w} height={h} fill={b.tone} />
-          {/* Top edge catching the light */}
-          <rect x={b.x} y={b.top} width={b.w} height="2.5" fill={STONE.lit} />
-          {/* Left edge lit, right edge in shade (fixed top-left light) */}
-          <rect x={b.x} y={b.top} width="2" height={h} fill={STONE.edgeLit} />
-          <rect x={b.x + b.w - 2} y={b.top} width="2" height={h} fill={STONE.dark} />
-          {/* Bottom lip falling into shade */}
-          <rect x={b.x} y={b.bot - 3} width={b.w} height="3" fill={STONE.dark} />
-          {/* Chipped corner on some blocks — a bite of mortar-dark */}
-          {hash(i * 13 + 4) > 0.55 && (
-            <polygon
-              points={
-                hash(i * 17 + 5) > 0.5
-                  ? `${(b.x + b.w).toFixed(1)},${b.top.toFixed(1)} ${(b.x + b.w - 7).toFixed(1)},${b.top.toFixed(1)} ${(b.x + b.w).toFixed(1)},${(b.top + 5).toFixed(1)}`
-                  : `${b.x.toFixed(1)},${b.bot.toFixed(1)} ${(b.x + 7).toFixed(1)},${b.bot.toFixed(1)} ${b.x.toFixed(1)},${(b.bot - 5).toFixed(1)}`
-              }
-              fill={STONE.mortar}
-            />
-          )}
-        </g>
-      );
-    })}
+    {STONES.map((st, i) => (
+      <g key={i}>
+        <polygon points={st.body} fill={FACES[st.tone]} stroke="rgba(0, 0, 0, 0.4)" strokeWidth="1.2" />
+        <polygon points={st.lit} fill={LITS[st.tone]} />
+        <polygon points={st.shade} fill={DARKS[st.tone]} />
+      </g>
+    ))}
   </svg>
 );
