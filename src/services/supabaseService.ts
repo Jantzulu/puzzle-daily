@@ -442,23 +442,36 @@ export async function syncFromCloud(): Promise<{
 // LIVE/PLAYER OPERATIONS
 // ============================================
 
-export async function fetchTodaysPuzzle(): Promise<Puzzle | null> {
+// Discriminated result so the caller can tell "nothing scheduled" (normal)
+// apart from "couldn't reach the cloud" (offline/outage) — the player-facing
+// messaging differs.
+export type DailyPuzzleResult =
+  | { status: 'ok'; puzzle: Puzzle }
+  | { status: 'none' }
+  | { status: 'error' };
+
+export async function fetchTodaysPuzzle(): Promise<DailyPuzzleResult> {
   const today = new Date().toISOString().split('T')[0];
 
-  const { data, error } = await supabase
-    .from('daily_schedule')
-    .select('puzzle_id, puzzles_live(*)')
-    .eq('scheduled_date', today)
-    .maybeSingle();
+  try {
+    const { data, error } = await supabase
+      .from('daily_schedule')
+      .select('puzzle_id, puzzles_live(*)')
+      .eq('scheduled_date', today)
+      .maybeSingle();
 
-  if (error) {
-    console.warn(`Couldn't fetch today's puzzle: ${error.message}`);
-    return null;
+    if (error) {
+      console.warn(`Couldn't fetch today's puzzle: ${error.message}`);
+      return { status: 'error' };
+    }
+    if (!data) return { status: 'none' }; // nothing scheduled for today — normal, not an error
+
+    const puzzleLive = data.puzzles_live as unknown as DbPuzzle;
+    const puzzle = puzzleLive?.data as unknown as Puzzle;
+    return puzzle ? { status: 'ok', puzzle } : { status: 'none' };
+  } catch {
+    return { status: 'error' }; // network-level failure (offline)
   }
-  if (!data) return null; // nothing scheduled for today — normal, not an error
-
-  const puzzleLive = data.puzzles_live as unknown as DbPuzzle;
-  return puzzleLive?.data as unknown as Puzzle;
 }
 
 export async function fetchArchivedPuzzles(): Promise<Puzzle[]> {

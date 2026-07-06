@@ -27,6 +27,7 @@ import { vibrate } from '../../utils/haptics';
 import { getDailyState, lockDailyOutcome, updateDailyLives, type DailyStatus } from '../../utils/dailyState';
 import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
+import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
 import { submitCompletion } from '../../services/statsService';
 import { CommunityStats } from './CommunityStats';
 import { BugReportModal } from './BugReportModal';
@@ -122,13 +123,18 @@ export const Game: React.FC<GameProps> = ({
   // Combine official and saved puzzles
   const allPuzzles = [...officialPuzzles, ...savedPuzzles];
 
+  // Same-day cached daily (from a previous fetch). Booting from it means a
+  // reload or offline visit starts on the real daily immediately — and the
+  // daily-lock/lives hydration below reads the right puzzle from the first
+  // render instead of waiting for the cloud swap.
+  const [cachedDaily] = useState(() => (puzzleProp ? null : loadCachedDailyPuzzle()));
   // Initial puzzle source: caller-provided `puzzle` prop wins (editor playtest
-  // mounts with a specific in-progress puzzle); otherwise fall back to
-  // `getTodaysPuzzle()` (player + dev `/` route default behavior, unchanged).
+  // mounts with a specific in-progress puzzle); then the same-day cached
+  // daily; otherwise fall back to `getTodaysPuzzle()` (local default).
   // Captured once at mount — to swap puzzles, remount the component via key.
-  const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle>(() => puzzleProp ?? getTodaysPuzzle());
+  const [currentPuzzle, setCurrentPuzzle] = useState<Puzzle>(() => puzzleProp ?? cachedDaily?.puzzle ?? getTodaysPuzzle());
   // Store original puzzle for reset (deep copy to prevent mutation)
-  const [originalPuzzle, setOriginalPuzzle] = useState<Puzzle>(() => JSON.parse(JSON.stringify(puzzleProp ?? getTodaysPuzzle())));
+  const [originalPuzzle, setOriginalPuzzle] = useState<Puzzle>(() => JSON.parse(JSON.stringify(puzzleProp ?? cachedDaily?.puzzle ?? getTodaysPuzzle())));
   const [gameState, setGameState] = useState<GameState>(() => {
     return initializeGameState(currentPuzzle);
   });
@@ -241,7 +247,13 @@ export const Game: React.FC<GameProps> = ({
   });
 
   // Cloud puzzle number (from daily_schedule)
-  const [puzzleNumber, setPuzzleNumber] = useState<number | null>(null);
+  const [puzzleNumber, setPuzzleNumber] = useState<number | null>(() => cachedDaily?.puzzleNumber ?? null);
+
+  // Set when the player is NOT looking at today's real daily: the cloud was
+  // unreachable ('offline') or nothing is scheduled ('unscheduled'). Renders
+  // as a small honest notice in the quest banner. Never set when booting
+  // from the same-day cache — that IS today's puzzle.
+  const [dailyNotice, setDailyNotice] = useState<'offline' | 'unscheduled' | null>(null);
 
   // Replay system state
   const [replayMode, setReplayMode] = useState(false);
@@ -317,20 +329,37 @@ export const Game: React.FC<GameProps> = ({
     Promise.all([
       fetchCloudTodaysPuzzle(),
       fetchTodaysPuzzleNumber(),
-    ]).then(([cloudPuzzle, num]) => {
+    ]).then(([result, num]) => {
       if (cancelled) return;
       if (num) setPuzzleNumber(num);
-      if (!cloudPuzzle) return;
-      // Only switch if we're still on the default puzzle (haven't manually selected one)
+      if (result.status !== 'ok') {
+        // Cloud unreachable or nothing scheduled. If we booted from the
+        // same-day cache we're already on the real daily — stay quiet.
+        // Otherwise the player is on the local fallback and deserves to know.
+        if (!cachedDaily && !puzzleProp) {
+          setDailyNotice(result.status === 'error' ? 'offline' : 'unscheduled');
+        }
+        return;
+      }
+      const cloudPuzzle = result.puzzle;
+      saveCachedDailyPuzzle(cloudPuzzle, num ?? null);
       setCurrentPuzzle(prev => {
-        // If user has already switched puzzles, don't override
-        if (prev.id !== getTodaysPuzzle().id) return prev;
+        // Only swap while still on the boot puzzle (local default or same-day
+        // cache) — never yank a puzzle the user selected manually.
+        const onBootPuzzle = prev.id === getTodaysPuzzle().id || prev.id === cachedDaily?.puzzle.id;
+        if (!onBootPuzzle) return prev;
+        // Cache already matches the cloud byte-for-byte — skip the re-init
+        // so an in-progress setup isn't reset for nothing.
+        if (prev.id === cloudPuzzle.id && cachedDaily && JSON.stringify(cachedDaily.puzzle) === JSON.stringify(cloudPuzzle)) {
+          return prev;
+        }
         setOriginalPuzzle(JSON.parse(JSON.stringify(cloudPuzzle)));
         setGameState(initializeGameState(cloudPuzzle));
         return cloudPuzzle;
       });
     }).catch(() => {
-      // Silently fall back to local puzzle if cloud is unreachable
+      if (cancelled) return;
+      if (!cachedDaily && !puzzleProp) setDailyNotice('offline');
     });
     return () => { cancelled = true; };
   }, []);
@@ -2726,6 +2755,16 @@ export const Game: React.FC<GameProps> = ({
                   <div className="text-center mb-0.5">
                     <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-copper-400/70">
                       Puzzle #{puzzleNumber}
+                    </span>
+                  </div>
+                )}
+                {/* Honest fallback notice — this is NOT today's real daily */}
+                {dailyNotice && (
+                  <div className="text-center mb-0.5">
+                    <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-stone-500">
+                      {dailyNotice === 'offline'
+                        ? "Can't reach the realm — practice dungeon"
+                        : 'No quest scheduled today — practice dungeon'}
                     </span>
                   </div>
                 )}
