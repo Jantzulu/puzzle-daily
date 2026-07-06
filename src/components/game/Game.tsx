@@ -2810,6 +2810,10 @@ export const Game: React.FC<GameProps> = ({
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
               <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+                {/* Temperature split: the heroes' hall sits in warm torchlight,
+                    everything below the Dungeon Details lintel in colder dark.
+                    Visual wrappers only — no behavior. */}
+                <div className="hall-above">
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
@@ -2845,7 +2849,9 @@ export const Game: React.FC<GameProps> = ({
                     } : undefined}
                   />
                 )}
+                </div>
 
+                <div className="dungeon-below">
                 {/* Enemies Display */}
                 <EnemyDisplay
                   enemies={gameState.puzzle.enemies}
@@ -2863,6 +2869,7 @@ export const Game: React.FC<GameProps> = ({
 
                 {/* Special Tiles Display - only shown if puzzle has tiles with behaviors */}
                 <SpecialTilesDisplay puzzle={gameState.puzzle} noPanel />
+                </div>
               </div>
             )}
           </div>
