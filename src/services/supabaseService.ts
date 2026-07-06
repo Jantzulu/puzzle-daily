@@ -444,9 +444,9 @@ export async function syncFromCloud(): Promise<{
 
 // Discriminated result so the caller can tell "nothing scheduled" (normal)
 // apart from "couldn't reach the cloud" (offline/outage) — the player-facing
-// messaging differs.
+// handling differs.
 export type DailyPuzzleResult =
-  | { status: 'ok'; puzzle: Puzzle }
+  | { status: 'ok'; puzzle: Puzzle; puzzleNumber: number | null }
   | { status: 'none' }
   | { status: 'error' };
 
@@ -454,21 +454,28 @@ export async function fetchTodaysPuzzle(): Promise<DailyPuzzleResult> {
   const today = new Date().toISOString().split('T')[0];
 
   try {
+    // Today's entry if there is one, otherwise the most recent past day —
+    // a gap in the schedule quietly serves the previous daily rather than
+    // surfacing "nothing scheduled" to the player.
     const { data, error } = await supabase
       .from('daily_schedule')
-      .select('puzzle_id, puzzles_live(*)')
-      .eq('scheduled_date', today)
+      .select('puzzle_id, puzzle_number, puzzles_live(*)')
+      .lte('scheduled_date', today)
+      .order('scheduled_date', { ascending: false })
+      .limit(1)
       .maybeSingle();
 
     if (error) {
       console.warn(`Couldn't fetch today's puzzle: ${error.message}`);
       return { status: 'error' };
     }
-    if (!data) return { status: 'none' }; // nothing scheduled for today — normal, not an error
+    if (!data) return { status: 'none' }; // nothing ever scheduled — normal pre-launch
 
     const puzzleLive = data.puzzles_live as unknown as DbPuzzle;
     const puzzle = puzzleLive?.data as unknown as Puzzle;
-    return puzzle ? { status: 'ok', puzzle } : { status: 'none' };
+    return puzzle
+      ? { status: 'ok', puzzle, puzzleNumber: (data.puzzle_number as number | null) ?? null }
+      : { status: 'none' };
   } catch {
     return { status: 'error' }; // network-level failure (offline)
   }
@@ -606,20 +613,6 @@ export async function schedulePuzzle(puzzleId: string, date: string): Promise<{ 
 
   logActivity({ action: 'schedule', asset_type: 'puzzle', asset_id: puzzleId, details: { scheduled_date: date, puzzle_number: puzzleNumber } });
   return { success: true, puzzleNumber };
-}
-
-/**
- * Fetch today's puzzle number (for player display).
- */
-export async function fetchTodaysPuzzleNumber(): Promise<number | null> {
-  const today = new Date().toISOString().split('T')[0];
-  const { data } = await supabase
-    .from('daily_schedule')
-    .select('puzzle_number')
-    .eq('scheduled_date', today)
-    .maybeSingle();
-
-  return data?.puzzle_number ?? null;
 }
 
 /**

@@ -26,7 +26,7 @@ import { preloadImagesEager, isImageFailed, retryImage } from '../../utils/image
 import { vibrate } from '../../utils/haptics';
 import { getDailyState, lockDailyOutcome, updateDailyLives, type DailyStatus } from '../../utils/dailyState';
 import { diffTurn } from '../../engine/combatLog';
-import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
+import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supabaseService';
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { submitCompletion } from '../../services/statsService';
@@ -253,11 +253,11 @@ export const Game: React.FC<GameProps> = ({
   // Cloud puzzle number (from daily_schedule)
   const [puzzleNumber, setPuzzleNumber] = useState<number | null>(() => cachedDaily?.puzzleNumber ?? null);
 
-  // Set when the player is NOT looking at today's real daily: the cloud was
-  // unreachable ('offline') or nothing is scheduled ('unscheduled'). Renders
-  // as a small honest notice in the quest banner. Never set when booting
-  // from the same-day cache — that IS today's puzzle.
-  const [dailyNotice, setDailyNotice] = useState<'offline' | 'unscheduled' | null>(null);
+  // Set when the cloud was unreachable and we have no same-day cache — the
+  // player is on the local fallback, not a real daily, and the quest banner
+  // says so. Schedule gaps don't set this: the service serves the most
+  // recent scheduled puzzle instead.
+  const [dailyNotice, setDailyNotice] = useState<'offline' | null>(null);
 
   // Replay system state
   const [replayMode, setReplayMode] = useState(false);
@@ -334,26 +334,25 @@ export const Game: React.FC<GameProps> = ({
     prevPuzzleIdForShimmerRef.current = currentPuzzleId;
   }, [currentPuzzle.id]);
 
-  // Try to load today's puzzle from cloud (daily_schedule)
+  // Try to load today's puzzle from cloud (daily_schedule). The service
+  // falls back to the most recent scheduled day, so a schedule gap serves
+  // yesterday's daily; 'none' only happens pre-launch (nothing ever
+  // scheduled) and quietly keeps the local default.
   useEffect(() => {
     let cancelled = false;
-    Promise.all([
-      fetchCloudTodaysPuzzle(),
-      fetchTodaysPuzzleNumber(),
-    ]).then(([result, num]) => {
+    fetchCloudTodaysPuzzle().then((result) => {
       if (cancelled) return;
-      if (num) setPuzzleNumber(num);
       if (result.status !== 'ok') {
-        // Cloud unreachable or nothing scheduled. If we booted from the
-        // same-day cache we're already on the real daily — stay quiet.
-        // Otherwise the player is on the local fallback and deserves to know.
-        if (!cachedDaily && !puzzleProp) {
-          setDailyNotice(result.status === 'error' ? 'offline' : 'unscheduled');
+        // Cloud unreachable with no same-day cache: the player is on the
+        // local fallback and deserves to know.
+        if (result.status === 'error' && !cachedDaily && !puzzleProp) {
+          setDailyNotice('offline');
         }
         return;
       }
       const cloudPuzzle = result.puzzle;
-      saveCachedDailyPuzzle(cloudPuzzle, num ?? null);
+      setPuzzleNumber(result.puzzleNumber);
+      saveCachedDailyPuzzle(cloudPuzzle, result.puzzleNumber);
       setCurrentPuzzle(prev => {
         // Only swap while still on the boot puzzle (local default or same-day
         // cache) — never yank a puzzle the user selected manually.
@@ -2804,13 +2803,11 @@ export const Game: React.FC<GameProps> = ({
                     </span>
                   </div>
                 )}
-                {/* Honest fallback notice — this is NOT today's real daily */}
+                {/* Honest fallback notice — cloud unreachable, this is NOT a real daily */}
                 {dailyNotice && (
                   <div className="text-center mb-0.5">
                     <span className="text-[10px] md:text-xs font-bold tracking-widest uppercase text-stone-500">
-                      {dailyNotice === 'offline'
-                        ? "Can't reach the realm — practice dungeon"
-                        : 'No quest scheduled today — practice dungeon'}
+                      Can't reach the realm — practice dungeon
                     </span>
                   </div>
                 )}
