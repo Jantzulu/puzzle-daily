@@ -1376,8 +1376,9 @@ export const Game: React.FC<GameProps> = ({
         handleAutoReset();
       }
 
-      // Clear the slide-up animation flag after it plays
-      setTimeout(() => setJustExitedReplay(false), 350);
+      // Clear the exit-animation flag after the rail's descent (0.55s)
+      // and the panel slide-up have both played
+      setTimeout(() => setJustExitedReplay(false), 600);
     }, 250);
   }, [dismissingReplay, livesRemaining, puzzleScore, originalPuzzle, generateTurnHistory, handleAutoReset]);
 
@@ -2174,7 +2175,7 @@ export const Game: React.FC<GameProps> = ({
               // pt-2/pb-1: contents sit 2px low of geometric center — the
               // beam's bottom lip + hanging spikes add visual mass below,
               // and dead-center read as riding high (user-tuned)
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-scale-pop' : ''}`}>
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-rail-descend' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs

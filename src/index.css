@@ -1524,6 +1524,28 @@ html body.theme-font-active,
   animation: gate-settle 1s cubic-bezier(0.22, 1, 0.36, 1) backwards;
 }
 
+/* Replay exit: the control rail re-enters like the portcullis it is —
+   descending from under the navbar instead of popping into place. It
+   starts tucked fully behind the bar (nav z-50 covers the rail's z-40
+   wrapper) and lowers with the menu gate's own curve. Applied to the
+   rail itself, not the sticky wrapper — same slot the old scale-pop
+   used, so it can't fight the wrapper's gate-settle/menu-ride
+   transforms. */
+@keyframes rail-descend {
+  from { transform: translateY(-130%); }
+  to { transform: translateY(0); }
+}
+
+.animate-rail-descend {
+  animation: rail-descend 0.55s cubic-bezier(0.45, 0.3, 0.25, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rail-descend {
+    animation: none;
+  }
+}
+
 /* Ride-vs-settle conflict: a RUNNING settle overrides the ride transition
    (animations beat transitions), pinning the rail at home while the gate
    lowers. Handled in JS, not here: the nav finish()es any running settle
