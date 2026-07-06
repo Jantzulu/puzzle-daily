@@ -80,7 +80,7 @@ export const PlacedCharactersDisplay: React.FC<PlacedCharactersDisplayProps> = (
                           <SpellTooltip key={spell.id} spell={spell}>
                             <div className="w-5 h-5 rounded overflow-hidden cursor-help">
                               {spell.thumbnailIcon ? (
-                                <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                               ) : (
                                 <div className="w-full h-full bg-purple-600 flex items-center justify-center text-[10px] font-bold">
                                   {spell.name.charAt(0).toUpperCase()}

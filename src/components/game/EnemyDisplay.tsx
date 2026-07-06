@@ -158,6 +158,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
             alt=""
             className="w-4 h-4 flex-shrink-0"
             style={{ imageRendering: 'pixelated' }}
+            loading="lazy" decoding="async"
           />
         ) : (
           <span className="dungeon-lintel-gem" />
@@ -207,6 +208,7 @@ export const EnemyDisplay: React.FC<EnemyDisplayProps> = ({
                   alt="Test Enemies"
                   className="h-5 lg:h-6 w-auto"
                   style={{ imageRendering: 'pixelated' }}
+                  loading="lazy" decoding="async"
                 />
               </button>
             ) : (

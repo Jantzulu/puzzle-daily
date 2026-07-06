@@ -220,6 +220,7 @@ export const PixelEditorTimeline: React.FC<PixelEditorTimelineProps> = ({
                   alt={`Frame ${idx + 1}`}
                   className="w-full h-full object-contain"
                   style={{ imageRendering: 'pixelated' }}
+                  loading="lazy" decoding="async"
                 />
                 {/* Frame number */}
                 <span className="absolute bottom-0 right-0 bg-black/70 text-[9px] text-stone-300 px-0.5 rounded-tl">

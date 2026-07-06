@@ -174,6 +174,7 @@ const TileSprite: React.FC<{ info: SpecialTileInfo; size?: number; isOffState?: 
         alt={`${info.tileType.name}${isOffState ? ' (off)' : ''}`}
         className="rounded"
         style={{ width: size, height: size, objectFit: 'contain', opacity: isOffState ? 0.6 : 1 }}
+        loading="lazy" decoding="async"
       />
     );
   }

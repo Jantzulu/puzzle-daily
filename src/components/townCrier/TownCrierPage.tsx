@@ -100,6 +100,7 @@ export const TownCrierPage: React.FC = () => {
                     src={post.banner_url}
                     alt=""
                     className="w-full h-full object-cover"
+                    loading="lazy" decoding="async"
                   />
                 </div>
               )}

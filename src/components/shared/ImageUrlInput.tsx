@@ -111,6 +111,7 @@ export const ImageUrlInput: React.FC<ImageUrlInputProps> = ({
             alt="Preview"
             className="max-w-[128px] max-h-[128px] rounded border border-stone-600 bg-stone-800"
             onError={() => setPreviewError(true)}
+            loading="lazy" decoding="async"
           />
           <button
             onClick={handleClear}

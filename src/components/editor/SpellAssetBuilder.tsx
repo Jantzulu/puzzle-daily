@@ -359,6 +359,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   src={spriteData.idleImageData || spriteData.idleImageUrl}
                   alt="Preview"
                   className="max-h-16 pixelated"
+                  loading="lazy" decoding="async"
                 />
               </div>
             )}
@@ -394,6 +395,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                         style={{
                           transform: `rotate(${rotation}deg) scaleX(${mirror ? -1 : 1})`,
                         }}
+                        loading="lazy" decoding="async"
                       />
                     </div>
                   </div>
@@ -466,6 +468,7 @@ const SpellSpriteEditor: React.FC<SpellSpriteEditorProps> = ({
                   src={spriteData.spriteSheet.imageData || spriteData.spriteSheet.imageUrl}
                   alt="Sprite sheet preview"
                   className="max-h-16 pixelated mx-auto"
+                  loading="lazy" decoding="async"
                 />
               </div>
               <p className="text-xs text-stone-400">
@@ -829,7 +832,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
           <div className="flex items-center gap-2 md:gap-4 min-w-0">
             <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
               {editedSpell.thumbnailIcon ? (
-                <img src={editedSpell.thumbnailIcon} alt="" className="w-full h-full object-contain" />
+                <img src={editedSpell.thumbnailIcon} alt="" className="w-full h-full object-contain" loading="lazy" decoding="async" />
               ) : (
                 <span className="text-stone-400 text-lg">✨</span>
               )}
@@ -959,6 +962,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       src={editedSpell.thumbnailIcon}
                       alt="Thumbnail"
                       className="w-12 h-12 object-contain bg-stone-900 rounded border border-stone-600"
+                      loading="lazy" decoding="async"
                     />
                     <button
                       onClick={() => {

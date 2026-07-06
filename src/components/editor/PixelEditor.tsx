@@ -2319,7 +2319,7 @@ export const PixelEditor = forwardRef<PixelEditorHandle, PixelEditorProps>(({
     const themeKey = toolIconMap[t.id];
     const customIcon = themeKey ? themeAssets[themeKey] as string | undefined : undefined;
     if (customIcon) {
-      return <img src={customIcon} alt={t.id} className="w-5 h-5" style={{ imageRendering: 'pixelated' }} />;
+      return <img src={customIcon} alt={t.id} className="w-5 h-5" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />;
     }
     return <span>{t.icon}</span>;
   };

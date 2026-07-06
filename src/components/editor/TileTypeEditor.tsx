@@ -148,6 +148,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                     src={behavior.activationSprite.imageData}
                     alt="Activation sprite"
                     className="w-16 h-16 object-contain bg-stone-600 rounded"
+                    loading="lazy" decoding="async"
                   />
                   <button
                     onClick={() => onChange({ ...behavior, activationSprite: undefined })}
@@ -809,6 +810,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                               src={tileType.customSprite.idleImageData || tileType.customSprite.idleImageUrl}
                               alt=""
                               className="w-full h-full object-cover"
+                              loading="lazy" decoding="async"
                             />
                           ) : (
                             <span className="text-lg">
@@ -1276,6 +1278,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                           src={editing.customSprite.idleImageData || editing.customSprite.idleImageUrl}
                           alt="Tile sprite"
                           className="w-24 h-24 object-contain bg-stone-600 rounded"
+                          loading="lazy" decoding="async"
                         />
                         <button
                           onClick={handleSpriteRemove}
@@ -1388,6 +1391,7 @@ export const TileTypeEditor: React.FC<{ initialSelectedId?: string }> = ({ initi
                             src={editing.offStateSprite.idleImageData || editing.offStateSprite.idleImageUrl}
                             alt="Off state sprite"
                             className="w-24 h-24 object-contain bg-stone-600 rounded"
+                            loading="lazy" decoding="async"
                           />
                           <button
                             onClick={handleOffStateSpriteRemove}

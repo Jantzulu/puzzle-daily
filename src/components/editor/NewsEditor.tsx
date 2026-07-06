@@ -255,7 +255,7 @@ export const NewsEditor: React.FC = () => {
             />
             {bannerUrl && (
               <div className="mt-2 rounded overflow-hidden border border-stone-600">
-                <img src={bannerUrl} alt="Banner preview" className="w-full h-32 object-cover" />
+                <img src={bannerUrl} alt="Banner preview" className="w-full h-32 object-cover" loading="lazy" decoding="async" />
               </div>
             )}
           </div>

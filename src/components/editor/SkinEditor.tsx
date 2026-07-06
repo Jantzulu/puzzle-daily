@@ -708,7 +708,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             return <div className="col-span-2 row-span-2 flex items-center justify-center text-lg">🎨</div>;
                           }
                           return sprites.map((src, i) =>
-                            src ? <img key={i} src={src} alt="" className="w-5 h-5 object-cover" style={{ imageRendering: 'pixelated' as const }} />
+                            src ? <img key={i} src={src} alt="" className="w-5 h-5 object-cover" style={{ imageRendering: 'pixelated' as const }} loading="lazy" decoding="async" />
                                  : <div key={i} className="w-5 h-5 bg-stone-600" />
                           );
                         })()}
@@ -764,7 +764,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                     <div className="flex items-center gap-2 md:gap-4 min-w-0">
                       <div className="flex w-10 h-10 md:w-16 md:h-16 bg-stone-700 rounded-pixel items-center justify-center overflow-hidden flex-shrink-0">
                         {editingSkin.thumbnailPreview ? (
-                          <img src={editingSkin.thumbnailPreview} alt="" className="w-full h-full object-contain" />
+                          <img src={editingSkin.thumbnailPreview} alt="" className="w-full h-full object-contain" loading="lazy" decoding="async" />
                         ) : (
                           <span className="text-stone-400 text-lg">🎨</span>
                         )}
@@ -971,7 +971,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                             return <div className="col-span-2 row-span-2 flex items-center justify-center text-2xl">🎨</div>;
                           }
                           return sprites.map((src, i) =>
-                            src ? <img key={i} src={src} alt="" className="w-8 h-8 object-cover" style={{ imageRendering: 'pixelated' as const }} />
+                            src ? <img key={i} src={src} alt="" className="w-8 h-8 object-cover" style={{ imageRendering: 'pixelated' as const }} loading="lazy" decoding="async" />
                                  : <div key={i} className="w-8 h-8 bg-stone-600" />
                           );
                         })()}
@@ -1046,6 +1046,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 src={editingSkin.borderSprites[key]}
                                 alt={label}
                                 className="w-full h-12 object-contain bg-stone-600 rounded"
+                                loading="lazy" decoding="async"
                               />
                               {!isBuiltIn && (
                                 <button
@@ -1160,6 +1161,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                 src={editingSkin.tileSprites[key]}
                                 alt={label}
                                 className="w-full h-12 object-contain bg-stone-600 rounded"
+                                loading="lazy" decoding="async"
                               />
                               {!isBuiltIn && (
                                 <button
@@ -1315,6 +1317,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                   src={currentSprite}
                                   alt={`${tileType.name} ${label}`}
                                   className="w-full h-10 object-contain bg-stone-600 rounded"
+                                  loading="lazy" decoding="async"
                                 />
                                 {!isBuiltIn && (
                                   <button
@@ -1333,6 +1336,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                     alt={`${tileType.name} ${label} default`}
                                     className="w-full h-10 object-contain bg-stone-600 rounded opacity-50"
                                     title={`Default ${label.toLowerCase()} sprite`}
+                                    loading="lazy" decoding="async"
                                   />
                                 )}
                                 <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${defaultSprite ? 'absolute inset-0' : ''}`}>
@@ -1459,6 +1463,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                       src={spriteStr || spriteObj?.onSprite}
                                       alt={tileType.name}
                                       className="w-full h-12 object-contain bg-stone-600 rounded"
+                                      loading="lazy" decoding="async"
                                     />
                                     {!isBuiltIn && (
                                       <button
@@ -1477,6 +1482,7 @@ export const SkinEditor: React.FC<{ initialSelectedId?: string }> = ({ initialSe
                                         alt={`${tileType.name} default`}
                                         className="w-full h-12 object-contain bg-stone-600 rounded opacity-50"
                                         title="Default sprite (from tile type)"
+                                        loading="lazy" decoding="async"
                                       />
                                     )}
                                     <label className={`block ${isBuiltIn ? 'cursor-not-allowed' : 'cursor-pointer'} ${tileType.customSprite?.idleImageData ? 'absolute inset-0' : ''}`}>

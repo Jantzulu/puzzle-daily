@@ -213,6 +213,7 @@ export const PixelEditorOpenModal: React.FC<PixelEditorOpenModalProps> = ({
                             src={proj.pngUrl}
                             alt={proj.name}
                             className="max-w-full max-h-full object-contain pixelated"
+                            loading="lazy" decoding="async"
                           />
                         ) : (
                           <span className="text-stone-600 text-2xl">?</span>
@@ -304,6 +305,7 @@ export const PixelEditorOpenModal: React.FC<PixelEditorOpenModalProps> = ({
                             src={entry.url}
                             alt={entry.name}
                             className="max-w-full max-h-full object-contain pixelated"
+                            loading="lazy" decoding="async"
                           />
                         ) : (
                           <span className="text-stone-600 text-2xl">🖼</span>

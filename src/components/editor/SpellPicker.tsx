@@ -69,6 +69,7 @@ export const SpellPicker: React.FC<SpellPickerProps> = ({ onSelect, onCancel }) 
                         src={spell.thumbnailIcon}
                         alt={spell.name}
                         className="w-12 h-12 object-contain bg-stone-800 rounded border border-stone-600"
+                        loading="lazy" decoding="async"
                       />
                     ) : (
                       <div className="w-12 h-12 bg-stone-800 rounded border border-stone-600 flex items-center justify-center text-stone-500 text-xs">

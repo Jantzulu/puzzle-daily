@@ -2157,7 +2157,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
               <input type="file" accept={fileAccept} onChange={handleSheetUpload} className={fileInputClass} />
               {hasSheet && (
                 <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                  <img src={sheet?.imageData || sheet?.imageUrl} alt={`${title} spritesheet`} className="max-w-full max-h-full object-contain" />
+                  <img src={sheet?.imageData || sheet?.imageUrl} alt={`${title} spritesheet`} className="max-w-full max-h-full object-contain" loading="lazy" decoding="async" />
                 </div>
               )}
             </div>
@@ -2222,7 +2222,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                 <input type="file" accept={fileAccept} onChange={handleImageUpload} className={fileInputClass} />
                 {hasImage && (
                   <div className="w-16 h-16 sprite-preview-bg rounded border border-stone-600 flex items-center justify-center overflow-hidden flex-shrink-0">
-                    <img src={imageData || imageUrl} alt={`${title} static`} className="max-w-full max-h-full object-contain" />
+                    <img src={imageData || imageUrl} alt={`${title} static`} className="max-w-full max-h-full object-contain" loading="lazy" decoding="async" />
                   </div>
                 )}
               </div>
@@ -2299,6 +2299,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={sprite.idleSpriteSheet?.imageData}
                       alt="Sprite sheet"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -2374,6 +2375,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={sprite.idleImageData || sprite.imageData || sprite.idleImageUrl || sprite.imageUrl}
                       alt="Static image"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -2459,6 +2461,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={sprite.deathSpriteSheet?.imageData}
                       alt="Death sprite sheet"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -2534,6 +2537,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={sprite.deathImageData}
                       alt="Death static"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -2571,6 +2575,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={sprite.castingSpriteSheet?.imageData}
                       alt="Casting sprite sheet"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -2646,6 +2651,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={sprite.castingImageData}
                       alt="Casting static"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -2880,6 +2886,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={currentConfig.idleSpriteSheet?.imageData || currentConfig.idleSpriteSheet?.imageUrl}
                       alt="Idle sprite sheet"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -3014,6 +3021,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={currentConfig.idleImageData || currentConfig.imageData || currentConfig.idleImageUrl || currentConfig.imageUrl}
                       alt="Idle static"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -3135,6 +3143,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={currentConfig.movingSpriteSheet?.imageData || currentConfig.movingSpriteSheet?.imageUrl}
                       alt="Moving sprite sheet"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -3269,6 +3278,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={currentConfig.movingImageData || currentConfig.movingImageUrl}
                       alt="Moving static"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -3407,6 +3417,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={currentConfig.castingSpriteSheet?.imageData || currentConfig.castingSpriteSheet?.imageUrl}
                       alt="Casting sprite sheet"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -3541,6 +3552,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={currentConfig.castingImageData || currentConfig.castingImageUrl}
                       alt="Casting static"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}
@@ -3718,6 +3730,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                     src={sprite.spawnSpriteSheet?.imageData || sprite.spawnSpriteSheet?.imageUrl}
                     alt="Spawn spritesheet"
                     className="max-w-full max-h-full object-contain"
+                    loading="lazy" decoding="async"
                   />
                 </div>
               )}
@@ -3842,6 +3855,7 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
                       src={sprite.spawnImageData || sprite.spawnImageUrl}
                       alt="Spawn static"
                       className="max-w-full max-h-full object-contain"
+                      loading="lazy" decoding="async"
                     />
                   </div>
                 )}

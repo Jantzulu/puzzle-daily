@@ -199,6 +199,7 @@ export const SpellLibrary: React.FC<{ initialSelectedId?: string }> = ({ initial
                           alt={spell.name}
                           className="object-contain bg-stone-900 rounded flex-shrink-0 transition-all duration-150"
                           style={{ width: selectedId === spell.id ? 56 : 40, height: selectedId === spell.id ? 56 : 40 }}
+                          loading="lazy" decoding="async"
                         />
                       ) : (
                         <div

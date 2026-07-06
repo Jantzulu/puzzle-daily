@@ -191,6 +191,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   alt="Test Heroes"
                   className="h-5 lg:h-6 w-auto"
                   style={{ imageRendering: 'pixelated' }}
+                  loading="lazy" decoding="async"
                 />
               </button>
             ) : (

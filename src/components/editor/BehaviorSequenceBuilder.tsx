@@ -472,7 +472,7 @@ const SpellConfig: React.FC<SpellConfigProps> = ({ action, spell, context, onUpd
               title="Edit this spell"
             >
               {spell.thumbnailIcon ? (
-                <img src={spell.thumbnailIcon} alt={spell.name} className="w-10 h-10 object-contain bg-stone-800 rounded border border-stone-600" />
+                <img src={spell.thumbnailIcon} alt={spell.name} className="w-10 h-10 object-contain bg-stone-800 rounded border border-stone-600" loading="lazy" decoding="async" />
               ) : (
                 <div className="w-10 h-10 bg-stone-800 rounded border border-stone-600 flex items-center justify-center text-stone-500 text-[9px]">No Icon</div>
               )}

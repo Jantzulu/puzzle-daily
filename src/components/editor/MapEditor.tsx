@@ -1987,7 +1987,7 @@ export const MapEditor: React.FC = () => {
                                     <SpellTooltip key={spell.id} spell={spell}>
                                       <div className="w-6 h-6 rounded overflow-hidden cursor-help">
                                         {spell.thumbnailIcon ? (
-                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                         ) : (
                                           <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
                                         )}
@@ -2106,7 +2106,7 @@ export const MapEditor: React.FC = () => {
                     >
                       <div className="w-8 h-8 bg-stone-900 rounded flex items-center justify-center overflow-hidden">
                         {skinVoidSprite ? (
-                          <img src={skinVoidSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                          <img src={skinVoidSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
                         ) : (
                           <span className="text-stone-600">✕</span>
                         )}
@@ -2124,7 +2124,7 @@ export const MapEditor: React.FC = () => {
                     >
                       <div className="w-8 h-8 bg-stone-600 rounded flex items-center justify-center overflow-hidden">
                         {skinEmptySprite ? (
-                          <img src={skinEmptySprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                          <img src={skinEmptySprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
                         ) : (
                           <span className="text-stone-400">⬜</span>
                         )}
@@ -2142,7 +2142,7 @@ export const MapEditor: React.FC = () => {
                     >
                       <div className="w-8 h-8 bg-stone-500 rounded flex items-center justify-center overflow-hidden">
                         {skinWallSprite ? (
-                          <img src={skinWallSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} />
+                          <img src={skinWallSprite} alt="" className="w-full h-full object-cover" style={{ imageRendering: 'pixelated' }} loading="lazy" decoding="async" />
                         ) : (
                           <span className="text-parchment-300">▓</span>
                         )}
@@ -2206,6 +2206,7 @@ export const MapEditor: React.FC = () => {
                                   alt=""
                                   className="w-full h-full object-cover"
                                   style={{ imageRendering: 'pixelated' }}
+                                  loading="lazy" decoding="async"
                                 />
                               ) : (
                                 <span className="text-sm">{behaviorIcons || '⬜'}</span>
@@ -2311,7 +2312,7 @@ export const MapEditor: React.FC = () => {
                                     <SpellTooltip key={spell.id} spell={spell}>
                                       <div className="w-6 h-6 rounded overflow-hidden cursor-help">
                                         {spell.thumbnailIcon ? (
-                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                         ) : (
                                           <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
                                         )}
@@ -2552,7 +2553,7 @@ export const MapEditor: React.FC = () => {
                                     <SpellTooltip key={spell.id} spell={spell}>
                                       <div className="w-6 h-6 rounded overflow-hidden cursor-help">
                                         {spell.thumbnailIcon ? (
-                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" />
+                                          <img src={spell.thumbnailIcon} alt={spell.name} className="w-full h-full object-cover" loading="lazy" decoding="async" />
                                         ) : (
                                           <div className="w-full h-full bg-arcane-600 flex items-center justify-center text-xs">S</div>
                                         )}

@@ -190,6 +190,7 @@ const LogoVariantsEditor: React.FC<LogoVariantsEditorProps> = ({ variants, onCha
                       src={variant.image}
                       alt={`Variant ${index + 1}`}
                       className="max-w-full max-h-full object-contain pixelated"
+                      loading="lazy" decoding="async"
                     />
                   ) : (
                     <span className="text-stone-500 text-xs">No image</span>
@@ -418,6 +419,7 @@ const AssetUpload: React.FC<AssetUploadProps> = ({ assetKey, value, onChange, on
               src={value}
               alt={config.label}
               className="max-w-full max-h-20 object-contain pixelated"
+              loading="lazy" decoding="async"
             />
             {/* Cloud/Local/External indicator */}
             <span

@@ -356,6 +356,7 @@ export const TileDetail: React.FC<{ tile: CustomTileType }> = ({ tile }) => {
                   src={tile.offStateSprite.idleImageData || tile.offStateSprite.imageData}
                   alt="Off state"
                   className="w-12 h-12 object-contain"
+                  loading="lazy" decoding="async"
                 />
               </div>
               <span className="text-xs" style={{ color: 'var(--text-muted)' }}>Off State</span>

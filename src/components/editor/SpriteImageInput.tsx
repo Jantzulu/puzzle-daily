@@ -125,6 +125,7 @@ export const SpriteImageInput: React.FC<SpriteImageInputProps> = ({
                 src={displaySrc}
                 alt="Preview"
                 className="max-w-full max-h-full object-contain"
+                loading="lazy" decoding="async"
               />
             </div>
           )}
