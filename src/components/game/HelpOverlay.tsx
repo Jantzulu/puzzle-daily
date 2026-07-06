@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { useNavigate } from 'react-router-dom';
 import { getHelpSection, type HelpSectionId } from '../../utils/assetStorage';
 import { sanitizeRichHtml } from '../../utils/sanitizeHtml';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 interface HelpOverlayProps {
   sectionId: HelpSectionId;
@@ -19,6 +20,7 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
   const navigate = useNavigate();
   const contentRef = useRef<HTMLDivElement>(null);
   const [dismissing, setDismissing] = useState(false);
+  const panelRef = useFocusTrap<HTMLDivElement>(isOpen && !!helpContent);
 
   const handleClose = useCallback(() => {
     setDismissing(true);
@@ -68,12 +70,17 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
 
   return createPortal(
     <div
+      role="dialog"
+      aria-modal="true"
+      aria-label={helpContent.title}
       className={`fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
       style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
       onClick={handleClose}
     >
       {/* Modal container - responsive on mobile, centered box on desktop */}
       <div
+        ref={panelRef}
+        tabIndex={-1}
         className={`relative w-full max-w-lg max-h-[90vh] md:max-h-[80vh] bg-stone-800 rounded-lg shadow-xl overflow-hidden flex flex-col ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}
         onClick={e => e.stopPropagation()}
       >

@@ -22,12 +22,13 @@ import { HelpButton } from './HelpOverlay';
 import { playGameSound, playVictoryMusic, playDefeatMusic, playBackgroundMusic, stopMusic } from '../../utils/gameSounds';
 import { loadThemeAssets, subscribeToThemeAssets, type ThemeAssets } from '../../utils/themeAssets';
 import { WarningModal } from '../shared/WarningModal';
-import { preloadImagesEager } from '../../utils/imageLoader';
+import { preloadImagesEager, isImageFailed, retryImage } from '../../utils/imageLoader';
 import { vibrate } from '../../utils/haptics';
 import { getDailyState, lockDailyOutcome, updateDailyLives, type DailyStatus } from '../../utils/dailyState';
 import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle, fetchTodaysPuzzleNumber } from '../../services/supabaseService';
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { submitCompletion } from '../../services/statsService';
 import { CommunityStats } from './CommunityStats';
 import { BugReportModal } from './BugReportModal';
@@ -177,6 +178,9 @@ export const Game: React.FC<GameProps> = ({
   // victory.
   const [showGameOver, setShowGameOver] = useState(false);
   const [spritesReady, setSpritesReady] = useState(false);
+  // Count of puzzle sprites that failed to preload. Non-zero shows a small
+  // retry pill on the board instead of rendering missing art silently.
+  const [failedSpriteCount, setFailedSpriteCount] = useState(0);
   // Reset-reveal overlay (see index.css BOARD PHASE TRANSITIONS):
   // keyed by nonce so each trigger replays the animation. 0 = never fired.
   const [resetFxNonce, setResetFxNonce] = useState(0);
@@ -275,6 +279,13 @@ export const Game: React.FC<GameProps> = ({
   const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !victoryDismissed;
   const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode;
   const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode;
+
+  // Keyboard focus stays inside whichever overlay panel is up, and returns
+  // to the prior element on close (see useFocusTrap).
+  const victoryPanelRef = useFocusTrap<HTMLDivElement>(victoryOverlayVisible);
+  const gameOverPanelRef = useFocusTrap<HTMLDivElement>(gameOverOverlayVisible);
+  const lifeLostPanelRef = useFocusTrap<HTMLDivElement>(lifeLostOverlayVisible);
+  const concedePanelRef = useFocusTrap<HTMLDivElement>(showConcedeConfirm);
 
   // Escape closes whichever dismissible overlay is on top (matches HelpOverlay behavior).
   // The life-lost overlay is deliberately excluded — it has no dismiss affordance;
@@ -398,6 +409,7 @@ export const Game: React.FC<GameProps> = ({
   useEffect(() => {
     const urlsToPreload = collectPuzzleAssetUrls(currentPuzzle);
     setSpritesReady(false);
+    setFailedSpriteCount(0);
     if (urlsToPreload.length === 0) {
       setSpritesReady(true);
       return;
@@ -409,9 +421,23 @@ export const Game: React.FC<GameProps> = ({
     // via the image-load subscription re-renders. The cancelled flag also
     // stops a stale preload (from a puzzle switched away from) firing late.
     const timeoutId = setTimeout(reveal, 8000);
-    preloadImagesEager(urlsToPreload).then(reveal, reveal);
+    preloadImagesEager(urlsToPreload).then(() => {
+      if (!cancelled) setFailedSpriteCount(urlsToPreload.filter(isImageFailed).length);
+      reveal();
+    }, reveal);
     return () => { cancelled = true; clearTimeout(timeoutId); };
   }, [currentPuzzle.id]);
+
+  // Retry every failed sprite; the pill hides immediately (retryImage clears
+  // the failed flag) and re-checks after a grace period for stubborn ones.
+  const retryFailedSprites = useCallback(() => {
+    const failed = collectPuzzleAssetUrls(currentPuzzle).filter(isImageFailed);
+    failed.forEach(url => retryImage(url));
+    setFailedSpriteCount(0);
+    setTimeout(() => {
+      setFailedSpriteCount(collectPuzzleAssetUrls(currentPuzzle).filter(isImageFailed).length);
+    }, 5000);
+  }, [currentPuzzle]);
 
   // Simulation loop
   useEffect(() => {
@@ -2274,6 +2300,20 @@ export const Game: React.FC<GameProps> = ({
                 </div>
               )}
 
+              {/* Sprite load failures — never fail silently. Small pill with
+                  a retry that re-fetches only the failed URLs. */}
+              {spritesReady && failedSpriteCount > 0 && (
+                <div className="absolute top-2 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3 py-1.5 rounded-pixel bg-stone-900/90 border border-blood-700 text-xs text-blood-300 whitespace-nowrap">
+                  <span>Some artwork failed to load</span>
+                  <button
+                    onClick={retryFailedSprites}
+                    className="underline font-bold hover:text-parchment-100"
+                  >
+                    Retry
+                  </button>
+                </div>
+              )}
+
               {/* Reset reveal — keyed so each trigger replays; ends at
                   opacity 0 and is pointer-events-none, so stale ones are
                   inert. Rendered under the victory/defeat panels. */}
@@ -2294,6 +2334,8 @@ export const Game: React.FC<GameProps> = ({
                   onClick={() => dismissOverlay(() => setDefeatDismissed(true))}
                 >
                   <div
+                    ref={gameOverPanelRef}
+                    tabIndex={-1}
                     className={`p-6 rounded-pixel-lg text-center max-w-[90%] relative ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
                       themeAssets.gameOverPanelBg ? '' : 'defeat-panel'
                     }`}
@@ -2413,6 +2455,8 @@ export const Game: React.FC<GameProps> = ({
                   onClick={() => dismissOverlay(() => setVictoryDismissed(true))}
                 >
                   <div
+                    ref={victoryPanelRef}
+                    tabIndex={-1}
                     className={`victory-panel p-6 rounded-pixel-lg text-center w-[min(90%,24rem)] my-auto relative ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}
                     onClick={e => e.stopPropagation()}
                   >
@@ -2606,7 +2650,7 @@ export const Game: React.FC<GameProps> = ({
                 className={`fixed inset-0 flex items-center justify-center z-50 ${dismissingOverlay ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
                 style={{ backgroundColor: 'rgba(0, 0, 0, 0.75)' }}
               >
-                <div className={`p-6 rounded-pixel-lg text-center max-w-[90%] defeat-panel ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
+                <div ref={lifeLostPanelRef} tabIndex={-1} className={`p-6 rounded-pixel-lg text-center max-w-[90%] defeat-panel ${dismissingOverlay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
                   <div className="text-4xl mb-1 animate-icon-drop">
                     {defeatReason === 'turns' ? '\u23F3' : '\uD83D\uDC80'}
                   </div>
@@ -2668,6 +2712,8 @@ export const Game: React.FC<GameProps> = ({
                 }}
               >
                 <div
+                  ref={concedePanelRef}
+                  tabIndex={-1}
                   className={`p-6 rounded-pixel-lg text-center max-w-sm mx-4 ${dismissingConcede ? 'animate-panel-scale-out' : 'animate-panel-scale-in'} ${
                     themeAssets.concedeModalPanelBg ? '' : 'bg-gradient-to-b from-blood-800 to-blood-900 border-2 border-blood-500'
                   }`}

@@ -8,6 +8,7 @@ import { loadTileType, loadCollectible, loadSpellAsset, loadStatusEffectAsset } 
 import { toast } from '../shared/Toast';
 import { MiniGridPreview } from './MiniGridPreview';
 import { BugReportReplay } from '../editor/BugReportReplay';
+import { useFocusTrap } from '../../hooks/useFocusTrap';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -34,6 +35,23 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       onClose();
     }, 250);
   }, [onClose]);
+
+  const panelRef = useFocusTrap<HTMLDivElement>(isOpen && !replayingRunId);
+
+  // Escape closes (not while the replay viewer is up — it has its own exit),
+  // and body scroll locks behind the modal.
+  useEffect(() => {
+    if (!isOpen || replayingRunId) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !dismissing && !submitting) handleDismiss();
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = '';
+    };
+  }, [isOpen, replayingRunId, dismissing, submitting, handleDismiss]);
 
   // Keep selectedRunId in sync with trackedRuns — default to most recent
   useEffect(() => {
@@ -247,8 +265,13 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
   }
 
   return (
-    <div className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}>
-      <div className={`dungeon-panel p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Report a bug"
+      className={`fixed inset-0 bg-black/70 z-50 flex items-center justify-center p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
+    >
+      <div ref={panelRef} tabIndex={-1} className={`dungeon-panel p-5 max-w-lg w-full max-h-[90vh] overflow-y-auto space-y-4 ${dismissing ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}`}>
         <div className="flex items-center justify-between">
           <h3 className="font-medieval text-copper-400 text-lg">Report a Bug</h3>
           <button onClick={handleDismiss} disabled={dismissing} className="text-stone-500 hover:text-stone-300 text-xl leading-none">&times;</button>
