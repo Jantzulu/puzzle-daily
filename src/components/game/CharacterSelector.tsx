@@ -226,7 +226,11 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
           {onClearAll && placedCharacterIds.length > 0 && !disabled && (
             <button
               onClick={onClearAll}
-              className="p-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
+              // -my-1: the 28px hit box is taller than the row's natural
+              // ~20px text height — negative margin keeps the touch target
+              // without growing the row when the button appears (the panel
+              // below must not shift on hero placement)
+              className="p-1 -my-1 text-stone-400 hover:text-blood-400 hover:bg-stone-700 rounded-pixel transition-colors min-w-[28px] min-h-[28px] flex items-center justify-center"
               title="Remove all placed heroes"
             >
               <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -377,8 +381,12 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         })}
       </div>
 
-      {/* Info area — grid height animation so easing applies to real content height */}
-      {renderedCharId && renderedCharacter && (
+      {/* Info area — grid height animation so easing applies to real content height.
+          Only rendered when the hero actually HAS info content: an info-less
+          hero used to open an empty tinted box holding just the placement
+          hint, expanding the panel at selection (read as the trash button
+          displacing the layout). The hint now lives in a static row below. */}
+      {renderedCharId && renderedCharacter && (hasActionSteps || hasAttributes || redirectSpells.length > 0) && (
         <div style={{
           display: 'grid',
           gridTemplateRows: isOpen ? '1fr' : '0fr',
@@ -499,11 +507,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
             );
           })}
 
-          <div className="text-sm text-copper-400 font-medium text-center">
-            Click on the dungeon to place your hero
-          </div>
         </div>
         </div>
+        </div>
+      )}
+
+      {/* Placement hint — statically sized (min-h reserves the line) so the
+          text swap never moves the panel below. */}
+      {!disabled && (
+        <div className="mt-1.5 text-sm font-medium text-center min-h-[20px]">
+          {isAtMaxPlaced ? null : selectedCharacterId && !placedCharacterIds.includes(selectedCharacterId) ? (
+            <span className="text-copper-400">Click on the dungeon to place your hero</span>
+          ) : (
+            <span className="text-stone-500">Select a hero</span>
+          )}
         </div>
       )}
     </>
