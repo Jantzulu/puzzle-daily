@@ -28,6 +28,7 @@ import { getDailyState, lockDailyOutcome, updateDailyLives, type DailyStatus } f
 import { diffTurn } from '../../engine/combatLog';
 import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supabaseService';
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
+import { saveSetupState, loadSetupState, clearSetupState } from '../../utils/setupRecovery';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
 import { submitCompletion } from '../../services/statsService';
 import { CommunityStats } from './CommunityStats';
@@ -383,6 +384,74 @@ export const Game: React.FC<GameProps> = ({
     });
     return () => { cancelled = true; };
   }, []);
+
+  // ── Crash recovery (player daily only) ─────────────────────────────
+  // Mobile browsers kill background tabs freely; these effects persist the
+  // setup placements so a reload comes back with the loadout intact. A
+  // mid-RUN crash also restores to setup with the same placements — the sim
+  // is deterministic from placements, and lives persist via dailyState.
+  const isDailyContext = enableDailyLock && !puzzleProp && !!currentPuzzle.date;
+  const restoredSetupForRef = useRef<string | null>(null);
+
+  // Restore — one attempt per puzzle id (so an intentional clear-all isn't
+  // resurrected), only onto an empty setup board, never when day-locked.
+  useEffect(() => {
+    if (!isDailyContext || dailyLockStatus) return;
+    if (gameState.gameStatus !== 'setup' || gameState.placedCharacters.length > 0) return;
+    if (restoredSetupForRef.current === currentPuzzle.id) return;
+    restoredSetupForRef.current = currentPuzzle.id; // consume the attempt either way
+    const saved = loadSetupState(currentPuzzle.date, currentPuzzle.id);
+    if (!saved) return;
+    // Sanity: same-id puzzle content can change between save and restore
+    // (republish). Reuse the canonical placement rule for tiles.
+    const cap = currentPuzzle.maxPlaceableCharacters ?? currentPuzzle.maxCharacters;
+    const ids = saved.placements.map(p => p.characterId);
+    const valid =
+      saved.placements.length <= cap &&
+      new Set(ids).size === ids.length &&
+      saved.placements.every(p => {
+        if (!currentPuzzle.availableCharacters.includes(p.characterId)) return false;
+        const tile = currentPuzzle.tiles[p.y]?.[p.x];
+        return !!tile && !isTileBlockingMovement(tile, gameState);
+      });
+    if (!valid) {
+      clearSetupState();
+      return;
+    }
+    setGameState(prev =>
+      prev.gameStatus === 'setup' && prev.placedCharacters.length === 0
+        ? { ...prev, placedCharacters: saved.placements }
+        : prev
+    );
+    if (saved.spellDirectionOverrides) {
+      setPendingSpellDirectionOverrides(saved.spellDirectionOverrides);
+    }
+  }, [isDailyContext, dailyLockStatus, gameState.gameStatus, gameState.placedCharacters.length, currentPuzzle.id]);
+
+  // Save — every setup change after the restore attempt has been consumed
+  // (the gate stops a fresh mount's empty board from wiping the saved copy
+  // before restore runs). An emptied board clears; the copy survives the
+  // run untouched for mid-run crashes.
+  useEffect(() => {
+    if (!isDailyContext || dailyLockStatus) return;
+    if (restoredSetupForRef.current !== currentPuzzle.id) return;
+    if (gameState.gameStatus !== 'setup') return;
+    if (gameState.placedCharacters.length === 0) {
+      clearSetupState();
+      return;
+    }
+    saveSetupState({
+      puzzleDate: currentPuzzle.date,
+      puzzleId: currentPuzzle.id,
+      placements: gameState.placedCharacters,
+      spellDirectionOverrides: pendingSpellDirectionOverrides,
+    });
+  }, [isDailyContext, dailyLockStatus, gameState.gameStatus, gameState.placedCharacters, pendingSpellDirectionOverrides, currentPuzzle.id, currentPuzzle.date]);
+
+  // The day is decided — nothing left to recover.
+  useEffect(() => {
+    if (dailyLockStatus) clearSetupState();
+  }, [dailyLockStatus]);
 
   // Reload saved puzzles when component mounts or when returning from editor
   useEffect(() => {
