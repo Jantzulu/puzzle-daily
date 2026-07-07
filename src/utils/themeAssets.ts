@@ -253,7 +253,7 @@ export const THEME_ASSET_CONFIG: Record<ThemeAssetKey, { label: string; descript
   notFoundIconFrameCount: { label: '404 Icon Frame Count', description: 'Number of frames in sprite sheet (e.g., 8). Leave blank for static image.', category: 'branding', inputType: 'text' },
   notFoundIconFrameRate: { label: '404 Icon Frame Rate', description: 'Animation speed in frames per second (default: 10)', category: 'branding', inputType: 'text' },
   navLabelPlay: { label: 'Play Button Label', description: 'Text for Play navigation button (default: "Play")', category: 'branding', inputType: 'text' },
-  navLabelCompendium: { label: 'Compendium Button Label', description: 'Text for Compendium navigation button (default: "Compendium")', category: 'branding', inputType: 'text' },
+  navLabelCompendium: { label: 'Compendium Button Label', description: 'Text for the Compendium/Slab navigation button (default: "The Slab")', category: 'branding', inputType: 'text' },
   navLabelEditor: { label: 'Editor Button Label', description: 'Text for Map Editor navigation button (default: "Map Editor")', category: 'branding', inputType: 'text' },
   navLabelAssets: { label: 'Assets Button Label', description: 'Text for Assets navigation button (default: "Assets")', category: 'branding', inputType: 'text' },
   // Images

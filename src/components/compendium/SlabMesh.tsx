@@ -49,10 +49,13 @@ const hash = (i: number): number => {
 
 // Inner plate ring: outer pulled toward center (anisotropic so the border
 // ring is a similar thickness on all sides of the non-square viewBox),
-// with a little jitter so the plate edge is hewn too.
+// with a little jitter so the plate edge is hewn too. 0.93 vertical (was
+// 0.856): a slim top/bottom bevel — the thick crown wasted vertical space
+// between the stone's edge and the text (user-flagged on both slabs). The
+// silhouette (OUTER) is untouched.
 const INNER: Array<[number, number]> = OUTER.map(([x, y], i) => [
   CX + (x - CX) * 0.9 + (hash(i) - 0.5) * 10,
-  CY + (y - CY) * 0.856 + (hash(i + 40) - 0.5) * 10,
+  CY + (y - CY) * 0.93 + (hash(i + 40) - 0.5) * 8,
 ]);
 
 // Stone tone ramp, dark → lit

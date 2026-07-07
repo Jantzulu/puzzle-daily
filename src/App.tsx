@@ -31,7 +31,7 @@ const ProfilePage = lazy(() => import('./components/player/ProfilePage').then(m 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Play',
   '/login': 'Sign In',
-  '/compendium': 'Compendium',
+  '/compendium': 'The Slab',
   '/training': 'Training Sandbox',
   '/editors': 'Editors',
   '/puzzle-resources': 'Admin Controls',
@@ -333,7 +333,7 @@ function Navigation() {
   const navItems: Array<{ to: string; label: string; unread?: boolean }> = [
     { to: '/', label: themeAssets.navLabelPlay || 'Play' },
     { to: '/town-crier', label: 'Town Crier', unread: hasUnreadNews },
-    { to: '/compendium', label: themeAssets.navLabelCompendium || 'Compendium' },
+    { to: '/compendium', label: themeAssets.navLabelCompendium || 'The Slab' },
     { to: '/training', label: 'Training' },
     ...(isCreator ? [
       { to: '/assets', label: themeAssets.navLabelAssets || 'Assets' },

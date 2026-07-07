@@ -197,9 +197,13 @@ export const Compendium: React.FC = () => {
   };
   const themeClass = TAB_THEME[activeTab];
 
-  // Floating nav stack: the chapter capsule with the search pill hanging
-  // under it — search lives OFF the slab (a stone slab with a search box
-  // carved into it broke the artifact illusion).
+  // Floating nav stack: the chapter capsule (with the search pill hanging
+  // under it when enabled) — search lives OFF the slab (a stone slab with a
+  // search box carved into it broke the artifact illusion).
+  // SHOW_SEARCH: parked pre-launch — asset counts are small enough that the
+  // pill was noise, and hiding it lets the slab sit closer to the chapter
+  // icons. The filtering plumbing stays live; flip to bring it back.
+  const SHOW_SEARCH = false;
   const navStack = (orientation: 'vertical' | 'horizontal') => (
     <div className="compendium-nav-stack">
       <ChapterNav
@@ -208,13 +212,15 @@ export const Compendium: React.FC = () => {
         onTabChange={handleTabChange}
         orientation={orientation}
       />
-      <input
-        type="text"
-        placeholder={`Search ${TAB_LABELS[activeTab].plural.toLowerCase()}...`}
-        value={searchQuery}
-        onChange={(e) => setSearchQuery(e.target.value)}
-        className="compendium-search compendium-search--float"
-      />
+      {SHOW_SEARCH && (
+        <input
+          type="text"
+          placeholder={`Search ${TAB_LABELS[activeTab].plural.toLowerCase()}...`}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="compendium-search compendium-search--float"
+        />
+      )}
     </div>
   );
 
@@ -345,10 +351,10 @@ export const Compendium: React.FC = () => {
   return (
     <div className="min-h-screen theme-root text-parchment-200">
       <div className="max-w-7xl mx-auto p-4 md:p-6">
-        {/* Header — above the book, in the dungeon theme */}
-        <div className="mb-6">
-          <h1 className="text-5xl md:text-6xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">Compendium</h1>
-          <p className="text-stone-400">A tome of all Dungeon knowledge — Heroes, Enemies, Status Effects, Tiles, and Items.</p>
+        {/* Header — above the stone, in the dungeon theme, centered on the page */}
+        <div className="mb-6 text-center">
+          <h1 className="text-5xl md:text-6xl font-bold font-medieval text-copper-400 text-shadow-dungeon mb-2">The Slab</h1>
+          <p className="text-stone-400">A magical stone containing knowledge from across the realm.</p>
         </div>
 
         {/* Desktop: two-face slab layout (lg+) */}
