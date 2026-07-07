@@ -1552,9 +1552,47 @@ html body.theme-font-active,
   animation: rail-ascend 0.5s cubic-bezier(0.5, 0, 0.75, 0.5) both;
 }
 
+/* ============================================
+   REPLAY SLAB
+   The replay controls sit on a hewn stone slab (ReplaySlabMesh) that
+   rises from the bottom of the viewport WHILE the portcullis rail
+   winches up — two halves of one gesture. It's a fixed bottom sheet:
+   out of layout flow so the swap can't jank, bottom edge off-screen so
+   the stone reads as a much larger rock from below the page. On exit
+   it sinks back down, then the rail and panels return.
+   ============================================ */
+.replay-slab-mesh {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  filter: drop-shadow(0 -6px 18px rgba(0, 0, 0, 0.55));
+}
+
+@keyframes replay-slab-rise {
+  from { transform: translateY(102%); }
+  to { transform: translateY(0); }
+}
+
+@keyframes replay-slab-sink {
+  from { transform: translateY(0); }
+  to { transform: translateY(102%); }
+}
+
+.replay-slab-rise {
+  animation: replay-slab-rise 0.55s cubic-bezier(0.45, 0.3, 0.25, 1) both;
+}
+
+.replay-slab-sink {
+  animation: replay-slab-sink 0.45s cubic-bezier(0.5, 0, 0.75, 0.5) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .animate-rail-descend,
-  .animate-rail-ascend {
+  .animate-rail-ascend,
+  .replay-slab-rise,
+  .replay-slab-sink {
     animation: none;
   }
 }

@@ -36,6 +36,7 @@ import { BugReportModal } from './BugReportModal';
 import type { TrackedRun } from '../../types/bugReport';
 import { BannerMesh } from './BannerMesh';
 import { GemMesh } from './GemMesh';
+import { ReplaySlabMesh } from './ReplaySlabMesh';
 
 // Test mode types
 type TestMode = 'none' | 'enemies' | 'characters';
@@ -1402,7 +1403,7 @@ export const Game: React.FC<GameProps> = ({
       // Clear the exit-animation flag after the rail's descent (0.55s)
       // and the panel slide-up have both played
       setTimeout(() => setJustExitedReplay(false), 600);
-    }, 250);
+    }, 450); // match replay-slab-sink: the stone leaves before the menus return
   }, [dismissingReplay, livesRemaining, puzzleScore, originalPuzzle, generateTurnHistory, handleAutoReset]);
 
   // Replay playback controls
@@ -3030,24 +3031,12 @@ export const Game: React.FC<GameProps> = ({
               </div>
             )}
 
-            {/* Replay Controls - replace hero placement area during replay */}
+            {/* During replay the controls live on the fixed slab sheet (below);
+                this in-flow spacer keeps scroll room so the board can clear
+                the sheet, and stops the page collapsing when the panels swap
+                out. */}
             {replayMode ? (
-              <div className={dismissingReplay ? 'animate-panel-scale-out' : 'animate-panel-scale-in'}>
-                <ReplayControls
-                  currentTurn={replayTurnIndex}
-                  totalTurns={turnHistoryRef.current.length - 1}
-                  isPlaying={replayPlaying}
-                  speed={replaySpeed}
-                  events={replayEventsRef.current}
-                  onPlayPause={handleReplayPlayPause}
-                  onStepForward={handleReplayStepForward}
-                  onStepBack={handleReplayStepBack}
-                  onSeek={handleReplaySeek}
-                  onSpeedChange={handleReplaySpeedChange}
-                  onExit={handleExitReplay}
-                  onReportBug={() => setShowBugReport(true)}
-                />
-              </div>
+              <div className="h-[200px]" aria-hidden="true" />
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
               <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
@@ -3150,6 +3139,40 @@ export const Game: React.FC<GameProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Replay slab — fixed bottom sheet, out of layout flow. Rises from
+          the bottom of the viewport WHILE the rail winches up (two halves
+          of one gesture); sinks back down on exit before the panels
+          return. The mesh has no bottom edge: the stone runs off-screen,
+          reading as a larger rock from below the page. z-[45]: over the
+          board and rail wrapper (40), under the navbar and modals (50). */}
+      {(enteringReplay || replayMode) && (
+        <div className="fixed bottom-0 inset-x-0 z-[45] flex justify-center pointer-events-none">
+          <div className={`w-full max-w-2xl relative pointer-events-auto ${dismissingReplay ? 'replay-slab-sink' : 'replay-slab-rise'}`}>
+            <ReplaySlabMesh />
+            <div
+              className="relative z-10 px-6 md:px-10 pt-6 pb-2"
+              style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
+            >
+              <ReplayControls
+                variant="slab"
+                currentTurn={replayTurnIndex}
+                totalTurns={turnHistoryRef.current.length - 1}
+                isPlaying={replayPlaying}
+                speed={replaySpeed}
+                events={replayEventsRef.current}
+                onPlayPause={handleReplayPlayPause}
+                onStepForward={handleReplayStepForward}
+                onStepBack={handleReplayStepBack}
+                onSeek={handleReplaySeek}
+                onSpeedChange={handleReplaySpeedChange}
+                onExit={handleExitReplay}
+                onReportBug={() => setShowBugReport(true)}
+              />
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Warning Modal */}
       <WarningModal

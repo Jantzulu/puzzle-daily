@@ -14,6 +14,9 @@ interface ReplayControlsProps {
   onSpeedChange: (speed: number) => void;
   onExit: () => void;
   onReportBug?: () => void;
+  /** 'panel' (default): standalone dungeon-panel chrome.
+      'slab': bare controls — the caller provides the stone (ReplaySlabMesh). */
+  variant?: 'panel' | 'slab';
 }
 
 const SPEEDS = [0.5, 1, 2];
@@ -87,6 +90,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
   onSpeedChange,
   onExit,
   onReportBug,
+  variant = 'panel',
 }) => {
   const atStart = currentTurn <= 0;
   const atEnd = currentTurn >= totalTurns;
@@ -101,7 +105,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
   }
 
   return (
-    <div className="dungeon-panel p-3 space-y-2">
+    <div className={variant === 'slab' ? 'space-y-2' : 'dungeon-panel p-3 space-y-2'}>
       {/* Row 1: Exit button | "Replay" label (absolutely centered) | Speed buttons */}
       <div className="relative flex items-center justify-between">
         <div className="flex items-center gap-1 z-10">
@@ -126,7 +130,9 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
             </button>
           )}
         </div>
-        <span className="absolute inset-0 flex items-center justify-center text-sm text-stone-300 font-medieval pointer-events-none">Replay</span>
+        <span className={`absolute inset-0 flex items-center justify-center pointer-events-none font-medieval ${
+          variant === 'slab' ? 'carved-header text-base' : 'text-sm text-stone-300'
+        }`}>Replay</span>
         <div className="flex items-center gap-1 z-10">
           {SPEEDS.map(s => (
             <button
