@@ -18,16 +18,61 @@
   </head>
     <style>
       /* Pre-hydration splash — fades in after a beat so fast loads never see
-         it; removed by the app the moment React reveals #root. */
+         it; removed by the app the moment React reveals #root. Mirrors the
+         navbar marquee (logo + title + subtitle) from cached theme_assets;
+         the inline script below fills it in before first paint. */
       #splash{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:#050504;opacity:0;animation:splash-in .4s ease .25s forwards;pointer-events:none}
-      #splash .t{font-family:Georgia,'Times New Roman',serif;font-weight:700;font-size:20px;letter-spacing:.35em;text-transform:uppercase;color:#d4a574;animation:splash-pulse 1.6s ease-in-out infinite}
+      #splash .inner{display:flex;align-items:center;gap:10px;animation:splash-pulse 1.6s ease-in-out infinite}
+      #splash .logo{display:none;image-rendering:pixelated;background-repeat:no-repeat}
+      #splash .tw{display:flex;flex-direction:column;line-height:1.25}
+      #splash .t{font-family:'Almendra',serif;font-weight:700;font-size:20px;letter-spacing:.025em;color:#d4a574;text-shadow:0 2px 4px rgba(0,0,0,.5);white-space:nowrap}
+      #splash .s{display:none;font-family:'Almendra',serif;font-size:.75rem;color:rgba(212,165,116,.8);text-shadow:0 2px 4px rgba(0,0,0,.5);white-space:nowrap}
       @keyframes splash-in{to{opacity:1}}
       @keyframes splash-pulse{0%,100%{opacity:.45}50%{opacity:1}}
     </style>
   <body style="background-color:#050504;margin:0">
-    <div id="splash" aria-hidden="true"><div class="t">Puzzle&nbsp;Daily</div></div>
+    <div id="splash" aria-hidden="true"><div class="inner"><div class="logo"></div><div class="tw"><div class="t">Knightly</div><div class="s"></div></div></div></div>
     <div id="root" style="opacity:0;transition:opacity .15s ease-in"></div>
-    <script>setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove()},10000)</script>
+    <script>
+      (function(){
+        try{
+          var a=JSON.parse(localStorage.getItem('theme_assets')||'{}');
+          /* Same option→CSS map as themeAssets.ts fontMap */
+          var F={medieval:"'Almendra', serif",pixel:"'Press Start 2P', monospace",fantasy:"'MedievalSharp', cursive",handwritten:"'Caveat', cursive",serif:"'Crimson Text', Georgia, serif",gothic:"'UnifrakturCook', cursive",runic:"'Noto Sans Runic', sans-serif",elegant:"'Cinzel', serif",grenze:"'Grenze Gotisch', serif",germania:"'Germania One', sans-serif",jacquard:"'Jacquard 24', serif",jacquarda:"'Jacquarda Bastarda 9', serif",amarante:"'Amarante', serif",faculty:"'Faculty Glyphic', serif"};
+          var f=F[a.fontFamilyHeading]||F[a.fontFamily];
+          var t=document.querySelector('#splash .t');
+          if(a.siteTitle)t.textContent=a.siteTitle;
+          if(f)t.style.fontFamily=f;
+          if(a.siteSubtitle){
+            var s=document.querySelector('#splash .s'),Z={'x-small':'0.65rem','small':'0.75rem','medium':'0.85rem','large':'0.95rem','x-large':'1.05rem'};
+            s.textContent=a.siteSubtitle;
+            if(a.siteSubtitleColor)s.style.color=a.siteSubtitleColor;
+            s.style.fontSize=Z[a.siteSubtitleSize||'small']||Z.small;
+            if(f)s.style.fontFamily=f;
+            s.style.display='block';
+          }
+          if(a.logo){
+            var n=Math.max(1,parseInt(a.logoFrameCount,10)||1),img=new Image();
+            img.onload=function(){
+              var el=document.querySelector('#splash .logo');if(!el)return;
+              var h=32,w=(img.naturalWidth/n)*(h/img.naturalHeight);
+              el.style.width=w+'px';el.style.height=h+'px';
+              el.style.backgroundImage='url("'+a.logo+'")';
+              el.style.backgroundSize=(w*n)+'px '+h+'px';
+              el.style.display='block';
+              if(n>1&&el.animate){
+                var r=parseFloat(a.logoFrameRate)||10;
+                el.animate([{backgroundPosition:'0px 0px'},{backgroundPosition:-(w*n)+'px 0px'}],{duration:n/r*1000,iterations:Infinity,easing:'steps('+n+')'});
+              }
+            };
+            img.src=a.logo;
+          }
+          var tt=a.playerBrowserTabTitle||a.siteTitle;
+          if(tt)document.title=tt;
+        }catch(e){}
+      })();
+      setTimeout(function(){var s=document.getElementById('splash');if(s)s.remove()},10000)
+    </script>
     <script type="module" src="/src/main.player.tsx"></script>
   </body>
 </html>
