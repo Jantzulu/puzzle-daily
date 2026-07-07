@@ -903,7 +903,43 @@ html body.theme-font-active,
   z-index: 1;
 }
 
-/* Engraved seam dividing the slab's two faces */
+/* Scrollbars carved into the faces: a dark groove with a stone thumb
+   (the rail's iron tones), instead of the browser's plastic default. */
+.compendium-page,
+.compendium-page--single {
+  scrollbar-width: thin;                     /* Firefox */
+  scrollbar-color: #3b352d rgba(0, 0, 0, 0.3);
+}
+
+.compendium-page::-webkit-scrollbar,
+.compendium-page--single::-webkit-scrollbar {
+  width: 10px;
+}
+
+.compendium-page::-webkit-scrollbar-track,
+.compendium-page--single::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 5px;
+  box-shadow: inset 0 0 4px rgba(0, 0, 0, 0.6);
+}
+
+.compendium-page::-webkit-scrollbar-thumb,
+.compendium-page--single::-webkit-scrollbar-thumb {
+  background: #3b352d;
+  border-radius: 5px;
+  border: 2px solid rgba(0, 0, 0, 0.4);
+  background-clip: padding-box;
+}
+
+.compendium-page::-webkit-scrollbar-thumb:hover,
+.compendium-page--single::-webkit-scrollbar-thumb:hover {
+  background: #4a4239;
+  background-clip: padding-box;
+}
+
+/* Engraved seam dividing the slab's two faces — a groove CUT into the
+   stone (dark channel, lit right lip catching the top-left light), not a
+   glowing line painted on it. */
 .compendium-spine {
   width: 3px;
   flex-shrink: 0;
@@ -911,11 +947,11 @@ html body.theme-font-active,
   background: linear-gradient(
     to bottom,
     transparent,
-    var(--gold-glow) 20%,
-    var(--gold-glow) 80%,
+    rgba(0, 0, 0, 0.6) 12%,
+    rgba(0, 0, 0, 0.6) 88%,
     transparent
   );
-  opacity: 0.35;
+  box-shadow: 1.5px 0 0 rgba(255, 235, 200, 0.06);
   position: relative;
   z-index: 1;
 }
@@ -1051,25 +1087,33 @@ html body.theme-font-active,
   --chapter-accent-glow: rgba(232, 204, 138, 0.28);
 }
 
-/* Entry card on parchment page */
+/* Entry row — a slot carved into the stone (the replay stone's recessed
+   well vocabulary: dark cavity, dark upper lip, faint lit lower lip). */
 .compendium-entry {
   padding: 0.5rem 0.75rem;
-  border-radius: 3px;
-  border: 1px solid transparent;
+  border-radius: 4px;
+  border: none;
+  background: rgba(0, 0, 0, 0.22);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 0 rgba(255, 235, 200, 0.06),
+    0 1px 0 rgba(255, 235, 200, 0.04);
   cursor: pointer;
-  transition: background 0.15s, border-color 0.15s;
+  transition: background 0.15s, box-shadow 0.15s;
   color: var(--text-primary);
 }
 
 .compendium-entry:hover {
-  background: var(--section-bg);
-  border-color: var(--border-warm);
+  background: rgba(0, 0, 0, 0.32);
 }
 
+/* Selected: the carving holds a faint ember of the chapter's color */
 .compendium-entry--selected {
-  background: rgba(228, 185, 106, 0.08);
-  border-color: var(--border-warm);
-  box-shadow: inset 0 0 10px rgba(228, 185, 106, 0.06);
+  background: rgba(0, 0, 0, 0.38);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.7),
+    inset 0 0 10px var(--chapter-accent-glow, rgba(228, 185, 106, 0.1)),
+    0 1px 0 rgba(255, 235, 200, 0.04);
 }
 
 /* Page heading — engraved, centered, colored by the open chapter. The glow
@@ -1085,16 +1129,25 @@ html body.theme-font-active,
     0 -1px 1px rgba(0, 0, 0, 0.8),
     0 1px 0 rgba(255, 240, 210, 0.08),
     0 0 18px var(--chapter-accent-glow, var(--gold-glow));
-  border-bottom: 2px solid var(--border-warm);
+  /* Engraved rule instead of a drawn border: dark cut, lit lower lip —
+     a groove chiseled under the heading, not a line painted on it. */
+  border-bottom: none;
+  box-shadow:
+    0 1px 0 rgba(0, 0, 0, 0.6),
+    0 2px 0 rgba(255, 235, 200, 0.05);
   padding-bottom: 0.5rem;
   margin-bottom: 1rem;
 }
 
-/* Detail section panels */
+/* Detail section panels — recessed carvings, not bordered cards */
 .compendium-detail-section {
-  background: var(--section-bg);
-  border: 1px solid var(--border-warm);
-  border-radius: 3px;
+  background: rgba(0, 0, 0, 0.22);
+  border: none;
+  border-radius: 4px;
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.55),
+    inset 0 -1px 0 rgba(255, 235, 200, 0.06),
+    0 1px 0 rgba(255, 235, 200, 0.04);
   padding: 0.75rem;
 }
 
@@ -1129,12 +1182,14 @@ html body.theme-font-active,
   box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 8px var(--gold-glow);
 }
 
-/* Category accent colors, engraved-bright on dark stone */
-.compendium-accent-heroes { color: #e4b96a; }
-.compendium-accent-enemies { color: #e0705c; }
-.compendium-accent-enchantments { color: #b48ce8; }
-.compendium-accent-tiles { color: #c9b28a; }
-.compendium-accent-items { color: #93c86e; }
+/* Category accent colors, engraved-bright on dark stone — the same
+   identity colors as the chapter accents above (this set had kept the
+   old drifted palette after the chapter vars were corrected). */
+.compendium-accent-heroes { color: #c084fc; }
+.compendium-accent-enemies { color: #c9564a; }
+.compendium-accent-enchantments { color: #2dd4bf; }
+.compendium-accent-tiles { color: #e68f6d; }
+.compendium-accent-items { color: #e8cc8a; }
 
 /* Sprite showcase frame — decorative border for detail view sprites */
 .compendium-sprite-showcase {
