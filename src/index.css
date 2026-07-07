@@ -816,9 +816,12 @@ html body.theme-font-active,
   /* Vertical padding tracks slab height — the mesh's plate inset is a
      fraction of the height, so fixed-px padding let text overlap the
      facet ring on tall screens. max() guards the min-height case.
-     Tuned for the slim 0.93 plate (SlabMesh): inset is (1-0.93)/2 = 3.5%
-     of height ≈ 2.7vh of the 76vh slab, plus a hair of breathing room. */
-  padding: max(3.2vh, 24px) 6.5%;
+     Tuned for the slim 0.93 plate (SlabMesh) — but to the plate edge's
+     WORST inward point, not its average: the hewn edge waviness + corner
+     cuts reach ~6.3% of the stone's height (the average inset is only
+     3.5%, and padding tuned to that let the last entries sit on the
+     bottom bevel). */
+  padding: max(4.9vh, 36px) 6.5%;
 }
 
 /* Single-page mode for mobile — same slab, one face */
@@ -827,7 +830,7 @@ html body.theme-font-active,
   position: relative;
   height: 76vh;
   min-height: 480px;
-  padding: max(3.2vh, 24px) 7%;
+  padding: max(4.9vh, 36px) 7%;
 }
 
 /* The mesh fills the slab behind the content. The aura filter lives HERE,
