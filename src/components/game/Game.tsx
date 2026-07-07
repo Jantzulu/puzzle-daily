@@ -30,6 +30,7 @@ import { fetchTodaysPuzzle as fetchCloudTodaysPuzzle } from '../../services/supa
 import { loadCachedDailyPuzzle, saveCachedDailyPuzzle } from '../../utils/dailyPuzzleCache';
 import { saveSetupState, loadSetupState, clearSetupState } from '../../utils/setupRecovery';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { lockBodyScroll } from '../../utils/scrollLock';
 import { submitCompletion } from '../../services/statsService';
 import { CommunityStats } from './CommunityStats';
 import { BugReportModal } from './BugReportModal';
@@ -335,8 +336,7 @@ export const Game: React.FC<GameProps> = ({
   useEffect(() => {
     const anyFullScreen = showConcedeConfirm || victoryOverlayVisible || lifeLostOverlayVisible;
     if (!anyFullScreen) return;
-    document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = ''; };
+    return lockBodyScroll();
   }, [showConcedeConfirm, victoryOverlayVisible, lifeLostOverlayVisible]);
 
   // Shimmer animation key for Quest text - triggers on puzzle change

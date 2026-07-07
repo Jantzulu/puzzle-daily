@@ -94,6 +94,10 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
 }) => {
   const atStart = currentTurn <= 0;
   const atEnd = currentTurn >= totalTurns;
+  // On the slab, controls are carved into the stone (recessed wells)
+  // instead of the raised dungeon buttons
+  const btn = variant === 'slab' ? 'slab-btn' : 'dungeon-btn';
+  const btnPrimary = variant === 'slab' ? 'slab-btn slab-btn-primary' : 'dungeon-btn-primary';
 
   // Build event markers
   const markers: { turn: number; color: string; label: string }[] = [];
@@ -111,7 +115,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <div className="flex items-center gap-1 z-10">
           <button
             onClick={onExit}
-            className="dungeon-btn px-2 py-1 text-xs font-bold flex items-center gap-1"
+            className={`${btn} px-2 py-1 text-xs font-bold flex items-center gap-1`}
           >
             <span>&times;</span>
             <span>Exit</span>
@@ -119,7 +123,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           {onReportBug && (
             <button
               onClick={onReportBug}
-              className="dungeon-btn px-1.5 py-1 text-xs flex items-center justify-center"
+              className={`${btn} px-1.5 py-1 text-xs flex items-center justify-center`}
               title="Report Bug"
             >
               <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -139,7 +143,9 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
               key={s}
               onClick={() => onSpeedChange(s)}
               className={`px-1.5 h-7 rounded text-xs font-bold transition-colors ${
-                speed === s
+                variant === 'slab'
+                  ? speed === s ? 'slab-btn slab-btn-active' : 'slab-btn'
+                  : speed === s
                   ? 'bg-copper-600 text-white'
                   : 'bg-stone-700 text-stone-400 hover:bg-stone-600'
               }`}
@@ -155,7 +161,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={() => onSeek(0)}
           disabled={atStart}
-          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded ${btn} disabled:opacity-30 disabled:cursor-not-allowed`}
           title="Jump to start"
         >
           <IconSkipBack className={iconClass} />
@@ -163,14 +169,14 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={onStepBack}
           disabled={atStart}
-          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded ${btn} disabled:opacity-30 disabled:cursor-not-allowed`}
           title="Step back"
         >
           <IconStepBack className={iconClass} />
         </button>
         <button
           onClick={onPlayPause}
-          className="w-12 h-10 md:w-14 md:h-12 flex items-center justify-center rounded dungeon-btn-primary"
+          className={`w-12 h-10 md:w-14 md:h-12 flex items-center justify-center rounded ${btnPrimary}`}
           title={isPlaying ? 'Pause' : 'Play'}
         >
           {isPlaying ? <IconPause className={iconClass} /> : <IconPlay className={iconClass} />}
@@ -178,7 +184,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={onStepForward}
           disabled={atEnd}
-          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded ${btn} disabled:opacity-30 disabled:cursor-not-allowed`}
           title="Step forward"
         >
           <IconStepForward className={iconClass} />
@@ -186,7 +192,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
         <button
           onClick={() => onSeek(totalTurns)}
           disabled={atEnd}
-          className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded dungeon-btn disabled:opacity-30 disabled:cursor-not-allowed"
+          className={`w-10 h-10 md:w-12 md:h-12 flex items-center justify-center rounded ${btn} disabled:opacity-30 disabled:cursor-not-allowed`}
           title="Jump to end"
         >
           <IconSkipForward className={iconClass} />
@@ -218,7 +224,7 @@ export const ReplayControls: React.FC<ReplayControlsProps> = ({
           className="w-full h-2 bg-stone-700 rounded-lg appearance-none cursor-pointer accent-copper-500"
           style={{ margin: 0, padding: 0 }}
         />
-        <div className="flex items-center justify-between text-xs text-stone-400">
+        <div className={`flex items-center justify-between text-xs text-stone-400${variant === 'slab' ? ' slab-etched' : ''}`}>
           <span>Turn {currentTurn}</span>
           <span>{totalTurns}</span>
         </div>

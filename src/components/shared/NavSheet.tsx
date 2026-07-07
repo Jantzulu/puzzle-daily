@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { lockBodyScroll } from '../../utils/scrollLock';
 
 interface NavSheetProps {
   open: boolean;
@@ -44,10 +45,10 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
       if (e.key === 'Escape') onClose();
     };
     document.addEventListener('keydown', onKey);
-    document.body.style.overflow = 'hidden';
+    const releaseScroll = lockBodyScroll();
     return () => {
       document.removeEventListener('keydown', onKey);
-      document.body.style.overflow = '';
+      releaseScroll();
     };
   }, [open, onClose]);
 

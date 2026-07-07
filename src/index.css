@@ -1594,6 +1594,54 @@ html body.theme-font-active,
   padding-inline: 7%;
 }
 
+/* Controls carved INTO the stone: recessed wells under the same top-left
+   light as everything (dark upper lip, faint lit lower lip), engraved
+   glyphs. No raised borders — a mason cut these, nobody bolted them on. */
+.slab-btn {
+  background: rgba(0, 0, 0, 0.32);
+  border-radius: 6px;
+  color: #b9a88c;
+  text-shadow:
+    0 -1px 0 rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 235, 200, 0.08);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.65),
+    inset 0 -1px 0 rgba(255, 235, 200, 0.07),
+    0 1px 0 rgba(255, 235, 200, 0.04);
+  transition: background 0.12s, color 0.12s;
+}
+
+.slab-btn:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.42);
+  color: #e8cc8a;
+}
+
+.slab-btn:active:not(:disabled) {
+  box-shadow:
+    inset 0 3px 6px rgba(0, 0, 0, 0.8),
+    inset 0 -1px 0 rgba(255, 235, 200, 0.05);
+}
+
+.slab-btn-primary {
+  color: #e4b96a;
+}
+
+/* Selected/lit well (active speed): the carving holds a faint ember */
+.slab-btn-active {
+  color: #e4b96a;
+  background: rgba(0, 0, 0, 0.45);
+  box-shadow:
+    inset 0 2px 5px rgba(0, 0, 0, 0.75),
+    inset 0 0 10px rgba(228, 185, 106, 0.1);
+}
+
+/* Engraved plain text on the stone (turn counter, labels) */
+.slab-etched {
+  text-shadow:
+    0 -1px 0 rgba(0, 0, 0, 0.7),
+    0 1px 0 rgba(255, 235, 200, 0.08);
+}
+
 @keyframes replay-slab-rise {
   from { transform: translateY(102%); }
   to { transform: translateY(0); }

@@ -62,7 +62,9 @@ function facetFill(a: [number, number], b: [number, number], seed: number): stri
   const nx = ey / len;
   const ny = -ex / len;
   let t = (nx * LIGHT_DIR.x + ny * LIGHT_DIR.y + 1) / 2;
-  t += (hash(seed) - 0.5) * 0.16;
+  // Gentler per-facet jitter than the compendium's 0.16: these facets are
+  // huge (the mesh stretches), so big tone steps read as hard seam lines.
+  t += (hash(seed) - 0.5) * 0.08;
   t = Math.max(0, Math.min(1, t));
   // Compress the ramp: this slab is much taller than the compendium's, so
   // its side facets are large — at full contrast they read as hard black
@@ -102,9 +104,12 @@ export const ReplaySlabMesh: React.FC = () => {
           <feComposite operator="in" in2="SourceGraphic" />
         </filter>
       </defs>
-      {/* Facet ring (top + sides only) */}
+      {/* Facet ring (top + sides only). Each facet strokes itself in its
+          own fill: adjacent SVG polygons anti-alias against the background
+          along shared edges, which drew a visible hairline down every
+          seam — the self-stroke paints over it. */}
       {FACETS.map((f, i) => (
-        <polygon key={i} points={f.points} fill={f.fill} />
+        <polygon key={i} points={f.points} fill={f.fill} stroke={f.fill} strokeWidth="1.5" strokeLinejoin="round" />
       ))}
       {/* Flattened plate the controls sit on — closes across the bottom,
           which is off-screen, so the plate reads as running into the rock */}

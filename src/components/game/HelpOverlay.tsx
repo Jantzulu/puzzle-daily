@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { getHelpSection, type HelpSectionId } from '../../utils/assetStorage';
 import { sanitizeRichHtml } from '../../utils/sanitizeHtml';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { lockBodyScroll } from '../../utils/scrollLock';
 
 interface HelpOverlayProps {
   sectionId: HelpSectionId;
@@ -55,14 +56,12 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
   }, [handleClose]);
 
   useEffect(() => {
-    if (isOpen) {
-      document.addEventListener('keydown', handleKeyDown);
-      // Prevent body scroll when modal is open
-      document.body.style.overflow = 'hidden';
-    }
+    if (!isOpen) return;
+    document.addEventListener('keydown', handleKeyDown);
+    const releaseScroll = lockBodyScroll();
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
+      releaseScroll();
     };
   }, [isOpen, handleKeyDown]);
 

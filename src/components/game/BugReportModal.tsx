@@ -9,6 +9,7 @@ import { toast } from '../shared/Toast';
 import { MiniGridPreview } from './MiniGridPreview';
 import { BugReportReplay } from '../editor/BugReportReplay';
 import { useFocusTrap } from '../../hooks/useFocusTrap';
+import { lockBodyScroll } from '../../utils/scrollLock';
 
 const MAX_DESCRIPTION_LENGTH = 500;
 
@@ -46,10 +47,10 @@ export const BugReportModal: React.FC<BugReportModalProps> = ({ isOpen, onClose,
       if (e.key === 'Escape' && !dismissing && !submitting) handleDismiss();
     };
     document.addEventListener('keydown', handleKeyDown);
-    document.body.style.overflow = 'hidden';
+    const releaseScroll = lockBodyScroll();
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = '';
+      releaseScroll();
     };
   }, [isOpen, replayingRunId, dismissing, submitting, handleDismiss]);
 
