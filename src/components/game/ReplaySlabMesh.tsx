@@ -64,6 +64,10 @@ function facetFill(a: [number, number], b: [number, number], seed: number): stri
   let t = (nx * LIGHT_DIR.x + ny * LIGHT_DIR.y + 1) / 2;
   t += (hash(seed) - 0.5) * 0.16;
   t = Math.max(0, Math.min(1, t));
+  // Compress the ramp: this slab is much taller than the compendium's, so
+  // its side facets are large — at full contrast they read as hard black
+  // slashes rather than turned stone. Raised floor keeps them dark-grey.
+  t = 0.3 + t * 0.6;
   const c = DARK.map((d, i) => Math.round(d + (LIGHT[i] - d) * t));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
@@ -110,8 +114,10 @@ export const ReplaySlabMesh: React.FC = () => {
       {/* Grain over the whole stone */}
       <polygon points={pts(OUTER)} fill="#fff" filter={`url(#${grainId})`} />
       {/* Silhouette outline — polyline, not polygon: the bottom edge must
-          never draw. non-scaling-stroke keeps 3px weight at every size. */}
-      <polyline points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.55)" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+          never draw. non-scaling-stroke keeps 2px weight at every size.
+          Softer than the compendium's (0.55/3px): the tall stretched sides
+          made a heavy outline read as a hard dark border. */}
+      <polyline points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.35)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 };

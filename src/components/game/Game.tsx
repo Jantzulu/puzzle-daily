@@ -290,10 +290,13 @@ export const Game: React.FC<GameProps> = ({
   const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
   const [showBugReport, setShowBugReport] = useState(false);
 
-  // Full-screen overlay visibility (mirrors the render conditions below)
-  const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !victoryDismissed;
-  const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode;
-  const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode;
+  // Full-screen overlay visibility (mirrors the render conditions below).
+  // !enteringReplay: Watch Replay dismisses the overlay, then the rail/slab
+  // choreography runs for 500ms before replayMode flips — without the guard
+  // the overlay re-rendered (flashed) inside that window.
+  const victoryOverlayVisible = gameState.gameStatus === 'victory' && !!puzzleScore && !replayMode && !enteringReplay && !victoryDismissed;
+  const gameOverOverlayVisible = showGameOver && !defeatDismissed && !replayMode && !enteringReplay;
+  const lifeLostOverlayVisible = gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay;
 
   // Keyboard focus stays inside whichever overlay panel is up, and returns
   // to the prior element on close (see useFocusTrap).
@@ -2185,24 +2188,31 @@ export const Game: React.FC<GameProps> = ({
           {/* Game Board - The Dungeon */}
           <div ref={gameBoardRef} className="flex-1 flex flex-col items-center w-full overflow-visible">
             {/* Quest & Control Panel - combined HUD at top, overlaps navbar border */}
-            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
+            {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none' || replayMode) && (
               // z-[40]: above the board (z-10) so the spikes hang over the
               // dungeon, but BELOW the nav (z-50) so the rising gate bars
               // can never paint on top of the navbar or the open menu's
               // beams — bar tips always tuck behind. quest-panel-sticky
               // handles the top offset per breakpoint.
+              // `|| replayMode` keeps the wrapper mounted through replay
+              // (whatever status the scrubbed snapshot carries) so the
+              // board never jumps when the rail hides.
               <div className={`w-full flex flex-col items-center sticky top-0 z-[40] quest-panel-sticky${gateSettling ? ' gate-settle' : ''}`}>
               {/* (The quest banner used to hang here — it now hangs BELOW
                   the board, and only this rail rides sticky.) */}
               {/* Control Panel Row — Lives / Play / Max Turns riding the
                   portcullis rail. The rail is the ONLY sticky element: it
                   floats over the board on scroll, its bars reaching up
-                  toward the navbar, its spikes hanging over the dungeon. */}
-              {!replayMode && (
+                  toward the navbar, its spikes hanging over the dungeon.
+                  During replay it stays MOUNTED but invisible: the ascend
+                  animation is a transform (visual only), so unmounting at
+                  the replay flip freed its layout space and the board
+                  snapped up under the navbar. visibility keeps the space. */}
+              {(
               // pt-2/pb-1: contents sit 2px low of geometric center — the
               // beam's bottom lip + hanging spikes add visual mass below,
               // and dead-center read as riding high (user-tuned)
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}`}>
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs
@@ -2432,7 +2442,7 @@ export const Game: React.FC<GameProps> = ({
               )}
 
               {/* Game Over Overlay — dismissible (matches Victory pattern) */}
-              {showGameOver && !defeatDismissed && !replayMode && (
+              {showGameOver && !defeatDismissed && !replayMode && !enteringReplay && (
                 <div
                   role="dialog"
                   aria-modal="true"
@@ -2555,7 +2565,7 @@ export const Game: React.FC<GameProps> = ({
 
               {/* Victory Overlay */}
               {/* Victory Full Overlay — dismissible */}
-              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && !victoryDismissed && (
+              {gameState.gameStatus === 'victory' && puzzleScore && !replayMode && !enteringReplay && !victoryDismissed && (
                 <div
                   role="dialog"
                   aria-modal="true"
@@ -2752,7 +2762,7 @@ export const Game: React.FC<GameProps> = ({
             </div>
 
             {/* Life Lost Overlay — outside shaking container so transform doesn't break fixed positioning */}
-            {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && (
+            {gameState.gameStatus === 'defeat' && !showGameOver && !replayMode && !enteringReplay && (
               <div
                 role="dialog"
                 aria-modal="true"
