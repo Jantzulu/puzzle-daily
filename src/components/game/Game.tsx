@@ -194,9 +194,21 @@ export const Game: React.FC<GameProps> = ({
     const id = setTimeout(() => setGateSettling(false), 1050); // settle runs 1s
     return () => clearTimeout(id);
   }, []);
-  // Reset-reveal overlay (see index.css BOARD PHASE TRANSITIONS):
-  // keyed by nonce so each trigger replays the animation. 0 = never fired.
+  // Reset reveal: masks the instant repaint on reset/retry/replay swaps.
+  // Bumping the nonce fades the BOARD CONTENT from 0 -> 1 (WAAPI, no
+  // remount). A flat dark cover over the container was tried and flashed
+  // the empty gutters around the centered canvas — fading the content
+  // wrapper only touches painted pixels, so nothing around the puzzle
+  // changes. 0 = never fired.
   const [resetFxNonce, setResetFxNonce] = useState(0);
+  const boardFadeRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (resetFxNonce === 0) return;
+    boardFadeRef.current?.animate(
+      [{ opacity: 0 }, { opacity: 1 }],
+      { duration: 450, easing: 'ease-out' }
+    );
+  }, [resetFxNonce]);
 
 
   // Scoring system
@@ -2446,6 +2458,7 @@ export const Game: React.FC<GameProps> = ({
                 board-to-banner gap, halving it (12px base / 14px at lg). */}
             <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] overflow-hidden board-rise ${(replayMode || enteringReplay) ? 'board-rise-collapsed ' : ''}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
+                ref={boardFadeRef}
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
               >
@@ -2471,12 +2484,6 @@ export const Game: React.FC<GameProps> = ({
                 </div>
               )}
 
-              {/* Reset reveal — keyed so each trigger replays; ends at
-                  opacity 0 and is pointer-events-none, so stale ones are
-                  inert. Rendered under the victory/defeat panels. */}
-              {resetFxNonce > 0 && (
-                <div key={`reset-fx-${resetFxNonce}`} className="absolute inset-0 z-10 bg-stone-950 board-reset-reveal" />
-              )}
 
               {/* Game Over Overlay — dismissible (matches Victory pattern) */}
               {showGameOver && !defeatDismissed && !replayMode && !enteringReplay && (
