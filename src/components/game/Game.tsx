@@ -1875,8 +1875,16 @@ export const Game: React.FC<GameProps> = ({
         });
       });
     }
-    // Clear stale particles from headless generation (they have wrong startTimes)
-    copy.activeParticles = [];
+    // Melee/hit/heal VFX are particles spawned during the turn's execution
+    // and captured in the snapshot with the ORIGINAL run's wall-clock
+    // startTimes — long expired by replay time. They used to be cleared
+    // here, which made melee attacks invisible in replay. Re-stamp them to
+    // now instead, so each replay turn plays its VFX like the live turn did.
+    const particleNow = Date.now();
+    copy.activeParticles = (copy.activeParticles || []).map((p: { startTime: number }) => ({
+      ...p,
+      startTime: particleNow,
+    }));
 
     // Replace snapshot projectiles with replay-generated ones (correct positions and timing)
     const replayProjectiles = buildReplayProjectiles(index);

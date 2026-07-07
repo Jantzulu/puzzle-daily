@@ -1457,12 +1457,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE
                 : MOVE_DURATION;
 
+              // A zero-distance anim is a pure TURN (facing changed, no
+              // movement) — it must not play the walk cycle. Entities with
+              // no move actions used to briefly "walk in place" whenever
+              // their facing changed (first-action defaultFacing init,
+              // face-on-cast, redirect).
+              const animMoves = anim.fromX !== anim.toX || anim.fromY !== anim.toY;
+
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawEnemy(ctx, enemy, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
+                drawEnemy(ctx, enemy, renderX, renderY, animMoves, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
               } else {
                 // Arrived at the destination but still "moving this turn" — keep walking.
                 drawEnemy(ctx, enemy, anim.toX, anim.toY, movedThisTurn, undefined, gameStarted, deathAnim, now, spawnAnim, enemyGlow, index);
@@ -1531,12 +1538,17 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
                 ? anim.iceSlideDistance * ICE_SLIDE_MS_PER_TILE
                 : MOVE_DURATION;
 
+              // A zero-distance anim is a pure TURN (facing changed, no
+              // movement) — it must not play the walk cycle (see the enemy
+              // path above).
+              const animMoves = anim.fromX !== anim.toX || anim.fromY !== anim.toY;
+
               if (elapsed < effectiveMoveDuration) {
                 const moveProgress = Math.min(1, elapsed / effectiveMoveDuration);
                 const eased = moveProgress;
                 const renderX = anim.fromX + (anim.toX - anim.fromX) * eased;
                 const renderY = anim.fromY + (anim.toY - anim.fromY) * eased;
-                drawCharacter(ctx, character, renderX, renderY, true, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
+                drawCharacter(ctx, character, renderX, renderY, animMoves, anim.facingDuringMove, gameStarted, deathAnim, now, spawnAnim, charGlow, index);
               } else {
                 // Arrived at the destination but still "moving this turn" — keep walking.
                 drawCharacter(ctx, character, anim.toX, anim.toY, movedThisTurn, undefined, gameStarted, deathAnim, now, spawnAnim, charGlow, index);

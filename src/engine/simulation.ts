@@ -2210,7 +2210,14 @@ export function initializeGameState(puzzle: Puzzle): GameState {
         const placedEnemy = {
           ...e,
           dead: false, // Always reset dead status
-          currentHealth: maxHealth // Reset to full health from enemy definition
+          currentHealth: maxHealth, // Reset to full health from enemy definition
+          // Facing comes from the CURRENT asset's behavior, not the value
+          // stamped at map-placement time — editing defaultFacing in the
+          // EnemyEditor after placing must reach existing puzzles. Static
+          // enemies never re-derive facing anywhere else, and actives only
+          // on their first action; the map editor has no per-placement
+          // facing override, so the asset is the single source of truth.
+          facing: enemyData?.behavior?.defaultFacing ?? e.facing,
         };
 
         // Apply initial status effects from enemy definition
