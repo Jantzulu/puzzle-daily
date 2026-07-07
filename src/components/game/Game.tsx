@@ -306,6 +306,16 @@ export const Game: React.FC<GameProps> = ({
         y += node.offsetTop;
         node = node.offsetParent as HTMLElement | null;
       }
+      // The board slide (margin-top -> -69px, see .board-rise-collapsed) is
+      // usually still mid-transition when this measures — apply however much
+      // of the slide is still to come, so the stone is born at its FINAL
+      // size. Without this it grew 69px at the replay flip and the mesh
+      // visibly restretched (crown thickened, controls shifted).
+      const boardWrap = document.querySelector('.board-rise');
+      if (boardWrap) {
+        const current = parseFloat(getComputedStyle(boardWrap).marginTop) || 0;
+        y += -69 - current;
+      }
       const needed = Math.ceil(window.scrollY + window.innerHeight - y + 80);
       setReplaySlabH(Math.max(225, needed));
     };
