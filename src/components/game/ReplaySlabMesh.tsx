@@ -41,10 +41,11 @@ const hash = (i: number): number => {
 // Inner plate chain: pulled toward the horizontal center and toward the
 // BOTTOM (the anchor), so the ring thins to nothing at the open edge and
 // the plate itself also runs off the bottom of the box. Jitter keeps the
-// plate edge hewn.
+// plate edge hewn. 0.93 vertical: a slim ~9% top band — the original 0.82
+// wasted a fifth of the stone's height on bevel before any content.
 const INNER: Array<[number, number]> = OUTER.map(([x, y], i) => [
   CX + (x - CX) * 0.94 + (hash(i) - 0.5) * 8,
-  VIEW_H + (y - VIEW_H) * 0.82 + (hash(i + 40) - 0.5) * 8,
+  VIEW_H + (y - VIEW_H) * 0.93 + (hash(i + 40) - 0.5) * 6,
 ]);
 // Pin the chain ends to the bottom edge so ring and plate stay open
 INNER[0][1] = VIEW_H;

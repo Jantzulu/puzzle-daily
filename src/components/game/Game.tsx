@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any */
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useCallback, useRef } from 'react';
 import type { GameState, PlacedCharacter, Puzzle, PlacedEnemy, PuzzleScore, ProjectileEvent, Projectile, CustomAttack } from '../../types/game';
 import { Direction, TURN_INTERVAL_MS } from '../../types/game';
 import { getTodaysPuzzle, getAllPuzzles } from '../../data/puzzles';
@@ -286,6 +286,33 @@ export const Game: React.FC<GameProps> = ({
   const replayEventsRef = useRef<Map<number, Set<import('../../engine/combatLog').LogEventType>>>(new Map());
   const projectileTimelineRef = useRef<ProjectileEvent[]>([]);
   const projectileLifetimesRef = useRef<Map<string, { spawn: ProjectileEvent; reflect?: ProjectileEvent; end?: ProjectileEvent; pierceHits: ProjectileEvent[]; homingMoves: ProjectileEvent[]; spawnTurn: number; endTurn: number }>>(new Map());
+
+  // The replay stone must reach the fold on every board/viewport size — a
+  // fixed CSS formula left void under it on mobile. Measured per mount:
+  // from the slab's own document position (offsetTop chain — transform-safe,
+  // the rise animation would poison getBoundingClientRect) to the viewport
+  // bottom, plus overshoot so max-scroll still lands inside the rock.
+  const replaySlabRef = useRef<HTMLDivElement | null>(null);
+  const [replaySlabH, setReplaySlabH] = useState<number | null>(null);
+  useLayoutEffect(() => {
+    if (!(replayMode || enteringReplay)) {
+      setReplaySlabH(null);
+      return;
+    }
+    const compute = () => {
+      let y = 0;
+      let node: HTMLElement | null = replaySlabRef.current;
+      while (node) {
+        y += node.offsetTop;
+        node = node.offsetParent as HTMLElement | null;
+      }
+      const needed = Math.ceil(window.scrollY + window.innerHeight - y + 80);
+      setReplaySlabH(Math.max(225, needed));
+    };
+    compute();
+    window.addEventListener('resize', compute);
+    return () => window.removeEventListener('resize', compute);
+  }, [replayMode, enteringReplay]);
 
   // Bug report system
   const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
@@ -2407,7 +2434,7 @@ export const Game: React.FC<GameProps> = ({
                 under the rail's spikes. A relative offset (not margin) so
                 the banner below stays put — the board slides into the
                 board-to-banner gap, halving it (12px base / 14px at lg). */}
-            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] overflow-hidden ${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
+            <div className={`relative top-1.5 lg:top-[7px] z-10 w-full max-w-[900px] overflow-hidden board-rise ${(replayMode || enteringReplay) ? 'board-rise-collapsed ' : ''}${gameState.gameStatus === 'defeat' ? 'animate-screen-shake' : ''}`}>
               <div
                 className={`transition-[opacity,transform] duration-700 ease-out ${spritesReady ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
                 style={{ transform: spritesReady ? 'scale(1)' : 'scale(0.85)', transformOrigin: '50% 50%', willChange: 'transform, opacity' }}
@@ -3052,7 +3079,11 @@ export const Game: React.FC<GameProps> = ({
                 the page. Mounts at enteringReplay so it rises WHILE the
                 rail winches up. */}
             {(replayMode || enteringReplay) ? (
-              <div className={`replay-slab-flow ${dismissingReplay ? 'replay-slab-sink' : 'replay-slab-rise'}`}>
+              <div
+                ref={replaySlabRef}
+                className={`replay-slab-flow ${dismissingReplay ? 'replay-slab-sink' : 'replay-slab-rise'}`}
+                style={replaySlabH ? ({ height: `${replaySlabH}px`, '--slab-h': `${replaySlabH}px` } as React.CSSProperties) : undefined}
+              >
                 <ReplaySlabMesh />
                 <div className="replay-slab-content">
                   <ReplayControls

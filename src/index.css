@@ -1578,7 +1578,7 @@ html body.theme-font-active,
    the content's top padding scales with it to stay on the flat plate
    (the mesh stretches, so the facet band is a fixed FRACTION of height). */
 .replay-slab-flow {
-  --slab-h: max(280px, calc(100vh - 560px));
+  --slab-h: max(225px, calc(100vh - 620px));
   position: relative;
   height: var(--slab-h);
   margin-bottom: -80px;
@@ -1587,11 +1587,30 @@ html body.theme-font-active,
 .replay-slab-content {
   position: relative;
   z-index: 1;
-  /* Plate's top edge sits at ~18.5% of the stone's height (the mesh
-     stretches, so the facet band is a fixed fraction) — 23% keeps the
+  /* Plate's top edge sits at ~9% of the stone's height (the mesh
+     stretches, so the facet band is a fixed fraction) — 13% keeps the
      first control row comfortably on the flat face. */
-  padding-top: calc(var(--slab-h) * 0.23);
+  padding-top: calc(var(--slab-h) * 0.13);
   padding-inline: 7%;
+}
+
+/* During replay the board slides up into the space the rail vacated —
+   the portcullis rises and the dungeon rises to meet the bar (the rail's
+   reserved box is ~69px: mt-[5px] + pt-2 + 48px min-height + pb-1 +
+   mb-1). One property, so the sticky rail wrapper is untouched: no new
+   ancestors to break sticky, no overflow clipping of the spikes. */
+.board-rise {
+  transition: margin-top 0.52s cubic-bezier(0.45, 0.3, 0.25, 1);
+}
+
+.board-rise-collapsed {
+  margin-top: -69px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .board-rise {
+    transition: none;
+  }
 }
 
 /* Controls carved INTO the stone: recessed wells under the same top-left
