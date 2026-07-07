@@ -1506,13 +1506,13 @@ html body.theme-font-active,
   transition: transform 0.35s ease;
 }
 
-/* Scrolled: the rail rides 14px lower so the gate bars reveal themselves
+/* Scrolled: the rail rides 7px lower so a sliver of the gate bars shows
    between the navbar and the rung (at rest the rung is flush under the
    bar and the bars tuck behind it). Suppressed while the menu gate is
-   lowered — the rail is riding the gate's leading edge then, and a 14px
-   sag would break the tuned beam-to-beam docking gap. */
+   lowered — the rail is riding the gate's leading edge then, and a sag
+   would break the tuned beam-to-beam docking gap. */
 body:not(.menu-gate-lowered) .control-rail.rail-riding {
-  transform: translateY(14px);
+  transform: translateY(7px);
 }
 
 /* The gate settles on page load: the rail (mesh + controls, applied to
