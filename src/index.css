@@ -1570,6 +1570,30 @@ html body.theme-font-active,
   filter: drop-shadow(0 -6px 18px rgba(0, 0, 0, 0.55));
 }
 
+/* In-flow slab block: sits where the hero panel sits (right under the
+   quest banner) and is the LAST content on the page — its painted bottom
+   extends past the document end (negative margin), so the stone's bottom
+   edge is beyond max-scroll and can never be seen. --slab-h stretches on
+   tall viewports so the stone always reaches the bottom of the screen;
+   the content's top padding scales with it to stay on the flat plate
+   (the mesh stretches, so the facet band is a fixed FRACTION of height). */
+.replay-slab-flow {
+  --slab-h: max(280px, calc(100vh - 560px));
+  position: relative;
+  height: var(--slab-h);
+  margin-bottom: -80px;
+}
+
+.replay-slab-content {
+  position: relative;
+  z-index: 1;
+  /* Plate's top edge sits at ~18.5% of the stone's height (the mesh
+     stretches, so the facet band is a fixed fraction) — 23% keeps the
+     first control row comfortably on the flat face. */
+  padding-top: calc(var(--slab-h) * 0.23);
+  padding-inline: 7%;
+}
+
 @keyframes replay-slab-rise {
   from { transform: translateY(102%); }
   to { transform: translateY(0); }

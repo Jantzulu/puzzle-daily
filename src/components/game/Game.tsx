@@ -1346,6 +1346,9 @@ export const Game: React.FC<GameProps> = ({
       if (history.length > 0) {
         setGameState(copySnapshotForPlayback(history[0], history, 0));
       }
+      // The board repaints instantly from end-of-run to turn 0 — cover the
+      // snap with the same dark reveal that masks reset/retry repaints.
+      setResetFxNonce(n => n + 1);
     };
 
     // The control rail winches up under the navbar first (the inverse of
@@ -3031,12 +3034,34 @@ export const Game: React.FC<GameProps> = ({
               </div>
             )}
 
-            {/* During replay the controls live on the fixed slab sheet (below);
-                this in-flow spacer keeps scroll room so the board can clear
-                the sheet, and stops the page collapsing when the panels swap
-                out. */}
-            {replayMode ? (
-              <div className="h-[200px]" aria-hidden="true" />
+            {/* Replay slab — in-flow, exactly where the hero panel sits, so
+                it hangs the same distance under the quest banner. It's the
+                last content on the page and its painted bottom extends past
+                the document end (see .replay-slab-flow), so the stone's
+                bottom edge is beyond max-scroll: a larger rock from below
+                the page. Mounts at enteringReplay so it rises WHILE the
+                rail winches up. */}
+            {(replayMode || enteringReplay) ? (
+              <div className={`replay-slab-flow ${dismissingReplay ? 'replay-slab-sink' : 'replay-slab-rise'}`}>
+                <ReplaySlabMesh />
+                <div className="replay-slab-content">
+                  <ReplayControls
+                    variant="slab"
+                    currentTurn={replayTurnIndex}
+                    totalTurns={turnHistoryRef.current.length - 1}
+                    isPlaying={replayPlaying}
+                    speed={replaySpeed}
+                    events={replayEventsRef.current}
+                    onPlayPause={handleReplayPlayPause}
+                    onStepForward={handleReplayStepForward}
+                    onStepBack={handleReplayStepBack}
+                    onSeek={handleReplaySeek}
+                    onSpeedChange={handleReplaySpeedChange}
+                    onExit={handleExitReplay}
+                    onReportBug={() => setShowBugReport(true)}
+                  />
+                </div>
+              </div>
             ) : (
               /* Heroes and Dungeon Details - dimmed during play/test */
               <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
@@ -3103,9 +3128,10 @@ export const Game: React.FC<GameProps> = ({
             )}
           </div>
 
-          {/* Puzzle Selector - at bottom for dev use */}
+          {/* Puzzle Selector - at bottom for dev use. Hidden during replay:
+              the slab is the page's last content, its bottom off-scroll. */}
           <div className="w-full max-w-2xl mx-auto">
-            {allPuzzles.length > 0 && (
+            {allPuzzles.length > 0 && !replayMode && !enteringReplay && (
               <div className={`dungeon-panel p-2 lg:p-3 transition-opacity ${dimmedPanelClass}`}>
                 <label className="block text-sm lg:text-base font-bold mb-2 text-copper-400">
                   Select Dungeon {savedPuzzles.length > 0 && <span className="text-stone-400 font-normal">({savedPuzzles.length} saved)</span>}
@@ -3139,40 +3165,6 @@ export const Game: React.FC<GameProps> = ({
           </div>
         </div>
       </div>
-
-      {/* Replay slab — fixed bottom sheet, out of layout flow. Rises from
-          the bottom of the viewport WHILE the rail winches up (two halves
-          of one gesture); sinks back down on exit before the panels
-          return. The mesh has no bottom edge: the stone runs off-screen,
-          reading as a larger rock from below the page. z-[45]: over the
-          board and rail wrapper (40), under the navbar and modals (50). */}
-      {(enteringReplay || replayMode) && (
-        <div className="fixed bottom-0 inset-x-0 z-[45] flex justify-center pointer-events-none">
-          <div className={`w-full max-w-2xl relative pointer-events-auto ${dismissingReplay ? 'replay-slab-sink' : 'replay-slab-rise'}`}>
-            <ReplaySlabMesh />
-            <div
-              className="relative z-10 px-6 md:px-10 pt-6 pb-2"
-              style={{ paddingBottom: 'calc(0.5rem + env(safe-area-inset-bottom))' }}
-            >
-              <ReplayControls
-                variant="slab"
-                currentTurn={replayTurnIndex}
-                totalTurns={turnHistoryRef.current.length - 1}
-                isPlaying={replayPlaying}
-                speed={replaySpeed}
-                events={replayEventsRef.current}
-                onPlayPause={handleReplayPlayPause}
-                onStepForward={handleReplayStepForward}
-                onStepBack={handleReplayStepBack}
-                onSeek={handleReplaySeek}
-                onSpeedChange={handleReplaySpeedChange}
-                onExit={handleExitReplay}
-                onReportBug={() => setShowBugReport(true)}
-              />
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Warning Modal */}
       <WarningModal
