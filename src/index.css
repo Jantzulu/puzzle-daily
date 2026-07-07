@@ -1021,30 +1021,34 @@ html body.theme-font-active,
 
 /* Per-chapter aura color — the slab's pulsing perimeter glow takes the
    accent of whatever asset type is open */
+/* Chapter accents match each asset type's identity color on the play page
+   (the carved-header variants): Heroes arcane purple, Enemies blood,
+   Status Effects mystic teal, Tiles rust, Items parchment. The old palette
+   had drifted (heroes gold, status purple) and read as the wrong chapters. */
 .compendium-wrapper.compendium-theme-heroes {
-  --arcane-aura: rgba(228, 185, 106, 0.42);
-  --chapter-accent: #e4b96a;
-  --chapter-accent-glow: rgba(228, 185, 106, 0.28);
+  --arcane-aura: rgba(192, 132, 252, 0.42);
+  --chapter-accent: #c084fc;
+  --chapter-accent-glow: rgba(192, 132, 252, 0.28);
 }
 .compendium-wrapper.compendium-theme-enemies {
-  --arcane-aura: rgba(224, 112, 92, 0.45);
-  --chapter-accent: #e0705c;
-  --chapter-accent-glow: rgba(224, 112, 92, 0.3);
+  --arcane-aura: rgba(201, 86, 74, 0.45);
+  --chapter-accent: #c9564a;
+  --chapter-accent-glow: rgba(201, 86, 74, 0.3);
 }
 .compendium-wrapper.compendium-theme-enchantments {
-  --arcane-aura: rgba(180, 140, 232, 0.48);
-  --chapter-accent: #b48ce8;
-  --chapter-accent-glow: rgba(180, 140, 232, 0.32);
+  --arcane-aura: rgba(45, 212, 191, 0.4);
+  --chapter-accent: #2dd4bf;
+  --chapter-accent-glow: rgba(45, 212, 191, 0.26);
 }
 .compendium-wrapper.compendium-theme-tiles {
-  --arcane-aura: rgba(201, 178, 138, 0.38);
-  --chapter-accent: #c9b28a;
-  --chapter-accent-glow: rgba(201, 178, 138, 0.26);
+  --arcane-aura: rgba(230, 143, 109, 0.38);
+  --chapter-accent: #e68f6d;
+  --chapter-accent-glow: rgba(230, 143, 109, 0.26);
 }
 .compendium-wrapper.compendium-theme-items {
-  --arcane-aura: rgba(147, 200, 110, 0.42);
-  --chapter-accent: #93c86e;
-  --chapter-accent-glow: rgba(147, 200, 110, 0.28);
+  --arcane-aura: rgba(232, 204, 138, 0.42);
+  --chapter-accent: #e8cc8a;
+  --chapter-accent-glow: rgba(232, 204, 138, 0.28);
 }
 
 /* Entry card on parchment page */

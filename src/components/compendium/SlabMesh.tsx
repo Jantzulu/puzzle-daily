@@ -71,8 +71,11 @@ function facetFill(a: [number, number], b: [number, number], seed: number): stri
   const nx = ey / len;
   const ny = -ex / len;
   let t = (nx * LIGHT_DIR.x + ny * LIGHT_DIR.y + 1) / 2; // 0 dark … 1 lit
-  t += (hash(seed) - 0.5) * 0.16; // per-facet variation = the low-poly sparkle
+  t += (hash(seed) - 0.5) * 0.08; // per-facet variation = the low-poly sparkle
   t = Math.max(0, Math.min(1, t));
+  // Compressed ramp (same treatment as the replay stone): full-contrast
+  // facets read as hard black slashes rather than turned stone.
+  t = 0.3 + t * 0.6;
   const c = DARK.map((d, i) => Math.round(d + (LIGHT[i] - d) * t));
   return `rgb(${c[0]},${c[1]},${c[2]})`;
 }
@@ -111,9 +114,12 @@ export const SlabMesh: React.FC = () => {
           <feComposite operator="in" in2="SourceGraphic" />
         </filter>
       </defs>
-      {/* Facet ring */}
+      {/* Facet ring. Each facet strokes itself in its own fill: adjacent
+          SVG polygons anti-alias against the background along shared
+          edges, drawing a visible hairline down every seam — the
+          self-stroke paints over it (same fix as the replay stone). */}
       {FACETS.map((f, i) => (
-        <polygon key={i} points={f.points} fill={f.fill} />
+        <polygon key={i} points={f.points} fill={f.fill} stroke={f.fill} strokeWidth="1.5" strokeLinejoin="round" />
       ))}
       {/* Flattened plate the text sits on */}
       <polygon points={pts(INNER)} fill="#211d1a" />
@@ -124,8 +130,9 @@ export const SlabMesh: React.FC = () => {
       {/* Dark outline for silhouette definition. non-scaling-stroke: the
           viewBox squashes to the element (preserveAspectRatio=none), which
           thinned the border to ~1px on phones — the outline should be the
-          same 3px weight at every size. */}
-      <polygon points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.55)" strokeWidth="3" vectorEffect="non-scaling-stroke" />
+          same weight at every size. Softened (0.35/2px, was 0.55/3px) to
+          match the replay stone: a heavy outline read as a hard border. */}
+      <polygon points={pts(OUTER)} fill="none" stroke="rgba(0, 0, 0, 0.35)" strokeWidth="2" vectorEffect="non-scaling-stroke" />
     </svg>
   );
 };
