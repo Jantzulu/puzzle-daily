@@ -1540,8 +1540,21 @@ html body.theme-font-active,
   animation: rail-descend 0.55s cubic-bezier(0.45, 0.3, 0.25, 1) both;
 }
 
+/* Entering replay: the inverse — the rail winches up under the navbar
+   with the gate's closing curve. `both` fill holds it tucked out of
+   sight until the replay swap unmounts it. */
+@keyframes rail-ascend {
+  from { transform: translateY(0); }
+  to { transform: translateY(-130%); }
+}
+
+.animate-rail-ascend {
+  animation: rail-ascend 0.5s cubic-bezier(0.5, 0, 0.75, 0.5) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
-  .animate-rail-descend {
+  .animate-rail-descend,
+  .animate-rail-ascend {
     animation: none;
   }
 }

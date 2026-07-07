@@ -254,6 +254,9 @@ export const Game: React.FC<GameProps> = ({
   // Replay dismiss animation state
   const [dismissingReplay, setDismissingReplay] = useState(false);
   const [justExitedReplay, setJustExitedReplay] = useState(false);
+  // Replay entry: the rail winches up under the navbar before the swap
+  const [enteringReplay, setEnteringReplay] = useState(false);
+  const enteringReplayRef = useRef(false);
 
   // Warning modal state
   const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({
@@ -1333,15 +1336,35 @@ export const Game: React.FC<GameProps> = ({
     }
     replayEventsRef.current = events;
 
-    setReplayMode(true);
-    setReplayTurnIndex(0);
-    setReplayPlaying(false);
-    setReplaySpeed(1);
+    const startReplay = () => {
+      setReplayMode(true);
+      setReplayTurnIndex(0);
+      setReplayPlaying(false);
+      setReplaySpeed(1);
 
-    if (history.length > 0) {
-      setGameState(copySnapshotForPlayback(history[0], history, 0));
+      if (history.length > 0) {
+        setGameState(copySnapshotForPlayback(history[0], history, 0));
+      }
+    };
+
+    // The control rail winches up under the navbar first (the inverse of
+    // the exit descent), THEN replay swaps in. On victory the rail isn't
+    // mounted at all, so that path swaps immediately.
+    const railMounted =
+      gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' ||
+      gameState.gameStatus === 'defeat' || testMode !== 'none';
+    if (railMounted && !enteringReplayRef.current) {
+      enteringReplayRef.current = true;
+      setEnteringReplay(true);
+      setTimeout(() => {
+        enteringReplayRef.current = false;
+        setEnteringReplay(false);
+        startReplay();
+      }, 500); // match rail-ascend duration
+    } else if (!enteringReplayRef.current) {
+      startReplay();
     }
-  }, [generateTurnHistory]);
+  }, [generateTurnHistory, gameState.gameStatus, testMode]);
 
   // Exit replay mode - animate out then return to appropriate screen
   const handleExitReplay = useCallback(() => {
@@ -2175,7 +2198,7 @@ export const Game: React.FC<GameProps> = ({
               // pt-2/pb-1: contents sit 2px low of geometric center — the
               // beam's bottom lip + hanging spikes add visual mass below,
               // and dead-center read as riding high (user-tuned)
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-rail-descend' : ''}`}>
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs
