@@ -272,6 +272,18 @@ export const Game: React.FC<GameProps> = ({
   const [enteringReplay, setEnteringReplay] = useState(false);
   const enteringReplayRef = useRef(false);
 
+  // At rest the rung sits flush under the navbar (bars tucked away); once
+  // the page scrolls, rail-riding drops it 14px so the gate bars reveal
+  // themselves above the rung (CSS in index.css). Sticky offsets can't do
+  // this — a larger sticky top pushes the element down at rest too.
+  const [railRiding, setRailRiding] = useState(false);
+  useEffect(() => {
+    const onScroll = () => setRailRiding(window.scrollY > 8);
+    onScroll();
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
   // Warning modal state
   const [warningModal, setWarningModal] = useState<{ isOpen: boolean; message: string }>({
     isOpen: false,
@@ -2261,7 +2273,16 @@ export const Game: React.FC<GameProps> = ({
               // pt-2/pb-1: contents sit 2px low of geometric center — the
               // beam's bottom lip + hanging spikes add visual mass below,
               // and dead-center read as riding high (user-tuned)
-              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-[5px] mb-1 min-h-[48px]${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
+              // mt-0 (was mt-[5px]): the band's top edge sits exactly at
+              // this box's top (see PortcullisMesh zones), so any top
+              // margin left a strip of bare gate bars showing between the
+              // navbar and the rung at rest — the rung now rests flush
+              // under the bar. The 5px moved into the menu gate's docked
+              // padding (pb-[17px] in App/PlayerApp) so the tuned
+              // beam-to-beam gap is unchanged. rail-riding: once the page
+              // scrolls, the rail drops 14px and the bars reveal
+              // themselves (see index.css).
+              <div className={`control-rail relative z-0 w-full max-w-2xl grid grid-cols-3 items-center px-3 pt-2 pb-1 mt-0 mb-1 min-h-[48px]${railRiding ? ' rail-riding' : ''}${justExitedReplay ? ' animate-rail-descend' : ''}${enteringReplay ? ' animate-rail-ascend' : ''}${replayMode && !enteringReplay ? ' invisible' : ''}`}>
                   {/* Portcullis rail: with the mobile menu OPEN the sticky
                       wrapper rides the gate's leading edge (translated by
                       --gate-drop, see index.css), so this rail hangs

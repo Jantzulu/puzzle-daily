@@ -1503,6 +1503,16 @@ html body.theme-font-active,
    ============================================ */
 .control-rail {
   position: relative;
+  transition: transform 0.35s ease;
+}
+
+/* Scrolled: the rail rides 14px lower so the gate bars reveal themselves
+   between the navbar and the rung (at rest the rung is flush under the
+   bar and the bars tuck behind it). Suppressed while the menu gate is
+   lowered — the rail is riding the gate's leading edge then, and a 14px
+   sag would break the tuned beam-to-beam docking gap. */
+body:not(.menu-gate-lowered) .control-rail.rail-riding {
+  transform: translateY(14px);
 }
 
 /* The gate settles on page load: the rail (mesh + controls, applied to

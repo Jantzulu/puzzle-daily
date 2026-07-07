@@ -369,11 +369,13 @@ function PlayerNavigation() {
           md+ the gate is the board column's width, centered (see CSS). */}
       <div className={`menu-gate${mobileMenuOpen ? ' menu-gate-open' : ''}${instantClose ? ' menu-gate-instant' : ''}`}>
         <div>
-          {/* pb: when docked with the control rail, pb-3 = 12px tunes the
-              beam-to-rail gap (see Game.tsx); when the utility row IS the
-              spiked bottom rail, pb-6 keeps its hanging spikes (37.5% of
-              the row's height) inside .menu-gate's clip edge. */}
-          <div ref={menuInnerRef} className={`pt-4 px-4 space-y-2 ${dockRail ? 'pb-3' : 'pb-6'}`}>
+          {/* pb: when docked with the control rail, pb-[17px] tunes the
+              beam-to-rail gap (12px original + the 5px the rail's mt lost
+              when the rung moved flush under the navbar — see Game.tsx);
+              when the utility row IS the spiked bottom rail, pb-6 keeps
+              its hanging spikes (37.5% of the row's height) inside
+              .menu-gate's clip edge. */}
+          <div ref={menuInnerRef} className={`pt-4 px-4 space-y-2 ${dockRail ? 'pb-[17px]' : 'pb-6'}`}>
             {navItems.map((item, i) => (
               <Link
                 key={item.to}
