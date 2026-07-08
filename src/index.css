@@ -2073,43 +2073,25 @@ body.menu-gate-instant .quest-panel-sticky {
   filter: none;
 }
 
-/* Steel plates bolted to the gate (sound / cloud / profile) — the frosted
-   capsule was retired for signage forged from the portcullis's own iron
-   (PortcullisMesh IRON tones): brushed face, lit top edge, a rivet
-   through each end. */
+/* Steel plates on the gate (sound / cloud / profile) — signage in the
+   portcullis's edge language: one SOLID face (a step darker than the
+   beams' IRON stock so the signs read against the gate) with chunky
+   flat two-tone bevels, exactly how the bars and beams draw their
+   edges (lit strip / dark strip, no gradients, no grain — the brushed
+   texture and rivet dots read as noise at this size and were cut). */
 .nav-pill {
   position: relative;
   border-radius: 3px;
-  /* A step darker than the beams' IRON stock so the signs read against
-     the portcullis instead of dissolving into it (user-tuned) */
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 235, 200, 0.02) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, #332d26 0%, #262019 30%, #191510 100%);
+  background: #262019;
   border: 1px solid #17130f;
   box-shadow:
-    inset 0 1px 0 rgba(255, 235, 200, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    inset 0 2px 0 rgba(255, 235, 200, 0.16),
+    inset 2px 0 0 rgba(255, 235, 200, 0.07),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    inset -2px 0 0 rgba(0, 0, 0, 0.35),
     0 2px 5px rgba(0, 0, 0, 0.5);
   transition: filter 0.15s;
 }
-
-/* Rivets through the plate's ends, pinning it to the gate */
-.nav-pill::before,
-.nav-pill::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  transform: translateY(-50%);
-  background: radial-gradient(circle at 35% 30%, #4a4239 0%, #17130f 75%);
-  box-shadow: 0 1px 0 rgba(255, 235, 200, 0.12);
-  pointer-events: none;
-}
-
-.nav-pill::before { left: 4px; }
-.nav-pill::after { right: 4px; }
 
 .nav-pill:hover {
   filter: brightness(1.18);
@@ -2136,37 +2118,18 @@ body.menu-gate-instant .quest-panel-sticky {
      box — measured 1.8px low against the beam's center. */
   transform: translateY(-1.8px);
   border-radius: 3px;
-  /* Same darkened stock as .nav-pill — contrast against the beam iron */
-  background:
-    repeating-linear-gradient(90deg, rgba(255, 235, 200, 0.02) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, #332d26 0%, #262019 30%, #191510 100%);
+  /* Same solid darkened stock + chunky flat bevels as .nav-pill */
+  background: #262019;
   border: 1px solid #17130f;
   box-shadow:
-    inset 0 1px 0 rgba(255, 235, 200, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    inset 0 2px 0 rgba(255, 235, 200, 0.16),
+    inset 2px 0 0 rgba(255, 235, 200, 0.07),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    inset -2px 0 0 rgba(0, 0, 0, 0.35),
     0 2px 5px rgba(0, 0, 0, 0.5);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
   transition: color 0.15s, filter 0.15s, box-shadow 0.15s;
 }
-
-/* Rivets pinning the plate to its beam (position:relative comes from the
-   `.nav-gate-item > :not(svg)` rule above) */
-.nav-gate-item > span::before,
-.nav-gate-item > span::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  width: 4px;
-  height: 4px;
-  border-radius: 50%;
-  transform: translateY(-50%);
-  background: radial-gradient(circle at 35% 30%, #4a4239 0%, #17130f 75%);
-  box-shadow: 0 1px 0 rgba(255, 235, 200, 0.12);
-  pointer-events: none;
-}
-
-.nav-gate-item > span::before { left: 4px; }
-.nav-gate-item > span::after { right: 4px; }
 
 .nav-gate-item:hover > span {
   color: #ebc097;
@@ -2176,8 +2139,10 @@ body.menu-gate-instant .quest-panel-sticky {
 .nav-gate-item-active > span {
   color: #e4b96a;
   box-shadow:
-    inset 0 1px 0 rgba(255, 235, 200, 0.22),
-    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    inset 0 2px 0 rgba(255, 235, 200, 0.16),
+    inset 2px 0 0 rgba(255, 235, 200, 0.07),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.55),
+    inset -2px 0 0 rgba(0, 0, 0, 0.35),
     0 2px 5px rgba(0, 0, 0, 0.5),
     0 0 10px rgba(228, 185, 106, 0.3);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(228, 185, 106, 0.45);
