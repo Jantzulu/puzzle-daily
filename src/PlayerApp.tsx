@@ -274,7 +274,7 @@ function PlayerNavigation() {
           md:sticky alone it was inert on mobile, letting the control
           rail's rising bars (z-40) paint over the navbar. */}
       <div
-        className={`relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon transition-shadow duration-300 ${
+        className={`nav-topbar relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon transition-shadow duration-300 ${
           // eslint-disable-next-line react-hooks/refs
           scrolledPast.current ? 'shadow-lg shadow-black/50' : ''
         }`}

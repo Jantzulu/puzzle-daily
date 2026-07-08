@@ -53,6 +53,24 @@ body {
   min-height: 100dvh; /* iOS Safari: exclude the collapsing address bar */
   background-color: var(--color-bg-primary);
   color: var(--color-text-primary);
+  /* Notched devices, installed PWA (viewport-fit=cover + translucent
+     status bar): keep the page's tail clear of the home indicator.
+     env() is 0 everywhere else, so this is a no-op on flat screens. */
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* The navbar pads itself down past the notch/status bar — the bar's own
+   background extends underneath (edge-to-edge stone), content below it.
+   Tailwind's py-* utilities register earlier in the sheet, so this later
+   equal-specificity rule wins the top padding at each breakpoint. */
+.nav-topbar {
+  padding-top: calc(0.125rem + env(safe-area-inset-top));
+}
+
+@media (min-width: 768px) {
+  .nav-topbar {
+    padding-top: calc(0.375rem + env(safe-area-inset-top));
+  }
 }
 
 * {

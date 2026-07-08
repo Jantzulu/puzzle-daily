@@ -369,7 +369,7 @@ function Navigation() {
           width — z-50 needs a positioned element, and with md:sticky alone
           it was inert on mobile, letting the control rail's rising bars
           (z-40) paint over the navbar. */}
-      <div className="relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon" style={navbarStyle}>
+      <div className="nav-topbar relative z-10 bg-stone-600 px-4 md:px-6 py-0.5 md:py-1.5 shadow-dungeon" style={navbarStyle}>
       {/* Marquee layout: logo/title dead-center at every width. Desktop
           puts the hamburger in flow right of the title, with a ghost
           spacer (w-11 = the button's 44px) on the left so the title stays
