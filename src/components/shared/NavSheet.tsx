@@ -63,7 +63,15 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
       // wrapper — without re-applying it here the sheet loses the theme font
       // (falls back to Inter) and theme sizing.
       className={`theme-root fixed inset-0 z-[70] flex items-center justify-center p-4 ${open ? 'animate-overlay-fade-in' : 'animate-overlay-fade-out pointer-events-none'}`}
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)' }}
+      // Light dim + soft blur: the page stays present under the sheet
+      // (a 0.6 scrim over the already-dark pages read as a jarring cut
+      // to black — user feedback). The blur carries the "set aside"
+      // signal so the dim doesn't have to.
+      style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.32)',
+        backdropFilter: 'blur(2px)',
+        WebkitBackdropFilter: 'blur(2px)',
+      }}
       onClick={onClose}
     >
       <div
