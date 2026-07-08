@@ -2080,9 +2080,11 @@ body.menu-gate-instant .quest-panel-sticky {
 .nav-pill {
   position: relative;
   border-radius: 3px;
+  /* A step darker than the beams' IRON stock so the signs read against
+     the portcullis instead of dissolving into it (user-tuned) */
   background:
     repeating-linear-gradient(90deg, rgba(255, 235, 200, 0.02) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, #4a4239 0%, #3b352d 30%, #2b2620 100%);
+    linear-gradient(180deg, #332d26 0%, #262019 30%, #191510 100%);
   border: 1px solid #17130f;
   box-shadow:
     inset 0 1px 0 rgba(255, 235, 200, 0.22),
@@ -2134,9 +2136,10 @@ body.menu-gate-instant .quest-panel-sticky {
      box — measured 1.8px low against the beam's center. */
   transform: translateY(-1.8px);
   border-radius: 3px;
+  /* Same darkened stock as .nav-pill — contrast against the beam iron */
   background:
     repeating-linear-gradient(90deg, rgba(255, 235, 200, 0.02) 0 1px, transparent 1px 3px),
-    linear-gradient(180deg, #4a4239 0%, #3b352d 30%, #2b2620 100%);
+    linear-gradient(180deg, #332d26 0%, #262019 30%, #191510 100%);
   border: 1px solid #17130f;
   box-shadow:
     inset 0 1px 0 rgba(255, 235, 200, 0.22),
