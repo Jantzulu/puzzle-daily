@@ -56,38 +56,15 @@ const hash = (i: number): number => {
 
 const pts = (arr: Array<[number, number]>) => arr.map(p => `${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ');
 
-// Stretch the cloth for a longer drop (the hero-panel visual test): the
-// viewBox grows by `extra` units and ONLY the middle band absorbs them —
-// the rod/loops band stays rigid and the hem keeps its exact tatter cut
-// (translated down). The caller keeps px-per-viewBox-unit constant by
-// growing the svg's pixel height in the same ratio, so the rod never
-// fattens and the tatters never elongate.
-const STRETCH_TOP = 60;
-const STRETCH_BOT = 170;
-const stretchOuter = (extra: number): Array<[number, number]> =>
-  extra <= 0
-    ? OUTER
-    : OUTER.map(([x, y]) => {
-        if (y <= STRETCH_TOP) return [x, y];
-        if (y >= STRETCH_BOT) return [x, y + extra];
-        return [x, STRETCH_TOP + ((y - STRETCH_TOP) * (STRETCH_BOT - STRETCH_TOP + extra)) / (STRETCH_BOT - STRETCH_TOP)];
-      });
-
 // Drape poses for the hem ripple — lower half drifts, top stays pinned.
 // THREE poses cycling A→B→C→A: the two-pose version read as a single slow
 // breath, and on iOS this morph is most of the visible wind (WebKit does
 // not animate feTurbulence attributes, so the displacement wind is a
 // desktop-only bonus — points morphs and transforms animate everywhere).
-const drapePose = (
-  outer: Array<[number, number]>,
-  viewH: number,
-  seed: number,
-  ampX: number,
-  ampY: number
-): Array<[number, number]> =>
-  outer.map(([x, y], i) => {
+const drapePose = (seed: number, ampX: number, ampY: number): Array<[number, number]> =>
+  OUTER.map(([x, y], i) => {
     if (y <= 22) return [x, y];
-    const sway = y > viewH * 0.5 ? 1 : 0.35;
+    const sway = y > 120 ? 1 : 0.35;
     return [
       x + (hash(i + seed) - 0.5) * ampX * sway,
       y + (hash(i + seed + 10) - 0.5) * ampY * sway,
@@ -129,34 +106,32 @@ const PointsRipple: React.FC<{ a: string; b: string; c: string }> = ({ a, b, c }
 // Cloth loops pinning the banner over the rod (rigid, drawn above the rod)
 const LOOPS = [110, 310, 500, 690, 890];
 
-export const BannerMesh: React.FC<{ stretchVB?: number }> = ({ stretchVB = 0 }) => {
+export const BannerMesh: React.FC = () => {
   const uid = React.useId().replace(/[^a-zA-Z0-9_-]/g, '');
   const clipId = `clip${uid}`;
   const grainId = `grain${uid}`;
   const windId = `wind${uid}`;
   const isMobile = useIsMobile();
-  const viewH = VIEW_H + Math.max(0, stretchVB);
-  const outer = React.useMemo(() => stretchOuter(Math.max(0, stretchVB)), [stretchVB]);
-  const ripA = pts(outer);
+  const ripA = pts(OUTER);
   const ripB = React.useMemo(
-    () => pts(drapePose(outer, viewH, 80, isMobile ? 36 : 26, isMobile ? 22 : 16)),
-    [outer, viewH, isMobile]
+    () => pts(drapePose(80, isMobile ? 36 : 26, isMobile ? 22 : 16)),
+    [isMobile]
   );
   const ripC = React.useMemo(
-    () => pts(drapePose(outer, viewH, 130, isMobile ? 36 : 26, isMobile ? 22 : 16)),
-    [outer, viewH, isMobile]
+    () => pts(drapePose(130, isMobile ? 36 : 26, isMobile ? 22 : 16)),
+    [isMobile]
   );
   const swayValues = isMobile ? '0;-2.6;1.8;0' : '0;-1.8;1.2;0';
   return (
     <svg
       className="quest-banner-mesh"
-      viewBox={`0 0 ${VIEW_W} ${viewH}`}
+      viewBox={`0 0 ${VIEW_W} ${VIEW_H}`}
       preserveAspectRatio="none"
       aria-hidden="true"
     >
       <defs>
         <clipPath id={clipId}>
-          <polygon points={ripA}>
+          <polygon points={pts(OUTER)}>
             <PointsRipple a={ripA} b={ripB} c={ripC} />
           </polygon>
         </clipPath>
@@ -222,19 +197,19 @@ export const BannerMesh: React.FC<{ stretchVB?: number }> = ({ stretchVB = 0 }) 
           dur="7s"
           repeatCount="indefinite"
         />
-        <polygon points={ripA} fill="#451614">
+        <polygon points={pts(OUTER)} fill="#451614">
           <PointsRipple a={ripA} b={ripB} c={ripC} />
         </polygon>
 
         <g clipPath={`url(#${clipId})`}>
           {/* Weathered edge darkening */}
-          <polygon points={ripA} fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="16">
+          <polygon points={pts(OUTER)} fill="none" stroke="rgba(0,0,0,0.4)" strokeWidth="16">
             <PointsRipple a={ripA} b={ripB} c={ripC} />
           </polygon>
         </g>
 
         {/* Weave grain */}
-        <polygon points={ripA} fill="#fff" filter={`url(#${grainId})`}>
+        <polygon points={pts(OUTER)} fill="#fff" filter={`url(#${grainId})`}>
           <PointsRipple a={ripA} b={ripB} c={ripC} />
         </polygon>
       </g>

@@ -1538,9 +1538,7 @@ html body.theme-font-active,
 .quest-banner::after {
   content: '';
   position: absolute;
-  /* --rod-center: set inline when the cloth is extended (visual test) —
-     the 4.6% fallback lands on the rod only at the banner's base height */
-  top: var(--rod-center, 4.6%);
+  top: 4.6%;
   width: 11px;
   height: 11px;
   border-radius: 50%;

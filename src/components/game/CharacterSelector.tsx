@@ -60,9 +60,6 @@ interface CharacterSelectorProps {
   placedCharacters?: PlacedCharacter[];
   onSpellDirectionOverride?: (characterId: string, spellId: string, direction: Direction) => void;
   pendingSpellDirectionOverrides?: Record<string, Record<string, Direction>>;
-  /** Ref to the hero card strip — Game.tsx measures its bottom to size the
-   *  quest banner's extended cloth (visual test). */
-  cardStripRef?: React.Ref<HTMLDivElement>;
 }
 
 export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
@@ -79,7 +76,6 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
   placedCharacters = [],
   onSpellDirectionOverride,
   pendingSpellDirectionOverrides = {},
-  cardStripRef,
 }) => {
   const effectiveMaxPlaceable = maxPlaceable ?? availableCharacterIds.length;
   const isAtMaxPlaced = placedCharacterIds.length >= effectiveMaxPlaceable;
@@ -246,7 +242,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
       </div>
 
       {/* Hero strip — equal-width slots separated by vertical dividers */}
-      <div ref={cardStripRef} className="flex divide-x divide-stone-700">
+      <div className="flex divide-x divide-stone-700">
         {availableCharacterIds.map((charId, charIndex) => {
           const character = getCharacter(charId);
           if (!character) return null;
@@ -270,17 +266,20 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
                   : isPlaced && isSelected
                   // Placed AND actively viewed: full brightness so the
                   // sprite/name/HP match the (full-brightness) info area
-                  // below. (VISUAL TEST: the bg-copper-900/15 selection
-                  // tint is removed here and on the info area — both sit
-                  // on the page/banner directly.)
-                  ? 'cursor-pointer'
+                  // below. Without this, opacity-50 dimmed the card while
+                  // the info area stayed bright, producing a visible
+                  // brightness seam between the two zones. Backdrop tint
+                  // matches the info area's bg-copper-900/15 so card +
+                  // info read as one unified surface (mirrors the enemy
+                  // display's bg-blood-900/15 pattern).
+                  ? 'cursor-pointer bg-copper-900/15'
                   : isPlaced
                   // Placed but NOT viewed: dim with opacity-50 + a hover
                   // tint. "Already placed, can't re-place" signal — the
                   // checkmark + dimmed sprite carry that.
                   ? 'opacity-50 cursor-pointer [@media(hover:hover)]:hover:bg-stone-700/30'
                   : isSelected
-                  ? 'cursor-pointer'
+                  ? 'bg-copper-900/15 cursor-pointer'
                   : '[@media(hover:hover)]:hover:bg-stone-700/30 cursor-pointer'
               }`}
             >
@@ -397,9 +396,7 @@ export const CharacterSelector: React.FC<CharacterSelectorProps> = ({
         }}>
         <div style={{ overflow: 'hidden', minHeight: 0 }}>
         <div
-          // VISUAL TEST: no backdrop of its own — the fold-out sits on the
-          // page background (bg-copper-900/15 removed with the card tint)
-          className="pt-4 pb-3 mt-0 rounded-b-pixel-md"
+          className="pt-4 pb-3 mt-0 bg-copper-900/15 rounded-b-pixel-md"
           style={{
             opacity: isOpen ? 1 : 0,
             transform: isOpen ? 'translateY(0)' : 'translateY(-8px)',
