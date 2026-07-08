@@ -1118,14 +1118,19 @@ html body.theme-font-active,
   background: rgba(0, 0, 0, 0.22);
 }
 
-/* Selected: the row itself stays quiet (the ember-washed well made the
-   text hard to read — user request); a chapter-colored ring around the
-   THUMBNAIL alone marks the open entry. */
-.compendium-entry--selected .compendium-entry-sprite {
-  border-radius: 4px;
+/* Selected: the well holds the chapter's ember — a soft 1px rim and a
+   bloom hugging the INNER EDGES of the slot, leaving the center (and
+   the text on it) dark. Settled here after trying a full ember wash
+   (too messy over the text) and a thumbnail ring (too detached once
+   the wells returned). */
+.compendium-entry--selected {
+  background: rgba(0, 0, 0, 0.18);
   box-shadow:
-    0 0 0 2px var(--chapter-accent, #e4b96a),
-    0 0 10px var(--chapter-accent-glow, rgba(228, 185, 106, 0.35));
+    inset 0 1px 3px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 1px var(--chapter-accent-glow, rgba(228, 185, 106, 0.28)),
+    inset 0 0 6px var(--chapter-accent-glow, rgba(228, 185, 106, 0.28)),
+    inset 0 0 16px var(--chapter-accent-glow, rgba(228, 185, 106, 0.28)),
+    inset 0 -1px 0 rgba(255, 235, 200, 0.04);
 }
 
 /* Page heading — engraved, centered, colored by the open chapter. The glow
