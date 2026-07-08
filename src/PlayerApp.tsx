@@ -7,6 +7,7 @@ import { useState, useEffect, useLayoutEffect, useRef, useCallback, lazy, Suspen
 import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-dom';
 import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
+import { NavCalendar } from './components/shared/NavCalendar';
 import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
@@ -287,7 +288,10 @@ function PlayerNavigation() {
           the title stays truly page-centered; mobile keeps the hamburger
           pinned at the right edge (absolute, doesn't skew centering). */}
       <div className="flex items-center justify-center gap-3 md:gap-4 relative z-10">
-        <div className="hidden md:block w-11 shrink-0" aria-hidden="true" />
+        {/* Calendar — the marquee's left counterweight: takes over the
+            ghost spacer's 44px on desktop, pins to the left edge on
+            mobile (mirroring the hamburger's right pin) */}
+        <NavCalendar />
         <div className="flex items-center gap-2 md:gap-4">
         <Link to="/" className="flex items-center gap-2 md:gap-3 no-underline shrink-0">
           {logoSrc ? (

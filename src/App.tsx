@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation, Navigate } from 'react
 import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
+import { NavCalendar } from './components/shared/NavCalendar';
 import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
@@ -375,7 +376,10 @@ function Navigation() {
           truly page-centered; mobile keeps the hamburger pinned at the
           right edge (absolute, so it doesn't skew the centering). */}
       <div className="flex items-center justify-center gap-3 md:gap-4 relative z-10">
-        <div className="hidden md:block w-11 shrink-0" aria-hidden="true" />
+        {/* Calendar — the marquee's left counterweight: takes over the
+            ghost spacer's 44px on desktop, pins to the left edge on
+            mobile (mirroring the hamburger's right pin) */}
+        <NavCalendar />
         {/* Logo/Title — pops off the wall */}
         <Link to="/" className="nav-pop flex items-center gap-2 md:gap-3 no-underline">
           {/* Custom logo or default torch icon */}
