@@ -348,6 +348,54 @@ export const Game: React.FC<GameProps> = ({
     return () => window.removeEventListener('resize', compute);
   }, [replayMode, enteringReplay]);
 
+  // VISUAL TEST (2026-07-07, may be reverted wholesale): the quest banner's
+  // cloth drops to the bottom of the hero CARD STRIP (not the fold-out info
+  // area), layered behind the hero panel. Measured live: extra px between
+  // the banner's own bottom and the strip's bottom, applied as extra
+  // padding-bottom with an equal negative margin so nothing below shifts.
+  // baseH (the banner's unstretched height) keeps the mesh's px-per-viewBox
+  // ratio constant — see BannerMesh stretchVB.
+  const questBannerRef = useRef<HTMLDivElement | null>(null);
+  const heroCardStripRef = useRef<HTMLDivElement | null>(null);
+  const [bannerDrop, setBannerDrop] = useState<{ extra: number; baseH: number } | null>(null);
+  const bannerDropAppliedRef = useRef(0);
+  useLayoutEffect(() => {
+    bannerDropAppliedRef.current = bannerDrop?.extra ?? 0;
+  });
+  useLayoutEffect(() => {
+    const banner = questBannerRef.current;
+    const strip = heroCardStripRef.current;
+    if (!banner || !strip) {
+      setBannerDrop(null);
+      return;
+    }
+    const measure = () => {
+      const applied = bannerDropAppliedRef.current;
+      const b = banner.getBoundingClientRect();
+      const s = strip.getBoundingClientRect();
+      const baseH = b.height - applied;
+      const extra = Math.max(0, Math.round(s.bottom - (b.bottom - applied)));
+      setBannerDrop(prev =>
+        prev && Math.abs(prev.extra - extra) <= 1 && Math.abs(prev.baseH - baseH) <= 1
+          ? prev
+          : { extra, baseH }
+      );
+    };
+    measure();
+    // Re-measure after the exit-replay slide-up settles — mid-transform
+    // rects under-report the strip's resting position.
+    const settle = setTimeout(measure, 450);
+    const ro = new ResizeObserver(measure);
+    ro.observe(banner);
+    ro.observe(strip);
+    window.addEventListener('resize', measure);
+    return () => {
+      clearTimeout(settle);
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
+  }, [replayMode, enteringReplay, gameState.gameStatus, testMode]);
+
   // Bug report system
   const [trackedRuns, setTrackedRuns] = useState<TrackedRun[]>([]);
   const [showBugReport, setShowBugReport] = useState(false);
@@ -2986,9 +3034,21 @@ export const Game: React.FC<GameProps> = ({
                 where the old control panel sat. Not sticky; only the
                 portcullis rail above the board floats. */}
             {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
-              <div className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative overflow-visible mb-1">
+              <div
+                ref={questBannerRef}
+                className="w-full max-w-2xl px-8 md:px-9 pt-3 pb-4 quest-banner relative overflow-visible mb-1"
+                // VISUAL TEST: extra padding drops the cloth to the hero
+                // strip's bottom; the negative margin gives it back so the
+                // panel below never moves. --rod-center pins the CSS finials
+                // to the rod (their 4.6% top drifts on a taller box).
+                style={bannerDrop && bannerDrop.extra > 0 ? ({
+                  paddingBottom: `${16 + bannerDrop.extra}px`,
+                  marginBottom: `${4 - bannerDrop.extra}px`,
+                  '--rod-center': `${((11 * bannerDrop.baseH) / 240).toFixed(1)}px`,
+                } as React.CSSProperties) : undefined}
+              >
                 {/* Low-poly stone banner behind the quest HUD (see BannerMesh) */}
-                <BannerMesh />
+                <BannerMesh stretchVB={bannerDrop && bannerDrop.extra > 0 ? (bannerDrop.extra * 240) / bannerDrop.baseH : 0} />
                 {/* Puzzle Number & Quest Row */}
                 {puzzleNumber && (
                   <div className="text-center mb-0.5">
@@ -3150,8 +3210,10 @@ export const Game: React.FC<GameProps> = ({
                 </div>
               </div>
             ) : (
-              /* Heroes and Dungeon Details - dimmed during play/test */
-              <div className={`transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
+              /* Heroes and Dungeon Details - dimmed during play/test.
+                 relative z-[1]: the banner's extended cloth (positioned,
+                 z:0) would otherwise paint over this static content. */
+              <div className={`relative z-[1] transition-opacity ${dimmedPanelClass} ${justExitedReplay ? 'animate-slide-up' : ''}`}>
                 {/* Character Selector - visible during setup, running, defeat, and test mode */}
                 {(gameState.gameStatus === 'setup' || gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none') && (
                   <CharacterSelector
@@ -3165,6 +3227,7 @@ export const Game: React.FC<GameProps> = ({
                     themeAssets={themeAssets}
                     disabled={gameState.gameStatus === 'running' || gameState.gameStatus === 'defeat' || testMode !== 'none'}
                     noPanel
+                    cardStripRef={heroCardStripRef}
                     placedCharacters={gameState.placedCharacters}
                     pendingSpellDirectionOverrides={pendingSpellDirectionOverrides}
                     onSpellDirectionOverride={testMode === 'none' && gameState.gameStatus === 'setup' ? (characterId: string, spellId: string, direction: Direction) => {
