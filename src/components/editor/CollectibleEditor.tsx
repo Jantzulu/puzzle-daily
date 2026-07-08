@@ -3,7 +3,8 @@ import { toast } from '../shared/Toast';
 import { findAssetUsages, formatUsageWarning } from '../../utils/assetDependencies';
 import { scaledNameClass } from '../../utils/textScale';
 import type { CustomCollectible, CustomSprite } from '../../utils/assetStorage';
-import type { CollectibleEffectConfig, CollectibleEffectType, Direction } from '../../types/game';
+import type { CollectibleEffectConfig, CollectibleEffectType } from '../../types/game';
+import { Direction } from '../../types/game';
 import { saveCollectible, getCustomCollectibles, deleteCollectible, getFolders, getStatusEffectAssets, getSoundAssets } from '../../utils/assetStorage';
 import { StaticSpriteEditor } from './StaticSpriteEditor';
 import { SpriteThumbnail } from './SpriteThumbnail';
@@ -701,7 +702,7 @@ const CollectibleEffectEditor: React.FC<{
                 const mode = e.target.value as 'clockwise' | 'counter_clockwise' | 'fixed';
                 const updates: CollectibleEffectConfig = { ...effect, redirectMode: mode };
                 if (mode === 'fixed' && !effect.redirectFixedDirection) {
-                  updates.redirectFixedDirection = 'north';
+                  updates.redirectFixedDirection = Direction.NORTH;
                 }
                 onChange(updates);
               }}

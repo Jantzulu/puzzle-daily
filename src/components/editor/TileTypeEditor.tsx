@@ -287,7 +287,7 @@ const BehaviorEditor: React.FC<BehaviorEditorProps> = ({ behavior, onChange, onR
                 const mode = e.target.value as 'fixed' | 'clockwise' | 'counter_clockwise';
                 const updates = { ...behavior, directionChangeMode: mode };
                 if (mode === 'fixed' && !behavior.newFacing) {
-                  updates.newFacing = 'south';
+                  updates.newFacing = Direction.SOUTH;
                 }
                 onChange(updates);
               }}

@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { toast } from '../shared/Toast';
-import type { SpellAsset, SpellTemplate, DirectionMode, Direction, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
+import type { SpellAsset, SpellTemplate, DirectionMode, SpriteReference, RelativeDirection, StatusEffectAsset } from '../../types/game';
+import { Direction } from '../../types/game';
 import type { SpriteSheetConfig } from '../../utils/assetStorage';
 import { saveSpellAsset, getFolders, getStatusEffectAssets, getSoundAssets, getCustomCollectibles } from '../../utils/assetStorage';
 import { RichTextEditor } from './RichTextEditor';
@@ -1505,7 +1506,7 @@ export const SpellAssetBuilder: React.FC<SpellAssetBuilderProps> = ({ spell, onS
                       const updates: SpellAsset = { ...editedSpell, redirectMode: mode };
                       // Set default fixed direction when switching to fixed mode
                       if (mode === 'fixed' && !editedSpell.redirectFixedDirection) {
-                        updates.redirectFixedDirection = 'north';
+                        updates.redirectFixedDirection = Direction.NORTH;
                       }
                       setEditedSpell(updates);
                     }}
