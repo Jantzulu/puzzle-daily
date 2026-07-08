@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { brToNewlines } from '../../utils/plainText';
 import {
   getAllPuzzleSkins,
   type CustomCharacter,
@@ -24,6 +25,7 @@ const Divider: React.FC = () => (
 // Styled for the parchment book context using compendium-detail-section
 
 export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ character }) => {
+  const desc = brToNewlines(character.description);
   return (
     <div className="space-y-4">
       {/* Sprite Showcase */}
@@ -55,10 +57,10 @@ export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ char
       <Divider />
 
       {/* Description */}
-      {character.description && (
+      {desc && (
         <div className="compendium-detail-section">
           <h3>Description</h3>
-          <p className="text-sm compendium-drop-cap" style={{ color: 'var(--text-primary)' }}>{character.description}</p>
+          <p className="text-sm compendium-drop-cap" style={{ color: 'var(--text-primary)', whiteSpace: 'pre-line' }}>{desc}</p>
         </div>
       )}
 
@@ -88,6 +90,7 @@ export const CharacterDetail: React.FC<{ character: CustomCharacter }> = ({ char
 };
 
 export const EnemyDetail: React.FC<{ enemy: CustomEnemy }> = ({ enemy }) => {
+  const desc = brToNewlines(enemy.description);
   return (
     <div className="space-y-4">
       {/* Sprite Showcase */}
@@ -119,10 +122,10 @@ export const EnemyDetail: React.FC<{ enemy: CustomEnemy }> = ({ enemy }) => {
       <Divider />
 
       {/* Description */}
-      {enemy.description && (
+      {desc && (
         <div className="compendium-detail-section">
           <h3>Description</h3>
-          <p className="text-sm compendium-drop-cap" style={{ color: 'var(--text-primary)' }}>{enemy.description}</p>
+          <p className="text-sm compendium-drop-cap" style={{ color: 'var(--text-primary)', whiteSpace: 'pre-line' }}>{desc}</p>
         </div>
       )}
 
@@ -188,7 +191,7 @@ export const StatusEffectDetail: React.FC<{ effect: StatusEffectAsset }> = ({ ef
       {/* Name & Description */}
       <div className="text-center">
         <h2 className="text-2xl font-bold font-medieval compendium-accent-enchantments">{effect.name}</h2>
-        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{effect.description}</p>
+        <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)', whiteSpace: 'pre-line' }}>{brToNewlines(effect.description)}</p>
       </div>
 
       <Divider />
@@ -284,8 +287,8 @@ export const TileDetail: React.FC<{ tile: CustomTileType }> = ({ tile }) => {
       {/* Name & Info */}
       <div className="text-center">
         <h2 className="text-2xl font-bold font-medieval compendium-accent-tiles">{tile.name}</h2>
-        {tile.description && (
-          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)' }}>{tile.description}</p>
+        {brToNewlines(tile.description) && (
+          <p className="mt-1 text-sm" style={{ color: 'var(--text-primary)', whiteSpace: 'pre-line' }}>{brToNewlines(tile.description)}</p>
         )}
         <div className="mt-2">
           <span className="compendium-badge">

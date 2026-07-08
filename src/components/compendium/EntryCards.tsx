@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import { sanitizeHtml } from '../../utils/sanitizeHtml';
+import { brToSpaces } from '../../utils/plainText';
 import {
   getAllPuzzleSkins,
   type CustomCharacter,
@@ -64,6 +65,7 @@ interface CardProps {
 }
 
 export const CharacterCard: React.FC<CardProps & { character: CustomCharacter }> = ({ character, onClick, isSelected }) => {
+  const desc = brToSpaces(character.description);
   return (
     <div
       onClick={onClick}
@@ -84,8 +86,8 @@ export const CharacterCard: React.FC<CardProps & { character: CustomCharacter }>
           {character.title && (
             <div className="text-xs italic truncate" style={{ color: 'var(--text-muted)' }}>{character.title}</div>
           )}
-          {character.description ? (
-            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{character.description}</div>
+          {desc ? (
+            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{desc}</div>
           ) : (
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>HP: {character.health}</div>
           )}
@@ -96,6 +98,7 @@ export const CharacterCard: React.FC<CardProps & { character: CustomCharacter }>
 };
 
 export const EnemyCard: React.FC<CardProps & { enemy: CustomEnemy }> = ({ enemy, onClick, isSelected }) => {
+  const desc = brToSpaces(enemy.description);
   return (
     <div
       onClick={onClick}
@@ -116,8 +119,8 @@ export const EnemyCard: React.FC<CardProps & { enemy: CustomEnemy }> = ({ enemy,
           {enemy.title && (
             <div className="text-xs italic truncate" style={{ color: 'var(--text-muted)' }}>{enemy.title}</div>
           )}
-          {enemy.description ? (
-            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{enemy.description}</div>
+          {desc ? (
+            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{desc}</div>
           ) : (
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>HP: {enemy.health}</div>
           )}
@@ -139,7 +142,7 @@ export const StatusEffectCard: React.FC<CardProps & { effect: StatusEffectAsset 
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medieval font-semibold compendium-accent-enchantments truncate">{effect.name}</div>
-          <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{effect.description}</div>
+          <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{brToSpaces(effect.description)}</div>
         </div>
       </div>
     </div>
@@ -187,8 +190,8 @@ export const TileCard: React.FC<CardProps & { tile: CustomTileType }> = ({ tile,
         </div>
         <div className="flex-1 min-w-0">
           <div className="font-medieval font-semibold compendium-accent-tiles truncate">{tile.name}</div>
-          {tile.description ? (
-            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{tile.description}</div>
+          {brToSpaces(tile.description) ? (
+            <div className="text-xs truncate" style={{ color: 'var(--text-muted)' }}>{brToSpaces(tile.description)}</div>
           ) : (
             <div className="text-xs" style={{ color: 'var(--text-muted)' }}>
               {tile.baseType === 'wall' ? 'Wall' : 'Floor'} | {tile.behaviors.length} behavior{tile.behaviors.length !== 1 ? 's' : ''}
