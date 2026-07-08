@@ -2119,8 +2119,9 @@ body.menu-gate-instant .quest-panel-sticky {
   z-index: 2;
 }
 
-/* Labels ride the gate beams inside frosted pills — the same capsule
-   language as the compendium's floating tab bar — in the Knightly copper */
+/* Labels ride the gate beams on steel plates bolted to the iron — the
+   same plate stock as .nav-pill (the utility rung's sound/cloud/profile
+   signs) — lettered in the Knightly copper. */
 .nav-gate-item > span {
   display: inline-block;
   font-family: 'Almendra', serif;
@@ -2128,31 +2129,53 @@ body.menu-gate-instant .quest-panel-sticky {
   font-size: 0.95rem;
   color: #d4a574; /* copper-400, the Knightly title color */
   padding: 0.15rem 0.85rem;
-  /* Center the pill on the BEAM: the item box centers it, but the beam
+  /* Center the plate on the BEAM: the item box centers it, but the beam
      sits at 8–44 of the 52u viewBox and Almendra rides high in its line
      box — measured 1.8px low against the beam's center. */
   transform: translateY(-1.8px);
-  border-radius: 999px;
-  background: rgba(24, 21, 19, 0.72);
-  border: 1px solid rgba(228, 185, 106, 0.14);
+  border-radius: 3px;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 235, 200, 0.02) 0 1px, transparent 1px 3px),
+    linear-gradient(180deg, #4a4239 0%, #3b352d 30%, #2b2620 100%);
+  border: 1px solid #17130f;
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 235, 200, 0.05);
+    inset 0 1px 0 rgba(255, 235, 200, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 2px 5px rgba(0, 0, 0, 0.5);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
-  transition: color 0.15s, border-color 0.15s, box-shadow 0.15s;
+  transition: color 0.15s, filter 0.15s, box-shadow 0.15s;
 }
+
+/* Rivets pinning the plate to its beam (position:relative comes from the
+   `.nav-gate-item > :not(svg)` rule above) */
+.nav-gate-item > span::before,
+.nav-gate-item > span::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  border-radius: 50%;
+  transform: translateY(-50%);
+  background: radial-gradient(circle at 35% 30%, #4a4239 0%, #17130f 75%);
+  box-shadow: 0 1px 0 rgba(255, 235, 200, 0.12);
+  pointer-events: none;
+}
+
+.nav-gate-item > span::before { left: 4px; }
+.nav-gate-item > span::after { right: 4px; }
 
 .nav-gate-item:hover > span {
   color: #ebc097;
-  border-color: rgba(228, 185, 106, 0.3);
+  filter: brightness(1.15);
 }
 
 .nav-gate-item-active > span {
   color: #e4b96a;
-  border-color: rgba(228, 185, 106, 0.4);
   box-shadow:
-    0 2px 6px rgba(0, 0, 0, 0.4),
-    inset 0 1px 0 rgba(255, 235, 200, 0.05),
+    inset 0 1px 0 rgba(255, 235, 200, 0.22),
+    inset 0 -1px 0 rgba(0, 0, 0, 0.45),
+    0 2px 5px rgba(0, 0, 0, 0.5),
     0 0 10px rgba(228, 185, 106, 0.3);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6), 0 0 8px rgba(228, 185, 106, 0.45);
 }
