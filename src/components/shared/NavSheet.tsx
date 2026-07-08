@@ -64,11 +64,14 @@ export const NavSheet: React.FC<NavSheetProps> = ({ open, onClose, label, childr
       // (falls back to Inter) and theme sizing.
       className={`theme-root fixed inset-0 z-[70] flex items-center justify-center p-4 ${open ? 'animate-overlay-fade-in' : 'animate-overlay-fade-out pointer-events-none'}`}
       // Light dim + soft blur: the page stays present under the sheet
-      // (a 0.6 scrim over the already-dark pages read as a jarring cut
-      // to black — user feedback). The blur carries the "set aside"
-      // signal so the dim doesn't have to.
+      // (user feedback: the old version read as a jarring cut to black).
+      // backgroundImage:none is LOAD-BEARING — .theme-root (needed above
+      // for fonts) also paints the app's opaque background color + image,
+      // which was the real blackout: it sat behind the scrim and hid the
+      // page no matter how light the dim was.
       style={{
         backgroundColor: 'rgba(0, 0, 0, 0.32)',
+        backgroundImage: 'none',
         backdropFilter: 'blur(2px)',
         WebkitBackdropFilter: 'blur(2px)',
       }}

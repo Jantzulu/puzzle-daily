@@ -73,9 +73,18 @@ export const HelpOverlay: React.FC<HelpOverlayProps> = ({ sectionId, isOpen, onC
       aria-modal="true"
       aria-label={helpContent.title}
       // theme-root: portaled to <body>, outside the app's .theme-root — re-apply
-      // so the sheet keeps the theme font instead of falling back to Inter
+      // so the sheet keeps the theme font instead of falling back to Inter.
+      // backgroundImage:none is LOAD-BEARING: .theme-root also paints the
+      // app's opaque background image, which blacked out the page behind
+      // the scrim. Dim kept light + blurred so the page stays present
+      // (same treatment as NavSheet — user feedback).
       className={`theme-root fixed inset-0 z-50 flex items-center justify-center p-2 md:p-4 ${dismissing ? 'animate-overlay-fade-out' : 'animate-overlay-fade-in'}`}
-      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+      style={{
+        backgroundColor: 'rgba(0, 0, 0, 0.32)',
+        backgroundImage: 'none',
+        backdropFilter: 'blur(2px)',
+        WebkitBackdropFilter: 'blur(2px)',
+      }}
       onClick={handleClose}
     >
       {/* Modal container - responsive on mobile, centered box on desktop */}
