@@ -2093,6 +2093,32 @@ body.menu-gate-instant .quest-panel-sticky {
   transition: filter 0.15s;
 }
 
+/* Forge bolts through the sign's ends — SQUARE, like the plates bolting
+   the gate's bars to its beams (GateMesh: lit rim around a body-tone
+   head), not the round gradient dots that read as noise. Shared by both
+   plate rules; the label span gets position:relative from the
+   `.nav-gate-item > :not(svg)` rule. */
+.nav-pill::before,
+.nav-pill::after,
+.nav-gate-item > span::before,
+.nav-gate-item > span::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 5px;
+  height: 5px;
+  transform: translateY(-50%);
+  background: #2b2620;
+  border: 1px solid #4a4239;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.4);
+  pointer-events: none;
+}
+
+.nav-pill::before,
+.nav-gate-item > span::before { left: 4px; }
+.nav-pill::after,
+.nav-gate-item > span::after { right: 4px; }
+
 .nav-pill:hover {
   filter: brightness(1.18);
 }
