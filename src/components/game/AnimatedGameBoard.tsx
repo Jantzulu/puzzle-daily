@@ -196,8 +196,12 @@ interface SpriteSheetConfig {
   loop?: boolean;
 }
 
-// Cache for sprite sheet animation state
-const spellSpriteSheetStates = new Map<string, { currentFrame: number; lastFrameTime: number }>();
+// Cache for sprite sheet animation state. startTime anchors an absolute-time
+// frame calc (see drawSpellSpriteSheet) — the old incremental "advance one
+// frame per repaint that crossed frameDuration, then reset the baseline to
+// now" drifted slow: it discarded the sub-repaint remainder every flip
+// (~half a repaint interval, ~8ms/frame at 60Hz), so a 100ms frame ran ~108ms.
+const spellSpriteSheetStates = new Map<string, { startTime: number }>();
 
 // Per-entity casting-animation start times (display clock), keyed by entity index.
 // Set each cast turn so the casting sheet restarts from frame 0; read by
@@ -231,11 +235,12 @@ function drawSpellSpriteSheet(
   // Wait for image to load
   if (!img || !img.complete || img.naturalWidth === 0) return false;
 
-  // Get or initialize animation state
+  // Get or initialize animation state — anchor the absolute-time clock the
+  // first time this sheet is drawn (keyed by image data, as before).
   const stateKey = spriteSheet.imageData;
   let state = spellSpriteSheetStates.get(stateKey);
   if (!state) {
-    state = { currentFrame: 0, lastFrameTime: now };
+    state = { startTime: now };
     spellSpriteSheetStates.set(stateKey, state);
   }
 
@@ -243,14 +248,14 @@ function drawSpellSpriteSheet(
   const frameWidth = spriteSheet.frameWidth || (img.naturalWidth / spriteSheet.frameCount);
   const frameHeight = spriteSheet.frameHeight || img.naturalHeight;
 
-  // Update animation frame based on frame rate
+  // Frame from absolute elapsed time (drift-free, matches Aseprite and
+  // drawSpellSpriteSheetFromStartTime — no per-flip remainder to lose).
   const frameDuration = 1000 / spriteSheet.frameRate;
-  if (now - state.lastFrameTime >= frameDuration) {
-    state.currentFrame++;
-    if (state.currentFrame >= spriteSheet.frameCount) {
-      state.currentFrame = spriteSheet.loop !== false ? 0 : spriteSheet.frameCount - 1;
-    }
-    state.lastFrameTime = now;
+  let currentFrame = Math.floor((now - state.startTime) / frameDuration);
+  if (spriteSheet.loop !== false) {
+    currentFrame = currentFrame % spriteSheet.frameCount;
+  } else {
+    currentFrame = Math.min(currentFrame, spriteSheet.frameCount - 1);
   }
 
   // Calculate display dimensions preserving aspect ratio
@@ -264,7 +269,7 @@ function drawSpellSpriteSheet(
   }
 
   // Draw the current frame
-  const sourceX = state.currentFrame * frameWidth;
+  const sourceX = currentFrame * frameWidth;
   const sourceY = 0;
 
   try {
