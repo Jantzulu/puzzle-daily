@@ -76,58 +76,22 @@ export async function submitCompletion(submission: CompletionSubmission): Promis
   // isn't even reached — no pseudonymous tracking ID is created pre-consent.
   if (!hasAnalyticsConsent()) return;
   try {
-    const playerId = getPlayerId();
-
-    // Optionally attach authenticated user ID
-    let userId: string | undefined;
-    try {
-      const { data } = await supabase.auth.getUser();
-      userId = data.user?.id;
-    } catch { /* ignore */ }
-
-    // Clamp values to match database CHECK constraints
-    const clamp = (val: number | undefined, min: number, max: number) =>
-      val !== undefined ? Math.max(min, Math.min(max, val)) : null;
-
-    const row: Record<string, unknown> = {
-      player_id: playerId,
-      user_id: userId || null,
-      puzzle_id: submission.puzzleId,
-      puzzle_date: submission.puzzleDate || null,
-      outcome: submission.outcome,
-      characters_used: clamp(submission.charactersUsed, 0, 20),
-      character_ids: submission.characterIds.slice(0, 20),
-      turns_used: clamp(submission.turnsUsed, 0, 200),
-      lives_remaining: clamp(submission.livesRemaining, 0, 10),
-      defeat_reason: submission.defeatReason || null,
-      defeat_turn: clamp(submission.defeatTurn, 0, 200),
-      attempt_duration_ms: clamp(submission.attemptDurationMs, 0, 3600000),
-    };
-
-    // Add victory-specific fields
-    if (submission.outcome === 'victory' && submission.score) {
-      const s = submission.score;
-      row.rank = s.rank;
-      row.total_points = clamp(s.totalPoints, 0, 100000);
-      row.base_points = clamp(s.breakdown.basePoints, 0, 50000);
-      row.character_bonus = clamp(s.breakdown.characterBonus, 0, 50000);
-      row.turn_bonus = clamp(s.breakdown.turnBonus, 0, 50000);
-      row.lives_bonus = clamp(s.breakdown.livesBonus, 0, 50000);
-      row.side_quest_points = clamp(s.breakdown.sideQuestPoints, 0, 50000);
-      row.completed_side_quests = (s.completedSideQuests || []).slice(0, 20);
-      row.par_met_characters = s.parMet.characters;
-      row.par_met_turns = s.parMet.turns;
-    }
-
-    const { error } = await supabase.from('puzzle_completions').insert(row);
+    // Route through the submit-completion Edge Function — the sole writer to
+    // puzzle_completions (migration 011 removed direct client INSERT). It
+    // validates server-side and builds the row itself, so the client only
+    // sends the semantic submission + its anonymous player_id. The user_id is
+    // derived from the auth JWT on the server, not trusted from here.
+    const { data, error } = await supabase.functions.invoke('submit-completion', {
+      body: { ...submission, playerId: getPlayerId() },
+    });
     if (error) {
-      // P0001 "Rate limit: duplicate completion too soon" fires when a player
-      // fails fast and retries within 10s. Expected, not actionable — drop it.
-      // Migration 010 makes the trigger silent; this handles DBs pre-010.
-      if (error.code === 'P0001' && error.message?.includes('Rate limit')) {
-        return;
-      }
-      console.warn('[Stats] Completion insert error:', error.code, error.message, error.details, error.hint);
+      // Fire-and-forget: a rejected or unreachable function (e.g. not yet
+      // deployed) must never disrupt gameplay. Log and move on.
+      console.warn('[Stats] Completion submit failed:', error.message);
+      return;
+    }
+    if (data && (data as { error?: string }).error) {
+      console.warn('[Stats] Completion rejected:', (data as { reason?: string }).reason);
     }
   } catch (e) {
     console.warn('[Stats] Failed to submit completion:', e);
