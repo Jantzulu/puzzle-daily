@@ -1599,6 +1599,129 @@ html body.theme-font-active,
 }
 
 /* ============================================
+   PRIVACY CONSENT BANNER + opt-out toggle (see ConsentBanner / PrivacyPolicy)
+   ============================================ */
+.consent-banner {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 80; /* above the control rail (z-40); nav sheets (z-70) still sit
+                  over it, but they carry their own backdrop */
+  background: var(--theme-bg-navbar, #3a332b);
+  border-top: 1px solid var(--theme-border-primary, #8c5c37);
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
+  /* Clear the phone's home indicator (pairs with the safe-area work) */
+  padding-bottom: env(safe-area-inset-bottom);
+  animation: consent-rise 0.35s ease 0.2s both;
+}
+
+@keyframes consent-rise {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+
+.consent-banner-inner {
+  max-width: 48rem;
+  margin: 0 auto;
+  padding: 0.85rem 1rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.consent-banner-text {
+  flex: 1 1 16rem;
+  margin: 0;
+  font-size: 0.8rem;
+  line-height: 1.45;
+  color: var(--theme-text-secondary, #cbbfa4);
+}
+
+.consent-banner-text strong { color: var(--theme-text-primary, #e8dcc4); font-weight: 600; }
+
+.consent-banner-link {
+  color: #d4a574;
+  text-decoration: underline;
+  white-space: nowrap;
+}
+
+.consent-banner-actions {
+  display: flex;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+/* Steel-plate vocabulary, matching the gate signs */
+.consent-btn {
+  font-family: 'Almendra', serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.4rem 1.1rem;
+  border-radius: 3px;
+  border: 1px solid #17130f;
+  min-height: 40px;
+  cursor: pointer;
+  transition: filter 0.15s, color 0.15s;
+}
+
+.consent-btn-decline {
+  background: #262019;
+  color: #b9a88c;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 235, 200, 0.12),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.45);
+}
+.consent-btn-decline:hover { filter: brightness(1.2); }
+
+.consent-btn-accept {
+  background: linear-gradient(180deg, #6a5230 0%, #4a3a22 100%);
+  color: #f0dcae;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 235, 200, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.4),
+    0 0 10px rgba(228, 185, 106, 0.2);
+}
+.consent-btn-accept:hover { filter: brightness(1.12); }
+
+/* Opt-out toggle on the privacy page */
+.consent-toggle {
+  position: relative;
+  width: 46px;
+  height: 26px;
+  border-radius: 999px;
+  border: 1px solid #17130f;
+  background: rgba(0, 0, 0, 0.4);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.55);
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: background 0.2s;
+}
+
+.consent-toggle-on {
+  background: linear-gradient(180deg, #6a5230, #4a3a22);
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.4), 0 0 8px rgba(228, 185, 106, 0.25);
+}
+
+.consent-toggle-knob {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #d8c39a 0%, #a98b5c 80%);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.6);
+  transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.consent-toggle-on .consent-toggle-knob {
+  transform: translateX(20px);
+}
+
+/* ============================================
    PORTCULLIS CONTROL RAIL
    The control panel under the board is the bottom rail of the dungeon's
    portcullis (PortcullisMesh): gate bars rise behind the board, forged

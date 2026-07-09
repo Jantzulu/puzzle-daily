@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route, Link, useLocation } from 'react-router-do
 import { Game } from './components/game/Game';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { NavCalendar } from './components/shared/NavCalendar';
+import { ConsentBanner } from './components/shared/ConsentBanner';
 import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
@@ -25,6 +26,7 @@ const Compendium = lazy(() => import('./components/compendium/Compendium').then(
 const TrainingGrounds = lazy(() => import('./components/training/TrainingGrounds').then(m => ({ default: m.TrainingGrounds })));
 const TownCrierPage = lazy(() => import('./components/townCrier/TownCrierPage').then(m => ({ default: m.TownCrierPage })));
 const ProfilePage = lazy(() => import('./components/player/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const PrivacyPolicy = lazy(() => import('./components/player/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 
 const PAGE_TITLES: Record<string, string> = {
   '/': 'Play',
@@ -514,12 +516,14 @@ function PlayerApp() {
                 <Route path="/training" element={<TrainingGrounds />} />
                 <Route path="/town-crier" element={<TownCrierPage />} />
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="*" element={<NotFoundPage />} />
               </Routes>
             </Suspense>
             </RouteFade>
           </ErrorBoundary>
           <ToastContainer />
+          <ConsentBanner />
         </div>
       </BrowserRouter>
     </ErrorBoundary>

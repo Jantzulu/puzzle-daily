@@ -4,6 +4,7 @@ import { Game } from './components/game/Game';
 import { CloudSyncButton } from './components/editor/CloudSyncButton';
 import { SoundSettings } from './components/shared/SoundSettings';
 import { NavCalendar } from './components/shared/NavCalendar';
+import { ConsentBanner } from './components/shared/ConsentBanner';
 import { RouteFade } from './components/shared/RouteFade';
 import { ErrorBoundary } from './components/shared/ErrorBoundary';
 import { applyThemeAssets, subscribeToThemeAssets, loadThemeAssets, fetchThemeAssetsFromCloud, type ThemeAssets } from './utils/themeAssets';
@@ -27,6 +28,7 @@ const EditorsPage = lazy(() => import('./components/editor/EditorsPage').then(m 
 const PuzzleResourcesPage = lazy(() => import('./components/editor/PuzzleResourcesPage').then(m => ({ default: m.PuzzleResourcesPage })));
 const TownCrierPage = lazy(() => import('./components/townCrier/TownCrierPage').then(m => ({ default: m.TownCrierPage })));
 const ProfilePage = lazy(() => import('./components/player/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const PrivacyPolicy = lazy(() => import('./components/player/PrivacyPolicy').then(m => ({ default: m.PrivacyPolicy })));
 
 // Page title mapping per route
 const PAGE_TITLES: Record<string, string> = {
@@ -617,12 +619,14 @@ function App() {
                 <Route path="/assets" element={<ProtectedRoute requiredRole="creator"><AssetManager /></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute requiredRole="creator"><SettingsPage /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+                <Route path="/privacy" element={<PrivacyPolicy />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Suspense>
             </RouteFade>
           </ErrorBoundary>
           <ToastContainer />
+          <ConsentBanner />
         </div>
       </BrowserRouter>
     </ErrorBoundary>

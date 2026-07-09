@@ -1,5 +1,6 @@
 import { supabase } from '../lib/supabase';
 import { getPlayerId } from '../utils/playerId';
+import { hasAnalyticsConsent } from '../utils/consent';
 import type { PuzzleScore, RankTier } from '../types/game';
 
 // ============================================
@@ -70,6 +71,10 @@ export interface OverviewStats {
  * Fire-and-forget: never blocks gameplay, never throws.
  */
 export async function submitCompletion(submission: CompletionSubmission): Promise<void> {
+  // Respect the player's choice: no completion leaves the device until they
+  // opt into analytics (and stops the moment they opt back out). getPlayerId
+  // isn't even reached — no pseudonymous tracking ID is created pre-consent.
+  if (!hasAnalyticsConsent()) return;
   try {
     const playerId = getPlayerId();
 
