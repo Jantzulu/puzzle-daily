@@ -3721,6 +3721,20 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
           If not set, idle animation will play immediately.
         </p>
 
+        <label className="flex items-center gap-2 text-sm font-bold cursor-pointer mb-1">
+          <input
+            type="checkbox"
+            checked={!!sprite.spawnFlyIn}
+            onChange={(e) => onChange({ ...sprite, spawnFlyIn: e.target.checked || undefined })}
+          />
+          🦇 Fly-in entrance
+        </label>
+        <p className="text-[10px] text-stone-500 mb-3">
+          On a puzzle&apos;s first load each session, this entity flies onto its start tile from an
+          off-screen point (picked deterministically per puzzle), using its moving animation in the
+          travel direction. The spawn animation above plays when it lands — or idle if none is set.
+        </p>
+
         {/* Spawn Sprite Sheet Upload */}
         <div className="mb-4">
           <label className="block text-sm font-bold mb-2">

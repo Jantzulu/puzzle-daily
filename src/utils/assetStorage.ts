@@ -300,6 +300,13 @@ export interface CustomSprite {
   glowOffsetY?: number;   // (positive = down)
   glowFlicker?: boolean;  // subtle torch-like shimmer
 
+  // Fly-in entrance (visual only — the entity logically occupies its start
+  // tile from turn 0). When true, the entity swoops linearly onto the board
+  // from a deterministic off-screen point on a puzzle's first load each
+  // session, using its directional moving animation, then plays the spawn
+  // animation (or idles). See the fly-in helpers in AnimatedGameBoard.
+  spawnFlyIn?: boolean;
+
   // Simple rendering (single sprite for all directions)
   shape?: 'circle' | 'square' | 'triangle' | 'star' | 'diamond' | 'hexagon';
   primaryColor?: string;

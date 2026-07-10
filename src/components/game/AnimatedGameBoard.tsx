@@ -641,6 +641,87 @@ interface SpawnAnimationState {
   y: number;
 }
 
+// ─── Fly-in entrance (spawn pre-phase) ──────────────────────────────────────
+// Opt-in per sprite (CustomSprite.spawnFlyIn): on a puzzle's first load each
+// session, the entity swoops linearly from a deterministic off-screen point
+// to its start tile using its directional moving animation; the spawn sheet
+// (if any) plays when it lands. Purely visual — the entity logically occupies
+// its start tile from turn 0 and the engine is untouched. Rides the spawn-
+// animation lifecycle, so replay behaves exactly like spawn animations do.
+const FLY_IN_MS_PER_TILE = 110;
+const FLY_IN_MIN_MS = 500;
+const FLY_IN_MAX_MS = 1600; // ≈ one spawn sheet's worth of theater, no more
+const FLY_IN_OFFSCREEN_TILES = 2.5; // how far beyond the board edge flights start
+const FLY_IN_SEEN_KEY = 'flyin_seen_v1';
+
+interface FlyInState {
+  startTime: number;
+  durationMs: number;
+  fromX: number; // logical tile coords, off the board
+  fromY: number;
+  facing: Direction; // dominant travel direction (drives the moving sheet)
+}
+
+function flyInAlreadySeen(puzzleId: string): boolean {
+  try {
+    return (JSON.parse(sessionStorage.getItem(FLY_IN_SEEN_KEY) ?? '[]') as string[]).includes(puzzleId);
+  } catch {
+    return true; // storage broken → skip the theater, never block the game
+  }
+}
+
+function markFlyInSeen(puzzleId: string): void {
+  try {
+    const seen = JSON.parse(sessionStorage.getItem(FLY_IN_SEEN_KEY) ?? '[]') as string[];
+    if (!seen.includes(puzzleId)) {
+      sessionStorage.setItem(FLY_IN_SEEN_KEY, JSON.stringify([...seen, puzzleId]));
+    }
+  } catch { /* best-effort */ }
+}
+
+// FNV-1a: the origin looks arbitrary but is identical on every load of the
+// same puzzle (determinism rule — no Math.random in anything comparable).
+function flyInHash(s: string): number {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 16777619);
+  }
+  return h >>> 0;
+}
+
+function computeFlyInOrigin(
+  puzzleId: string,
+  enemyIndex: number,
+  boardW: number,
+  boardH: number,
+): { fromX: number; fromY: number } {
+  const h = flyInHash(`${puzzleId}:${enemyIndex}`);
+  const edge = h % 4;
+  const along = ((h >>> 2) % 997) / 996; // 0..1 along the chosen edge
+  switch (edge) {
+    case 0: return { fromX: along * (boardW - 1), fromY: -FLY_IN_OFFSCREEN_TILES };
+    case 1: return { fromX: boardW - 1 + FLY_IN_OFFSCREEN_TILES, fromY: along * (boardH - 1) };
+    case 2: return { fromX: along * (boardW - 1), fromY: boardH - 1 + FLY_IN_OFFSCREEN_TILES };
+    default: return { fromX: -FLY_IN_OFFSCREEN_TILES, fromY: along * (boardH - 1) };
+  }
+}
+
+/** Snap a travel vector (screen coords, +y down) to the nearest of 8 directions. */
+function directionFromTravel(dx: number, dy: number): Direction {
+  const oct = Math.round(Math.atan2(dy, dx) / (Math.PI / 4)); // -4..4, 0 = east
+  switch (((oct % 8) + 8) % 8) {
+    case 0: return Direction.EAST;
+    case 1: return Direction.SOUTHEAST;
+    case 2: return Direction.SOUTH;
+    case 3: return Direction.SOUTHWEST;
+    case 4: return Direction.WEST;
+    case 5: return Direction.NORTHWEST;
+    case 6: return Direction.NORTH;
+    default: return Direction.NORTHEAST;
+  }
+}
+
 interface LiftOffAnimation {
   startTime: number;
   x: number;
@@ -675,6 +756,9 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   const [characterSpawnAnimations, setCharacterSpawnAnimations] = useState<Map<string, SpawnAnimationState>>(new Map());
   const characterSpawnAnimationsRef = useRef<Map<string, SpawnAnimationState>>(new Map());
   const [enemySpawnAnimations, setEnemySpawnAnimations] = useState<Map<number, SpawnAnimationState>>(new Map());
+  // Fly-in entrances in progress, keyed by enemy index (see FlyInState above).
+  // Ref only — read every rAF frame; created alongside the spawn animations.
+  const enemyFlyInsRef = useRef<Map<number, FlyInState>>(new Map());
   // Track lift-off animations for unplaced characters
   const [liftOffAnimations, setLiftOffAnimations] = useState<LiftOffAnimation[]>([]);
   const prevGameStatusRef = useRef(gameState.gameStatus);
@@ -722,6 +806,7 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
       setCharacterSpawnAnimations(new Map());
       characterSpawnAnimationsRef.current = new Map();
       setEnemySpawnAnimations(new Map());
+      enemyFlyInsRef.current.clear();
       setLiftOffAnimations([]);
       // Reset death + casting animation tracking (death anims now persist as
       // corpses, so they must be cleared explicitly on a new puzzle).
@@ -741,14 +826,37 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
   useEffect(() => {
     const now = Date.now();
     const newEnemySpawns = new Map<number, SpawnAnimationState>();
+    const puzzleId = gameState.puzzle.id;
+    // Fly-in entrances: session-gated on the player site (first load of this
+    // puzzle per session), always on in the editor so they can be tuned.
+    const flyInsAllowed = isEditor || !flyInAlreadySeen(puzzleId);
+    let anyFlyIn = false;
 
     gameState.puzzle.enemies.forEach((enemy, index) => {
       // Only start spawn animation if enemy hasn't already spawned and isn't dead
       if (!spawnedEnemiesRef.current.has(index) && !enemy.dead) {
-        newEnemySpawns.set(index, { startTime: now, x: enemy.x, y: enemy.y });
+        // Fly-in pre-phase: delay the spawn sheet until the flight lands.
+        let spawnStart = now;
+        if (flyInsAllowed && getEnemy(enemy.enemyId)?.customSprite?.spawnFlyIn) {
+          const { fromX, fromY } = computeFlyInOrigin(puzzleId, index, gameState.puzzle.width, gameState.puzzle.height);
+          const distTiles = Math.hypot(enemy.x - fromX, enemy.y - fromY);
+          const durationMs = Math.min(FLY_IN_MAX_MS, Math.max(FLY_IN_MIN_MS, Math.round(distTiles * FLY_IN_MS_PER_TILE)));
+          enemyFlyInsRef.current.set(index, {
+            startTime: now,
+            durationMs,
+            fromX,
+            fromY,
+            facing: directionFromTravel(enemy.x - fromX, enemy.y - fromY),
+          });
+          spawnStart = now + durationMs;
+          anyFlyIn = true;
+        }
+        newEnemySpawns.set(index, { startTime: spawnStart, x: enemy.x, y: enemy.y });
         spawnedEnemiesRef.current.add(index);
       }
     });
+
+    if (anyFlyIn && !isEditor) markFlyInSeen(puzzleId);
 
     if (newEnemySpawns.size > 0) {
       setEnemySpawnAnimations(prev => {
@@ -1419,6 +1527,19 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
           const spawnAnim = enemySpawnAnimations.get(index);
           const enemyGlow = getHomingTargetGlow(gameState, enemy.enemyId, true, projectileVisualStateRef.current, index);
+
+          // Fly-in entrance still in flight? Draw the enemy mid-swoop with
+          // its moving animation and skip every other path. Pure pre-game
+          // theater; if the player starts the game mid-flight it snaps to
+          // its tile (gameStarted bail).
+          const flyIn = enemyFlyInsRef.current.get(index);
+          if (flyIn && !gameStarted && !enemy.dead && now - flyIn.startTime < flyIn.durationMs) {
+            const t = (now - flyIn.startTime) / flyIn.durationMs; // linear by design
+            const renderX = flyIn.fromX + (enemy.x - flyIn.fromX) * t;
+            const renderY = flyIn.fromY + (enemy.y - flyIn.fromY) * t;
+            drawEnemy(ctx, enemy, renderX, renderY, true, flyIn.facing, gameStarted, undefined, now, undefined, enemyGlow, index);
+            return;
+          }
           // Walk for the whole turn if this enemy changed tiles this turn
           // (gated to active play so it never loops in place at victory/defeat/setup).
           const movedThisTurn = (enemyMovedThisTurnRef.current.get(index) ?? false) && gameState.gameStatus === 'running';
@@ -2756,7 +2877,10 @@ function drawEnemy(
   const hasCustomSprite = enemyData && 'customSprite' in enemyData && enemyData.customSprite;
 
   // Check if spawn animation is still playing
-  const isSpawning = spawnAnimState && hasCustomSprite && enemyData.customSprite &&
+  // startTime can sit in the future while a fly-in entrance is mid-flight;
+  // the sheet must not run (negative frame index) until the flight lands.
+  const isSpawning = spawnAnimState && now >= spawnAnimState.startTime &&
+    hasCustomSprite && enemyData.customSprite &&
     hasSpawnAnimation(enemyData.customSprite) &&
     isSpawnAnimationPlaying(enemyData.customSprite, spawnAnimState.startTime);
 
