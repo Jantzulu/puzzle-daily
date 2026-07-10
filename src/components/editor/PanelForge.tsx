@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { toast } from '../shared/Toast';
 import { PortcullisMesh } from '../game/PortcullisMesh';
 import { GemMesh } from '../game/GemMesh';
+import { GateBeamMesh } from '../shared/GateMesh';
 
 // ============================================================================
 // PANEL FORGE — nine-slice / tiling-piece spec + template exporter (Phase 1)
@@ -111,6 +112,20 @@ const DEFAULT_KITS: KitSpec[] = [
     ],
   },
   {
+    id: 'nav-gate',
+    name: 'Nav Gate Menu',
+    builtIn: true,
+    description: 'The hamburger menu\'s lattice: each page item rides a horizontal iron beam (GateBeamMesh) with the vertical bars threading the stack, and its label sits on a steel plate sign (.nav-pill CSS — a 3-slice with square forge bolts in the end caps). Distinct from the generic Buttons kit.',
+    pieces: [
+      { id: 'beam-face', label: 'Beam Face', w: 24, h: 12, repeat: 'tile-x', notes: 'The horizontal rung a menu item rides: dark under-frame, flat face, lit top edge.' },
+      { id: 'beam-bar-segment', label: 'Vertical Bar Segment', w: 5, h: 16, repeat: 'tile-y', notes: 'Bars threading the whole stack, behind the beams. Same stock as the portcullis bars — keep them matching.' },
+      { id: 'beam-plate', label: 'Beam Forge Plate', w: 4, h: 4, repeat: 'fixed', notes: 'Square bolt plate where a bar crosses a beam.' },
+      { id: 'sign-cap-l', label: 'Sign Cap L', w: 5, h: 10, repeat: 'fixed', notes: 'Steel plate signage end — the square forge bolt lives here.' },
+      { id: 'sign-mid', label: 'Sign Middle', w: 12, h: 10, repeat: 'tile-x', notes: 'Plate face behind the label text.' },
+      { id: 'sign-cap-r', label: 'Sign Cap R', w: 5, h: 10, repeat: 'fixed' },
+    ],
+  },
+  {
     id: 'play-gem',
     name: 'Play Gem',
     builtIn: true,
@@ -125,7 +140,7 @@ const DEFAULT_KITS: KitSpec[] = [
     id: 'buttons',
     name: 'Buttons',
     builtIn: true,
-    description: 'Three-slice buttons (cap / tiling middle / cap) × three states. Middles must tile seamlessly against both caps.',
+    description: 'The generic dungeon buttons (dungeon-btn) used in dialogs and menus — three-slice (cap / tiling middle / cap) × three states. The nav gate\'s steel plate signs are NOT these; see the Nav Gate Menu kit.',
     pieces: [...buttonStates('normal'), ...buttonStates('hover'), ...buttonStates('pressed')],
   },
 ];
@@ -135,7 +150,7 @@ const STORAGE_KEY = 'panel_forge_kits_v1';
 // Bump when DEFAULT_KITS change shape/sizes: stored BUILT-IN kits are then
 // replaced with the fresh defaults (mesh-derived proportions); user variants
 // are kept as-is.
-const DEFAULTS_VERSION = 2;
+const DEFAULTS_VERSION = 3;
 
 function loadKits(): KitSpec[] {
   try {
@@ -166,7 +181,7 @@ function saveKits(kits: KitSpec[]): void {
 // the artist draws on top of what the game currently renders. Crops are in
 // each mesh's viewBox units.
 
-interface RefCrop { src: 'portcullis' | 'gem'; x: number; y: number; w: number; h: number }
+interface RefCrop { src: 'portcullis' | 'gem' | 'gatebeam'; x: number; y: number; w: number; h: number }
 
 // PortcullisMesh viewBox 1000×64: bars zone y 0–20, rail 20–52, spikes 52–64;
 // bars centered at x=100..900 (half-width 15), spikes half-width 22, plates
@@ -182,11 +197,18 @@ const REF_CROPS: Record<string, RefCrop> = {
   'gem-normal': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
   'gem-hover': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
   'gem-pressed': { src: 'gem', x: 0, y: 0, w: 200, h: 70 },
+  // GateBeamMesh viewBox 400×52: beam band y 8–44, bars at x 40..360
+  // (half-width 6), forge plates 9×9 at y=21. The sign pieces are DOM CSS
+  // (.nav-pill) — no mesh crop; the upload path covers them.
+  'beam-face': { src: 'gatebeam', x: 216, y: 8, w: 48, h: 36 },
+  'beam-bar-segment': { src: 'gatebeam', x: 34, y: 0, w: 12, h: 52 },
+  'beam-plate': { src: 'gatebeam', x: 35, y: 20, w: 10, h: 10 },
 };
 
 const REF_VIEWBOX: Record<RefCrop['src'], { w: number; h: number }> = {
   portcullis: { w: 1000, h: 64 },
   gem: { w: 200, h: 70 },
+  gatebeam: { w: 400, h: 52 },
 };
 
 type RefSources = Partial<Record<RefCrop['src'], HTMLCanvasElement>>;
@@ -377,13 +399,14 @@ interface Assembly {
   height: number;
 }
 
-type KitFamily = 'nine-slice' | 'gate' | 'rail' | 'gem' | 'buttons';
+type KitFamily = 'nine-slice' | 'gate' | 'rail' | 'nav-gate' | 'gem' | 'buttons';
 
 function kitFamily(kit: KitSpec): KitFamily | null {
   const ids = new Set(kit.pieces.map(p => p.id));
   if (ids.has('corner-tl')) return 'nine-slice';
   if (ids.has('bar-segment')) return 'gate';
   if (ids.has('rail-face')) return 'rail';
+  if (ids.has('beam-face')) return 'nav-gate';
   if (ids.has('gem-normal')) return 'gem';
   if (ids.has('btn-normal-mid')) return 'buttons';
   return null;
@@ -498,6 +521,68 @@ function assembleRail(kit: KitSpec): Assembly | null {
   return { regions, width: W, height: H };
 }
 
+function assembleNavGate(kit: KitSpec): Assembly | null {
+  const P = (id: string) => kit.pieces.find(p => p.id === id);
+  const beam = P('beam-face');
+  const bar = P('beam-bar-segment');
+  const plate = P('beam-plate');
+  const capL = P('sign-cap-l');
+  const mid = P('sign-mid');
+  const capR = P('sign-cap-r');
+  if (!beam) return null;
+
+  const BEAM_REPS = 6;
+  const ROWS = 2; // two stacked menu items read as "the lattice"
+  const rowPitch = beam.h + 6;
+  const W = BEAM_REPS * beam.w;
+  const H = ROWS * rowPitch;
+  const regions: AssemblyRegion[] = [];
+
+  // Bars first — they thread the whole stack BEHIND the beams.
+  if (bar) {
+    const fracs = [0.1, 0.3, 0.5, 0.7, 0.9]; // GateMesh BAR_XS / 400
+    for (const f of fracs) {
+      const bx = Math.round(f * W - bar.w / 2);
+      for (let y = 0, r = 0; y < H; y += bar.h, r++) {
+        regions.push({ pieceId: 'beam-bar-segment', x: bx, y, w: bar.w, h: Math.min(bar.h, H - y), rep: r });
+      }
+    }
+  }
+
+  for (let row = 0; row < ROWS; row++) {
+    const by = row * rowPitch;
+    for (let i = 0; i < BEAM_REPS; i++) {
+      regions.push({ pieceId: 'beam-face', x: i * beam.w, y: by, w: beam.w, h: beam.h, rep: i });
+    }
+    if (plate && bar) {
+      for (const f of [0.1, 0.3, 0.5, 0.7, 0.9]) {
+        regions.push({
+          pieceId: 'beam-plate',
+          x: Math.round(f * W - plate.w / 2),
+          y: by + Math.round((beam.h - plate.h) / 2),
+          w: plate.w,
+          h: plate.h,
+          rep: 0,
+        });
+      }
+    }
+    // Steel plate sign centered on the beam, above the ironwork.
+    if (capL && mid && capR) {
+      const signW = capL.w + mid.w * 2 + capR.w;
+      let sx = Math.round((W - signW) / 2);
+      const sy = by + Math.round((beam.h - mid.h) / 2);
+      regions.push({ pieceId: 'sign-cap-l', x: sx, y: sy, w: capL.w, h: capL.h, rep: 0 });
+      sx += capL.w;
+      for (let i = 0; i < 2; i++) {
+        regions.push({ pieceId: 'sign-mid', x: sx, y: sy, w: mid.w, h: mid.h, rep: i });
+        sx += mid.w;
+      }
+      regions.push({ pieceId: 'sign-cap-r', x: sx, y: sy, w: capR.w, h: capR.h, rep: 0 });
+    }
+  }
+  return { regions, width: W, height: H };
+}
+
 function assembleGem(kit: KitSpec): Assembly | null {
   const states = kit.pieces.filter(p => p.repeat === 'fixed');
   if (states.length === 0) return null;
@@ -543,6 +628,7 @@ function assembleKit(kit: KitSpec): Assembly | null {
     case 'nine-slice': return assembleNineSlice(kit);
     case 'gate': return assembleGate(kit);
     case 'rail': return assembleRail(kit);
+    case 'nav-gate': return assembleNavGate(kit);
     case 'gem': return assembleGem(kit);
     case 'buttons': return assembleButtons(kit);
     default: return null;
@@ -656,9 +742,11 @@ export const PanelForge: React.FC = () => {
       try {
         const portSvg = root.querySelector<SVGSVGElement>('[data-capture="portcullis"] svg');
         const gemSvg = root.querySelector<SVGSVGElement>('[data-capture="gem"] svg');
+        const beamSvg = root.querySelector<SVGSVGElement>('[data-capture="gatebeam"] svg');
         const sources: RefSources = {};
         if (portSvg) sources.portcullis = await rasterizeSvg(portSvg, 2000, 128);
         if (gemSvg) sources.gem = await rasterizeSvg(gemSvg, 400, 140);
+        if (beamSvg) sources.gatebeam = await rasterizeSvg(beamSvg, 1600, 208);
         if (!cancelled) setRefSources(sources);
       } catch {
         // Reference is a nicety — the colored assembly still works without it.
@@ -672,7 +760,7 @@ export const PanelForge: React.FC = () => {
   const kitHasMeshRef = !!kit && kit.pieces.some(p => REF_CROPS[p.id]);
   const underlay: Underlay | undefined = useMemo(() => {
     if (!kit || !showRef) return undefined;
-    if (kitHasMeshRef && (refSources.portcullis || refSources.gem)) {
+    if (kitHasMeshRef && (refSources.portcullis || refSources.gem || refSources.gatebeam)) {
       return { mode: 'crops', sources: refSources };
     }
     const uploaded = uploadedRefs.get(kit.id);
@@ -824,6 +912,7 @@ export const PanelForge: React.FC = () => {
       >
         <div data-capture="portcullis"><PortcullisMesh /></div>
         <div data-capture="gem"><GemMesh tone="emerald" /></div>
+        <div data-capture="gatebeam"><GateBeamMesh /></div>
       </div>
 
       {/* Kit list */}
