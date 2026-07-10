@@ -5,7 +5,7 @@ import { TileType, Direction, ActionType, StatusEffectType } from '../../types/g
 import { getCharacter } from '../../data/characters';
 import { getEnemy } from '../../data/enemies';
 import { drawSprite, drawDeathSprite, hasDeathAnimation, drawSpawnSprite, hasSpawnAnimation, isSpawnAnimationPlaying, subscribeToSpriteImageLoads, getSpriteDrawHeight, ART_TILE_PX } from '../editor/SpriteEditor';
-import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible } from '../../utils/assetStorage';
+import type { CustomCharacter, CustomEnemy, CustomTileType, CustomObject, CustomCollectible, CustomSprite } from '../../utils/assetStorage';
 import { loadPuzzleSkin, loadTileType, loadObject, loadStatusEffectAsset, loadCollectible, resolveImageSource } from '../../utils/assetStorage';
 import { getThemeAsset } from '../../utils/themeAssets';
 import type { Tile } from '../../types/game';
@@ -755,6 +755,68 @@ function computeFlyInOrigin(boardW: number, boardH: number): { fromX: number; fr
     case 2: return { fromX: along * (boardW - 1), fromY: boardH - 1 + FLY_IN_OFFSCREEN_TILES };
     default: return { fromX: -FLY_IN_OFFSCREEN_TILES, fromY: along * (boardH - 1) };
   }
+}
+
+// ─── Departing souls ────────────────────────────────────────────────────────
+// When a death animation finishes, the corpse's own final frame rises
+// faintly off the body and dissolves — no dedicated art, every entity's
+// soul is its own silhouette. Derived entirely from the persistent death-
+// animation maps (soul window = deathStart + sheet duration), so replay
+// gets it for free. Purely visual. Toggle: toggleDeathSouls() /
+// localStorage 'death_souls'.
+const SOUL_RISE_MS = 1800;
+const SOUL_RISE_TILES = 0.9;
+const SOUL_PEAK_ALPHA = 0.32;
+
+const SOULS_KEY = 'death_souls';
+let soulsToggleCache: boolean | null = null;
+
+function deathSoulsEnabled(): boolean {
+  if (soulsToggleCache === null) {
+    try {
+      soulsToggleCache = localStorage.getItem(SOULS_KEY) !== 'off';
+    } catch {
+      soulsToggleCache = true;
+    }
+  }
+  return soulsToggleCache;
+}
+
+if (typeof window !== 'undefined') {
+  (window as unknown as Record<string, unknown>).toggleDeathSouls = () => {
+    soulsToggleCache = !deathSoulsEnabled();
+    try {
+      localStorage.setItem(SOULS_KEY, soulsToggleCache ? 'on' : 'off');
+    } catch { /* session-only toggle still works */ }
+    return soulsToggleCache ? 'death souls ON' : 'death souls OFF';
+  };
+}
+
+/** One full play of the death sheet, in ms — 0 for static death images
+ *  (their corpse is immediate, so the soul departs right away). */
+function deathSheetDurationMs(sprite: CustomSprite): number {
+  const sheet = sprite.deathSpriteSheet;
+  if (!sheet || !sheet.frameCount || sheet.frameCount <= 1) return 0;
+  return (sheet.frameCount / (sheet.frameRate || 10)) * 1000;
+}
+
+function drawSoul(
+  ctx: CanvasRenderingContext2D,
+  sprite: CustomSprite,
+  deathAnim: DeathAnimationState,
+  now: number,
+): void {
+  const soulStart = deathAnim.startTime + deathSheetDurationMs(sprite);
+  const t = (now - soulStart) / SOUL_RISE_MS;
+  if (t < 0 || t >= 1) return;
+  const rise = 1 - Math.pow(1 - t, 2); // ease-out: lifts off, then drifts
+  const px = deathAnim.x * TILE_SIZE + TILE_SIZE / 2 + Math.sin(t * Math.PI * 3) * 1.5;
+  const py = deathAnim.y * TILE_SIZE + TILE_SIZE / 2 - SOUL_RISE_TILES * TILE_SIZE * rise;
+  ctx.save();
+  ctx.globalAlpha = SOUL_PEAK_ALPHA * (1 - t);
+  // deathStartTime 0 = ancient — drawDeathSprite holds the final (corpse) frame.
+  drawDeathSpritePixelPerfect(ctx, sprite, px, py, TILE_SIZE, deathAnim.facing, 0);
+  ctx.restore();
 }
 
 /** Snap a travel vector (screen coords, +y down) to the nearest of 8 directions. */
@@ -1788,6 +1850,23 @@ export const AnimatedGameBoard: React.FC<AnimatedGameBoardProps> = ({ gameState,
           }
         }
       });
+
+      // Departing souls — drawn above the entities so they rise OVER the
+      // battlefield. Windows derive from the persistent death-anim maps.
+      if (deathSoulsEnabled()) {
+        enemyDeathAnimationsRef.current.forEach((deathAnim, idx) => {
+          const enemy = gameState.puzzle.enemies[idx];
+          if (!enemy?.dead) return;
+          const sprite = getEnemy(enemy.enemyId)?.customSprite;
+          if (sprite && hasDeathAnimation(sprite)) drawSoul(ctx, sprite, deathAnim, now);
+        });
+        characterDeathAnimationsRef.current.forEach((deathAnim, charId) => {
+          const character = gameState.placedCharacters.find(c => c.characterId === charId);
+          if (!character?.dead) return;
+          const sprite = getCharacter(charId)?.customSprite;
+          if (sprite && hasDeathAnimation(sprite)) drawSoul(ctx, sprite, deathAnim, now);
+        });
+      }
 
       // Draw lift-off animations for unplaced characters
       const activeLiftOffs: LiftOffAnimation[] = [];
