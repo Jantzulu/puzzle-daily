@@ -3730,9 +3730,11 @@ export const SpriteEditor: React.FC<SpriteEditorProps> = ({ sprite, onChange, sh
           🦇 Fly-in entrance
         </label>
         <p className="text-[10px] text-stone-500 mb-3">
-          On a puzzle&apos;s first load each session, this entity flies onto its start tile from an
-          off-screen point (picked deterministically per puzzle), using its moving animation in the
-          travel direction. The spawn animation above plays when it lands — or idle if none is set.
+          The entity flies onto its tile from an off-screen point (picked deterministically per
+          puzzle), using its moving animation in the travel direction. Same cadence as the spawn
+          animation: once per page load. Enemies fly in when the board loads; heroes fly in when
+          placed (replacing the drop-in). The spawn animation above plays on landing — or idle if
+          none is set.
         </p>
 
         {/* Spawn Sprite Sheet Upload */}
